@@ -26,58 +26,22 @@ extension CalendarFeature {
 
     public var body: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-        VStack(spacing: 0) {
-          // 헤더
-          CalendarHeader(
-            title: store.headerTitle,
-            displayMode: store.displayMode,
-            isSelectedDateToday: store.isSelectedDateToday,
-            isFilterActive: store.isFilterActive,
-            onFilterTapped: { store.send(.view(.filterIconTapped)) },
-            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
-            onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
-            onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
-            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
-            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
-          )
-
-          Divider()
-
-          // 공통 요일 헤더
-          WeekdayHeader()
-
-          // 캘린더 그리드 (주간/월간)
-          calendarGridSection
-            .layoutPriority(1)
-            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
-            .onChange(of: store.displayMode) { _, _ in
-              withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                sheetDragOffset = 0
-              }
-              sheetDragBaseOffset = 0
-            }
-
-          // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
-          if store.displayMode == .week || store.displayMode == .month {
-            promiseListSection
-              .transition(.move(edge: .bottom).combined(with: .opacity))
-          }
+        calendarContentView
+      } destination: { store in
+        switch store.case {
+        case .promiseDetail(let promiseDetailStore):
+          PromiseDetail.RootView(store: promiseDetailStore)
+        case .personalEventDetail(let personalEventDetailStore):
+          PersonalEventDetail.RootView(store: personalEventDetailStore)
         }
-        .auroraBackground()
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
-        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
-          EditPromise.RootView(store: editStore)
-        }
-        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
-          NavigationStack {
-            CreatePersonalEvent.RootView(store: editStore)
-          }
-        }
-        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
-          CreatePromise.RootView(store: createStore)
-        }
-        .sheet(item: Binding(
+      }
+    }
+
+    // MARK: - Calendar Content View
+
+    private var calendarContentView: some View {
+      calendarWithEditCovers
+        .fullScreenCover(item: Binding(
           get: { store.sharePromise },
           set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
         )) { promise in
@@ -91,16 +55,18 @@ extension CalendarFeature {
               store.send(.view(.systemPromiseShareTapped))
             }
           )
-          .presentationDetents([.height(340)])
-          .presentationDragIndicator(.visible)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .ignoresSafeArea()
         }
-        .sheet(item: Binding(
+        .fullScreenCover(item: Binding(
           get: { store.systemShareText.map { ShareTextItem(text: $0) } },
           set: { _ in store.send(.view(.systemShareSheetDismissed)) }
         )) { item in
           ShareSheet(items: [item.text])
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
         }
-        .sheet(isPresented: Binding(
+        .fullScreenCover(isPresented: Binding(
           get: { store.isFilterSheetPresented },
           set: { newValue in
             if !newValue {
@@ -123,7 +89,8 @@ extension CalendarFeature {
               store.send(.view(.filterReset))
             }
           )
-          .presentationDragIndicator(.visible)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .ignoresSafeArea()
         }
         .toast(Binding(
           get: { store.toastMessage },
@@ -132,14 +99,69 @@ extension CalendarFeature {
         .onAppear {
           store.send(.view(.onAppear))
         }
-      } destination: { store in
-        switch store.case {
-        case .promiseDetail(let promiseDetailStore):
-          PromiseDetail.RootView(store: promiseDetailStore)
-        case .personalEventDetail(let personalEventDetailStore):
-          PersonalEventDetail.RootView(store: personalEventDetailStore)
+    }
+
+    private var calendarWithEditCovers: some View {
+      calendarBaseView
+        .fullScreenCover(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+          EditPromise.RootView(store: editStore)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: editStore)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .ignoresSafeArea()
+        }
+        .fullScreenCover(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+          CreatePromise.RootView(store: createStore)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+        }
+    }
+
+    private var calendarBaseView: some View {
+      VStack(spacing: 0) {
+        // 헤더
+        CalendarHeader(
+          title: store.headerTitle,
+          displayMode: store.displayMode,
+          isSelectedDateToday: store.isSelectedDateToday,
+          isFilterActive: store.isFilterActive,
+          onFilterTapped: { store.send(.view(.filterIconTapped)) },
+          onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
+          onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
+          onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+          onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+          onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
+        )
+
+        Divider()
+
+        // 공통 요일 헤더
+        WeekdayHeader()
+
+        // 캘린더 그리드 (주간/월간)
+        calendarGridSection
+          .layoutPriority(1)
+          .animation(.smooth(duration: 0.35), value: store.displayMode)
+          .onChange(of: store.displayMode) { _, _ in
+            withAnimation(.smooth(duration: 0.35)) {
+              sheetDragOffset = 0
+            }
+            sheetDragBaseOffset = 0
+          }
+
+        // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
+        if store.displayMode == .week || store.displayMode == .month {
+          promiseListSection
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
+      .auroraBackground()
+      .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
     }
 
     // MARK: - Calendar Grid Section
@@ -164,7 +186,7 @@ extension CalendarFeature {
           store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
         },
         onCollapseToWeek: { date in
-          store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+          store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
         },
         onIndicatorTapped: { indicator in
           store.send(.view(.indicatorTapped(indicator)))
@@ -214,11 +236,12 @@ extension CalendarFeature {
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
-      .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+      .animation(.smooth(duration: 0.35), value: store.displayMode)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
+      .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Week Timeline View
@@ -424,7 +447,7 @@ extension CalendarFeature {
           isSelected: isSelected,
           currentUserId: store.currentUserId,
           onTap: {
-            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+            store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
           }
         )
         .id(date)
