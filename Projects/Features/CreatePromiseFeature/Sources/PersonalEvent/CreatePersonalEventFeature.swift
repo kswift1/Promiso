@@ -73,7 +73,7 @@ extension CreatePersonalEvent {
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
-      
+
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
         self.mode = mode
@@ -119,6 +119,7 @@ extension CreatePersonalEvent {
       case onAppear
     }
 
+    @CasePathable
     public enum Internal: Sendable {
       case titleDebounced(String)
       case emojiGenerated(String)

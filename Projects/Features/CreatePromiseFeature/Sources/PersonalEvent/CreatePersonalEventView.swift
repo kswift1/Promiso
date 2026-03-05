@@ -15,62 +15,19 @@ extension CreatePersonalEvent {
     }
 
     public var body: some View {
-      NavigationStack {
-        ScrollView {
-          VStack(spacing: 16) {
-            essentialSection
-            endTimeSection
-            // 일정 충돌 경고
-            conflictSection
-            locationSection
-            reminderSection
-            descriptionSection
-
-            // 사진 첨부
-            ImageAttachmentSection(
-              existingImageUrls: store.event.imageUrls.filter { !store.removedImageUrls.contains($0) },
-              localImages: store.localImageData,
-              onPhotosSelected: { items in
-                store.send(.view(.photosSelected(items)))
-              },
-              onRemoveExisting: { index in
-                store.send(.view(.removeExistingImage(index)))
-              },
-              onRemoveLocal: { index in
-                store.send(.view(.removeLocalImage(index)))
-              }
-            )
-          }
-          .padding(16)
-          .padding(.bottom, 24)
-          .onAppear {
-            store.send(.view(.onAppear))
-          }
-        }
-        .auroraBackground()
-        .navigationTitle(store.mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button(LocalizedStrings.Common.cancel) {
-              store.send(.view(.dismissTapped))
-            }
-          }
-
-          ToolbarItem(placement: .confirmationAction) {
-            if store.isSaving {
-              ProgressView()
-            } else {
-              Button(store.mode == .create ? LocalizedStrings.Common.save : LocalizedStrings.Common.modify) {
-                store.send(.view(.saveTapped))
-              }
-              .fontWeight(.semibold)
-              .disabled(!store.canSave)
-            }
-          }
-        }
-        .keyboardDismissToolbar()
+      StepSheetContainer(
+        title: store.navigationTitle,
+        currentStep: 0,
+        totalSteps: 1,
+        onDismiss: { store.send(.view(.dismissTapped)) }
+      ) {
+        singleStepContent
+      } floatingContent: {
+        floatingBonusView
+      } bottomContent: {
+        bottomBar
       }
+      .onAppear { store.send(.view(.onAppear)) }
       .alert(
         LocalizedStrings.Common.error,
         isPresented: Binding(
@@ -93,6 +50,99 @@ extension CreatePersonalEvent {
         NotificationPermission.View(store: permissionStore)
           .presentationDetents([.large])
       }
+    }
+
+    // MARK: - Single Step Content
+
+    @ViewBuilder
+    private var singleStepContent: some View {
+      ScrollView {
+        VStack(spacing: 16) {
+          essentialSection
+          endTimeSection
+          locationSection
+          reminderSection
+          descriptionSection
+
+          ImageAttachmentSection(
+            existingImageUrls: store.event.imageUrls.filter { !store.removedImageUrls.contains($0) },
+            localImages: store.localImageData,
+            onPhotosSelected: { items in
+              store.send(.view(.photosSelected(items)))
+            },
+            onRemoveExisting: { index in
+              store.send(.view(.removeExistingImage(index)))
+            },
+            onRemoveLocal: { index in
+              store.send(.view(.removeLocalImage(index)))
+            }
+          )
+        }
+        .padding(16)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+    }
+
+    // MARK: - Floating Bonus View
+
+    @ViewBuilder
+    private var floatingBonusView: some View {
+      ProBonusFloatingView(
+        weatherForecast: weatherForecast,
+        rangeForecasts: weatherRangeForecasts,
+        forecastSource: weatherForecastSource,
+        isLoadingWeather: store.weatherState.isLoading,
+        weatherLocationName: store.event.location?.name,
+        conflicts: store.conflicts.map {
+          ConflictInfo(
+            title: $0.title,
+            overlapMinutes: $0.overlapMinutes,
+            startAt: $0.startAt,
+            endAt: $0.endAt,
+            emoji: $0.emoji,
+            severity: $0.severity == .confirmed ? .confirmed : .pending
+          )
+        },
+        isCheckingConflicts: store.isCheckingConflicts,
+        newEventTitle: store.event.title,
+        newEventEmoji: store.event.emoji,
+        newEventStartAt: store.event.startAt,
+        newEventEndAt: store.event.endAt
+      )
+      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
+    }
+
+    private var weatherForecast: HourlyForecast? {
+      guard let info = store.weatherState.value else { return nil }
+      return WeatherHintHelper.forecast(from: info, startAt: store.event.startAt, endAt: store.event.endAt)
+    }
+
+    private var weatherRangeForecasts: [HourlyForecast] {
+      guard let info = store.weatherState.value else { return [] }
+      return WeatherHintHelper.rangeForecasts(from: info, startAt: store.event.startAt, endAt: store.event.endAt)
+    }
+
+    private var weatherForecastSource: ForecastSource {
+      guard let info = store.weatherState.value else { return .shortTerm }
+      return WeatherHintHelper.forecastSource(from: info, startAt: store.event.startAt)
+    }
+
+    // MARK: - Bottom Bar
+
+    @ViewBuilder
+    private var bottomBar: some View {
+      StepBottomBar(configuration: .navigation(
+        showPrevious: false,
+        previousAction: {},
+        nextTitle: store.mode == .create
+          ? LocalizedStrings.Common.save
+          : LocalizedStrings.Common.modify,
+        nextSystemImage: "checkmark.circle.fill",
+        isNextDisabled: !store.canSave,
+        isNextLoading: store.isSaving,
+        nextAction: { store.send(.view(.saveTapped)) }
+      ))
     }
 
     // MARK: - Essential Section (제목 + 시작 시간)
@@ -221,16 +271,6 @@ extension CreatePersonalEvent {
       .adaptiveGlassCard()
     }
 
-    // MARK: - Conflict Warning Section
-
-    @ViewBuilder
-    private var conflictSection: some View {
-      ConflictWarningSection(
-        conflicts: store.conflicts,
-        isChecking: store.isCheckingConflicts
-      )
-    }
-
     // MARK: - Location Section
 
     @ViewBuilder
@@ -275,33 +315,6 @@ extension CreatePersonalEvent {
           .onTapGesture {
             store.send(.view(.locationTapped))
           }
-
-          // 날씨 힌트 (보너스)
-          if let weatherInfo = store.weatherState.value,
-             let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
-            Divider()
-              .padding(.horizontal, 16)
-            WeatherHintRow(
-              forecast: forecast,
-              rangeForecasts: weatherInfo.forecasts(from: store.event.startAt, to: store.event.endAt),
-              forecastSource: weatherInfo.forecastSource(for: store.event.startAt),
-              minTemperature: weatherHintMinTemp(weatherInfo: weatherInfo),
-              maxTemperature: weatherHintMaxTemp(weatherInfo: weatherInfo)
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-          } else if store.weatherState.isLoading, let location = store.event.location {
-            Divider()
-              .padding(.horizontal, 16)
-            WeatherHintRow.loading(
-              dateText: store.event.startAt.formattedMonthDayTime,
-              locationName: location.name
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .transition(.opacity)
-          }
         } else {
           // 장소 미선택
           Button {
@@ -330,7 +343,6 @@ extension CreatePersonalEvent {
           .padding(.vertical, 12)
         }
       }
-      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       .adaptiveGlassCard()
     }
 
@@ -414,7 +426,7 @@ extension CreatePersonalEvent {
       if let warning = store.reminderWarning {
         Text(warning)
           .font(.pmCaption)
-          .foregroundStyle(.red)
+          .foregroundStyle(Color.pmerror.n500)
           .padding(.horizontal, 16)
           .padding(.top, 4)
       }
@@ -444,33 +456,6 @@ extension CreatePersonalEvent {
           .padding(.trailing, 4)
       }
     }
-  }
-}
-
-// MARK: - Weather Hint Helpers
-
-extension CreatePersonalEvent.RootView {
-  private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
-    let startAt = store.event.startAt
-    let endAt = store.event.endAt
-    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
-      return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
-    }
-    return weatherInfo.forecast(for: startAt)
-  }
-
-  private func weatherHintMinTemp(weatherInfo: WeatherInfo) -> Double? {
-    let startAt = store.event.startAt
-    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
-    let calendar = Calendar.current
-    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.minTemperature
-  }
-
-  private func weatherHintMaxTemp(weatherInfo: WeatherInfo) -> Double? {
-    let startAt = store.event.startAt
-    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
-    let calendar = Calendar.current
-    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.maxTemperature
   }
 }
 

@@ -72,6 +72,13 @@ public struct WeatherTooltip: View {
     rangeForecasts.sorted { $0.dateTime < $1.dateTime }
   }
 
+  /// 타임라인이 여러 날에 걸치는지 여부
+  private var spansMultipleDays: Bool {
+    guard let first = sortedRangeForecasts.first,
+          let last = sortedRangeForecasts.last else { return false }
+    return !Calendar.current.isDate(first.dateTime, inSameDayAs: last.dateTime)
+  }
+
   // MARK: - Body
 
   public var body: some View {
@@ -81,6 +88,11 @@ public struct WeatherTooltip: View {
         Image(systemName: forecast.condition.sfSymbolName)
           .symbolRenderingMode(.multicolor)
           .font(.system(size: 22))
+          .frame(width: 32, height: 32)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
 
         Text(forecast.condition.description)
           .font(.system(size: 15, weight: .medium))
@@ -231,16 +243,27 @@ public struct WeatherTooltip: View {
     let hour = Calendar.current.component(.hour, from: hourForecast.dateTime)
 
     return VStack(spacing: 6) {
-      // 시간
-      Text(LocalizedStrings.Weather.hourLabel(hour))
-        .font(.system(size: 11, weight: .medium))
-        .foregroundStyle(.secondary)
+      // 시간 (여러 날에 걸치면 날짜도 표시)
+      VStack(spacing: 1) {
+        if spansMultipleDays {
+          Text(hourForecast.dateTime.formatted(.dateTime.month(.defaultDigits).day()))
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(.tertiary)
+        }
+        Text(LocalizedStrings.Weather.hourLabel(hour))
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
 
       // 날씨 아이콘
       Image(systemName: hourForecast.condition.sfSymbolName)
         .symbolRenderingMode(.multicolor)
         .font(.system(size: 16))
-        .frame(height: 20)
+        .frame(width: 24, height: 24)
+        .background(
+          Circle()
+            .fill(Color.cyan.opacity(0.12))
+        )
 
       // 온도
       Text("\(Int(hourForecast.temperature.rounded()))°")

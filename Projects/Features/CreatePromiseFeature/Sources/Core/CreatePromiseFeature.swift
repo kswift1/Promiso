@@ -633,46 +633,18 @@ extension CreatePromise {
     }
 
     public var body: some View {
-      GeometryReader { geometry in
-        VStack(spacing: 0) {
-          
-          // Progress Header
-          ProgressHeader(
-            currentStep: store.currentStep.rawValue,
-            totalSteps: CreatePromiseStep.allCases.count,
-            title: "약속 만들기"
-          ) {
-            store.send(.delegate(.dismiss))
-          }
-          
-          store.currentStep.contentView(store: store)
-          
-          Spacer()
-
-          // 날씨 힌트 (Step 2에서 하단 고정)
-          if store.currentStep == .second {
-            WeatherHintBar(store: store)
-          }
-
-          // Bottom Buttons (키보드에 가려지지 않도록 고정)
-          HStack(spacing: 12) {
-            store.currentStep.leftButton(store: store)
-
-            store.currentStep.rightButton(store: store)
-          }
-          .padding(16)
-          .background(Color(.systemBackground))
-          .overlay(
-            Rectangle()
-              .fill(Color(.systemGray5))
-              .frame(height: 1),
-            alignment: .top
-          )
-        }
-        .frame(height: geometry.size.height)
+      StepSheetContainer(
+        title: LocalizedStrings.CreatePromise.navigationTitle,
+        currentStep: store.currentStep.rawValue,
+        totalSteps: CreatePromiseStep.allCases.count,
+        onDismiss: { store.send(.delegate(.dismiss)) }
+      ) {
+        store.currentStep.contentView(store: store)
+      } floatingContent: {
+        floatingBonusView
+      } bottomContent: {
+        bottomBar
       }
-      .keyboardDismissToolbar(iconColor: .secondary)
-      .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -692,129 +664,82 @@ extension CreatePromise {
         }
       }
     }
-  }
-}
 
-extension CreatePromiseStep {
-  @ViewBuilder
-  func leftButton(store: StoreOf<CreatePromise.Feature>) -> some View {
-    switch self {
-    case .first:
-      EmptyView()
-
-    case .second, .third:
-      PreviousStepButton {
-        store.send(.view(.previousStep), animation: .default)
+    @ViewBuilder
+    private var floatingBonusView: some View {
+      if store.currentStep == .second {
+        ProBonusFloatingView(
+          weatherForecast: weatherForecast,
+          rangeForecasts: weatherRangeForecasts,
+          forecastSource: weatherForecastSource,
+          isLoadingWeather: store.weatherState.isLoading,
+          weatherLocationName: store.useLocation ? store.promise.location?.name : nil,
+          conflicts: store.conflicts.map {
+            ConflictInfo(
+              title: $0.title,
+              overlapMinutes: $0.overlapMinutes,
+              startAt: $0.startAt,
+              endAt: $0.endAt,
+              emoji: $0.emoji,
+              severity: $0.severity == .confirmed ? .confirmed : .pending
+            )
+          },
+          isCheckingConflicts: store.isCheckingConflicts,
+          newEventTitle: store.promise.title,
+          newEventEmoji: store.promise.emoji,
+          newEventStartAt: store.promise.startAt,
+          newEventEndAt: store.promise.endAt
+        )
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       }
     }
-  }
-  
-  /// 하단 오른쪽 버튼 (다음 or 완료 버튼)
-  @ViewBuilder
-  func rightButton(store: StoreOf<CreatePromise.Feature>) -> some View {
-    switch self {
-    case .first:
-      StepButton(
-        title: "다음",
-        disabled: store.state.firstButtonDisabled) {
-          store.send(
-            .view(.nextStep),
-            animation: .easeInOut(duration: 0.25)
-          )
-        }
-      
-    case .second:
-      StepButton(
-        title: "다음",
-        disabled: store.state.secondButtonDisabled) {
-          store.send(
-            .view(.nextStep),
-            animation: .easeInOut(duration: 0.25)
-          )
-        }
-      
-    case .third:
-      StepButton(
-        title: "약속 제안하기",
-        disabled: store.state.thirdButtonDisabled,
-        isLoading: store.state.isCreatingPromise) {
-          store.send(
-            .view(.requestCreatingPromise),
-            animation: .spring(response: 0.3, dampingFraction: 0.9)
-          )
-        }
+
+    private var weatherForecast: HourlyForecast? {
+      guard let info = store.weatherState.value else { return nil }
+      return WeatherHintHelper.forecast(from: info, startAt: store.promise.startAt, endAt: store.promise.endAt)
     }
-  }
-}
 
-fileprivate struct PreviousStepButton: View {
-  let action: () -> Void
-  @State private var isPressed = false
+    private var weatherRangeForecasts: [HourlyForecast] {
+      guard let info = store.weatherState.value else { return [] }
+      return WeatherHintHelper.rangeForecasts(from: info, startAt: store.promise.startAt, endAt: store.promise.endAt)
+    }
 
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 8) {
-        Image(systemName: "chevron.left")
-          .font(.system(size: 14, weight: .semibold))
-        Text("이전")
-          .font(.system(size: 16, weight: .semibold))
+    private var weatherForecastSource: ForecastSource {
+      guard let info = store.weatherState.value else { return .shortTerm }
+      return WeatherHintHelper.forecastSource(from: info, startAt: store.promise.startAt)
+    }
+
+    @ViewBuilder
+    private var bottomBar: some View {
+      switch store.currentStep {
+      case .first:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: false,
+          previousAction: {},
+          nextTitle: LocalizedStrings.Common.next,
+          isNextDisabled: store.firstButtonDisabled,
+          nextAction: { store.send(.view(.nextStep), animation: .easeInOut(duration: 0.25)) }
+        ))
+      case .second:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: true,
+          previousAction: { store.send(.view(.previousStep), animation: .default) },
+          nextTitle: LocalizedStrings.Common.next,
+          isNextDisabled: store.secondButtonDisabled,
+          nextAction: { store.send(.view(.nextStep), animation: .easeInOut(duration: 0.25)) }
+        ))
+      case .third:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: true,
+          previousAction: { store.send(.view(.previousStep), animation: .default) },
+          nextTitle: "약속 제안하기",
+          nextSystemImage: "checkmark.circle.fill",
+          isNextDisabled: store.thirdButtonDisabled,
+          isNextLoading: store.isCreatingPromise,
+          nextAction: { store.send(.view(.requestCreatingPromise), animation: .spring(response: 0.3, dampingFraction: 0.9)) }
+        ))
       }
-      .foregroundColor(.primary)
-      .frame(maxWidth: .infinity)
-      .frame(height: 56)
-      .background(Color(.systemGray5))
-      .clipShape(RoundedRectangle(cornerRadius: 16))
     }
-    .scaleEffect(isPressed ? 0.95 : 1.0)
-    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in isPressed = true }
-        .onEnded { _ in isPressed = false }
-    )
-  }
-}
-
-fileprivate struct StepButton: View {
-  let title: String
-  var disabled: Bool
-  var isLoading: Bool = false
-  var action: () -> Void
-  @State private var isPressed = false
-
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 8) {
-        if isLoading {
-          ProgressView()
-            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            .scaleEffect(0.8)
-        } else {
-          Image(systemName: title == "완료" ? "checkmark.circle.fill" : "arrow.right.circle.fill")
-            .font(.system(size: 18))
-        }
-
-        Text(title)
-          .font(.headline)
-      }
-      .frame(maxWidth: .infinity)
-      .frame(height: 56)
-      .background(disabled ? Color(.systemGray4) : Color.pmindigo.n500)
-      .foregroundStyle(.white)
-      .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
-    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed && !disabled)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in if !disabled { isPressed = true } }
-        .onEnded { _ in isPressed = false }
-    )
-    .disabled(disabled)
-    .animation(.easeInOut(duration: 0.2), value: disabled)
-    .animation(.easeInOut(duration: 0.2), value: isLoading)
   }
 }
 
@@ -830,62 +755,6 @@ extension CreatePromiseStep {
     case .third:
       CreatePromiseStep3View(store: store)
     }
-  }
-}
-
-// MARK: - Weather Hint Bar (하단 고정)
-
-private struct WeatherHintBar: View {
-  let store: StoreOf<CreatePromise.Feature>
-
-  var body: some View {
-    Group {
-      if let weatherInfo = store.weatherState.value,
-         let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
-        WeatherHintRow(
-          forecast: forecast,
-          rangeForecasts: weatherInfo.forecasts(from: store.promise.startAt, to: store.promise.endAt),
-          forecastSource: weatherInfo.forecastSource(for: store.promise.startAt),
-          minTemperature: weatherHintMinTemp(weatherInfo: weatherInfo),
-          maxTemperature: weatherHintMaxTemp(weatherInfo: weatherInfo)
-        )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-      } else if store.weatherState.isLoading, let location = store.promise.location {
-        WeatherHintRow.loading(
-          dateText: store.promise.startAt.formattedMonthDayTime,
-          locationName: location.name
-        )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .transition(.opacity)
-      }
-    }
-    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
-  }
-
-  private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
-    let startAt = store.promise.startAt
-    let endAt = store.promise.endAt
-    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
-      return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
-    }
-    return weatherInfo.forecast(for: startAt)
-  }
-
-  private func weatherHintMinTemp(weatherInfo: WeatherInfo) -> Double? {
-    let startAt = store.promise.startAt
-    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
-    let calendar = Calendar.current
-    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.minTemperature
-  }
-
-  private func weatherHintMaxTemp(weatherInfo: WeatherInfo) -> Double? {
-    let startAt = store.promise.startAt
-    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
-    let calendar = Calendar.current
-    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.maxTemperature
   }
 }
 

@@ -708,7 +708,7 @@ struct NotificationCenterFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "읽음 처리에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.markAsReadFailed)
     #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
