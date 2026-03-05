@@ -185,12 +185,6 @@ extension CalendarFeature {
         .padding(.top, 12)
         .padding(.bottom, isExpanded ? 0 : 12)
         .frame(maxHeight: isExpanded ? .infinity : nil)
-        .overlay(alignment: .bottom) {
-          if isExpanded {
-            collapseToListButton
-              .padding(.bottom, 16)
-          }
-        }
         .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
       }
     }
@@ -309,34 +303,6 @@ extension CalendarFeature {
           .padding(.bottom, 6)
       }
       .frame(maxWidth: .infinity)
-      .contentShape(Rectangle())
-      .onTapGesture {
-        store.send(.view(.setDisplayMode(.monthExpanded)), animation: .spring(response: 0.45, dampingFraction: 0.8))
-      }
-    }
-
-    // MARK: - Collapse To List Button
-
-    private var collapseToListButton: some View {
-      Button {
-        store.send(.view(.setDisplayMode(.month)), animation: .spring(response: 0.45, dampingFraction: 0.8))
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "list.bullet")
-            .font(.system(size: 14, weight: .medium))
-          Text(LocalizedStrings.Calendar.monthSchedule)
-            .font(.system(size: 14, weight: .semibold))
-          Image(systemName: "chevron.up")
-            .font(.system(size: 12, weight: .semibold))
-        }
-        .foregroundColor(Color.pmindigo.n500)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.pmindigo.n500.opacity(0.1))
-        .cornerRadius(20)
-      }
-      .padding(.top, 8)
-      .padding(.bottom, 20)
     }
 
     // MARK: - Month Promise List Content
