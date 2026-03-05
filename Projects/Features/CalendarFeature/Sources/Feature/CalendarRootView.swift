@@ -46,6 +46,7 @@ extension CalendarFeature {
 
           // 캘린더 그리드 (주간/월간)
           calendarGridSection
+            .layoutPriority(1)
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
 
           // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
@@ -182,9 +183,11 @@ extension CalendarFeature {
             store.send(.view(.dayLongPressCreatePromise(date)))
           }
         )
+        // compact 모드: 6행 고정 높이 (6 * 46 + 5 * 6 = 306) — 소형 화면에서 리스트와 겹침 방지
+        .frame(height: isExpanded ? nil : 306)
+        .frame(maxHeight: isExpanded ? .infinity : nil)
         .padding(.top, 12)
         .padding(.bottom, isExpanded ? 0 : 12)
-        .frame(maxHeight: isExpanded ? .infinity : nil)
         .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
       }
     }
@@ -203,7 +206,6 @@ extension CalendarFeature {
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
-      .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Week Timeline View

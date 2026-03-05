@@ -525,7 +525,6 @@ struct MonthGridContent: View {
       }
     }
     .padding(.horizontal, 8)
-    .padding(.top, 4)
   }
 
   // MARK: - Computed Properties
