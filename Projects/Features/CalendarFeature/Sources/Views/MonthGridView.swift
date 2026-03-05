@@ -313,9 +313,11 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       let pageWidthMultiplier = 1.0 / 3.0
 
       for (index, month) in pageMonths.enumerated() {
+        // 중앙 페이지(index 1)만 선택 표시 — matchedGeometryEffect 충돌 방지
+        let pageSelectedDate = index == 1 ? selectedDate : .distantPast
         let gridView = MonthGridContent(
           currentMonth: month,
-          selectedDate: selectedDate,
+          selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
           isCompactMode: isCompactMode,
@@ -397,9 +399,11 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       }
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < pageMonths.count else { break }
+        // 중앙 페이지(index 1)만 선택 표시 — matchedGeometryEffect 충돌 방지
+        let pageSelectedDate = index == 1 ? selectedDate : .distantPast
         vc.rootView = MonthGridContent(
           currentMonth: pageMonths[index],
-          selectedDate: selectedDate,
+          selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
           isCompactMode: isCompactMode,
@@ -627,7 +631,7 @@ struct MonthGridContent: View {
             .frame(maxWidth: .infinity)
           }
         }
-        .frame(height: shouldShowRow(rowIndex) ? rowHeight : 0)
+        .frame(height: shouldShowRow(rowIndex) ? (animShowAll ? nil : rowHeight) : 0)
         .opacity(shouldShowRow(rowIndex) ? 1 : 0)
         .clipped()
       }
