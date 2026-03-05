@@ -510,6 +510,11 @@ public enum LocalizedStrings {
     public static var mapInvalidResponse: String { String(localized: "error.map.invalidResponse", bundle: bundle) }
     public static var mapHttpError: String { String(localized: "error.map.httpError", bundle: bundle) }
 
+    // OCR
+    public static var ocrImageConversionFailed: String { String(localized: "error.ocr.imageConversionFailed", bundle: bundle) }
+    public static var ocrRecognitionFailed: String { String(localized: "error.ocr.recognitionFailed", bundle: bundle) }
+    public static var ocrNoTextFound: String { String(localized: "error.ocr.noTextFound", bundle: bundle) }
+
     // Feature Error Messages (Toast/Alert)
     public static var promiseCreationFailed: String { String(localized: "error.promiseCreationFailed", bundle: bundle) }
     public static var eventDeleteFailed: String { String(localized: "error.eventDeleteFailed", bundle: bundle) }
