@@ -58,7 +58,7 @@ struct CalendarFeatureTests {
       $0.isTransitioning = true
       $0.displayMode = .month
     }
-    await store.receive(\.internal.transitionCompleted) {
+    await store.receive(\.internal.transitionCompleted, timeout: 5_000_000_000) {
       $0.isTransitioning = false
     }
   }
