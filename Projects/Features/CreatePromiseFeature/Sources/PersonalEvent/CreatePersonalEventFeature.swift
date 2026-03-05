@@ -70,6 +70,7 @@ extension CreatePersonalEvent {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var conflictDetectionThreshold: Int = 0
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -129,7 +130,7 @@ extension CreatePersonalEvent {
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
       case conflictsLoaded([ScheduleConflict])
-      case userPlanLoaded(UserPlan, String)
+      case userPlanLoaded(UserPlan, String, Int)
       case weatherResponse(Result<WeatherInfo, Error>)
     }
 
@@ -156,7 +157,7 @@ extension CreatePersonalEvent {
                 guard let user = await authClient.currentUser() else { return }
                 do {
                   let settings = try await userSettingsClient.fetchSettings(user.uid)
-                  await send(.internal(.userPlanLoaded(settings.plan, user.uid)))
+                  await send(.internal(.userPlanLoaded(settings.plan, user.uid, settings.conflictDetectionThreshold)))
                 } catch {
                   // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
                 }
@@ -424,15 +425,18 @@ extension CreatePersonalEvent {
             }
 
           case .conflictsLoaded(let conflicts):
-            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
-            state.conflicts = conflicts
+            let threshold = state.conflictDetectionThreshold
+            let filtered = threshold > 0 ? conflicts.filter { $0.overlapMinutes > threshold } : conflicts
+            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건, 필터 후: \(filtered.count)건 (임계값: \(threshold)분)")
+            state.conflicts = filtered
             state.isCheckingConflicts = false
             return .none
 
-          case .userPlanLoaded(let plan, let userId):
+          case .userPlanLoaded(let plan, let userId, let threshold):
             AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
             state.userPlan = plan
             state.currentUserId = userId
+            state.conflictDetectionThreshold = threshold
             return checkConflictsEffect(state: &state)
 
           case .weatherResponse(.success(let info)):

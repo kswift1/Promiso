@@ -25,6 +25,7 @@ public enum CreatePromise {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
 
 
@@ -63,6 +64,7 @@ public enum CreatePromise {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var conflictDetectionThreshold: Int = 0
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -201,6 +203,7 @@ public enum CreatePromise {
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
+        case settingsLoaded(UserSettings)
         case weatherResponse(Result<WeatherInfo, Error>)
       }
       
@@ -225,7 +228,13 @@ public enum CreatePromise {
           case .onAppear:
             return .merge(
               .send(.internal(.fetchGroupList)),
-              checkConflictsEffect(state: &state)
+              checkConflictsEffect(state: &state),
+              .run { [userSettingsClient, state] send in
+                guard !state.currentUserId.isEmpty else { return }
+                if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
+                  await send(.internal(.settingsLoaded(settings)))
+                }
+              }
             )
             
           case .nextStep:
@@ -519,9 +528,15 @@ public enum CreatePromise {
             return .none
 
           case .conflictsLoaded(let conflicts):
-            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
-            state.conflicts = conflicts
+            let threshold = state.conflictDetectionThreshold
+            let filtered = threshold > 0 ? conflicts.filter { $0.overlapMinutes > threshold } : conflicts
+            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건, 필터 후: \(filtered.count)건 (임계값: \(threshold)분)")
+            state.conflicts = filtered
             state.isCheckingConflicts = false
+            return .none
+
+          case .settingsLoaded(let settings):
+            state.conflictDetectionThreshold = settings.conflictDetectionThreshold
             return .none
 
           case .weatherResponse(.success(let info)):
