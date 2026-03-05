@@ -27,6 +27,9 @@ public struct SubscriptionClient: Sendable {
   /// 서버에 구매 검증 요청
   public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String) async throws -> SubscriptionStatus
 
+  /// 무료 체험 대상 여부 확인
+  public var checkIntroOfferEligibility: @Sendable () async -> Bool = { false }
+
   /// 통합 구독 상태 스트림 (StoreKit Transaction.updates + Firestore subscriptions/{userId} 병합)
   /// 앱 레벨에서 구독 상태 변경을 실시간 감지
   public var unifiedStatusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
@@ -43,6 +46,7 @@ extension SubscriptionClient: TestDependencyKey {
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
     statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
+    checkIntroOfferEligibility: unimplemented("\(Self.self).checkIntroOfferEligibility", placeholder: false),
     unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished)
   )
 
@@ -80,6 +84,7 @@ extension SubscriptionClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
     },
+    checkIntroOfferEligibility: { true },
     unifiedStatusStream: {
       AsyncStream { continuation in
         continuation.yield(.none)
@@ -126,6 +131,9 @@ extension SubscriptionClient: DependencyKey {
       },
       verifyPurchase: { jwsString, productId in
         try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId)
+      },
+      checkIntroOfferEligibility: {
+        await dataSource.checkIntroOfferEligibility()
       },
       unifiedStatusStream: {
         AsyncStream { continuation in

@@ -62,6 +62,8 @@ extension ProPlan {
       public var errorMessage: String?
       /// 구독 관리 화면 표시 여부
       public var showManageView: Bool = false
+      /// 무료 체험 대상 여부
+      public var isEligibleForIntroOffer: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -71,7 +73,8 @@ extension ProPlan {
         isPurchasing: Bool = false,
         selectedProductId: String? = nil,
         errorMessage: String? = nil,
-        showManageView: Bool = false
+        showManageView: Bool = false,
+        isEligibleForIntroOffer: Bool = false
       ) {
         self.products = products
         self.subscriptionStatus = subscriptionStatus
@@ -80,6 +83,7 @@ extension ProPlan {
         self.selectedProductId = selectedProductId
         self.errorMessage = errorMessage
         self.showManageView = showManageView
+        self.isEligibleForIntroOffer = isEligibleForIntroOffer
       }
     }
 
@@ -124,6 +128,8 @@ extension ProPlan {
       case restoreResponse(Result<SubscriptionStatus, Error>)
       /// 구독 상태 업데이트
       case statusUpdated(SubscriptionStatus)
+      /// 무료 체험 대상 여부 결과
+      case introOfferEligibilityResult(Bool)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -145,12 +151,13 @@ extension ProPlan {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 상품 목록 조회 + 구독 상태 조회 (병렬)
+            // 상품 목록 조회 + 구독 상태 조회 + 무료 체험 대상 확인 (병렬)
             state.isLoadingProducts = true
-            return .run { send in
+            return .run { [subscriptionClient] send in
               // 병렬 조회
               async let productsResult = Result { try await subscriptionClient.fetchProducts() }
               async let statusResult = Result { try await subscriptionClient.fetchStatus() }
+              async let eligibility = subscriptionClient.checkIntroOfferEligibility()
 
               // 상품 목록 결과 전송
               await send(.internal(.productsResponse(await productsResult)))
@@ -159,6 +166,9 @@ extension ProPlan {
               if case .success(let status) = await statusResult {
                 await send(.internal(.statusUpdated(status)))
               }
+
+              // 무료 체험 대상 여부 전송
+              await send(.internal(.introOfferEligibilityResult(await eligibility)))
 
               // 구독 상태 스트림 구독 시작
               for await status in subscriptionClient.statusStream() {
@@ -294,6 +304,10 @@ extension ProPlan {
               return .send(.delegate(.subscriptionStatusChanged(status)))
             }
             return .none
+
+          case .introOfferEligibilityResult(let isEligible):
+            state.isEligibleForIntroOffer = isEligible
+            return .none
           }
 
         // MARK: - Delegate Actions
@@ -367,6 +381,8 @@ extension ProPlan.Feature.InternalAction {
       return true
     case (.statusUpdated(let lhsStatus), .statusUpdated(let rhsStatus)):
       return lhsStatus == rhsStatus
+    case (.introOfferEligibilityResult(let lhs), .introOfferEligibilityResult(let rhs)):
+      return lhs == rhs
     default:
       return false
     }

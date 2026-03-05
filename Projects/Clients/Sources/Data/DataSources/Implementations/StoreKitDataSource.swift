@@ -186,14 +186,46 @@ final class StoreKitDataSource: Sendable {
 
   private func mapProduct(_ product: Product) -> SubscriptionProduct? {
     guard let type = SubscriptionProductType(rawValue: product.id) else { return nil }
+
+    let introOffer: IntroductoryOffer? = product.subscription?.introductoryOffer.flatMap { offer in
+      let periodDays: Int
+      switch offer.period.unit {
+      case .day: periodDays = offer.period.value
+      case .week: periodDays = offer.period.value * 7
+      case .month: periodDays = offer.period.value * 30
+      case .year: periodDays = offer.period.value * 365
+      @unknown default: periodDays = offer.period.value
+      }
+      return IntroductoryOffer(
+        periodDays: periodDays,
+        displayPrice: offer.displayPrice,
+        isFreeTrialOffer: offer.paymentMode == .freeTrial
+      )
+    }
+
     return SubscriptionProduct(
       id: product.id,
       type: type,
       displayName: product.displayName,
       description: product.description,
       displayPrice: product.displayPrice,
-      price: product.price
+      price: product.price,
+      introductoryOffer: introOffer
     )
+  }
+
+  /// 무료 체험 대상 여부 확인
+  func checkIntroOfferEligibility() async -> Bool {
+    let subscriptionProductIds: Set<String> = [
+      SubscriptionProductType.monthly.rawValue,
+      SubscriptionProductType.yearly.rawValue
+    ]
+    guard let products = try? await Product.products(for: subscriptionProductIds),
+          let product = products.first,
+          let subscription = product.subscription else {
+      return false
+    }
+    return await subscription.isEligibleForIntroOffer
   }
 }
 

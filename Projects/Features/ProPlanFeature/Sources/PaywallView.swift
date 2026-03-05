@@ -104,6 +104,7 @@ extension ProPlan {
           ProductCardView(
             product: product,
             isSelected: store.selectedProductId == product.id,
+            isEligibleForIntroOffer: store.isEligibleForIntroOffer,
             onTap: {
               store.send(.view(.productSelected(product.id)))
             }
@@ -114,13 +115,25 @@ extension ProPlan {
 
     // MARK: - Purchase Button
 
+    /// 선택된 상품이 무료 체험 대상인지
+    private var showFreeTrialText: Bool {
+      guard store.isEligibleForIntroOffer,
+            let selectedId = store.selectedProductId,
+            let product = store.products.first(where: { $0.id == selectedId }),
+            let intro = product.introductoryOffer,
+            intro.isFreeTrialOffer else {
+        return false
+      }
+      return true
+    }
+
     @ViewBuilder
     private var purchaseButton: some View {
       Button {
         store.send(.view(.purchaseTapped))
       } label: {
         HStack {
-          Text("지금 시작하기")
+          Text(showFreeTrialText ? "3일 무료 체험 시작" : "지금 시작하기")
             .font(.headline)
             .foregroundStyle(.white)
 
@@ -166,7 +179,10 @@ extension ProPlan {
     @ViewBuilder
     private var legalSection: some View {
       VStack(spacing: 8) {
-        Text("구독은 확인 시 iTunes 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 구독은 구매 후 계정 설정에서 관리 및 취소할 수 있습니다.")
+        Text(showFreeTrialText
+          ? "무료 체험 기간이 끝나면 구독이 자동으로 시작되며, iTunes 계정으로 청구됩니다. 무료 체험 중 언제든 설정에서 취소할 수 있습니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다."
+          : "구독은 확인 시 iTunes 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 구독은 구매 후 계정 설정에서 관리 및 취소할 수 있습니다."
+        )
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)
@@ -217,7 +233,18 @@ extension ProPlan {
   private struct ProductCardView: View {
     let product: SubscriptionProduct
     let isSelected: Bool
+    let isEligibleForIntroOffer: Bool
     let onTap: () -> Void
+
+    /// 무료 체험 표시 여부
+    private var showFreeTrial: Bool {
+      isEligibleForIntroOffer && product.introductoryOffer?.isFreeTrialOffer == true
+    }
+
+    /// 무료 체험 일수
+    private var freeTrialDays: Int {
+      product.introductoryOffer?.periodDays ?? 0
+    }
 
     var body: some View {
       Button(action: onTap) {
@@ -238,10 +265,16 @@ extension ProPlan {
             }
           }
 
-          // 설명
-          Text(product.description)
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
+          // 설명 + 무료 체험
+          if showFreeTrial {
+            Text("\(freeTrialDays)일 무료 후 \(product.description)")
+              .font(.subheadline)
+              .foregroundStyle(Color.pmtext.secondary)
+          } else {
+            Text(product.description)
+              .font(.subheadline)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
 
           // 가격
           HStack(alignment: .firstTextBaseline, spacing: 4) {

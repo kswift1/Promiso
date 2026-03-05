@@ -17,14 +17,29 @@ public struct SubscriptionProduct: Equatable, Sendable, Identifiable {
   public let description: String
   public let displayPrice: String
   public let price: Decimal
+  public let introductoryOffer: IntroductoryOffer?
 
-  public init(id: String, type: SubscriptionProductType, displayName: String, description: String, displayPrice: String, price: Decimal) {
+  public init(id: String, type: SubscriptionProductType, displayName: String, description: String, displayPrice: String, price: Decimal, introductoryOffer: IntroductoryOffer? = nil) {
     self.id = id
     self.type = type
     self.displayName = displayName
     self.description = description
     self.displayPrice = displayPrice
     self.price = price
+    self.introductoryOffer = introductoryOffer
+  }
+}
+
+/// 무료 체험 / 소개 할인 정보
+public struct IntroductoryOffer: Equatable, Sendable {
+  public let periodDays: Int
+  public let displayPrice: String
+  public let isFreeTrialOffer: Bool
+
+  public init(periodDays: Int, displayPrice: String, isFreeTrialOffer: Bool) {
+    self.periodDays = periodDays
+    self.displayPrice = displayPrice
+    self.isFreeTrialOffer = isFreeTrialOffer
   }
 }
 

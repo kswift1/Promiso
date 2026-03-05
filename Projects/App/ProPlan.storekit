@@ -66,7 +66,13 @@
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "6759592175",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "intro_yearly_3d",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
           "localizations" : [
             {
               "description" : "매년 자동 갱신 (월 ₩2,075)",
@@ -94,7 +100,13 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6759592056",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "intro_monthly_3d",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
           "localizations" : [
             {
               "description" : "매월 자동 갱신",
