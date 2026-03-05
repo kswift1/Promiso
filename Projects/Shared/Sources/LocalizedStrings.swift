@@ -2232,21 +2232,4 @@ extension LocalizedStrings {
     public static var modePickerLabel: String { String(localized: "promiseModeSegment.modePickerLabel", bundle: bundle) }
   }
 
-  // MARK: - QuickPromise
-  public enum QuickPromise {
-    public static var title: String { String(localized: "quickPromise.title", bundle: bundle) }
-    public static var textPlaceholder: String { String(localized: "quickPromise.textPlaceholder", bundle: bundle) }
-    public static var extractedInfo: String { String(localized: "quickPromise.extractedInfo", bundle: bundle) }
-    public static var labelTitle: String { String(localized: "quickPromise.label.title", bundle: bundle) }
-    public static var labelDateTime: String { String(localized: "quickPromise.label.dateTime", bundle: bundle) }
-    public static var labelLocation: String { String(localized: "quickPromise.label.location", bundle: bundle) }
-    public static var noInfoMessage: String { String(localized: "quickPromise.noInfoMessage", bundle: bundle) }
-    public static var createButton: String { String(localized: "quickPromise.createButton", bundle: bundle) }
-    public static var errorTextAnalysis: String { String(localized: "quickPromise.error.textAnalysis", bundle: bundle) }
-    public static var errorImageLoad: String { String(localized: "quickPromise.error.imageLoad", bundle: bundle) }
-    public static var errorImageExtraction: String { String(localized: "quickPromise.error.imageExtraction", bundle: bundle) }
-    public static var errorImageConversion: String { String(localized: "quickPromise.error.imageConversion", bundle: bundle) }
-    public static var errorRecognitionFailed: String { String(localized: "quickPromise.error.recognitionFailed", bundle: bundle) }
-    public static var errorNoTextFound: String { String(localized: "quickPromise.error.noTextFound", bundle: bundle) }
-  }
 }
