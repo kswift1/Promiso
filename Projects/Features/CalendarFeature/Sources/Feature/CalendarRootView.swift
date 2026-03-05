@@ -64,6 +64,7 @@ extension CalendarFeature {
           }
         }
         .auroraBackground()
+        .toolbarBackground(.hidden, for: .navigationBar)
         .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
         .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
           EditPromise.RootView(store: editStore)
