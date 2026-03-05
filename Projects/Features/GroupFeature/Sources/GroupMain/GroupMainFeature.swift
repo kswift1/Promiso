@@ -409,14 +409,29 @@ extension GroupMain {
             }
 
             // 현재 그룹이고 약속이 이미 로드된 경우 바로 적용
-            if case .promiseInList(let promiseId, _, let filter) = deeplink,
-               state.currentGroup?.id == groupId,
-               let promises = state.promisesState.value,
-               promises.contains(where: { $0.id == promiseId }) {
-              AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
-              state.selectedFilter = filter
-              state.highlightedPromiseId = promiseId
-              return .none
+            if state.currentGroup?.id == groupId,
+               let promises = state.promisesState.value {
+              switch deeplink {
+              case .promise(let promiseId, _):
+                if let promise = promises.first(where: { $0.id == promiseId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, navigating to detail immediately")
+                  state.path.append(.promiseDetail(.init(
+                    promise: promise,
+                    currentUserId: state.currentUser.userId,
+                    groupMembers: state.currentGroupMembers
+                  )))
+                  return .none
+                }
+              case .promiseInList(let promiseId, _, let filter):
+                if promises.contains(where: { $0.id == promiseId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
+                  state.selectedFilter = filter
+                  state.highlightedPromiseId = promiseId
+                  return .none
+                }
+              case .group:
+                break
+              }
             }
 
             // 그 외의 경우 pending으로 설정
@@ -861,13 +876,15 @@ extension GroupMain {
               // 약속 상세 화면으로 바로 이동
               if let promise = promises.first(where: { $0.id == promiseId }) {
                 AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
-                state.pendingDeeplink = nil
                 state.path.append(.promiseDetail(.init(
                   promise: promise,
                   currentUserId: state.currentUser.userId,
                   groupMembers: state.currentGroupMembers
                 )))
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Promise not found in loaded list: \(promiseId)")
               }
+              state.pendingDeeplink = nil
 
             case .promiseInList(let promiseId, _, let filter):
               // 필터 적용 후 목록에서 해당 약속으로 스크롤
@@ -875,8 +892,10 @@ extension GroupMain {
                 AppLogger.deeplink.debug("[GroupMain] Promise found in list, setting filter: \(filter.rawValue)")
                 state.selectedFilter = filter
                 state.highlightedPromiseId = promiseId
-                state.pendingDeeplink = nil
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Promise not found in list: \(promiseId)")
               }
+              state.pendingDeeplink = nil
 
             case .group, .none:
               state.pendingDeeplink = nil
