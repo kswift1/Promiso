@@ -8,6 +8,7 @@ extension GroupMain {
     case respond(String)
     case promiseSubscription
     case needResponseShake
+    case conflictCheck
   }
 
   /// ShakeEffect 타이밍 상수
@@ -1130,6 +1131,7 @@ extension GroupMain {
                 }
               }
             })
+            .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
 
           case .conflictsLoaded(let promiseId, let conflicts):
             state.conflictCheckingIds.remove(promiseId)

@@ -23,8 +23,8 @@ public struct ProBenefitCardView: View {
     eventEndAt: Date? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
-    eventTitle: String = "",
-    eventEmoji: String? = nil
+    eventTitle: String,
+    eventEmoji: String?
   ) {
     self.weather = weather
     self.eventStartAt = eventStartAt
@@ -170,7 +170,8 @@ public struct ProBenefitCardView: View {
 
     ProBenefitCardView(
       eventStartAt: Date(),
-      eventTitle: "저녁 약속"
+      eventTitle: "저녁 약속",
+      eventEmoji: nil
     )
   }
   .padding()

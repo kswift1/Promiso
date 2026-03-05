@@ -405,6 +405,7 @@ extension PersonalMode {
                 }
               }
             })
+            .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
 
           case .conflictsLoaded(let eventId, let conflicts):
             state.conflictCheckingIds.remove(eventId)
