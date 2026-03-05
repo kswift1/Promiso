@@ -158,6 +158,14 @@ struct CalendarDayTimelineView: View {
           zoomScrollY = nil
         }
     )
+    .onAppear {
+      if isToday {
+        let hour = Calendar.promiseDisplay.component(.hour, from: Date())
+        let minute = Calendar.promiseDisplay.component(.minute, from: Date())
+        let targetY = max(0, (CGFloat(hour) + CGFloat(minute) / 60.0) * hourHeight - 60)
+        scrollPosition.scrollTo(y: targetY)
+      }
+    }
     .onChange(of: displayDate) {
       creationStartSlot = nil
       // 날짜 변경 시 첫 번째 일정 위치 또는 현재 시간으로 스크롤
