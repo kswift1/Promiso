@@ -673,6 +673,11 @@ struct CalendarOverlayView: View {
         Image(systemName: forecast.condition.sfSymbolName)
           .symbolRenderingMode(.multicolor)
           .font(.system(size: 24))
+          .frame(width: 36, height: 36)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
 
         Text("\(Int(forecast.temperature.rounded()))°")
           .font(.system(size: 24, weight: .bold))
@@ -797,7 +802,11 @@ struct CalendarOverlayView: View {
             Image(systemName: daily.representativeCondition.sfSymbolName)
               .symbolRenderingMode(.multicolor)
               .font(.system(size: 18))
-              .frame(width: 28)
+              .frame(width: 28, height: 28)
+              .background(
+                Circle()
+                  .fill(Color.cyan.opacity(0.12))
+              )
 
             if daily.maxPrecipitationProbability > 0 {
               Text("\(daily.maxPrecipitationProbability)%")
