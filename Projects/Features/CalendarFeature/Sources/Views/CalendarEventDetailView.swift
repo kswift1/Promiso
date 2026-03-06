@@ -44,13 +44,15 @@ struct CalendarEventDetailView: View {
 
   private var headerSection: some View {
     HStack(alignment: .top, spacing: 12) {
-      // 이모지
-      Text(event.displayEmoji)
-        .font(.system(size: 44))
+      // 이모지 (있을 때만 표시)
+      if let emoji = event.displayEmoji {
+        Text(emoji)
+          .font(.system(size: 44))
+      }
 
       // 제목 + 캘린더 이름
       VStack(alignment: .leading, spacing: 6) {
-        Text(event.title)
+        Text(event.displayTitle)
           .font(.system(size: 20, weight: .bold))
           .foregroundStyle(.primary)
 

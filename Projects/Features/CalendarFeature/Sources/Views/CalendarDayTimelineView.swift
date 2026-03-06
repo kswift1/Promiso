@@ -507,8 +507,10 @@ struct CalendarDayTimelineView: View {
       HStack(spacing: 0) {
         VStack(alignment: .leading, spacing: 4) {
           HStack(spacing: 5) {
-            Text(item.displayEmoji)
-              .font(.system(size: 16))
+            if !item.displayEmoji.isEmpty {
+              Text(item.displayEmoji)
+                .font(.system(size: 16))
+            }
             Text(item.title)
               .font(.system(size: 14, weight: .semibold))
               .foregroundStyle(.primary)
@@ -675,8 +677,10 @@ struct CalendarDayTimelineView: View {
           VStack(alignment: .leading, spacing: 2) {
             // Row 1: 이모지 + 제목
             HStack(spacing: 5) {
-              Text(item.displayEmoji)
-                .font(.system(size: isCompact ? 14 : 16))
+              if !item.displayEmoji.isEmpty {
+                Text(item.displayEmoji)
+                  .font(.system(size: isCompact ? 14 : 16))
+              }
 
               Text(item.title)
                 .font(.system(size: 13, weight: .semibold))

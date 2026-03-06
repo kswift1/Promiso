@@ -96,15 +96,24 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
     Color(hex: calendarColorHex) ?? .gray
   }
 
-  /// 제목에서 첫 번째 이모지를 추출, 없으면 📅 반환
-  public var displayEmoji: String {
+  /// 제목에서 첫 번째 이모지를 추출, 없으면 nil
+  public var displayEmoji: String? {
     for character in title {
       if character.unicodeScalars.first?.properties.isEmoji == true,
          character.unicodeScalars.first?.value ?? 0 > 0x238C {
         return String(character)
       }
     }
-    return "📅"
+    return nil
+  }
+
+  /// 이모지를 제거한 제목 (선행 이모지 + 공백 제거)
+  public var displayTitle: String {
+    guard let emoji = displayEmoji else { return title }
+    return title
+      .trimmingCharacters(in: .whitespaces)
+      .replacingOccurrences(of: emoji, with: "", options: [], range: title.startIndex..<title.endIndex)
+      .trimmingCharacters(in: .whitespaces)
   }
 
   public var timeText: String {

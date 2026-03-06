@@ -303,7 +303,7 @@ extension CalendarFeature {
       switch self {
       case .promise(let p): return p.displayEmoji
       case .personalEvent(let e): return e.displayEmoji
-      case .calendarEvent(let e): return e.displayEmoji
+      case .calendarEvent(let e): return e.displayEmoji ?? ""
       }
     }
 
@@ -311,7 +311,7 @@ extension CalendarFeature {
       switch self {
       case .promise(let p): return p.title
       case .personalEvent(let e): return e.title
-      case .calendarEvent(let e): return e.title
+      case .calendarEvent(let e): return e.displayTitle
       }
     }
 
