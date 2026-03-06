@@ -33,6 +33,8 @@ extension CalendarFeature {
           PromiseDetail.RootView(store: promiseDetailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .calendarEventDetail(let calendarEventDetailStore):
+          CalendarEventDetailView(event: calendarEventDetailStore.event)
         }
       }
     }

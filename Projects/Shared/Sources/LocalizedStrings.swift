@@ -1406,6 +1406,10 @@ public enum LocalizedStrings {
       String(localized: "calendar.indicator.eventCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
+
+    // Calendar Event Detail
+    public static var calendarEventSource: String { String(localized: "calendar.event.source", bundle: bundle) }
+    public static var openInCalendarApp: String { String(localized: "calendar.event.openInCalendar", bundle: bundle) }
   }
 
   // MARK: - Personal

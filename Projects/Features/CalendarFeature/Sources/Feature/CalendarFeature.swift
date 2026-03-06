@@ -531,6 +531,30 @@ extension CalendarFeature {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case calendarEventDetail(CalendarEventDetailFeature)
+    }
+
+    /// 시스템 캘린더 이벤트 상세 (읽기 전용, 최소 Reducer)
+    @Reducer
+    public struct CalendarEventDetailFeature {
+      @ObservableState
+      public struct State: Equatable {
+        let event: CalendarEvent
+      }
+
+      @CasePathable
+      public enum Action: Sendable {
+        case view(View)
+
+        @CasePathable
+        public enum View: Sendable {
+          case noop
+        }
+      }
+
+      public var body: some ReducerOf<Self> {
+        EmptyReducer()
+      }
     }
 
     // MARK: - Alert
@@ -1080,8 +1104,8 @@ extension CalendarFeature {
           )))
         case .personalEvent(let event):
           state.path.append(.personalEventDetail(.init(event: event)))
-        case .calendarEvent:
-          break  // 시스템 캘린더 이벤트는 탭 무시 (현재)
+        case .calendarEvent(let event):
+          state.path.append(.calendarEventDetail(.init(event: event)))
         }
         return .none
 
@@ -1255,6 +1279,7 @@ extension CalendarFeature {
       case .filterSheetDismissed:
         state.isFilterSheetPresented = false
         return .none
+
       }
     }
 
