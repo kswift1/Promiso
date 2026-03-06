@@ -433,12 +433,12 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     }
 
     // 6. LiveActivity 실행 중 확인 (실시간 공유 중 수정 불가)
-    const liveActivityScheduled = promiseData.liveActivityScheduled === true;
-    const liveActivityScheduledAt =
-      promiseData.liveActivityScheduledAt as admin.firestore.Timestamp | null;
-
-    if (liveActivityScheduled && liveActivityScheduledAt) {
-      if (liveActivityScheduledAt.toMillis() <= now.toMillis()) {
+    const schedule = promiseData.liveActivitySchedule as {
+      scheduled?: boolean;
+      scheduledAt?: admin.firestore.Timestamp;
+    } | null;
+    if (schedule?.scheduled && schedule?.scheduledAt) {
+      if (schedule.scheduledAt.toMillis() <= now.toMillis()) {
         throw new HttpsError(
           "failed-precondition",
           "실시간 공유 중인 약속은 수정할 수 없습니다",
@@ -487,8 +487,7 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       // votes.until도 함께 업데이트
       updateData["votes.until"] = newStartAtTimestamp;
       // 라이브 액티비티 예약 상태 리셋 (새 시간으로 재예약 트리거)
-      updateData.liveActivityScheduled = false;
-      updateData.liveActivityScheduledAt = null;
+      updateData.liveActivitySchedule = null;
     }
 
     if (data.endAt !== undefined) {

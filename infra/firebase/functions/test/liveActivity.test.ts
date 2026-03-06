@@ -1052,7 +1052,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         expect(mockTaskQueue.enqueue).toHaveBeenCalled();
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: true,
+            liveActivitySchedule: expect.objectContaining({ scheduled: true }),
           })
         );
       }
@@ -1089,8 +1089,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         await handler(event);
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: false,
-            liveActivityScheduledAt: null,
+            liveActivitySchedule: null,
           })
         );
       }
@@ -1127,7 +1126,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         await handler(event);
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: false,
+            liveActivitySchedule: null,
           })
         );
       }
@@ -1279,7 +1278,7 @@ describe('Edge Cases', () => {
               votes: { accepted: ['user1', 'user2'] },
               minimumParticipants: 2,
               trackingStartMinutesBefore: 30,
-              liveActivityScheduled: true, // 이미 스케줄됨
+              liveActivitySchedule: { scheduled: true }, // 이미 스케줄됨
               startAt: createMockTimestamp(new Date(Date.now() + 7200000)),
             }),
           },
@@ -1288,7 +1287,7 @@ describe('Edge Cases', () => {
               votes: { accepted: ['user1', 'user2', 'user3'] }, // 멤버만 추가
               minimumParticipants: 2,
               trackingStartMinutesBefore: 30, // 같은 값
-              liveActivityScheduled: true,
+              liveActivitySchedule: { scheduled: true },
               startAt: createMockTimestamp(new Date(Date.now() + 7200000)),
             }),
           },

@@ -741,8 +741,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId, scheduledAt} = req.data;
-    console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
+    const {promiseId, scheduledAt, scheduleVersion} = req.data;
+    console.log(`⏰ Scheduled LiveActivity start: ${promiseId} (scheduledAt: ${scheduledAt})`);
 
     const db = admin.firestore();
     const promisesCollection = db.collection("promises");
@@ -771,17 +771,11 @@ export const executeLiveActivityStart = onTaskDispatched<
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
-    // stale task 감지: 예약 시간이 다르면 스킵
-    const scheduledAtTs =
-      promiseData.liveActivityScheduledAt as
-        admin.firestore.Timestamp;
-    const storedScheduledAt = scheduledAtTs
-      ?.toDate()
-      .toISOString();
-
-    if (!scheduledAt || storedScheduledAt !== scheduledAt) {
+    // stale task 감지: 버전이 다르면 스킵
+    const storedVersion = promiseData.liveActivitySchedule?.version as string | undefined;
+    if (!scheduleVersion || storedVersion !== scheduleVersion) {
       console.log(
-        `⏭️ Stale LiveActivity task, skipping: ${promiseId}`
+        `⏭️ Stale LiveActivity task (version mismatch), skipping: ${promiseId}`
       );
       return;
     }
@@ -1091,8 +1085,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     if (justUnconfirmed) {
       const db = admin.firestore();
       await db.collection("promises").doc(promiseId).update({
-        liveActivityScheduled: false,
-        liveActivityScheduledAt: null,
+        liveActivitySchedule: null,
       });
       console.log(`🔄 LiveActivity schedule reset (unconfirmed): ${promiseId}`);
       return;
@@ -1104,8 +1097,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     if (trackingDisabled) {
       const db = admin.firestore();
       await db.collection("promises").doc(promiseId).update({
-        liveActivityScheduled: false,
-        liveActivityScheduledAt: null,
+        liveActivitySchedule: null,
       });
       console.log(
         `🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`
@@ -1149,7 +1141,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     }
 
     // 이미 예약되었고 trackingMinutes가 변경되지 않았으면 스킵
-    const wasAlreadyScheduled = after.liveActivityScheduled === true;
+    const wasAlreadyScheduled = after.liveActivitySchedule?.scheduled === true;
     if (wasAlreadyScheduled && !trackingMinutesChanged) {
       console.log(`📅 Already scheduled (no change): ${promiseId}`);
       return;
@@ -1173,8 +1165,9 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
     );
 
+    const scheduleVersion = crypto.randomUUID();
     await queue.enqueue(
-      {promiseId, scheduledAt: scheduleTime.toISOString()},
+      {promiseId, scheduledAt: scheduleTime.toISOString(), scheduleVersion},
       {scheduleDelaySeconds: delaySeconds}
     );
 
@@ -1182,8 +1175,11 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     const db = admin.firestore();
     const promisesCollection = db.collection("promises");
     await promisesCollection.doc(promiseId).update({
-      liveActivityScheduled: true,
-      liveActivityScheduledAt: scheduleTime,
+      liveActivitySchedule: {
+        scheduled: true,
+        scheduledAt: scheduleTime,
+        version: scheduleVersion,
+      },
     });
 
     const isImmediate = delaySeconds === 0;
