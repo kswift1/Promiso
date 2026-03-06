@@ -99,15 +99,31 @@ struct CalendarHeader: View {
 // MARK: - Weekday Header
 
 struct WeekdayHeader: View {
-  private let weekdaySymbols = [
-    LocalizedStrings.Calendar.weekdaySun,
-    LocalizedStrings.Calendar.weekdayMon,
-    LocalizedStrings.Calendar.weekdayTue,
-    LocalizedStrings.Calendar.weekdayWed,
-    LocalizedStrings.Calendar.weekdayThu,
-    LocalizedStrings.Calendar.weekdayFri,
-    LocalizedStrings.Calendar.weekdaySat,
-  ]
+  @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
+
+  private var weekdaySymbols: [String] {
+    if calendarStartOnMonday {
+      return [
+        LocalizedStrings.Calendar.weekdayMon,
+        LocalizedStrings.Calendar.weekdayTue,
+        LocalizedStrings.Calendar.weekdayWed,
+        LocalizedStrings.Calendar.weekdayThu,
+        LocalizedStrings.Calendar.weekdayFri,
+        LocalizedStrings.Calendar.weekdaySat,
+        LocalizedStrings.Calendar.weekdaySun,
+      ]
+    } else {
+      return [
+        LocalizedStrings.Calendar.weekdaySun,
+        LocalizedStrings.Calendar.weekdayMon,
+        LocalizedStrings.Calendar.weekdayTue,
+        LocalizedStrings.Calendar.weekdayWed,
+        LocalizedStrings.Calendar.weekdayThu,
+        LocalizedStrings.Calendar.weekdayFri,
+        LocalizedStrings.Calendar.weekdaySat,
+      ]
+    }
+  }
 
   var body: some View {
     HStack(spacing: 0) {

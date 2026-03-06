@@ -276,6 +276,13 @@ public enum LocalizedStrings {
     public static var timeFormat24Hour: String { String(localized: "settings.timeFormat24Hour", bundle: bundle) }
     public static var timeFormat24HourExample: String { String(localized: "settings.timeFormat24HourExample", bundle: bundle) }
     public static var timeFormatHint: String { String(localized: "settings.timeFormatHint", bundle: bundle) }
+
+    // Calendar Start Day
+    public static var calendarStartDaySection: String { String(localized: "settings.calendarStartDaySection", bundle: bundle) }
+    public static var calendarStartSunday: String { String(localized: "settings.calendarStartSunday", bundle: bundle) }
+    public static var calendarStartMonday: String { String(localized: "settings.calendarStartMonday", bundle: bundle) }
+    public static var calendarStartDayHint: String { String(localized: "settings.calendarStartDayHint", bundle: bundle) }
+
     public static var preview: String { String(localized: "settings.preview", bundle: bundle) }
     public static var previewHint: String { String(localized: "settings.previewHint", bundle: bundle) }
     public static var restartTitle: String { String(localized: "settings.restartTitle", bundle: bundle) }

@@ -54,15 +54,31 @@ struct CalendarOverlayView: View {
   /// 전체 6행 그리드 높이
   private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
 
-  private let weekdayLabels = [
-    LocalizedStrings.Calendar.weekdayMon,
-    LocalizedStrings.Calendar.weekdayTue,
-    LocalizedStrings.Calendar.weekdayWed,
-    LocalizedStrings.Calendar.weekdayThu,
-    LocalizedStrings.Calendar.weekdayFri,
-    LocalizedStrings.Calendar.weekdaySat,
-    LocalizedStrings.Calendar.weekdaySun,
-  ]
+  @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
+
+  private var weekdayLabels: [String] {
+    if calendarStartOnMonday {
+      return [
+        LocalizedStrings.Calendar.weekdayMon,
+        LocalizedStrings.Calendar.weekdayTue,
+        LocalizedStrings.Calendar.weekdayWed,
+        LocalizedStrings.Calendar.weekdayThu,
+        LocalizedStrings.Calendar.weekdayFri,
+        LocalizedStrings.Calendar.weekdaySat,
+        LocalizedStrings.Calendar.weekdaySun,
+      ]
+    } else {
+      return [
+        LocalizedStrings.Calendar.weekdaySun,
+        LocalizedStrings.Calendar.weekdayMon,
+        LocalizedStrings.Calendar.weekdayTue,
+        LocalizedStrings.Calendar.weekdayWed,
+        LocalizedStrings.Calendar.weekdayThu,
+        LocalizedStrings.Calendar.weekdayFri,
+        LocalizedStrings.Calendar.weekdaySat,
+      ]
+    }
+  }
 
   /// 42셀을 6행으로 분할
   private var dayRows: [[OverlayCalendarModels.DayItem]] {

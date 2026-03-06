@@ -19293,6 +19293,78 @@
         }
       }
     },
+    "settings.calendarStartDaySection" : {
+      "comment" : "캘린더 시작 요일",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar Start Day"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 시작 요일"
+          }
+        }
+      }
+    },
+    "settings.calendarStartSunday" : {
+      "comment" : "일요일 시작",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunday"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일요일"
+          }
+        }
+      }
+    },
+    "settings.calendarStartMonday" : {
+      "comment" : "월요일 시작",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monday"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "월요일"
+          }
+        }
+      }
+    },
+    "settings.calendarStartDayHint" : {
+      "comment" : "캘린더에서 한 주의 시작 요일을 설정합니다.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set the first day of the week shown in the calendar."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더에서 한 주의 시작 요일을 설정합니다."
+          }
+        }
+      }
+    },
     "settings.timeFormatHint" : {
       "comment" : "앱 전체에서 사용되는 시간 표시 형식을 설정합니다.",
       "extractionState" : "manual",
