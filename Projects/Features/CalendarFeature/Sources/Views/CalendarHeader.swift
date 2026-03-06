@@ -134,7 +134,7 @@ struct WeekdayHeader: View {
           .frame(maxWidth: .infinity)
       }
     }
-    .padding(.horizontal, 16)
+    .padding(.horizontal, 8)
     .padding(.vertical, 8)
   }
 
