@@ -24,6 +24,7 @@ final class CalendarOverlayViewModel {
   var currentUserId: String
   var weatherCache: [String: WeatherInfo]
   var groupColorMap: [String: Color]
+  var holidayDates: Set<Date>
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
@@ -58,6 +59,7 @@ final class CalendarOverlayViewModel {
     currentUserId: String,
     weatherCache: [String: WeatherInfo],
     groupColorMap: [String: Color],
+    holidayDates: Set<Date> = [],
     onClose: @escaping () -> Void,
     onDateSelected: @escaping (Date) -> Void,
     onPreviousMonth: @escaping () -> Void,
@@ -87,6 +89,7 @@ final class CalendarOverlayViewModel {
     self.currentUserId = currentUserId
     self.weatherCache = weatherCache
     self.groupColorMap = groupColorMap
+    self.holidayDates = holidayDates
     self.onClose = onClose
     self.onDateSelected = onDateSelected
     self.onPreviousMonth = onPreviousMonth
@@ -270,7 +273,8 @@ private struct CalendarOverlayContentView: View {
             onShareScheduleItem: viewModel.onShareScheduleItem,
             currentUserId: viewModel.currentUserId,
             weatherCache: viewModel.weatherCache,
-            groupColorMap: viewModel.groupColorMap
+            groupColorMap: viewModel.groupColorMap,
+            holidayDates: viewModel.holidayDates
           )
           .transition(.opacity)
         }

@@ -22,6 +22,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+  var holidayDates: Set<Date> = []
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
@@ -69,6 +70,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.currentUserId = currentUserId
         viewModel.weatherCache = weatherCache
         viewModel.groupColorMap = groupColorMap
+        viewModel.holidayDates = holidayDates
         viewModel.overlayFeatureContent = overlayFeatureContent
         viewModel.onFeatureBack = onFeatureBack
       }
@@ -106,6 +108,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap,
+          holidayDates: holidayDates,
           onClose: onClose,
           onDateSelected: onDateSelected,
           onPreviousMonth: onPreviousMonth,

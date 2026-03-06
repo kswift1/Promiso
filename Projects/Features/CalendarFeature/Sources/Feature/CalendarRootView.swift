@@ -178,6 +178,7 @@ extension CalendarFeature {
         ),
         selectedDate: store.selectedDate,
         scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
+        holidayDates: Set(store.holidaysByDate.keys),
         namespace: calendarAnimation,
         isCompactMode: !isExpanded,
         showAllIndicators: isExpanded,

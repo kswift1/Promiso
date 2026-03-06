@@ -72,6 +72,7 @@ struct WeekStripView: View {
     if day.isSelected { return .white }
     if !day.isCurrentMonth { return Color.pmgray.n300 }
     if day.isToday { return Color.pmindigo.n500 }
+    if day.isHoliday { return .red.opacity(0.8) }
     return .primary
   }
 }

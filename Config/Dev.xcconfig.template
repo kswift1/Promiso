@@ -15,3 +15,6 @@ DEEPLINK_WEB_HOST = dev.promiso.app
 
 // Microsoft Clarity
 CLARITY_PROJECT_ID = YOUR_CLARITY_PROJECT_ID
+
+// 공공데이터포털 (한국천문연구원 특일 정보 API)
+DATA_GO_KR_SERVICE_KEY = YOUR_DATA_GO_KR_SERVICE_KEY

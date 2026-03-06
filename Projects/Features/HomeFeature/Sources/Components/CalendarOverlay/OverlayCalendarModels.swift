@@ -81,6 +81,7 @@ enum OverlayCalendarModels {
     let isCurrentMonth: Bool
     let isSelected: Bool
     let isToday: Bool
+    let isHoliday: Bool
     let scheduleCount: Int
     let scheduleIndicators: [ScheduleIndicator]
 
@@ -90,6 +91,7 @@ enum OverlayCalendarModels {
       isCurrentMonth: Bool = true,
       isSelected: Bool = false,
       isToday: Bool = false,
+      isHoliday: Bool = false,
       scheduleCount: Int = 0,
       scheduleIndicators: [ScheduleIndicator] = []
     ) {
@@ -99,6 +101,7 @@ enum OverlayCalendarModels {
       self.isCurrentMonth = isCurrentMonth
       self.isSelected = isSelected
       self.isToday = isToday
+      self.isHoliday = isHoliday
       self.scheduleCount = scheduleCount
       self.scheduleIndicators = scheduleIndicators
     }
@@ -164,12 +167,14 @@ enum OverlayCalendarModels {
   ///   - selectedDate: 현재 선택된 날짜 (isSelected 표시용)
   ///   - currentMonth: 현재 표시 중인 월 (isCurrentMonth 판단용)
   ///   - scheduleCountsByDate: 날짜별 일정 개수
+  ///   - holidayDates: 공휴일 날짜 Set
   static func generateWeekDays(
     for date: Date,
     selectedDate: Date,
     currentMonth: Date,
     scheduleCountsByDate: [Date: Int],
     scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
+    holidayDates: Set<Date> = [],
     startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
@@ -199,6 +204,7 @@ enum OverlayCalendarModels {
         isCurrentMonth: isCurrentMonth,
         isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
         isToday: calendar.isDate(dayDate, inSameDayAs: today),
+        isHoliday: holidayDates.contains(dateKey),
         scheduleCount: count,
         scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
       )
@@ -211,6 +217,7 @@ enum OverlayCalendarModels {
     selectedDate: Date,
     scheduleCountsByDate: [Date: Int],
     scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
+    holidayDates: Set<Date> = [],
     startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
@@ -252,6 +259,7 @@ enum OverlayCalendarModels {
           isCurrentMonth: true,
           isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
           isToday: calendar.isDate(dayDate, inSameDayAs: today),
+          isHoliday: holidayDates.contains(dateKey),
           scheduleCount: count,
           scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
         ))

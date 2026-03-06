@@ -36,6 +36,7 @@ struct CalendarOverlayView: View {
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+  var holidayDates: Set<Date> = []
 
   @State private var timelineZoomState = TimelineZoomState()
 
@@ -87,6 +88,7 @@ struct CalendarOverlayView: View {
       selectedDate: selectedDate,
       currentMonth: currentMonth,
       scheduleCountsByDate: [:],
+      holidayDates: holidayDates,
       startOnMonday: calendarStartOnMonday
     )
   }
@@ -98,6 +100,7 @@ struct CalendarOverlayView: View {
       selectedDate: selectedDate,
       currentMonth: currentMonth,
       scheduleCountsByDate: [:],
+      holidayDates: holidayDates,
       startOnMonday: calendarStartOnMonday
     )
   }
@@ -112,6 +115,7 @@ struct CalendarOverlayView: View {
       selectedDate: selectedDate,
       currentMonth: currentMonth,
       scheduleCountsByDate: [:],
+      holidayDates: holidayDates,
       startOnMonday: calendarStartOnMonday
     )
   }

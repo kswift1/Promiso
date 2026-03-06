@@ -96,6 +96,13 @@ extension CalendarFeature {
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]
 
+      // MARK: - 공휴일 관련
+
+      /// 공휴일 맵 (날짜 → 공휴일 이름)
+      var holidaysByDate: [Date: String] = [:]
+      /// 로드된 공휴일 연도
+      var loadedHolidayYears: Set<Int> = []
+
       // MARK: - 개인 일정 관련
 
       /// 월별 개인 일정 캐시 (키: 월 시작일)
@@ -646,6 +653,9 @@ extension CalendarFeature {
         // 개인 일정
         case fetchPersonalEventsForMonth(Date)
         case personalEventsResponseForMonth(month: Date, Result<[PersonalEventModel], Error>)
+        // 공휴일
+        case fetchHolidays(Int)  // 연도
+        case holidaysResponse(year: Int, Result<[PublicHoliday], Error>)
         // 설정
         case fetchSettings
         case settingsResponse(Result<UserSettings, Error>)
@@ -661,6 +671,7 @@ extension CalendarFeature {
       case fetchPromisesForMonth(Date)
       case fetchCalendarEvents
       case fetchPersonalEventsForMonth(Date)
+      case fetchHolidays(Int)
     }
 
     // MARK: - Dependencies
@@ -671,6 +682,7 @@ extension CalendarFeature {
     @Dependency(\.kakaoShareClient) var kakaoShareClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.holidayClient) var holidayClient
 
     // MARK: - Reducer Body
 
@@ -990,6 +1002,12 @@ extension CalendarFeature {
           effects.append(.send(.internal(.fetchPersonalEventsForMonth(monthStart))))
         }
 
+        // 공휴일 로드 (해당 연도가 아직 로드되지 않은 경우)
+        let weekYear = calendar.component(.year, from: monthStart)
+        if !state.loadedHolidayYears.contains(weekYear) {
+          effects.append(.send(.internal(.fetchHolidays(weekYear))))
+        }
+
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
 
@@ -1021,6 +1039,12 @@ extension CalendarFeature {
         // 개인 일정 로드 (캐시되지 않은 경우만)
         if !state.loadedPersonalEventMonths.contains(monthStart) {
           effects.append(.send(.internal(.fetchPersonalEventsForMonth(monthStart))))
+        }
+
+        // 공휴일 로드 (해당 연도가 아직 로드되지 않은 경우)
+        let year = calendar.component(.year, from: monthStart)
+        if !state.loadedHolidayYears.contains(year) {
+          effects.append(.send(.internal(.fetchHolidays(year))))
         }
 
         // 인접 월 프리페치
@@ -1315,6 +1339,17 @@ extension CalendarFeature {
           })
         }
 
+        // 공휴일 로드 (현재 연도 + 인접 연도)
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: state.selectedDate)
+        let prevYear = currentYear - 1
+        let nextYear = currentYear + 1
+        for year in [prevYear, currentYear, nextYear] {
+          if !state.loadedHolidayYears.contains(year) {
+            effects.append(.send(.internal(.fetchHolidays(year))))
+          }
+        }
+
         return .merge(effects)
 
       case .fetchPromisesForMonth(let month):
@@ -1516,6 +1551,33 @@ extension CalendarFeature {
       case .settingsResponse(let result):
         if case .success(let settings) = result {
           state.groupSortOption = settings.groupSortOption
+        }
+        return .none
+
+      case .fetchHolidays(let year):
+        guard !state.loadedHolidayYears.contains(year) else { return .none }
+        return .run { [holidayClient] send in
+          do {
+            let holidays = try await holidayClient.fetchHolidays(year)
+            await send(.internal(.holidaysResponse(year: year, .success(holidays))))
+          } catch {
+            await send(.internal(.holidaysResponse(year: year, .failure(error))))
+          }
+        }
+        .cancellable(id: CancelID.fetchHolidays(year), cancelInFlight: true)
+
+      case .holidaysResponse(let year, let result):
+        switch result {
+        case .success(let holidays):
+          state.loadedHolidayYears.insert(year)
+          let calendar = Calendar.current
+          for holiday in holidays {
+            let dateKey = calendar.startOfDay(for: holiday.date)
+            state.holidaysByDate[dateKey] = holiday.localName
+          }
+        case .failure:
+          // 공휴일 로드 실패 시 조용히 무시 (재시도 가능하도록 loadedHolidayYears에 추가 안 함)
+          break
         }
         return .none
 
