@@ -22,7 +22,7 @@ struct CalendarIndicatorDayCell: View {
   let selectionId: String
   var isCompactMode: Bool = false
   var showAllIndicators: Bool = false  // true면 모든 인디케이터 표시 (expanded 전용)
-  var isHoliday: Bool = false
+  var holidayName: String? = nil
   let onTap: () -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
@@ -114,6 +114,16 @@ struct CalendarIndicatorDayCell: View {
         }
       } preview: {
         ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
+      }
+
+      // 공휴일 이름 (expanded 모드에서만)
+      if showAllIndicators, let name = holidayName, isCurrentMonth {
+        Text(name)
+          .font(.system(size: 7, weight: .semibold))
+          .foregroundStyle(.red.opacity(0.8))
+          .lineLimit(1)
+          .truncationMode(.tail)
+          .frame(maxWidth: .infinity)
       }
 
       // Morphing 인디케이터 영역
@@ -262,7 +272,7 @@ struct CalendarIndicatorDayCell: View {
     }
 
     // 공휴일이면 빨간색 (일요일과 같은 색)
-    if isHoliday {
+    if holidayName != nil {
       return .red.opacity(0.8)
     }
 

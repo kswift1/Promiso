@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import os.log
 
 // MARK: - Public Holiday Model
 
@@ -38,14 +39,15 @@ extension HolidayClient: TestDependencyKey {
   public static let previewValue = Self(
     fetchHolidays: { year in
       // 미리보기용 샘플 공휴일 (대체공휴일 포함)
-      let calendar = Calendar.current
+      var koreaCalendar = Calendar(identifier: .gregorian)
+      koreaCalendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? TimeZone(secondsFromGMT: 9 * 3600)!
 
       func makeDate(month: Int, day: Int) -> Date {
         var c = DateComponents()
         c.year = year
         c.month = month
         c.day = day
-        return calendar.date(from: c) ?? Date()
+        return koreaCalendar.date(from: c) ?? Date()
       }
 
       return [
@@ -90,6 +92,7 @@ private struct CachedHolidays: Codable {
 
 private actor HolidayCache {
   private var cached: [Int: [PublicHoliday]] = [:]
+  private let logger = Logger(subsystem: "com.promiso", category: "HolidayClient")
 
   // MARK: Disk Cache Helpers
 
@@ -144,6 +147,7 @@ private actor HolidayCache {
           !serviceKey.isEmpty,
           serviceKey != "YOUR_DATA_GO_KR_SERVICE_KEY"
     else {
+      logger.error("공휴일 API 서비스키 미설정")
       throw HolidayAPIError.serviceKeyNotFound
     }
 
@@ -159,6 +163,7 @@ private actor HolidayCache {
 
     // API 오류 코드 확인
     guard response.response.header.resultCode == "00" else {
+      logger.error("공휴일 API 오류 [\(response.response.header.resultCode)]: \(response.response.header.resultMsg)")
       throw HolidayAPIError.apiError(
         code: response.response.header.resultCode,
         message: response.response.header.resultMsg
@@ -166,6 +171,9 @@ private actor HolidayCache {
     }
 
     let items = response.response.body?.items?.item ?? []
+
+    var koreaCalendar = Calendar(identifier: .gregorian)
+    koreaCalendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? TimeZone(secondsFromGMT: 9 * 3600)!
 
     let holidays = items.compactMap { item -> PublicHoliday? in
       // locdate (Int: 20260505) → Date 변환
@@ -178,10 +186,9 @@ private actor HolidayCache {
       components.year = itemYear
       components.month = month
       components.day = day
-      components.timeZone = TimeZone(identifier: "Asia/Seoul")
 
-      guard let date = Calendar.current.date(from: components) else { return nil }
-      let normalized = Calendar.current.startOfDay(for: date)
+      guard let date = koreaCalendar.date(from: components) else { return nil }
+      let normalized = koreaCalendar.startOfDay(for: date)
 
       return PublicHoliday(date: normalized, localName: item.dateName, name: item.dateName)
     }

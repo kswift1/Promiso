@@ -178,7 +178,7 @@ extension CalendarFeature {
         ),
         selectedDate: store.selectedDate,
         scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-        holidayDates: Set(store.holidaysByDate.keys),
+        holidaysByDate: store.holidaysByDate,
         namespace: calendarAnimation,
         isCompactMode: !isExpanded,
         showAllIndicators: isExpanded,
@@ -437,9 +437,10 @@ extension CalendarFeature {
       let dayPromises = store.promisesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
+      let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty {
+      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty || holidayName != nil {
         CompactDayRow(
           date: date,
           promises: dayPromises,
@@ -447,6 +448,7 @@ extension CalendarFeature {
           personalEvents: dayPersonalEvents,
           isSelected: isSelected,
           currentUserId: store.currentUserId,
+          holidayName: holidayName,
           onTap: {
             store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
           }
