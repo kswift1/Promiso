@@ -66,6 +66,7 @@ extension PersonalMode {
     public struct State: Equatable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
+      var ongoingEvents: [PersonalEventModel] = []
       var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
       @Shared(.inMemory("weatherCache"))
@@ -84,22 +85,33 @@ extension PersonalMode {
 
       // MARK: - Computed Properties
 
+      /// 활성 + 진행 중 일정 병합
+      var activeEvents: [PersonalEventModel] {
+        guard let events = eventsState.value else { return ongoingEvents }
+        var seen = Set<String>()
+        var merged: [PersonalEventModel] = []
+        for event in events where seen.insert(event.id).inserted {
+          merged.append(event)
+        }
+        for event in ongoingEvents where seen.insert(event.id).inserted {
+          merged.append(event)
+        }
+        return merged
+      }
+
       /// 필터링된 일정 목록
       var filteredEvents: [PersonalEventModel] {
         switch selectedFilter {
         case .today:
-          guard let events = eventsState.value else { return [] }
           let calendar = Calendar.current
-          return events.filter { calendar.isDateInToday($0.startAt) }
+          return activeEvents.filter { calendar.isDateInToday($0.startAt) || $0.isOngoing }
             .sorted { $0.startAt < $1.startAt }
         case .future:
-          guard let events = eventsState.value else { return [] }
           let calendar = Calendar.current
-          return events.filter { !calendar.isDateInToday($0.startAt) }
+          return activeEvents.filter { !calendar.isDateInToday($0.startAt) && !$0.isOngoing }
             .sorted { $0.startAt < $1.startAt }
         case .all:
-          guard let events = eventsState.value else { return [] }
-          return events.sorted { $0.startAt < $1.startAt }
+          return activeEvents.sorted { $0.startAt < $1.startAt }
         case .past:
           guard let events = pastEventsState.value else { return [] }
           return events.sorted { $0.startAt > $1.startAt }
@@ -152,12 +164,14 @@ extension PersonalMode {
 
       /// 필터별 일정 개수
       var filterCounts: [EventFilter: Int] {
-        guard let events = eventsState.value else { return [:] }
+        let events = activeEvents
+        guard eventsState.value != nil else { return [:] }
         let calendar = Calendar.current
-        let todayCount = events.filter { calendar.isDateInToday($0.startAt) }.count
+        let todayCount = events.filter { calendar.isDateInToday($0.startAt) || $0.isOngoing }.count
+        let futureCount = events.filter { !calendar.isDateInToday($0.startAt) && !$0.isOngoing }.count
         return [
           .today: todayCount,
-          .future: events.count - todayCount,
+          .future: futureCount,
           .all: events.count
         ]
       }
@@ -194,6 +208,7 @@ extension PersonalMode {
         case eventDeleted(String)
         case eventDeleteFailed(String)
         case syncPersonalCalendar
+        case ongoingEventsLoaded([PersonalEventModel])
         case checkConflicts([PersonalEventModel])
         case conflictsLoaded(eventId: String, [ScheduleConflict])
         case conflictCheckFailed(eventId: String)
@@ -226,6 +241,7 @@ extension PersonalMode {
 
           case .refreshEvents:
             state.eventsState = .loading
+            state.ongoingEvents = []
             if state.selectedFilter == .past {
               state.pastEventsState = .idle
             }
@@ -293,19 +309,29 @@ extension PersonalMode {
             if !state.eventsState.isLoaded {
               state.eventsState = .loading
             }
-            return .run { send in
-              var hasReceived = false
-              let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
-              for await events in activeEventsStream {
-                hasReceived = true
-                await send(.internal(.eventsUpdated(events)))
+            return .merge(
+              .run { send in
+                var hasReceived = false
+                let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
+                for await events in activeEventsStream {
+                  hasReceived = true
+                  await send(.internal(.eventsUpdated(events)))
+                }
+                // 스트림이 값 없이 종료된 경우 (Auth 미로그인, Firestore 에러 등)
+                if !hasReceived {
+                  await send(.internal(.eventsUpdated([])))
+                }
               }
-              // 스트림이 값 없이 종료된 경우 (Auth 미로그인, Firestore 에러 등)
-              if !hasReceived {
-                await send(.internal(.eventsUpdated([])))
+              .cancellable(id: CancelID.eventSubscription, cancelInFlight: true),
+              .run { send in
+                do {
+                  let ongoing = try await personalEventClient.getOngoingEvents(20)
+                  await send(.internal(.ongoingEventsLoaded(ongoing)))
+                } catch {
+                  AppLogger.personal.error("📅 [PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
+                }
               }
-            }
-            .cancellable(id: CancelID.eventSubscription, cancelInFlight: true)
+            )
 
           case .fetchPastEvents:
             state.pastEventsState = .loading
@@ -430,6 +456,10 @@ extension PersonalMode {
                 AppLogger.calendar.info("📅 [Personal] syncCalendar 완료 - \(result.description)")
               }
             }
+
+          case .ongoingEventsLoaded(let events):
+            state.ongoingEvents = events
+            return .none
           }
 
         // MARK: - CreateEvent Delegate

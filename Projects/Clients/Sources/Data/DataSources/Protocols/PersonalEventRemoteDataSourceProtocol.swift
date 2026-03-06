@@ -14,6 +14,7 @@ public protocol PersonalEventRemoteDataSourceProtocol: Sendable {
   // MARK: - Query Operations
   func getActiveEvents(limit: Int) async throws -> [PersonalEventModel]
   func getPastEvents(limit: Int, lastStartAt: Date?) async throws -> [PersonalEventModel]
+  func getOngoingEvents(limit: Int) async throws -> [PersonalEventModel]
   func getEventsByDateRange(startDate: Date, endDate: Date) async throws -> [PersonalEventModel]
 
   // MARK: - Real-time Listener

@@ -78,6 +78,9 @@ public struct PersonalEventClient: Sendable {
   /// 활성 일정 조회
   public var getActiveEvents: @Sendable (_ limit: Int) async throws -> [PersonalEventModel]
 
+  /// 진행 중인 일정 조회
+  public var getOngoingEvents: @Sendable (_ limit: Int) async throws -> [PersonalEventModel]
+
   /// 과거 일정 조회 (커서 기반 페이징)
   public var getPastEvents: @Sendable (_ limit: Int, _ lastStartAt: Date?) async throws -> [PersonalEventModel]
 
@@ -111,6 +114,10 @@ extension PersonalEventClient: TestDependencyKey {
     getActiveEvents: { _ in
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel.activeExamples
+    },
+    getOngoingEvents: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return []
     },
     getPastEvents: { _, _ in
       try await Task.sleep(for: .seconds(1))
@@ -182,6 +189,13 @@ extension PersonalEventClient: DependencyKey {
       getActiveEvents: { limit in
         do {
           return try await dataSource.getActiveEvents(limit: limit)
+        } catch {
+          throw PersonalEventClientError(from: error)
+        }
+      },
+      getOngoingEvents: { limit in
+        do {
+          return try await dataSource.getOngoingEvents(limit: limit)
         } catch {
           throw PersonalEventClientError(from: error)
         }
