@@ -3235,6 +3235,9 @@ components:
             scheduled:
               type: boolean
               description: 예약 완료 여부
+            started:
+              type: boolean
+              description: Push to Start 전송 성공 후 시작 처리 여부
             scheduledAt:
               type: string
               format: date-time

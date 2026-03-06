@@ -861,8 +861,16 @@ export const executeLiveActivityStart = onTaskDispatched<
       }
     }
 
+    const promiseRef = promisesCollection.doc(promiseId);
+    const rollbackStarted = async (reason: string) => {
+      await promiseRef.update({
+        "liveActivitySchedule.started": false,
+      });
+      console.log(`↩️ LiveActivity started rollback: ${promiseId} (${reason})`);
+    };
+
     // 5. started 플래그 선점 (재시도 중복 방지)
-    await promisesCollection.doc(promiseId).update({
+    await promiseRef.update({
       "liveActivitySchedule.started": true,
     });
 
@@ -876,6 +884,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       console.log(`✅ APNs channel created: ${channelId}`);
     } else {
       console.error(`❌ Channel creation failed: ${channelResult.error}`);
+      await rollbackStarted("channel creation failed");
       // 채널 없이는 Broadcast 불가 → Push to Start 중단
       console.error(`⚠️ Aborting Push to Start: ${promiseId}`);
       return;
@@ -886,6 +895,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     // 6. 토큰 검증
     if (allTokens.length === 0) {
       console.log(`📭 No Push to Start tokens for: ${promiseId}`);
+      await rollbackStarted("no push-to-start tokens");
       return;
     }
 
@@ -951,6 +961,12 @@ export const executeLiveActivityStart = onTaskDispatched<
       `⏰ Scheduled LiveActivity started (Broadcast channel: ${channelId}): ` +
       `${successCount}/${failureCount}`
     );
+
+    if (successCount === 0) {
+      await rollbackStarted("no successful push-to-start delivery");
+      console.error(`⚠️ Aborting post-start tasks: ${promiseId}`);
+      return;
+    }
 
     // 8. 종료 Task 예약 (30분)
     const endMinutes = 30;
@@ -1208,6 +1224,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     await promisesCollection.doc(promiseId).update({
       liveActivitySchedule: {
         scheduled: true,
+        started: false,
         scheduledAt: scheduleTime,
         version: scheduleVersion,
       },

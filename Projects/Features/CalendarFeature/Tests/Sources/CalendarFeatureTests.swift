@@ -140,6 +140,23 @@ struct CalendarFeatureTests {
     #expect(Calendar.current.isDate(store.state.currentMonth, inSameDayAs: store.state.selectedDate.startOfMonth))
   }
 
+  @Test("weekRowIndex는 월요일 시작 설정을 반영한다")
+  func weekRowIndex_respectsMondayStartSetting() {
+    let currentMonth = makeDate(year: 2026, month: 3, day: 1)
+    let selectedDate = makeDate(year: 2026, month: 3, day: 7)
+
+    #expect(CalendarFeature.weekRowIndex(
+      currentMonth: currentMonth,
+      selectedDate: selectedDate,
+      startOnMonday: true
+    ) == 1)
+    #expect(CalendarFeature.weekRowIndex(
+      currentMonth: currentMonth,
+      selectedDate: selectedDate,
+      startOnMonday: false
+    ) == 0)
+  }
+
   @Test("resetScroll 시 scrolledID 초기화")
   func resetScroll_clearsScrolledID() async {
     var state = makeState(key: "reset-scroll")
