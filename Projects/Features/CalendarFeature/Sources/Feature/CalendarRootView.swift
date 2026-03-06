@@ -43,7 +43,7 @@ extension CalendarFeature {
 
     private var calendarContentView: some View {
       calendarWithEditCovers
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.sharePromise },
           set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
         )) { promise in
@@ -57,16 +57,12 @@ extension CalendarFeature {
               store.send(.view(.systemPromiseShareTapped))
             }
           )
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
         }
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.systemShareText.map { ShareTextItem(text: $0) } },
           set: { _ in store.send(.view(.systemShareSheetDismissed)) }
         )) { item in
           ShareSheet(items: [item.text])
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
         .sheet(isPresented: Binding(
           get: { store.isFilterSheetPresented },
@@ -103,22 +99,20 @@ extension CalendarFeature {
 
     private var calendarWithEditCovers: some View {
       calendarBaseView
-        .fullScreenCover(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
-          EditPromise.RootView(store: editStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+          NavigationStack {
+            EditPromise.RootView(store: editStore)
+          }
         }
-        .fullScreenCover(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
           NavigationStack {
             CreatePersonalEvent.RootView(store: editStore)
           }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
         }
-        .fullScreenCover(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
-          CreatePromise.RootView(store: createStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
+        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+          NavigationStack {
+            CreatePromise.RootView(store: createStore)
+          }
         }
     }
 
