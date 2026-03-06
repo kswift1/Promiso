@@ -170,6 +170,7 @@
 ## Makefile 명령어
 
 ```bash
+make setup                          # 프로젝트 초기 설정 (Tuist 의존성 + xcconfig + generate)
 make feature FEATURE_NAME=X        # Feature 생성
 make remove-feature FEATURE_NAME=X  # Feature 삭제
 make test-module MODULE=X           # 모듈 단위 테스트
@@ -178,6 +179,8 @@ make deps                           # 의존성 그래프
 make emulator-start                 # Firebase 에뮬레이터
 make functions-build                # Functions 빌드
 ```
+
+> **주의**: `.xcworkspace`가 없으면 `make setup` 먼저 실행. `Config/Dev.xcconfig`가 없으면 템플릿에서 복사 필요.
 
 ---
 
