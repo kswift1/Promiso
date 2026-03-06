@@ -57,7 +57,7 @@ struct CalendarEventDetailView: View {
       Spacer()
     }
     .padding(16)
-    .adaptiveGlassCard()
+    .staticGlassBackground(cornerRadius: 16)
   }
 
   // MARK: - Schedule Section
@@ -94,14 +94,11 @@ struct CalendarEventDetailView: View {
           )
         }
       }
-      .adaptiveGlassCard()
+      .staticGlassBackground(cornerRadius: 16)
     }
   }
 
   // MARK: - Source Section
-
-  /// iOS Calendar 앱 테마 색상
-  private static let appleCalendarColor = Color.red
 
   private var sourceSection: some View {
     Button {
@@ -110,38 +107,28 @@ struct CalendarEventDetailView: View {
         openURL(url)
       }
     } label: {
-      VStack(spacing: 12) {
-        // iOS 캘린더 안내
-        HStack(spacing: 8) {
-          Image(systemName: "calendar")
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(Self.appleCalendarColor)
+      HStack(spacing: 10) {
+        Image(systemName: "apple.logo")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(.secondary)
 
-          Text(LocalizedStrings.Calendar.calendarEventSource)
-            .font(.system(size: 14))
-            .foregroundStyle(.secondary)
+        Text(LocalizedStrings.Calendar.calendarEventSource)
+          .font(.system(size: 14))
+          .foregroundStyle(.secondary)
 
-          Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
+        Spacer()
 
-        // 캘린더에서 보기
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
           Text(LocalizedStrings.Calendar.openInCalendarApp)
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 13, weight: .medium))
 
-          Image(systemName: "arrow.up.right")
-            .font(.system(size: 14, weight: .semibold))
+          Image(systemName: "chevron.right")
+            .font(.system(size: 11, weight: .semibold))
         }
-        .foregroundStyle(Self.appleCalendarColor)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(Self.appleCalendarColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .foregroundStyle(.tertiary)
       }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 14)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
