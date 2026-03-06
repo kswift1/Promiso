@@ -755,8 +755,13 @@ struct CalendarDayTimelineView: View {
             .padding(.bottom, 6)
           }
         }
+
+        Spacer(minLength: 0)
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .contentShape(Rectangle())
     }
+    .buttonStyle(.plain)
     .frame(height: blockHeight, alignment: .top)
     .background(.ultraThinMaterial, in: cardShape)
     .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
@@ -779,8 +784,6 @@ struct CalendarDayTimelineView: View {
       .frame(width: colorBarWidth)
     }
     .clipShape(cardShape)
-    .contentShape(Rectangle())
-    .buttonStyle(.plain)
     .contextMenu {
       switch item {
       case .promise(let promise):

@@ -1270,8 +1270,8 @@ extension CalendarFeature {
         state.selectedCalendarEvent = nil
         let timeInterval = event.startDate.timeIntervalSinceReferenceDate
         guard let url = URL(string: "calshow:\(timeInterval)") else { return .none }
-        return .run { _ in
-          await UIApplication.shared.open(url)
+        return .run { @MainActor _ in
+          UIApplication.shared.open(url)
         }
       }
     }

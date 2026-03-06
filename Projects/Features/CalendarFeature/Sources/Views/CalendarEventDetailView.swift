@@ -115,38 +115,44 @@ struct CalendarEventDetailView: View {
   // MARK: - Source Section
 
   private var sourceSection: some View {
-    VStack(spacing: 12) {
-      // iOS 캘린더 안내
-      HStack(spacing: 8) {
-        Image(systemName: "calendar")
-          .font(.system(size: 16, weight: .medium))
-          .foregroundStyle(event.calendarColor)
+    Button {
+      onOpenInCalendar()
+    } label: {
+      VStack(spacing: 12) {
+        // iOS 캘린더 안내
+        HStack(spacing: 8) {
+          Image(systemName: "calendar")
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(event.calendarColor)
 
-        Text(LocalizedStrings.Calendar.calendarEventSource)
-          .font(.system(size: 14))
-          .foregroundStyle(.secondary)
+          Text(LocalizedStrings.Calendar.calendarEventSource)
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
 
-        Spacer()
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 16)
-      .padding(.bottom, 4)
+          Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
 
-      // 캘린더에서 보기 버튼
-      Button {
-        onOpenInCalendar()
-      } label: {
-        Text(LocalizedStrings.Calendar.openInCalendarApp)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(.white)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 14)
-          .background(event.calendarColor, in: RoundedRectangle(cornerRadius: 12))
+        // 캘린더에서 보기
+        HStack(spacing: 6) {
+          Text(LocalizedStrings.Calendar.openInCalendarApp)
+            .font(.system(size: 16, weight: .semibold))
+
+          Image(systemName: "arrow.up.right")
+            .font(.system(size: 14, weight: .semibold))
+        }
+        .foregroundStyle(event.calendarColor)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(event.calendarColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
       }
       .contentShape(Rectangle())
-      .padding(.horizontal, 16)
-      .padding(.bottom, 16)
     }
+    .buttonStyle(.plain)
     .adaptiveGlassCard()
   }
 
