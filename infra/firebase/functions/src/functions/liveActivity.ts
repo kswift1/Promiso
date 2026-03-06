@@ -785,6 +785,16 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
+    // 이미 시작된 LiveActivity가 있으면 스킵 (재시도 중복 방지)
+    const alreadyStarted =
+      promiseData.liveActivitySchedule?.started === true;
+    if (alreadyStarted) {
+      console.log(
+        `⏭️ LiveActivity already started, skipping: ${promiseId}`
+      );
+      return;
+    }
+
     // 2. 그룹 정보 조회
     const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
@@ -851,7 +861,12 @@ export const executeLiveActivityStart = onTaskDispatched<
       }
     }
 
-    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+    // 5. started 플래그 선점 (재시도 중복 방지)
+    await promisesCollection.doc(promiseId).update({
+      "liveActivitySchedule.started": true,
+    });
+
+    // 6. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = isAPNsProduction();
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
@@ -1085,6 +1100,17 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     const justUnconfirmed = wasConfirmed && !isNowConfirmed;
     const trackingEnabledOnConfirmed =
       isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
+
+    // 이미 시작된 LiveActivity가 있으면 재스케줄 차단
+    const alreadyStarted =
+      after.liveActivitySchedule?.started === true;
+    if (alreadyStarted) {
+      console.log(
+        "⏭️ LiveActivity already started, " +
+        `skip reschedule: ${promiseId}`
+      );
+      return;
+    }
 
     // 확정 → 미확정: 예약 상태 리셋 (다시 확정 시 새로 예약되도록)
     if (justUnconfirmed) {
