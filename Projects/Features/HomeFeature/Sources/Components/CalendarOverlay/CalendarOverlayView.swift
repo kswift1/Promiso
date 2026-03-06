@@ -57,27 +57,7 @@ struct CalendarOverlayView: View {
   @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
 
   private var weekdayLabels: [String] {
-    if calendarStartOnMonday {
-      return [
-        LocalizedStrings.Calendar.weekdayMon,
-        LocalizedStrings.Calendar.weekdayTue,
-        LocalizedStrings.Calendar.weekdayWed,
-        LocalizedStrings.Calendar.weekdayThu,
-        LocalizedStrings.Calendar.weekdayFri,
-        LocalizedStrings.Calendar.weekdaySat,
-        LocalizedStrings.Calendar.weekdaySun,
-      ]
-    } else {
-      return [
-        LocalizedStrings.Calendar.weekdaySun,
-        LocalizedStrings.Calendar.weekdayMon,
-        LocalizedStrings.Calendar.weekdayTue,
-        LocalizedStrings.Calendar.weekdayWed,
-        LocalizedStrings.Calendar.weekdayThu,
-        LocalizedStrings.Calendar.weekdayFri,
-        LocalizedStrings.Calendar.weekdaySat,
-      ]
-    }
+    LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: calendarStartOnMonday)
   }
 
   /// 42셀을 6행으로 분할
@@ -106,7 +86,8 @@ struct CalendarOverlayView: View {
       for: prevDate,
       selectedDate: selectedDate,
       currentMonth: currentMonth,
-      scheduleCountsByDate: [:]
+      scheduleCountsByDate: [:],
+      startOnMonday: calendarStartOnMonday
     )
   }
 
@@ -116,7 +97,8 @@ struct CalendarOverlayView: View {
       for: selectedDate,
       selectedDate: selectedDate,
       currentMonth: currentMonth,
-      scheduleCountsByDate: [:]
+      scheduleCountsByDate: [:],
+      startOnMonday: calendarStartOnMonday
     )
   }
 
@@ -129,7 +111,8 @@ struct CalendarOverlayView: View {
       for: nextDate,
       selectedDate: selectedDate,
       currentMonth: currentMonth,
-      scheduleCountsByDate: [:]
+      scheduleCountsByDate: [:],
+      startOnMonday: calendarStartOnMonday
     )
   }
 

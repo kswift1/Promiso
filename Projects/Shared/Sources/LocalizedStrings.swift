@@ -1307,6 +1307,15 @@ public enum LocalizedStrings {
     public static var weekdayFri: String { String(localized: "calendar.weekday.fri", bundle: bundle) }
     public static var weekdaySat: String { String(localized: "calendar.weekday.sat", bundle: bundle) }
 
+    /// 설정에 따라 정렬된 요일 심볼 배열
+    public static func orderedWeekdaySymbols(startOnMonday: Bool) -> [String] {
+      if startOnMonday {
+        return [weekdayMon, weekdayTue, weekdayWed, weekdayThu, weekdayFri, weekdaySat, weekdaySun]
+      } else {
+        return [weekdaySun, weekdayMon, weekdayTue, weekdayWed, weekdayThu, weekdayFri, weekdaySat]
+      }
+    }
+
     // Calendar Permission Banner
     public static var syncCalendarTitle: String { String(localized: "calendar.sync.title", bundle: bundle) }
     public static var syncCalendarSubtitle: String { String(localized: "calendar.sync.subtitle", bundle: bundle) }

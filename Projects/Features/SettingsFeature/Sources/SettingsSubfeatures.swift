@@ -159,14 +159,14 @@ extension DateTimeSettings {
           calendarStartDayRow(
             startOnMonday: false,
             title: LocalizedStrings.SettingsStrings.calendarStartSunday,
-            weekdays: "일 월 화 수 목 금 토"
+            weekdays: LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: false).joined(separator: " ")
           )
           Divider()
             .padding(.leading, 48)
           calendarStartDayRow(
             startOnMonday: true,
             title: LocalizedStrings.SettingsStrings.calendarStartMonday,
-            weekdays: "월 화 수 목 금 토 일"
+            weekdays: LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: true).joined(separator: " ")
           )
         }
         .adaptiveGlassCard()

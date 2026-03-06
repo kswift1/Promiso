@@ -169,7 +169,8 @@ enum OverlayCalendarModels {
     selectedDate: Date,
     currentMonth: Date,
     scheduleCountsByDate: [Date: Int],
-    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -177,7 +178,7 @@ enum OverlayCalendarModels {
     // 해당 주의 시작일 찾기
     // weekday: 일=1, 월=2, ..., 토=7
     let weekday = calendar.component(.weekday, from: date)
-    let firstDayOfWeek = AppConstants.isCalendarStartOnMonday ? 2 : 1
+    let firstDayOfWeek = startOnMonday ? 2 : 1
     let daysFromWeekStart = (weekday - firstDayOfWeek + 7) % 7
     guard let weekStart = calendar.date(byAdding: .day, value: -daysFromWeekStart, to: date) else {
       return []
@@ -209,7 +210,8 @@ enum OverlayCalendarModels {
     for date: Date,
     selectedDate: Date,
     scheduleCountsByDate: [Date: Int],
-    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -221,7 +223,6 @@ enum OverlayCalendarModels {
     var days: [DayItem] = []
 
     // 시작 요일 기준 오프셋 계산 (일=1, 월=2, ..., 토=7)
-    let startOnMonday = AppConstants.isCalendarStartOnMonday
     let firstDayOfWeek = startOnMonday ? 2 : 1
     let offset = (firstWeekday - firstDayOfWeek + 7) % 7
 
