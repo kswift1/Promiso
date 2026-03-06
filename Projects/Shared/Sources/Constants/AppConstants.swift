@@ -222,8 +222,21 @@ public enum AppConstants {
     public static let personalCalendarSync = "promisoPersonalCalendarSync"
     /// 앱 소개 온보딩 완료 여부
     public static let hasCompletedOnboarding = "promisoHasCompletedOnboarding"
+    /// 캘린더 시작 요일 (true: 월요일, false: 일요일, 기본값: true)
+    public static let calendarStartOnMonday = "promisoCalendarStartOnMonday"
     /// 캘린더 권한 배너 다시 보지 않기
     public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
+  }
+
+  // MARK: - Calendar Helpers
+
+  /// 캘린더 시작 요일이 월요일인지 (기본값: true)
+  public static var isCalendarStartOnMonday: Bool {
+    let ud = Foundation.UserDefaults.standard
+    if ud.object(forKey: AppConstants.UserDefaults.calendarStartOnMonday) == nil {
+      return true  // 기본값: 월요일 시작
+    }
+    return ud.bool(forKey: AppConstants.UserDefaults.calendarStartOnMonday)
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)

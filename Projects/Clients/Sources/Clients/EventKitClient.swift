@@ -96,6 +96,29 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
     Color(hex: calendarColorHex) ?? .gray
   }
 
+  /// 숫자·기호 이모지(#⃣, *⃣ 등)를 제외하고 그림 이모지만 필터링하기 위한 유니코드 스칼라 기준값
+  private static let pictorialEmojiThreshold: UInt32 = 0x238C
+
+  /// 제목에서 첫 번째 이모지를 추출, 없으면 nil
+  public var displayEmoji: String? {
+    for character in title {
+      if character.unicodeScalars.first?.properties.isEmoji == true,
+         character.unicodeScalars.first?.value ?? 0 > Self.pictorialEmojiThreshold {
+        return String(character)
+      }
+    }
+    return nil
+  }
+
+  /// 이모지를 제거한 제목 (첫 번째 이모지만 제거)
+  public var displayTitle: String {
+    guard let emoji = displayEmoji,
+          let range = title.range(of: emoji) else { return title }
+    return title
+      .replacingCharacters(in: range, with: "")
+      .trimmingCharacters(in: .whitespaces)
+  }
+
   public var timeText: String {
     if isAllDay {
       return "종일"

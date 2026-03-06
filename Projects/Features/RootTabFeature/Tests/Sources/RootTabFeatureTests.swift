@@ -41,6 +41,8 @@ struct RootTabFeatureTests {
       }
     }
 
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
     await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
@@ -49,6 +51,8 @@ struct RootTabFeatureTests {
     await store.receive(\.internal.syncCalendar) {
       $0.isCalendarSyncInFlight = true
     }
+    await store.receive(\.internal.observeSubscriptionStatus)
+    await store.receive(\.internal.syncCalendar)
     await store.receive(\.internal.syncCalendarFinished) {
       $0.isCalendarSyncInFlight = false
       $0.hasInitialCalendarSyncBeenScheduled = true
@@ -75,22 +79,30 @@ struct RootTabFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
+    // 첫 번째 onAppear: syncCalendar 기본 1회 + 초기 예약 1회 (inflight guard로 실제 sync는 1회)
     await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
     await store.receive(\.internal.syncCalendar)
+    await store.receive(\.internal.observeSubscriptionStatus)
+    await store.receive(\.internal.syncCalendar)
     await store.receive(\.internal.syncCalendarFinished)
 
+    // 두 번째 onAppear: syncCalendar 기본 1회만 (초기 예약은 hasInitialCalendarSyncBeenScheduled로 스킵)
     await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.syncCalendar)
+    await store.receive(\.internal.observeSubscriptionStatus)
+    await store.receive(\.internal.syncCalendarFinished)
 
     await store.finish()
-    #expect(await syncCounter.value() == 1)
+    // 첫 번째에서 1회 + 두 번째에서 1회 = 총 2회 (초기 예약 중복은 inflight guard로 차단)
+    #expect(await syncCounter.value() == 2)
   }
 
   // MARK: - 탭 선택 테스트
@@ -849,6 +861,7 @@ private extension RootTabFeatureTests {
     dependencies.eventKitClient.authorizationStatus = { .notDetermined }
     dependencies.personalEventClient.getActiveEvents = { _ in [] }
     dependencies.personalEventClient.getEvent = { _ in nil }
+    dependencies.personalEventClient.getEventsByDateRange = { _, _ in [] }
 
     dependencies.groupClient.fetchGroupSummaries = { [] }
     dependencies.groupClient.fetchGroup = { _ in group }
@@ -863,5 +876,8 @@ private extension RootTabFeatureTests {
     }
     dependencies.promiseClient.getPastPromises = { _, _, _ in [] }
     dependencies.promiseClient.updateETA = { _, _, _ in }
+
+    dependencies.subscriptionClient.fetchStatus = { .none }
+    dependencies.subscriptionClient.unifiedStatusStream = { AsyncStream { $0.finish() } }
   }
 }

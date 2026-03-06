@@ -33,6 +33,8 @@ extension CalendarFeature {
           PromiseDetail.RootView(store: promiseDetailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .calendarEventDetail(let calendarEventDetailStore):
+          CalendarEventDetailView(event: calendarEventDetailStore.event)
         }
       }
     }
@@ -66,7 +68,7 @@ extension CalendarFeature {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
         }
-        .fullScreenCover(isPresented: Binding(
+        .sheet(isPresented: Binding(
           get: { store.isFilterSheetPresented },
           set: { newValue in
             if !newValue {
@@ -89,8 +91,6 @@ extension CalendarFeature {
               store.send(.view(.filterReset))
             }
           )
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
         }
         .toast(Binding(
           get: { store.toastMessage },

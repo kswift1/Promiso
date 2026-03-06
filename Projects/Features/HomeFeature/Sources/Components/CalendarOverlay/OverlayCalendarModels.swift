@@ -174,21 +174,23 @@ enum OverlayCalendarModels {
     currentMonth: Date,
     scheduleCountsByDate: [Date: Int],
     scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
-    holidayDates: Set<Date> = []
+    holidayDates: Set<Date> = [],
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
 
-    // 해당 주의 월요일 찾기
+    // 해당 주의 시작일 찾기
     // weekday: 일=1, 월=2, ..., 토=7
     let weekday = calendar.component(.weekday, from: date)
-    let daysFromMonday = (weekday - 2 + 7) % 7
-    guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: date) else {
+    let firstDayOfWeek = startOnMonday ? 2 : 1
+    let daysFromWeekStart = (weekday - firstDayOfWeek + 7) % 7
+    guard let weekStart = calendar.date(byAdding: .day, value: -daysFromWeekStart, to: date) else {
       return []
     }
 
     return (0..<7).compactMap { offset in
-      guard let dayDate = calendar.date(byAdding: .day, value: offset, to: monday) else {
+      guard let dayDate = calendar.date(byAdding: .day, value: offset, to: weekStart) else {
         return nil
       }
       let dayNumber = calendar.component(.day, from: dayDate)
@@ -215,7 +217,8 @@ enum OverlayCalendarModels {
     selectedDate: Date,
     scheduleCountsByDate: [Date: Int],
     scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:],
-    holidayDates: Set<Date> = []
+    holidayDates: Set<Date> = [],
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -226,9 +229,9 @@ enum OverlayCalendarModels {
 
     var days: [DayItem] = []
 
-    // 월요일 시작 기준 오프셋 계산 (일=1, 월=2, ..., 토=7)
-    // 월요일 시작이므로: 월=0, 화=1, ..., 일=6
-    let offset = (firstWeekday - 2 + 7) % 7
+    // 시작 요일 기준 오프셋 계산 (일=1, 월=2, ..., 토=7)
+    let firstDayOfWeek = startOnMonday ? 2 : 1
+    let offset = (firstWeekday - firstDayOfWeek + 7) % 7
 
     // 이전 월 placeholder
     if offset > 0 {

@@ -291,11 +291,12 @@ public enum LocalizedDateFormatters {
 
 extension Date {
 
-  /// 해당 날짜가 속한 주의 시작일 (일요일)
+  /// 해당 날짜가 속한 주의 시작일 (설정에 따라 일요일 또는 월요일)
   public var startOfWeek: Date {
     let calendar = Calendar.current
     let weekday = calendar.component(.weekday, from: self)
-    let daysToSubtract = weekday - 1
+    let firstDayOfWeek = AppConstants.isCalendarStartOnMonday ? 2 : 1  // 2=Monday, 1=Sunday
+    let daysToSubtract = (weekday - firstDayOfWeek + 7) % 7
     return calendar.date(byAdding: .day, value: -daysToSubtract, to: calendar.startOfDay(for: self)) ?? self
   }
 

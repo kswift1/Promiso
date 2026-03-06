@@ -507,8 +507,10 @@ struct CalendarDayTimelineView: View {
       HStack(spacing: 0) {
         VStack(alignment: .leading, spacing: 4) {
           HStack(spacing: 5) {
-            Text(item.displayEmoji)
-              .font(.system(size: 16))
+            if !item.displayEmoji.isEmpty {
+              Text(item.displayEmoji)
+                .font(.system(size: 16))
+            }
             Text(item.title)
               .font(.system(size: 14, weight: .semibold))
               .foregroundStyle(.primary)
@@ -675,8 +677,10 @@ struct CalendarDayTimelineView: View {
           VStack(alignment: .leading, spacing: 2) {
             // Row 1: 이모지 + 제목
             HStack(spacing: 5) {
-              Text(item.displayEmoji)
-                .font(.system(size: isCompact ? 14 : 16))
+              if !item.displayEmoji.isEmpty {
+                Text(item.displayEmoji)
+                  .font(.system(size: isCompact ? 14 : 16))
+              }
 
               Text(item.title)
                 .font(.system(size: 13, weight: .semibold))
@@ -751,8 +755,13 @@ struct CalendarDayTimelineView: View {
             .padding(.bottom, 6)
           }
         }
+
+        Spacer(minLength: 0)
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .contentShape(Rectangle())
     }
+    .buttonStyle(.plain)
     .frame(height: blockHeight, alignment: .top)
     .background(.ultraThinMaterial, in: cardShape)
     .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
@@ -775,8 +784,6 @@ struct CalendarDayTimelineView: View {
       .frame(width: colorBarWidth)
     }
     .clipShape(cardShape)
-    .contentShape(Rectangle())
-    .buttonStyle(.plain)
     .contextMenu {
       switch item {
       case .promise(let promise):

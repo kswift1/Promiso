@@ -9,15 +9,11 @@ struct WeekStripView: View {
   let weekDays: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
 
-  private let weekdayLabels = [
-    LocalizedStrings.Calendar.weekdayMon,
-    LocalizedStrings.Calendar.weekdayTue,
-    LocalizedStrings.Calendar.weekdayWed,
-    LocalizedStrings.Calendar.weekdayThu,
-    LocalizedStrings.Calendar.weekdayFri,
-    LocalizedStrings.Calendar.weekdaySat,
-    LocalizedStrings.Calendar.weekdaySun,
-  ]
+  @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
+
+  private var weekdayLabels: [String] {
+    LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: calendarStartOnMonday)
+  }
 
   var body: some View {
     HStack(spacing: 0) {

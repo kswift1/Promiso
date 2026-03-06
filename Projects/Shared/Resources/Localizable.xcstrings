@@ -916,6 +916,42 @@
         }
       }
     },
+    "calendar.event.source" : {
+      "comment" : "Apple Calendar 이벤트 출처 안내",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This event was imported from iOS Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 캘린더에서 불러온 일정입니다"
+          }
+        }
+      }
+    },
+    "calendar.event.openInCalendar" : {
+      "comment" : "Apple Calendar 앱에서 보기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더에서 보기"
+          }
+        }
+      }
+    },
     "calendar.loading" : {
       "comment" : "약속 로딩 중",
       "extractionState" : "manual",
@@ -15732,6 +15768,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "확정된 약속을 달력 앱에 추가합니다."
+          }
+        }
+      }
+    },
+    "settings.calendarStartDayHint" : {
+      "comment" : "캘린더에서 한 주의 시작 요일을 설정합니다.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set the first day of the week shown in the calendar."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더에서 한 주의 시작 요일을 설정합니다."
+          }
+        }
+      }
+    },
+    "settings.calendarStartDaySection" : {
+      "comment" : "캘린더 시작 요일",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar Start Day"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 시작 요일"
+          }
+        }
+      }
+    },
+    "settings.calendarStartMonday" : {
+      "comment" : "월요일 시작",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monday"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "월요일"
+          }
+        }
+      }
+    },
+    "settings.calendarStartSunday" : {
+      "comment" : "일요일 시작",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunday"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일요일"
           }
         }
       }
