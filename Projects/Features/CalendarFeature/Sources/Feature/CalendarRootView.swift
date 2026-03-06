@@ -87,6 +87,7 @@ extension CalendarFeature {
               store.send(.view(.filterReset))
             }
           )
+          .presentationDragIndicator(.visible)
         }
         .toast(Binding(
           get: { store.toastMessage },

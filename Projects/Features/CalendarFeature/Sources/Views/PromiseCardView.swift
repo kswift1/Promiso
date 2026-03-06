@@ -291,15 +291,10 @@ struct CompactDayRow: View {
         VStack(alignment: .leading, spacing: 4) {
           // 공휴일
           if let holidayName {
-            HStack(spacing: 4) {
-              Circle()
-                .fill(Color.red.opacity(0.8))
-                .frame(width: 6, height: 6)
-              Text(holidayName)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.red.opacity(0.8))
-                .lineLimit(1)
-            }
+            Text(holidayName)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(.red.opacity(0.8))
+              .lineLimit(1)
           }
 
           // 약속이 있으면 약속 먼저 표시
