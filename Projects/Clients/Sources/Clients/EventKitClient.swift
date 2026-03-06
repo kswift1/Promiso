@@ -313,7 +313,7 @@ extension EventKitClient: DependencyKey {
             // 공휴일 구독 캘린더 제외
             if event.calendar?.type == .subscription {
               let title = event.calendar?.title.lowercased() ?? ""
-              if title.contains("holiday") || event.calendar?.title.contains("공휴일") == true {
+              if title.contains("holiday") || title.contains("공휴일") {
                 return false
               }
             }
