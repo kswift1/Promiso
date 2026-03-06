@@ -107,9 +107,9 @@ private actor HolidayCache {
           let cached = try? JSONDecoder().decode(CachedHolidays.self, from: data)
     else { return nil }
 
-    // fetchedAt 연도가 요청 연도 이하(이미 지난 연도 포함)이면 유효
-    let fetchedYear = Calendar.current.component(.year, from: cached.fetchedAt)
-    guard fetchedYear >= year else { return nil }
+    // 30일 이내 캐시만 유효 (임시공휴일 등 당해 변경 대응)
+    let age = Date().timeIntervalSince(cached.fetchedAt)
+    guard age < 30 * 24 * 60 * 60 else { return nil }
 
     return cached.holidays
   }
