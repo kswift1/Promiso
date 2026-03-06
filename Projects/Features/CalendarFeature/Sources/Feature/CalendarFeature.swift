@@ -542,8 +542,14 @@ extension CalendarFeature {
         let event: CalendarEvent
       }
 
-      public enum Action {
-        case noop
+      @CasePathable
+      public enum Action: Sendable {
+        case view(View)
+
+        @CasePathable
+        public enum View: Sendable {
+          case noop
+        }
       }
 
       public var body: some ReducerOf<Self> {
