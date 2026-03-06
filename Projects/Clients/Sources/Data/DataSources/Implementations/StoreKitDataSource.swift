@@ -124,7 +124,7 @@ final class StoreKitDataSource: Sendable {
           if let gracePeriodExpiration = try? await detectGracePeriod(for: subscription) {
             return .gracePeriod(expirationDate: gracePeriodExpiration)
           }
-          let productType = SubscriptionProductType(rawValue: subscription.productID) ?? .monthly
+          let productType = SubscriptionProductType(rawValue: subscription.productID)
           return .subscribed(productType: productType, expirationDate: expirationDate)
         } else {
           return .expired(expirationDate: expirationDate)
@@ -308,7 +308,7 @@ final class SubscriptionRemoteDataSource: Sendable {
     switch statusString {
     case "subscribed":
       let productId = data["productId"] as? String
-      let productType = productId.flatMap { SubscriptionProductType(rawValue: $0) } ?? .monthly
+      let productType = productId.flatMap { SubscriptionProductType(rawValue: $0) }
       return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime

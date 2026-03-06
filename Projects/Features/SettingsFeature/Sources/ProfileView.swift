@@ -83,6 +83,7 @@ extension Settings {
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
+          .adaptiveGlassCard()
           .overlay(
             Group {
               if store.subscriptionStatus.isPro {
@@ -98,7 +99,6 @@ extension Settings {
               }
             }
           )
-          .adaptiveGlassCard()
 
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {

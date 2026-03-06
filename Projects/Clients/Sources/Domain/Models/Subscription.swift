@@ -58,7 +58,7 @@ public enum SubscriptionStatus: Equatable, Sendable {
   /// 구독 없음 (무료)
   case none
   /// 활성 구독
-  case subscribed(productType: SubscriptionProductType, expirationDate: Date?)
+  case subscribed(productType: SubscriptionProductType?, expirationDate: Date?)
   /// 평생 구매 완료
   case lifetime
   /// 만료됨
@@ -82,7 +82,7 @@ public enum SubscriptionStatus: Equatable, Sendable {
   public var planDisplayName: String? {
     switch self {
     case .subscribed(let productType, _):
-      return productType.displayName
+      return productType?.displayName
     case .lifetime:
       return SubscriptionProductType.lifetime.displayName
     default:

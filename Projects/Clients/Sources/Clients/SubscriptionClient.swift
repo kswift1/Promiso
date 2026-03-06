@@ -183,7 +183,7 @@ extension SubscriptionClient: DependencyKey {
     case "subscribed":
       let expirationString = statusData["expirationDate"] as? String
       let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-      let productType = SubscriptionProductType(rawValue: productId) ?? .monthly
+      let productType = SubscriptionProductType(rawValue: productId)
       return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime
