@@ -219,7 +219,8 @@ extension CalendarFeature {
       let calendar = Calendar.current
       let startOfMonth = store.currentMonth.startOfMonth
       let firstWeekday = store.currentMonth.firstWeekdayOfMonth
-      let daysToSubtract = firstWeekday - 1
+      let firstDayOfWeek = AppConstants.isCalendarStartOnMonday ? 2 : 1
+      let daysToSubtract = (firstWeekday - firstDayOfWeek + 7) % 7
       guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else { return 0 }
       let daysBetween = calendar.dateComponents([.day], from: calendar.startOfDay(for: calendarStart), to: calendar.startOfDay(for: store.selectedDate)).day ?? 0
       return max(0, min(5, daysBetween / 7))
