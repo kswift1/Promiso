@@ -96,6 +96,17 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
     Color(hex: calendarColorHex) ?? .gray
   }
 
+  /// 제목에서 첫 번째 이모지를 추출, 없으면 📅 반환
+  public var displayEmoji: String {
+    for character in title {
+      if character.unicodeScalars.first?.properties.isEmoji == true,
+         character.unicodeScalars.first?.value ?? 0 > 0x238C {
+        return String(character)
+      }
+    }
+    return "📅"
+  }
+
   public var timeText: String {
     if isAllDay {
       return "종일"

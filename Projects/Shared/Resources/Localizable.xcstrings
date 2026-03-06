@@ -872,6 +872,42 @@
         }
       }
     },
+    "calendar.event.source" : {
+      "comment" : "Apple Calendar 이벤트 출처 안내",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This event was imported from iOS Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 캘린더에서 불러온 일정입니다"
+          }
+        }
+      }
+    },
+    "calendar.event.openInCalendar" : {
+      "comment" : "Apple Calendar 앱에서 보기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더에서 보기"
+          }
+        }
+      }
+    },
     "calendar.loading" : {
       "comment" : "약속 로딩 중",
       "extractionState" : "manual",

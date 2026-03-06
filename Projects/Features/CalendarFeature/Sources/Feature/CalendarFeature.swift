@@ -169,6 +169,9 @@ extension CalendarFeature {
       var sharePromise: PromiseModel?
       var isKakaoPromiseSharing: Bool = false
       var systemShareText: String?
+      /// 선택된 시스템 캘린더 이벤트 (상세 sheet용)
+      var selectedCalendarEvent: CalendarEvent?
+
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
 
@@ -603,6 +606,9 @@ extension CalendarFeature {
         case filterStatusChanged(StatusFilter)
         case filterReset
         case filterSheetDismissed
+        // 시스템 캘린더 이벤트 상세
+        case dismissCalendarEventDetail
+        case openInCalendarApp(CalendarEvent)
       }
 
       @CasePathable
@@ -1080,8 +1086,8 @@ extension CalendarFeature {
           )))
         case .personalEvent(let event):
           state.path.append(.personalEventDetail(.init(event: event)))
-        case .calendarEvent:
-          break  // 시스템 캘린더 이벤트는 탭 무시 (현재)
+        case .calendarEvent(let event):
+          state.selectedCalendarEvent = event
         }
         return .none
 
@@ -1255,6 +1261,18 @@ extension CalendarFeature {
       case .filterSheetDismissed:
         state.isFilterSheetPresented = false
         return .none
+
+      case .dismissCalendarEventDetail:
+        state.selectedCalendarEvent = nil
+        return .none
+
+      case .openInCalendarApp(let event):
+        state.selectedCalendarEvent = nil
+        let timeInterval = event.startDate.timeIntervalSinceReferenceDate
+        guard let url = URL(string: "calshow:\(timeInterval)") else { return .none }
+        return .run { _ in
+          await UIApplication.shared.open(url)
+        }
       }
     }
 
