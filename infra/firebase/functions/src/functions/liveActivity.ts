@@ -751,18 +751,52 @@ export const executeLiveActivityStart = onTaskDispatched<
     const promisesCollection = db.collection("promises");
     const usersCollection = db.collection("users");
 
-    // 1. 약속 정보 조회
-    const promiseDoc = await promisesCollection.doc(promiseId).get();
-    if (!promiseDoc.exists) {
-      console.warn(`Promise not found: ${promiseId}`);
+    // 1. 트랜잭션으로 약속 정보 조회 + started 플래그 원자적 선점
+    const promiseRef = promisesCollection.doc(promiseId);
+    const promiseData = await db.runTransaction(async (transaction) => {
+      const promiseDoc = await transaction.get(promiseRef);
+      if (!promiseDoc.exists) {
+        console.warn(`Promise not found: ${promiseId}`);
+        return null;
+      }
+
+      const data = promiseDoc.data();
+      if (!data) {
+        console.warn(`Promise data is empty: ${promiseId}`);
+        return null;
+      }
+
+      // stale task 감지: 버전이 다르면 스킵
+      const schedule = data.liveActivitySchedule;
+      const storedVersion = schedule?.version as
+        string | undefined;
+      if (!scheduleVersion || storedVersion !== scheduleVersion) {
+        console.log(
+          `⏭️ Stale LiveActivity task (version mismatch), skipping: ${promiseId}`
+        );
+        return null;
+      }
+
+      // 이미 시작된 LiveActivity가 있으면 스킵 (재시도 중복 방지)
+      if (data.liveActivitySchedule?.started === true) {
+        console.log(
+          `⏭️ LiveActivity already started, skipping: ${promiseId}`
+        );
+        return null;
+      }
+
+      // started 플래그 원자적 선점
+      transaction.update(promiseRef, {
+        "liveActivitySchedule.started": true,
+      });
+
+      return data;
+    });
+
+    if (!promiseData) {
       return;
     }
 
-    const promiseData = promiseDoc.data();
-    if (!promiseData) {
-      console.warn(`Promise data is empty: ${promiseId}`);
-      return;
-    }
     const hostId = promiseData.hostId as string;
     const groupId = promiseData.groupId as string;
     const emoji = promiseData.emoji as string || "📌";
@@ -773,27 +807,6 @@ export const executeLiveActivityStart = onTaskDispatched<
     const minParticipants = promiseData.minimumParticipants as number || 2;
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
-
-    // stale task 감지: 버전이 다르면 스킵
-    const schedule = promiseData.liveActivitySchedule;
-    const storedVersion = schedule?.version as
-      string | undefined;
-    if (!scheduleVersion || storedVersion !== scheduleVersion) {
-      console.log(
-        `⏭️ Stale LiveActivity task (version mismatch), skipping: ${promiseId}`
-      );
-      return;
-    }
-
-    // 이미 시작된 LiveActivity가 있으면 스킵 (재시도 중복 방지)
-    const alreadyStarted =
-      promiseData.liveActivitySchedule?.started === true;
-    if (alreadyStarted) {
-      console.log(
-        `⏭️ LiveActivity already started, skipping: ${promiseId}`
-      );
-      return;
-    }
 
     // 2. 그룹 정보 조회
     const groupsCollection = db.collection("groups");
@@ -861,18 +874,12 @@ export const executeLiveActivityStart = onTaskDispatched<
       }
     }
 
-    const promiseRef = promisesCollection.doc(promiseId);
     const rollbackStarted = async (reason: string) => {
       await promiseRef.update({
         "liveActivitySchedule.started": false,
       });
       console.log(`↩️ LiveActivity started rollback: ${promiseId} (${reason})`);
     };
-
-    // 5. started 플래그 선점 (재시도 중복 방지)
-    await promiseRef.update({
-      "liveActivitySchedule.started": true,
-    });
 
     // 6. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = isAPNsProduction();
