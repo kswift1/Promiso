@@ -176,6 +176,14 @@ if #available(iOS 26.0, *) {
 }
 ```
 
+### Glass Effect 사용 기준
+
+| 수식어 | 용도 | 예시 |
+|--------|------|------|
+| `.adaptiveGlassCard()` | 탭/인터랙션이 있는 섹션 | 버튼, 네비게이션 링크, 카드 탭 |
+| `.staticGlassBackground(cornerRadius:)` | 탭 동작 없는 정보 표시 섹션 | 상세 헤더, 읽기 전용 정보 카드 |
+| `.adaptiveGlassBackground()` | 탭 동작 있는 배경 (그림자 없음) | 인터랙티브 배경 영역 |
+
 ### Aurora Background (주요 화면)
 ```swift
 .auroraBackground()
