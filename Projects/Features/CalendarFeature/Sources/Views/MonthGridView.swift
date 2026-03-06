@@ -3,6 +3,7 @@
 
 import SwiftUI
 import UIKit
+import PromisoShared
 
 // MARK: - Shared Calendar
 
@@ -16,7 +17,8 @@ private func weekPageInfo(for date: Date, weekOffset: Int) -> (month: Date, week
   }
   let month = targetDate.startOfMonth
   let firstWeekday = month.firstWeekdayOfMonth
-  let daysToSubtract = firstWeekday - 1
+  let firstDayOfWeek = AppConstants.isCalendarStartOnMonday ? 2 : 1
+  let daysToSubtract = (firstWeekday - firstDayOfWeek + 7) % 7
   guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: month) else {
     return (month, 0)
   }
@@ -583,6 +585,8 @@ struct MonthGridContent: View {
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
 
+  @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
+
   // 애니메이션용 로컬 상태 — rootView 교체 시에도 보존됨 (root view의 @State)
   @State private var animCompact: Bool = true
   @State private var animShowAll: Bool = false
@@ -663,7 +667,8 @@ struct MonthGridContent: View {
     let firstWeekday = currentMonth.firstWeekdayOfMonth
 
     // 시작 날짜 계산 (이전 달 날짜 포함)
-    let daysToSubtract = firstWeekday - 1
+    let firstDayOfWeek = calendarStartOnMonday ? 2 : 1
+    let daysToSubtract = (firstWeekday - firstDayOfWeek + 7) % 7
     guard let calendarStart = monthGridCalendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else {
       return []
     }

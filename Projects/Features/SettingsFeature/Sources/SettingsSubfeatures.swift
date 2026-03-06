@@ -20,6 +20,7 @@ extension DateTimeSettings {
     @ObservableState
     public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      @Shared(.appStorage(AppConstants.UserDefaults.calendarStartOnMonday)) public var calendarStartOnMonday: Bool = true
       /// 선택된 값 (임시)
       var selectedValue: Bool = false
 
@@ -33,6 +34,7 @@ extension DateTimeSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case formatSelected(Bool)
+      case calendarStartDaySelected(Bool)
     }
 
     public var body: some ReducerOf<Self> {
@@ -48,6 +50,12 @@ extension DateTimeSettings {
             state.selectedValue = value
             state.$use24HourFormat.withLock { $0 = value }
             LocalizedDateFormatters.use24HourFormat = value
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .calendarStartDaySelected(let startOnMonday):
+            state.$calendarStartOnMonday.withLock { $0 = startOnMonday }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -70,6 +78,7 @@ extension DateTimeSettings {
       ScrollView {
         VStack(spacing: 16) {
           timeFormatSection
+          calendarStartDaySection
           exampleCardSection
         }
         .padding(.horizontal, 16)
@@ -132,6 +141,65 @@ extension DateTimeSettings {
               .font(.system(size: 14, weight: .semibold))
               .foregroundStyle(Color.pmindigo.n500)
           }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private var calendarStartDaySection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.calendarStartDaySection)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          calendarStartDayRow(
+            startOnMonday: false,
+            title: LocalizedStrings.SettingsStrings.calendarStartSunday,
+            weekdays: LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: false).joined(separator: " ")
+          )
+          Divider()
+            .padding(.leading, 48)
+          calendarStartDayRow(
+            startOnMonday: true,
+            title: LocalizedStrings.SettingsStrings.calendarStartMonday,
+            weekdays: LocalizedStrings.Calendar.orderedWeekdaySymbols(startOnMonday: true).joined(separator: " ")
+          )
+        }
+        .adaptiveGlassCard()
+
+        Text(LocalizedStrings.SettingsStrings.calendarStartDayHint)
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private func calendarStartDayRow(startOnMonday: Bool, title: String, weekdays: String) -> some View {
+      Button {
+        store.send(.view(.calendarStartDaySelected(startOnMonday)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: store.calendarStartOnMonday == startOnMonday ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 20))
+            .foregroundStyle(store.calendarStartOnMonday == startOnMonday ? Color.pmindigo.n500 : Color.pmgray.n400)
+            .frame(width: 24)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(weekdays)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)

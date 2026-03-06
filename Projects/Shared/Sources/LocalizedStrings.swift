@@ -276,6 +276,13 @@ public enum LocalizedStrings {
     public static var timeFormat24Hour: String { String(localized: "settings.timeFormat24Hour", bundle: bundle) }
     public static var timeFormat24HourExample: String { String(localized: "settings.timeFormat24HourExample", bundle: bundle) }
     public static var timeFormatHint: String { String(localized: "settings.timeFormatHint", bundle: bundle) }
+
+    // Calendar Start Day
+    public static var calendarStartDaySection: String { String(localized: "settings.calendarStartDaySection", bundle: bundle) }
+    public static var calendarStartSunday: String { String(localized: "settings.calendarStartSunday", bundle: bundle) }
+    public static var calendarStartMonday: String { String(localized: "settings.calendarStartMonday", bundle: bundle) }
+    public static var calendarStartDayHint: String { String(localized: "settings.calendarStartDayHint", bundle: bundle) }
+
     public static var preview: String { String(localized: "settings.preview", bundle: bundle) }
     public static var previewHint: String { String(localized: "settings.previewHint", bundle: bundle) }
     public static var restartTitle: String { String(localized: "settings.restartTitle", bundle: bundle) }
@@ -1299,6 +1306,15 @@ public enum LocalizedStrings {
     public static var weekdayThu: String { String(localized: "calendar.weekday.thu", bundle: bundle) }
     public static var weekdayFri: String { String(localized: "calendar.weekday.fri", bundle: bundle) }
     public static var weekdaySat: String { String(localized: "calendar.weekday.sat", bundle: bundle) }
+
+    /// 설정에 따라 정렬된 요일 심볼 배열
+    public static func orderedWeekdaySymbols(startOnMonday: Bool) -> [String] {
+      if startOnMonday {
+        return [weekdayMon, weekdayTue, weekdayWed, weekdayThu, weekdayFri, weekdaySat, weekdaySun]
+      } else {
+        return [weekdaySun, weekdayMon, weekdayTue, weekdayWed, weekdayThu, weekdayFri, weekdaySat]
+      }
+    }
 
     // Calendar Permission Banner
     public static var syncCalendarTitle: String { String(localized: "calendar.sync.title", bundle: bundle) }
