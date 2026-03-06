@@ -101,19 +101,13 @@ extension CalendarFeature {
     private var calendarWithEditCovers: some View {
       calendarBaseView
         .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
-          NavigationStack {
-            EditPromise.RootView(store: editStore)
-          }
+          EditPromise.RootView(store: editStore)
         }
         .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
-          NavigationStack {
-            CreatePersonalEvent.RootView(store: editStore)
-          }
+          CreatePersonalEvent.RootView(store: editStore)
         }
         .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
-          NavigationStack {
-            CreatePromise.RootView(store: createStore)
-          }
+          CreatePromise.RootView(store: createStore)
         }
     }
 
