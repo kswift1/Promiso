@@ -100,6 +100,9 @@ struct CalendarEventDetailView: View {
 
   // MARK: - Source Section
 
+  /// iOS Calendar 앱 테마 색상
+  private static let appleCalendarColor = Color.red
+
   private var sourceSection: some View {
     Button {
       let timeInterval = event.startDate.timeIntervalSinceReferenceDate
@@ -112,7 +115,7 @@ struct CalendarEventDetailView: View {
         HStack(spacing: 8) {
           Image(systemName: "calendar")
             .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(event.calendarColor)
+            .foregroundStyle(Self.appleCalendarColor)
 
           Text(LocalizedStrings.Calendar.calendarEventSource)
             .font(.system(size: 14))
@@ -132,10 +135,10 @@ struct CalendarEventDetailView: View {
           Image(systemName: "arrow.up.right")
             .font(.system(size: 14, weight: .semibold))
         }
-        .foregroundStyle(event.calendarColor)
+        .foregroundStyle(Self.appleCalendarColor)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(event.calendarColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        .background(Self.appleCalendarColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
       }
