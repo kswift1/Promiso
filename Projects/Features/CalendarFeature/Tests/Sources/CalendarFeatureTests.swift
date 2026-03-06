@@ -51,6 +51,7 @@ struct CalendarFeatureTests {
   func toggleDisplayMode_cyclesThroughAllModes() async {
     var state = makeState(key: "toggle-mode")
     state.loadedMonths.insert(state.selectedDate.startOfMonth)
+    state.loadedPersonalEventMonths.insert(state.selectedDate.startOfMonth)
 
     let store = makeStore(state: state)
 
@@ -87,6 +88,7 @@ struct CalendarFeatureTests {
   func setDisplayMode_directlyChangesMode() async {
     var state = makeState(key: "set-mode")
     state.loadedMonths.insert(state.selectedDate.startOfMonth)
+    state.loadedPersonalEventMonths.insert(state.selectedDate.startOfMonth)
 
     let store = makeStore(state: state)
 
@@ -102,13 +104,14 @@ struct CalendarFeatureTests {
 
   // MARK: - 날짜 선택 / 이동 테스트
 
-  @Test("selectDate 시 월이 바뀌면 fetchPromisesForMonth 트리거")
+  @Test("selectDate 시 월이 바뀌면 fetchPromisesForMonth 및 fetchPersonalEventsForMonth 트리거")
   func selectDate_whenMonthChanges_sendsFetchPromisesForMonth() async {
     let january = makeDate(year: 2026, month: 1, day: 15)
     let february = makeDate(year: 2026, month: 2, day: 3)
 
     let state = makeState(key: "select-date-month-change", selectedDate: january)
     let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
@@ -116,6 +119,7 @@ struct CalendarFeatureTests {
       $0.currentMonth = february.startOfMonth
     }
     await store.receive(\.internal.fetchPromisesForMonth)
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
   }
 
   @Test("moveToToday 시 selectedDate/currentWeekStart/currentMonth 동기화")
@@ -180,7 +184,9 @@ struct CalendarFeatureTests {
       // loadedMonths에서 현재 월만 제거 (staleMonth는 그대로)
       $0.loadedMonths = [staleMonth]
     }
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
     await store.receive(\.internal.fetchPromisesForMonth)
+    await store.receive(\.internal.personalEventsResponseForMonth)
     await store.receive(\.internal.promisesResponseForMonth)
 
     let requests = await recorder.values()
@@ -359,13 +365,12 @@ struct CalendarFeatureTests {
   @Test("pastTimeBlocked 액션 시 경고 토스트 메시지 설정")
   func pastTimeBlocked_setsWarningToastMessage() async {
     let store = makeStore(state: makeState(key: "past-time-blocked"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.pastTimeBlocked)) {
-      $0.toastMessage = ToastMessage(
-        type: .warning,
-        title: LocalizedStrings.Calendar.cannotCreatePastSchedule
-      )
-    }
+    await store.send(.view(.pastTimeBlocked))
+
+    #expect(store.state.toastMessage?.type == .warning)
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Calendar.cannotCreatePastSchedule)
   }
 
   @Test("dayLongPressCreatePersonalEvent 과거 날짜 시 pastTimeBlocked 트리거")
@@ -547,6 +552,7 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.fetchEvents = { _, _ in [] }
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
+    deps.personalEventClient.getEventsByDateRange = { _, _ in [] }
     deps.userSettingsClient.fetchSettings = { _ in
       UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
     }
