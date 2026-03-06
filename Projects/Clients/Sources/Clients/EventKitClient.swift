@@ -282,8 +282,20 @@ extension EventKitClient: DependencyKey {
         let events = eventStore.events(matching: predicate)
 
         // Promiso가 동기화한 이벤트 제외 (promiso:// URL 스킴)
+        // 공휴일 구독 캘린더 이벤트 제외 (Nager.Date API로 별도 표시)
         return events
-          .filter { PromisoCalendarTag.parse(from: $0.url) == nil }
+          .filter { event in
+            // Promiso 동기화 이벤트 제외
+            guard PromisoCalendarTag.parse(from: event.url) == nil else { return false }
+            // 공휴일 구독 캘린더 제외
+            if event.calendar?.type == .subscription {
+              let title = event.calendar?.title.lowercased() ?? ""
+              if title.contains("holiday") || event.calendar?.title.contains("공휴일") == true {
+                return false
+              }
+            }
+            return true
+          }
           .map { $0.toCalendarEvent() }
       },
 

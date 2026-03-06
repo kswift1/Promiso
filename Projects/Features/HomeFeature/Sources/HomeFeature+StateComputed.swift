@@ -204,13 +204,19 @@ extension Home.Feature.State {
     return overlayPersonalEventsByMonth.values.flatMap { $0 }.filter { seen.insert($0.id).inserted }
   }
 
+  /// 공휴일 날짜 Set
+  var overlayHolidayDateSet: Set<Date> {
+    Set(overlayHolidaysByDate.keys)
+  }
+
   /// 오버레이 캘린더에 표시할 날짜 셀 배열
   var overlayCalendarDays: [OverlayCalendarModels.DayItem] {
     OverlayCalendarModels.generateMonthDays(
       for: overlayCalendarMonth,
       selectedDate: overlaySelectedDate,
       scheduleCountsByDate: overlayScheduleCountsByDate,
-      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate,
+      holidayDates: overlayHolidayDateSet
     )
   }
 
@@ -222,7 +228,8 @@ extension Home.Feature.State {
       for: prevMonth,
       selectedDate: overlaySelectedDate,
       scheduleCountsByDate: overlayScheduleCountsByDate,
-      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate,
+      holidayDates: overlayHolidayDateSet
     )
   }
 
@@ -234,7 +241,8 @@ extension Home.Feature.State {
       for: nextMonth,
       selectedDate: overlaySelectedDate,
       scheduleCountsByDate: overlayScheduleCountsByDate,
-      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate,
+      holidayDates: overlayHolidayDateSet
     )
   }
 

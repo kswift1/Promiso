@@ -35,6 +35,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   @Binding var currentMonth: Date
   let selectedDate: Date
   let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
+  var holidayDates: Set<Date> = []
   let namespace: Namespace.ID
   let isCompactMode: Bool
   var showAllIndicators: Bool = false
@@ -65,6 +66,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       nextMonth: nextMonth,
       selectedDate: selectedDate,
       scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+      holidayDates: holidayDates,
       namespace: namespace,
       isCompactMode: isCompactMode,
       showAllIndicators: showAllIndicators,
@@ -130,6 +132,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         nextMonth: nextMonth,
         selectedDate: selectedDate,
         scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+        holidayDates: holidayDates,
         namespace: namespace,
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
@@ -152,6 +155,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           nextMonth: self.nextMonth,
           selectedDate: self.selectedDate,
           scheduleIndicatorsByDate: self.scheduleIndicatorsByDate,
+          holidayDates: self.holidayDates,
           namespace: self.namespace,
           isCompactMode: self.isCompactMode,
           showAllIndicators: self.showAllIndicators,
@@ -172,6 +176,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         nextMonth: nextMonth,
         selectedDate: selectedDate,
         scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+        holidayDates: holidayDates,
         namespace: namespace,
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
@@ -302,6 +307,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       nextMonth: Date,
       selectedDate: Date,
       scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
+      holidayDates: Set<Date> = [],
       namespace: Namespace.ID,
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
@@ -335,6 +341,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           currentMonth: month,
           selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+          holidayDates: holidayDates,
           namespace: namespace,
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
@@ -391,6 +398,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       nextMonth: Date,
       selectedDate: Date,
       scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
+      holidayDates: Set<Date> = [],
       namespace: Namespace.ID,
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
@@ -421,6 +429,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           currentMonth: pageMonths[index],
           selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+          holidayDates: holidayDates,
           namespace: namespace,
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
@@ -573,6 +582,7 @@ struct MonthGridContent: View {
   let currentMonth: Date
   let selectedDate: Date
   let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
+  var holidayDates: Set<Date> = []
   let namespace: Namespace.ID
   let isCompactMode: Bool
   var showAllIndicators: Bool = false
@@ -639,6 +649,7 @@ struct MonthGridContent: View {
               selectionId: "monthSelection",
               isCompactMode: animCompact,
               showAllIndicators: animShowAll,
+              isHoliday: isHoliday(date),
               onTap: { onDateSelected(date) },
               onIndicatorTapped: onIndicatorTapped,
               onDayCreatePersonalEvent: onDayCreatePersonalEvent,
@@ -702,6 +713,11 @@ struct MonthGridContent: View {
   private func getScheduleIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
     let dateKey = monthGridCalendar.startOfDay(for: date)
     return scheduleIndicatorsByDate[dateKey] ?? []
+  }
+
+  private func isHoliday(_ date: Date) -> Bool {
+    let dateKey = monthGridCalendar.startOfDay(for: date)
+    return holidayDates.contains(dateKey)
   }
 }
 

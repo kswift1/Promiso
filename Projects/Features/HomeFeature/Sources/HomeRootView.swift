@@ -65,6 +65,7 @@ extension Home {
               currentUserId: store.currentUser.userId,
               weatherCache: store.weatherCache,
               groupColorMap: store.overlayGroupColorMap,
+              holidayDates: store.overlayHolidayDateSet,
               onClose: {
                 store.send(.view(.calendarOverlayClosed))
               },

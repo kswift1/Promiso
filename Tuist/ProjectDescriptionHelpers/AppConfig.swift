@@ -98,6 +98,8 @@ public enum AppConfig {
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       // Microsoft Clarity
       "CLARITY_PROJECT_ID": .string("$(CLARITY_PROJECT_ID)"),
+      // 공공데이터포털 (한국천문연구원 특일 정보 API)
+      "DATA_GO_KR_SERVICE_KEY": .string("$(DATA_GO_KR_SERVICE_KEY)"),
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)

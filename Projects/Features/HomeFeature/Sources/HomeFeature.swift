@@ -27,6 +27,7 @@ extension Home {
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.locationClient) var locationClient
     @Dependency(\.openURL) var openURL
+    @Dependency(\.holidayClient) var holidayClient
 
     public init() {}
 
@@ -102,6 +103,10 @@ extension Home {
       var overlayLoadedPersonalEventMonths: Set<Date> = []
       /// 오버레이 Feature 진입 전 캘린더 모드 (뒤로가기 시 복귀용)
       var overlayCalendarModeBeforeFeature: CalendarMode?
+      /// 공휴일 맵 (날짜 → 공휴일 이름)
+      var overlayHolidaysByDate: [Date: String] = [:]
+      /// 로드된 공휴일 연도
+      var overlayLoadedHolidayYears: Set<Int> = []
 
       /// 개인 일정 생성 모달
       @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
@@ -258,6 +263,10 @@ extension Home {
         case prefetchOverlayAdjacentPersonalEvents
         /// 오버레이 일정 상세 state 정리 (전환 애니메이션 완료 후)
         case clearOverlayScheduleDetail
+        /// 오버레이 공휴일 조회
+        case fetchOverlayHolidays(year: Int)
+        /// 오버레이 공휴일 응답
+        case overlayHolidaysResponse(year: Int, Result<[PublicHoliday], Error>)
       }
 
       @CasePathable
@@ -410,10 +419,23 @@ extension Home {
               weatherEffect = .none
             }
 
+            // 공휴일 로드 (현재 연도 + 인접 연도)
+            let today = Date()
+            let calendar = Calendar.current
+            let currentYear = calendar.component(.year, from: today)
+            var holidayEffects: [Effect<Action>] = []
+            for year in [currentYear - 1, currentYear, currentYear + 1] {
+              if !state.overlayLoadedHolidayYears.contains(year) {
+                holidayEffects.append(.send(.internal(.fetchOverlayHolidays(year: year))))
+              }
+            }
+
             return .merge(
-              weatherEffect,
-              .send(.internal(.fetchOverlaySchedules(month: currentMonth))),
-              .send(.internal(.fetchOverlayPersonalEvents(month: currentMonth)))
+              [
+                weatherEffect,
+                .send(.internal(.fetchOverlaySchedules(month: currentMonth))),
+                .send(.internal(.fetchOverlayPersonalEvents(month: currentMonth)))
+              ] + holidayEffects
             )
 
           case .calendarOverlayClosed:
@@ -429,6 +451,8 @@ extension Home {
             state.overlayLoadedMonths.removeAll()
             state.overlayPersonalEventsByMonth.removeAll()
             state.overlayLoadedPersonalEventMonths.removeAll()
+            state.overlayHolidaysByDate.removeAll()
+            state.overlayLoadedHolidayYears.removeAll()
             return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayDateSelected(let date):
@@ -1003,6 +1027,32 @@ extension Home {
 
           case .clearOverlayScheduleDetail:
             state.overlayScheduleDetail = nil
+            return .none
+
+          case .fetchOverlayHolidays(let year):
+            guard !state.overlayLoadedHolidayYears.contains(year) else { return .none }
+            return .run { [holidayClient] send in
+              do {
+                let holidays = try await holidayClient.fetchHolidays(year)
+                await send(.internal(.overlayHolidaysResponse(year: year, .success(holidays))))
+              } catch {
+                await send(.internal(.overlayHolidaysResponse(year: year, .failure(error))))
+              }
+            }
+
+          case .overlayHolidaysResponse(let year, let result):
+            switch result {
+            case .success(let holidays):
+              state.overlayLoadedHolidayYears.insert(year)
+              let calendar = Calendar.current
+              for holiday in holidays {
+                let dateKey = calendar.startOfDay(for: holiday.date)
+                state.overlayHolidaysByDate[dateKey] = holiday.localName
+              }
+            case .failure:
+              // 공휴일 로드 실패 시 조용히 무시
+              break
+            }
             return .none
 
           }

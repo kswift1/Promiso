@@ -1,34 +1,6 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
-    "%@%%" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%%"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%%"
-          }
-        }
-      }
-    },
-    "%@~%@°" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@~%2$@°"
-          }
-        }
-      }
-    },
-    "%@°" : {},
-    "%@건의 일정이 겹쳐요" : {},
     "* iPhone 14 Pro 이상부터 가능해요" : {
       "localizations" : {
         "en" : {
@@ -45,30 +17,99 @@
         }
       }
     },
-    "Bottom" : {},
-    "Error Toast" : {},
-    "Info Toast" : {},
-    "PRO" : {},
-    "Page %@" : {
+    "%@%%" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Page %@"
+            "value" : "%@%%"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Page %@"
+            "value" : "%@%%"
           }
         }
       }
     },
-    "Snackbar (Action)" : {},
-    "Success Toast" : {},
-    "Top" : {},
-    "Warning Toast" : {},
+    "%@°" : {
+
+    },
+    "%@~%@°" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@~%2$@°"
+          }
+        }
+      }
+    },
+    "|" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "|"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "|"
+          }
+        }
+      }
+    },
+    "✓" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓"
+          }
+        }
+      }
+    },
+    "🏁" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏁"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏁"
+          }
+        }
+      }
+    },
+    "📍" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍"
+          }
+        }
+      }
+    },
     "appEntry.update.action" : {
       "comment" : "업데이트 버튼",
       "extractionState" : "manual",
@@ -572,6 +613,9 @@
           }
         }
       }
+    },
+    "Bottom" : {
+
     },
     "calendar.contextMenu.addPersonalEvent" : {
       "extractionState" : "stale",
@@ -3546,6 +3590,9 @@
           }
         }
       }
+    },
+    "Error Toast" : {
+
     },
     "error.accountDeleteFailed" : {
       "comment" : "회원 탈퇴 실패",
@@ -8548,114 +8595,6 @@
         }
       }
     },
-    "home.today.empty.random10.subtitle" : {
-      "comment" : "랜덤 메시지10 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Take time to care for yourself"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "자신을 돌보는 시간을 가져요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random10.title" : {
-      "comment" : "랜덤 메시지10",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time for me"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "나를 위한 시간이에요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random11.subtitle" : {
-      "comment" : "랜덤 메시지11 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A day to rest comfortably"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "편안하게 쉬어가는 하루"
-          }
-        }
-      }
-    },
-    "home.today.empty.random11.title" : {
-      "comment" : "랜덤 메시지11",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A relaxed today"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "여유있는 오늘이에요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random12.subtitle" : {
-      "comment" : "랜덤 메시지12 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time flowing naturally"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "자연스럽게 흐르는 시간"
-          }
-        }
-      }
-    },
-    "home.today.empty.random12.title" : {
-      "comment" : "랜덤 메시지12",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A peaceful day"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "평화로운 하루예요"
-          }
-        }
-      }
-    },
     "home.today.empty.random2.subtitle" : {
       "comment" : "랜덤 메시지2 설명",
       "extractionState" : "manual",
@@ -8944,6 +8883,114 @@
         }
       }
     },
+    "home.today.empty.random10.subtitle" : {
+      "comment" : "랜덤 메시지10 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take time to care for yourself"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자신을 돌보는 시간을 가져요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random10.title" : {
+      "comment" : "랜덤 메시지10",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time for me"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나를 위한 시간이에요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random11.subtitle" : {
+      "comment" : "랜덤 메시지11 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A day to rest comfortably"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "편안하게 쉬어가는 하루"
+          }
+        }
+      }
+    },
+    "home.today.empty.random11.title" : {
+      "comment" : "랜덤 메시지11",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A relaxed today"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유있는 오늘이에요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random12.subtitle" : {
+      "comment" : "랜덤 메시지12 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time flowing naturally"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자연스럽게 흐르는 시간"
+          }
+        }
+      }
+    },
+    "home.today.empty.random12.title" : {
+      "comment" : "랜덤 메시지12",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A peaceful day"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "평화로운 하루예요"
+          }
+        }
+      }
+    },
     "home.today.hoursMinutes" : {
       "comment" : "N시간 N분",
       "extractionState" : "manual",
@@ -9141,6 +9188,9 @@
           }
         }
       }
+    },
+    "Info Toast" : {
+
     },
     "joinGroup.checking" : {
       "comment" : "확인 중",
@@ -9587,23 +9637,6 @@
         }
       }
     },
-    "livePromise.eta.minuteUnit" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "min"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "분"
-          }
-        }
-      }
-    },
     "livePromise.eta.minutesUntilArrival" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9617,6 +9650,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "분 후 도착"
+          }
+        }
+      }
+    },
+    "livePromise.eta.minuteUnit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "분"
           }
         }
       }
@@ -12807,24 +12857,6 @@
         }
       }
     },
-    "overlayScheduleDetail.confirmThreshold" : {
-      "comment" : "확정 기준 인원 수 (예: 확정 5)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Threshold %lld"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "확정 %lld"
-          }
-        }
-      }
-    },
     "overlayScheduleDetail.confirmationRemaining" : {
       "comment" : "확정까지 남은 인원 (예: 확정까지 3명 더 필요)",
       "extractionState" : "manual",
@@ -12857,6 +12889,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "확정됨"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.confirmThreshold" : {
+      "comment" : "확정 기준 인원 수 (예: 확정 5)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threshold %lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확정 %lld"
           }
         }
       }
@@ -13109,6 +13159,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체 상세 보기"
+          }
+        }
+      }
+    },
+    "Page %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %@"
           }
         }
       }
@@ -13688,6 +13754,9 @@
           }
         }
       }
+    },
+    "PRO" : {
+
     },
     "profile.error.nicknameCheckFailed" : {
       "comment" : "닉네임 확인 실패",
@@ -14787,24 +14856,6 @@
         }
       }
     },
-    "promiseCard.resetToPending" : {
-      "comment" : "미정으로 되돌리기",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset to pending"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "미정으로 되돌리기"
-          }
-        }
-      }
-    },
     "promiseCard.resetting" : {
       "comment" : "되돌리는 중 (진행 상태)",
       "extractionState" : "manual",
@@ -14819,6 +14870,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "되돌리는 중"
+          }
+        }
+      }
+    },
+    "promiseCard.resetToPending" : {
+      "comment" : "미정으로 되돌리기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset to pending"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "미정으로 되돌리기"
           }
         }
       }
@@ -16171,24 +16240,6 @@
         }
       }
     },
-    "settings.developer.crashWillOccur" : {
-      "comment" : "크래시 발생",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Crash Will Occur"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "크래시 발생"
-          }
-        }
-      }
-    },
     "settings.developer.crashlyticsTest" : {
       "comment" : "Crashlytics 테스트",
       "extractionState" : "manual",
@@ -16203,6 +16254,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Crashlytics 테스트"
+          }
+        }
+      }
+    },
+    "settings.developer.crashWillOccur" : {
+      "comment" : "크래시 발생",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crash Will Occur"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "크래시 발생"
           }
         }
       }
@@ -16958,6 +17027,24 @@
         }
       }
     },
+    "settings.liveActivityTest.ended" : {
+      "comment" : "종료됨",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "종료됨"
+          }
+        }
+      }
+    },
     "settings.liveActivityTest.endLiveActivity" : {
       "comment" : "라이브액티비티 종료",
       "extractionState" : "manual",
@@ -16976,20 +17063,20 @@
         }
       }
     },
-    "settings.liveActivityTest.ended" : {
-      "comment" : "종료됨",
+    "settings.liveActivityTest.eta5Min" : {
+      "comment" : "5분",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ended"
+            "value" : "5min"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "종료됨"
+            "value" : "5분"
           }
         }
       }
@@ -17044,24 +17131,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "30분"
-          }
-        }
-      }
-    },
-    "settings.liveActivityTest.eta5Min" : {
-      "comment" : "5분",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "5min"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "5분"
           }
         }
       }
@@ -17408,24 +17477,6 @@
         }
       }
     },
-    "settings.liveActivityTest.startMockLiveActivity" : {
-      "comment" : "목 라이브액티비티 시작",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start Mock Live Activity"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "목 라이브액티비티 시작"
-          }
-        }
-      }
-    },
     "settings.liveActivityTest.started" : {
       "comment" : "시작됨",
       "extractionState" : "manual",
@@ -17440,6 +17491,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "시작됨: "
+          }
+        }
+      }
+    },
+    "settings.liveActivityTest.startMockLiveActivity" : {
+      "comment" : "목 라이브액티비티 시작",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Mock Live Activity"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "목 라이브액티비티 시작"
           }
         }
       }
@@ -17750,6 +17819,60 @@
         }
       }
     },
+    "settings.notifications" : {
+      "comment" : "알림 설정",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림 설정"
+          }
+        }
+      }
+    },
+    "settings.notifications.email" : {
+      "comment" : "이메일 알림",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Notifications"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이메일 알림"
+          }
+        }
+      }
+    },
+    "settings.notifications.push" : {
+      "comment" : "푸시 알림",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push Notifications"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "푸시 알림"
+          }
+        }
+      }
+    },
     "settings.notificationSettings.allow" : {
       "comment" : "알림 허용",
       "extractionState" : "manual",
@@ -17786,24 +17909,6 @@
         }
       }
     },
-    "settings.notificationSettings.canToggle" : {
-      "comment" : "해당 알림을 켜고 끌 수 있어요",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You can toggle this notification on or off"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "해당 알림을 켜고 끌 수 있어요"
-          }
-        }
-      }
-    },
     "settings.notificationSettings.cancelled" : {
       "comment" : "영화 관람 약속 무산 😢",
       "extractionState" : "manual",
@@ -17836,6 +17941,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "참여 인원이 부족해서 확정되지 않았어요"
+          }
+        }
+      }
+    },
+    "settings.notificationSettings.canToggle" : {
+      "comment" : "해당 알림을 켜고 끌 수 있어요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can toggle this notification on or off"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "해당 알림을 켜고 끌 수 있어요"
           }
         }
       }
@@ -18178,60 +18301,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "약속 정보가 수정됐어요. 확인해주세요!"
-          }
-        }
-      }
-    },
-    "settings.notifications" : {
-      "comment" : "알림 설정",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notification Settings"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "알림 설정"
-          }
-        }
-      }
-    },
-    "settings.notifications.email" : {
-      "comment" : "이메일 알림",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Email Notifications"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이메일 알림"
-          }
-        }
-      }
-    },
-    "settings.notifications.push" : {
-      "comment" : "푸시 알림",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Push Notifications"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "푸시 알림"
           }
         }
       }
@@ -19851,24 +19920,6 @@
         }
       }
     },
-    "shared.editPromise.minMembersDescription" : {
-      "comment" : "최소 인원 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promise auto-confirms when at least %lld members accept"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "최소 %lld명이 참석하면 약속이 자동으로 확정됩니다"
-          }
-        }
-      }
-    },
     "shared.editPromise.minimumParticipants" : {
       "comment" : "최소 참가 인원",
       "extractionState" : "manual",
@@ -19883,6 +19934,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "최소 참가 인원"
+          }
+        }
+      }
+    },
+    "shared.editPromise.minMembersDescription" : {
+      "comment" : "최소 인원 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise auto-confirms when at least %lld members accept"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "최소 %lld명이 참석하면 약속이 자동으로 확정됩니다"
           }
         }
       }
@@ -20823,42 +20892,6 @@
         }
       }
     },
-    "shared.reminder.10min" : {
-      "comment" : "10분 전",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "10 min before"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "10분 전"
-          }
-        }
-      }
-    },
-    "shared.reminder.15min" : {
-      "comment" : "15분 전",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "15 min before"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "15분 전"
-          }
-        }
-      }
-    },
     "shared.reminder.1day" : {
       "comment" : "1일 전",
       "extractionState" : "manual",
@@ -20949,24 +20982,6 @@
         }
       }
     },
-    "shared.reminder.30min" : {
-      "comment" : "30분 전",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "30 min before"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "30분 전"
-          }
-        }
-      }
-    },
     "shared.reminder.5min" : {
       "comment" : "5분 전",
       "extractionState" : "manual",
@@ -20981,6 +20996,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "5분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.10min" : {
+      "comment" : "10분 전",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10 min before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.15min" : {
+      "comment" : "15분 전",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 min before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.30min" : {
+      "comment" : "30분 전",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 min before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30분 전"
           }
         }
       }
@@ -21056,6 +21125,12 @@
           }
         }
       }
+    },
+    "Snackbar (Action)" : {
+
+    },
+    "Success Toast" : {
+
     },
     "tab.calendar" : {
       "comment" : "달력",
@@ -21196,6 +21271,12 @@
           }
         }
       }
+    },
+    "Top" : {
+
+    },
+    "Warning Toast" : {
+
     },
     "weather.advice.bringUmbrella" : {
       "extractionState" : "manual",
@@ -22737,38 +22818,6 @@
         }
       }
     },
-    "|" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "|"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "|"
-          }
-        }
-      }
-    },
-    "✓" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "✓"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "✓"
-          }
-        }
-      }
-    },
     "그룹 만들기" : {
       "localizations" : {
         "en" : {
@@ -22900,7 +22949,9 @@
         }
       }
     },
-    "이전" : {},
+    "이전" : {
+
+    },
     "잠금화면" : {
       "localizations" : {
         "en" : {
@@ -22945,38 +22996,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "초대 코드로 참여하기"
-          }
-        }
-      }
-    },
-    "🏁" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "🏁"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "🏁"
-          }
-        }
-      }
-    },
-    "📍" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍"
           }
         }
       }

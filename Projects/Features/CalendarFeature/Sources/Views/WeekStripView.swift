@@ -30,6 +30,7 @@ struct PagingWeekStripView: View {
   @Binding var currentWeekStart: Date
   let selectedDate: Date
   let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
+  var holidayDates: Set<Date> = []
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -43,12 +44,14 @@ struct PagingWeekStripView: View {
     currentWeekStart: Binding<Date>,
     selectedDate: Date,
     scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
+    holidayDates: Set<Date> = [],
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void
   ) {
     self._currentWeekStart = currentWeekStart
     self.selectedDate = selectedDate
     self.scheduleIndicatorsByDate = scheduleIndicatorsByDate
+    self.holidayDates = holidayDates
     self.namespace = namespace
     self.onDateSelected = onDateSelected
 
@@ -65,6 +68,7 @@ struct PagingWeekStripView: View {
           weekDates: getWeekDates(for: weekStart),
           selectedDate: selectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+          holidayDates: holidayDates,
           namespace: namespace,
           onDateSelected: onDateSelected
         )
@@ -148,6 +152,7 @@ struct WeekStripContent: View {
   let weekDates: [Date]
   let selectedDate: Date
   let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
+  var holidayDates: Set<Date> = []
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -162,6 +167,7 @@ struct WeekStripContent: View {
           scheduleIndicators: getScheduleIndicators(for: date),
           namespace: namespace,
           selectionId: "weekSelection",
+          isHoliday: isHoliday(date),
           onTap: { onDateSelected(date) }
         )
       }
@@ -183,6 +189,11 @@ struct WeekStripContent: View {
   private func getScheduleIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
     let dateKey = weekStripCalendar.startOfDay(for: date)
     return scheduleIndicatorsByDate[dateKey] ?? []
+  }
+
+  private func isHoliday(_ date: Date) -> Bool {
+    let dateKey = weekStripCalendar.startOfDay(for: date)
+    return holidayDates.contains(dateKey)
   }
 }
 
