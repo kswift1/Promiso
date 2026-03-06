@@ -33,6 +33,8 @@ extension CalendarFeature {
           PromiseDetail.RootView(store: promiseDetailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .calendarEventDetail(let calendarEventDetailStore):
+          CalendarEventDetailView(event: calendarEventDetailStore.event)
         }
       }
     }
@@ -91,19 +93,6 @@ extension CalendarFeature {
           )
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .ignoresSafeArea()
-        }
-        .sheet(isPresented: Binding(
-          get: { store.selectedCalendarEvent != nil },
-          set: { if !$0 { store.send(.view(.dismissCalendarEventDetail)) } }
-        )) {
-          if let event = store.selectedCalendarEvent {
-            CalendarEventDetailView(
-              event: event,
-              onOpenInCalendar: {
-                store.send(.view(.openInCalendarApp(event)))
-              }
-            )
-          }
         }
         .toast(Binding(
           get: { store.toastMessage },

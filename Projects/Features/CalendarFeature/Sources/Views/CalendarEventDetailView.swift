@@ -10,34 +10,20 @@ import SharedFeature
 
 struct CalendarEventDetailView: View {
   let event: CalendarEvent
-  let onOpenInCalendar: () -> Void
-  @Environment(\.dismiss) private var dismiss
+  @Environment(\.openURL) private var openURL
 
   var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(spacing: 24) {
-          headerSection
-          scheduleSection
-          sourceSection
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
+    ScrollView {
+      VStack(spacing: 24) {
+        headerSection
+        scheduleSection
+        sourceSection
       }
-      .auroraBackground()
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button { dismiss() } label: {
-            Image(systemName: "xmark")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(.secondary)
-              .frame(width: 44, height: 44)
-              .contentShape(Rectangle())
-          }
-        }
-      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 24)
     }
+    .auroraBackground()
+    .navigationBarTitleDisplayMode(.inline)
   }
 
   // MARK: - Header Section
@@ -116,7 +102,10 @@ struct CalendarEventDetailView: View {
 
   private var sourceSection: some View {
     Button {
-      onOpenInCalendar()
+      let timeInterval = event.startDate.timeIntervalSinceReferenceDate
+      if let url = URL(string: "calshow:\(timeInterval)") {
+        openURL(url)
+      }
     } label: {
       VStack(spacing: 12) {
         // iOS 캘린더 안내
@@ -166,33 +155,35 @@ struct CalendarEventDetailView: View {
 // MARK: - Preview
 
 #Preview("Calendar Event Detail") {
-  CalendarEventDetailView(
-    event: CalendarEvent(
-      id: "preview-1",
-      title: "🎂 생일 파티",
-      startDate: Date(),
-      endDate: Date().addingTimeInterval(3600),
-      location: "강남역 카페",
-      isAllDay: false,
-      calendarName: "개인",
-      calendarColorHex: "#007AFF"
-    ),
-    onOpenInCalendar: {}
-  )
+  NavigationStack {
+    CalendarEventDetailView(
+      event: CalendarEvent(
+        id: "preview-1",
+        title: "🎂 생일 파티",
+        startDate: Date(),
+        endDate: Date().addingTimeInterval(3600),
+        location: "강남역 카페",
+        isAllDay: false,
+        calendarName: "개인",
+        calendarColorHex: "#007AFF"
+      )
+    )
+  }
 }
 
 #Preview("Calendar Event - All Day") {
-  CalendarEventDetailView(
-    event: CalendarEvent(
-      id: "preview-2",
-      title: "휴가",
-      startDate: Date(),
-      endDate: Date(),
-      location: nil,
-      isAllDay: true,
-      calendarName: "휴일",
-      calendarColorHex: "#FF9500"
-    ),
-    onOpenInCalendar: {}
-  )
+  NavigationStack {
+    CalendarEventDetailView(
+      event: CalendarEvent(
+        id: "preview-2",
+        title: "휴가",
+        startDate: Date(),
+        endDate: Date(),
+        location: nil,
+        isAllDay: true,
+        calendarName: "휴일",
+        calendarColorHex: "#FF9500"
+      )
+    )
+  }
 }
