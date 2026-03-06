@@ -60,8 +60,6 @@ extension ProPlan {
       public var selectedProductId: String?
       /// 에러 메시지
       public var errorMessage: String?
-      /// 구독 관리 화면 표시 여부
-      public var showManageView: Bool = false
       /// 무료 체험 대상 여부
       public var isEligibleForIntroOffer: Bool = false
 
@@ -73,7 +71,6 @@ extension ProPlan {
         isPurchasing: Bool = false,
         selectedProductId: String? = nil,
         errorMessage: String? = nil,
-        showManageView: Bool = false,
         isEligibleForIntroOffer: Bool = false
       ) {
         self.products = products
@@ -82,7 +79,6 @@ extension ProPlan {
         self.isPurchasing = isPurchasing
         self.selectedProductId = selectedProductId
         self.errorMessage = errorMessage
-        self.showManageView = showManageView
         self.isEligibleForIntroOffer = isEligibleForIntroOffer
       }
     }
@@ -111,10 +107,6 @@ extension ProPlan {
       case restoreTapped
       /// 에러 메시지 닫기
       case dismissError
-      /// 구독 관리 버튼 탭
-      case manageSubscriptionTapped
-      /// 구독 관리 화면 닫기
-      case dismissManageView
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -214,16 +206,6 @@ extension ProPlan {
 
           case .dismissError:
             state.errorMessage = nil
-            return .none
-
-          case .manageSubscriptionTapped:
-            state.showManageView = true
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
-          case .dismissManageView:
-            state.showManageView = false
             return .none
           }
 

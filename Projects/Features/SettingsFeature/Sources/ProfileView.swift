@@ -50,45 +50,29 @@ extension Settings {
           Button {
             store.send(.view(.proPlanTapped))
           } label: {
-            HStack(spacing: 16) {
-              ZStack {
-                Circle()
-                  .fill(
-                    LinearGradient(
-                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
-                  )
-                  .frame(width: 24, height: 24)
+            HStack(spacing: 12) {
+              ProBadge()
 
-                Image(systemName: "star.fill")
-                  .font(.caption2)
-                  .foregroundStyle(.white)
-              }
+              VStack(alignment: .leading, spacing: 2) {
+                Text("프로 플랜")
+                  .font(.body)
+                  .fontWeight(.medium)
+                  .foregroundStyle(Color.pmtext.primary)
 
-              Text("프로 플랜")
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-
-              if store.subscriptionStatus.isPro {
-                Text("PRO")
-                  .font(.caption2)
-                  .fontWeight(.bold)
-                  .foregroundStyle(.white)
-                  .padding(.horizontal, 6)
-                  .padding(.vertical, 2)
-                  .background(
-                    LinearGradient(
-                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                      startPoint: .leading,
-                      endPoint: .trailing
-                    ),
-                    in: Capsule()
-                  )
+                if let planName = store.subscriptionStatus.planDisplayName {
+                  Text("\(planName) 플랜 이용 중")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmindigo.n500)
+                }
               }
 
               Spacer()
+
+              if store.subscriptionStatus.isPro {
+                Image(systemName: "checkmark.circle.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmsuccess.n500)
+              }
 
               Image(systemName: "chevron.right")
                 .font(.caption)
@@ -99,6 +83,21 @@ extension Settings {
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
+          .overlay(
+            Group {
+              if store.subscriptionStatus.isPro {
+                RoundedRectangle(cornerRadius: 16)
+                  .stroke(
+                    LinearGradient(
+                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                      startPoint: .topLeading,
+                      endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                  )
+              }
+            }
+          )
           .adaptiveGlassCard()
 
           // MARK: - 앱 설정 섹션
@@ -513,10 +512,16 @@ extension Settings {
 
         // 닉네임
         VStack(alignment: .leading, spacing: 4) {
-          Text(store.currentUser.nickname)
-            .font(.title3)
-            .fontWeight(.semibold)
-            .foregroundStyle(Color.pmtext.primary)
+          HStack(spacing: 6) {
+            Text(store.currentUser.nickname)
+              .font(.title3)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmtext.primary)
+
+            if store.subscriptionStatus.isPro {
+              ProBadge()
+            }
+          }
         }
 
         Spacer()

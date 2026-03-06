@@ -61,11 +61,11 @@ extension SubscriptionClient: TestDependencyKey {
     },
     purchase: { _ in
       try await Task.sleep(for: .seconds(1.0))
-      return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+      return .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
     },
     purchaseWithReceipt: { _ in
       try await Task.sleep(for: .seconds(1.0))
-      return PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600)))
+      return PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600)))
     },
     restore: {
       try await Task.sleep(for: .seconds(0.5))
@@ -82,7 +82,7 @@ extension SubscriptionClient: TestDependencyKey {
     },
     verifyPurchase: { _, _ in
       try await Task.sleep(for: .seconds(1.0))
-      return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+      return .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
     },
     checkIntroOfferEligibility: { true },
     unifiedStatusStream: {
@@ -183,7 +183,8 @@ extension SubscriptionClient: DependencyKey {
     case "subscribed":
       let expirationString = statusData["expirationDate"] as? String
       let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-      return .subscribed(expirationDate: expirationDate)
+      let productType = SubscriptionProductType(rawValue: productId) ?? .monthly
+      return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime
     case "expired":

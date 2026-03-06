@@ -9,6 +9,16 @@ public enum SubscriptionProductType: String, Sendable {
   case lifetime = "com.promiso.pro.lifetime"
 }
 
+extension SubscriptionProductType {
+  public var displayName: String {
+    switch self {
+    case .monthly: return "월간"
+    case .yearly: return "연간"
+    case .lifetime: return "평생"
+    }
+  }
+}
+
 /// 구독 상품 정보
 public struct SubscriptionProduct: Equatable, Sendable, Identifiable {
   public let id: String
@@ -48,7 +58,7 @@ public enum SubscriptionStatus: Equatable, Sendable {
   /// 구독 없음 (무료)
   case none
   /// 활성 구독
-  case subscribed(expirationDate: Date?)
+  case subscribed(productType: SubscriptionProductType, expirationDate: Date?)
   /// 평생 구매 완료
   case lifetime
   /// 만료됨
@@ -68,6 +78,17 @@ public enum SubscriptionStatus: Equatable, Sendable {
   }
 
   public var isPro: Bool { isActive }
+
+  public var planDisplayName: String? {
+    switch self {
+    case .subscribed(let productType, _):
+      return productType.displayName
+    case .lifetime:
+      return SubscriptionProductType.lifetime.displayName
+    default:
+      return nil
+    }
+  }
 }
 
 /// 구매 결과 (JWS 토큰 포함)

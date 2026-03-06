@@ -20,6 +20,7 @@ extension ProPlan {
   /// 구독 관리 화면 - 이미 Pro 플랜인 경우 표시
   public struct ProPlanManageView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var showManageSheet = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -116,7 +117,7 @@ extension ProPlan {
             .background(Color.white.opacity(0.12))
 
           // 만료일 (구독형인 경우만)
-          if case .subscribed(let expirationDate) = store.subscriptionStatus,
+          if case .subscribed(_, let expirationDate) = store.subscriptionStatus,
              let date = expirationDate {
             HStack {
               Label {
@@ -170,7 +171,7 @@ extension ProPlan {
     private var manageSubscriptionSection: some View {
       VStack(spacing: 12) {
         Button {
-          store.send(.view(.manageSubscriptionTapped))
+          showManageSheet = true
         } label: {
           HStack {
             Image(systemName: "gearshape.fill")
@@ -193,10 +194,7 @@ extension ProPlan {
         .buttonStyle(.plain)
         .adaptiveGlassCard()
         .manageSubscriptionsSheet(
-          isPresented: Binding(
-            get: { store.showManageView },
-            set: { if !$0 { store.send(.view(.dismissManageView)) } }
-          ),
+          isPresented: $showManageSheet,
           subscriptionGroupID: "21947112"
         )
 
@@ -263,6 +261,7 @@ extension ProPlan {
       store: Store(
         initialState: ProPlan.Feature.State(
           subscriptionStatus: .subscribed(
+            productType: .yearly,
             expirationDate: Date().addingTimeInterval(30 * 24 * 3600)
           )
         )
