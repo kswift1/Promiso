@@ -742,7 +742,10 @@ export const executeLiveActivityStart = onTaskDispatched<
   },
   async (req) => {
     const {promiseId, scheduledAt, scheduleVersion} = req.data;
-    console.log(`⏰ Scheduled LiveActivity start: ${promiseId} (scheduledAt: ${scheduledAt})`);
+    console.log(
+      `⏰ Scheduled LiveActivity start: ${promiseId}` +
+      ` (scheduledAt: ${scheduledAt})`
+    );
 
     const db = admin.firestore();
     const promisesCollection = db.collection("promises");
@@ -772,7 +775,9 @@ export const executeLiveActivityStart = onTaskDispatched<
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // stale task 감지: 버전이 다르면 스킵
-    const storedVersion = promiseData.liveActivitySchedule?.version as string | undefined;
+    const schedule = promiseData.liveActivitySchedule;
+    const storedVersion = schedule?.version as
+      string | undefined;
     if (!scheduleVersion || storedVersion !== scheduleVersion) {
       console.log(
         `⏭️ Stale LiveActivity task (version mismatch), skipping: ${promiseId}`
