@@ -772,7 +772,8 @@ export const executeLiveActivityStart = onTaskDispatched<
         string | undefined;
       if (!scheduleVersion || storedVersion !== scheduleVersion) {
         console.log(
-          `⏭️ Stale LiveActivity task (version mismatch), skipping: ${promiseId}`
+          "⏭️ Stale LiveActivity task (version mismatch)," +
+          ` skipping: ${promiseId}`
         );
         return null;
       }
