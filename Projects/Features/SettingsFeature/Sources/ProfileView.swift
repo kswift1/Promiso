@@ -46,59 +46,32 @@ extension Settings {
           }
           .buttonStyle(.plain)
 
-          // MARK: - 프로 플랜 섹션
-          Button {
-            store.send(.view(.proPlanTapped))
-          } label: {
-            HStack(spacing: 12) {
-              ProBadge()
+          // MARK: - 프로 플랜 섹션 (미가입자만 표시)
+          if !store.subscriptionStatus.isPro {
+            Button {
+              store.send(.view(.proPlanTapped))
+            } label: {
+              HStack(spacing: 12) {
+                ProBadge()
 
-              VStack(alignment: .leading, spacing: 2) {
                 Text("프로 플랜")
                   .font(.body)
                   .fontWeight(.medium)
                   .foregroundStyle(Color.pmtext.primary)
 
-                if let planName = store.subscriptionStatus.planDisplayName {
-                  Text("\(planName) 플랜 이용 중")
-                    .font(.caption)
-                    .foregroundStyle(Color.pmindigo.n500)
-                }
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
               }
-
-              Spacer()
-
-              if store.subscriptionStatus.isPro {
-                Image(systemName: "checkmark.circle.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmsuccess.n500)
-              }
-
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(Color.pmgray.n400)
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .adaptiveGlassCard()
           }
-          .buttonStyle(.plain)
-          .adaptiveGlassCard()
-          .overlay(
-            Group {
-              if store.subscriptionStatus.isPro {
-                RoundedRectangle(cornerRadius: 16)
-                  .stroke(
-                    LinearGradient(
-                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
-                  )
-              }
-            }
-          )
 
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {
@@ -510,7 +483,7 @@ extension Settings {
           }
         )
 
-        // 닉네임
+        // 닉네임 + Pro 정보
         VStack(alignment: .leading, spacing: 4) {
           HStack(spacing: 6) {
             Text(store.currentUser.nickname)
@@ -521,6 +494,12 @@ extension Settings {
             if store.subscriptionStatus.isPro {
               ProBadge()
             }
+          }
+
+          if let planName = store.subscriptionStatus.planDisplayName {
+            Text("\(planName) 플랜 이용 중")
+              .font(.caption)
+              .foregroundStyle(Color.pmindigo.n500)
           }
         }
 

@@ -4,7 +4,9 @@
 
 import Clients
 import ComposableArchitecture
+import Lottie
 import PromisoShared
+import ResourceKit
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -62,6 +64,8 @@ extension ProPlan {
       public var errorMessage: String?
       /// 무료 체험 대상 여부
       public var isEligibleForIntroOffer: Bool = false
+      /// 구매 성공 축하 화면 표시 여부
+      public var showCelebration: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -107,6 +111,8 @@ extension ProPlan {
       case restoreTapped
       /// 에러 메시지 닫기
       case dismissError
+      /// 축하 화면 닫기
+      case dismissCelebration
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -207,6 +213,10 @@ extension ProPlan {
           case .dismissError:
             state.errorMessage = nil
             return .none
+
+          case .dismissCelebration:
+            state.showCelebration = false
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -231,6 +241,7 @@ extension ProPlan {
             state.subscriptionStatus = status
 
             if status.isPro {
+              state.showCelebration = true
               return .run { send in
                 await hapticFeedback.success()
                 await send(.delegate(.subscriptionStatusChanged(status)))
@@ -340,6 +351,73 @@ extension ProPlan {
           }
         }
       )
+      .overlay {
+        if store.showCelebration {
+          ProCelebrationView {
+            store.send(.view(.dismissCelebration))
+          }
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Celebration View
+
+/// 구매 성공 시 표시되는 축하 화면
+private struct ProCelebrationView: View {
+  let onDismiss: () -> Void
+  @State private var showContent = false
+
+  var body: some View {
+    ZStack {
+      Color.black.opacity(0.6)
+        .ignoresSafeArea()
+        .onTapGesture { onDismiss() }
+
+      VStack(spacing: 24) {
+        LottieView(animation: LottieAsset.fanfare.animation)
+          .playing(loopMode: .playOnce)
+          .frame(width: 200, height: 200)
+
+        VStack(spacing: 8) {
+          Text("Pro 플랜 시작!")
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundStyle(.white)
+
+          Text("모든 프리미엄 기능을 이용할 수 있습니다")
+            .font(.body)
+            .foregroundStyle(.white.opacity(0.8))
+        }
+
+        Button {
+          onDismiss()
+        } label: {
+          Text("시작하기")
+            .font(.body)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+              LinearGradient(
+                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(.horizontal, 40)
+      }
+      .scaleEffect(showContent ? 1 : 0.8)
+      .opacity(showContent ? 1 : 0)
+    }
+    .onAppear {
+      withAnimation(.spring(duration: 0.5)) {
+        showContent = true
+      }
     }
   }
 }
