@@ -68,9 +68,13 @@ public struct PromiseDetailExpandableText: View {
     }
   }
 
-  private var detectedItems: [DetectedItem] {
+  private static let dataDetector: NSDataDetector? = {
     let types: NSTextCheckingResult.CheckingType = [.link, .phoneNumber, .address]
-    guard let detector = try? NSDataDetector(types: types.rawValue) else { return [] }
+    return try? NSDataDetector(types: types.rawValue)
+  }()
+
+  private var detectedItems: [DetectedItem] {
+    guard let detector = Self.dataDetector else { return [] }
     let range = NSRange(text.startIndex..., in: text)
     let matches = detector.matches(in: text, options: [], range: range)
     return matches.compactMap { match -> DetectedItem? in
@@ -86,7 +90,7 @@ public struct PromiseDetailExpandableText: View {
         guard let range = Range(match.range, in: text) else { return nil }
         let address = String(text[range])
         let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
-        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "https://map.kakao.com/?q=\(encoded)"))
+        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "\(AppConstants.ExternalURLs.kakaoMapSearchBase)\(encoded)"))
       default:
         return nil
       }
