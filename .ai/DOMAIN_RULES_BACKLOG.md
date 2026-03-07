@@ -21,7 +21,6 @@
 | # | 규칙 ID | 내용 | 현재 상태 | 해결 방향 |
 |---|---------|------|----------|----------|
 | B1 | U2 | SettingsFeature 닉네임 20자 허용 (ProfileSetup은 12자) | ❌ 불일치 | 12자로 통일 |
-| B2 | P34 | isOngoing: PromiseModel은 endAt 없으면 무한, HomeSnapshotModel은 +2시간 | ❌ 불일치 | 로직 통일 필요 |
 
 ---
 
@@ -67,8 +66,7 @@
 | T7 | F3 | `maxActivePromisesPerGroup` 상수 및 `isGroupAtLimit` 로직 제거 | ⬜ |
 | T8 | F4 | 투표 마감 UI 및 로직 재설계 | ⬜ |
 | T9 | B1 | `SettingsFeature` 닉네임 최대 길이 20 → 12로 수정 | ⬜ |
-| T10 | B2 | `isOngoing` 로직 통일 (PromiseModel vs HomeSnapshotModel) | ⬜ |
-| T11 | C4 | 기본 이모지 통일 ("📌" vs "📅") | ⬜ |
+| T10 | C4 | 기본 이모지 통일 ("📌" vs "📅") | ⬜ |
 
 ### Backend
 
