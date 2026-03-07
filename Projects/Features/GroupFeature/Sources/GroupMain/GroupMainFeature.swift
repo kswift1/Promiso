@@ -60,9 +60,8 @@ extension GroupMain {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       public var groupCalendarSyncCache: [String: Bool] = [:]
 
-      /// 날씨 캐시 (전역 공유)
-      @Shared(.inMemory("weatherCache"))
-      var weatherCache: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (promiseId → WeatherInfo)
+      var weatherByPromiseId: [String: WeatherInfo] = [:]
 
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
@@ -1158,14 +1157,14 @@ extension GroupMain {
             return .none
 
           case .fetchWeather(let promises):
-            let cachedIds = state.weatherCache
+            let existing = state.weatherByPromiseId
             let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
             let targets = promises.filter { promise in
               promise.location?.latitude != nil &&
               promise.location?.longitude != nil &&
               !promise.isPast &&
               promise.startAt < maxDate &&
-              cachedIds[promise.id] == nil
+              existing[promise.id] == nil
             }
             guard !targets.isEmpty else { return .none }
             return .run { [weatherClient] send in
@@ -1190,10 +1189,8 @@ extension GroupMain {
             .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
 
           case .weatherBatchResponse(let updates):
-            state.$weatherCache.withLock { cache in
-              for (id, info) in updates {
-                cache[id] = info
-              }
+            for (id, info) in updates {
+              state.weatherByPromiseId[id] = info
             }
             return .none
 

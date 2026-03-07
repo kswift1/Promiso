@@ -220,7 +220,7 @@ extension PersonalMode {
             ForEach(section.events) { event in
               PersonalEventCard(
                 event: event,
-                weather: store.weatherCache[event.id],
+                weather: store.weatherByEventId[event.id],
                 conflicts: (store.conflictsByEventId[event.id] ?? []).map { conflict in
                   ConflictInfo(
                     title: conflict.title,

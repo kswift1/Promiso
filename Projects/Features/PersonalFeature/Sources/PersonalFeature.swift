@@ -70,8 +70,8 @@ extension PersonalMode {
       var ongoingEvents: [PersonalEventModel] = []
       var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
-      @Shared(.inMemory("weatherCache"))
-      var weatherCache: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (eventId → WeatherInfo)
+      var weatherByEventId: [String: WeatherInfo] = [:]
       var toastMessage: ToastMessage?
       var conflictsByEventId: [String: [ScheduleConflict]] = [:]
       var conflictCheckingIds: Set<String> = []
@@ -460,14 +460,14 @@ extension PersonalMode {
             return .none
 
           case .fetchWeather(let events):
-            let cachedIds = state.weatherCache
+            let existing = state.weatherByEventId
             let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
             let targets = events.filter { event in
               event.location?.latitude != nil &&
               event.location?.longitude != nil &&
               event.startAt > Date() &&
               event.startAt < maxDate &&
-              cachedIds[event.id] == nil
+              existing[event.id] == nil
             }
             guard !targets.isEmpty else { return .none }
             return .run { [weatherClient] send in
@@ -492,10 +492,8 @@ extension PersonalMode {
             .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
 
           case .weatherBatchResponse(let updates):
-            state.$weatherCache.withLock { cache in
-              for (id, info) in updates {
-                cache[id] = info
-              }
+            for (id, info) in updates {
+              state.weatherByEventId[id] = info
             }
             return .none
 

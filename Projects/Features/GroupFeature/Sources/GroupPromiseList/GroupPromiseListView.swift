@@ -56,7 +56,7 @@ extension GroupPromiseList {
             currentUserId: store.currentUserId,
             groupMembers: store.groupMembers,
             respondingState: store.respondingStates[promise.id] ?? .idle,
-            weather: store.weatherCache[promise.id],
+            weather: store.weatherByPromiseId[promise.id],
             onTap: { store.send(.view(.promiseTapped(promise))) },
             onAccept: { store.send(.view(.acceptTapped(promise))) },
             onReject: { store.send(.view(.rejectTapped(promise))) },
