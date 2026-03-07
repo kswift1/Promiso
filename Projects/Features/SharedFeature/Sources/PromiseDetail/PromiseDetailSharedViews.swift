@@ -44,13 +44,53 @@ public struct PromiseDetailExpandableText: View {
     self._isExpanded = isExpanded
   }
 
-  private var detectedURLs: [URL] {
-    guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
-      return []
+  private struct DetectedItem: Identifiable {
+    enum Kind { case url, phone, address }
+    let id: String
+    let kind: Kind
+    let value: String
+    let url: URL?
+
+    var emoji: String {
+      switch kind {
+      case .url: "🔗"
+      case .phone: "📞"
+      case .address: "📍"
+      }
     }
+
+    var label: String {
+      switch kind {
+      case .url: url?.host ?? value
+      case .phone: value
+      case .address: value
+      }
+    }
+  }
+
+  private var detectedItems: [DetectedItem] {
+    let types: NSTextCheckingResult.CheckingType = [.link, .phoneNumber, .address]
+    guard let detector = try? NSDataDetector(types: types.rawValue) else { return [] }
     let range = NSRange(text.startIndex..., in: text)
     let matches = detector.matches(in: text, options: [], range: range)
-    return matches.compactMap { $0.url }
+    return matches.compactMap { match -> DetectedItem? in
+      switch match.resultType {
+      case .link:
+        guard let url = match.url else { return nil }
+        return DetectedItem(id: url.absoluteString, kind: .url, value: url.absoluteString, url: url)
+      case .phoneNumber:
+        guard let phone = match.phoneNumber else { return nil }
+        let cleaned = phone.replacingOccurrences(of: "[^0-9+]", with: "", options: .regularExpression)
+        return DetectedItem(id: phone, kind: .phone, value: phone, url: URL(string: "tel:\(cleaned)"))
+      case .address:
+        guard let range = Range(match.range, in: text) else { return nil }
+        let address = String(text[range])
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
+        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "https://map.kakao.com/?q=\(encoded)"))
+      default:
+        return nil
+      }
+    }
   }
 
   public var body: some View {
@@ -68,27 +108,30 @@ public struct PromiseDetailExpandableText: View {
           }
         )
 
-      let urls = detectedURLs
-      if !urls.isEmpty {
-        HStack(spacing: 6) {
-          ForEach(urls, id: \.absoluteString) { url in
-            Button {
-              openURL(url)
-            } label: {
-              HStack(spacing: 3) {
-                Text("🔗")
-                  .font(.system(size: 11))
-                Text(url.host ?? url.absoluteString)
-                  .font(.system(size: 13, weight: .medium))
-                  .lineLimit(1)
+      let items = detectedItems
+      if !items.isEmpty {
+        let layout = items.count > 1 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
+        layout {
+          ForEach(items) { item in
+            if let url = item.url {
+              Button {
+                openURL(url)
+              } label: {
+                HStack(spacing: 3) {
+                  Text(item.emoji)
+                    .font(.system(size: 11))
+                  Text(item.label)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.secondary.opacity(0.2), lineWidth: 0.5))
+                .contentShape(Capsule())
               }
-              .padding(.horizontal, 8)
-              .padding(.vertical, 4)
-              .background(.ultraThinMaterial, in: Capsule())
-              .overlay(Capsule().strokeBorder(.secondary.opacity(0.2), lineWidth: 0.5))
-              .contentShape(Capsule())
+              .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
           }
         }
         .padding(.top, 4)
