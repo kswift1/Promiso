@@ -1791,6 +1791,11 @@ extension BriefingSettings {
           }
         }
 
+        Text("설정한 시간에 오늘의 일정 브리핑을 알림으로 받아볼 수 있어요.")
+          .font(.pmCaption)
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 4)
+
         VStack(spacing: 0) {
           HStack {
             Text("알림 받기")
