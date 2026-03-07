@@ -29,22 +29,17 @@ Promiso 홈 화면 위젯은 사용자가 앱을 열지 않아도 약속 정보�
 | Race Condition | 있음 (복잡한 Lock 필요) | 없음 (같은 문서 읽기) |
 | 비용 | 높음 (N+1 쿼리) | 낮음 (1 read) |
 
-### Widget & Home Snapshot 관계 (v2.1)
-
-Widget과 Home은 동일한 `SnapshotPromise` 타입을 공유합니다:
+### Widget Snapshot 경로
 
 | 스냅샷 | Firestore 경로 | 용도 |
 |--------|---------------|------|
 | Widget | `users/{uid}/cache/widgetSnapshot` | 홈 화면 위젯 |
-| Home | `users/{uid}/cache/homeSnapshot` | 앱 홈 화면 |
 
-공유 필드 (`SnapshotPromise`):
+`SnapshotPromise` 필드:
 - `id`, `title`, `emoji`, `startAt`, `endAt`, `location`
 - `groupId`, `groupName`, `groupImageUrl`
 - `isConfirmed`, `minimumParticipants`, `participantCount`
 - `myVoteStatus`, `votingDeadline`
-
-**참고**: Home Snapshot은 추가로 `groups` 배열 (그룹별 요약) 포함
 
 ### 데이터 흐름 (v2)
 
