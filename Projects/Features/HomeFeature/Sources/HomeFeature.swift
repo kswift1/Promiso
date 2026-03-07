@@ -1165,8 +1165,8 @@ extension Home {
             case .success(let briefingResult):
               state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
-            case .failure:
-              state.briefingState = .failed(BriefingClientError.networkError)
+            case .failure(let error):
+              state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
             }
             return .none
 
