@@ -22,7 +22,7 @@ struct CalendarIndicatorDayCell: View {
   let selectionId: String
   var isCompactMode: Bool = false
   var showAllIndicators: Bool = false  // true면 모든 인디케이터 표시 (expanded 전용)
-  var isHoliday: Bool = false
+  var holidayName: String? = nil
   let onTap: () -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
@@ -113,7 +113,19 @@ struct CalendarIndicatorDayCell: View {
           Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
         }
       } preview: {
-        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
+        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
+      }
+
+      // 공휴일 이름 (expanded 모드에서만)
+      // 셀 폭이 좁으므로 size 7 + minimumScaleFactor 0.8 (최소 5.6pt)까지 축소 허용
+      if showAllIndicators, let name = holidayName, isCurrentMonth {
+        Text(name)
+          .font(.system(size: 7, weight: .semibold))
+          .foregroundStyle(.red.opacity(0.8))
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+          .truncationMode(.tail)
+          .frame(maxWidth: .infinity)
       }
 
       // Morphing 인디케이터 영역
@@ -136,7 +148,7 @@ struct CalendarIndicatorDayCell: View {
               Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
             }
           } preview: {
-            ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
+            ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
           }
       }
     }
@@ -184,6 +196,7 @@ struct CalendarIndicatorDayCell: View {
         .font(.system(size: 7, weight: .medium))
         .foregroundStyle(Color.secondary)
         .lineLimit(showAllIndicators ? 2 : 1)
+        .minimumScaleFactor(0.8)
         .truncationMode(.tail)
         .fixedSize(horizontal: false, vertical: !isCompact)
         .opacity(isCompact ? 0 : 1)
@@ -229,6 +242,7 @@ struct CalendarIndicatorDayCell: View {
               .font(.system(size: 7, weight: .medium))
               .foregroundStyle(Color.secondary)
               .lineLimit(1)
+              .minimumScaleFactor(0.8)
               .truncationMode(.tail)
           }
           .frame(height: 10)
@@ -262,7 +276,7 @@ struct CalendarIndicatorDayCell: View {
     }
 
     // 공휴일이면 빨간색 (일요일과 같은 색)
-    if isHoliday {
+    if holidayName != nil {
       return .red.opacity(0.8)
     }
 
@@ -432,6 +446,7 @@ private struct IndicatorPreviewView: View {
 private struct ExpandedDayPreviewView: View {
   let date: Date
   let indicators: [CalendarFeature.ScheduleIndicator]
+  var holidayName: String? = nil
 
   private var calendar: Calendar { Calendar.current }
 
@@ -459,6 +474,13 @@ private struct ExpandedDayPreviewView: View {
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
         }
+      }
+
+      // 공휴일 이름
+      if let holidayName {
+        Text(holidayName)
+          .font(.system(size: 13, weight: .medium))
+          .foregroundColor(.red.opacity(0.8))
       }
 
       if indicators.isEmpty {

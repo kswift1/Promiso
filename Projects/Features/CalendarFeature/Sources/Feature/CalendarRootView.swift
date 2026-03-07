@@ -64,7 +64,7 @@ extension CalendarFeature {
 
     private var calendarContentView: some View {
       calendarWithEditCovers
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.sharePromise },
           set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
         )) { promise in
@@ -78,16 +78,12 @@ extension CalendarFeature {
               store.send(.view(.systemPromiseShareTapped))
             }
           )
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
         }
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.systemShareText.map { ShareTextItem(text: $0) } },
           set: { _ in store.send(.view(.systemShareSheetDismissed)) }
         )) { item in
           ShareSheet(items: [item.text])
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
         .sheet(isPresented: Binding(
           get: { store.isFilterSheetPresented },
@@ -112,6 +108,7 @@ extension CalendarFeature {
               store.send(.view(.filterReset))
             }
           )
+          .presentationDragIndicator(.visible)
         }
         .toast(Binding(
           get: { store.toastMessage },
@@ -124,22 +121,14 @@ extension CalendarFeature {
 
     private var calendarWithEditCovers: some View {
       calendarBaseView
-        .fullScreenCover(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
           EditPromise.RootView(store: editStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
-        .fullScreenCover(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
-          NavigationStack {
-            CreatePersonalEvent.RootView(store: editStore)
-          }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          CreatePersonalEvent.RootView(store: editStore)
         }
-        .fullScreenCover(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
           CreatePromise.RootView(store: createStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
     }
 
@@ -199,7 +188,7 @@ extension CalendarFeature {
         ),
         selectedDate: store.selectedDate,
         scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-        holidayDates: Set(store.holidaysByDate.keys),
+        holidaysByDate: store.holidaysByDate,
         namespace: calendarAnimation,
         isCompactMode: !isExpanded,
         showAllIndicators: isExpanded,
@@ -455,9 +444,10 @@ extension CalendarFeature {
       let dayPromises = store.promisesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
+      let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty {
+      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty || holidayName != nil {
         CompactDayRow(
           date: date,
           promises: dayPromises,
@@ -465,6 +455,7 @@ extension CalendarFeature {
           personalEvents: dayPersonalEvents,
           isSelected: isSelected,
           currentUserId: store.currentUserId,
+          holidayName: holidayName,
           onTap: {
             store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
           }

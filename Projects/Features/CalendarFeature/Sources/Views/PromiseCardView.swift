@@ -238,6 +238,7 @@ struct CompactDayRow: View {
   let personalEvents: [PersonalEventModel]
   let isSelected: Bool
   let currentUserId: String
+  var holidayName: String? = nil
   let onTap: () -> Void
 
   init(
@@ -247,6 +248,7 @@ struct CompactDayRow: View {
     personalEvents: [PersonalEventModel] = [],
     isSelected: Bool,
     currentUserId: String = "",
+    holidayName: String? = nil,
     onTap: @escaping () -> Void
   ) {
     self.date = date
@@ -255,6 +257,7 @@ struct CompactDayRow: View {
     self.personalEvents = personalEvents
     self.isSelected = isSelected
     self.currentUserId = currentUserId
+    self.holidayName = holidayName
     self.onTap = onTap
   }
 
@@ -286,6 +289,14 @@ struct CompactDayRow: View {
 
         // 일정 요약
         VStack(alignment: .leading, spacing: 4) {
+          // 공휴일
+          if let holidayName {
+            Text(holidayName)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(.red.opacity(0.8))
+              .lineLimit(1)
+          }
+
           // 약속이 있으면 약속 먼저 표시
           if let firstPromise = promises.first {
             HStack(spacing: 8) {
@@ -395,6 +406,9 @@ struct CompactDayRow: View {
     }
     if isToday {
       return Color.pmindigo.n500
+    }
+    if holidayName != nil {
+      return .red.opacity(0.8)
     }
     return .primary
   }
