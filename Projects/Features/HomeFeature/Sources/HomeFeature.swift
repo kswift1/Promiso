@@ -63,6 +63,9 @@ extension Home {
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]
 
+      /// Pro 구독 여부
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
 
@@ -809,6 +812,7 @@ extension Home {
             return .none
 
           case .fetchWeather:
+            guard state.isPro else { return .none }
             let cachedIds = state.weatherCache
             let promises = state.allPromises.filter { promise in
               let hasLat = promise.location?.latitude != nil

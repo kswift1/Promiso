@@ -9,6 +9,7 @@ extension GroupMain {
     case promiseSubscription
     case needResponseShake
     case conflictCheck
+    case weatherFetch
   }
 
   /// ShakeEffect 타이밍 상수
@@ -34,6 +35,7 @@ extension GroupMain {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -248,10 +250,13 @@ extension GroupMain {
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
         case kakaoPromiseShareResult(KakaoShareResult)
+        case refreshProFeatures([PromiseModel])
         case checkConflicts([PromiseModel])
         case conflictsLoaded(promiseId: String, [ScheduleConflict])
         case conflictCheckFailed(promiseId: String)
         case conflictSettingsLoaded(Int)
+        case fetchWeather([PromiseModel])
+        case weatherBatchResponse([String: WeatherInfo])
       }
     }
 
@@ -919,7 +924,7 @@ extension GroupMain {
             case .group, .none:
               state.pendingDeeplink = nil
             }
-            return .send(.internal(.checkConflicts(promises)))
+            return .send(.internal(.refreshProFeatures(promises)))
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
@@ -1104,8 +1109,14 @@ extension GroupMain {
               return .none
             }
 
-          case .checkConflicts(let promises):
+          case .refreshProFeatures(let promises):
             guard state.isPro else { return .none }
+            return .merge(
+              .send(.internal(.checkConflicts(promises))),
+              .send(.internal(.fetchWeather(promises)))
+            )
+
+          case .checkConflicts(let promises):
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
             guard threshold >= 0 else {
@@ -1144,6 +1155,46 @@ extension GroupMain {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
+            return .none
+
+          case .fetchWeather(let promises):
+            let cachedIds = state.weatherCache
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            let targets = promises.filter { promise in
+              promise.location?.latitude != nil &&
+              promise.location?.longitude != nil &&
+              !promise.isPast &&
+              promise.startAt < maxDate &&
+              cachedIds[promise.id] == nil
+            }
+            guard !targets.isEmpty else { return .none }
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+              await withTaskGroup(of: (String, WeatherInfo?).self) { group in
+                for promise in targets {
+                  group.addTask {
+                    guard let lat = promise.location?.latitude,
+                          let lng = promise.location?.longitude else { return (promise.id, nil) }
+                    let info = try? await weatherClient.getWeather(lat, lng, promise.startAt)
+                    return (promise.id, info)
+                  }
+                }
+                for await (id, info) in group {
+                  guard let info else { continue }
+                  updates[id] = info
+                }
+              }
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            state.$weatherCache.withLock { cache in
+              for (id, info) in updates {
+                cache[id] = info
+              }
+            }
             return .none
 
           }

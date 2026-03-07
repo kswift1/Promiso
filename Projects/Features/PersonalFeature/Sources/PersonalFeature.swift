@@ -59,6 +59,7 @@ extension PersonalMode {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -210,16 +211,20 @@ extension PersonalMode {
         case eventDeleteFailed(String)
         case syncPersonalCalendar
         case ongoingEventsLoaded([PersonalEventModel])
+        case refreshProFeatures([PersonalEventModel])
         case checkConflicts([PersonalEventModel])
         case conflictsLoaded(eventId: String, [ScheduleConflict])
         case conflictCheckFailed(eventId: String)
         case conflictSettingsLoaded(Int)
+        case fetchWeather([PersonalEventModel])
+        case weatherBatchResponse([String: WeatherInfo])
       }
     }
 
     private enum CancelID {
       case eventSubscription
       case conflictCheck
+      case weatherFetch
     }
 
     public var body: some ReducerOf<Self> {
@@ -382,7 +387,7 @@ extension PersonalMode {
             }
             return .merge(
               notificationEffect,
-              .send(.internal(.checkConflicts(events)))
+              .send(.internal(.refreshProFeatures(events)))
             )
 
           case .eventsFailed(let message):
@@ -402,8 +407,14 @@ extension PersonalMode {
             )
             return .none
 
-          case .checkConflicts(let events):
+          case .refreshProFeatures(let events):
             guard state.isPro else { return .none }
+            return .merge(
+              .send(.internal(.checkConflicts(events))),
+              .send(.internal(.fetchWeather(events)))
+            )
+
+          case .checkConflicts(let events):
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
             guard threshold >= 0 else {
@@ -446,6 +457,46 @@ extension PersonalMode {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
+            return .none
+
+          case .fetchWeather(let events):
+            let cachedIds = state.weatherCache
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            let targets = events.filter { event in
+              event.location?.latitude != nil &&
+              event.location?.longitude != nil &&
+              event.startAt > Date() &&
+              event.startAt < maxDate &&
+              cachedIds[event.id] == nil
+            }
+            guard !targets.isEmpty else { return .none }
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+              await withTaskGroup(of: (String, WeatherInfo?).self) { group in
+                for event in targets {
+                  group.addTask {
+                    guard let lat = event.location?.latitude,
+                          let lng = event.location?.longitude else { return (event.id, nil) }
+                    let info = try? await weatherClient.getWeather(lat, lng, event.startAt)
+                    return (event.id, info)
+                  }
+                }
+                for await (id, info) in group {
+                  guard let info else { continue }
+                  updates[id] = info
+                }
+              }
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            state.$weatherCache.withLock { cache in
+              for (id, info) in updates {
+                cache[id] = info
+              }
+            }
             return .none
 
           case .syncPersonalCalendar:

@@ -202,6 +202,7 @@ public enum CreatePromise {
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
         case settingsLoaded(UserSettings)
+        case refreshProFeatures(debounce: Bool)
         case weatherResponse(Result<WeatherInfo, Error>)
       }
       
@@ -311,7 +312,7 @@ public enum CreatePromise {
 
           case .setEndDate(let date):
             state.promise.endAt = date
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .toggleUseEndTime:
             if state.promise.endAt == nil {
@@ -319,7 +320,7 @@ public enum CreatePromise {
             } else {
               state.promise.endAt = nil
             }
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
             guard let max = state.promise.group?.maxMembers else { return .none }
@@ -347,10 +348,7 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
-            return .merge(
-              checkConflictsEffect(state: &state),
-              fetchWeatherHintEffect(state: &state, debounce: true)
-            )
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
@@ -532,11 +530,23 @@ public enum CreatePromise {
 
           case .settingsLoaded(let settings):
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
             return .none
+
+          case .refreshProFeatures(let debounce):
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              state.weatherState = .idle
+              return .none
+            }
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: debounce)
+            )
 
           case .weatherResponse(.failure):
             state.weatherState = .idle
@@ -555,7 +565,7 @@ public enum CreatePromise {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.locationPicker = nil
           state.promise.location = location
-          return fetchWeatherHintEffect(state: &state, debounce: false)
+          return .send(.internal(.refreshProFeatures(debounce: false)))
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
@@ -612,12 +622,6 @@ public enum CreatePromise {
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
-      // Pro 미구독자는 충돌 감지 호출 안함
-      guard state.isPro else {
-        state.isCheckingConflicts = false
-        state.conflicts = []
-        return .none
-      }
       // 충돌 감지 비활성화 (threshold == -1)
       guard state.conflictDetectionThreshold >= 0 else {
         state.isCheckingConflicts = false

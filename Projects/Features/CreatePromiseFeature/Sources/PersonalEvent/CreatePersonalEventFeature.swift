@@ -131,6 +131,7 @@ extension CreatePersonalEvent {
       case notificationStatusChecked(NotificationAuthorizationStatus)
       case conflictsLoaded([ScheduleConflict])
       case settingsLoaded(String, Int)
+      case refreshProFeatures(debounce: Bool)
       case weatherResponse(Result<WeatherInfo, Error>)
     }
 
@@ -162,7 +163,7 @@ extension CreatePersonalEvent {
                   // 설정 로드 실패 시 기본값으로 처리 (충돌 감지 비활성)
                 }
               },
-              fetchWeatherHintEffect(state: &state, debounce: false)
+              .send(.internal(.refreshProFeatures(debounce: false)))
             )
 
           case .titleChanged(let title):
@@ -194,14 +195,11 @@ extension CreatePersonalEvent {
                 state.reminderWarning = nil
               }
             }
-            return .merge(
-              checkConflictsEffect(state: &state),
-              fetchWeatherHintEffect(state: &state, debounce: true)
-            )
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .endDateChanged(let date):
             state.event.endAt = date
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
@@ -212,7 +210,7 @@ extension CreatePersonalEvent {
             }
             return .merge(
               .run { _ in await hapticFeedback.selection() },
-              checkConflictsEffect(state: &state)
+              .send(.internal(.refreshProFeatures(debounce: false)))
             )
 
           case .reminderOptionSelected(let minutes):
@@ -433,7 +431,19 @@ extension CreatePersonalEvent {
           case .settingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
+
+          case .refreshProFeatures(let debounce):
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              state.weatherState = .idle
+              return .none
+            }
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: debounce)
+            )
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
@@ -449,7 +459,7 @@ extension CreatePersonalEvent {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.event.location = location
           state.locationPicker = nil
-          return fetchWeatherHintEffect(state: &state, debounce: false)
+          return .send(.internal(.refreshProFeatures(debounce: false)))
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
@@ -534,12 +544,6 @@ extension CreatePersonalEvent {
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
-      // Pro 미구독자는 충돌 감지 호출 안함
-      guard state.isPro else {
-        state.isCheckingConflicts = false
-        state.conflicts = []
-        return .none
-      }
       // 충돌 감지 비활성화 (threshold == -1)
       guard state.conflictDetectionThreshold >= 0 else {
         state.isCheckingConflicts = false
