@@ -1154,10 +1154,29 @@ extension Home {
                 schedules: scheduleText
               )
 
+              AppLogger.briefing.debug("""
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              📋 브리핑 요청 데이터
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              🕐 날짜/시간: \(currentDateTime)
+              📍 위치: \(currentLocation ?? "없음")
+              🌤️ 날씨: \(weatherSummary.map { "기온 \($0.temp)°C, \($0.condition), 강수확률 \($0.rain)%, 최고 \($0.max)°C / 최저 \($0.min)°C" } ?? "없음")
+              📅 일정:
+              \(scheduleText)
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              """)
+
               do {
                 let briefing = try await briefingClient.generate(input)
+                AppLogger.briefing.debug("""
+                ✅ 브리핑 생성 완료
+                  요약: \(briefing.summary)
+                  상세: \(briefing.detail)
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                """)
                 await send(.internal(.briefingResponse(.success(briefing))))
               } catch {
+                AppLogger.briefing.error("❌ 브리핑 생성 실패: \(error)")
                 await send(.internal(.briefingResponse(.failure(error))))
               }
             }

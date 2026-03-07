@@ -190,7 +190,7 @@ extension Home {
               isLoading: store.briefingState.isLoading,
               isExpanded: store.isBriefingExpanded,
               onTap: {
-                store.send(.view(.briefingCardTapped), animation: .easeInOut(duration: 0.25))
+                store.send(.view(.briefingCardTapped), animation: .spring(response: 0.35, dampingFraction: 0.8))
               },
               onRefresh: {
                 store.send(.view(.refreshBriefingTapped))
