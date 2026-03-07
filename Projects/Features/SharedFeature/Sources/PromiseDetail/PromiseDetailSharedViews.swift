@@ -36,11 +36,65 @@ public struct PromiseDetailExpandableText: View {
   private let text: String
   @Binding private var isExpanded: Bool
   @State private var isTruncated = false
+  @Environment(\.openURL) private var openURL
   private let lineLimit = 3
-  
+
   public init(text: String, isExpanded: Binding<Bool>) {
     self.text = text
     self._isExpanded = isExpanded
+  }
+
+  private struct DetectedItem: Identifiable {
+    enum Kind { case url, phone, address }
+    let id: String
+    let kind: Kind
+    let value: String
+    let url: URL?
+
+    var emoji: String {
+      switch kind {
+      case .url: "🔗"
+      case .phone: "📞"
+      case .address: "📍"
+      }
+    }
+
+    var label: String {
+      switch kind {
+      case .url: url?.host ?? value
+      case .phone: value
+      case .address: value
+      }
+    }
+  }
+
+  private static let dataDetector: NSDataDetector? = {
+    let types: NSTextCheckingResult.CheckingType = [.link, .phoneNumber, .address]
+    return try? NSDataDetector(types: types.rawValue)
+  }()
+
+  private var detectedItems: [DetectedItem] {
+    guard let detector = Self.dataDetector else { return [] }
+    let range = NSRange(text.startIndex..., in: text)
+    let matches = detector.matches(in: text, options: [], range: range)
+    return matches.compactMap { match -> DetectedItem? in
+      switch match.resultType {
+      case .link:
+        guard let url = match.url else { return nil }
+        return DetectedItem(id: url.absoluteString, kind: .url, value: url.absoluteString, url: url)
+      case .phoneNumber:
+        guard let phone = match.phoneNumber else { return nil }
+        let cleaned = phone.replacingOccurrences(of: "[^0-9+]", with: "", options: .regularExpression)
+        return DetectedItem(id: phone, kind: .phone, value: phone, url: URL(string: "tel:\(cleaned)"))
+      case .address:
+        guard let range = Range(match.range, in: text) else { return nil }
+        let address = String(text[range])
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
+        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "\(AppConstants.ExternalURLs.kakaoMapSearchBase)\(encoded)"))
+      default:
+        return nil
+      }
+    }
   }
 
   public var body: some View {
@@ -57,6 +111,35 @@ public struct PromiseDetailExpandableText: View {
             }
           }
         )
+
+      let items = detectedItems
+      if !items.isEmpty {
+        let layout = items.count > 1 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
+        layout {
+          ForEach(items) { item in
+            if let url = item.url {
+              Button {
+                openURL(url)
+              } label: {
+                HStack(spacing: 3) {
+                  Text(item.emoji)
+                    .font(.system(size: 11))
+                  Text(item.label)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.secondary.opacity(0.2), lineWidth: 0.5))
+                .contentShape(Capsule())
+              }
+              .buttonStyle(.plain)
+            }
+          }
+        }
+        .padding(.top, 4)
+      }
 
       if isTruncated || isExpanded {
         Button {

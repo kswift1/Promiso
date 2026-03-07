@@ -150,6 +150,12 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - External URLs
+
+  public enum ExternalURLs {
+    public static let kakaoMapSearchBase = "https://map.kakao.com/?q="
+  }
+
   // MARK: - UI Constants
 
   public enum UI {
