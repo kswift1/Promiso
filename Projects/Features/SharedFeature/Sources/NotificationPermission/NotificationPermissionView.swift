@@ -227,22 +227,26 @@ extension NotificationPermission {
     // MARK: - Animation
 
     private func loopAnimation() async {
-      try? await Task.sleep(for: .seconds(0.5))
+      do {
+        try await Task.sleep(for: .seconds(0.5))
 
-      withAnimation(.smooth(duration: 1)) {
-        animateNotification = true
+        withAnimation(.smooth(duration: 1)) {
+          animateNotification = true
+        }
+
+        try await Task.sleep(for: .seconds(4))
+
+        withAnimation(.smooth(duration: 1)) {
+          animateNotification = false
+        }
+
+        guard loopContinues else { return }
+        try await Task.sleep(for: .seconds(1.3))
+        currentNotificationIndex = (currentNotificationIndex + 1) % notifications.count
+        await loopAnimation()
+      } catch {
+        // Task 취소 시 안전하게 종료
       }
-
-      try? await Task.sleep(for: .seconds(4))
-
-      withAnimation(.smooth(duration: 1)) {
-        animateNotification = false
-      }
-
-      guard loopContinues else { return }
-      try? await Task.sleep(for: .seconds(1.3))
-      currentNotificationIndex = (currentNotificationIndex + 1) % notifications.count
-      await loopAnimation()
     }
 
     // MARK: - Colors

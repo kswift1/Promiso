@@ -144,8 +144,15 @@ extension NotificationPermission {
         case .internal(let internalAction):
           switch internalAction {
           case .authorizationStatusLoaded(let status):
+            let previousStatus = state.authorizationStatus
             state.authorizationStatus = status
-            // 권한 상태만 업데이트하고 화면은 유지 (사용자가 버튼을 눌러야 dismiss)
+            // 설정에서 돌아와 권한이 부여된 경우 자동으로 닫기
+            if previousStatus == .denied && status.isGranted {
+              return .merge(
+                .send(.delegate(.permissionChanged(isGranted: true))),
+                .send(.delegate(.dismissed))
+              )
+            }
             return .none
 
           case .permissionRequestCompleted(let granted):

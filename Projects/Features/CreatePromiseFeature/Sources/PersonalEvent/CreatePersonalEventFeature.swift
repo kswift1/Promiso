@@ -475,10 +475,15 @@ extension CreatePersonalEvent {
           guard state.pendingReminderMinutes != nil else { return .none }
           return .run { [notificationClient] send in
             let status = await notificationClient.getAuthorizationStatus()
-            if status == .authorized || status == .provisional || status == .ephemeral {
+            if status.isGranted {
               await send(.internal(.notificationStatusChecked(status)))
             }
           }
+
+        case .notificationPermission(.dismiss):
+          // 스와이프 dismiss 시 pendingReminderMinutes 정리
+          state.pendingReminderMinutes = nil
+          return .none
 
         case .notificationPermission:
           return .none
