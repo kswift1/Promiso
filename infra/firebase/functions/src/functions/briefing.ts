@@ -12,22 +12,29 @@ import {GoogleGenerativeAI} from "@google/generative-ai";
 import {REGION, GEMINI_API_KEY} from "../config";
 import {GenerateBriefingRequest, GenerateBriefingResponse} from "../types/api";
 
-const BRIEFING_GENERATION_PROMPT =
-  `당신은 사용자의 하루를 친근하게 브리핑해주는 개인 비서입니다.\n` +
-  `아래 데이터를 종합해서 브리핑을 작성해주세요.\n\n` +
-  `반드시 아래 JSON 형식으로만 응답하세요:\n` +
-  `{"summary":"한 줄 요약 (30자 이내)","detail":"상세 브리핑 (3-4문장)"}\n\n` +
-  `summary 규칙:\n` +
-  `- 핵심만 담은 한 줄 (30자 이내)\n` +
-  `- 날씨 + 주요 일정 키워드만\n\n` +
-  `detail 규칙:\n` +
-  `- 3-4문장으로 짧게\n` +
-  `- 친근한 한국어 말투\n` +
-  `- 날씨가 이동에 영향을 주면 반드시 언급\n` +
-  `- 이동 시간 촉박하면 출발 시간 명시\n` +
-  `- 그룹 약속은 확정 여부 언급\n` +
-  `- 일정 없으면 날씨 중심으로 브리핑\n\n` +
-  `JSON 외 다른 텍스트는 절대 포함하지 마세요.\n`;
+/* eslint-disable max-len */
+const BRIEFING_GENERATION_PROMPT = [
+  "당신은 사용자의 하루를 친근하게 브리핑해주는 개인 비서입니다.",
+  "아래 데이터를 종합해서 브리핑을 작성해주세요.",
+  "",
+  "반드시 아래 JSON 형식으로만 응답하세요:",
+  "{\"summary\":\"한 줄 요약 (30자 이내)\",\"detail\":\"상세 브리핑 (3-4문장)\"}",
+  "",
+  "summary 규칙:",
+  "- 핵심만 담은 한 줄 (30자 이내)",
+  "- 날씨 + 주요 일정 키워드만",
+  "",
+  "detail 규칙:",
+  "- 3-4문장으로 짧게",
+  "- 친근한 한국어 말투",
+  "- 날씨가 이동에 영향을 주면 반드시 언급",
+  "- 이동 시간 촉박하면 출발 시간 명시",
+  "- 그룹 약속은 확정 여부 언급",
+  "- 일정 없으면 날씨 중심으로 브리핑",
+  "",
+  "JSON 외 다른 텍스트는 절대 포함하지 마세요.",
+].join("\n");
+/* eslint-enable max-len */
 
 /**
  * 날씨 정보를 프롬프트용 문자열로 변환
@@ -130,7 +137,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
           .trim();
         const parsed = JSON.parse(jsonStr);
         if (parsed.summary && parsed.detail) {
-          console.log(`✅ Generated briefing (JSON)`);
+          console.log("✅ Generated briefing (JSON)");
           return {
             summary: parsed.summary,
             detail: parsed.detail,
