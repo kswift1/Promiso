@@ -1398,6 +1398,57 @@ export enum GenerateEmojiError {
 }
 
 // ============================================================================
+// generateBriefing
+// ============================================================================
+
+/**
+ * 하루 브리핑 생성 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 클라이언트는 디바이스 전용 데이터만 전송
+ * - 일정/날씨는 서버에서 조회 (scheduleSlots + weather.ts)
+ */
+export interface GenerateBriefingRequest {
+  /** 유저 타임존 (서버는 UTC이므로 필수) */
+  timezone: string;
+
+  /** 브리핑 언어 (다국어 확장 대비) */
+  language: string;
+
+  /** 유저 위치 (위치 권한 거부 시 null) */
+  location: {
+    /** 위도 */
+    latitude: number;
+    /** 경도 */
+    longitude: number;
+    /** 위치 텍스트 (CLGeocoder, 예: "서울 강남구", 역지오코딩 실패 시 없음) */
+    title?: string;
+  } | null;
+}
+
+/**
+ * 하루 브리핑 생성 응답
+ */
+export interface GenerateBriefingResponse {
+  /** 한 줄 요약 (30자 이내) */
+  summary: string;
+  /** 상세 브리핑 (3~5문장) */
+  detail: string;
+}
+
+/**
+ * 하루 브리핑 생성 에러
+ */
+export enum GenerateBriefingError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** API 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Snapshot (Firestore Cached Document) - Widget & Home 공통
 // ============================================================================
 

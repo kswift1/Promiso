@@ -63,6 +63,12 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
       configure(&$0)
     }
   }
@@ -82,7 +88,13 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
 
     await store.send(.view(.onAppear)) {
@@ -113,6 +125,8 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
+      $0.locationClient.authorizationStatus = { .notDetermined }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -138,6 +152,8 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
+      $0.locationClient.authorizationStatus = { .notDetermined }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -192,6 +208,8 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in throw testError }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
+      $0.locationClient.authorizationStatus = { .notDetermined }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -358,7 +376,13 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [testPromise] }
       $0.notificationClient.getUnreadCount = { _ in 3 }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
 
     await store.send(.view(.onAppear)) {
@@ -527,6 +551,10 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -562,7 +590,13 @@ struct HomeFeatureTests {
         return []
       }
       $0.notificationClient.getUnreadCount = { _ in 0 }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

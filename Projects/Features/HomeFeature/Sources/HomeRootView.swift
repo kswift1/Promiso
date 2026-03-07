@@ -183,6 +183,29 @@ extension Home {
           } else if let error = store.promisesState.error {
             errorView(error: error)
           } else {
+            // 오늘의 브리핑
+            DailyBriefingCard(
+              summary: store.briefingState.value?.summary,
+              detail: store.briefingState.value?.detail,
+              isLoading: store.briefingState.isLoading,
+              isExpanded: store.isBriefingExpanded,
+              isNotificationDenied: store.isNotificationDenied,
+              isLocationDenied: store.isLocationDenied,
+              onTap: {
+                store.send(.view(.briefingCardTapped), animation: .spring(response: 0.35, dampingFraction: 0.8))
+              },
+              onRefresh: {
+                store.send(.view(.refreshBriefingTapped))
+              },
+              onOpenNotificationSettings: {
+                store.send(.view(.openNotificationSettingsTapped))
+              },
+              onOpenLocationSettings: {
+                store.send(.view(.openLocationSettingsTapped))
+              }
+            )
+            .padding(.horizontal, 16)
+
             // 오늘의 일정 카드
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,
