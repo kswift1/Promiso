@@ -419,9 +419,9 @@ struct CalendarDayTimelineView: View {
             let newStart = max(0, min(144 - duration, dragAnchorStart + delta))
             if newStart != creationStartSlot {
               selectionFeedback.selectionChanged()
+              creationStartSlot = newStart
+              creationEndSlot = newStart + duration
             }
-            creationStartSlot = newStart
-            creationEndSlot = newStart + duration
           }
           .onEnded { value in
             let duration = dragAnchorEnd - dragAnchorStart
