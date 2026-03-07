@@ -480,6 +480,11 @@ extension CreatePersonalEvent {
             }
           }
 
+        case .notificationPermission(.dismiss):
+          // 스와이프 dismiss 시 pendingReminderMinutes 정리
+          state.pendingReminderMinutes = nil
+          return .none
+
         case .notificationPermission:
           return .none
 
