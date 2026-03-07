@@ -1085,6 +1085,15 @@ extension ConflictThresholdSettings {
       .auroraBackground()
       .navigationTitle(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          HStack(spacing: 6) {
+            ProBadge()
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
+              .font(.headline)
+          }
+        }
+      }
       .onTapGesture {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
       }
@@ -1601,6 +1610,7 @@ extension BriefingSettings {
     public enum Action: Equatable, Sendable {
       case view(View)
       case `internal`(Internal)
+      case delegate(Delegate)
     }
 
     @CasePathable
@@ -1609,6 +1619,7 @@ extension BriefingSettings {
       case styleSelected(BriefingStyle)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
+      case proFeatureTapped
     }
 
     @CasePathable
@@ -1617,6 +1628,10 @@ extension BriefingSettings {
       case styleSaved
       case notificationHourSaved
       case saveFailed
+    }
+
+    public enum Delegate: Equatable, Sendable {
+      case proPlanRequested
     }
 
     private enum CancelID {
@@ -1689,6 +1704,13 @@ extension BriefingSettings {
               }
             }
             .cancellable(id: CancelID.save, cancelInFlight: true)
+
+          case .proFeatureTapped:
+            guard !state.isPro else { return .none }
+            return .run { send in
+              await hapticFeedback.selection()
+              await send(.delegate(.proPlanRequested))
+            }
           }
 
         case .internal(let internalAction):
@@ -1706,6 +1728,9 @@ extension BriefingSettings {
           case .saveFailed:
             return .none
           }
+
+        case .delegate:
+          return .none
         }
       }
     }
@@ -1738,8 +1763,17 @@ extension BriefingSettings {
         }
       }
       .auroraBackground()
-      .navigationTitle("브리핑 설정")
+      .navigationTitle("데일리 브리핑 설정")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          HStack(spacing: 6) {
+            ProBadge()
+            Text("데일리 브리핑 설정")
+              .font(.headline)
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -1772,12 +1806,15 @@ extension BriefingSettings {
     }
 
     private func styleRow(style: BriefingStyle) -> some View {
-      let isSelectable = store.isPro || style == .friendly
+      let isSelectable = store.isPro
       let isSelected = store.selectedStyle == style
 
       return Button {
-        guard isSelectable else { return }
-        store.send(.view(.styleSelected(style)))
+        if isSelectable {
+          store.send(.view(.styleSelected(style)))
+        } else {
+          store.send(.view(.proFeatureTapped))
+        }
       } label: {
         HStack(spacing: 12) {
           Image(systemName: iconName(for: style))
@@ -1791,7 +1828,7 @@ extension BriefingSettings {
                 .font(.body)
                 .foregroundStyle(isSelectable ? Color.pmtext.primary : Color.pmtext.secondary)
 
-              if !store.isPro && style != .friendly {
+              if !store.isPro {
                 ProBadge()
               }
             }
@@ -1815,7 +1852,6 @@ extension BriefingSettings {
         .opacity(isSelectable ? 1 : 0.5)
       }
       .buttonStyle(.plain)
-      .disabled(!isSelectable)
     }
 
     private func iconName(for style: BriefingStyle) -> String {
@@ -1856,7 +1892,16 @@ extension BriefingSettings {
             ))
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .disabled(!store.isPro)
+            .allowsHitTesting(store.isPro)
+            .overlay {
+              if !store.isPro {
+                Color.clear
+                  .contentShape(Rectangle())
+                  .onTapGesture {
+                    store.send(.view(.proFeatureTapped))
+                  }
+              }
+            }
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 14)
