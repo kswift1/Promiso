@@ -58,7 +58,7 @@ public actor UserSettingsRemoteDataSource {
   /// 일정 충돌 감지 임계값 업데이트
   public func updateConflictDetectionThreshold(userId: String, threshold: Int) async throws {
     try await settingsRef(userId: userId).setData(
-      ["proSettings.conflictDetectionThresholdMinute": threshold],
+      ["proSettings": ["conflictDetectionThresholdMinute": threshold]],
       merge: true
     )
   }
@@ -66,7 +66,7 @@ public actor UserSettingsRemoteDataSource {
   /// 브리핑 스타일 업데이트
   public func updateBriefingStyle(userId: String, style: BriefingStyle) async throws {
     try await settingsRef(userId: userId).setData(
-      ["proSettings.briefing.style": style.rawValue],
+      ["proSettings": ["briefing": ["style": style.rawValue]]],
       merge: true
     )
   }
@@ -75,11 +75,11 @@ public actor UserSettingsRemoteDataSource {
   public func updateBriefingNotificationHour(userId: String, hour: Int?) async throws {
     if let hour {
       try await settingsRef(userId: userId).setData(
-        [
-          "proSettings.briefing.notificationHour": hour,
-          "proSettings.briefing.timezone": TimeZone.current.identifier,
-          "proSettings.briefing.language": (Locale.current.language.languageCode?.identifier ?? "ko"),
-        ],
+        ["proSettings": ["briefing": [
+          "notificationHour": hour,
+          "timezone": TimeZone.current.identifier,
+          "language": Locale.current.language.languageCode?.identifier ?? "ko",
+        ]]],
         merge: true
       )
     } else {

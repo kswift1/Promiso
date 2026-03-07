@@ -47,15 +47,11 @@ struct DailyBriefingCard: View {
         .buttonStyle(.plain)
 
         // 콘텐츠 (expanded일 때만)
-        if isExpanded {
+        if isExpanded, !isLoading {
           Divider()
             .padding(.horizontal, 16)
 
-          if isLoading {
-            loadingContent
-              .padding(.horizontal, 16)
-              .padding(.vertical, 16)
-          } else if let summary {
+          if let summary {
             VStack(alignment: .leading, spacing: 8) {
               Text(summary)
                 .font(.pmSubheadlineMedium)

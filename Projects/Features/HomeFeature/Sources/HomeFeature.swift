@@ -473,7 +473,7 @@ extension Home {
                 body += "상세 내용이 있다면 입력해주세요:\n\n\n"
                 body += "── 자동 수집 정보 (확인용) ──\n"
                 body += "UID: \(userId)\n"
-                body += "생성 시각: \(generatedDate?.formatted(.iso8601) ?? "없음")\n"
+                body += "생성 시각: \(generatedDate?.formatted(date: .abbreviated, time: .shortened) ?? "없음")\n"
                 body += "요약: \(briefing?.summary ?? "없음")\n"
                 body += "상세: \(briefing?.detail ?? "없음")\n"
                 body += "알림 권한: \(!notificationDenied)\n"

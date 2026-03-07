@@ -274,33 +274,6 @@ extension Home {
           .frame(height: 200)
           .shimmer()
 
-        // 응답 필요 스켈레톤
-        VStack(alignment: .leading, spacing: 12) {
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color(.systemGray6))
-            .frame(width: 100, height: 24)
-
-          HStack(spacing: 12) {
-            ForEach(0..<2, id: \.self) { _ in
-              RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemGray6))
-                .frame(width: 160, height: 140)
-            }
-          }
-        }
-
-        // 다가오는 약속 스켈레톤
-        VStack(alignment: .leading, spacing: 12) {
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color(.systemGray6))
-            .frame(width: 120, height: 24)
-
-          ForEach(0..<3, id: \.self) { _ in
-            RoundedRectangle(cornerRadius: 14)
-              .fill(Color(.systemGray6))
-              .frame(height: 80)
-          }
-        }
       }
       .padding(.horizontal, 16)
       .shimmer()
