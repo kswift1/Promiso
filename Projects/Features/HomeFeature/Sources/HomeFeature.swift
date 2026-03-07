@@ -227,6 +227,8 @@ extension Home {
         case openNotificationSettingsTapped
         /// 위치 설정 열기 (권한 안내 배너에서)
         case openLocationSettingsTapped
+        /// 브리핑 오류 제보
+        case reportBriefingErrorTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -445,6 +447,37 @@ extension Home {
             return .run { [openURL] _ in
               if let url = URL(string: UIApplication.openSettingsURLString) {
                 await openURL(url)
+              }
+            }
+
+          case .reportBriefingErrorTapped:
+            let briefing = state.briefingState.value
+            let generatedDate = state.briefingGeneratedDate
+            let notificationDenied = state.isNotificationDenied
+            let locationDenied = state.isLocationDenied
+            let userId = state.currentUser.userId
+
+            AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.description ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
+
+            return .run { [openURL] _ in
+              let subject = "[Promiso] 브리핑 오류 제보"
+              var body = "------- 아래 내용은 수정하지 마세요 -------\n"
+              body += "UID: \(userId)\n"
+              body += "생성 시각: \(generatedDate?.formatted(.iso8601) ?? "없음")\n"
+              body += "요약: \(briefing?.summary ?? "없음")\n"
+              body += "상세: \(briefing?.detail ?? "없음")\n"
+              body += "알림 권한 거부: \(notificationDenied)\n"
+              body += "위치 권한 거부: \(locationDenied)\n"
+              body += "Timezone: \(TimeZone.current.identifier)\n"
+              body += "Locale: \(Locale.current.identifier)\n"
+              body += "------- 여기까지 -------\n\n"
+              body += "어떤 점이 이상했는지 알려주세요:\n"
+
+              let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+              let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+              if let mailURL = URL(string: "mailto:promiso.app@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") {
+                await openURL(mailURL)
               }
             }
 

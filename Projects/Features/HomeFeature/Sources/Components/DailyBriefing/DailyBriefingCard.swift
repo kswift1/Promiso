@@ -15,6 +15,7 @@ struct DailyBriefingCard: View {
   let onRefresh: (() -> Void)?
   let onOpenNotificationSettings: (() -> Void)?
   let onOpenLocationSettings: (() -> Void)?
+  let onReportError: (() -> Void)?
 
   var body: some View {
     if isLoading || summary != nil {
@@ -68,6 +69,15 @@ struct DailyBriefingCard: View {
                 .padding(.vertical, 10)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
+
+            // 오류 제보
+            Divider()
+              .padding(.horizontal, 16)
+
+            reportErrorButton
+              .padding(.horizontal, 16)
+              .padding(.vertical, 10)
+              .transition(.opacity.combined(with: .move(edge: .top)))
           }
         }
       }
@@ -167,6 +177,25 @@ struct DailyBriefingCard: View {
         )
       }
     }
+  }
+
+  // MARK: - Report Error
+
+  private var reportErrorButton: some View {
+    Button {
+      onReportError?()
+    } label: {
+      HStack(spacing: 4) {
+        Image(systemName: "exclamationmark.bubble")
+          .font(.pmCaption)
+        Text("브리핑 내용이 이상한가요?")
+          .font(.pmCaption)
+      }
+      .foregroundStyle(Color.pmgray.n400)
+      .frame(maxWidth: .infinity, alignment: .center)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
   }
 
   private func permissionRow(icon: String, message: String, onTap: (() -> Void)?) -> some View {

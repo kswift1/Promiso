@@ -523,7 +523,8 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       ]);
 
       console.log(
-        `[Briefing] slots=${slots.length}`
+        `[Briefing] slots=${slots.length}, ` +
+        `groups=${Object.keys(userGroups).length}`
       );
 
       // 3. promise 상세 조회
@@ -590,6 +591,12 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         detailsWithLocation,
       );
 
+      console.log(
+        `[Briefing] promiseDetails=${promiseDetails.size}, ` +
+        `weather=${weather ? "yes" : "no"}, ` +
+        `travelSegments=${travelSegments.length}`
+      );
+
       // 7. 프롬프트 조립
       const prompt = buildPrompt(
         language === "ko" ? "한국어" : language,
@@ -600,6 +607,10 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         travelSegments,
         timezone,
         todayKey,
+      );
+
+      console.log(
+        `[Briefing] prompt (${prompt.length} chars):\n${prompt}`
       );
 
       // 8. Gemini API 호출
@@ -622,6 +633,10 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
 
+      console.log(
+        `[Briefing] Gemini raw response:\n${text}`
+      );
+
       if (!text) {
         console.warn("[Briefing] Empty Gemini response");
         return {
@@ -638,7 +653,11 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
           .trim();
         const parsed = JSON.parse(jsonStr);
         if (parsed.summary && parsed.detail) {
-          console.log("[Briefing] Generated successfully");
+          console.log(
+            `[Briefing] Generated successfully - ` +
+            `summary="${parsed.summary}", ` +
+            `detail="${parsed.detail.substring(0, 100)}..."`
+          );
           return {
             summary: parsed.summary,
             detail: parsed.detail,

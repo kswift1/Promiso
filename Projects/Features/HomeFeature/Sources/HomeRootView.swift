@@ -202,6 +202,9 @@ extension Home {
               },
               onOpenLocationSettings: {
                 store.send(.view(.openLocationSettingsTapped))
+              },
+              onReportError: {
+                store.send(.view(.reportBriefingErrorTapped))
               }
             )
             .padding(.horizontal, 16)
