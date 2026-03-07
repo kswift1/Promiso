@@ -197,9 +197,16 @@ function getHourInTimezone(date: Date, timezone: string): number {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     hour: "numeric",
-    hour12: false,
+    hourCycle: "h23",
   });
-  return parseInt(formatter.format(date), 10);
+  const parsed = parseInt(formatter.format(date), 10);
+  if (isNaN(parsed)) {
+    console.warn(
+      `[BriefingScheduler] Failed to parse hour for tz=${timezone}`
+    );
+    return -1;
+  }
+  return parsed;
 }
 
 /**
