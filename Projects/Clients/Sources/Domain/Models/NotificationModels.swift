@@ -11,6 +11,15 @@ public enum NotificationAuthorizationStatus: Equatable, Sendable {
   case provisional
   case ephemeral
 
+  public var isGranted: Bool {
+    switch self {
+    case .authorized, .provisional, .ephemeral:
+      return true
+    case .notDetermined, .denied:
+      return false
+    }
+  }
+
   public init(from status: UNAuthorizationStatus) {
     switch status {
     case .notDetermined: self = .notDetermined

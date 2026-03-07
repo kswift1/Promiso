@@ -147,7 +147,7 @@ extension NotificationPermission {
             let previousStatus = state.authorizationStatus
             state.authorizationStatus = status
             // 설정에서 돌아와 권한이 부여된 경우 자동으로 닫기
-            if previousStatus == .denied && (status == .authorized || status == .provisional || status == .ephemeral) {
+            if previousStatus == .denied && status.isGranted {
               return .merge(
                 .send(.delegate(.permissionChanged(isGranted: true))),
                 .send(.delegate(.dismissed))

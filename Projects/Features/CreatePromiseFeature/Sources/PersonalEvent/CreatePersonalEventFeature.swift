@@ -475,7 +475,7 @@ extension CreatePersonalEvent {
           guard state.pendingReminderMinutes != nil else { return .none }
           return .run { [notificationClient] send in
             let status = await notificationClient.getAuthorizationStatus()
-            if status == .authorized || status == .provisional || status == .ephemeral {
+            if status.isGranted {
               await send(.internal(.notificationStatusChecked(status)))
             }
           }
