@@ -35,6 +35,9 @@ struct CalendarDayTimelineView: View {
   // 이미지 미리보기
   @State private var previewImageUrls: [String]? = nil
 
+  // 드래그 햅틱
+  @State private var selectionFeedback = UISelectionFeedbackGenerator()
+
   // 줌 앵커링용 스크롤 추적
   @State private var scrollOffset: CGFloat = 0
   @State private var viewportHeight: CGFloat = 0
@@ -357,7 +360,11 @@ struct CalendarDayTimelineView: View {
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
             let slot = Int(round(value.location.y / (hourHeight / 6)))
-            creationStartSlot = max(0, min(creationEndSlot - 6, slot))
+            let newStart = max(0, min(creationEndSlot - 6, slot))
+            if newStart != creationStartSlot {
+              selectionFeedback.selectionChanged()
+              creationStartSlot = newStart
+            }
           }
           .onEnded { value in
             let slot = Int(round(value.location.y / (hourHeight / 6)))
@@ -410,6 +417,9 @@ struct CalendarDayTimelineView: View {
             let duration = dragAnchorEnd - dragAnchorStart
             let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 6)))
             let newStart = max(0, min(144 - duration, dragAnchorStart + delta))
+            if newStart != creationStartSlot {
+              selectionFeedback.selectionChanged()
+            }
             creationStartSlot = newStart
             creationEndSlot = newStart + duration
           }
@@ -436,7 +446,11 @@ struct CalendarDayTimelineView: View {
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
             let slot = Int(round(value.location.y / (hourHeight / 6)))
-            creationEndSlot = max((creationStartSlot ?? 0) + 6, min(144, slot))
+            let newEnd = max((creationStartSlot ?? 0) + 6, min(144, slot))
+            if newEnd != creationEndSlot {
+              selectionFeedback.selectionChanged()
+              creationEndSlot = newEnd
+            }
           }
           .onEnded { value in
             let slot = Int(round(value.location.y / (hourHeight / 6)))
