@@ -498,7 +498,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
     }
 
     const uid = request.auth.uid;
-    const {timezone, language, location} = request.data;
+    const {timezone, language, location, forceRefresh} = request.data;
 
     if (!timezone || !language) {
       throw new HttpsError(
@@ -512,8 +512,27 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
 
     console.log(
       `[Briefing] uid=${uid}, date=${todayKey}, ` +
-      `tz=${timezone}, loc=${location?.title ?? "없음"}`
+      `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
+      `forceRefresh=${!!forceRefresh}`
     );
+
+    // 캐시 확인 (forceRefresh가 아닌 경우)
+    if (!forceRefresh) {
+      const cacheRef = admin.firestore()
+        .collection("users").doc(uid)
+        .collection("dailyBriefings").doc(todayKey);
+      const cached = await cacheRef.get();
+      if (cached.exists) {
+        const data = cached.data()!;
+        console.log(
+          `[Briefing] uid=${uid}, cache hit for ${todayKey}`
+        );
+        return {
+          summary: data.summary,
+          detail: data.detail,
+        };
+      }
+    }
 
     try {
       // 2. 데이터 수집 (병렬)
@@ -648,6 +667,17 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
             `summary="${parsed.summary}", ` +
             `detail="${parsed.detail.substring(0, 100)}..."`
           );
+
+          // Firestore에 캐시 저장
+          await admin.firestore()
+            .collection("users").doc(uid)
+            .collection("dailyBriefings").doc(todayKey)
+            .set({
+              summary: parsed.summary,
+              detail: parsed.detail,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
           return {
             summary: parsed.summary,
             detail: parsed.detail,

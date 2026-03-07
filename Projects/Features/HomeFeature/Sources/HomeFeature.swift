@@ -298,7 +298,7 @@ extension Home {
         /// 오버레이 공휴일 응답
         case overlayHolidaysResponse(year: Int, Result<[PublicHoliday], Error>)
         /// 브리핑 생성 트리거
-        case fetchBriefing
+        case fetchBriefing(forceRefresh: Bool = false)
         /// 브리핑 응답
         case briefingResponse(Result<BriefingResult, Error>)
         /// 권한 상태 확인
@@ -436,7 +436,7 @@ extension Home {
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
             state.isBriefingExpanded = false
-            return .send(.internal(.fetchBriefing))
+            return .send(.internal(.fetchBriefing()))
 
           case .openNotificationSettingsTapped:
             return .run { [notificationClient] _ in
@@ -459,28 +459,35 @@ extension Home {
 
             AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.description ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
 
-            return .run { [openURL] _ in
-              let subject = "[Promiso] 브리핑 오류 제보"
-              var body = "제보해 주셔서 감사합니다! 더 나은 브리핑을 만드는 데 큰 도움이 됩니다 🙏\n\n"
-              body += "상세 내용이 있다면 입력해주세요:\n\n\n"
-              body += "── 자동 수집 정보 (확인용) ──\n"
-              body += "UID: \(userId)\n"
-              body += "생성 시각: \(generatedDate?.formatted(.iso8601) ?? "없음")\n"
-              body += "요약: \(briefing?.summary ?? "없음")\n"
-              body += "상세: \(briefing?.detail ?? "없음")\n"
-              body += "알림 권한: \(!notificationDenied)\n"
-              body += "위치 권한: \(!locationDenied)\n"
-              body += "Timezone: \(TimeZone.current.identifier)\n"
-              body += "Locale: \(Locale.current.identifier)\n"
-              body += "────────────────────\n"
+            // 강제 새로고침
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
 
-              let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-              let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            return .merge(
+              .run { [openURL] _ in
+                let subject = "[Promiso] 브리핑 오류 제보"
+                var body = "제보해 주셔서 감사합니다! 더 나은 브리핑을 만드는 데 큰 도움이 됩니다 🙏\n\n"
+                body += "상세 내용이 있다면 입력해주세요:\n\n\n"
+                body += "── 자동 수집 정보 (확인용) ──\n"
+                body += "UID: \(userId)\n"
+                body += "생성 시각: \(generatedDate?.formatted(.iso8601) ?? "없음")\n"
+                body += "요약: \(briefing?.summary ?? "없음")\n"
+                body += "상세: \(briefing?.detail ?? "없음")\n"
+                body += "알림 권한: \(!notificationDenied)\n"
+                body += "위치 권한: \(!locationDenied)\n"
+                body += "Timezone: \(TimeZone.current.identifier)\n"
+                body += "Locale: \(Locale.current.identifier)\n"
+                body += "────────────────────\n"
 
-              if let mailURL = URL(string: "mailto:promiso.app@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") {
-                await openURL(mailURL)
-              }
-            }
+                let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+                if let mailURL = URL(string: "mailto:promiso.app@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") {
+                  await openURL(mailURL)
+                }
+              },
+              .send(.internal(.fetchBriefing(forceRefresh: true)))
+            )
 
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
@@ -740,7 +747,7 @@ extension Home {
               return .merge(
                 .send(.internal(.fetchUnreadNotificationCount)),
                 .send(.internal(.fetchWeather)),
-                .send(.internal(.fetchBriefing))
+                .send(.internal(.fetchBriefing()))
               )
 
             case .failure(let error):
@@ -1149,9 +1156,10 @@ extension Home {
             }
             return .none
 
-          case .fetchBriefing:
-            // 같은 날 이미 생성한 브리핑이 있으면 스킵
-            if let generatedDate = state.briefingGeneratedDate,
+          case .fetchBriefing(let forceRefresh):
+            // forceRefresh가 아닌 경우, 같은 날 이미 생성한 브리핑이 있으면 스킵
+            if !forceRefresh,
+               let generatedDate = state.briefingGeneratedDate,
                Calendar.current.isDateInToday(generatedDate),
                state.briefingState.isLoaded {
               return .none
@@ -1178,10 +1186,11 @@ extension Home {
               let input = BriefingInput(
                 timezone: TimeZone.current.identifier,
                 language: (AppLanguage.current ?? .korean).rawValue,
-                location: location
+                location: location,
+                forceRefresh: forceRefresh
               )
 
-              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음")")
+              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
 
               do {
                 let briefing = try await briefingClient.generate(input)

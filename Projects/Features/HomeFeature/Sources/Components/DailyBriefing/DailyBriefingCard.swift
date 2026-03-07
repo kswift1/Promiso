@@ -12,7 +12,6 @@ struct DailyBriefingCard: View {
   let isNotificationDenied: Bool
   let isLocationDenied: Bool
   let onTap: () -> Void
-  let onRefresh: (() -> Void)?
   let onOpenNotificationSettings: (() -> Void)?
   let onOpenLocationSettings: (() -> Void)?
   let onReportError: (() -> Void)?
@@ -20,15 +19,30 @@ struct DailyBriefingCard: View {
   var body: some View {
     if isLoading || summary != nil {
       VStack(alignment: .leading, spacing: 0) {
-        // 헤더 (탭 가능)
+        // 헤더 + 요약 (탭 가능)
         Button {
           onTap()
         } label: {
-          cardHeader
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            .contentShape(Rectangle())
+          VStack(alignment: .leading, spacing: 0) {
+            cardHeader
+              .padding(.horizontal, 16)
+              .padding(.top, 16)
+              .padding(.bottom, summary != nil && !isLoading ? 8 : 12)
+
+            if isLoading {
+              loadingContent
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            } else if let summary, !isExpanded {
+              Text(summary)
+                .font(.pmSubheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            }
+          }
+          .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
 
@@ -97,17 +111,6 @@ struct DailyBriefingCard: View {
         .foregroundStyle(.primary)
 
       Spacer()
-
-      if let onRefresh, !isLoading {
-        Button {
-          onRefresh()
-        } label: {
-          Image(systemName: "arrow.clockwise")
-            .font(.pmSubheadline)
-            .foregroundStyle(Color.pmgray.n400)
-        }
-        .buttonStyle(.plain)
-      }
 
       // Chevron (회전 애니메이션)
       Image(systemName: "chevron.right")

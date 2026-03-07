@@ -1425,6 +1425,9 @@ export interface GenerateBriefingRequest {
     /** 위치 텍스트 (CLGeocoder, 예: "서울 강남구", 역지오코딩 실패 시 없음) */
     title?: string;
   } | null;
+
+  /** 캐시 무시 및 강제 재생성 (오류 제보 시 사용) */
+  forceRefresh?: boolean;
 }
 
 /**
