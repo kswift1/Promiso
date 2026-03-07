@@ -60,7 +60,6 @@ public enum CreatePromise {
       var isUploadingImages: Bool = false
 
       // 일정 충돌 감지
-      var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
@@ -87,7 +86,6 @@ public enum CreatePromise {
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
         useLocation: Bool = false,
-        userPlan: UserPlan = .free,
         currentUserId: String = "",
         locationPicker: LocationPicker.Feature.State? = nil,
         prefillInfo: PromiseExtractedInfo? = nil,
@@ -104,7 +102,6 @@ public enum CreatePromise {
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
         self.useLocation = useLocation
-        self.userPlan = userPlan
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
         self.prefillInfo = prefillInfo

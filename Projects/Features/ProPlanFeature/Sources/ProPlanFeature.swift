@@ -4,7 +4,9 @@
 
 import Clients
 import ComposableArchitecture
+import Lottie
 import PromisoShared
+import ResourceKit
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -60,10 +62,14 @@ extension ProPlan {
       public var selectedProductId: String?
       /// 에러 메시지
       public var errorMessage: String?
-      /// 구독 관리 화면 표시 여부
-      public var showManageView: Bool = false
       /// 무료 체험 대상 여부
       public var isEligibleForIntroOffer: Bool = false
+      /// 구매 성공 축하 화면 표시 여부
+      public var showCelebration: Bool = false
+      /// 최초 구매일
+      public var purchaseDate: Date? = nil
+      /// 요금제 페이지 표시 여부
+      public var showPricing: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -73,8 +79,8 @@ extension ProPlan {
         isPurchasing: Bool = false,
         selectedProductId: String? = nil,
         errorMessage: String? = nil,
-        showManageView: Bool = false,
-        isEligibleForIntroOffer: Bool = false
+        isEligibleForIntroOffer: Bool = false,
+        purchaseDate: Date? = nil
       ) {
         self.products = products
         self.subscriptionStatus = subscriptionStatus
@@ -82,8 +88,8 @@ extension ProPlan {
         self.isPurchasing = isPurchasing
         self.selectedProductId = selectedProductId
         self.errorMessage = errorMessage
-        self.showManageView = showManageView
         self.isEligibleForIntroOffer = isEligibleForIntroOffer
+        self.purchaseDate = purchaseDate
       }
     }
 
@@ -111,10 +117,12 @@ extension ProPlan {
       case restoreTapped
       /// 에러 메시지 닫기
       case dismissError
-      /// 구독 관리 버튼 탭
-      case manageSubscriptionTapped
-      /// 구독 관리 화면 닫기
-      case dismissManageView
+      /// 축하 화면 닫기
+      case dismissCelebration
+      /// 요금제 보기 탭
+      case showPricingTapped
+      /// 요금제에서 뒤로가기
+      case backToBenefitsTapped
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -130,6 +138,8 @@ extension ProPlan {
       case statusUpdated(SubscriptionStatus)
       /// 무료 체험 대상 여부 결과
       case introOfferEligibilityResult(Bool)
+      /// 최초 구매일 조회 결과
+      case purchaseDateLoaded(Date?)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -158,6 +168,7 @@ extension ProPlan {
               async let productsResult = Result { try await subscriptionClient.fetchProducts() }
               async let statusResult = Result { try await subscriptionClient.fetchStatus() }
               async let eligibility = subscriptionClient.checkIntroOfferEligibility()
+              async let purchaseDate = subscriptionClient.fetchPurchaseDate()
 
               // 상품 목록 결과 전송
               await send(.internal(.productsResponse(await productsResult)))
@@ -169,6 +180,9 @@ extension ProPlan {
 
               // 무료 체험 대상 여부 전송
               await send(.internal(.introOfferEligibilityResult(await eligibility)))
+
+              // 최초 구매일 전송
+              await send(.internal(.purchaseDateLoaded(await purchaseDate)))
 
               // 구독 상태 스트림 구독 시작
               for await status in subscriptionClient.statusStream() {
@@ -216,14 +230,16 @@ extension ProPlan {
             state.errorMessage = nil
             return .none
 
-          case .manageSubscriptionTapped:
-            state.showManageView = true
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
+          case .dismissCelebration:
+            state.showCelebration = false
+            return .none
 
-          case .dismissManageView:
-            state.showManageView = false
+          case .showPricingTapped:
+            state.showPricing = true
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .backToBenefitsTapped:
+            state.showPricing = false
             return .none
           }
 
@@ -249,6 +265,7 @@ extension ProPlan {
             state.subscriptionStatus = status
 
             if status.isPro {
+              state.showCelebration = true
               return .run { send in
                 await hapticFeedback.success()
                 await send(.delegate(.subscriptionStatusChanged(status)))
@@ -308,6 +325,10 @@ extension ProPlan {
           case .introOfferEligibilityResult(let isEligible):
             state.isEligibleForIntroOffer = isEligible
             return .none
+
+          case .purchaseDateLoaded(let date):
+            state.purchaseDate = date
+            return .none
           }
 
         // MARK: - Delegate Actions
@@ -358,6 +379,73 @@ extension ProPlan {
           }
         }
       )
+      .overlay {
+        if store.showCelebration {
+          ProCelebrationView {
+            store.send(.view(.dismissCelebration))
+          }
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Celebration View
+
+/// 구매 성공 시 표시되는 축하 화면
+private struct ProCelebrationView: View {
+  let onDismiss: () -> Void
+  @State private var showContent = false
+
+  var body: some View {
+    ZStack {
+      Color.black.opacity(0.6)
+        .ignoresSafeArea()
+        .onTapGesture { onDismiss() }
+
+      VStack(spacing: 24) {
+        LottieView(animation: LottieAsset.fanfare.animation)
+          .playing(loopMode: .playOnce)
+          .frame(width: 200, height: 200)
+
+        VStack(spacing: 8) {
+          Text("Pro 플랜 시작!")
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundStyle(.white)
+
+          Text("모든 프리미엄 기능을 이용할 수 있습니다")
+            .font(.body)
+            .foregroundStyle(.white.opacity(0.8))
+        }
+
+        Button {
+          onDismiss()
+        } label: {
+          Text("시작하기")
+            .font(.body)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+              LinearGradient(
+                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(.horizontal, 40)
+      }
+      .scaleEffect(showContent ? 1 : 0.8)
+      .opacity(showContent ? 1 : 0)
+    }
+    .onAppear {
+      withAnimation(.spring(duration: 0.5)) {
+        showContent = true
+      }
     }
   }
 }
@@ -382,6 +470,8 @@ extension ProPlan.Feature.InternalAction {
     case (.statusUpdated(let lhsStatus), .statusUpdated(let rhsStatus)):
       return lhsStatus == rhsStatus
     case (.introOfferEligibilityResult(let lhs), .introOfferEligibilityResult(let rhs)):
+      return lhs == rhs
+    case (.purchaseDateLoaded(let lhs), .purchaseDateLoaded(let rhs)):
       return lhs == rhs
     default:
       return false

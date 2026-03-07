@@ -36,7 +36,6 @@ struct ProPlanFeatureTests {
     #expect(state.isPurchasing == false)
     #expect(state.selectedProductId == nil)
     #expect(state.errorMessage == nil)
-    #expect(state.showManageView == false)
   }
 
   // MARK: - 상품 로딩
@@ -232,28 +231,6 @@ struct ProPlanFeatureTests {
     }
   }
 
-  @Test("구독 관리 화면 열기")
-  func manageSubscriptionTapped_showsManageView() async {
-    let store = makeStore()
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.view(.manageSubscriptionTapped)) {
-      $0.showManageView = true
-    }
-  }
-
-  @Test("구독 관리 화면 닫기")
-  func dismissManageView_hidesManageView() async {
-    var state = ProPlan.Feature.State()
-    state.showManageView = true
-
-    let store = makeStore(state: state)
-
-    await store.send(.view(.dismissManageView)) {
-      $0.showManageView = false
-    }
-  }
-
   // MARK: - Internal Actions
 
   @Test("productsResponse success 시 연간 플랜 기본 선택")
@@ -274,8 +251,8 @@ struct ProPlanFeatureTests {
 
     let expirationDate = Date().addingTimeInterval(30 * 24 * 3600)
 
-    await store.send(.internal(.statusUpdated(.subscribed(expirationDate: expirationDate)))) {
-      $0.subscriptionStatus = .subscribed(expirationDate: expirationDate)
+    await store.send(.internal(.statusUpdated(.subscribed(productType: .monthly, expirationDate: expirationDate)))) {
+      $0.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: expirationDate)
     }
 
     await store.receive(\.delegate.subscriptionStatusChanged)
@@ -311,7 +288,7 @@ struct ProPlanFeatureTests {
   func statusUpdated_gracePeriod_sendsDelegate() async {
     let expirationDate = Date().addingTimeInterval(15 * 24 * 3600)
     var state = ProPlan.Feature.State()
-    state.subscriptionStatus = .subscribed(expirationDate: expirationDate)
+    state.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: expirationDate)
 
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -364,16 +341,17 @@ private extension ProPlanFeatureTests {
     } withDependencies: {
       let expirationDate = Date().addingTimeInterval(365 * 24 * 3600)
       $0.subscriptionClient.fetchProducts = { Self.mockProducts }
-      $0.subscriptionClient.purchase = { _ in .subscribed(expirationDate: expirationDate) }
+      $0.subscriptionClient.purchase = { _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
       $0.subscriptionClient.purchaseWithReceipt = { _ in
-        PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(expirationDate: expirationDate))
+        PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(productType: .monthly, expirationDate: expirationDate))
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in .subscribed(expirationDate: expirationDate) }
+      $0.subscriptionClient.verifyPurchase = { _, _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
       $0.subscriptionClient.restore = { .none }
       $0.subscriptionClient.fetchStatus = { .none }
       $0.subscriptionClient.statusStream = { .finished }
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
+      $0.subscriptionClient.fetchPurchaseDate = { nil }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }

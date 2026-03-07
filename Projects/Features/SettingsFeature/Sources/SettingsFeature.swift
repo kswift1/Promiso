@@ -75,6 +75,8 @@ extension Settings {
       public var toastMessage: ToastMessage?
       /// 네비게이션 경로
       public var path = StackState<Path.State>()
+      /// Pro Plan 시트 표시 상태
+      @Presents public var proPlan: ProPlan.Feature.State?
       /// 프로필 이미지 상세 보기 표시 여부
       public var showImageDetail: Bool = false
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
@@ -124,7 +126,7 @@ extension Settings {
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
-      case proPlan(ProPlan.Feature)
+      case proPlanManage(ProPlan.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -150,6 +152,7 @@ extension Settings {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
+      case proPlan(PresentationAction<ProPlan.Feature.Action>)
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
@@ -328,7 +331,11 @@ extension Settings {
             return .run { _ in await hapticFeedback.selection() }
 
           case .proPlanTapped:
-            state.path.append(.proPlan(ProPlan.Feature.State()))
+            if state.subscriptionStatus.isPro {
+              state.path.append(.proPlanManage(ProPlan.Feature.State(subscriptionStatus: state.subscriptionStatus)))
+            } else {
+              state.proPlan = ProPlan.Feature.State()
+            }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -573,7 +580,16 @@ extension Settings {
             return .none
           }
 
-        case .path(.element(_, action: .proPlan(.delegate(let delegate)))):
+        case .proPlan(.presented(.delegate(let delegate))):
+          switch delegate {
+          case .subscriptionStatusChanged(let status):
+            return .send(.delegate(.subscriptionStatusChanged(status)))
+          }
+
+        case .proPlan:
+          return .none
+
+        case .path(.element(_, action: .proPlanManage(.delegate(let delegate)))):
           switch delegate {
           case .subscriptionStatusChanged(let status):
             return .send(.delegate(.subscriptionStatusChanged(status)))
@@ -584,6 +600,9 @@ extension Settings {
         }
       }
       .forEach(\.path, action: \.path)
+      .ifLet(\.$proPlan, action: \.proPlan) {
+        ProPlan.Feature()
+      }
     }
   }
 
@@ -631,13 +650,19 @@ extension Settings {
           PolicyView.RootView(store: store)
         case .appInfo(let store):
           AppInfo.RootView(store: store)
-        case .proPlan(let store):
+        case .proPlanManage(let store):
           ProPlan.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)
         #endif
         }
+      }
+      .sheet(
+        item: $store.scope(state: \.proPlan, action: \.proPlan)
+      ) { proPlanStore in
+        ProPlan.PaywallView(store: proPlanStore)
+          .onAppear { proPlanStore.send(.view(.onAppear)) }
       }
       .toast(Binding(
         get: { store.toastMessage },

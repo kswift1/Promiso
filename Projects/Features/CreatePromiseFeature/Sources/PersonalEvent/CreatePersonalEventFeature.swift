@@ -66,7 +66,6 @@ extension CreatePersonalEvent {
       var removedImageUrls: [String] = []
 
       // 일정 충돌 감지
-      var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
@@ -130,7 +129,7 @@ extension CreatePersonalEvent {
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
       case conflictsLoaded([ScheduleConflict])
-      case userPlanLoaded(UserPlan, String, Int)
+      case settingsLoaded(String, Int)
       case weatherResponse(Result<WeatherInfo, Error>)
     }
 
@@ -157,9 +156,9 @@ extension CreatePersonalEvent {
                 guard let user = await authClient.currentUser() else { return }
                 do {
                   let settings = try await userSettingsClient.fetchSettings(user.uid)
-                  await send(.internal(.userPlanLoaded(settings.plan, user.uid, settings.conflictDetectionThreshold)))
+                  await send(.internal(.settingsLoaded(user.uid, settings.conflictDetectionThreshold)))
                 } catch {
-                  // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
+                  // 설정 로드 실패 시 기본값으로 처리 (충돌 감지 비활성)
                 }
               },
               fetchWeatherHintEffect(state: &state, debounce: false)
@@ -430,9 +429,7 @@ extension CreatePersonalEvent {
             state.isCheckingConflicts = false
             return .none
 
-          case .userPlanLoaded(let plan, let userId, let threshold):
-            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
-            state.userPlan = plan
+          case .settingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
             return checkConflictsEffect(state: &state)

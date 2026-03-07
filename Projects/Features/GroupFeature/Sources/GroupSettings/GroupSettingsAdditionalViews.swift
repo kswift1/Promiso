@@ -785,7 +785,7 @@ struct GroupColorPickerView: View {
             hasNewActivity: true
           ),
           currentUserId: "preview-user",
-          userPlan: .free,
+          isPro: false,
           preloadedMembers: [
             UserPublicModel(
               userId: "preview-user",

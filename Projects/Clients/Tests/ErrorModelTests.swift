@@ -11,7 +11,6 @@
 //  ## 테스트 목적
 //  - AppError: localizedDescription, errorDescription, 초기화 방식 검증
 //  - UserProfileError: 각 케이스별 errorDescription 한글 메시지 검증
-//  - UserPlan: displayName 검증
 //  - UserSettings: 기본값 검증
 //  - ProviderInfo: 초기화, 속성 검증
 //
@@ -79,28 +78,6 @@ struct UserProfileErrorTests {
   }
 }
 
-// MARK: - UserPlan 테스트
-
-@Suite("UserPlan 테스트")
-struct UserPlanTests {
-
-  @Test("free 플랜 displayName은 '무료'")
-  func free_displayName() {
-    #expect(UserPlan.free.displayName == "무료")
-  }
-
-  @Test("pro 플랜 displayName은 '프로'")
-  func pro_displayName() {
-    #expect(UserPlan.pro.displayName == "프로")
-  }
-
-  @Test("UserPlan rawValue 올바름")
-  func rawValues() {
-    #expect(UserPlan.free.rawValue == "free")
-    #expect(UserPlan.pro.rawValue == "pro")
-  }
-}
-
 // MARK: - UserSettings 테스트
 
 @Suite("UserSettings 테스트")
@@ -110,17 +87,14 @@ struct UserSettingsTests {
   func defaultSettings_haveCorrectValues() {
     let settings = UserSettings.default
     #expect(settings.notificationEnabled == true)
-    #expect(settings.plan == .free)
   }
 
   @Test("커스텀 초기화")
   func customInit_setsProperties() {
     let settings = UserSettings(
-      notificationEnabled: false,
-      plan: .pro
+      notificationEnabled: false
     )
     #expect(settings.notificationEnabled == false)
-    #expect(settings.plan == .pro)
   }
 }
 
