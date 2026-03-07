@@ -121,6 +121,7 @@ extension Settings {
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
+      case briefingSettings(BriefingSettings.Feature)
       case support(Support.Feature)
       case faq(FAQ.Feature)
       case legalInfo(LegalInfo.Feature)
@@ -182,6 +183,8 @@ extension Settings {
       case notificationSettingsTapped
       /// 캘린더 설정 탭
       case calendarSettingsTapped
+      /// 브리핑 설정 탭
+      case briefingSettingsTapped
       /// 지원 탭
       case supportTapped
       /// 약관 및 정책 탭
@@ -320,6 +323,12 @@ extension Settings {
 
           case .calendarSettingsTapped:
             state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .briefingSettingsTapped:
+            state.path.append(.briefingSettings(
+              BriefingSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
             return .run { _ in await hapticFeedback.selection() }
 
           case .supportTapped:
@@ -640,6 +649,8 @@ extension Settings {
           GroupNotificationDetail.RootView(store: store)
         case .calendarSettings(let store):
           CalendarSettings.RootView(store: store)
+        case .briefingSettings(let store):
+          BriefingSettings.RootView(store: store)
         case .support(let store):
           Support.RootView(store: store)
         case .faq(let store):

@@ -128,7 +128,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   /// 사용자가 속한 그룹 목록 조회
   /// Map 방식: users/{userId}.groups에서 groupId 목록을 가져온 후 상세 조회
   public func fetchGroups(userId: String) async throws -> [GroupModel] {
-    let userDoc = try await db.environmentCollection("users")
+    let userDoc = try await db.collection("users")
       .document(userId)
       .getDocument()
 
@@ -151,7 +151,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
 
   /// 단일 그룹 상세 조회
   public func fetchGroup(groupId: String) async throws -> GroupModel {
-    let groupRef = db.environmentCollection("groups").document(groupId)
+    let groupRef = db.collection("groups").document(groupId)
     let groupSnapshot = try await groupRef.getDocument()
     guard groupSnapshot.exists else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
@@ -167,7 +167,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
         group.addTask {
           // Task 내부에서 Firestore 인스턴스를 생성해 non-Sendable 캡처를 피한다.
           let firestore = Firestore.firestore()
-          let groupRef = firestore.environmentCollection("groups").document(groupId)
+          let groupRef = firestore.collection("groups").document(groupId)
           let groupSnapshot = try await groupRef.getDocument()
           guard groupSnapshot.exists else { return nil }
 
@@ -192,7 +192,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   /// 네비게이션용 그룹 요약 목록 조회
   /// Map 방식으로 변경: N회 읽기 → 1회 읽기로 비용 절감
   public func fetchGroupSummaries(userId: String) async throws -> [UserGroupInfo] {
-    let userDoc = try await db.environmentCollection("users")
+    let userDoc = try await db.collection("users")
       .document(userId)
       .getDocument()
 
@@ -370,7 +370,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
     userId: String,
     settings: GroupNotificationSettings
   ) async throws {
-    let userRef = db.environmentCollection("users").document(userId)
+    let userRef = db.collection("users").document(userId)
     try await userRef.setData(
       [
         "groups": [
@@ -390,7 +390,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
     userId: String,
     color: GroupColor?
   ) async throws {
-    let userRef = db.environmentCollection("users").document(userId)
+    let userRef = db.collection("users").document(userId)
     let colorValue: Any = color?.rawValue ?? FieldValue.delete()
     try await userRef.updateData([
       "groups.\(groupId).groupColor": colorValue

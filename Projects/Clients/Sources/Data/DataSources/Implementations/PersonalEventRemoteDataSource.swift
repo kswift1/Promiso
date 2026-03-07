@@ -27,7 +27,7 @@ public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
         NSLocalizedDescriptionKey: "로그인이 필요합니다"
       ])
     }
-    return db.environmentCollection("users")
+    return db.collection("users")
       .document(currentUserId)
       .collection(subcollectionName)
   }
@@ -154,7 +154,7 @@ public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
       AppLogger.personal.debug("📅 [PersonalEvent] AsyncStream 생성됨")
 
-      let collection = db.environmentCollection("users")
+      let collection = db.collection("users")
         .document(currentUserId)
         .collection(subcollectionName)
 

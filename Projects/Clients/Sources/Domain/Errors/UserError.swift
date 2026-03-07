@@ -28,6 +28,37 @@ public struct ProviderInfo: Equatable, Sendable {
   }
 }
 
+// MARK: - Briefing Style
+
+/// 브리핑 스타일 종류
+public enum BriefingStyle: String, CaseIterable, Equatable, Sendable {
+  case friendly
+  case humorous
+  case concise
+  case motivational
+  case calm
+
+  public var displayName: String {
+    switch self {
+    case .friendly: return "상냥한"
+    case .humorous: return "유머러스"
+    case .concise: return "간결한"
+    case .motivational: return "응원하는"
+    case .calm: return "차분한"
+    }
+  }
+
+  public var description: String {
+    switch self {
+    case .friendly: return "따뜻하고 친근한 말투"
+    case .humorous: return "위트 있는 말투, 가벼운 드립"
+    case .concise: return "핵심만 짧게, 이모지 최소"
+    case .motivational: return "긍정적 에너지와 격려"
+    case .calm: return "조용하고 편안한 톤"
+    }
+  }
+}
+
 // MARK: - User Settings
 
 /// 사용자 설정 정보
@@ -35,15 +66,21 @@ public struct UserSettings: Equatable, Sendable {
   public var notificationEnabled: Bool
   public var groupSortOption: GroupSortOption
   public var conflictDetectionThreshold: Int
+  public var briefingStyle: BriefingStyle
+  public var briefingNotificationHour: Int?
 
   public init(
     notificationEnabled: Bool,
     groupSortOption: GroupSortOption = .joinedRecent,
-    conflictDetectionThreshold: Int = 0
+    conflictDetectionThreshold: Int = 0,
+    briefingStyle: BriefingStyle = .friendly,
+    briefingNotificationHour: Int? = nil
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
     self.conflictDetectionThreshold = conflictDetectionThreshold
+    self.briefingStyle = briefingStyle
+    self.briefingNotificationHour = briefingNotificationHour
   }
 
   /// 기본 설정값

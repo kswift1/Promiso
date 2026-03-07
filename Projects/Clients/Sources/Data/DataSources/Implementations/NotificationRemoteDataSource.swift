@@ -39,7 +39,7 @@ public actor NotificationRemoteDataSource {
   ///   - userId: 사용자 ID
   ///   - token: FCM 토큰
   public func saveFCMToken(userId: String, token: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
     let platform = await MainActor.run { UIDevice.current.systemName.lowercased() }
 
@@ -64,7 +64,7 @@ public actor NotificationRemoteDataSource {
   /// FCM 토큰 삭제 (현재 디바이스)
   /// - Parameter userId: 사용자 ID
   public func deleteFCMToken(userId: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     // 현재 디바이스의 토큰만 삭제
@@ -80,7 +80,7 @@ public actor NotificationRemoteDataSource {
   ///   - userId: 사용자 ID
   ///   - token: FCM 토큰
   public func updateFCMToken(userId: String, token: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     try await userRef.updateData([
@@ -95,7 +95,7 @@ public actor NotificationRemoteDataSource {
   /// - Parameter userId: 사용자 ID
   /// - Returns: FCM 토큰 (없으면 nil)
   public func getFCMToken(userId: String) async throws -> String? {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     let document = try await userRef.getDocument()
@@ -148,7 +148,7 @@ public actor NotificationRemoteDataSource {
     limit: Int,
     lastCreatedAt: Date?
   ) async throws -> [NotificationModel] {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     var query: Query = notificationsCollection
       .whereField("userId", isEqualTo: userId)
@@ -201,7 +201,7 @@ public actor NotificationRemoteDataSource {
   /// - Parameter userId: 사용자 ID
   /// - Returns: 안 읽은 알림 개수
   public func getUnreadCount(userId: String) async throws -> Int {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     let query = notificationsCollection
       .whereField("userId", isEqualTo: userId)
@@ -219,7 +219,7 @@ public actor NotificationRemoteDataSource {
   /// 알림 읽음 처리
   /// - Parameter notificationId: 알림 ID
   public func markAsRead(notificationId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
     let notificationRef = notificationsCollection.document(notificationId)
 
     try await notificationRef.updateData([
@@ -233,7 +233,7 @@ public actor NotificationRemoteDataSource {
   /// 전체 알림 읽음 처리
   /// - Parameter userId: 사용자 ID
   public func markAllAsRead(userId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     // 안 읽은 알림만 조회
     let query = notificationsCollection
@@ -274,7 +274,7 @@ public actor NotificationRemoteDataSource {
   public func deleteNotifications(notificationIds: [String]) async throws {
     guard !notificationIds.isEmpty else { return }
 
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     // 배치 삭제 (500개 제한)
     let batch = db.batch()
@@ -291,7 +291,7 @@ public actor NotificationRemoteDataSource {
   /// 전체 알림 삭제
   /// - Parameter userId: 사용자 ID
   public func deleteAllNotifications(userId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     let query = notificationsCollection
       .whereField("userId", isEqualTo: userId)

@@ -245,7 +245,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   
   /// 약속 조회
   public func getPromise(id: String) async throws -> PromiseModel? {
-    let document = try await db.environmentCollection(collectionName).document(id).getDocument()
+    let document = try await db.collection(collectionName).document(id).getDocument()
     return try documentSnapshotToPromise(document)
   }
   
@@ -264,7 +264,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
       for chunk in chunks {
         group.addTask { [db, collectionName] in
-          let query = db.environmentCollection(collectionName)
+          let query = db.collection(collectionName)
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
             .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
@@ -389,7 +389,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   
   /// 활성 약속 조회
   public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
-    let query = db.environmentCollection(collectionName)
+    let query = db.collection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
       .order(by: "startAt")
       .limit(to: limit)
@@ -400,7 +400,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬, 커서 기반 페이징)
   public func getPastPromises(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [PromiseModel] {
-    var query = db.environmentCollection(collectionName)
+    var query = db.collection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
       .whereField("startAt", isLessThan: Timestamp(date: Date()))
       .order(by: "startAt", descending: true)
@@ -425,7 +425,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
       for chunk in chunks {
         group.addTask { [db, collectionName] in
-          let query = db.environmentCollection(collectionName)
+          let query = db.collection(collectionName)
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
             .whereField("startAt", isLessThan: Timestamp(date: endDate))
@@ -452,7 +452,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       return []
     }
 
-    let query = db.environmentCollection(collectionName)
+    let query = db.collection(collectionName)
       .whereField("votes.accepted", arrayContains: userId)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
       .whereField("startAt", isLessThan: Timestamp(date: endDate))
@@ -467,7 +467,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// subscribeToActivePromises와 동일한 조건 (startAt >= now)
   /// 과거 여부는 클라이언트에서 isPast로 계산
   public func getActivePromiseCount(groupId: String) async throws -> Int {
-    let query = db.environmentCollection(collectionName)
+    let query = db.collection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
 
@@ -478,7 +478,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
     return AsyncStream { continuation in
-      let query = db.environmentCollection(collectionName)
+      let query = db.collection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
         .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Calendar.current.startOfDay(for: Date())))
         .order(by: "startAt")
@@ -524,7 +524,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
       for chunk in chunks {
         group.addTask { [db, collectionName] in
-          let query = db.environmentCollection(collectionName)
+          let query = db.collection(collectionName)
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
             .order(by: "startAt")
@@ -714,7 +714,7 @@ private func fetchUpcomingChunk(
   from: Date,
   limit: Int
 ) async throws -> UpcomingChunkFetchResult {
-  let query = db.environmentCollection(collectionName)
+  let query = db.collection(collectionName)
     .whereField("groupId", in: groupIds)
     .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: from))
     .order(by: "startAt")

@@ -226,6 +226,8 @@ public enum AppConstants {
     public static let calendarStartOnMonday = "promisoCalendarStartOnMonday"
     /// 캘린더 권한 배너 다시 보지 않기
     public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
+    /// 브리핑 스타일 (friendly/humorous/concise/motivational/calm)
+    public static let briefingStyle = "promisoBriefingStyle"
   }
 
   // MARK: - Calendar Helpers
