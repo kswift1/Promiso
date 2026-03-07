@@ -28,7 +28,6 @@ extension GroupMain {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userSettingsClient) var userSettingsClient
-    @Dependency(\.subscriptionClient) var subscriptionClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
@@ -79,7 +78,7 @@ extension GroupMain {
       var groupSortOption: GroupSortOption = .joinedRecent
 
       /// Pro 구독 여부
-      var isPro: Bool = false
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
@@ -247,7 +246,6 @@ extension GroupMain {
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
-        case proStatusLoaded(Bool)
         case kakaoInviteShareResult(KakaoShareResult)
         case kakaoPromiseShareResult(KakaoShareResult)
         case checkConflicts([PromiseModel])
@@ -1033,11 +1031,6 @@ extension GroupMain {
                 } catch {
                   await send(.internal(.settingsResponse(.failure(AppError(error)))))
                 }
-              },
-              .run { [subscriptionClient] send in
-                if let status = try? await subscriptionClient.fetchStatus() {
-                  await send(.internal(.proStatusLoaded(status.isPro)))
-                }
               }
             )
 
@@ -1112,6 +1105,7 @@ extension GroupMain {
             }
 
           case .checkConflicts(let promises):
+            guard state.isPro else { return .none }
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
             guard threshold >= 0 else {
@@ -1150,10 +1144,6 @@ extension GroupMain {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
-            return .none
-
-          case .proStatusLoaded(let isPro):
-            state.isPro = isPro
             return .none
 
           }

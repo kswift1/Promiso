@@ -64,6 +64,7 @@ public enum CreatePromise {
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -611,6 +612,12 @@ public enum CreatePromise {
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
+      // Pro 미구독자는 충돌 감지 호출 안함
+      guard state.isPro else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
       // 충돌 감지 비활성화 (threshold == -1)
       guard state.conflictDetectionThreshold >= 0 else {
         state.isCheckingConflicts = false

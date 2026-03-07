@@ -249,6 +249,19 @@ export const checkScheduleConflicts =
       const userId = request.auth.uid;
       const data = request.data;
 
+      // Pro 구독 상태 확인
+      const subDoc = await admin.firestore()
+        .collection("subscriptions").doc(userId).get();
+      const subStatus = subDoc.data()?.status as string | undefined;
+      const isPro = subStatus === "subscribed" || subStatus === "lifetime" ||
+        subStatus === "gracePeriod";
+      if (!isPro) {
+        throw new HttpsError(
+          "permission-denied",
+          "Pro 구독이 필요한 기능입니다",
+        );
+      }
+
       if (!data.startAt) {
         throw new HttpsError(
           "invalid-argument",

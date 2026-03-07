@@ -1096,29 +1096,30 @@ extension ConflictThresholdSettings {
     }
 
     private var headerDescription: some View {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack(spacing: 6) {
-          ProBadge()
+      HStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+          HStack(spacing: 6) {
+            ProBadge()
 
-          Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(Color.pmtext.primary)
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
+              .font(.system(size: 14, weight: .medium))
+              .foregroundStyle(Color.pmtext.primary)
+          }
+
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
+            .font(.system(size: 14))
+            .foregroundStyle(Color.pmtext.secondary)
         }
 
-        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmtext.secondary)
+        Spacer()
 
-        HStack {
-          Spacer()
-          Toggle("", isOn: Binding(
-            get: { store.isEnabled },
-            set: { store.send(.view(.enabledToggled($0)), animation: .default) }
-          ))
-          .labelsHidden()
-          .tint(Color.pmindigo.n500)
-          .disabled(!store.isPro)
-        }
+        Toggle("", isOn: Binding(
+          get: { store.isEnabled },
+          set: { store.send(.view(.enabledToggled($0)), animation: .default) }
+        ))
+        .labelsHidden()
+        .tint(Color.pmindigo.n500)
+        .disabled(!store.isPro)
       }
       .padding(.horizontal, 4)
     }

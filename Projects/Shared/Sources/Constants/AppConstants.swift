@@ -248,6 +248,8 @@ public enum AppConstants {
     public static let groupMembersCache = "groupMembersCache"
     /// 그룹 캘린더 동기화 설정 캐시 (groupId → calendarSync)
     public static let groupCalendarSyncCache = "groupCalendarSyncCache"
+    /// Pro 구독 상태
+    public static let isPro = "isPro"
   }
 
   // MARK: - Notification Names

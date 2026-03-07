@@ -75,6 +75,7 @@ extension PersonalMode {
       var conflictsByEventId: [String: [ScheduleConflict]] = [:]
       var conflictCheckingIds: Set<String> = []
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -402,6 +403,7 @@ extension PersonalMode {
             return .none
 
           case .checkConflicts(let events):
+            guard state.isPro else { return .none }
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
             guard threshold >= 0 else {
