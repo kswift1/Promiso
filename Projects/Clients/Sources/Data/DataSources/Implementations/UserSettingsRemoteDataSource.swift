@@ -14,7 +14,7 @@ public actor UserSettingsRemoteDataSource {
 
   /// 설정 문서 참조
   private func settingsRef(userId: String) -> DocumentReference {
-    db.environmentCollection("users")
+    db.collection("users")
       .document(userId)
       .collection("settings")
       .document("main")
