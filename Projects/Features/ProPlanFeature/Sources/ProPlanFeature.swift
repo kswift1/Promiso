@@ -66,6 +66,8 @@ extension ProPlan {
       public var isEligibleForIntroOffer: Bool = false
       /// 구매 성공 축하 화면 표시 여부
       public var showCelebration: Bool = false
+      /// 최초 구매일
+      public var purchaseDate: Date? = nil
 
       /// State를 위한 기본 initializer
       public init(
@@ -75,7 +77,8 @@ extension ProPlan {
         isPurchasing: Bool = false,
         selectedProductId: String? = nil,
         errorMessage: String? = nil,
-        isEligibleForIntroOffer: Bool = false
+        isEligibleForIntroOffer: Bool = false,
+        purchaseDate: Date? = nil
       ) {
         self.products = products
         self.subscriptionStatus = subscriptionStatus
@@ -84,6 +87,7 @@ extension ProPlan {
         self.selectedProductId = selectedProductId
         self.errorMessage = errorMessage
         self.isEligibleForIntroOffer = isEligibleForIntroOffer
+        self.purchaseDate = purchaseDate
       }
     }
 
@@ -128,6 +132,8 @@ extension ProPlan {
       case statusUpdated(SubscriptionStatus)
       /// 무료 체험 대상 여부 결과
       case introOfferEligibilityResult(Bool)
+      /// 최초 구매일 조회 결과
+      case purchaseDateLoaded(Date?)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -156,6 +162,7 @@ extension ProPlan {
               async let productsResult = Result { try await subscriptionClient.fetchProducts() }
               async let statusResult = Result { try await subscriptionClient.fetchStatus() }
               async let eligibility = subscriptionClient.checkIntroOfferEligibility()
+              async let purchaseDate = subscriptionClient.fetchPurchaseDate()
 
               // 상품 목록 결과 전송
               await send(.internal(.productsResponse(await productsResult)))
@@ -167,6 +174,9 @@ extension ProPlan {
 
               // 무료 체험 대상 여부 전송
               await send(.internal(.introOfferEligibilityResult(await eligibility)))
+
+              // 최초 구매일 전송
+              await send(.internal(.purchaseDateLoaded(await purchaseDate)))
 
               // 구독 상태 스트림 구독 시작
               for await status in subscriptionClient.statusStream() {
@@ -300,6 +310,10 @@ extension ProPlan {
 
           case .introOfferEligibilityResult(let isEligible):
             state.isEligibleForIntroOffer = isEligible
+            return .none
+
+          case .purchaseDateLoaded(let date):
+            state.purchaseDate = date
             return .none
           }
 
@@ -442,6 +456,8 @@ extension ProPlan.Feature.InternalAction {
     case (.statusUpdated(let lhsStatus), .statusUpdated(let rhsStatus)):
       return lhsStatus == rhsStatus
     case (.introOfferEligibilityResult(let lhs), .introOfferEligibilityResult(let rhs)):
+      return lhs == rhs
+    case (.purchaseDateLoaded(let lhs), .purchaseDateLoaded(let rhs)):
       return lhs == rhs
     default:
       return false

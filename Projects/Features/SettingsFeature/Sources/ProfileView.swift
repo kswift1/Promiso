@@ -39,12 +39,7 @@ extension Settings {
       ScrollView {
         VStack(spacing: 16) {
           // MARK: - 프로필 섹션
-          Button {
-            store.send(.view(.accountInfoTapped))
-          } label: {
-            profileHeaderRow
-          }
-          .buttonStyle(.plain)
+          profileHeaderRow
 
           // MARK: - 프로 플랜 섹션 (미가입자만 표시)
           if !store.subscriptionStatus.isPro {
@@ -470,49 +465,74 @@ extension Settings {
     // MARK: - Profile Header Row
 
     private var profileHeaderRow: some View {
-      HStack(spacing: 16) {
-        // 프로필 아바타 (60px)
-        ProfileAvatarView(
-          profileImageUrl: store.currentUser.profileImageUrl,
-          displayName: store.currentUser.nickname,
-          isCurrentUser: true,
-          size: 60,
-          borderWidth: 2,
-          onTap: {
-            store.send(.view(.profileImageTapped))
-          }
-        )
+      VStack(spacing: 0) {
+        // 프로필 영역 → 계정 정보
+        Button {
+          store.send(.view(.accountInfoTapped))
+        } label: {
+          HStack(spacing: 16) {
+            ProfileAvatarView(
+              profileImageUrl: store.currentUser.profileImageUrl,
+              displayName: store.currentUser.nickname,
+              isCurrentUser: true,
+              size: 60,
+              borderWidth: 2,
+              onTap: {
+                store.send(.view(.profileImageTapped))
+              }
+            )
 
-        // 닉네임 + Pro 정보
-        VStack(alignment: .leading, spacing: 4) {
-          HStack(spacing: 6) {
             Text(store.currentUser.nickname)
               .font(.title3)
               .fontWeight(.semibold)
               .foregroundStyle(Color.pmtext.primary)
 
-            if store.subscriptionStatus.isPro {
-              ProBadge()
-            }
-          }
+            Spacer()
 
-          if let planName = store.subscriptionStatus.planDisplayName {
-            Text("\(planName) 플랜 이용 중")
+            Image(systemName: "chevron.right")
               .font(.caption)
-              .foregroundStyle(Color.pmindigo.n500)
+              .foregroundStyle(Color.pmgray.n400)
           }
+          .padding(.vertical, 16)
+          .padding(.horizontal, 16)
+          .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
 
-        Spacer()
+        // 플랜 정보 영역 → Pro 관리 (가입자만)
+        if store.subscriptionStatus.isPro {
+          Divider()
+            .background(Color.white.opacity(0.12))
 
-        // 네비게이션 화살표
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundStyle(Color.pmgray.n400)
+          Button {
+            store.send(.view(.proPlanTapped))
+          } label: {
+            HStack(spacing: 8) {
+              ProBadge()
+
+              if let planName = store.subscriptionStatus.planDisplayName {
+                Text("\(planName) 플랜 이용 중")
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text("관리")
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+
+              Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        }
       }
-      .padding(.vertical, 16)
-      .padding(.horizontal, 16)
-      .contentShape(Rectangle())
       .adaptiveGlassCard()
     }
 

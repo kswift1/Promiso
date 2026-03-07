@@ -33,6 +33,9 @@ public struct SubscriptionClient: Sendable {
   /// 통합 구독 상태 스트림 (StoreKit Transaction.updates + Firestore subscriptions/{userId} 병합)
   /// 앱 레벨에서 구독 상태 변경을 실시간 감지
   public var unifiedStatusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
+
+  /// 최초 구매일 조회
+  public var fetchPurchaseDate: @Sendable () async -> Date? = { nil }
 }
 
 // MARK: - Test & Preview Values
@@ -47,7 +50,8 @@ extension SubscriptionClient: TestDependencyKey {
     statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
     checkIntroOfferEligibility: unimplemented("\(Self.self).checkIntroOfferEligibility", placeholder: false),
-    unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished)
+    unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished),
+    fetchPurchaseDate: unimplemented("\(Self.self).fetchPurchaseDate", placeholder: nil)
   )
 
   public static let previewValue = Self(
@@ -90,7 +94,8 @@ extension SubscriptionClient: TestDependencyKey {
         continuation.yield(.none)
         continuation.finish()
       }
-    }
+    },
+    fetchPurchaseDate: { Date().addingTimeInterval(-90 * 24 * 3600) }
   )
 }
 
@@ -159,6 +164,9 @@ extension SubscriptionClient: DependencyKey {
             task.cancel()
           }
         }
+      },
+      fetchPurchaseDate: {
+        await dataSource.fetchPurchaseDate()
       }
     )
   }()

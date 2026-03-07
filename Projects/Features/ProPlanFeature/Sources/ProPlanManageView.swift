@@ -29,11 +29,11 @@ extension ProPlan {
     public var body: some View {
       ScrollView {
         VStack(spacing: 24) {
-          // MARK: - 헤더
-          headerSection
-
           // MARK: - 현재 플랜 정보
           currentPlanSection
+
+          // MARK: - Pro 전용 기능
+          proFeaturesSection
 
           // MARK: - 구독 관리 버튼
           if #available(iOS 15.0, *) {
@@ -46,41 +46,6 @@ extension ProPlan {
       .auroraBackground()
       .navigationTitle("Pro 플랜")
       .navigationBarTitleDisplayMode(.large)
-    }
-
-    // MARK: - Header Section
-
-    @ViewBuilder
-    private var headerSection: some View {
-      VStack(spacing: 16) {
-        // 아이콘
-        ZStack {
-          Circle()
-            .fill(
-              LinearGradient(
-                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-            .frame(width: 80, height: 80)
-
-          Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 36))
-            .foregroundStyle(.white)
-        }
-
-        // 타이틀
-        Text("Promiso Pro 이용 중")
-          .font(.system(size: 28, weight: .bold))
-          .foregroundStyle(Color.pmtext.primary)
-
-        // 감사 메시지
-        Text("프로 플랜을 이용해 주셔서 감사합니다!")
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
-          .multilineTextAlignment(.center)
-      }
     }
 
     // MARK: - Current Plan Section
@@ -113,12 +78,60 @@ extension ProPlan {
               .foregroundStyle(Color.pmtext.primary)
           }
 
-          Divider()
-            .background(Color.white.opacity(0.12))
+          // 플랜 종류
+          if let planName = store.subscriptionStatus.planDisplayName {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            HStack {
+              Label {
+                Text("플랜")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.secondary)
+              } icon: {
+                Image(systemName: "creditcard")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text("\(planName) 플랜")
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+            }
+          }
+
+          // 구독 시작일
+          if let purchaseDate = store.purchaseDate {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            HStack {
+              Label {
+                Text("시작일")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.secondary)
+              } icon: {
+                Image(systemName: "calendar.badge.clock")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text(formattedDate(purchaseDate))
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+            }
+          }
 
           // 만료일 (구독형인 경우만)
           if case .subscribed(_, let expirationDate) = store.subscriptionStatus,
              let date = expirationDate {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
             HStack {
               Label {
                 Text("갱신일")
@@ -140,6 +153,9 @@ extension ProPlan {
 
           // Grace Period 안내
           if case .gracePeriod(let expirationDate) = store.subscriptionStatus {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
             HStack {
               Label {
                 Text("유예 기간 만료")
@@ -162,6 +178,71 @@ extension ProPlan {
         .padding(16)
         .adaptiveGlassCard()
       }
+    }
+
+    // MARK: - Pro Features Section
+
+    @ViewBuilder
+    private var proFeaturesSection: some View {
+      VStack(alignment: .leading, spacing: 16) {
+        Text("Pro 전용 기능")
+          .font(.headline)
+          .foregroundStyle(Color.pmtext.primary)
+
+        VStack(spacing: 0) {
+          proFeatureRow(
+            icon: "exclamationmark.triangle",
+            title: "일정 충돌 감지",
+            description: "겹치는 약속을 자동으로 감지"
+          )
+
+          Divider()
+            .background(Color.white.opacity(0.12))
+
+          proFeatureRow(
+            icon: "wand.and.stars",
+            title: "AI 일정 추천",
+            description: "최적의 약속 시간을 추천 (예정)"
+          )
+
+          Divider()
+            .background(Color.white.opacity(0.12))
+
+          proFeatureRow(
+            icon: "chart.bar",
+            title: "약속 통계",
+            description: "약속 이행률 및 패턴 분석 (예정)"
+          )
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
+    private func proFeatureRow(icon: String, title: String, description: String) -> some View {
+      HStack(spacing: 12) {
+        Image(systemName: icon)
+          .font(.body)
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 24, height: 24)
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(.body)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text(description)
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+
+        Spacer()
+
+        Image(systemName: "checkmark.circle.fill")
+          .font(.body)
+          .foregroundStyle(Color.pmsuccess.n500)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
     }
 
     // MARK: - Manage Subscription Section
@@ -263,7 +344,8 @@ extension ProPlan {
           subscriptionStatus: .subscribed(
             productType: .yearly,
             expirationDate: Date().addingTimeInterval(30 * 24 * 3600)
-          )
+          ),
+          purchaseDate: Date().addingTimeInterval(-335 * 24 * 3600)
         )
       ) {
         ProPlan.Feature()

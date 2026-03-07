@@ -351,6 +351,7 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.statusStream = { .finished }
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
+      $0.subscriptionClient.fetchPurchaseDate = { nil }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }

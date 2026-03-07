@@ -215,6 +215,16 @@ final class StoreKitDataSource: Sendable {
     )
   }
 
+  // MARK: - Purchase Date
+
+  func fetchPurchaseDate() async -> Date? {
+    for await result in StoreKit.Transaction.currentEntitlements {
+      guard let transaction = try? checkVerified(result) else { continue }
+      return transaction.originalPurchaseDate
+    }
+    return nil
+  }
+
   /// 무료 체험 대상 여부 확인
   func checkIntroOfferEligibility() async -> Bool {
     let subscriptionProductIds: Set<String> = [
