@@ -68,6 +68,8 @@ extension ProPlan {
       public var showCelebration: Bool = false
       /// 최초 구매일
       public var purchaseDate: Date? = nil
+      /// 요금제 페이지 표시 여부
+      public var showPricing: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -117,6 +119,10 @@ extension ProPlan {
       case dismissError
       /// 축하 화면 닫기
       case dismissCelebration
+      /// 요금제 보기 탭
+      case showPricingTapped
+      /// 요금제에서 뒤로가기
+      case backToBenefitsTapped
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -226,6 +232,14 @@ extension ProPlan {
 
           case .dismissCelebration:
             state.showCelebration = false
+            return .none
+
+          case .showPricingTapped:
+            state.showPricing = true
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .backToBenefitsTapped:
+            state.showPricing = false
             return .none
           }
 
