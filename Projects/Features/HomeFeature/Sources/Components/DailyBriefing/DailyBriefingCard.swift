@@ -9,8 +9,12 @@ struct DailyBriefingCard: View {
   let detail: String?
   let isLoading: Bool
   let isExpanded: Bool
+  let isNotificationDenied: Bool
+  let isLocationDenied: Bool
   let onTap: () -> Void
   let onRefresh: (() -> Void)?
+  let onOpenNotificationSettings: (() -> Void)?
+  let onOpenLocationSettings: (() -> Void)?
 
   var body: some View {
     if isLoading || summary != nil {
@@ -53,6 +57,17 @@ struct DailyBriefingCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .transition(.opacity.combined(with: .move(edge: .top)))
+
+            // 권한 안내 배너
+            if isNotificationDenied || isLocationDenied {
+              Divider()
+                .padding(.horizontal, 16)
+
+              permissionBanner
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
           }
         }
       }
@@ -129,6 +144,51 @@ struct DailyBriefingCard: View {
         .fill(Color(.systemGray5))
         .frame(width: 200, height: 14)
         .shimmer()
+    }
+  }
+
+  // MARK: - Permission Banner
+
+  @ViewBuilder
+  private var permissionBanner: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      if isNotificationDenied {
+        permissionRow(
+          icon: "bell.slash",
+          message: "알림이 꺼져 있어 매일 브리핑을 받아볼 수 없어요",
+          onTap: onOpenNotificationSettings
+        )
+      }
+      if isLocationDenied {
+        permissionRow(
+          icon: "location.slash",
+          message: "현재 위치 권한이 꺼져 있어 날씨와 이동시간을 알려드리기 어려워요",
+          onTap: onOpenLocationSettings
+        )
+      }
+    }
+  }
+
+  private func permissionRow(icon: String, message: String, onTap: (() -> Void)?) -> some View {
+    HStack(spacing: 6) {
+      Image(systemName: icon)
+        .font(.pmCaption)
+        .foregroundStyle(Color.pmgray.n400)
+
+      Text(message)
+        .font(.pmCaption)
+        .foregroundStyle(Color.pmgray.n500)
+
+      Spacer()
+
+      Button {
+        onTap?()
+      } label: {
+        Text("변경")
+          .font(.pmCaptionMedium)
+          .foregroundStyle(Color.pmindigo.n500)
+      }
+      .buttonStyle(.plain)
     }
   }
 }

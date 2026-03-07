@@ -74,6 +74,17 @@ extension Home {
       /// 브리핑 상세 펼침 여부
       var isBriefingExpanded: Bool = false
 
+      // MARK: Permission
+      /// 알림 권한 상태
+      var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
+      /// 위치 권한 상태
+      var locationAuthStatus: LocationAuthorizationStatus = .notDetermined
+
+      /// 알림 권한 거부 여부
+      var isNotificationDenied: Bool { notificationAuthStatus == .denied }
+      /// 위치 권한 거부 여부
+      var isLocationDenied: Bool { locationAuthStatus == .denied }
+
       // MARK: Filter
       /// 선택된 그룹 ID (nil = 전체)
       var selectedGroupId: String? = nil
@@ -212,6 +223,10 @@ extension Home {
         case briefingCardTapped
         /// 브리핑 새로고침
         case refreshBriefingTapped
+        /// 알림 설정 열기 (권한 안내 배너에서)
+        case openNotificationSettingsTapped
+        /// 위치 설정 열기 (권한 안내 배너에서)
+        case openLocationSettingsTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -284,6 +299,10 @@ extension Home {
         case fetchBriefing
         /// 브리핑 응답
         case briefingResponse(Result<BriefingResult, Error>)
+        /// 권한 상태 확인
+        case checkPermissions
+        /// 권한 상태 확인 결과
+        case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
       }
 
       @CasePathable
@@ -335,7 +354,8 @@ extension Home {
             return .merge(
               weatherEffect,
               .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.checkPermissions))
             )
 
           case .refreshTriggered:
@@ -415,6 +435,18 @@ extension Home {
             state.briefingGeneratedDate = nil
             state.isBriefingExpanded = false
             return .send(.internal(.fetchBriefing))
+
+          case .openNotificationSettingsTapped:
+            return .run { [notificationClient] _ in
+              await notificationClient.openNotificationSettings()
+            }
+
+          case .openLocationSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
 
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
@@ -1095,16 +1127,18 @@ extension Home {
             return .run { [locationClient, briefingClient] send in
               var location: BriefingInput.BriefingLocation?
 
-              do {
-                let coordinate = try await locationClient.getCurrentLocation()
-                let locationText = try await locationClient.reverseGeocode(coordinate)
-                location = BriefingInput.BriefingLocation(
-                  latitude: coordinate.latitude,
-                  longitude: coordinate.longitude,
-                  title: locationText
-                )
-              } catch {
-                // 위치 실패 시 무시하고 진행
+              if locationClient.authorizationStatus() == .authorized {
+                do {
+                  let coordinate = try await locationClient.getCurrentLocation()
+                  let locationText = try await locationClient.reverseGeocode(coordinate)
+                  location = BriefingInput.BriefingLocation(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    title: locationText
+                  )
+                } catch {
+                  // 위치 실패 시 무시하고 진행
+                }
               }
 
               let input = BriefingInput(
@@ -1134,6 +1168,21 @@ extension Home {
             case .failure:
               state.briefingState = .failed(BriefingClientError.networkError)
             }
+            return .none
+
+          case .checkPermissions:
+            return .run { [notificationClient, locationClient] send in
+              let notificationStatus = await notificationClient.getAuthorizationStatus()
+              let locationStatus = locationClient.authorizationStatus()
+              await send(.internal(.permissionsChecked(
+                notification: notificationStatus,
+                location: locationStatus
+              )))
+            }
+
+          case .permissionsChecked(let notificationStatus, let locationStatus):
+            state.notificationAuthStatus = notificationStatus
+            state.locationAuthStatus = locationStatus
             return .none
 
           }
