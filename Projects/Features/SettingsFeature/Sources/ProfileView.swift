@@ -277,12 +277,12 @@ extension Settings {
                 store.send(.view(.briefingSettingsTapped))
               } label: {
                 HStack(spacing: 16) {
-                  Image(systemName: "text.bubble.fill")
+                  Image(systemName: "sparkles")
                     .font(.body)
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("브리핑 설정")
+                  Text("데일리 브리핑 설정")
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -550,10 +550,6 @@ extension Settings {
 
               Text("관리")
                 .font(.caption)
-                .foregroundStyle(Color.pmgray.n400)
-
-              Image(systemName: "chevron.right")
-                .font(.caption2)
                 .foregroundStyle(Color.pmgray.n400)
             }
             .padding(.horizontal, 16)
