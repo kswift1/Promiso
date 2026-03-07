@@ -567,6 +567,13 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .briefingSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
         case .path(.element(_, action: .support(.delegate(let delegate)))):
           switch delegate {
           case .navigateToFAQ:
