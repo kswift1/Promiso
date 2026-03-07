@@ -21,7 +21,7 @@ import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
 
 // MARK: - Types
 
-interface PromiseDetail {
+interface ScheduleDetail {
   id: string;
   title: string;
   emoji: string | null;
@@ -96,9 +96,9 @@ async function fetchTodaySlots(
 async function fetchPromiseDetails(
   promiseIds: string[],
   userGroups: Record<string, {name?: string; groupName?: string}>,
-): Promise<Map<string, PromiseDetail>> {
+): Promise<Map<string, ScheduleDetail>> {
   const db = admin.firestore();
-  const result = new Map<string, PromiseDetail>();
+  const result = new Map<string, ScheduleDetail>();
 
   // 병렬 조회
   const docs = await Promise.all(
@@ -157,6 +157,59 @@ async function fetchPromiseDetails(
 }
 
 /**
+ * personalEvent 문서 상세 조회 (장소 정보)
+ * @param {string} uid - 사용자 ID
+ * @param {string[]} eventIds - 조회할 이벤트 ID 목록
+ * @return {Promise<Map>} 이벤트 상세 맵
+ */
+async function fetchPersonalEventDetails(
+  uid: string,
+  eventIds: string[],
+): Promise<Map<string, ScheduleDetail>> {
+  const db = admin.firestore();
+  const result = new Map<string, ScheduleDetail>();
+
+  const docs = await Promise.all(
+    eventIds.map((id) =>
+      db.collection("users").doc(uid)
+        .collection("personalEvents").doc(id).get()
+    )
+  );
+
+  for (const doc of docs) {
+    if (!doc.exists) continue;
+    const data = doc.data();
+    if (!data) continue;
+
+    const location = data.location as {
+      name?: string;
+      latitude?: number;
+      longitude?: number;
+    } | null | undefined;
+
+    const startAt = data.startAt as
+      FirebaseFirestore.Timestamp;
+    const endAt = data.endAt as
+      FirebaseFirestore.Timestamp | null | undefined;
+
+    result.set(doc.id, {
+      id: doc.id,
+      title: (data.title as string) || "",
+      emoji: (data.emoji as string) || null,
+      startAt: startAt.toDate(),
+      endAt: endAt ? endAt.toDate() : null,
+      severity: "confirmed",
+      locationName: location?.name || null,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      groupName: null,
+    });
+  }
+
+  return result;
+}
+
+/**
  * 사용자 그룹 맵 조회
  * @param {string} uid - 사용자 ID
  * @return {Promise<Record>} 그룹 맵
@@ -180,14 +233,14 @@ async function fetchUserGroups(
  * @param {number | null} userLat - 사용자 위도
  * @param {number | null} userLng - 사용자 경도
  * @param {string | null} userLocationTitle - 사용자 위치 텍스트
- * @param {PromiseDetail[]} schedules - 약속 목록
+ * @param {ScheduleDetail[]} schedules - 약속 목록
  * @return {TravelSegment[]} 이동 구간 목록
  */
 function calculateTravelSegments(
   userLat: number | null,
   userLng: number | null,
   userLocationTitle: string | null,
-  schedules: PromiseDetail[],
+  schedules: ScheduleDetail[],
 ): TravelSegment[] {
   const segments: TravelSegment[] = [];
   const locatedSchedules = schedules.filter(
@@ -287,7 +340,7 @@ function buildPrompt(
   weather: GetWeatherResponse | null,
   schedules: Array<{
     slot: ScheduleSlotEntry;
-    detail: PromiseDetail | null;
+    detail: ScheduleDetail | null;
     weatherMatch: string | null;
   }>,
   travelSegments: TravelSegment[],
@@ -541,15 +594,22 @@ export async function generateBriefingInternal(params: {
       fetchUserGroups(uid),
     ]);
 
-    // 3. promise 상세 조회
+    // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
       .filter((s) => s.type === "promise")
       .map((s) => s.id);
+    const eventIds = slots
+      .filter((s) => s.type === "personalEvent")
+      .map((s) => s.id);
 
-    const promiseDetails =
+    const [promiseDetails, eventDetails] = await Promise.all([
       promiseIds.length > 0 ?
-        await fetchPromiseDetails(promiseIds, userGroups) :
-        new Map<string, PromiseDetail>();
+        fetchPromiseDetails(promiseIds, userGroups) :
+        Promise.resolve(new Map<string, ScheduleDetail>()),
+      eventIds.length > 0 ?
+        fetchPersonalEventDetails(uid, eventIds) :
+        Promise.resolve(new Map<string, ScheduleDetail>()),
+    ]);
 
     // 4. 날씨 조회 (location이 있을 때만)
     let weather: GetWeatherResponse | null = null;
@@ -575,11 +635,13 @@ export async function generateBriefingInternal(params: {
       b.startAt.toDate().getTime()
     );
 
+    const allDetails = new Map<string, ScheduleDetail>([
+      ...promiseDetails,
+      ...eventDetails,
+    ]);
+
     const enrichedSchedules = sortedSlots.map((slot) => {
-      const detail =
-        slot.type === "promise" ?
-          promiseDetails.get(slot.id) || null :
-          null;
+      const detail = allDetails.get(slot.id) || null;
 
       const weatherMatch =
         weather ?
@@ -594,9 +656,8 @@ export async function generateBriefingInternal(params: {
 
     // 6. 이동 거리 계산
     const detailsWithLocation = sortedSlots
-      .filter((s) => s.type === "promise")
-      .map((s) => promiseDetails.get(s.id))
-      .filter((d): d is PromiseDetail => d != null);
+      .map((s) => allDetails.get(s.id))
+      .filter((d): d is ScheduleDetail => d != null);
 
     const travelSegments = calculateTravelSegments(
       location?.latitude ?? null,
