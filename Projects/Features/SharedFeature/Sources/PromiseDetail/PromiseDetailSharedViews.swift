@@ -36,11 +36,21 @@ public struct PromiseDetailExpandableText: View {
   private let text: String
   @Binding private var isExpanded: Bool
   @State private var isTruncated = false
+  @Environment(\.openURL) private var openURL
   private let lineLimit = 3
-  
+
   public init(text: String, isExpanded: Binding<Bool>) {
     self.text = text
     self._isExpanded = isExpanded
+  }
+
+  private var detectedURLs: [URL] {
+    guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+      return []
+    }
+    let range = NSRange(text.startIndex..., in: text)
+    let matches = detector.matches(in: text, options: [], range: range)
+    return matches.compactMap { $0.url }
   }
 
   public var body: some View {
@@ -57,6 +67,33 @@ public struct PromiseDetailExpandableText: View {
             }
           }
         )
+
+      let urls = detectedURLs
+      if !urls.isEmpty {
+        VStack(alignment: .leading, spacing: 6) {
+          ForEach(urls, id: \.absoluteString) { url in
+            Button {
+              openURL(url)
+            } label: {
+              HStack(spacing: 4) {
+                Image(systemName: "link.circle")
+                  .font(.system(size: 13))
+                Text(url.host ?? url.absoluteString)
+                  .font(.system(size: 13, weight: .medium))
+                  .lineLimit(1)
+                  .truncationMode(.middle)
+              }
+              .foregroundStyle(.blue)
+              .padding(.horizontal, 10)
+              .padding(.vertical, 5)
+              .background(.blue.opacity(0.1), in: Capsule())
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .padding(.top, 2)
+      }
 
       if isTruncated || isExpanded {
         Button {
