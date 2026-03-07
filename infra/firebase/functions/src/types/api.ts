@@ -1422,8 +1422,8 @@ export interface GenerateBriefingRequest {
     latitude: number;
     /** 경도 */
     longitude: number;
-    /** 위치 텍스트 (CLGeocoder, 예: "서울 강남구") */
-    title: string;
+    /** 위치 텍스트 (CLGeocoder, 예: "서울 강남구", 역지오코딩 실패 시 없음) */
+    title?: string;
   } | null;
 }
 

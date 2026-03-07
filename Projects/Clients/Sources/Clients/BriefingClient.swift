@@ -36,9 +36,9 @@ public struct BriefingInput: Equatable, Sendable {
   public struct BriefingLocation: Equatable, Sendable {
     public let latitude: Double
     public let longitude: Double
-    public let title: String
+    public let title: String?
 
-    public init(latitude: Double, longitude: Double, title: String) {
+    public init(latitude: Double, longitude: Double, title: String?) {
       self.latitude = latitude
       self.longitude = longitude
       self.title = title
@@ -117,11 +117,14 @@ extension BriefingClient: DependencyKey {
           "language": input.language,
         ]
         if let location = input.location {
-          data["location"] = [
+          var locationData: [String: Any] = [
             "latitude": location.latitude,
             "longitude": location.longitude,
-            "title": location.title,
-          ] as [String: Any]
+          ]
+          if let title = location.title {
+            locationData["title"] = title
+          }
+          data["location"] = locationData
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()

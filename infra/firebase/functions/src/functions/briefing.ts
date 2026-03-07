@@ -299,7 +299,8 @@ function buildPrompt(
   lines.push("[출력 규칙]");
   lines.push("- JSON으로만 응답: {\"summary\":\"...\", \"detail\":\"...\"}");
   lines.push("- summary: 핵심 한 줄 (30자 이내), 날씨 + 주요 일정 키워드");
-  lines.push(`- detail: 3~5문장, 친근한 ${language} 말투`);
+  lines.push(`- detail: 3~5문장, 친근한 ${language} 말투, 문장 사이에 줄바꿈(\\n) 삽입`);
+  lines.push("- 인사말(안녕하세요, 좋은 아침 등) 절대 금지. 바로 본론부터 시작");
   lines.push("- JSON 외 다른 텍스트는 절대 포함하지 마세요.");
   lines.push("");
 
