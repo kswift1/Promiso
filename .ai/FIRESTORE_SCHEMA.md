@@ -9,7 +9,6 @@
      - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
      - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
      - [1-3. cache/widgetSnapshot](#1-3-usersuseridcachewidgetsnapshot-서브컬렉션)
-     - [1-4. cache/homeSnapshot](#1-4-usersuseridcachehomesnapshot-서브컬렉션)
      - [1-5. groups (Map)](#1-5-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
@@ -396,153 +395,7 @@ Firestore를 직접 쿼리하여 반환합니다.
 
 ---
 
-### 1-4. users/{userId}/cache/homeSnapshot (서브컬렉션)
-
-> ⚠️ **Deprecated**: 홈화면은 이제 직접 쿼리 방식으로 변경됨 (2026-02)
-> 이 캐시 문서는 더 이상 사용되지 않습니다.
-
-홈화면 데이터는 iOS 앱에서 Firestore를 직접 쿼리하여 가져옵니다.
-
-#### 📊 홈화면 쿼리 방식
-
-| 시점 | 설명 |
-|------|------|
-| `onAppear` | 홈화면 진입 시 |
-| `background → foreground` | 앱이 다시 활성화될 때 |
-
-#### 📊 쿼리 조건
-
-```swift
-// getHomePromises (PromiseClient)
-.whereField("groupId", in: groupIds)  // 10개씩 청크
-.whereField("startAt", isGreaterThanOrEqualTo: now)
-.order(by: "startAt")
-.limit(to: 10)
-```
-
-#### 📊 클라이언트 분류 (HomeFeature)
-
-| 분류 | 조건 |
-|------|------|
-| `todayPromises` | 오늘 날짜 + 확정된 약속 (최대 5개) |
-| `pendingPromises` | 미응답 상태 + 마감 임박순 (최대 5개) |
-| `upcomingPromises` | 내일 이후 + 확정된 약속 (최대 10개) |
-
-#### ~~기존 필드 구조 (Deprecated)~~
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `todayPromises` | Array<SnapshotPromise> | ✅ | 오늘 확정된 약속 (최대 5개) |
-| `pendingPromises` | Array<SnapshotPromise> | ✅ | 응답 필요 약속 (최대 5개, 마감 임박순) |
-| `upcomingPromises` | Array<SnapshotPromise> | ✅ | 다가오는 확정 약속 (최대 10개) |
-| `groups` | Array<HomeSnapshotGroup> | ✅ | 그룹별 요약 정보 |
-| `meta` | HomeSnapshotMeta | ✅ | 메타데이터 |
-
-#### 📦 SnapshotPromise 구조 (Widget/Home 공용)
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `id` | String | ✅ | 약속 ID |
-| `title` | String | ✅ | 약속 제목 |
-| `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
-| `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
-| `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
-| `location` | String \| null | ❌ | 장소명 |
-| `groupId` | String | ✅ | 그룹 ID |
-| `groupName` | String \| null | ❌ | 그룹 이름 |
-| `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
-| `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
-| `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
-| `participantCount` | Number | ✅ | 참여 확정 인원 |
-| `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
-| `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
-
-#### 📦 HomeSnapshotGroup 구조
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `id` | String | ✅ | 그룹 ID |
-| `name` | String | ✅ | 그룹 이름 |
-| `emoji` | String \| null | ❌ | 그룹 이모지 |
-| `imageUrl` | String \| null | ❌ | 그룹 이미지 URL |
-| `nextPromise` | SnapshotPromise \| null | ❌ | 다음 약속 |
-
-#### 📦 HomeSnapshotMeta 구조
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `todayCount` | Number | ✅ | 오늘 약속 개수 |
-| `pendingCount` | Number | ✅ | 응답 필요 약속 개수 |
-| `upcomingCount` | Number | ✅ | 다가오는 약속 개수 |
-| `updatedAt` | String | ✅ | 마지막 갱신 시간 (ISO 8601) |
-| `version` | Number | ✅ | 스키마 버전 (현재 1) |
-
-#### 📝 예시 데이터
-
-```json
-{
-  "todayPromises": [
-    {
-      "id": "promise123",
-      "title": "점심 약속",
-      "emoji": "🍜",
-      "startAt": "2026-02-01T12:00:00+09:00",
-      "endAt": null,
-      "location": "강남역 2번 출구",
-      "groupId": "group456",
-      "groupName": "대학 동기",
-      "groupImageUrl": null,
-      "isConfirmed": true,
-      "minimumParticipants": 2,
-      "participantCount": 3,
-      "myVoteStatus": "voted",
-      "votingDeadline": "2026-02-01T10:00:00+09:00"
-    }
-  ],
-  "pendingPromises": [
-    {
-      "id": "promise789",
-      "title": "주말 모임",
-      "emoji": "🎉",
-      "startAt": "2026-02-03T18:00:00+09:00",
-      "groupId": "group456",
-      "groupName": "대학 동기",
-      "isConfirmed": false,
-      "minimumParticipants": 3,
-      "participantCount": 1,
-      "myVoteStatus": "pending",
-      "votingDeadline": "2026-02-02T18:00:00+09:00"
-    }
-  ],
-  "upcomingPromises": [],
-  "groups": [
-    {
-      "id": "group456",
-      "name": "대학 동기",
-      "emoji": null,
-      "imageUrl": null,
-      "nextPromise": { ... }
-    }
-  ],
-  "meta": {
-    "todayCount": 1,
-    "pendingCount": 1,
-    "upcomingCount": 0,
-    "updatedAt": "2026-02-01T10:30:00+09:00",
-    "version": 1
-  }
-}
-```
-
-#### 💡 설계 의도
-
-- **실시간성**: 화면 진입 시 항상 최신 데이터
-- **단순화**: Trigger 없이 직접 쿼리
-- **클라이언트 분류**: 서버 부하 감소, 유연한 UI 대응
-
----
-
-### 1-5. users/{userId}.groups (Map)
+### 1-4. users/{userId}.groups (Map)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
@@ -790,8 +643,7 @@ promises/{promiseId}
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
 | `trackingStartMinutesBefore` | Number | ❌ | null | LiveActivity 시작 시간 (약속 N분 전) |
-| `liveActivityScheduled` | Boolean | ❌ | false | LiveActivity 예약 완료 여부 |
-| `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
+| `liveActivitySchedule` | Map | ❌ | null | LiveActivity 예약/시작 상태 (`scheduled`, `started`, `scheduledAt`, `version`) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 
@@ -1511,16 +1363,13 @@ service cloud.firestore {
 |  |  | - Firestore Trigger 기반 자동 갱신 아키텍처 |  |
 |  |  | - myVoteStatus 필드 추가 (pending/voted/declined) |  |
 |  |  | - 우선순위 정렬: pending → unconfirmed → time |  |
-| 1.8 | 2026-02-01 | Home Snapshot 스키마 추가 | Claude |
-|  |  | - users/{userId}/cache/homeSnapshot 서브컬렉션 추가 |  |
-|  |  | - todayPromises, pendingPromises, upcomingPromises 분류 |  |
+| 1.8 | 2026-02-01 | SnapshotPromise 타입 확장 | Claude |
 |  |  | - SnapshotPromise에 minimumParticipants, groupImageUrl, votingDeadline 추가 |  |
-|  |  | - HomeSnapshotGroup 구조 추가 (그룹별 다음 약속) |  |
 |  |  | - Widget/Home 공용 SnapshotPromise 타입 통합 |  |
 | 1.9 | 2026-02-03 | 홈/위젯 스냅샷 → 직접 쿼리 전환 | Claude |
 |  |  | - promises 컬렉션에 `isConfirmed` 필드 추가 (비정규화) |  |
 |  |  | - widgetSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
-|  |  | - homeSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
+|  |  | - homeSnapshot 캐시 제거 (직접 쿼리로 전환) |  |
 |  |  | - Firestore Trigger 제거 (onPromiseWriteUpdateSnapshot 등) |  |
 |  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
 | 2.0 | 2026-02-07 | personalEvents 컬렉션 추가 | Claude |

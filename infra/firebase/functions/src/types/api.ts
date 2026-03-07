@@ -1336,6 +1336,8 @@ export interface ScheduledLiveActivityTaskPayload {
   promiseId: string;
   /** 태스크가 실행되도록 예약된 시간 (ISO 문자열) */
   scheduledAt: string;
+  /** 스케줄 버전 UUID (stale 감지용) */
+  scheduleVersion: string;
 }
 
 /**
@@ -1414,7 +1416,7 @@ export type MyVoteStatus = "pending" | "voted" | "declined";
  *
  * @remarks
  * - 그룹 약속(type: "promise")과 개인 일정(type: "personal")을 통합
- * - Firestore `users/{uid}/cache/widgetSnapshot`, `homeSnapshot` 문서에 저장
+ * - Firestore `users/{uid}/cache/widgetSnapshot` 문서에 저장
  * - 서버에서 우선순위 정렬 완료 후 저장
  * - type이 "personal"이면 groupId/votes/myVoteStatus 등은 기본값
  */
@@ -1545,99 +1547,6 @@ export interface WidgetSnapshotDocument {
  * WidgetSnapshotDocument와 동일하지만 API 계약 명시용
  */
 export type WidgetSnapshotResponse = WidgetSnapshotDocument;
-
-// ============================================================================
-// Home Snapshot (Firestore Cached Document)
-// ============================================================================
-
-/**
- * Home Snapshot 그룹 요약 정보
- */
-export interface HomeSnapshotGroup {
-  /** 그룹 ID */
-  id: string;
-
-  /** 그룹 이름 */
-  name: string;
-
-  /** 그룹 이모지/이미지 */
-  emoji: string | null;
-
-  /** 그룹 이미지 URL */
-  imageUrl: string | null;
-
-  /** 다음 약속 (없으면 null) */
-  nextPromise: SnapshotPromise | null;
-}
-
-/**
- * Home Snapshot 메타데이터
- */
-export interface HomeSnapshotMeta {
-  /** 오늘 약속 총 개수 */
-  todayCount: number;
-
-  /** 응답 필요 약속 총 개수 */
-  pendingCount: number;
-
-  /** 다가오는 약속 총 개수 */
-  upcomingCount: number;
-
-  /** 스냅샷 마지막 업데이트 시간 (ISO 8601) */
-  updatedAt: string;
-
-  /** 변경 감지용 버전 */
-  version: number;
-}
-
-/**
- * Home Snapshot 문서 (Firestore)
- *
- * @path users/{uid}/cache/homeSnapshot
- *
- * @remarks
- * - Cloud Functions Trigger가 약속/투표 변경 시 자동 업데이트
- * - HomeFeature는 이 문서만 읽으면 됨 (쿼리 불필요)
- * - 기존 N개 그룹 × M개 약속 읽기 → 1회 읽기로 비용 절감
- */
-export interface HomeSnapshotDocument {
-  /**
-   * 오늘 확정 약속 목록
-   *
-   * @max 5개
-   * @filter isConfirmed === true && isToday
-   * @sorting 시간순
-   */
-  todayPromises: SnapshotPromise[];
-
-  /**
-   * 응답 필요 약속 목록
-   *
-   * @max 5개
-   * @filter myVoteStatus === "pending" && !isVotingClosed
-   * @sorting 투표 마감 임박순
-   */
-  pendingPromises: SnapshotPromise[];
-
-  /**
-   * 다가오는 약속 목록 (오늘 제외)
-   *
-   * @max 10개
-   * @filter startAt > today && isConfirmed
-   * @sorting 시간순
-   */
-  upcomingPromises: SnapshotPromise[];
-
-  /**
-   * 그룹별 요약 정보
-   *
-   * @sorting 사용자 설정 또는 최근 활동순
-   */
-  groups: HomeSnapshotGroup[];
-
-  /** 메타데이터 */
-  meta: HomeSnapshotMeta;
-}
 
 // ============================================================================
 // APNs LiveActivity Payload Types

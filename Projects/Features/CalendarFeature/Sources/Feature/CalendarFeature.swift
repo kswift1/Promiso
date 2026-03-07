@@ -293,6 +293,7 @@ extension CalendarFeature {
           var allDates = Set(promisesByDate.keys)
           allDates.formUnion(calendarEventsByDate.keys)
           allDates.formUnion(personalEventsByDate.keys)
+          allDates.formUnion(holidaysByDate.keys)
 
           return allDates
             .filter { $0 >= monthStart && $0 < monthEnd }
@@ -1570,14 +1571,12 @@ extension CalendarFeature {
         switch result {
         case .success(let holidays):
           state.loadedHolidayYears.insert(year)
-          let calendar = Calendar.current
           for holiday in holidays {
-            let dateKey = calendar.startOfDay(for: holiday.date)
-            state.holidaysByDate[dateKey] = holiday.localName
+            state.holidaysByDate[holiday.date] = holiday.localName
           }
-        case .failure:
-          // 공휴일 로드 실패 시 조용히 무시 (재시도 가능하도록 loadedHolidayYears에 추가 안 함)
-          break
+        case .failure(let error):
+          // 공휴일 로드 실패 시 로그 출력 (재시도 가능하도록 loadedHolidayYears에 추가 안 함)
+          AppLogger.calendar.debugLog("❌ 공휴일 로드 실패 (year: \(year)): \(error.localizedDescription)", type: .error)
         }
         return .none
 

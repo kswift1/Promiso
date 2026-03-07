@@ -13,6 +13,27 @@ import CreatePromiseFeature
 
 extension CalendarFeature {
 
+  static func weekRowIndex(
+    currentMonth: Date,
+    selectedDate: Date,
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
+  ) -> Int {
+    let calendar = Calendar.current
+    let startOfMonth = currentMonth.startOfMonth
+    let firstWeekday = currentMonth.firstWeekdayOfMonth
+    let firstDayOfWeek = startOnMonday ? 2 : 1
+    let daysToSubtract = (firstWeekday - firstDayOfWeek + 7) % 7
+    guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else {
+      return 0
+    }
+    let daysBetween = calendar.dateComponents(
+      [.day],
+      from: calendar.startOfDay(for: calendarStart),
+      to: calendar.startOfDay(for: selectedDate)
+    ).day ?? 0
+    return max(0, min(5, daysBetween / 7))
+  }
+
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
@@ -43,7 +64,7 @@ extension CalendarFeature {
 
     private var calendarContentView: some View {
       calendarWithEditCovers
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.sharePromise },
           set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
         )) { promise in
@@ -57,16 +78,12 @@ extension CalendarFeature {
               store.send(.view(.systemPromiseShareTapped))
             }
           )
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
         }
-        .fullScreenCover(item: Binding(
+        .sheet(item: Binding(
           get: { store.systemShareText.map { ShareTextItem(text: $0) } },
           set: { _ in store.send(.view(.systemShareSheetDismissed)) }
         )) { item in
           ShareSheet(items: [item.text])
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
         .sheet(isPresented: Binding(
           get: { store.isFilterSheetPresented },
@@ -91,6 +108,7 @@ extension CalendarFeature {
               store.send(.view(.filterReset))
             }
           )
+          .presentationDragIndicator(.visible)
         }
         .toast(Binding(
           get: { store.toastMessage },
@@ -103,22 +121,14 @@ extension CalendarFeature {
 
     private var calendarWithEditCovers: some View {
       calendarBaseView
-        .fullScreenCover(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
           EditPromise.RootView(store: editStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
-        .fullScreenCover(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
-          NavigationStack {
-            CreatePersonalEvent.RootView(store: editStore)
-          }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .ignoresSafeArea()
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          CreatePersonalEvent.RootView(store: editStore)
         }
-        .fullScreenCover(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
           CreatePromise.RootView(store: createStore)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
         }
     }
 
@@ -178,7 +188,7 @@ extension CalendarFeature {
         ),
         selectedDate: store.selectedDate,
         scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-        holidayDates: Set(store.holidaysByDate.keys),
+        holidaysByDate: store.holidaysByDate,
         namespace: calendarAnimation,
         isCompactMode: !isExpanded,
         showAllIndicators: isExpanded,
@@ -216,13 +226,10 @@ extension CalendarFeature {
     // MARK: - Selected Week Row Index
 
     private var selectedWeekRowIndex: Int {
-      let calendar = Calendar.current
-      let startOfMonth = store.currentMonth.startOfMonth
-      let firstWeekday = store.currentMonth.firstWeekdayOfMonth
-      let daysToSubtract = firstWeekday - 1
-      guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else { return 0 }
-      let daysBetween = calendar.dateComponents([.day], from: calendar.startOfDay(for: calendarStart), to: calendar.startOfDay(for: store.selectedDate)).day ?? 0
-      return max(0, min(5, daysBetween / 7))
+      CalendarFeature.weekRowIndex(
+        currentMonth: store.currentMonth,
+        selectedDate: store.selectedDate
+      )
     }
 
     // MARK: - Promise List Section
@@ -437,9 +444,10 @@ extension CalendarFeature {
       let dayPromises = store.promisesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
+      let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty {
+      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty || holidayName != nil {
         CompactDayRow(
           date: date,
           promises: dayPromises,
@@ -447,6 +455,7 @@ extension CalendarFeature {
           personalEvents: dayPersonalEvents,
           isSelected: isSelected,
           currentUserId: store.currentUserId,
+          holidayName: holidayName,
           onTap: {
             store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
           }

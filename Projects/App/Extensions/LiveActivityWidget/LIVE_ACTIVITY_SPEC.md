@@ -546,8 +546,10 @@ LiveActivity 종료
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (약속 N분 전) |
-| `liveActivityScheduled` | Boolean | 예약 완료 여부 |
-| `liveActivityScheduledAt` | Timestamp? | 예약된 실행 시각 |
+| `liveActivitySchedule.scheduled` | Boolean | 예약 완료 여부 |
+| `liveActivitySchedule.started` | Boolean | Push to Start 전송 성공 후 시작 처리 여부 |
+| `liveActivitySchedule.scheduledAt` | Timestamp? | 예약된 실행 시각 |
+| `liveActivitySchedule.version` | String | 최신 예약만 통과시키는 버전 UUID |
 
 ---
 
