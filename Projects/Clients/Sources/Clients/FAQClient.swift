@@ -54,6 +54,34 @@ extension FAQClient: TestDependencyKey {
   )
 }
 
+// MARK: - Session Cache
+
+private actor FAQSessionCache {
+  static let shared = FAQSessionCache()
+  private var cached: [FAQModel]?
+  private var activeTask: Task<[FAQModel], Error>?
+
+  func getFAQs(fetch: @escaping @Sendable () async throws -> [FAQModel]) async throws -> [FAQModel] {
+    if let cached {
+      return cached
+    }
+
+    if let activeTask {
+      return try await activeTask.value
+    }
+
+    let task = Task {
+      defer { activeTask = nil }
+      let faqs = try await fetch()
+      cached = faqs
+      return faqs
+    }
+
+    activeTask = task
+    return try await task.value
+  }
+}
+
 // MARK: - Live
 
 extension FAQClient: DependencyKey {
@@ -63,7 +91,8 @@ extension FAQClient: DependencyKey {
 
     return Self(
       fetchFAQs: {
-        let databaseId = AppConstants.App.notionFAQDatabaseId
+        try await FAQSessionCache.shared.getFAQs {
+          let databaseId = AppConstants.App.notionFAQDatabaseId
 
         guard databaseId != "YOUR_DATABASE_ID_HERE" else {
           throw FAQClientError.invalidConfiguration
@@ -98,7 +127,7 @@ extension FAQClient: DependencyKey {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        return response.faqs.map { item -> FAQModel in
+        let faqs = response.faqs.map { item -> FAQModel in
           let createdAt = dateFormatter.date(from: item.createdAt) ?? Date()
 
           return FAQModel(
@@ -110,6 +139,9 @@ extension FAQClient: DependencyKey {
             isActive: true, // 서버에서 Active=true만 반환
             createdAt: createdAt
           )
+        }
+
+        return faqs
         }
       }
     )
