@@ -790,8 +790,7 @@ promises/{promiseId}
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
 | `trackingStartMinutesBefore` | Number | ❌ | null | LiveActivity 시작 시간 (약속 N분 전) |
-| `liveActivityScheduled` | Boolean | ❌ | false | LiveActivity 예약 완료 여부 |
-| `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
+| `liveActivitySchedule` | Map | ❌ | null | LiveActivity 예약/시작 상태 (`scheduled`, `started`, `scheduledAt`, `version`) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 

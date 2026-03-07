@@ -106,7 +106,8 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
           originalTransactionId: originalTransactionId,
           expirationDate: expirationDate,
           purchaseDate: purchaseDate,
-          updatedAt: FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
+          updatedAt: FieldValue.serverTimestamp() as
+            FirebaseFirestore.Timestamp,
         };
 
         // subscriptions/{userId} 문서 업데이트
@@ -225,7 +226,7 @@ export const appleServerNotification = onRequest(
       console.log(`✅ [Subscription] User found: ${userId}`);
 
       // 5. notificationType에 따라 상태 업데이트
-      let status: string = "subscribed";
+      let status = "subscribed";
       switch (notificationType) {
       case "SUBSCRIBED":
       case "DID_RENEW":
@@ -272,7 +273,8 @@ export const appleServerNotification = onRequest(
           productId: productId,
           expirationDate: expiresDate,
           purchaseDate: purchaseDate,
-          updatedAt: FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
+          updatedAt: FieldValue.serverTimestamp() as
+            FirebaseFirestore.Timestamp,
         };
 
         transaction.set(subscriptionRef, subscriptionData, {merge: true});

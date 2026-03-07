@@ -76,7 +76,8 @@ function getAPNsBundleId(): string {
 export const APNS_BUNDLE_ID = getAPNsBundleId();
 
 // App Store Server Notification 시크릿 (향후 사용)
-// export const APP_STORE_SHARED_SECRET = defineSecret("APP_STORE_SHARED_SECRET");
+// export const APP_STORE_SHARED_SECRET =
+//   defineSecret("APP_STORE_SHARED_SECRET");
 
 // Firebase Admin 인스턴스 export
 export {admin};

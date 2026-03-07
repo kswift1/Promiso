@@ -44,7 +44,7 @@
 | ID | 규칙 | 상세 |
 |----|------|------|
 | L10 | 약속 확정 + tracking 설정 → 자동 예약 | `onPromiseConfirmedScheduleLiveActivity` 트리거 |
-| L11 | 확정 취소 → 예약 리셋 | `liveActivityScheduled = false` |
+| L11 | 확정 취소 → 예약 리셋 | `liveActivitySchedule = null` |
 | L12 | trackingMinutes null 변경 → 예약 리셋 | 라이브 액티비티 비활성화 |
 | L13 | 예약 시작 시 확정 상태 재확인 | 미확정이면 스킵 |
 

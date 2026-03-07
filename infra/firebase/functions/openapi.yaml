@@ -3227,16 +3227,24 @@ components:
           nullable: true
           description: LiveActivity 시작 시간 (약속 N분 전)
           example: 30
-        liveActivityScheduled:
-          type: boolean
+        liveActivitySchedule:
+          type: object
           nullable: true
-          description: LiveActivity 예약 완료 여부
-          example: false
-        liveActivityScheduledAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: LiveActivity 예약 시각
+          description: LiveActivity 스케줄링 상태
+          properties:
+            scheduled:
+              type: boolean
+              description: 예약 완료 여부
+            started:
+              type: boolean
+              description: Push to Start 전송 성공 후 시작 처리 여부
+            scheduledAt:
+              type: string
+              format: date-time
+              description: 예약 시각
+            version:
+              type: string
+              description: 스케줄 버전 UUID (stale 감지용)
         createdAt:
           type: string
           format: date-time

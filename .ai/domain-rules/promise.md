@@ -28,7 +28,7 @@
 | P11 | 삭제 권한 | 약속 호스트 또는 그룹 호스트 | ✅ | ✅ |
 | P12 | 수정 시간 제한 | 시작 전만 가능 | ✅ | ✅ |
 | P13 | 삭제 시간 제한 | 시작 전만 가능 | — | ✅ |
-| P14 | LiveActivity 실행 중 수정 불가 | `liveActivityScheduled && scheduledAt <= now` | — | ✅ |
+| P14 | LiveActivity 실행 중 수정 불가 | `liveActivitySchedule.scheduled && liveActivitySchedule.scheduledAt <= now` | — | ✅ |
 | P15 | 투표 응답 = 같은 그룹 멤버만 | group membership 확인 | — | ✅ |
 
 ---
@@ -69,7 +69,7 @@
 | ID | 규칙 | 상세 | iOS | Backend |
 |----|------|------|:---:|:-------:|
 | P30 | 시작 시간 변경 → votes.until 동기화 | 투표 마감도 함께 변경 | — | ✅ |
-| P31 | 시작 시간 변경 → LiveActivity 예약 리셋 | `liveActivityScheduled = false` | — | ✅ |
+| P31 | 시작 시간 변경 → LiveActivity 예약 리셋 | `liveActivitySchedule = null` | — | ✅ |
 | P32 | 위치(location) 수정 불가 | 생성 후 변경 불가, 읽기 전용 | ✅ | — |
 | P33 | 변경 감지 필드 (7개) | title, emoji, description, startAt, endAt, minimumParticipants, trackingStartMinutesBefore | ✅ | — |
 
