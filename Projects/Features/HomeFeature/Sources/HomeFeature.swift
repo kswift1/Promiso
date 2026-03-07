@@ -460,7 +460,7 @@ extension Home {
             let locationDenied = state.isLocationDenied
             let userId = state.currentUser.userId
 
-            AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.description ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
+            AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.ISO8601Format() ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
 
             // 강제 새로고침
             state.briefingState = .loading
