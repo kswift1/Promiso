@@ -522,11 +522,6 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         fetchUserGroups(uid),
       ]);
 
-      console.log(
-        `[Briefing] slots=${slots.length}, ` +
-        `groups=${Object.keys(userGroups).length}`
-      );
-
       // 3. promise 상세 조회
       const promiseIds = slots
         .filter((s) => s.type === "promise")
@@ -551,7 +546,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
             );
           }
         } catch (e) {
-          console.error("[Briefing] Weather fetch failed:", e);
+          console.error(`[Briefing] uid=${uid}, Weather fetch failed:`, e);
         }
       }
 
@@ -591,11 +586,6 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         detailsWithLocation,
       );
 
-      console.log(
-        `[Briefing] promiseDetails=${promiseDetails.size}, ` +
-        `weather=${weather ? "yes" : "no"}, ` +
-        `travelSegments=${travelSegments.length}`
-      );
 
       // 7. 프롬프트 조립
       const prompt = buildPrompt(
@@ -610,14 +600,14 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       );
 
       console.log(
-        `[Briefing] prompt (${prompt.length} chars):\n${prompt}`
+        `[Briefing] uid=${uid}, prompt (${prompt.length} chars):\n${prompt}`
       );
 
       // 8. Gemini API 호출
       const geminiKey = GEMINI_API_KEY.value();
       if (!geminiKey) {
         console.error(
-          "[Briefing] GEMINI_API_KEY not configured"
+          `[Briefing] uid=${uid}, GEMINI_API_KEY not configured`
         );
         return {
           summary: DEFAULT_SUMMARY,
@@ -634,11 +624,11 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       const text = result.response.text().trim();
 
       console.log(
-        `[Briefing] Gemini raw response:\n${text}`
+        `[Briefing] uid=${uid}, Gemini raw response:\n${text}`
       );
 
       if (!text) {
-        console.warn("[Briefing] Empty Gemini response");
+        console.warn(`[Briefing] uid=${uid}, Empty Gemini response`);
         return {
           summary: DEFAULT_SUMMARY,
           detail: DEFAULT_DETAIL,
@@ -654,7 +644,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         const parsed = JSON.parse(jsonStr);
         if (parsed.summary && parsed.detail) {
           console.log(
-            `[Briefing] Generated successfully - ` +
+            `[Briefing] uid=${uid}, Generated successfully - ` +
             `summary="${parsed.summary}", ` +
             `detail="${parsed.detail.substring(0, 100)}..."`
           );
@@ -665,7 +655,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         }
       } catch {
         console.warn(
-          "[Briefing] JSON parse failed, using raw text"
+          `[Briefing] uid=${uid}, JSON parse failed, using raw text`
         );
       }
 
@@ -676,7 +666,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         detail: text,
       };
     } catch (error) {
-      console.error("[Briefing] Error:", error);
+      console.error(`[Briefing] uid=${uid}, Error:`, error);
       return {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
