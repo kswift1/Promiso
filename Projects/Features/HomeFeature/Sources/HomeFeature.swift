@@ -1180,31 +1180,11 @@ extension Home {
 
             let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
             return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh] send in
-              var location: BriefingInput.BriefingLocation?
-
-              if locationClient.authorizationStatus() == .authorized {
-                do {
-                  let coordinate = try await locationClient.getCurrentLocation()
-                  let locationText = try await locationClient.reverseGeocode(coordinate)
-                  location = BriefingInput.BriefingLocation(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude,
-                    title: locationText
-                  )
-                } catch {
-                  // 위치 실패 시 무시하고 진행
-                }
-              }
-
-              let input = BriefingInput(
-                timezone: TimeZone.current.identifier,
-                language: (AppLanguage.current ?? .korean).rawValue,
-                location: location,
-                forceRefresh: needsForceRefresh,
-                style: briefingStyle
+              let input = await Self.buildBriefingInput(
+                locationClient: locationClient,
+                style: briefingStyle,
+                forceRefresh: needsForceRefresh
               )
-
-              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(needsForceRefresh), style=\(briefingStyle.rawValue)")
 
               do {
                 let briefing = try await briefingClient.generate(input)
@@ -1411,6 +1391,42 @@ extension Home {
         CreatePromise.Feature()
       }
 
+    }
+
+    // MARK: - Briefing Helpers
+
+    private static func buildBriefingInput(
+      locationClient: LocationClient,
+      style: BriefingStyle,
+      forceRefresh: Bool
+    ) async -> BriefingInput {
+      var location: BriefingInput.BriefingLocation?
+
+      if locationClient.authorizationStatus() == .authorized {
+        do {
+          let coordinate = try await locationClient.getCurrentLocation()
+          let locationText = try await locationClient.reverseGeocode(coordinate)
+          location = BriefingInput.BriefingLocation(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            title: locationText
+          )
+        } catch {
+          // 위치 실패 시 무시하고 진행
+        }
+      }
+
+      let input = BriefingInput(
+        timezone: TimeZone.current.identifier,
+        language: (AppLanguage.current ?? .korean).rawValue,
+        location: location,
+        forceRefresh: forceRefresh,
+        style: style
+      )
+
+      AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh), style=\(style.rawValue)")
+
+      return input
     }
   }
 }
