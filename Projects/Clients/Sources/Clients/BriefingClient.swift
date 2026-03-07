@@ -29,37 +29,30 @@ public enum BriefingClientError: Error, Equatable {
 // MARK: - Input
 
 public struct BriefingInput: Equatable, Sendable {
-  public let currentDateTime: String
-  public let currentLocation: String?
-  public let weather: WeatherSummary?
-  public let schedules: String
+  public let timezone: String
+  public let language: String
+  public let location: BriefingLocation?
 
-  public struct WeatherSummary: Equatable, Sendable {
-    public let temp: Double
-    public let condition: String
-    public let rain: Int
-    public let max: Double
-    public let min: Double
+  public struct BriefingLocation: Equatable, Sendable {
+    public let latitude: Double
+    public let longitude: Double
+    public let title: String
 
-    public init(temp: Double, condition: String, rain: Int, max: Double, min: Double) {
-      self.temp = temp
-      self.condition = condition
-      self.rain = rain
-      self.max = max
-      self.min = min
+    public init(latitude: Double, longitude: Double, title: String) {
+      self.latitude = latitude
+      self.longitude = longitude
+      self.title = title
     }
   }
 
   public init(
-    currentDateTime: String,
-    currentLocation: String?,
-    weather: WeatherSummary?,
-    schedules: String
+    timezone: String,
+    language: String,
+    location: BriefingLocation?
   ) {
-    self.currentDateTime = currentDateTime
-    self.currentLocation = currentLocation
-    self.weather = weather
-    self.schedules = schedules
+    self.timezone = timezone
+    self.language = language
+    self.location = location
   }
 }
 
@@ -120,24 +113,19 @@ extension BriefingClient: DependencyKey {
     return Self(
       generate: { input in
         var data: [String: Any] = [
-          "currentDateTime": input.currentDateTime,
-          "schedules": input.schedules,
+          "timezone": input.timezone,
+          "language": input.language,
         ]
-        if let location = input.currentLocation {
-          data["currentLocation"] = location
-        }
-        if let weather = input.weather {
-          data["weather"] = [
-            "temp": weather.temp,
-            "condition": weather.condition,
-            "rain": weather.rain,
-            "max": weather.max,
-            "min": weather.min,
+        if let location = input.location {
+          data["location"] = [
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "title": location.title,
           ] as [String: Any]
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
-        AppLogger.briefing.debug("🎯 [BriefingClient] 브리핑 생성 시작 - 날짜: \(input.currentDateTime)")
+        AppLogger.briefing.debug("🎯 [BriefingClient] 브리핑 생성 시작 - timezone: \(input.timezone), location: \(input.location?.title ?? "없음")")
 
         do {
           let result = try await functions.httpsCallable("generateBriefing").call(data)

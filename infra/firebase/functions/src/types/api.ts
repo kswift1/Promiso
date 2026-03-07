@@ -1406,31 +1406,25 @@ export enum GenerateEmojiError {
  *
  * @remarks
  * - 인증 필수 (Firebase Auth)
- * - Gemini API를 사용하여 날씨와 일정을 종합한 아침 브리핑 생성
+ * - 클라이언트는 디바이스 전용 데이터만 전송
+ * - 일정/날씨는 서버에서 조회 (scheduleSlots + weather.ts)
  */
 export interface GenerateBriefingRequest {
-  /** 현재 날짜/시간 (예: "2026-03-07 금요일 08:30") */
-  currentDateTime: string;
+  /** 유저 타임존 (서버는 UTC이므로 필수) */
+  timezone: string;
 
-  /** 현재 위치 (예: "서울 강남구", 알 수 없으면 null) */
-  currentLocation: string | null;
+  /** 브리핑 언어 (다국어 확장 대비) */
+  language: string;
 
-  /** 날씨 정보 (이용 불가하면 null) */
-  weather: {
-    /** 현재 기온 (°C) */
-    temp: number;
-    /** 날씨 상태 (예: "맑음", "흐림", "비") */
-    condition: string;
-    /** 강수 확률 (%) */
-    rain: number;
-    /** 최고 기온 (°C) */
-    max: number;
-    /** 최저 기온 (°C) */
-    min: number;
+  /** 유저 위치 (위치 권한 거부 시 null) */
+  location: {
+    /** 위도 */
+    latitude: number;
+    /** 경도 */
+    longitude: number;
+    /** 위치 텍스트 (CLGeocoder, 예: "서울 강남구") */
+    title: string;
   } | null;
-
-  /** 포맷된 일정 텍스트 (일정 없으면 "일정 없음") */
-  schedules: string;
 }
 
 /**
@@ -1439,7 +1433,7 @@ export interface GenerateBriefingRequest {
 export interface GenerateBriefingResponse {
   /** 한 줄 요약 (30자 이내) */
   summary: string;
-  /** 상세 브리핑 (3-4문장) */
+  /** 상세 브리핑 (3~5문장) */
   detail: string;
 }
 

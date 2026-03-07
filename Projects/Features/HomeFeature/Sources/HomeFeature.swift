@@ -1092,88 +1092,32 @@ extension Home {
             }
             state.briefingState = .loading
 
-            // 오늘 일정 포맷
-            let snapshot = state.homeContentSnapshot
-            let scheduleText: String
-            if snapshot.todayScheduleItems.isEmpty {
-              scheduleText = "일정 없음"
-            } else {
-              scheduleText = snapshot.todayScheduleItems.map { item in
-                switch item {
-                case .promise(let p):
-                  let timeStr = p.startAt.formatted(.dateTime.hour().minute())
-                  let status = p.isConfirmed ? "확정" : "미확정"
-                  return "[\(timeStr)] \(p.title) (\(status))"
-                case .personalEvent(let e):
-                  let timeStr = e.startAt.formatted(.dateTime.hour().minute())
-                  return "[\(timeStr)] \(e.title)"
-                }
-              }.joined(separator: "\n")
-            }
-
-            // 현재 날짜/시간 포맷
-            let now = Date()
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "ko_KR")
-            dateFormatter.dateFormat = "yyyy-MM-dd EEEE HH:mm"
-            let currentDateTime = dateFormatter.string(from: now)
-
-            return .run { [locationClient, weatherClient, briefingClient] send in
-              // 위치 + 날씨 수집 (실패해도 브리핑 생성 진행)
-              var currentLocation: String? = nil
-              var weatherSummary: BriefingInput.WeatherSummary? = nil
+            return .run { [locationClient, briefingClient] send in
+              var location: BriefingInput.BriefingLocation?
 
               do {
                 let coordinate = try await locationClient.getCurrentLocation()
-                currentLocation = try await locationClient.reverseGeocode(coordinate)
-
-                let weatherInfo = try await weatherClient.getWeather(
-                  coordinate.latitude,
-                  coordinate.longitude,
-                  now
+                let locationText = try await locationClient.reverseGeocode(coordinate)
+                location = BriefingInput.BriefingLocation(
+                  latitude: coordinate.latitude,
+                  longitude: coordinate.longitude,
+                  title: locationText
                 )
-                if let current = weatherInfo.current {
-                  // dailyForecasts에서 최고/최저 기온 추출
-                  let todayForecast = weatherInfo.dailyForecasts.first
-                  weatherSummary = BriefingInput.WeatherSummary(
-                    temp: current.temperature,
-                    condition: current.condition.description,
-                    rain: current.precipitationProbability,
-                    max: todayForecast?.maxTemperature ?? current.temperature,
-                    min: todayForecast?.minTemperature ?? current.temperature
-                  )
-                }
               } catch {
-                // 위치/날씨 실패 시 무시하고 진행
+                // 위치 실패 시 무시하고 진행
               }
 
               let input = BriefingInput(
-                currentDateTime: currentDateTime,
-                currentLocation: currentLocation,
-                weather: weatherSummary,
-                schedules: scheduleText
+                timezone: TimeZone.current.identifier,
+                language: Locale.current.language.languageCode?.identifier ?? "ko",
+                location: location
               )
 
-              AppLogger.briefing.debug("""
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              📋 브리핑 요청 데이터
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              🕐 날짜/시간: \(currentDateTime)
-              📍 위치: \(currentLocation ?? "없음")
-              🌤️ 날씨: \(weatherSummary.map { "기온 \($0.temp)°C, \($0.condition), 강수확률 \($0.rain)%, 최고 \($0.max)°C / 최저 \($0.min)°C" } ?? "없음")
-              📅 일정:
-              \(scheduleText)
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              """)
+              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음")")
 
               do {
                 let briefing = try await briefingClient.generate(input)
-                AppLogger.briefing.debug("""
-                ✅ 브리핑 생성 완료
-                  요약: \(briefing.summary)
-                  상세: \(briefing.detail)
-                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                """)
+                AppLogger.briefing.debug("✅ 브리핑 생성 완료 - 요약: \(briefing.summary)")
                 await send(.internal(.briefingResponse(.success(briefing))))
               } catch {
                 AppLogger.briefing.error("❌ 브리핑 생성 실패: \(error)")
