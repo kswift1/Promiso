@@ -603,6 +603,10 @@ extension Settings {
           case .subscriptionStatusChanged(let status):
             syncSubscriptionStatus(status, state: &state)
             return .send(.delegate(.subscriptionStatusChanged(status)))
+
+          case .dismissRequested:
+            state.proPlan = nil
+            return .none
           }
 
         case .proPlan:
@@ -613,6 +617,8 @@ extension Settings {
           case .subscriptionStatusChanged(let status):
             syncSubscriptionStatus(status, state: &state)
             return .send(.delegate(.subscriptionStatusChanged(status)))
+          case .dismissRequested:
+            return .none
           }
 
         case .path:
@@ -631,6 +637,9 @@ extension Settings {
       for id in state.path.ids {
         if case .conflictThresholdSettings(var conflictState) = state.path[id: id] {
           conflictState.isPro = status.isPro
+          if status.isPro {
+            conflictState.isEnabled = true
+          }
           state.path[id: id] = .conflictThresholdSettings(conflictState)
           continue
         }

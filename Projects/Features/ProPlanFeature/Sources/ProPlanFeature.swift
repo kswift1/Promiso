@@ -147,6 +147,8 @@ extension ProPlan {
     public enum DelegateAction: Equatable, Sendable {
       /// 구독 상태 변경됨
       case subscriptionStatusChanged(SubscriptionStatus)
+      /// 시트 dismiss 요청 (구매 완료 후 축하 화면에서 "시작하기" 탭)
+      case dismissRequested
     }
 
     // MARK: - Reducer Body
@@ -232,6 +234,9 @@ extension ProPlan {
 
           case .dismissCelebration:
             state.showCelebration = false
+            if state.subscriptionStatus.isPro {
+              return .send(.delegate(.dismissRequested))
+            }
             return .none
 
           case .showPricingTapped:
