@@ -44,6 +44,8 @@ interface TravelSegment {
 
 /**
  * 유저 입력에서 user-data 태그를 이스케이프하여 prompt injection 방지
+ * @param {string} input - 사용자 입력 문자열
+ * @return {string} 태그가 제거된 문자열
  */
 function sanitizeUserData(input: string): string {
   return input
