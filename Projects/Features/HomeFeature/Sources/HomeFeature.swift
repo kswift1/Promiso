@@ -461,17 +461,18 @@ extension Home {
 
             return .run { [openURL] _ in
               let subject = "[Promiso] 브리핑 오류 제보"
-              var body = "------- 아래 내용은 수정하지 마세요 -------\n"
+              var body = "제보해 주셔서 감사합니다! 더 나은 브리핑을 만드는 데 큰 도움이 됩니다 🙏\n\n"
+              body += "상세 내용이 있다면 입력해주세요:\n\n\n"
+              body += "── 자동 수집 정보 (확인용) ──\n"
               body += "UID: \(userId)\n"
               body += "생성 시각: \(generatedDate?.formatted(.iso8601) ?? "없음")\n"
               body += "요약: \(briefing?.summary ?? "없음")\n"
               body += "상세: \(briefing?.detail ?? "없음")\n"
-              body += "알림 권한 거부: \(notificationDenied)\n"
-              body += "위치 권한 거부: \(locationDenied)\n"
+              body += "알림 권한: \(!notificationDenied)\n"
+              body += "위치 권한: \(!locationDenied)\n"
               body += "Timezone: \(TimeZone.current.identifier)\n"
               body += "Locale: \(Locale.current.identifier)\n"
-              body += "------- 여기까지 -------\n\n"
-              body += "어떤 점이 이상했는지 알려주세요:\n"
+              body += "────────────────────\n"
 
               let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
               let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
