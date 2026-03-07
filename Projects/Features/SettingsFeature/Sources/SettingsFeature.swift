@@ -560,6 +560,13 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .conflictThresholdSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
         case .path(.element(_, action: .support(.delegate(let delegate)))):
           switch delegate {
           case .navigateToFAQ:
@@ -594,6 +601,7 @@ extension Settings {
         case .proPlan(.presented(.delegate(let delegate))):
           switch delegate {
           case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
             return .send(.delegate(.subscriptionStatusChanged(status)))
           }
 
@@ -603,6 +611,7 @@ extension Settings {
         case .path(.element(_, action: .proPlanManage(.delegate(let delegate)))):
           switch delegate {
           case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
             return .send(.delegate(.subscriptionStatusChanged(status)))
           }
 
@@ -613,6 +622,23 @@ extension Settings {
       .forEach(\.path, action: \.path)
       .ifLet(\.$proPlan, action: \.proPlan) {
         ProPlan.Feature()
+      }
+    }
+
+    private func syncSubscriptionStatus(_ status: SubscriptionStatus, state: inout State) {
+      state.subscriptionStatus = status
+
+      for id in state.path.ids {
+        if case .conflictThresholdSettings(var conflictState) = state.path[id: id] {
+          conflictState.isPro = status.isPro
+          state.path[id: id] = .conflictThresholdSettings(conflictState)
+          continue
+        }
+
+        if case .briefingSettings(var briefingState) = state.path[id: id] {
+          briefingState.isPro = status.isPro
+          state.path[id: id] = .briefingSettings(briefingState)
+        }
       }
     }
   }
@@ -712,4 +738,3 @@ public enum SettingsError: Error, Equatable, LocalizedError {
     }
   }
 }
-

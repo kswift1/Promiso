@@ -867,6 +867,7 @@ extension ConflictThresholdSettings {
     public enum Action: Equatable, Sendable {
       case view(View)
       case `internal`(Internal)
+      case delegate(Delegate)
     }
 
     @CasePathable
@@ -877,6 +878,7 @@ extension ConflictThresholdSettings {
       case customModeTapped
       case customInputChanged(String)
       case customInputCommitted
+      case proFeatureTapped
     }
 
     @CasePathable
@@ -884,6 +886,10 @@ extension ConflictThresholdSettings {
       case settingsLoaded(Int)
       case updateCompleted
       case updateFailed
+    }
+
+    public enum Delegate: Equatable, Sendable {
+      case proPlanRequested
     }
 
     private enum CancelID {
@@ -909,7 +915,12 @@ extension ConflictThresholdSettings {
             }
 
           case .enabledToggled(let enabled):
-            guard state.isPro else { return .none }
+            guard state.isPro else {
+              return .run { send in
+                await hapticFeedback.selection()
+                await send(.delegate(.proPlanRequested))
+              }
+            }
             state.isEnabled = enabled
             if !enabled {
               // 비활성화: 서버에 -1 저장
@@ -989,6 +1000,13 @@ extension ConflictThresholdSettings {
               }
             }
             .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+
+          case .proFeatureTapped:
+            guard !state.isPro else { return .none }
+            return .run { send in
+              await hapticFeedback.selection()
+              await send(.delegate(.proPlanRequested))
+            }
           }
 
         case .internal(let internalAction):
@@ -1015,6 +1033,9 @@ extension ConflictThresholdSettings {
             state.isLoading = false
             return .none
           }
+
+        case .delegate:
+          return .none
         }
       }
     }
@@ -1041,7 +1062,16 @@ extension ConflictThresholdSettings {
 
               thresholdSection
                 .opacity(store.isEnabled && store.isPro ? 1 : 0.35)
-                .allowsHitTesting(store.isEnabled && store.isPro)
+                .allowsHitTesting(store.isPro ? store.isEnabled : true)
+                .overlay {
+                  if !store.isPro {
+                    Color.clear
+                      .contentShape(Rectangle())
+                      .onTapGesture {
+                        store.send(.view(.proFeatureTapped))
+                      }
+                  }
+                }
 
               exampleSection
             }
@@ -1119,7 +1149,16 @@ extension ConflictThresholdSettings {
         ))
         .labelsHidden()
         .tint(Color.pmindigo.n500)
-        .disabled(!store.isPro)
+        .allowsHitTesting(store.isPro)
+        .overlay {
+          if !store.isPro {
+            Color.clear
+              .contentShape(Rectangle())
+              .onTapGesture {
+                store.send(.view(.proFeatureTapped))
+              }
+          }
+        }
       }
       .padding(.horizontal, 4)
     }
