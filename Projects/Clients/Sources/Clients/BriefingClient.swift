@@ -63,26 +63,41 @@ public struct BriefingInput: Equatable, Sendable {
   }
 }
 
+// MARK: - Result
+
+public struct BriefingResult: Equatable, Sendable {
+  public let summary: String
+  public let detail: String
+
+  public init(summary: String, detail: String) {
+    self.summary = summary
+    self.detail = detail
+  }
+}
+
 // MARK: - Client
 
 /// TCA용 브리핑 생성 클라이언트
 @DependencyClient
 public struct BriefingClient: Sendable {
   /// 오늘의 브리핑 생성 (Firebase Functions 사용)
-  public var generate: @Sendable (_ input: BriefingInput) async throws -> String
+  public var generate: @Sendable (_ input: BriefingInput) async throws -> BriefingResult
 }
 
 // MARK: - Test & Preview Values
 
 extension BriefingClient: TestDependencyKey {
   public static let testValue = Self(
-    generate: unimplemented("\(Self.self).generate", placeholder: "")
+    generate: unimplemented("\(Self.self).generate", placeholder: BriefingResult(summary: "", detail: ""))
   )
 
   public static let previewValue = Self(
     generate: { _ in
       try await Task.sleep(for: .seconds(1))
-      return "오늘은 맑은 날씨에 기온이 18°C로 나들이하기 좋은 날이에요! 오후 2시에 카페 모임이 있으니 여유롭게 준비하세요. 즐거운 하루 보내세요 ☀️"
+      return BriefingResult(
+        summary: "맑고 18°C, 오후 카페 모임 잊지 마세요!",
+        detail: "오늘은 맑은 날씨에 기온이 18°C로 나들이하기 좋은 날이에요! 오후 2시에 카페 모임이 있으니 여유롭게 준비하세요. 즐거운 하루 보내세요 ☀️"
+      )
     }
   )
 }
@@ -128,7 +143,8 @@ extension BriefingClient: DependencyKey {
           let result = try await functions.httpsCallable("generateBriefing").call(data)
 
           guard let responseData = result.data as? [String: Any],
-                let briefing = responseData["briefing"] as? String
+                let summary = responseData["summary"] as? String,
+                let detail = responseData["detail"] as? String
           else {
             AppLogger.briefing.error("❌ [BriefingClient] 응답 파싱 실패")
             throw BriefingClientError.invalidResponse
@@ -137,7 +153,7 @@ extension BriefingClient: DependencyKey {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.info("🎉 [BriefingClient] 브리핑 생성 완료 - 총 소요시간: \(String(format: "%.2f", totalTime))초")
 
-          return briefing
+          return BriefingResult(summary: summary, detail: detail)
         } catch let error as NSError {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.error("❌ [BriefingClient] Firebase Functions 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")

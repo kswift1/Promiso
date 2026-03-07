@@ -185,8 +185,13 @@ extension Home {
           } else {
             // 오늘의 브리핑
             DailyBriefingCard(
-              briefingText: store.briefingState.value,
+              summary: store.briefingState.value?.summary,
+              detail: store.briefingState.value?.detail,
               isLoading: store.briefingState.isLoading,
+              isExpanded: store.isBriefingExpanded,
+              onTap: {
+                store.send(.view(.briefingCardTapped), animation: .easeInOut(duration: 0.25))
+              },
               onRefresh: {
                 store.send(.view(.refreshBriefingTapped))
               }

@@ -68,9 +68,11 @@ extension Home {
       var hasLoadedOnce: Bool = false
 
       /// 브리핑 상태
-      var briefingState: LoadingState<String> = .idle
+      var briefingState: LoadingState<BriefingResult> = .idle
       /// 브리핑 생성 날짜 (같은 날 중복 방지)
       var briefingGeneratedDate: Date? = nil
+      /// 브리핑 상세 펼침 여부
+      var isBriefingExpanded: Bool = false
 
       // MARK: Filter
       /// 선택된 그룹 ID (nil = 전체)
@@ -206,6 +208,8 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 브리핑 카드 탭 (expand/collapse)
+        case briefingCardTapped
         /// 브리핑 새로고침
         case refreshBriefingTapped
         /// 캘린더 오버레이 열기
@@ -279,7 +283,7 @@ extension Home {
         /// 브리핑 생성 트리거
         case fetchBriefing
         /// 브리핑 응답
-        case briefingResponse(Result<String, Error>)
+        case briefingResponse(Result<BriefingResult, Error>)
       }
 
       @CasePathable
@@ -402,9 +406,14 @@ extension Home {
             state.toastMessage = nil
             return .none
 
+          case .briefingCardTapped:
+            state.isBriefingExpanded.toggle()
+            return .none
+
           case .refreshBriefingTapped:
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
+            state.isBriefingExpanded = false
             return .send(.internal(.fetchBriefing))
 
           case .calendarOverlayOpened:
@@ -1156,8 +1165,8 @@ extension Home {
 
           case .briefingResponse(let result):
             switch result {
-            case .success(let text):
-              state.briefingState = .loaded(text)
+            case .success(let briefingResult):
+              state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
             case .failure:
               state.briefingState = .failed(BriefingClientError.networkError)

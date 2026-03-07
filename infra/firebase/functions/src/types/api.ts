@@ -1437,8 +1437,10 @@ export interface GenerateBriefingRequest {
  * 하루 브리핑 생성 응답
  */
 export interface GenerateBriefingResponse {
-  /** 생성된 브리핑 텍스트 */
-  briefing: string;
+  /** 한 줄 요약 (30자 이내) */
+  summary: string;
+  /** 상세 브리핑 (3-4문장) */
+  detail: string;
 }
 
 /**
