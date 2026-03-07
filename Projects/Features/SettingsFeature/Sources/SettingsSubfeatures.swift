@@ -855,8 +855,12 @@ extension ConflictThresholdSettings {
       var isLoading: Bool = true
       var isCustomMode: Bool = false
       var customInputText: String = ""
+      var isPro: Bool
 
-      public init() {}
+      public init(isPro: Bool) {
+        self.isPro = isPro
+        self.isEnabled = isPro
+      }
     }
 
     @CasePathable
@@ -905,6 +909,7 @@ extension ConflictThresholdSettings {
             }
 
           case .enabledToggled(let enabled):
+            guard state.isPro else { return .none }
             state.isEnabled = enabled
             if !enabled {
               // 비활성화: 서버에 -1 저장
@@ -936,6 +941,7 @@ extension ConflictThresholdSettings {
             }
 
           case .thresholdSelected(let value):
+            guard state.isPro else { return .none }
             state.isCustomMode = false
             state.threshold = value
             return .run { [threshold = value] send in
@@ -951,11 +957,13 @@ extension ConflictThresholdSettings {
             .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
 
           case .customModeTapped:
+            guard state.isPro else { return .none }
             state.isCustomMode = true
             state.customInputText = state.threshold > 0 ? "\(state.threshold)" : ""
             return .none
 
           case .customInputChanged(let text):
+            guard state.isPro else { return .none }
             let filtered = text.filter { $0.isNumber }
             state.customInputText = filtered
             return .run { send in
@@ -965,6 +973,7 @@ extension ConflictThresholdSettings {
             .cancellable(id: CancelID.debounce, cancelInFlight: true)
 
           case .customInputCommitted:
+            guard state.isPro else { return .none }
             guard let value = Int(state.customInputText) else { return .none }
             let clamped = ConflictThresholdSettings.customRange.clamp(value)
             state.threshold = clamped
@@ -985,9 +994,9 @@ extension ConflictThresholdSettings {
         case .internal(let internalAction):
           switch internalAction {
           case .settingsLoaded(let threshold):
-            if threshold < 0 {
+            if !state.isPro || threshold < 0 {
               state.isEnabled = false
-              state.threshold = 0
+              state.threshold = threshold < 0 ? 0 : threshold
             } else {
               state.isEnabled = true
               state.threshold = threshold
@@ -1031,8 +1040,8 @@ extension ConflictThresholdSettings {
               headerDescription
 
               thresholdSection
-                .opacity(store.isEnabled ? 1 : 0.35)
-                .allowsHitTesting(store.isEnabled)
+                .opacity(store.isEnabled && store.isPro ? 1 : 0.35)
+                .allowsHitTesting(store.isEnabled && store.isPro)
 
               exampleSection
             }
@@ -1094,20 +1103,22 @@ extension ConflictThresholdSettings {
           Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(Color.pmtext.primary)
+        }
 
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.secondary)
+
+        HStack {
           Spacer()
-
           Toggle("", isOn: Binding(
             get: { store.isEnabled },
             set: { store.send(.view(.enabledToggled($0)), animation: .default) }
           ))
           .labelsHidden()
           .tint(Color.pmindigo.n500)
+          .disabled(!store.isPro)
         }
-
-        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmtext.secondary)
       }
       .padding(.horizontal, 4)
     }

@@ -304,7 +304,9 @@ extension Settings {
             return .run { _ in await hapticFeedback.selection() }
 
           case .conflictThresholdSettingsTapped:
-            state.path.append(.conflictThresholdSettings(ConflictThresholdSettings.Feature.State()))
+            state.path.append(.conflictThresholdSettings(
+              ConflictThresholdSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
             return .run { _ in await hapticFeedback.selection() }
 
           case .themeSettingsTapped:
