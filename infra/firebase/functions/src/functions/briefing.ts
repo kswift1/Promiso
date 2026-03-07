@@ -277,6 +277,7 @@ function matchWeatherToSchedule(
  * @param {TravelSegment[]} travelSegments - 이동 구간 목록
  * @param {string} timezone - 사용자 타임존 식별자
  * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
+ * @param {string} style - 브리핑 스타일
  * @return {string} 조립된 프롬프트
  */
 function buildPrompt(
@@ -292,11 +293,20 @@ function buildPrompt(
   travelSegments: TravelSegment[],
   timezone: string,
   todayKey: string,
+  style: string,
 ): string {
   const lines: string[] = [];
 
   // 시스템 역할
-  lines.push("당신은 사용자의 하루를 친근하게 브리핑해주는 개인 비서입니다.");
+  const toneMap: Record<string, string> = {
+    friendly: "따뜻하고 친근한 말투로",
+    humorous: "위트 있고 유머러스한 말투로, 가벼운 비유나 드립을 섞어서",
+    concise: "군더더기 없이 핵심만 간결하게, 이모지 최소한으로",
+    motivational: "응원하고 격려하는 톤으로, 긍정적 에너지를 담아서",
+    calm: "조용하고 차분한 톤으로, 편안한 느낌으로",
+  };
+  const tone = toneMap[style] || toneMap["friendly"];
+  lines.push(`당신은 사용자의 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
   lines.push("");
 
   // 출력 규칙
@@ -474,6 +484,227 @@ function getCurrentDateTimeStr(timezone: string): string {
 // MARK: - Cloud Function
 
 /**
+ * 브리핑 생성 내부 로직 (Callable + Scheduler 공용)
+ *
+ * @param {object} params - 파라미터
+ * @param {string} params.uid - 사용자 ID
+ * @param {string} params.timezone - 타임존
+ * @param {string} params.language - 언어
+ * @param {object | null} params.location - 위치 정보
+ * @param {boolean} params.forceRefresh - 캐시 무시 여부
+ * @param {string} params.style - 브리핑 스타일
+ * @return {Promise<GenerateBriefingResponse>} 브리핑 응답
+ */
+export async function generateBriefingInternal(params: {
+  uid: string;
+  timezone: string;
+  language: string;
+  location: { latitude: number; longitude: number; title?: string } | null;
+  forceRefresh: boolean;
+  style: string;
+}): Promise<GenerateBriefingResponse> {
+  const DEFAULT_SUMMARY = "좋은 하루 되세요!";
+  const DEFAULT_DETAIL = "오늘도 화이팅!";
+  const {uid, timezone, language, location, forceRefresh, style} = params;
+
+  const todayKey = getTodayKey(timezone);
+  const dateTimeStr = getCurrentDateTimeStr(timezone);
+
+  console.log(
+    `[Briefing] uid=${uid}, date=${todayKey}, ` +
+    `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
+    `forceRefresh=${forceRefresh}, style=${style}`
+  );
+
+  // 캐시 확인 (forceRefresh가 아닌 경우)
+  if (!forceRefresh) {
+    const cacheRef = admin.firestore()
+      .collection("users").doc(uid)
+      .collection("dailyBriefings").doc(todayKey);
+    const cached = await cacheRef.get();
+    if (cached.exists) {
+      const data = cached.data()!;
+      console.log(
+        `[Briefing] uid=${uid}, cache hit for ${todayKey}`
+      );
+      return {
+        summary: data.summary,
+        detail: data.detail,
+      };
+    }
+  }
+
+  try {
+    // 2. 데이터 수집 (병렬)
+    const [slots, userGroups] = await Promise.all([
+      fetchTodaySlots(uid, todayKey),
+      fetchUserGroups(uid),
+    ]);
+
+    // 3. promise 상세 조회
+    const promiseIds = slots
+      .filter((s) => s.type === "promise")
+      .map((s) => s.id);
+
+    const promiseDetails =
+      promiseIds.length > 0 ?
+        await fetchPromiseDetails(promiseIds, userGroups) :
+        new Map<string, PromiseDetail>();
+
+    // 4. 날씨 조회 (location이 있을 때만)
+    let weather: GetWeatherResponse | null = null;
+    if (location) {
+      try {
+        const kmaKey = KMA_API_KEY.value().trim();
+        if (kmaKey) {
+          weather = await fetchWeatherInternal(
+            location.latitude,
+            location.longitude,
+            new Date().toISOString(),
+            kmaKey
+          );
+        }
+      } catch (e) {
+        console.error(`[Briefing] uid=${uid}, Weather fetch failed:`, e);
+      }
+    }
+
+    // 5. 일정 정렬 + 상세 매핑
+    const sortedSlots = [...slots].sort((a, b) =>
+      a.startAt.toDate().getTime() -
+      b.startAt.toDate().getTime()
+    );
+
+    const enrichedSchedules = sortedSlots.map((slot) => {
+      const detail =
+        slot.type === "promise" ?
+          promiseDetails.get(slot.id) || null :
+          null;
+
+      const weatherMatch =
+        weather ?
+          matchWeatherToSchedule(
+            weather.forecasts,
+            slot.startAt.toDate()
+          ) :
+          null;
+
+      return {slot, detail, weatherMatch};
+    });
+
+    // 6. 이동 거리 계산
+    const detailsWithLocation = sortedSlots
+      .filter((s) => s.type === "promise")
+      .map((s) => promiseDetails.get(s.id))
+      .filter((d): d is PromiseDetail => d != null);
+
+    const travelSegments = calculateTravelSegments(
+      location?.latitude ?? null,
+      location?.longitude ?? null,
+      location?.title ?? null,
+      detailsWithLocation,
+    );
+
+    // 7. 프롬프트 조립
+    const prompt = buildPrompt(
+      language === "ko" ? "한국어" : language,
+      dateTimeStr,
+      location?.title ?? null,
+      weather,
+      enrichedSchedules,
+      travelSegments,
+      timezone,
+      todayKey,
+      style,
+    );
+
+    console.log(
+      `[Briefing] uid=${uid}, prompt (${prompt.length} chars):\n${prompt}`
+    );
+
+    // 8. Gemini API 호출
+    const geminiKey = GEMINI_API_KEY.value();
+    if (!geminiKey) {
+      console.error(
+        `[Briefing] uid=${uid}, GEMINI_API_KEY not configured`
+      );
+      return {
+        summary: DEFAULT_SUMMARY,
+        detail: DEFAULT_DETAIL,
+      };
+    }
+
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+    });
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+
+    console.log(
+      `[Briefing] uid=${uid}, Gemini raw response:\n${text}`
+    );
+
+    if (!text) {
+      console.warn(`[Briefing] uid=${uid}, Empty Gemini response`);
+      return {
+        summary: DEFAULT_SUMMARY,
+        detail: DEFAULT_DETAIL,
+      };
+    }
+
+    // JSON 파싱
+    try {
+      const jsonStr = text
+        .replace(/^```json\s*/i, "")
+        .replace(/```\s*$/, "")
+        .trim();
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.summary && parsed.detail) {
+        console.log(
+          `[Briefing] uid=${uid}, Generated successfully - ` +
+          `summary="${parsed.summary}", ` +
+          `detail="${parsed.detail.substring(0, 100)}..."`
+        );
+
+        // Firestore에 캐시 저장
+        await admin.firestore()
+          .collection("users").doc(uid)
+          .collection("dailyBriefings").doc(todayKey)
+          .set({
+            summary: parsed.summary,
+            detail: parsed.detail,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+        return {
+          summary: parsed.summary,
+          detail: parsed.detail,
+        };
+      }
+    } catch {
+      console.warn(
+        `[Briefing] uid=${uid}, JSON parse failed, using raw text`
+      );
+    }
+
+    // Fallback: 전체 텍스트를 detail로
+    const firstSentence = text.split(/[.!?。]/)[0];
+    return {
+      summary: firstSentence.substring(0, 30),
+      detail: text,
+    };
+  } catch (error) {
+    console.error(`[Briefing] uid=${uid}, Error:`, error);
+    return {
+      summary: DEFAULT_SUMMARY,
+      detail: DEFAULT_DETAIL,
+    };
+  }
+}
+
+/**
  * 하루 브리핑 생성 (Gemini API 사용)
  *
  * 서버에서 데이터 수집 + 프롬프트 조립 + LLM 호출을 전담
@@ -487,18 +718,13 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
     secrets: [GEMINI_API_KEY, KMA_API_KEY],
   },
   async (request): Promise<GenerateBriefingResponse> => {
-    const DEFAULT_SUMMARY = "좋은 하루 되세요!";
-    const DEFAULT_DETAIL = "오늘도 화이팅!";
-
-    // 1. 인증 확인
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated", "로그인이 필요합니다"
       );
     }
 
-    const uid = request.auth.uid;
-    const {timezone, language, location, forceRefresh} = request.data;
+    const {timezone, language, location, forceRefresh, style} = request.data;
 
     if (!timezone || !language) {
       throw new HttpsError(
@@ -507,200 +733,13 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       );
     }
 
-    const todayKey = getTodayKey(timezone);
-    const dateTimeStr = getCurrentDateTimeStr(timezone);
-
-    console.log(
-      `[Briefing] uid=${uid}, date=${todayKey}, ` +
-      `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
-      `forceRefresh=${!!forceRefresh}`
-    );
-
-    // 캐시 확인 (forceRefresh가 아닌 경우)
-    if (!forceRefresh) {
-      const cacheRef = admin.firestore()
-        .collection("users").doc(uid)
-        .collection("dailyBriefings").doc(todayKey);
-      const cached = await cacheRef.get();
-      if (cached.exists) {
-        const data = cached.data()!;
-        console.log(
-          `[Briefing] uid=${uid}, cache hit for ${todayKey}`
-        );
-        return {
-          summary: data.summary,
-          detail: data.detail,
-        };
-      }
-    }
-
-    try {
-      // 2. 데이터 수집 (병렬)
-      const [slots, userGroups] = await Promise.all([
-        fetchTodaySlots(uid, todayKey),
-        fetchUserGroups(uid),
-      ]);
-
-      // 3. promise 상세 조회
-      const promiseIds = slots
-        .filter((s) => s.type === "promise")
-        .map((s) => s.id);
-
-      const promiseDetails =
-        promiseIds.length > 0 ?
-          await fetchPromiseDetails(promiseIds, userGroups) :
-          new Map<string, PromiseDetail>();
-
-      // 4. 날씨 조회 (location이 있을 때만)
-      let weather: GetWeatherResponse | null = null;
-      if (location) {
-        try {
-          const kmaKey = KMA_API_KEY.value().trim();
-          if (kmaKey) {
-            weather = await fetchWeatherInternal(
-              location.latitude,
-              location.longitude,
-              new Date().toISOString(),
-              kmaKey
-            );
-          }
-        } catch (e) {
-          console.error(`[Briefing] uid=${uid}, Weather fetch failed:`, e);
-        }
-      }
-
-      // 5. 일정 정렬 + 상세 매핑
-      const sortedSlots = [...slots].sort((a, b) =>
-        a.startAt.toDate().getTime() -
-        b.startAt.toDate().getTime()
-      );
-
-      const enrichedSchedules = sortedSlots.map((slot) => {
-        const detail =
-          slot.type === "promise" ?
-            promiseDetails.get(slot.id) || null :
-            null;
-
-        const weatherMatch =
-          weather ?
-            matchWeatherToSchedule(
-              weather.forecasts,
-              slot.startAt.toDate()
-            ) :
-            null;
-
-        return {slot, detail, weatherMatch};
-      });
-
-      // 6. 이동 거리 계산
-      const detailsWithLocation = sortedSlots
-        .filter((s) => s.type === "promise")
-        .map((s) => promiseDetails.get(s.id))
-        .filter((d): d is PromiseDetail => d != null);
-
-      const travelSegments = calculateTravelSegments(
-        location?.latitude ?? null,
-        location?.longitude ?? null,
-        location?.title ?? null,
-        detailsWithLocation,
-      );
-
-
-      // 7. 프롬프트 조립
-      const prompt = buildPrompt(
-        language === "ko" ? "한국어" : language,
-        dateTimeStr,
-        location?.title ?? null,
-        weather,
-        enrichedSchedules,
-        travelSegments,
-        timezone,
-        todayKey,
-      );
-
-      console.log(
-        `[Briefing] uid=${uid}, prompt (${prompt.length} chars):\n${prompt}`
-      );
-
-      // 8. Gemini API 호출
-      const geminiKey = GEMINI_API_KEY.value();
-      if (!geminiKey) {
-        console.error(
-          `[Briefing] uid=${uid}, GEMINI_API_KEY not configured`
-        );
-        return {
-          summary: DEFAULT_SUMMARY,
-          detail: DEFAULT_DETAIL,
-        };
-      }
-
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
-      });
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-
-      console.log(
-        `[Briefing] uid=${uid}, Gemini raw response:\n${text}`
-      );
-
-      if (!text) {
-        console.warn(`[Briefing] uid=${uid}, Empty Gemini response`);
-        return {
-          summary: DEFAULT_SUMMARY,
-          detail: DEFAULT_DETAIL,
-        };
-      }
-
-      // JSON 파싱
-      try {
-        const jsonStr = text
-          .replace(/^```json\s*/i, "")
-          .replace(/```\s*$/, "")
-          .trim();
-        const parsed = JSON.parse(jsonStr);
-        if (parsed.summary && parsed.detail) {
-          console.log(
-            `[Briefing] uid=${uid}, Generated successfully - ` +
-            `summary="${parsed.summary}", ` +
-            `detail="${parsed.detail.substring(0, 100)}..."`
-          );
-
-          // Firestore에 캐시 저장
-          await admin.firestore()
-            .collection("users").doc(uid)
-            .collection("dailyBriefings").doc(todayKey)
-            .set({
-              summary: parsed.summary,
-              detail: parsed.detail,
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-
-          return {
-            summary: parsed.summary,
-            detail: parsed.detail,
-          };
-        }
-      } catch {
-        console.warn(
-          `[Briefing] uid=${uid}, JSON parse failed, using raw text`
-        );
-      }
-
-      // Fallback: 전체 텍스트를 detail로
-      const firstSentence = text.split(/[.!?。]/)[0];
-      return {
-        summary: firstSentence.substring(0, 30),
-        detail: text,
-      };
-    } catch (error) {
-      console.error(`[Briefing] uid=${uid}, Error:`, error);
-      return {
-        summary: DEFAULT_SUMMARY,
-        detail: DEFAULT_DETAIL,
-      };
-    }
+    return generateBriefingInternal({
+      uid: request.auth.uid,
+      timezone,
+      language,
+      location: location ?? null,
+      forceRefresh: forceRefresh ?? false,
+      style: style || "friendly",
+    });
   },
 );

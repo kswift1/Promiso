@@ -15,6 +15,12 @@ public struct UserSettingsClient: Sendable {
 
   /// 일정 충돌 감지 임계값 업데이트
   public var updateConflictDetectionThreshold: @Sendable (_ userId: String, _ threshold: Int) async throws -> Void
+
+  /// 브리핑 스타일 업데이트
+  public var updateBriefingStyle: @Sendable (_ userId: String, _ style: BriefingStyle) async throws -> Void
+
+  /// 브리핑 알림 시간 업데이트
+  public var updateBriefingNotificationHour: @Sendable (_ userId: String, _ hour: Int?) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -22,11 +28,13 @@ public struct UserSettingsClient: Sendable {
 extension UserSettingsClient: TestDependencyKey {
   public static let testValue = Self(
     fetchSettings: unimplemented(
-      "\\(Self.self).fetchSettings",
+      "\(Self.self).fetchSettings",
       placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     ),
-    updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
-    updateConflictDetectionThreshold: unimplemented("\\(Self.self).updateConflictDetectionThreshold")
+    updateGroupSortOption: unimplemented("\(Self.self).updateGroupSortOption"),
+    updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
+    updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
+    updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour")
   )
 
   public static let previewValue = Self(
@@ -41,6 +49,12 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.2))
     },
     updateConflictDetectionThreshold: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingStyle: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingNotificationHour: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     }
   )
@@ -70,6 +84,12 @@ extension UserSettingsClient: DependencyKey {
       },
       updateConflictDetectionThreshold: { userId, threshold in
         try await dataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
+      },
+      updateBriefingStyle: { userId, style in
+        try await dataSource.updateBriefingStyle(userId: userId, style: style)
+      },
+      updateBriefingNotificationHour: { userId, hour in
+        try await dataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
       }
     )
   }()

@@ -738,6 +738,28 @@ export interface GetUserSettingsResponse {
   plan?: "free" | "pro";
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData;
+  /** Pro 전용 설정 */
+  proSettings?: ProSettingsData;
+}
+
+/** Pro 전용 설정 (Firestore map) */
+export interface ProSettingsData {
+  /** 브리핑 설정 */
+  briefing?: BriefingSettingsData;
+  /** 일정 충돌 감지 임계값 (분) */
+  conflictDetectionThresholdMinute?: number;
+}
+
+/** 브리핑 설정 데이터 */
+export interface BriefingSettingsData {
+  /** 브리핑 스타일 */
+  style?: BriefingStyle;
+  /** 알림 시간 (0~23, null이면 알림 OFF) */
+  notificationHour?: number | null;
+  /** 타임존 */
+  timezone?: string;
+  /** 언어 */
+  language?: string;
 }
 
 /**
@@ -752,6 +774,9 @@ export interface UpdateUserSettingsRequest {
 
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData | null;
+
+  /** Pro 전용 설정 */
+  proSettings?: ProSettingsData | null;
 }
 
 /**
@@ -1428,7 +1453,15 @@ export interface GenerateBriefingRequest {
 
   /** 캐시 무시 및 강제 재생성 (오류 제보 시 사용) */
   forceRefresh?: boolean;
+
+  /** 브리핑 스타일 (Pro 설정, 기본: friendly) */
+  style?: BriefingStyle;
 }
+
+/** 브리핑 스타일 종류 */
+export type BriefingStyle =
+  "friendly" | "humorous" | "concise" |
+  "motivational" | "calm";
 
 /**
  * 하루 브리핑 생성 응답

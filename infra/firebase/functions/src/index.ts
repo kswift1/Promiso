@@ -114,6 +114,14 @@ export {getWeather} from "./functions/weather";
 export {generateBriefing} from "./functions/briefing";
 
 // ============================================================================
+// Briefing Scheduler Functions (브리핑 알림 스케줄러)
+// ============================================================================
+export {
+  scheduledBriefingDispatch,
+  executeBriefingNotification,
+} from "./functions/briefingScheduler";
+
+// ============================================================================
 // Subscription Functions (구독 서버 검증)
 // ============================================================================
 export {

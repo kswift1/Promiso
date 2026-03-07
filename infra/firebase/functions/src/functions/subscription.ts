@@ -269,6 +269,23 @@ export const appleServerNotification = onRequest(
           subscriptionRef, subscriptionData, {merge: true},
         );
 
+        // 구독 해지 시 proSettings 정리
+        // (브리핑 알림 등 Pro 전용 설정 비활성화)
+        const isInactive = [
+          "expired", "revoked",
+        ].includes(status);
+        if (isInactive) {
+          const settingsRef = db
+            .collection("users").doc(userId)
+            .collection("settings").doc("main");
+          transaction.set(settingsRef, {
+            proSettings: FieldValue.delete(),
+          }, {merge: true});
+          console.log(
+            `🧹 [Subscription] Cleaned proSettings for ${userId}`
+          );
+        }
+
         console.log(`✅ [Subscription] Updated status: ${status}`);
       });
 

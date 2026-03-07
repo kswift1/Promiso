@@ -32,12 +32,18 @@ public actor UserSettingsRemoteDataSource {
 
     let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
     let groupSortOption = GroupSortOption.read(from: data["groupSortOption"] as? [String: Any])
-    let conflictDetectionThreshold = data["conflictDetectionThreshold"] as? Int ?? 0
+    let proSettings = data["proSettings"] as? [String: Any]
+    let conflictDetectionThreshold = proSettings?["conflictDetectionThresholdMinute"] as? Int ?? 0
+    let briefingMap = proSettings?["briefing"] as? [String: Any]
+    let briefingStyle = BriefingStyle(rawValue: briefingMap?["style"] as? String ?? "") ?? .friendly
+    let briefingNotificationHour = briefingMap?["notificationHour"] as? Int
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
       groupSortOption: groupSortOption,
-      conflictDetectionThreshold: conflictDetectionThreshold
+      conflictDetectionThreshold: conflictDetectionThreshold,
+      briefingStyle: briefingStyle,
+      briefingNotificationHour: briefingNotificationHour
     )
   }
 
@@ -52,8 +58,36 @@ public actor UserSettingsRemoteDataSource {
   /// 일정 충돌 감지 임계값 업데이트
   public func updateConflictDetectionThreshold(userId: String, threshold: Int) async throws {
     try await settingsRef(userId: userId).setData(
-      ["conflictDetectionThreshold": threshold],
+      ["proSettings.conflictDetectionThresholdMinute": threshold],
       merge: true
     )
+  }
+
+  /// 브리핑 스타일 업데이트
+  public func updateBriefingStyle(userId: String, style: BriefingStyle) async throws {
+    try await settingsRef(userId: userId).setData(
+      ["proSettings.briefing.style": style.rawValue],
+      merge: true
+    )
+  }
+
+  /// 브리핑 알림 시간 업데이트
+  public func updateBriefingNotificationHour(userId: String, hour: Int?) async throws {
+    if let hour {
+      try await settingsRef(userId: userId).setData(
+        [
+          "proSettings.briefing.notificationHour": hour,
+          "proSettings.briefing.timezone": TimeZone.current.identifier,
+          "proSettings.briefing.language": (Locale.current.language.languageCode?.identifier ?? "ko"),
+        ],
+        merge: true
+      )
+    } else {
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.notificationHour": FieldValue.delete(),
+        "proSettings.briefing.timezone": FieldValue.delete(),
+        "proSettings.briefing.language": FieldValue.delete(),
+      ])
+    }
   }
 }

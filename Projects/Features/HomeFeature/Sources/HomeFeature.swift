@@ -29,7 +29,6 @@ extension Home {
     @Dependency(\.openURL) var openURL
     @Dependency(\.holidayClient) var holidayClient
     @Dependency(\.briefingClient) var briefingClient
-
     public init() {}
 
     // MARK: - CancelID
@@ -73,6 +72,10 @@ extension Home {
       var briefingGeneratedDate: Date? = nil
       /// 브리핑 상세 펼침 여부
       var isBriefingExpanded: Bool = false
+      /// 마지막 브리핑 생성에 사용된 스타일 (캐시 무효화용)
+      var lastBriefingStyle: String?
+      /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
+      @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
 
       // MARK: Permission
       /// 알림 권한 상태
@@ -1157,16 +1160,22 @@ extension Home {
             return .none
 
           case .fetchBriefing(let forceRefresh):
-            // forceRefresh가 아닌 경우, 같은 날 이미 생성한 브리핑이 있으면 스킵
-            if !forceRefresh,
+            let currentStyleRaw = state.briefingStyleRaw
+            let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
+            let needsForceRefresh = forceRefresh || styleChanged
+
+            // 캐시 확인 (스타일 변경 시에도 강제 새로고침)
+            if !needsForceRefresh,
                let generatedDate = state.briefingGeneratedDate,
                Calendar.current.isDateInToday(generatedDate),
                state.briefingState.isLoaded {
               return .none
             }
             state.briefingState = .loading
+            state.lastBriefingStyle = currentStyleRaw
 
-            return .run { [locationClient, briefingClient] send in
+            let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
+            return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh] send in
               var location: BriefingInput.BriefingLocation?
 
               if locationClient.authorizationStatus() == .authorized {
@@ -1187,10 +1196,11 @@ extension Home {
                 timezone: TimeZone.current.identifier,
                 language: (AppLanguage.current ?? .korean).rawValue,
                 location: location,
-                forceRefresh: forceRefresh
+                forceRefresh: needsForceRefresh,
+                style: briefingStyle
               )
 
-              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
+              AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(needsForceRefresh), style=\(briefingStyle.rawValue)")
 
               do {
                 let briefing = try await briefingClient.generate(input)
