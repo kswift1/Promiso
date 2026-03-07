@@ -275,6 +275,8 @@ function matchWeatherToSchedule(
  * @param {GetWeatherResponse | null} weather - 날씨 데이터
  * @param {Array} schedules - 일정 목록
  * @param {TravelSegment[]} travelSegments - 이동 구간 목록
+ * @param {string} timezone - 사용자 타임존 식별자
+ * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
  * @return {string} 조립된 프롬프트
  */
 function buildPrompt(
@@ -288,6 +290,8 @@ function buildPrompt(
     weatherMatch: string | null;
   }>,
   travelSegments: TravelSegment[],
+  timezone: string,
+  todayKey: string,
 ): string {
   const lines: string[] = [];
 
@@ -331,13 +335,19 @@ function buildPrompt(
     lines.push("날씨:");
     lines.push(`- 현재 ${currentForecast.temperature}도 (체감 ${currentForecast.feelsLikeTemperature}도), ${currentForecast.condition}, 강수확률 ${currentForecast.precipitationProbability}%`);
 
-    // 오전/오후 예보 요약
+    // 오전/오후 예보 요약 (timezone 기반)
+    const getHourInTz = (dt: string): number => {
+      const h = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone, hour: "numeric", hour12: false,
+      }).format(new Date(dt));
+      return parseInt(h, 10);
+    };
     const amForecasts = weather.forecasts.filter((f) => {
-      const h = new Date(f.dateTime).getHours();
+      const h = getHourInTz(f.dateTime);
       return h >= 6 && h < 12;
     });
     const pmForecasts = weather.forecasts.filter((f) => {
-      const h = new Date(f.dateTime).getHours();
+      const h = getHourInTz(f.dateTime);
       return h >= 12 && h < 18;
     });
 
@@ -366,11 +376,32 @@ function buildPrompt(
     lines.push("오늘 일정: 없음");
   } else {
     lines.push("오늘 일정:");
+    const timeFmt = (d: Date): string =>
+      d.toLocaleTimeString("ko-KR", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone});
+    const dateFmt = (d: Date): string =>
+      new Intl.DateTimeFormat("ko-KR", {month: "numeric", day: "numeric", timeZone: timezone}).format(d);
+    const dateKeyOf = (d: Date): string =>
+      new Intl.DateTimeFormat("en-CA", {timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit"}).format(d);
+
     for (let i = 0; i < schedules.length; i++) {
       const {slot, detail, weatherMatch} = schedules[i];
-      const startTime = slot.startAt.toDate().toLocaleTimeString("ko-KR", {hour: "2-digit", minute: "2-digit", hour12: false});
-      const endTime = slot.endAt ? slot.endAt.toDate().toLocaleTimeString("ko-KR", {hour: "2-digit", minute: "2-digit", hour12: false}) : "";
-      const timeRange = endTime ? `${startTime}~${endTime}` : startTime;
+      const startDate = slot.startAt.toDate();
+      const endDate = slot.endAt ? slot.endAt.toDate() : null;
+      const startIsToday = dateKeyOf(startDate) === todayKey;
+      const endIsToday = endDate ? dateKeyOf(endDate) === todayKey : true;
+
+      let timeRange: string;
+      if (!endDate) {
+        timeRange = startIsToday ? timeFmt(startDate) : `${dateFmt(startDate)} ${timeFmt(startDate)}`;
+      } else if (startIsToday && endIsToday) {
+        timeRange = `${timeFmt(startDate)}~${timeFmt(endDate)}`;
+      } else if (!startIsToday && endIsToday) {
+        timeRange = `${dateFmt(startDate)}부터 ~ 오늘 ${timeFmt(endDate)}`;
+      } else if (startIsToday && !endIsToday) {
+        timeRange = `오늘 ${timeFmt(startDate)} ~ ${dateFmt(endDate)}까지`;
+      } else {
+        timeRange = `${dateFmt(startDate)} ${timeFmt(startDate)} ~ ${dateFmt(endDate)} ${timeFmt(endDate)}`;
+      }
 
       let line = `${i + 1}. [${timeRange}] ${slot.title}`;
 
@@ -566,6 +597,8 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
         weather,
         enrichedSchedules,
         travelSegments,
+        timezone,
+        todayKey,
       );
 
       // 8. Gemini API 호출
