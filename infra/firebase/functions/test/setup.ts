@@ -15,6 +15,8 @@ if (!admin.apps.length) {
 jest.setTimeout(10000);
 
 // 환경 변수 설정
+process.env.GCLOUD_PROJECT = 'promiso-test';
+process.env.GOOGLE_CLOUD_PROJECT = 'promiso-test';
 process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
 process.env.FIREBASE_STORAGE_EMULATOR_HOST = 'localhost:9199';

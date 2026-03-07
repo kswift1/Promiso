@@ -1336,6 +1336,8 @@ export interface ScheduledLiveActivityTaskPayload {
   promiseId: string;
   /** 태스크가 실행되도록 예약된 시간 (ISO 문자열) */
   scheduledAt: string;
+  /** 스케줄 버전 UUID (stale 감지용) */
+  scheduleVersion: string;
 }
 
 /**

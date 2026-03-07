@@ -13,6 +13,27 @@ import CreatePromiseFeature
 
 extension CalendarFeature {
 
+  static func weekRowIndex(
+    currentMonth: Date,
+    selectedDate: Date,
+    startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
+  ) -> Int {
+    let calendar = Calendar.current
+    let startOfMonth = currentMonth.startOfMonth
+    let firstWeekday = currentMonth.firstWeekdayOfMonth
+    let firstDayOfWeek = startOnMonday ? 2 : 1
+    let daysToSubtract = (firstWeekday - firstDayOfWeek + 7) % 7
+    guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else {
+      return 0
+    }
+    let daysBetween = calendar.dateComponents(
+      [.day],
+      from: calendar.startOfDay(for: calendarStart),
+      to: calendar.startOfDay(for: selectedDate)
+    ).day ?? 0
+    return max(0, min(5, daysBetween / 7))
+  }
+
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
@@ -216,13 +237,10 @@ extension CalendarFeature {
     // MARK: - Selected Week Row Index
 
     private var selectedWeekRowIndex: Int {
-      let calendar = Calendar.current
-      let startOfMonth = store.currentMonth.startOfMonth
-      let firstWeekday = store.currentMonth.firstWeekdayOfMonth
-      let daysToSubtract = firstWeekday - 1
-      guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else { return 0 }
-      let daysBetween = calendar.dateComponents([.day], from: calendar.startOfDay(for: calendarStart), to: calendar.startOfDay(for: store.selectedDate)).day ?? 0
-      return max(0, min(5, daysBetween / 7))
+      CalendarFeature.weekRowIndex(
+        currentMonth: store.currentMonth,
+        selectedDate: store.selectedDate
+      )
     }
 
     // MARK: - Promise List Section

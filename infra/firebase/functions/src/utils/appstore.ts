@@ -21,7 +21,9 @@ import * as jose from "jose";
  * @return {Promise<Record<string, unknown>>} 검증된 페이로드
  * @throws {Error} 검증 실패 시
  */
-export async function verifyAppleJWS(jwsToken: string): Promise<Record<string, unknown>> {
+export async function verifyAppleJWS(
+  jwsToken: string
+): Promise<Record<string, unknown>> {
   // 에뮬레이터 환경에서는 검증 스킵
   if (process.env.FUNCTIONS_EMULATOR === "true") {
     console.warn("⚠️ [AppStore] Emulator mode: Skipping JWS verification");
@@ -39,7 +41,10 @@ export async function verifyAppleJWS(jwsToken: string): Promise<Record<string, u
     }
 
     // 3. leaf 인증서 (첫 번째 인증서)로 서명 검증
-    const leafCert = `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
+    const certBody = x5c[0];
+    const leafCert =
+      `-----BEGIN CERTIFICATE-----\n${certBody}\n` +
+      "-----END CERTIFICATE-----";
     const publicKey = await jose.importX509(leafCert, header.alg as string);
 
     // 4. JWS 서명 검증 및 페이로드 추출
