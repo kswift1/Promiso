@@ -1136,19 +1136,9 @@ extension ConflictThresholdSettings {
 
     private var headerDescription: some View {
       HStack(alignment: .center, spacing: 12) {
-        VStack(alignment: .leading, spacing: 8) {
-          HStack(spacing: 6) {
-            ProBadge()
-
-            Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
-              .font(.system(size: 14, weight: .medium))
-              .foregroundStyle(Color.pmtext.primary)
-          }
-
-          Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
-            .font(.system(size: 14))
-            .foregroundStyle(Color.pmtext.secondary)
-        }
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.secondary)
 
         Spacer()
 
@@ -1828,9 +1818,6 @@ extension BriefingSettings {
                 .font(.body)
                 .foregroundStyle(isSelectable ? Color.pmtext.primary : Color.pmtext.secondary)
 
-              if !store.isPro {
-                ProBadge()
-              }
             }
 
             Text(style.description)
@@ -1868,15 +1855,9 @@ extension BriefingSettings {
 
     private var notificationSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        HStack(spacing: 6) {
-          Text("매일 브리핑 알림")
-            .font(.system(size: 16, weight: .semibold))
-            .padding(.horizontal, 4)
-
-          if !store.isPro {
-            ProBadge()
-          }
-        }
+        Text("매일 브리핑 알림")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
           HStack {
