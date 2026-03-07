@@ -70,29 +70,28 @@ public struct PromiseDetailExpandableText: View {
 
       let urls = detectedURLs
       if !urls.isEmpty {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 6) {
           ForEach(urls, id: \.absoluteString) { url in
             Button {
               openURL(url)
             } label: {
-              HStack(spacing: 4) {
-                Image(systemName: "link.circle")
-                  .font(.system(size: 13))
+              HStack(spacing: 3) {
+                Text("🔗")
+                  .font(.system(size: 11))
                 Text(url.host ?? url.absoluteString)
                   .font(.system(size: 13, weight: .medium))
                   .lineLimit(1)
-                  .truncationMode(.middle)
               }
-              .foregroundStyle(.blue)
-              .padding(.horizontal, 10)
-              .padding(.vertical, 5)
-              .background(.blue.opacity(0.1), in: Capsule())
-              .contentShape(Rectangle())
+              .padding(.horizontal, 8)
+              .padding(.vertical, 4)
+              .background(.ultraThinMaterial, in: Capsule())
+              .overlay(Capsule().strokeBorder(.secondary.opacity(0.2), lineWidth: 0.5))
+              .contentShape(Capsule())
             }
             .buttonStyle(.plain)
           }
         }
-        .padding(.top, 2)
+        .padding(.top, 4)
       }
 
       if isTruncated || isExpanded {
