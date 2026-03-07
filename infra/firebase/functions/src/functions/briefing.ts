@@ -24,14 +24,17 @@ const BRIEFING_GENERATION_PROMPT = `당신은 사용자의 하루를 친근하�
 `;
 
 /**
- * 날씨 정보를 프롬프트용 문자열로 변환합니다.
- *
- * @param {GenerateBriefingRequest["weather"]} weather - 날씨 정보
+ * 날씨 정보를 프롬프트용 문자열로 변환
+ * @param {object | null | undefined} weather 날씨 정보
  * @return {string} 프롬프트용 날씨 문자열
  */
-function formatWeather(weather: GenerateBriefingRequest["weather"]): string {
+function formatWeather(
+  weather: GenerateBriefingRequest["weather"]
+): string {
   if (!weather) return "정보 없음";
-  return `기온 ${weather.temp}°C, 상태 ${weather.condition}, 강수확률 ${weather.rain}%, 최고/최저 ${weather.max}/${weather.min}°C`;
+  const {temp, condition, rain, max, min} = weather;
+  return `기온 ${temp}°C, 상태 ${condition}, ` +
+    `강수확률 ${rain}%, 최고/최저 ${max}/${min}°C`;
 }
 
 /**
