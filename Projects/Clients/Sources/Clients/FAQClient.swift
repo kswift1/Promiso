@@ -59,9 +59,27 @@ extension FAQClient: TestDependencyKey {
 private actor FAQSessionCache {
   static let shared = FAQSessionCache()
   private var cached: [FAQModel]?
+  private var activeTask: Task<[FAQModel], Error>?
 
-  func get() -> [FAQModel]? { cached }
-  func set(_ faqs: [FAQModel]) { cached = faqs }
+  func getFAQs(fetch: @escaping @Sendable () async throws -> [FAQModel]) async throws -> [FAQModel] {
+    if let cached {
+      return cached
+    }
+
+    if let activeTask {
+      return try await activeTask.value
+    }
+
+    let task = Task {
+      defer { activeTask = nil }
+      let faqs = try await fetch()
+      cached = faqs
+      return faqs
+    }
+
+    activeTask = task
+    return try await task.value
+  }
 }
 
 // MARK: - Live
@@ -73,11 +91,8 @@ extension FAQClient: DependencyKey {
 
     return Self(
       fetchFAQs: {
-        if let cached = await FAQSessionCache.shared.get() {
-          return cached
-        }
-
-        let databaseId = AppConstants.App.notionFAQDatabaseId
+        try await FAQSessionCache.shared.getFAQs {
+          let databaseId = AppConstants.App.notionFAQDatabaseId
 
         guard databaseId != "YOUR_DATABASE_ID_HERE" else {
           throw FAQClientError.invalidConfiguration
@@ -126,8 +141,8 @@ extension FAQClient: DependencyKey {
           )
         }
 
-        await FAQSessionCache.shared.set(faqs)
         return faqs
+        }
       }
     )
   }()
