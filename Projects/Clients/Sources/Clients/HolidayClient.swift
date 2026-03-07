@@ -39,8 +39,11 @@ extension HolidayClient: TestDependencyKey {
   public static let previewValue = Self(
     fetchHolidays: { year in
       // 미리보기용 샘플 공휴일 (대체공휴일 포함)
+      guard let koreaTimeZone = TimeZone(identifier: "Asia/Seoul") else {
+        fatalError("Could not create Asia/Seoul timezone for preview.")
+      }
       var koreaCalendar = Calendar(identifier: .gregorian)
-      koreaCalendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? TimeZone(secondsFromGMT: 9 * 3600)!
+      koreaCalendar.timeZone = koreaTimeZone
 
       func makeDate(month: Int, day: Int) -> Date {
         var c = DateComponents()
@@ -172,8 +175,14 @@ private actor HolidayCache {
 
     let items = response.response.body?.items?.item ?? []
 
+    guard let koreaTimeZone = TimeZone(identifier: "Asia/Seoul") else {
+      struct TimeZoneError: Error, LocalizedError {
+        var errorDescription: String? { "Could not initialize Asia/Seoul timezone." }
+      }
+      throw TimeZoneError()
+    }
     var koreaCalendar = Calendar(identifier: .gregorian)
-    koreaCalendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? TimeZone(secondsFromGMT: 9 * 3600)!
+    koreaCalendar.timeZone = koreaTimeZone
 
     let holidays = items.compactMap { item -> PublicHoliday? in
       // locdate (Int: 20260505) → Date 변환
