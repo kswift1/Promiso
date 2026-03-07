@@ -30,37 +30,19 @@ public struct ProviderInfo: Equatable, Sendable {
 
 // MARK: - User Settings
 
-/// 사용자 플랜
-public enum UserPlan: String, Codable, Equatable, Sendable {
-  case free
-  case pro
-
-  public var displayName: String {
-    switch self {
-    case .free:
-      return "무료"
-    case .pro:
-      return "프로"
-    }
-  }
-}
-
 /// 사용자 설정 정보
 public struct UserSettings: Equatable, Sendable {
   public var notificationEnabled: Bool
   public var groupSortOption: GroupSortOption
-  public var plan: UserPlan
   public var conflictDetectionThreshold: Int
 
   public init(
     notificationEnabled: Bool,
     groupSortOption: GroupSortOption = .joinedRecent,
-    plan: UserPlan = .free,
     conflictDetectionThreshold: Int = 0
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
-    self.plan = plan
     self.conflictDetectionThreshold = conflictDetectionThreshold
   }
 
@@ -68,7 +50,6 @@ public struct UserSettings: Equatable, Sendable {
   public static let `default` = UserSettings(
     notificationEnabled: true,
     groupSortOption: .joinedRecent,
-    plan: .free,
     conflictDetectionThreshold: 0
   )
 }

@@ -8,6 +8,10 @@
  * jose 라이브러리를 사용하여 Apple의 공개 인증서 체인을 검증합니다.
  */
 import * as jose from "jose";
+import {
+  getCurrentEnvironment,
+  FirestoreEnvironment,
+} from "./firestore";
 
 /**
  * Apple JWS 트랜잭션 토큰을 검증하고 페이로드를 반환
@@ -21,11 +25,27 @@ import * as jose from "jose";
  * @return {Promise<Record<string, unknown>>} 검증된 페이로드
  * @throws {Error} 검증 실패 시
  */
-export async function verifyAppleJWS(jwsToken: string): Promise<Record<string, unknown>> {
+export async function verifyAppleJWS(
+  jwsToken: string,
+): Promise<Record<string, unknown>> {
   // 에뮬레이터 환경에서는 검증 스킵
   if (process.env.FUNCTIONS_EMULATOR === "true") {
-    console.warn("⚠️ [AppStore] Emulator mode: Skipping JWS verification");
+    console.warn(
+      "⚠️ [AppStore] Emulator: Skipping JWS verify",
+    );
     return decodeJWSPayload(jwsToken);
+  }
+
+  // dev/stage 환경: Xcode StoreKit Testing JWS 허용
+  const env = getCurrentEnvironment();
+  if (env !== FirestoreEnvironment.Release) {
+    const payload = decodeJWSPayload(jwsToken);
+    if (payload.environment === "Xcode") {
+      console.warn(
+        `⚠️ [AppStore] ${env}: Xcode JWS accepted`,
+      );
+      return payload;
+    }
   }
 
   try {
@@ -35,11 +55,14 @@ export async function verifyAppleJWS(jwsToken: string): Promise<Record<string, u
     // 2. x5c (인증서 체인) 추출
     const x5c = header.x5c;
     if (!x5c || !Array.isArray(x5c) || x5c.length === 0) {
-      throw new Error("Missing or invalid x5c certificate chain in JWS header");
+      throw new Error(
+        "Missing or invalid x5c certificate chain",
+      );
     }
 
     // 3. leaf 인증서 (첫 번째 인증서)로 서명 검증
-    const leafCert = `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
+    const leafCert =
+      `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
     const publicKey = await jose.importX509(leafCert, header.alg as string);
 
     // 4. JWS 서명 검증 및 페이로드 추출

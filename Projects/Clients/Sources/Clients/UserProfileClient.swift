@@ -195,7 +195,7 @@ extension UserProfileClient: TestDependencyKey {
       URL(string: "https://storage.googleapis.com/example.jpg")!
     },
     getUserSettings: {
-      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     }
   )
 

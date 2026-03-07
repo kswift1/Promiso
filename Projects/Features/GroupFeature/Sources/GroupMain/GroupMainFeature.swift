@@ -28,6 +28,7 @@ extension GroupMain {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.subscriptionClient) var subscriptionClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
@@ -77,8 +78,8 @@ extension GroupMain {
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
 
-      /// 사용자 플랜
-      var userPlan: UserPlan = .free
+      /// Pro 구독 여부
+      var isPro: Bool = false
 
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
@@ -246,6 +247,7 @@ extension GroupMain {
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
+        case proStatusLoaded(Bool)
         case kakaoInviteShareResult(KakaoShareResult)
         case kakaoPromiseShareResult(KakaoShareResult)
         case checkConflicts([PromiseModel])
@@ -385,7 +387,6 @@ extension GroupMain {
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
-              userPlan: state.userPlan,
               currentUserId: state.currentUser.userId
             )
             return .none
@@ -584,7 +585,6 @@ extension GroupMain {
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
-              userPlan: state.userPlan,
               currentUserId: state.currentUser.userId,
               prefillInfo: info
             )
@@ -1025,18 +1025,24 @@ extension GroupMain {
             return .none
 
           case .fetchSettings:
-            return .run { [userSettingsClient, currentUser = state.currentUser] send in
-              do {
-                let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
-                await send(.internal(.settingsResponse(.success(settings))))
-              } catch {
-                await send(.internal(.settingsResponse(.failure(AppError(error)))))
+            return .merge(
+              .run { [userSettingsClient, currentUser = state.currentUser] send in
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
+                  await send(.internal(.settingsResponse(.success(settings))))
+                } catch {
+                  await send(.internal(.settingsResponse(.failure(AppError(error)))))
+                }
+              },
+              .run { [subscriptionClient] send in
+                if let status = try? await subscriptionClient.fetchStatus() {
+                  await send(.internal(.proStatusLoaded(status.isPro)))
+                }
               }
-            }
+            )
 
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
-            state.userPlan = settings.plan
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
             // 설정 로드 후 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
@@ -1144,6 +1150,10 @@ extension GroupMain {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
+            return .none
+
+          case .proStatusLoaded(let isPro):
+            state.isPro = isPro
             return .none
 
           }

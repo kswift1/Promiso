@@ -57,7 +57,7 @@ func handleGroupSettingsTapped(
     group: currentGroup,
     summary: summary,
     currentUserId: state.currentUser.userId,
-    userPlan: state.userPlan,
+    isPro: state.isPro,
     preloadedMembers: state.currentGroupMembers,
     upcomingPromises: upcomingPromises
   )))

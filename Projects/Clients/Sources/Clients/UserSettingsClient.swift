@@ -13,9 +13,6 @@ public struct UserSettingsClient: Sendable {
   /// 그룹 정렬 옵션 업데이트
   public var updateGroupSortOption: @Sendable (_ userId: String, _ option: GroupSortOption) async throws -> Void
 
-  /// 사용자 플랜 업데이트
-  public var updatePlan: @Sendable (_ userId: String, _ plan: UserPlan) async throws -> Void
-
   /// 일정 충돌 감지 임계값 업데이트
   public var updateConflictDetectionThreshold: @Sendable (_ userId: String, _ threshold: Int) async throws -> Void
 }
@@ -26,10 +23,9 @@ extension UserSettingsClient: TestDependencyKey {
   public static let testValue = Self(
     fetchSettings: unimplemented(
       "\\(Self.self).fetchSettings",
-      placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+      placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     ),
     updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
-    updatePlan: unimplemented("\\(Self.self).updatePlan"),
     updateConflictDetectionThreshold: unimplemented("\\(Self.self).updateConflictDetectionThreshold")
   )
 
@@ -38,14 +34,10 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.3))
       return UserSettings(
         notificationEnabled: true,
-        groupSortOption: .joinedRecent,
-        plan: .free
+        groupSortOption: .joinedRecent
       )
     },
     updateGroupSortOption: { _, _ in
-      try await Task.sleep(for: .seconds(0.2))
-    },
-    updatePlan: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
     updateConflictDetectionThreshold: { _, _ in
@@ -75,9 +67,6 @@ extension UserSettingsClient: DependencyKey {
       },
       updateGroupSortOption: { userId, option in
         try await dataSource.updateGroupSortOption(userId: userId, option: option)
-      },
-      updatePlan: { userId, plan in
-        try await dataSource.updatePlan(userId: userId, plan: plan)
       },
       updateConflictDetectionThreshold: { userId, threshold in
         try await dataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
