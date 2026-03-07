@@ -28,6 +28,7 @@ extension Home {
     @Dependency(\.locationClient) var locationClient
     @Dependency(\.openURL) var openURL
     @Dependency(\.holidayClient) var holidayClient
+    @Dependency(\.briefingClient) var briefingClient
 
     public init() {}
 
@@ -37,6 +38,7 @@ extension Home {
       case weatherFetch
       case overlayWeatherFetch
       case overlayScheduleFetch
+      case briefingFetch
     }
 
     // MARK: - State
@@ -64,6 +66,11 @@ extension Home {
 
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
+
+      /// 브리핑 상태
+      var briefingState: LoadingState<String> = .idle
+      /// 브리핑 생성 날짜 (같은 날 중복 방지)
+      var briefingGeneratedDate: Date? = nil
 
       // MARK: Filter
       /// 선택된 그룹 ID (nil = 전체)
@@ -199,6 +206,8 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 브리핑 새로고침
+        case refreshBriefingTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -267,6 +276,10 @@ extension Home {
         case fetchOverlayHolidays(year: Int)
         /// 오버레이 공휴일 응답
         case overlayHolidaysResponse(year: Int, Result<[PublicHoliday], Error>)
+        /// 브리핑 생성 트리거
+        case fetchBriefing
+        /// 브리핑 응답
+        case briefingResponse(Result<String, Error>)
       }
 
       @CasePathable
@@ -388,6 +401,11 @@ extension Home {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .refreshBriefingTapped:
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
+            return .send(.internal(.fetchBriefing))
 
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
@@ -643,10 +661,11 @@ extension Home {
               )
               WidgetDataManager.reloadWidgets()
 
-              // 약속 로드 성공 시 알림 개수 + 날씨 조회
+              // 약속 로드 성공 시 알림 개수 + 날씨 + 브리핑 조회
               return .merge(
                 .send(.internal(.fetchUnreadNotificationCount)),
-                .send(.internal(.fetchWeather))
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing))
               )
 
             case .failure(let error):
@@ -1052,6 +1071,96 @@ extension Home {
             case .failure:
               // 공휴일 로드 실패 시 조용히 무시
               break
+            }
+            return .none
+
+          case .fetchBriefing:
+            // 같은 날 이미 생성한 브리핑이 있으면 스킵
+            if let generatedDate = state.briefingGeneratedDate,
+               Calendar.current.isDateInToday(generatedDate),
+               state.briefingState.isLoaded {
+              return .none
+            }
+            state.briefingState = .loading
+
+            // 오늘 일정 포맷
+            let snapshot = state.homeContentSnapshot
+            let scheduleText: String
+            if snapshot.todayScheduleItems.isEmpty {
+              scheduleText = "일정 없음"
+            } else {
+              scheduleText = snapshot.todayScheduleItems.map { item in
+                switch item {
+                case .promise(let p):
+                  let timeStr = p.startAt.formatted(.dateTime.hour().minute())
+                  let status = p.isConfirmed ? "확정" : "미확정"
+                  return "[\(timeStr)] \(p.title) (\(status))"
+                case .personalEvent(let e):
+                  let timeStr = e.startAt.formatted(.dateTime.hour().minute())
+                  return "[\(timeStr)] \(e.title)"
+                }
+              }.joined(separator: "\n")
+            }
+
+            // 현재 날짜/시간 포맷
+            let now = Date()
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "ko_KR")
+            dateFormatter.dateFormat = "yyyy-MM-dd EEEE HH:mm"
+            let currentDateTime = dateFormatter.string(from: now)
+
+            return .run { [locationClient, weatherClient, briefingClient] send in
+              // 위치 + 날씨 수집 (실패해도 브리핑 생성 진행)
+              var currentLocation: String? = nil
+              var weatherSummary: BriefingInput.WeatherSummary? = nil
+
+              do {
+                let coordinate = try await locationClient.getCurrentLocation()
+                currentLocation = try await locationClient.reverseGeocode(coordinate)
+
+                let weatherInfo = try await weatherClient.getWeather(
+                  coordinate.latitude,
+                  coordinate.longitude,
+                  now
+                )
+                if let current = weatherInfo.current {
+                  // dailyForecasts에서 최고/최저 기온 추출
+                  let todayForecast = weatherInfo.dailyForecasts.first
+                  weatherSummary = BriefingInput.WeatherSummary(
+                    temp: current.temperature,
+                    condition: current.condition.description,
+                    rain: current.precipitationProbability,
+                    max: todayForecast?.maxTemperature ?? current.temperature,
+                    min: todayForecast?.minTemperature ?? current.temperature
+                  )
+                }
+              } catch {
+                // 위치/날씨 실패 시 무시하고 진행
+              }
+
+              let input = BriefingInput(
+                currentDateTime: currentDateTime,
+                currentLocation: currentLocation,
+                weather: weatherSummary,
+                schedules: scheduleText
+              )
+
+              do {
+                let briefing = try await briefingClient.generate(input)
+                await send(.internal(.briefingResponse(.success(briefing))))
+              } catch {
+                await send(.internal(.briefingResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.briefingFetch, cancelInFlight: true)
+
+          case .briefingResponse(let result):
+            switch result {
+            case .success(let text):
+              state.briefingState = .loaded(text)
+              state.briefingGeneratedDate = Date()
+            case .failure:
+              state.briefingState = .failed(BriefingClientError.networkError)
             }
             return .none
 

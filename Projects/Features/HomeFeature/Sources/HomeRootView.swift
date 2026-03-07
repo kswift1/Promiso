@@ -183,6 +183,16 @@ extension Home {
           } else if let error = store.promisesState.error {
             errorView(error: error)
           } else {
+            // 오늘의 브리핑
+            DailyBriefingCard(
+              briefingText: store.briefingState.value,
+              isLoading: store.briefingState.isLoading,
+              onRefresh: {
+                store.send(.view(.refreshBriefingTapped))
+              }
+            )
+            .padding(.horizontal, 16)
+
             // 오늘의 일정 카드
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,

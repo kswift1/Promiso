@@ -63,6 +63,10 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in "" }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
       configure(&$0)
     }
   }
@@ -83,6 +87,10 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in "" }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
 
     await store.send(.view(.onAppear)) {
@@ -359,6 +367,10 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [testPromise] }
       $0.notificationClient.getUnreadCount = { _ in 3 }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in "" }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
 
     await store.send(.view(.onAppear)) {
@@ -527,6 +539,10 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in "" }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -563,6 +579,10 @@ struct HomeFeatureTests {
       }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.personalEventClient.getActiveEvents = { _ in [] }
+      $0.briefingClient.generate = { _ in "" }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

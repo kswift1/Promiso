@@ -1398,6 +1398,61 @@ export enum GenerateEmojiError {
 }
 
 // ============================================================================
+// generateBriefing
+// ============================================================================
+
+/**
+ * 하루 브리핑 생성 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - Gemini API를 사용하여 날씨와 일정을 종합한 아침 브리핑 생성
+ */
+export interface GenerateBriefingRequest {
+  /** 현재 날짜/시간 (예: "2026-03-07 금요일 08:30") */
+  currentDateTime: string;
+
+  /** 현재 위치 (예: "서울 강남구", 알 수 없으면 null) */
+  currentLocation: string | null;
+
+  /** 날씨 정보 (이용 불가하면 null) */
+  weather: {
+    /** 현재 기온 (°C) */
+    temp: number;
+    /** 날씨 상태 (예: "맑음", "흐림", "비") */
+    condition: string;
+    /** 강수 확률 (%) */
+    rain: number;
+    /** 최고 기온 (°C) */
+    max: number;
+    /** 최저 기온 (°C) */
+    min: number;
+  } | null;
+
+  /** 포맷된 일정 텍스트 (일정 없으면 "일정 없음") */
+  schedules: string;
+}
+
+/**
+ * 하루 브리핑 생성 응답
+ */
+export interface GenerateBriefingResponse {
+  /** 생성된 브리핑 텍스트 */
+  briefing: string;
+}
+
+/**
+ * 하루 브리핑 생성 에러
+ */
+export enum GenerateBriefingError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** API 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Snapshot (Firestore Cached Document) - Widget & Home 공통
 // ============================================================================
 
