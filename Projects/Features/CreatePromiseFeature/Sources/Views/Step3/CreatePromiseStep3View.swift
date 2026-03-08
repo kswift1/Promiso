@@ -42,6 +42,7 @@ struct CreatePromiseStep3View: View {
         }
         .padding(16)
       }
+      .scrollDismissesKeyboard(.interactively)
       .simultaneousGesture(
         DragGesture().onChanged { _ in
           isDescriptionFocused = false

@@ -1,5 +1,6 @@
 import SwiftUI
 import ResourceKit
+import UIKit
 
 // MARK: - Step Sheet Container
 
@@ -36,6 +37,7 @@ public struct StepSheetContainer<
   @ViewBuilder let bottomContent: () -> BottomContent
 
   @State private var isDismissPressed = false
+  @State private var isKeyboardPresented = false
 
   public init(
     title: String,
@@ -76,6 +78,12 @@ public struct StepSheetContainer<
     }
     .ignoresSafeArea(.keyboard, edges: .bottom)
     .keyboardDismissToolbar(iconColor: .secondary)
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+      updateKeyboardPresentation(notification)
+    }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+      updateKeyboardPresentation(notification, isHiddenOverride: true)
+    }
   }
 
   // MARK: - Sheet Toolbar
@@ -128,28 +136,51 @@ public struct StepSheetContainer<
 
   @ViewBuilder
   private var bottomFixedArea: some View {
-    VStack(spacing: 12) {
-      floatingContent()
-        .padding(.horizontal, 16)
+    if !isKeyboardPresented {
+      VStack(spacing: 12) {
+        floatingContent()
+          .padding(.horizontal, 16)
 
-      bottomContent()
-        .background(Color(.systemBackground))
-        .overlay(alignment: .top) {
-          // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
-          LinearGradient(
-            colors: [
-              Color(.systemBackground).opacity(0),
-              Color(.systemBackground)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .frame(height: 24)
-          .offset(y: -24)
-          .allowsHitTesting(false)
-        }
+        bottomContent()
+          .background(Color(.systemBackground))
+          .overlay(alignment: .top) {
+            // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
+            LinearGradient(
+              colors: [
+                Color(.systemBackground).opacity(0),
+                Color(.systemBackground)
+              ],
+              startPoint: .top,
+              endPoint: .bottom
+            )
+            .frame(height: 24)
+            .offset(y: -24)
+            .allowsHitTesting(false)
+          }
+      }
+      .padding(.top, 8)
+      .transition(.move(edge: .bottom).combined(with: .opacity))
     }
-    .padding(.top, 8)
+  }
+
+  private func updateKeyboardPresentation(
+    _ notification: Notification,
+    isHiddenOverride: Bool = false
+  ) {
+    let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+
+    let isVisible: Bool
+    if isHiddenOverride {
+      isVisible = false
+    } else if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+      isVisible = endFrame.minY < UIScreen.main.bounds.height
+    } else {
+      isVisible = false
+    }
+
+    withAnimation(.easeInOut(duration: duration)) {
+      isKeyboardPresented = isVisible
+    }
   }
 }
 

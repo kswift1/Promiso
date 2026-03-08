@@ -57,6 +57,7 @@ struct CreatePromiseStep1View: View {
       }
       .padding(16)
     }
+    .scrollDismissesKeyboard(.interactively)
     .simultaneousGesture(
       DragGesture().onChanged { _ in
         // 스크롤 시 키보드 내리기
