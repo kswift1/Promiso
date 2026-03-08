@@ -512,35 +512,51 @@ function buildPrompt(
     lines.push("날씨:");
     lines.push(`- 현재 ${currentForecast.temperature}도 (체감 ${currentForecast.feelsLikeTemperature}도), ${currentForecast.condition}, 강수확률 ${currentForecast.precipitationProbability}%`);
 
-    // 오전/오후 예보 요약 (timezone 기반)
+    // 오늘 날짜 예보만 필터링 (timezone 기반)
+    const getDateKeyInTz = (dt: string): string =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(dt));
     const getHourInTz = (dt: string): number => {
       const h = new Intl.DateTimeFormat("en-US", {
         timeZone: timezone, hour: "numeric", hour12: false,
       }).format(new Date(dt));
       return parseInt(h, 10);
     };
-    const amForecasts = weather.forecasts.filter((f) => {
+
+    const todayForecasts = weather.forecasts.filter(
+      (f) => getDateKeyInTz(f.dateTime) === todayKey
+    );
+
+    const amForecasts = todayForecasts.filter((f) => {
       const h = getHourInTz(f.dateTime);
       return h >= 6 && h < 12;
     });
-    const pmForecasts = weather.forecasts.filter((f) => {
+    const pmForecasts = todayForecasts.filter((f) => {
       const h = getHourInTz(f.dateTime);
       return h >= 12 && h < 18;
     });
 
     if (amForecasts.length > 0) {
       const amTemps = amForecasts.map((f) => f.temperature);
-      const amRain = Math.max(...amForecasts.map((f) => f.precipitationProbability));
+      const amRain = Math.max(
+        ...amForecasts.map((f) => f.precipitationProbability)
+      );
       lines.push(`- 오전: ${Math.min(...amTemps)}~${Math.max(...amTemps)}도, 강수확률 최대 ${amRain}%`);
     }
     if (pmForecasts.length > 0) {
       const pmTemps = pmForecasts.map((f) => f.temperature);
-      const pmRain = Math.max(...pmForecasts.map((f) => f.precipitationProbability));
+      const pmRain = Math.max(
+        ...pmForecasts.map((f) => f.precipitationProbability)
+      );
       lines.push(`- 오후: ${Math.min(...pmTemps)}~${Math.max(...pmTemps)}도, 강수확률 최대 ${pmRain}%`);
     }
 
-    // 일 최고/최저
-    const allTemps = weather.forecasts.map((f) => f.temperature);
+    // 오늘 최고/최저 (오늘 데이터 없으면 전체 fallback)
+    const tempSource = todayForecasts.length > 0 ?
+      todayForecasts : weather.forecasts;
+    const allTemps = tempSource.map((f) => f.temperature);
     lines.push(`- 최고 ${Math.max(...allTemps)}도 / 최저 ${Math.min(...allTemps)}도`);
     lines.push("");
   } else {
