@@ -11,11 +11,15 @@ struct CalendarFilterSheetView: View {
   let groupColorMap: [String: Color]
   let selectedGroupIds: Set<String>
   let showPersonalEvents: Bool
+  let selectedStatusFilter: CalendarFeature.StatusFilter
+  let isFilterActive: Bool
   let onGroupToggled: (String) -> Void
   let onPersonalEventsToggled: () -> Void
+  let onStatusFilterChanged: (CalendarFeature.StatusFilter) -> Void
   let onReset: () -> Void
 
   @State private var contentHeight: CGFloat = 200
+  @State private var showStatusInfo: Bool = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
@@ -24,6 +28,13 @@ struct CalendarFilterSheetView: View {
 
       // 그룹 필터 섹션
       groupFilterSection
+
+      // 약속 상태 필터 (그룹에 종속)
+      Divider()
+
+      statusFilterSection
+
+      Divider()
 
       // 개인 일정 필터
       personalEventToggle
@@ -47,7 +58,7 @@ struct CalendarFilterSheetView: View {
         .font(.system(size: 20, weight: .bold))
       Spacer()
       // 초기화 버튼 (필터가 변경되었을 때만 표시)
-      if selectedGroupIds.count < groups.count || !showPersonalEvents {
+      if isFilterActive {
         Button(action: onReset) {
           Text(LocalizedStrings.Calendar.filterSelectAll)
             .font(.system(size: 14, weight: .medium))
@@ -106,6 +117,85 @@ struct CalendarFilterSheetView: View {
       )
     }
     .buttonStyle(.plain)
+  }
+
+  // MARK: - Status Filter Section
+
+  private var statusFilterSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Text(LocalizedStrings.Calendar.filterStatus)
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundColor(.secondary)
+        Spacer()
+        Button {
+          showStatusInfo = true
+        } label: {
+          Image(systemName: "info.circle")
+            .font(.system(size: 16))
+            .foregroundColor(Color.pmindigo.n400)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showStatusInfo, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
+          statusInfoPopover
+        }
+      }
+
+      CategoryFilterBar(
+        selection: Binding(
+          get: { selectedStatusFilter },
+          set: { onStatusFilterChanged($0) }
+        )
+      )
+      .padding(.horizontal, -16) // 시트 내부 여백 고려한 전체 너비 스크롤
+    }
+  }
+
+  // MARK: - Status Info Popover
+
+  private var statusInfoPopover: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      ForEach(CalendarFeature.StatusFilter.allCases.filter { $0 != .all }, id: \.self) { filter in
+        statusInfoRow(
+          icon: filter.icon,
+          color: filter.selectedColor,
+          title: filter.title,
+          description: filterDescription(for: filter)
+        )
+        .accessibilityElement(children: .combine)
+      }
+    }
+    .padding(16)
+    .presentationCompactAdaptation(.popover)
+  }
+
+  private func filterDescription(for filter: CalendarFeature.StatusFilter) -> String {
+    switch filter {
+    case .all: return ""
+    case .needResponse: return LocalizedStrings.Calendar.filterStatusNeedResponse
+    case .waitingConfirmation: return LocalizedStrings.Calendar.filterStatusWaiting
+    case .confirmed: return LocalizedStrings.Calendar.filterStatusConfirmed
+    case .completed: return LocalizedStrings.Calendar.filterStatusCompleted
+    case .failed: return LocalizedStrings.Calendar.filterStatusFailed
+    }
+  }
+
+  private func statusInfoRow(icon: String, color: Color, title: String, description: String) -> some View {
+    HStack(alignment: .top, spacing: 10) {
+      Image(systemName: icon)
+        .font(.system(size: 14, weight: .medium))
+        .foregroundColor(color)
+        .frame(width: 20)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundColor(.primary)
+        Text(description)
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+      }
+    }
   }
 
   // MARK: - Personal Event Toggle

@@ -22,8 +22,10 @@ extension CalendarFeature {
   public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
     case all
     case needResponse
+    case waitingConfirmation
     case confirmed
-    case unconfirmed
+    case completed
+    case failed
   }
 
   // MARK: - Reducer
@@ -322,7 +324,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents
+        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents || selectedStatusFilter != .all
       }
 
       // MARK: - Group Color Map
@@ -475,10 +477,22 @@ extension CalendarFeature {
           promises = promises.filter {
             $0.myVoteStatus(userId: currentUserId) == .pending && !$0.isVotingClosed
           }
+        case .waitingConfirmation:
+          promises = promises.filter { promise in
+            let totalMembers = groupMembersCache[promise.groupId]?.count
+            let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+            return status == .responded
+          }
         case .confirmed:
-          promises = promises.filter { $0.isConfirmed }
-        case .unconfirmed:
-          promises = promises.filter { !$0.isConfirmed && !$0.isVotingClosed }
+          promises = promises.filter { $0.isConfirmed && !$0.isPast }
+        case .completed:
+          promises = promises.filter { $0.isConfirmed && $0.isPast }
+        case .failed:
+          promises = promises.filter { promise in
+            let totalMembers = groupMembersCache[promise.groupId]?.count
+            let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+            return status == .failed
+          }
         }
 
         return promises

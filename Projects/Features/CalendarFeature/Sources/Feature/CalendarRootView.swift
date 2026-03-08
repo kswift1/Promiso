@@ -98,11 +98,16 @@ extension CalendarFeature {
             groupColorMap: store.groupColorMap,
             selectedGroupIds: store.selectedGroupIds,
             showPersonalEvents: store.showPersonalEvents,
+            selectedStatusFilter: store.selectedStatusFilter,
+            isFilterActive: store.isFilterActive,
             onGroupToggled: { groupId in
               store.send(.view(.filterGroupToggled(groupId)))
             },
             onPersonalEventsToggled: {
               store.send(.view(.filterPersonalEventsToggled))
+            },
+            onStatusFilterChanged: { filter in
+              store.send(.view(.filterStatusChanged(filter)))
             },
             onReset: {
               store.send(.view(.filterReset))
