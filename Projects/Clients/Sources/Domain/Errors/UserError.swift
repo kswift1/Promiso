@@ -69,15 +69,15 @@ public enum PreferredTransport: String, CaseIterable, Equatable, Sendable {
 
   public var displayName: String {
     switch self {
-    case .all: return "전체"
-    case .transit: return "대중교통"
-    case .car: return "자차"
+    case .all: return "모두 보기"
+    case .transit: return "대중교통 위주"
+    case .car: return "자차 위주"
     }
   }
 
   public var description: String {
     switch self {
-    case .all: return "모든 교통수단 정보를 안내해요"
+    case .all: return "자동차, 대중교통 골고루 안내해요"
     case .transit: return "대중교통 중심으로 안내해요"
     case .car: return "자동차 중심으로 안내해요"
     }
