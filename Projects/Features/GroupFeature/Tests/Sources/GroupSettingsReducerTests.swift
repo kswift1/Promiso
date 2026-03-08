@@ -42,7 +42,7 @@ struct GroupSettingsReducerTests {
       group: makeGroup(),
       summary: nil,
       currentUserId: currentUserId,
-      userPlan: .free
+      isPro: false
     )
   }
 

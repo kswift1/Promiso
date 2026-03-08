@@ -45,8 +45,8 @@ export interface VerifyPurchaseResponse {
  */
 export interface SubscriptionStatusData {
   /** 현재 구독 상태 */
-  status: "none" | "subscribed" | "lifetime"
-    | "expired" | "gracePeriod" | "revoked";
+  status: "none" | "subscribed" | "lifetime" |
+    "expired" | "gracePeriod" | "revoked";
 
   /** 상품 ID (현재 구독 중인 상품) */
   productId: string | null;

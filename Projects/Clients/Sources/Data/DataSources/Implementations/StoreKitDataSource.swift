@@ -124,7 +124,8 @@ final class StoreKitDataSource: Sendable {
           if let gracePeriodExpiration = try? await detectGracePeriod(for: subscription) {
             return .gracePeriod(expirationDate: gracePeriodExpiration)
           }
-          return .subscribed(expirationDate: expirationDate)
+          let productType = SubscriptionProductType(rawValue: subscription.productID)
+          return .subscribed(productType: productType, expirationDate: expirationDate)
         } else {
           return .expired(expirationDate: expirationDate)
         }
@@ -212,6 +213,16 @@ final class StoreKitDataSource: Sendable {
       price: product.price,
       introductoryOffer: introOffer
     )
+  }
+
+  // MARK: - Purchase Date
+
+  func fetchPurchaseDate() async -> Date? {
+    for await result in StoreKit.Transaction.currentEntitlements {
+      guard let transaction = try? checkVerified(result) else { continue }
+      return transaction.originalPurchaseDate
+    }
+    return nil
   }
 
   /// 무료 체험 대상 여부 확인
@@ -306,7 +317,9 @@ final class SubscriptionRemoteDataSource: Sendable {
 
     switch statusString {
     case "subscribed":
-      return .subscribed(expirationDate: expirationDate)
+      let productId = data["productId"] as? String
+      let productType = productId.flatMap { SubscriptionProductType(rawValue: $0) }
+      return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime
     case "expired":

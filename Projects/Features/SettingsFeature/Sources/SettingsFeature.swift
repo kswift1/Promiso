@@ -75,6 +75,8 @@ extension Settings {
       public var toastMessage: ToastMessage?
       /// 네비게이션 경로
       public var path = StackState<Path.State>()
+      /// Pro Plan 시트 표시 상태
+      @Presents public var proPlan: ProPlan.Feature.State?
       /// 프로필 이미지 상세 보기 표시 여부
       public var showImageDetail: Bool = false
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
@@ -119,12 +121,13 @@ extension Settings {
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
+      case briefingSettings(BriefingSettings.Feature)
       case support(Support.Feature)
       case faq(FAQ.Feature)
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
-      case proPlan(ProPlan.Feature)
+      case proPlanManage(ProPlan.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -150,6 +153,7 @@ extension Settings {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
+      case proPlan(PresentationAction<ProPlan.Feature.Action>)
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
@@ -179,6 +183,8 @@ extension Settings {
       case notificationSettingsTapped
       /// 캘린더 설정 탭
       case calendarSettingsTapped
+      /// 브리핑 설정 탭
+      case briefingSettingsTapped
       /// 지원 탭
       case supportTapped
       /// 약관 및 정책 탭
@@ -298,7 +304,9 @@ extension Settings {
             return .run { _ in await hapticFeedback.selection() }
 
           case .conflictThresholdSettingsTapped:
-            state.path.append(.conflictThresholdSettings(ConflictThresholdSettings.Feature.State()))
+            state.path.append(.conflictThresholdSettings(
+              ConflictThresholdSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
             return .run { _ in await hapticFeedback.selection() }
 
           case .themeSettingsTapped:
@@ -319,6 +327,12 @@ extension Settings {
             state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
+          case .briefingSettingsTapped:
+            state.path.append(.briefingSettings(
+              BriefingSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
+            return .run { _ in await hapticFeedback.selection() }
+
           case .supportTapped:
             state.path.append(.support(Support.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
@@ -328,7 +342,11 @@ extension Settings {
             return .run { _ in await hapticFeedback.selection() }
 
           case .proPlanTapped:
-            state.path.append(.proPlan(ProPlan.Feature.State()))
+            if state.subscriptionStatus.isPro {
+              state.path.append(.proPlanManage(ProPlan.Feature.State(subscriptionStatus: state.subscriptionStatus)))
+            } else {
+              state.proPlan = ProPlan.Feature.State()
+            }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -542,6 +560,20 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .conflictThresholdSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
+        case .path(.element(_, action: .briefingSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
         case .path(.element(_, action: .support(.delegate(let delegate)))):
           switch delegate {
           case .navigateToFAQ:
@@ -573,10 +605,27 @@ extension Settings {
             return .none
           }
 
-        case .path(.element(_, action: .proPlan(.delegate(let delegate)))):
+        case .proPlan(.presented(.delegate(let delegate))):
           switch delegate {
           case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
             return .send(.delegate(.subscriptionStatusChanged(status)))
+
+          case .dismissRequested:
+            state.proPlan = nil
+            return .none
+          }
+
+        case .proPlan:
+          return .none
+
+        case .path(.element(_, action: .proPlanManage(.delegate(let delegate)))):
+          switch delegate {
+          case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
+            return .send(.delegate(.subscriptionStatusChanged(status)))
+          case .dismissRequested:
+            return .none
           }
 
         case .path:
@@ -584,6 +633,29 @@ extension Settings {
         }
       }
       .forEach(\.path, action: \.path)
+      .ifLet(\.$proPlan, action: \.proPlan) {
+        ProPlan.Feature()
+      }
+    }
+
+    private func syncSubscriptionStatus(_ status: SubscriptionStatus, state: inout State) {
+      state.subscriptionStatus = status
+
+      for id in state.path.ids {
+        if case .conflictThresholdSettings(var conflictState) = state.path[id: id] {
+          conflictState.isPro = status.isPro
+          if status.isPro {
+            conflictState.isEnabled = true
+          }
+          state.path[id: id] = .conflictThresholdSettings(conflictState)
+          continue
+        }
+
+        if case .briefingSettings(var briefingState) = state.path[id: id] {
+          briefingState.isPro = status.isPro
+          state.path[id: id] = .briefingSettings(briefingState)
+        }
+      }
     }
   }
 
@@ -621,6 +693,8 @@ extension Settings {
           GroupNotificationDetail.RootView(store: store)
         case .calendarSettings(let store):
           CalendarSettings.RootView(store: store)
+        case .briefingSettings(let store):
+          BriefingSettings.RootView(store: store)
         case .support(let store):
           Support.RootView(store: store)
         case .faq(let store):
@@ -631,13 +705,19 @@ extension Settings {
           PolicyView.RootView(store: store)
         case .appInfo(let store):
           AppInfo.RootView(store: store)
-        case .proPlan(let store):
+        case .proPlanManage(let store):
           ProPlan.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)
         #endif
         }
+      }
+      .sheet(
+        item: $store.scope(state: \.proPlan, action: \.proPlan)
+      ) { proPlanStore in
+        ProPlan.PaywallView(store: proPlanStore)
+          .onAppear { proPlanStore.send(.view(.onAppear)) }
       }
       .toast(Binding(
         get: { store.toastMessage },
@@ -674,4 +754,3 @@ public enum SettingsError: Error, Equatable, LocalizedError {
     }
   }
 }
-

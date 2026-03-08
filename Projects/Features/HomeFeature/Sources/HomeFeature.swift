@@ -28,7 +28,7 @@ extension Home {
     @Dependency(\.locationClient) var locationClient
     @Dependency(\.openURL) var openURL
     @Dependency(\.holidayClient) var holidayClient
-
+    @Dependency(\.briefingClient) var briefingClient
     public init() {}
 
     // MARK: - CancelID
@@ -37,6 +37,7 @@ extension Home {
       case weatherFetch
       case overlayWeatherFetch
       case overlayScheduleFetch
+      case briefingFetch
     }
 
     // MARK: - State
@@ -62,8 +63,33 @@ extension Home {
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]
 
+      /// Pro 구독 여부
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
+
+      /// 브리핑 상태
+      var briefingState: LoadingState<BriefingResult> = .idle
+      /// 브리핑 생성 날짜 (같은 날 중복 방지)
+      var briefingGeneratedDate: Date? = nil
+      /// 브리핑 상세 펼침 여부
+      var isBriefingExpanded: Bool = false
+      /// 마지막 브리핑 생성에 사용된 스타일 (캐시 무효화용)
+      var lastBriefingStyle: String?
+      /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
+      @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
+
+      // MARK: Permission
+      /// 알림 권한 상태
+      var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
+      /// 위치 권한 상태
+      var locationAuthStatus: LocationAuthorizationStatus = .notDetermined
+
+      /// 알림 권한 거부 여부
+      var isNotificationDenied: Bool { notificationAuthStatus == .denied }
+      /// 위치 권한 거부 여부
+      var isLocationDenied: Bool { locationAuthStatus == .denied }
 
       // MARK: Filter
       /// 선택된 그룹 ID (nil = 전체)
@@ -199,6 +225,16 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 브리핑 카드 탭 (expand/collapse)
+        case briefingCardTapped
+        /// 브리핑 새로고침
+        case refreshBriefingTapped
+        /// 알림 설정 열기 (권한 안내 배너에서)
+        case openNotificationSettingsTapped
+        /// 위치 설정 열기 (권한 안내 배너에서)
+        case openLocationSettingsTapped
+        /// 브리핑 오류 제보
+        case reportBriefingErrorTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -267,6 +303,14 @@ extension Home {
         case fetchOverlayHolidays(year: Int)
         /// 오버레이 공휴일 응답
         case overlayHolidaysResponse(year: Int, Result<[PublicHoliday], Error>)
+        /// 브리핑 생성 트리거
+        case fetchBriefing(forceRefresh: Bool = false)
+        /// 브리핑 응답
+        case briefingResponse(Result<BriefingResult, Error>)
+        /// 권한 상태 확인
+        case checkPermissions
+        /// 권한 상태 확인 결과
+        case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
       }
 
       @CasePathable
@@ -318,7 +362,8 @@ extension Home {
             return .merge(
               weatherEffect,
               .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.checkPermissions))
             )
 
           case .refreshTriggered:
@@ -388,6 +433,67 @@ extension Home {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .briefingCardTapped:
+            state.isBriefingExpanded.toggle()
+            return .none
+
+          case .refreshBriefingTapped:
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
+            state.isBriefingExpanded = false
+            return .send(.internal(.fetchBriefing()))
+
+          case .openNotificationSettingsTapped:
+            return .run { [notificationClient] _ in
+              await notificationClient.openNotificationSettings()
+            }
+
+          case .openLocationSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
+
+          case .reportBriefingErrorTapped:
+            let briefing = state.briefingState.value
+            let generatedDate = state.briefingGeneratedDate
+            let notificationDenied = state.isNotificationDenied
+            let locationDenied = state.isLocationDenied
+            let userId = state.currentUser.userId
+
+            AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.ISO8601Format() ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
+
+            // 강제 새로고침
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
+
+            return .merge(
+              .run { [openURL] _ in
+                let subject = "[Promiso] 브리핑 오류 제보"
+                var body = "제보해 주셔서 감사합니다! 더 나은 브리핑을 만드는 데 큰 도움이 됩니다 🙏\n\n"
+                body += "상세 내용이 있다면 입력해주세요:\n\n\n"
+                body += "── 자동 수집 정보 (확인용) ──\n"
+                body += "UID: \(userId)\n"
+                body += "생성 시각: \(generatedDate?.formatted(date: .abbreviated, time: .shortened) ?? "없음")\n"
+                body += "요약: \(briefing?.summary ?? "없음")\n"
+                body += "상세: \(briefing?.detail ?? "없음")\n"
+                body += "알림 권한: \(!notificationDenied)\n"
+                body += "위치 권한: \(!locationDenied)\n"
+                body += "Timezone: \(TimeZone.current.identifier)\n"
+                body += "Locale: \(Locale.current.identifier)\n"
+                body += "────────────────────\n"
+
+                let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+                if let mailURL = URL(string: "mailto:promiso.app@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") {
+                  await openURL(mailURL)
+                }
+              },
+              .send(.internal(.fetchBriefing(forceRefresh: true)))
+            )
 
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
@@ -643,10 +749,11 @@ extension Home {
               )
               WidgetDataManager.reloadWidgets()
 
-              // 약속 로드 성공 시 알림 개수 + 날씨 조회
+              // 약속 로드 성공 시 알림 개수 + 날씨 + 브리핑 조회
               return .merge(
                 .send(.internal(.fetchUnreadNotificationCount)),
-                .send(.internal(.fetchWeather))
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing()))
               )
 
             case .failure(let error):
@@ -705,6 +812,7 @@ extension Home {
             return .none
 
           case .fetchWeather:
+            guard state.isPro else { return .none }
             let cachedIds = state.weatherCache
             let promises = state.allPromises.filter { promise in
               let hasLat = promise.location?.latitude != nil
@@ -1055,6 +1163,65 @@ extension Home {
             }
             return .none
 
+          case .fetchBriefing(let forceRefresh):
+            let currentStyleRaw = state.briefingStyleRaw
+            let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
+            let needsForceRefresh = forceRefresh || styleChanged
+
+            // 캐시 확인 (스타일 변경 시에도 강제 새로고침)
+            if !needsForceRefresh,
+               let generatedDate = state.briefingGeneratedDate,
+               Calendar.current.isDateInToday(generatedDate),
+               state.briefingState.isLoaded {
+              return .none
+            }
+            state.briefingState = .loading
+            state.lastBriefingStyle = currentStyleRaw
+
+            let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
+            return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh] send in
+              let input = await Self.buildBriefingInput(
+                locationClient: locationClient,
+                style: briefingStyle,
+                forceRefresh: needsForceRefresh
+              )
+
+              do {
+                let briefing = try await briefingClient.generate(input)
+                AppLogger.briefing.debug("✅ 브리핑 생성 완료 - 요약: \(briefing.summary)")
+                await send(.internal(.briefingResponse(.success(briefing))))
+              } catch {
+                AppLogger.briefing.error("❌ 브리핑 생성 실패: \(error)")
+                await send(.internal(.briefingResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.briefingFetch, cancelInFlight: true)
+
+          case .briefingResponse(let result):
+            switch result {
+            case .success(let briefingResult):
+              state.briefingState = .loaded(briefingResult)
+              state.briefingGeneratedDate = Date()
+            case .failure(let error):
+              state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
+            }
+            return .none
+
+          case .checkPermissions:
+            return .run { [notificationClient, locationClient] send in
+              let notificationStatus = await notificationClient.getAuthorizationStatus()
+              let locationStatus = locationClient.authorizationStatus()
+              await send(.internal(.permissionsChecked(
+                notification: notificationStatus,
+                location: locationStatus
+              )))
+            }
+
+          case .permissionsChecked(let notificationStatus, let locationStatus):
+            state.notificationAuthStatus = notificationStatus
+            state.locationAuthStatus = locationStatus
+            return .none
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -1224,6 +1391,42 @@ extension Home {
         CreatePromise.Feature()
       }
 
+    }
+
+    // MARK: - Briefing Helpers
+
+    private static func buildBriefingInput(
+      locationClient: LocationClient,
+      style: BriefingStyle,
+      forceRefresh: Bool
+    ) async -> BriefingInput {
+      var location: BriefingInput.BriefingLocation?
+
+      if locationClient.authorizationStatus() == .authorized {
+        do {
+          let coordinate = try await locationClient.getCurrentLocation()
+          let locationText = try await locationClient.reverseGeocode(coordinate)
+          location = BriefingInput.BriefingLocation(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            title: locationText
+          )
+        } catch {
+          // 위치 실패 시 무시하고 진행
+        }
+      }
+
+      let input = BriefingInput(
+        timezone: TimeZone.current.identifier,
+        language: (AppLanguage.current ?? .korean).rawValue,
+        location: location,
+        forceRefresh: forceRefresh,
+        style: style
+      )
+
+      AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh), style=\(style.rawValue)")
+
+      return input
     }
   }
 }

@@ -232,6 +232,8 @@ public enum AppConstants {
     public static let calendarStartOnMonday = "promisoCalendarStartOnMonday"
     /// 캘린더 권한 배너 다시 보지 않기
     public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
+    /// 브리핑 스타일 (friendly/humorous/concise/motivational/calm)
+    public static let briefingStyle = "promisoBriefingStyle"
   }
 
   // MARK: - Calendar Helpers
@@ -252,6 +254,8 @@ public enum AppConstants {
     public static let groupMembersCache = "groupMembersCache"
     /// 그룹 캘린더 동기화 설정 캐시 (groupId → calendarSync)
     public static let groupCalendarSyncCache = "groupCalendarSyncCache"
+    /// Pro 구독 상태
+    public static let isPro = "isPro"
   }
 
   // MARK: - Notification Names

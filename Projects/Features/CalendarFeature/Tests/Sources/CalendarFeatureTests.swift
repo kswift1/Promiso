@@ -571,7 +571,7 @@ private extension CalendarFeatureTests {
     deps.personalEventClient.getActiveEvents = { _ in [] }
     deps.personalEventClient.getEventsByDateRange = { _, _ in [] }
     deps.userSettingsClient.fetchSettings = { _ in
-      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     }
     deps.userDefaultsClient.setString = { _, _ in }
     deps.userDefaultsClient.stringForKey = { _ in nil }

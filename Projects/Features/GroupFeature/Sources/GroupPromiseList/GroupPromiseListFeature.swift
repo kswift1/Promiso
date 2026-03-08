@@ -23,9 +23,8 @@ extension GroupPromiseList {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       var groupCalendarSyncCache: [String: Bool] = [:]
 
-      /// 날씨 캐시 (전역 공유)
-      @Shared(.inMemory("weatherCache"))
-      var weatherCache: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (promiseId → WeatherInfo)
+      var weatherByPromiseId: [String: WeatherInfo] = [:]
 
       public init(
         group: GroupModel,

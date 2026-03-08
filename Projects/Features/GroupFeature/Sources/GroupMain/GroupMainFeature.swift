@@ -9,6 +9,7 @@ extension GroupMain {
     case promiseSubscription
     case needResponseShake
     case conflictCheck
+    case weatherFetch
   }
 
   /// ShakeEffect 타이밍 상수
@@ -34,6 +35,7 @@ extension GroupMain {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -58,9 +60,8 @@ extension GroupMain {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       public var groupCalendarSyncCache: [String: Bool] = [:]
 
-      /// 날씨 캐시 (전역 공유)
-      @Shared(.inMemory("weatherCache"))
-      var weatherCache: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (promiseId → WeatherInfo)
+      var weatherByPromiseId: [String: WeatherInfo] = [:]
 
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
@@ -77,8 +78,8 @@ extension GroupMain {
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
 
-      /// 사용자 플랜
-      var userPlan: UserPlan = .free
+      /// Pro 구독 여부
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
@@ -248,10 +249,13 @@ extension GroupMain {
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
         case kakaoPromiseShareResult(KakaoShareResult)
+        case refreshProFeatures([PromiseModel])
         case checkConflicts([PromiseModel])
         case conflictsLoaded(promiseId: String, [ScheduleConflict])
         case conflictCheckFailed(promiseId: String)
         case conflictSettingsLoaded(Int)
+        case fetchWeather([PromiseModel])
+        case weatherBatchResponse([String: WeatherInfo])
       }
     }
 
@@ -385,7 +389,6 @@ extension GroupMain {
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
-              userPlan: state.userPlan,
               currentUserId: state.currentUser.userId
             )
             return .none
@@ -584,7 +587,6 @@ extension GroupMain {
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
-              userPlan: state.userPlan,
               currentUserId: state.currentUser.userId,
               prefillInfo: info
             )
@@ -921,7 +923,7 @@ extension GroupMain {
             case .group, .none:
               state.pendingDeeplink = nil
             }
-            return .send(.internal(.checkConflicts(promises)))
+            return .send(.internal(.refreshProFeatures(promises)))
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
@@ -1025,18 +1027,19 @@ extension GroupMain {
             return .none
 
           case .fetchSettings:
-            return .run { [userSettingsClient, currentUser = state.currentUser] send in
-              do {
-                let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
-                await send(.internal(.settingsResponse(.success(settings))))
-              } catch {
-                await send(.internal(.settingsResponse(.failure(AppError(error)))))
+            return .merge(
+              .run { [userSettingsClient, currentUser = state.currentUser] send in
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
+                  await send(.internal(.settingsResponse(.success(settings))))
+                } catch {
+                  await send(.internal(.settingsResponse(.failure(AppError(error)))))
+                }
               }
-            }
+            )
 
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
-            state.userPlan = settings.plan
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
             // 설정 로드 후 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
@@ -1105,6 +1108,13 @@ extension GroupMain {
               return .none
             }
 
+          case .refreshProFeatures(let promises):
+            guard state.isPro else { return .none }
+            return .merge(
+              .send(.internal(.checkConflicts(promises))),
+              .send(.internal(.fetchWeather(promises)))
+            )
+
           case .checkConflicts(let promises):
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
@@ -1144,6 +1154,44 @@ extension GroupMain {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
+            return .none
+
+          case .fetchWeather(let promises):
+            let existing = state.weatherByPromiseId
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            let targets = promises.filter { promise in
+              promise.location?.latitude != nil &&
+              promise.location?.longitude != nil &&
+              !promise.isPast &&
+              promise.startAt < maxDate &&
+              existing[promise.id] == nil
+            }
+            guard !targets.isEmpty else { return .none }
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+              await withTaskGroup(of: (String, WeatherInfo?).self) { group in
+                for promise in targets {
+                  group.addTask {
+                    guard let lat = promise.location?.latitude,
+                          let lng = promise.location?.longitude else { return (promise.id, nil) }
+                    let info = try? await weatherClient.getWeather(lat, lng, promise.startAt)
+                    return (promise.id, info)
+                  }
+                }
+                for await (id, info) in group {
+                  guard let info else { continue }
+                  updates[id] = info
+                }
+              }
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            for (id, info) in updates {
+              state.weatherByPromiseId[id] = info
+            }
             return .none
 
           }

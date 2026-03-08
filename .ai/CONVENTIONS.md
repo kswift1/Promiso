@@ -206,6 +206,11 @@ Button { } label: {
 - 200줄 넘는 View는 서브뷰로 분리
 - GeometryReader 남용 금지
 
+### 날짜/시간 포맷
+- **사용자 표시용** (UI, 메일 본문 등): `.formatted(date:time:)` 사용 → 로컬 타임존 자동 적용
+- **`.iso8601` 사용 금지** — UTC로 표시돼 사용자 혼란 유발
+- **서버 저장/로그용**: ISO 8601 + 타임존 명시 (`TimeZone.current.identifier` 함께 기록)
+
 ---
 
 ## 5. Git 규칙

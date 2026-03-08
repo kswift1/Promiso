@@ -101,8 +101,9 @@ struct GroupFeatureTests {
       GroupMain.Feature()
     } withDependencies: {
       $0.userSettingsClient.fetchSettings = { _ in
-        UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+        UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.subscriptionClient.fetchStatus = { .none }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
     store.exhaustivity = .off

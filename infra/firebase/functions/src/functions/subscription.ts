@@ -24,8 +24,7 @@ import {
  * 2. JWS 토큰 검증 (Apple 인증서 체인 검증)
  * 3. 트랜잭션 페이로드에서 구독 정보 추출
  * 4. Firestore subscriptions/{userId} 문서에 상태 저장
- * 5. users/{userId}/settings/settings 문서의 plan 필드 업데이트
- * 6. 결과 반환
+ * 5. 결과 반환
  *
  * @remarks
  * **인증 필수**
@@ -94,9 +93,6 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
 
       const db = admin.firestore();
       const subscriptionRef = db.collection("subscriptions").doc(userId);
-      const userSettingsRef = db
-        .collection("users").doc(userId)
-        .collection("settings").doc("settings");
 
       // 7. Firestore 업데이트 (트랜잭션 사용)
       await db.runTransaction(async (transaction) => {
@@ -111,16 +107,11 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
         };
 
         // subscriptions/{userId} 문서 업데이트
-        transaction.set(subscriptionRef, subscriptionData, {merge: true});
-
-        // users/{userId}/settings/settings 문서의 plan 필드 업데이트
-        const plan = (status === "subscribed" || status === "lifetime") ?
-          "pro" : "free";
-        transaction.set(userSettingsRef, {plan: plan}, {merge: true});
-
-        console.log(
-          `✅ [Subscription] Updated status: ${status}, plan: ${plan}`
+        transaction.set(
+          subscriptionRef, subscriptionData, {merge: true},
         );
+
+        console.log(`✅ [Subscription] Updated status: ${status}`);
       });
 
       // 8. 응답 반환
@@ -263,9 +254,6 @@ export const appleServerNotification = onRequest(
         null;
 
       const subscriptionRef = db.collection("subscriptions").doc(userId);
-      const userSettingsRef = db
-        .collection("users").doc(userId)
-        .collection("settings").doc("settings");
 
       await db.runTransaction(async (transaction) => {
         const subscriptionData = {
@@ -277,16 +265,28 @@ export const appleServerNotification = onRequest(
             FirebaseFirestore.Timestamp,
         };
 
-        transaction.set(subscriptionRef, subscriptionData, {merge: true});
-
-        // plan 필드 업데이트
-        const plan = (status === "subscribed" || status === "lifetime") ?
-          "pro" : "free";
-        transaction.set(userSettingsRef, {plan: plan}, {merge: true});
-
-        console.log(
-          `✅ [Subscription] Updated status: ${status}, plan: ${plan}`
+        transaction.set(
+          subscriptionRef, subscriptionData, {merge: true},
         );
+
+        // 구독 해지 시 proSettings 정리
+        // (브리핑 알림 등 Pro 전용 설정 비활성화)
+        const isInactive = [
+          "expired", "revoked",
+        ].includes(status);
+        if (isInactive) {
+          const settingsRef = db
+            .collection("users").doc(userId)
+            .collection("settings").doc("main");
+          transaction.set(settingsRef, {
+            proSettings: FieldValue.delete(),
+          }, {merge: true});
+          console.log(
+            `🧹 [Subscription] Cleaned proSettings for ${userId}`
+          );
+        }
+
+        console.log(`✅ [Subscription] Updated status: ${status}`);
       });
 
       // 7. 응답 (Apple은 non-200이면 재시도하므로 항상 200 반환)

@@ -413,7 +413,7 @@ extension GroupMain {
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,
-        weather: store.weatherCache[promiseId],
+        weather: store.weatherByPromiseId[promiseId],
         conflicts: (store.conflictsByPromiseId[promiseId] ?? []).map { conflict in
           ConflictInfo(
             title: conflict.title,

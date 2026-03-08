@@ -59,6 +59,7 @@ extension PersonalMode {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -69,12 +70,13 @@ extension PersonalMode {
       var ongoingEvents: [PersonalEventModel] = []
       var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
-      @Shared(.inMemory("weatherCache"))
-      var weatherCache: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (eventId → WeatherInfo)
+      var weatherByEventId: [String: WeatherInfo] = [:]
       var toastMessage: ToastMessage?
       var conflictsByEventId: [String: [ScheduleConflict]] = [:]
       var conflictCheckingIds: Set<String> = []
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -209,16 +211,20 @@ extension PersonalMode {
         case eventDeleteFailed(String)
         case syncPersonalCalendar
         case ongoingEventsLoaded([PersonalEventModel])
+        case refreshProFeatures([PersonalEventModel])
         case checkConflicts([PersonalEventModel])
         case conflictsLoaded(eventId: String, [ScheduleConflict])
         case conflictCheckFailed(eventId: String)
         case conflictSettingsLoaded(Int)
+        case fetchWeather([PersonalEventModel])
+        case weatherBatchResponse([String: WeatherInfo])
       }
     }
 
     private enum CancelID {
       case eventSubscription
       case conflictCheck
+      case weatherFetch
     }
 
     public var body: some ReducerOf<Self> {
@@ -381,7 +387,7 @@ extension PersonalMode {
             }
             return .merge(
               notificationEffect,
-              .send(.internal(.checkConflicts(events)))
+              .send(.internal(.refreshProFeatures(events)))
             )
 
           case .eventsFailed(let message):
@@ -400,6 +406,13 @@ extension PersonalMode {
               position: .top
             )
             return .none
+
+          case .refreshProFeatures(let events):
+            guard state.isPro else { return .none }
+            return .merge(
+              .send(.internal(.checkConflicts(events))),
+              .send(.internal(.fetchWeather(events)))
+            )
 
           case .checkConflicts(let events):
             let userId = state.currentUser.userId
@@ -444,6 +457,44 @@ extension PersonalMode {
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
+            return .none
+
+          case .fetchWeather(let events):
+            let existing = state.weatherByEventId
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            let targets = events.filter { event in
+              event.location?.latitude != nil &&
+              event.location?.longitude != nil &&
+              event.startAt > Date() &&
+              event.startAt < maxDate &&
+              existing[event.id] == nil
+            }
+            guard !targets.isEmpty else { return .none }
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+              await withTaskGroup(of: (String, WeatherInfo?).self) { group in
+                for event in targets {
+                  group.addTask {
+                    guard let lat = event.location?.latitude,
+                          let lng = event.location?.longitude else { return (event.id, nil) }
+                    let info = try? await weatherClient.getWeather(lat, lng, event.startAt)
+                    return (event.id, info)
+                  }
+                }
+                for await (id, info) in group {
+                  guard let info else { continue }
+                  updates[id] = info
+                }
+              }
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            for (id, info) in updates {
+              state.weatherByEventId[id] = info
+            }
             return .none
 
           case .syncPersonalCalendar:

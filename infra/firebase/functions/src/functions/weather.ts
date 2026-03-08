@@ -762,6 +762,335 @@ function mergeMidForecasts(
 }
 
 /**
+ * 내부 호출용 날씨 조회 함수
+ * briefing.ts 등 서버 내부에서 직접 호출 가능
+ *
+ * @param {number} latitude - 위도
+ * @param {number} longitude - 경도
+ * @param {string} targetDate - ISO 8601 날짜
+ * @param {string} apiKey - 기상청 API 키
+ * @return {Promise<GetWeatherResponse>} 날씨 응답
+ */
+export async function fetchWeatherInternal(
+  latitude: number,
+  longitude: number,
+  targetDate: string,
+  apiKey: string,
+): Promise<GetWeatherResponse> {
+  return fetchWeatherCore(latitude, longitude, targetDate, apiKey);
+}
+
+/**
+ * 날씨 조회 핵심 로직 (onCall, 내부 호출 공용)
+ * @param {number} latitude - 위도
+ * @param {number} longitude - 경도
+ * @param {string} targetDate - ISO 8601 날짜
+ * @param {string} apiKey - 기상청 API 키
+ * @return {Promise<GetWeatherResponse>} 날씨 응답
+ */
+async function fetchWeatherCore(
+  latitude: number,
+  longitude: number,
+  targetDate: string,
+  apiKey: string,
+): Promise<GetWeatherResponse> {
+  if (!latitude || !longitude || !targetDate) {
+    return {forecasts: []};
+  }
+
+  // 1. 시간 범위 검증 (3시간 이상 과거 / 10일 초과)
+  const now = Date.now();
+  const targetMs = new Date(targetDate).getTime();
+  const MAX_FORECAST_MS = 10 * 24 * 60 * 60 * 1000;
+  const SHORT_TERM_MS = 5 * 24 * 60 * 60 * 1000;
+  const PAST_TOLERANCE_MS = 3 * 60 * 60 * 1000; // 3시간
+
+  if (targetMs < now - PAST_TOLERANCE_MS) {
+    return {forecasts: []};
+  }
+  if (targetMs > now + MAX_FORECAST_MS) {
+    return {forecasts: []};
+  }
+
+  const diffMs = targetMs - now;
+  const needMidTerm = diffMs > SHORT_TERM_MS;
+
+  // 2. 캐시 확인
+  const cacheKey = buildCacheKey(
+    latitude, longitude, targetDate
+  );
+  const cached = readCache(cacheKey, now);
+  if (cached) {
+    console.log(`Weather: cache hit ${cacheKey}`);
+    return cached;
+  }
+
+  // 3. API 키 확인
+  if (!apiKey) {
+    return {forecasts: []};
+  }
+
+  // 4. 좌표 → 기상청 격자 변환
+  const {nx, ny} = convertToGrid(
+    latitude, longitude
+  );
+
+  // 5. 발표 시각 계산 (현재 시각 기준 최신 발표)
+  const {baseDate, baseTime} =
+    getBaseDateTime(new Date(now));
+
+  console.log(
+    `Weather: nx=${nx},ny=${ny}` +
+    ` base=${baseDate}/${baseTime}`
+  );
+
+  try {
+    // 4. 기상청 단기예보 API 호출
+    // Node.js fetch가 URL을 재인코딩하는 문제 회피
+    // → https 모듈 직접 사용
+    const encodedKey =
+      encodeURIComponent(apiKey);
+    const path =
+      "/1360000" +
+      "/VilageFcstInfoService_2.0" +
+      "/getVilageFcst" +
+      "?serviceKey=" + encodedKey +
+      "&numOfRows=1000" +
+      "&pageNo=1" +
+      "&dataType=JSON" +
+      "&base_date=" + baseDate +
+      "&base_time=" + baseTime +
+      "&nx=" + nx +
+      "&ny=" + ny;
+
+    console.log(
+      "KMA request: base=" + baseDate +
+      "/" + baseTime +
+      " nx=" + nx + " ny=" + ny +
+      " keyLen=" + apiKey.length
+    );
+
+    const data = await new Promise<
+      KMAForecastResponse
+    >((resolve, reject) => {
+      const req = https.get(
+        {
+          hostname: "apis.data.go.kr",
+          path: path,
+          headers: {
+            "Accept": "application/json",
+          },
+        },
+        (res) => {
+          let body = "";
+          res.on("data", (c) => {
+            body += c;
+          });
+          res.on("end", () => {
+            if (res.statusCode !== 200) {
+              console.error(
+                "KMA API error:",
+                res.statusCode,
+                body.substring(0, 500)
+              );
+              reject(new Error(
+                "KMA " + res.statusCode
+              ));
+              return;
+            }
+            try {
+              resolve(JSON.parse(body));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        }
+      );
+      req.on("error", reject);
+      req.end();
+    });
+
+    const resultCode =
+      data.response.header.resultCode;
+    if (resultCode !== "00") {
+      logKmaError(
+        "getVilageFcst",
+        resultCode,
+        data.response.header.resultMsg
+      );
+      return {forecasts: []};
+    }
+
+    const items =
+      data.response.body?.items?.item ?? [];
+
+    // 5. 시간대별 그룹핑
+    const slots: Record<string, ForecastSlot> =
+      {};
+    for (const item of items) {
+      const key =
+        `${item.fcstDate}_${item.fcstTime}`;
+      if (!slots[key]) {
+        slots[key] = {
+          fcstDate: item.fcstDate,
+          fcstTime: item.fcstTime,
+        };
+      }
+      const value = parseFloat(item.fcstValue);
+      switch (item.category) {
+      case "TMP":
+        slots[key].TMP = value; break;
+      case "SKY":
+        slots[key].SKY = value; break;
+      case "PTY":
+        slots[key].PTY = value; break;
+      case "POP":
+        slots[key].POP = value; break;
+      case "REH":
+        slots[key].REH = value; break;
+      case "WSD":
+        slots[key].WSD = value; break;
+      case "PCP":
+        slots[key].PCP = item.fcstValue; break;
+      }
+    }
+
+    // 6. 변환
+    const forecasts = Object.values(slots)
+      .filter((slot) => slot.TMP !== undefined)
+      .map((slot) => {
+        const yr = parseInt(
+          slot.fcstDate.substring(0, 4)
+        );
+        const mo = parseInt(
+          slot.fcstDate.substring(4, 6)
+        ) - 1;
+        const dy = parseInt(
+          slot.fcstDate.substring(6, 8)
+        );
+        const hr = parseInt(
+          slot.fcstTime.substring(0, 2)
+        );
+        // KST → UTC
+        const dateTime = new Date(
+          Date.UTC(yr, mo, dy, hr - 9, 0, 0)
+        );
+
+        const tmp = slot.TMP ?? 0;
+        const ws = slot.WSD ?? 0;
+        const hum = slot.REH ?? 50;
+        const fl = calculateFeelsLike(
+          tmp, ws, hum
+        );
+        const cond = mapToCondition(
+          slot.SKY ?? 1, slot.PTY ?? 0
+        );
+        const pcp = slot.PCP === "강수없음" ?
+          "" : (slot.PCP ?? "");
+
+        return {
+          dateTime: dateTime.toISOString(),
+          temperature:
+            Math.round(tmp * 10) / 10,
+          feelsLikeTemperature:
+            Math.round(fl * 10) / 10,
+          condition: cond,
+          precipitationProbability:
+            slot.POP ?? 0,
+          humidity: hum,
+          windSpeed:
+            Math.round(ws * 10) / 10,
+          precipitationAmount: pcp,
+        };
+      })
+      .sort((a, b) =>
+        new Date(a.dateTime).getTime() -
+        new Date(b.dateTime).getTime()
+      );
+
+    console.log(
+      `Weather: ${forecasts.length} slots`
+    );
+
+    // 7. 중기예보 (3일 초과 시)
+    let dailyForecasts: DailyForecastItem[] | undefined;
+    if (needMidTerm) {
+      try {
+        const region = findNearestRegion(
+          latitude, longitude
+        );
+        const tmFc = getMidTermBaseTime(new Date(now));
+        console.log(
+          `MidTerm: region=${region.name}` +
+          ` temp=${region.tempRegId}` +
+          ` land=${region.landRegId}` +
+          ` tmFc=${tmFc}`
+        );
+
+        // 캐시 확인
+        const midCacheKey =
+          `mid_${region.tempRegId}_${tmFc}`;
+        const midCached = readCache(midCacheKey, now);
+        if (midCached && midCached.dailyForecasts) {
+          dailyForecasts = midCached.dailyForecasts;
+        } else {
+          const [temps, lands] = await Promise.all([
+            fetchMidTemp(
+              region.tempRegId, tmFc, apiKey
+            ),
+            fetchMidLand(
+              region.landRegId, tmFc, apiKey
+            ),
+          ]);
+
+          // 발표일 기준 KST 날짜 계산
+          const kstOffset = 9 * 60;
+          const baseKst = new Date(
+            now + kstOffset * 60 * 1000
+          );
+          // 발표 시각의 날짜 (00:00 UTC 기준)
+          baseKst.setUTCHours(0, 0, 0, 0);
+
+          dailyForecasts = mergeMidForecasts(
+            baseKst, temps, lands
+          );
+
+          console.log(
+            `MidTerm: ${dailyForecasts.length} days`
+          );
+
+          // 중기예보 캐시 저장
+          if (dailyForecasts.length > 0) {
+            writeCache(midCacheKey, {
+              forecasts: [],
+              dailyForecasts,
+            }, now);
+          }
+        }
+      } catch (midError) {
+        console.error(
+          "MidTerm API error:", midError
+        );
+        // 중기 실패해도 단기만 반환
+      }
+    }
+
+    const hasDailyForecasts =
+      dailyForecasts && dailyForecasts.length > 0;
+    const result: GetWeatherResponse = {
+      forecasts,
+      ...(hasDailyForecasts ?
+        {dailyForecasts} : {}),
+    };
+    writeCache(cacheKey, result, now);
+    return result;
+  } catch (error) {
+    console.error("Weather API error:", error);
+    return {forecasts: []};
+  }
+}
+
+/**
  * 날씨 조회 (기상청 단기예보 + 중기예보 API 프록시)
  *
  * @why 기상청 API 키를 클라이언트에 노출하지 않기 위함
@@ -791,34 +1120,6 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. 시간 범위 검증 (3시간 이상 과거 / 10일 초과)
-    const now = Date.now();
-    const targetMs = new Date(targetDate).getTime();
-    const MAX_FORECAST_MS = 10 * 24 * 60 * 60 * 1000;
-    const SHORT_TERM_MS = 5 * 24 * 60 * 60 * 1000;
-    const PAST_TOLERANCE_MS = 3 * 60 * 60 * 1000; // 3시간
-
-    if (targetMs < now - PAST_TOLERANCE_MS) {
-      return {forecasts: []};
-    }
-    if (targetMs > now + MAX_FORECAST_MS) {
-      return {forecasts: []};
-    }
-
-    const diffMs = targetMs - now;
-    const needMidTerm = diffMs > SHORT_TERM_MS;
-
-    // 2. 캐시 확인
-    const cacheKey = buildCacheKey(
-      latitude, longitude, targetDate
-    );
-    const cached = readCache(cacheKey, now);
-    if (cached) {
-      console.log(`Weather: cache hit ${cacheKey}`);
-      return cached;
-    }
-
-    // 3. API 키 확인
     const apiKey = KMA_API_KEY.value().trim();
     if (!apiKey) {
       throw new HttpsError(
@@ -827,267 +1128,8 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 4. 좌표 → 기상청 격자 변환
-    const {nx, ny} = convertToGrid(
-      latitude, longitude
+    return fetchWeatherCore(
+      latitude, longitude, targetDate, apiKey
     );
-
-    // 5. 발표 시각 계산 (현재 시각 기준 최신 발표)
-    const {baseDate, baseTime} =
-      getBaseDateTime(new Date(now));
-
-    console.log(
-      `Weather: nx=${nx},ny=${ny}` +
-      ` base=${baseDate}/${baseTime}`
-    );
-
-    try {
-      // 4. 기상청 단기예보 API 호출
-      // Node.js fetch가 URL을 재인코딩하는 문제 회피
-      // → https 모듈 직접 사용
-      const encodedKey =
-        encodeURIComponent(apiKey);
-      const path =
-        "/1360000" +
-        "/VilageFcstInfoService_2.0" +
-        "/getVilageFcst" +
-        "?serviceKey=" + encodedKey +
-        "&numOfRows=1000" +
-        "&pageNo=1" +
-        "&dataType=JSON" +
-        "&base_date=" + baseDate +
-        "&base_time=" + baseTime +
-        "&nx=" + nx +
-        "&ny=" + ny;
-
-      console.log(
-        "KMA request: base=" + baseDate +
-        "/" + baseTime +
-        " nx=" + nx + " ny=" + ny +
-        " keyLen=" + apiKey.length
-      );
-
-      const data = await new Promise<
-        KMAForecastResponse
-      >((resolve, reject) => {
-        const req = https.get(
-          {
-            hostname: "apis.data.go.kr",
-            path: path,
-            headers: {
-              "Accept": "application/json",
-            },
-          },
-          (res) => {
-            let body = "";
-            res.on("data", (c) => {
-              body += c;
-            });
-            res.on("end", () => {
-              if (res.statusCode !== 200) {
-                console.error(
-                  "KMA API error:",
-                  res.statusCode,
-                  body.substring(0, 500)
-                );
-                reject(new Error(
-                  "KMA " + res.statusCode
-                ));
-                return;
-              }
-              try {
-                resolve(JSON.parse(body));
-              } catch (e) {
-                reject(e);
-              }
-            });
-          }
-        );
-        req.on("error", reject);
-        req.end();
-      });
-
-      const resultCode =
-        data.response.header.resultCode;
-      if (resultCode !== "00") {
-        logKmaError(
-          "getVilageFcst",
-          resultCode,
-          data.response.header.resultMsg
-        );
-        return {forecasts: []};
-      }
-
-      const items =
-        data.response.body?.items?.item ?? [];
-
-      // 5. 시간대별 그룹핑
-      const slots: Record<string, ForecastSlot> =
-        {};
-      for (const item of items) {
-        const key =
-          `${item.fcstDate}_${item.fcstTime}`;
-        if (!slots[key]) {
-          slots[key] = {
-            fcstDate: item.fcstDate,
-            fcstTime: item.fcstTime,
-          };
-        }
-        const value = parseFloat(item.fcstValue);
-        switch (item.category) {
-        case "TMP":
-          slots[key].TMP = value; break;
-        case "SKY":
-          slots[key].SKY = value; break;
-        case "PTY":
-          slots[key].PTY = value; break;
-        case "POP":
-          slots[key].POP = value; break;
-        case "REH":
-          slots[key].REH = value; break;
-        case "WSD":
-          slots[key].WSD = value; break;
-        case "PCP":
-          slots[key].PCP = item.fcstValue; break;
-        }
-      }
-
-      // 6. 변환
-      const forecasts = Object.values(slots)
-        .filter((slot) => slot.TMP !== undefined)
-        .map((slot) => {
-          const yr = parseInt(
-            slot.fcstDate.substring(0, 4)
-          );
-          const mo = parseInt(
-            slot.fcstDate.substring(4, 6)
-          ) - 1;
-          const dy = parseInt(
-            slot.fcstDate.substring(6, 8)
-          );
-          const hr = parseInt(
-            slot.fcstTime.substring(0, 2)
-          );
-          // KST → UTC
-          const dateTime = new Date(
-            Date.UTC(yr, mo, dy, hr - 9, 0, 0)
-          );
-
-          const tmp = slot.TMP ?? 0;
-          const ws = slot.WSD ?? 0;
-          const hum = slot.REH ?? 50;
-          const fl = calculateFeelsLike(
-            tmp, ws, hum
-          );
-          const cond = mapToCondition(
-            slot.SKY ?? 1, slot.PTY ?? 0
-          );
-          const pcp = slot.PCP === "강수없음" ?
-            "" : (slot.PCP ?? "");
-
-          return {
-            dateTime: dateTime.toISOString(),
-            temperature:
-              Math.round(tmp * 10) / 10,
-            feelsLikeTemperature:
-              Math.round(fl * 10) / 10,
-            condition: cond,
-            precipitationProbability:
-              slot.POP ?? 0,
-            humidity: hum,
-            windSpeed:
-              Math.round(ws * 10) / 10,
-            precipitationAmount: pcp,
-          };
-        })
-        .sort((a, b) =>
-          new Date(a.dateTime).getTime() -
-          new Date(b.dateTime).getTime()
-        );
-
-      console.log(
-        `Weather: ${forecasts.length} slots`
-      );
-
-      // 7. 중기예보 (3일 초과 시)
-      let dailyForecasts: DailyForecastItem[] | undefined;
-      if (needMidTerm) {
-        try {
-          const region = findNearestRegion(
-            latitude, longitude
-          );
-          const tmFc = getMidTermBaseTime(new Date(now));
-          console.log(
-            `MidTerm: region=${region.name}` +
-            ` temp=${region.tempRegId}` +
-            ` land=${region.landRegId}` +
-            ` tmFc=${tmFc}`
-          );
-
-          // 캐시 확인
-          const midCacheKey =
-            `mid_${region.tempRegId}_${tmFc}`;
-          const midCached = readCache(midCacheKey, now);
-          if (midCached && midCached.dailyForecasts) {
-            dailyForecasts = midCached.dailyForecasts;
-          } else {
-            const [temps, lands] = await Promise.all([
-              fetchMidTemp(
-                region.tempRegId, tmFc, apiKey
-              ),
-              fetchMidLand(
-                region.landRegId, tmFc, apiKey
-              ),
-            ]);
-
-            // 발표일 기준 KST 날짜 계산
-            const kstOffset = 9 * 60;
-            const baseKst = new Date(
-              now + kstOffset * 60 * 1000
-            );
-            // 발표 시각의 날짜 (00:00 UTC 기준)
-            baseKst.setUTCHours(0, 0, 0, 0);
-
-            dailyForecasts = mergeMidForecasts(
-              baseKst, temps, lands
-            );
-
-            console.log(
-              `MidTerm: ${dailyForecasts.length} days`
-            );
-
-            // 중기예보 캐시 저장
-            if (dailyForecasts.length > 0) {
-              writeCache(midCacheKey, {
-                forecasts: [],
-                dailyForecasts,
-              }, now);
-            }
-          }
-        } catch (midError) {
-          console.error(
-            "MidTerm API error:", midError
-          );
-          // 중기 실패해도 단기만 반환
-        }
-      }
-
-      const hasDailyForecasts =
-        dailyForecasts && dailyForecasts.length > 0;
-      const result: GetWeatherResponse = {
-        forecasts,
-        ...(hasDailyForecasts ?
-          {dailyForecasts} : {}),
-      };
-      writeCache(cacheKey, result, now);
-      return result;
-    } catch (error) {
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-
-      console.error("Weather API error:", error);
-      return {forecasts: []};
-    }
   }
 );

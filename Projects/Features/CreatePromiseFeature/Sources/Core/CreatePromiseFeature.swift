@@ -60,11 +60,11 @@ public enum CreatePromise {
       var isUploadingImages: Bool = false
 
       // 일정 충돌 감지
-      var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -87,7 +87,6 @@ public enum CreatePromise {
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
         useLocation: Bool = false,
-        userPlan: UserPlan = .free,
         currentUserId: String = "",
         locationPicker: LocationPicker.Feature.State? = nil,
         prefillInfo: PromiseExtractedInfo? = nil,
@@ -104,7 +103,6 @@ public enum CreatePromise {
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
         self.useLocation = useLocation
-        self.userPlan = userPlan
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
         self.prefillInfo = prefillInfo
@@ -204,6 +202,7 @@ public enum CreatePromise {
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
         case settingsLoaded(UserSettings)
+        case refreshProFeatures(debounce: Bool)
         case weatherResponse(Result<WeatherInfo, Error>)
       }
       
@@ -313,7 +312,7 @@ public enum CreatePromise {
 
           case .setEndDate(let date):
             state.promise.endAt = date
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .toggleUseEndTime:
             if state.promise.endAt == nil {
@@ -321,7 +320,7 @@ public enum CreatePromise {
             } else {
               state.promise.endAt = nil
             }
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
             guard let max = state.promise.group?.maxMembers else { return .none }
@@ -349,10 +348,7 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
-            return .merge(
-              checkConflictsEffect(state: &state),
-              fetchWeatherHintEffect(state: &state, debounce: true)
-            )
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
@@ -534,11 +530,23 @@ public enum CreatePromise {
 
           case .settingsLoaded(let settings):
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
             return .none
+
+          case .refreshProFeatures(let debounce):
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              state.weatherState = .idle
+              return .none
+            }
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: debounce)
+            )
 
           case .weatherResponse(.failure):
             state.weatherState = .idle
@@ -557,7 +565,7 @@ public enum CreatePromise {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.locationPicker = nil
           state.promise.location = location
-          return fetchWeatherHintEffect(state: &state, debounce: false)
+          return .send(.internal(.refreshProFeatures(debounce: false)))
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil

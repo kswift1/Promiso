@@ -39,67 +39,34 @@ extension Settings {
       ScrollView {
         VStack(spacing: 16) {
           // MARK: - 프로필 섹션
-          Button {
-            store.send(.view(.accountInfoTapped))
-          } label: {
-            profileHeaderRow
-          }
-          .buttonStyle(.plain)
+          profileHeaderRow
 
-          // MARK: - 프로 플랜 섹션
-          Button {
-            store.send(.view(.proPlanTapped))
-          } label: {
-            HStack(spacing: 16) {
-              ZStack {
-                Circle()
-                  .fill(
-                    LinearGradient(
-                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
-                  )
-                  .frame(width: 24, height: 24)
+          // MARK: - 프로 플랜 섹션 (미가입자만 표시)
+          if !store.subscriptionStatus.isPro {
+            Button {
+              store.send(.view(.proPlanTapped))
+            } label: {
+              HStack(spacing: 12) {
+                ProBadge()
 
-                Image(systemName: "star.fill")
-                  .font(.caption2)
-                  .foregroundStyle(.white)
+                Text("프로 플랜")
+                  .font(.body)
+                  .fontWeight(.medium)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
               }
-
-              Text("프로 플랜")
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-
-              if store.subscriptionStatus.isPro {
-                Text("PRO")
-                  .font(.caption2)
-                  .fontWeight(.bold)
-                  .foregroundStyle(.white)
-                  .padding(.horizontal, 6)
-                  .padding(.vertical, 2)
-                  .background(
-                    LinearGradient(
-                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                      startPoint: .leading,
-                      endPoint: .trailing
-                    ),
-                    in: Capsule()
-                  )
-              }
-
-              Spacer()
-
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(Color.pmgray.n400)
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .adaptiveGlassCard()
           }
-          .buttonStyle(.plain)
-          .adaptiveGlassCard()
 
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {
@@ -286,6 +253,36 @@ extension Settings {
                     .frame(width: 24, height: 24)
 
                   Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  ProBadge()
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
+                store.send(.view(.briefingSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "sparkles")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
+
+                  Text("데일리 브리핑 설정")
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -498,37 +495,70 @@ extension Settings {
     // MARK: - Profile Header Row
 
     private var profileHeaderRow: some View {
-      HStack(spacing: 16) {
-        // 프로필 아바타 (60px)
-        ProfileAvatarView(
-          profileImageUrl: store.currentUser.profileImageUrl,
-          displayName: store.currentUser.nickname,
-          isCurrentUser: true,
-          size: 60,
-          borderWidth: 2,
-          onTap: {
-            store.send(.view(.profileImageTapped))
+      VStack(spacing: 0) {
+        // 프로필 영역 → 계정 정보
+        Button {
+          store.send(.view(.accountInfoTapped))
+        } label: {
+          HStack(spacing: 16) {
+            ProfileAvatarView(
+              profileImageUrl: store.currentUser.profileImageUrl,
+              displayName: store.currentUser.nickname,
+              isCurrentUser: true,
+              size: 60,
+              borderWidth: 2,
+              onTap: {
+                store.send(.view(.profileImageTapped))
+              }
+            )
+
+            Text(store.currentUser.nickname)
+              .font(.title3)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+              .font(.caption)
+              .foregroundStyle(Color.pmgray.n400)
           }
-        )
-
-        // 닉네임
-        VStack(alignment: .leading, spacing: 4) {
-          Text(store.currentUser.nickname)
-            .font(.title3)
-            .fontWeight(.semibold)
-            .foregroundStyle(Color.pmtext.primary)
+          .padding(.vertical, 16)
+          .padding(.horizontal, 16)
+          .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
 
-        Spacer()
+        // 플랜 정보 영역 → Pro 관리 (가입자만)
+        if store.subscriptionStatus.isPro {
+          Divider()
+            .background(Color.white.opacity(0.12))
 
-        // 네비게이션 화살표
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundStyle(Color.pmgray.n400)
+          Button {
+            store.send(.view(.proPlanTapped))
+          } label: {
+            HStack(spacing: 8) {
+              ProBadge()
+
+              if let planName = store.subscriptionStatus.planDisplayName {
+                Text("\(planName) 플랜 이용 중")
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text("관리")
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        }
       }
-      .padding(.vertical, 16)
-      .padding(.horizontal, 16)
-      .contentShape(Rectangle())
       .adaptiveGlassCard()
     }
 

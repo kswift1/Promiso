@@ -20,7 +20,7 @@ extension GroupSettings {
       public var group: GroupModel
       public let summary: UserGroupInfo?
       public let currentUserId: String
-      public let userPlan: UserPlan
+      public let isPro: Bool
 
       // Members
       var membersState: LoadingState<[UserPublicModel]> = .idle
@@ -74,14 +74,14 @@ extension GroupSettings {
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
-        userPlan: UserPlan,
+        isPro: Bool,
         preloadedMembers: [UserPublicModel]? = nil,
         upcomingPromises: [PromiseModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
-        self.userPlan = userPlan
+        self.isPro = isPro
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
         self.upcomingPromises = upcomingPromises
         self.groupColor = summary?.groupColor
@@ -112,7 +112,7 @@ extension GroupSettings {
       }
 
       var isProPlan: Bool {
-        userPlan == .pro
+        isPro
       }
 
       var memberCount: Int {

@@ -66,11 +66,11 @@ extension CreatePersonalEvent {
       var removedImageUrls: [String] = []
 
       // 일정 충돌 감지
-      var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -130,7 +130,8 @@ extension CreatePersonalEvent {
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
       case conflictsLoaded([ScheduleConflict])
-      case userPlanLoaded(UserPlan, String, Int)
+      case settingsLoaded(String, Int)
+      case refreshProFeatures(debounce: Bool)
       case weatherResponse(Result<WeatherInfo, Error>)
     }
 
@@ -157,12 +158,12 @@ extension CreatePersonalEvent {
                 guard let user = await authClient.currentUser() else { return }
                 do {
                   let settings = try await userSettingsClient.fetchSettings(user.uid)
-                  await send(.internal(.userPlanLoaded(settings.plan, user.uid, settings.conflictDetectionThreshold)))
+                  await send(.internal(.settingsLoaded(user.uid, settings.conflictDetectionThreshold)))
                 } catch {
-                  // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
+                  // 설정 로드 실패 시 기본값으로 처리 (충돌 감지 비활성)
                 }
               },
-              fetchWeatherHintEffect(state: &state, debounce: false)
+              .send(.internal(.refreshProFeatures(debounce: false)))
             )
 
           case .titleChanged(let title):
@@ -194,14 +195,11 @@ extension CreatePersonalEvent {
                 state.reminderWarning = nil
               }
             }
-            return .merge(
-              checkConflictsEffect(state: &state),
-              fetchWeatherHintEffect(state: &state, debounce: true)
-            )
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .endDateChanged(let date):
             state.event.endAt = date
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
@@ -212,7 +210,7 @@ extension CreatePersonalEvent {
             }
             return .merge(
               .run { _ in await hapticFeedback.selection() },
-              checkConflictsEffect(state: &state)
+              .send(.internal(.refreshProFeatures(debounce: false)))
             )
 
           case .reminderOptionSelected(let minutes):
@@ -430,12 +428,22 @@ extension CreatePersonalEvent {
             state.isCheckingConflicts = false
             return .none
 
-          case .userPlanLoaded(let plan, let userId, let threshold):
-            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
-            state.userPlan = plan
+          case .settingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
-            return checkConflictsEffect(state: &state)
+            return .send(.internal(.refreshProFeatures(debounce: false)))
+
+          case .refreshProFeatures(let debounce):
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              state.weatherState = .idle
+              return .none
+            }
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: debounce)
+            )
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
@@ -451,7 +459,7 @@ extension CreatePersonalEvent {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.event.location = location
           state.locationPicker = nil
-          return fetchWeatherHintEffect(state: &state, debounce: false)
+          return .send(.internal(.refreshProFeatures(debounce: false)))
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
