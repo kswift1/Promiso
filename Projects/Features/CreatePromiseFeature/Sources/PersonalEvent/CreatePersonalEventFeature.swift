@@ -70,6 +70,7 @@ extension CreatePersonalEvent {
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var hasCheckedConflicts: Bool = false
+      var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
@@ -183,6 +184,7 @@ extension CreatePersonalEvent {
 
           case .startDateChanged(let date):
             state.event.startAt = date
+            state.conflictCheckTrigger = .startTimeChanged
             if let endAt = state.event.endAt, endAt <= date {
               state.event.endAt = date.addingTimeInterval(3600)
             }
@@ -200,10 +202,12 @@ extension CreatePersonalEvent {
 
           case .endDateChanged(let date):
             state.event.endAt = date
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
+            state.conflictCheckTrigger = .endTimeChanged
             if state.useEndTime {
               state.event.endAt = state.event.startAt.addingTimeInterval(3600)
             } else {

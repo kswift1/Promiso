@@ -108,6 +108,7 @@ extension CreatePersonalEvent {
           )
         },
         isCheckingConflicts: store.isCheckingConflicts,
+        conflictCheckTrigger: store.conflictCheckTrigger,
         conflictThresholdMinutes: store.conflictDetectionThreshold,
         newEventTitle: store.event.title,
         newEventEmoji: store.event.emoji,

@@ -64,6 +64,7 @@ public enum CreatePromise {
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var hasCheckedConflicts: Bool = false
+      var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
@@ -313,6 +314,7 @@ public enum CreatePromise {
 
           case .setEndDate(let date):
             state.promise.endAt = date
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .toggleUseEndTime:
@@ -321,6 +323,7 @@ public enum CreatePromise {
             } else {
               state.promise.endAt = nil
             }
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
@@ -349,6 +352,7 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
+            state.conflictCheckTrigger = .startTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
@@ -718,6 +722,7 @@ extension CreatePromise {
             )
           },
           isCheckingConflicts: store.isCheckingConflicts,
+          conflictCheckTrigger: store.conflictCheckTrigger,
           conflictThresholdMinutes: store.conflictDetectionThreshold,
           newEventTitle: store.promise.title,
           newEventEmoji: store.promise.emoji,

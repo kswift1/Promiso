@@ -1,6 +1,14 @@
 import SwiftUI
 import ResourceKit
 
+// MARK: - Conflict Check Trigger
+
+public enum ConflictCheckTrigger: Equatable, Sendable {
+  case initial
+  case startTimeChanged
+  case endTimeChanged
+}
+
 // MARK: - Conflict Severity
 
 public enum ConflictSeverity: Equatable, Sendable {
@@ -56,6 +64,7 @@ public struct ProBonusFloatingView: View {
   let weatherLocationName: String?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
+  let conflictCheckTrigger: ConflictCheckTrigger
   let conflictThresholdMinutes: Int
   let newEventTitle: String
   let newEventEmoji: String?
@@ -72,6 +81,7 @@ public struct ProBonusFloatingView: View {
     weatherLocationName: String? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
+    conflictCheckTrigger: ConflictCheckTrigger = .initial,
     conflictThresholdMinutes: Int = 0,
     newEventTitle: String = "",
     newEventEmoji: String? = nil,
@@ -87,6 +97,7 @@ public struct ProBonusFloatingView: View {
     self.weatherLocationName = weatherLocationName
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
+    self.conflictCheckTrigger = conflictCheckTrigger
     self.conflictThresholdMinutes = conflictThresholdMinutes
     self.newEventTitle = newEventTitle
     self.newEventEmoji = newEventEmoji
@@ -126,6 +137,7 @@ public struct ProBonusFloatingView: View {
           ProConflictRow(
             conflicts: conflicts,
             isChecking: isCheckingConflicts,
+            checkTrigger: conflictCheckTrigger,
             eventTitle: newEventTitle,
             eventEmoji: newEventEmoji,
             eventStartAt: newEventStartAt,
