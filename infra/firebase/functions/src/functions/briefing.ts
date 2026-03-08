@@ -430,7 +430,8 @@ function buildPrompt(
     calm: "조용하고 차분한 톤으로, 편안한 느낌으로",
   };
   const tone = toneMap[style] || toneMap["friendly"];
-  lines.push(`당신은 사용자의 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
+  lines.push(`당신은 사용자의 오늘 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
+  lines.push("아래 데이터는 모두 '오늘' 일정입니다. 절대 '내일'이라고 표현하지 마세요.");
   lines.push("");
 
   // 출력 규칙
