@@ -66,6 +66,7 @@ public enum CreatePromise {
       var hasCheckedConflicts: Bool = false
       var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
+      var hasLoadedSettings: Bool = false
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
@@ -227,6 +228,7 @@ public enum CreatePromise {
           switch viewAction {
             
           case .onAppear:
+            guard !state.hasLoadedSettings else { return .none }
             return .merge(
               .send(.internal(.fetchGroupList)),
               .run { [userSettingsClient, state] send in
@@ -398,7 +400,8 @@ public enum CreatePromise {
               state.weatherState = .idle
               return .cancel(id: CancelID.weatherFetchDebounce)
             }
-            return .none
+            // 장소 다시 켜면 날씨 재조회
+            return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .photosSelected(let items):
             return .run { send in
@@ -536,6 +539,7 @@ public enum CreatePromise {
 
           case .settingsLoaded(let settings):
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
+            state.hasLoadedSettings = true
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .weatherResponse(.success(let info)):

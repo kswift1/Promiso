@@ -72,6 +72,7 @@ extension CreatePersonalEvent {
       var hasCheckedConflicts: Bool = false
       var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
+      var hasLoadedSettings: Bool = false
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
@@ -155,6 +156,7 @@ extension CreatePersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .onAppear:
+            guard !state.hasLoadedSettings else { return .none }
             return .merge(
               .run { [authClient, userSettingsClient] send in
                 guard let user = await authClient.currentUser() else { return }
@@ -437,6 +439,7 @@ extension CreatePersonalEvent {
           case .settingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
+            state.hasLoadedSettings = true
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .refreshProFeatures(let debounce):
