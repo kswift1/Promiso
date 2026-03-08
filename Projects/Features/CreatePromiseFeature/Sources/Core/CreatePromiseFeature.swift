@@ -400,8 +400,8 @@ public enum CreatePromise {
               state.weatherState = .idle
               return .cancel(id: CancelID.weatherFetchDebounce)
             }
-            // 장소 다시 켜면 날씨 재조회
-            return .send(.internal(.refreshProFeatures(debounce: false)))
+            // 장소 다시 켜면 날씨만 재조회 (충돌은 시간 기반이라 장소와 무관)
+            return fetchWeatherHintEffect(state: &state)
 
           case .photosSelected(let items):
             return .run { send in
