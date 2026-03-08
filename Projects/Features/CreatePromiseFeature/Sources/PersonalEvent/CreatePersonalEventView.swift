@@ -11,9 +11,19 @@ extension CreatePersonalEvent {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @FocusState private var focusedField: Field?
+    private let dismissButtonVisibility: DismissButtonVisibility
 
-    public init(store: StoreOf<Feature>) {
+    public enum DismissButtonVisibility {
+      case always
+      case hiddenForCreateMode
+    }
+
+    public init(
+      store: StoreOf<Feature>,
+      dismissButtonVisibility: DismissButtonVisibility = .always
+    ) {
       self.store = store
+      self.dismissButtonVisibility = dismissButtonVisibility
     }
 
     private enum Field: Hashable {
@@ -26,6 +36,7 @@ extension CreatePersonalEvent {
         title: store.navigationTitle,
         currentStep: 0,
         totalSteps: 1,
+        showsDismissButton: showsDismissButton,
         onDismiss: { store.send(.view(.dismissTapped)) }
       ) {
         singleStepContent
@@ -56,6 +67,15 @@ extension CreatePersonalEvent {
       .sheet(item: $store.scope(state: \.notificationPermission, action: \.notificationPermission)) { permissionStore in
         NotificationPermission.View(store: permissionStore)
           .presentationDetents([.large])
+      }
+    }
+
+    private var showsDismissButton: Bool {
+      switch dismissButtonVisibility {
+      case .always:
+        return true
+      case .hiddenForCreateMode:
+        return store.mode == .edit
       }
     }
 

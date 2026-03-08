@@ -125,7 +125,11 @@ extension CalendarFeature {
           EditPromise.RootView(store: editStore)
         }
         .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
-          CreatePersonalEvent.RootView(store: editStore)
+          CreatePersonalEvent.RootView(
+            store: editStore,
+            dismissButtonVisibility: .hiddenForCreateMode
+          )
+          .presentationDragIndicator(.visible)
         }
         .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
           CreatePromise.RootView(store: createStore)

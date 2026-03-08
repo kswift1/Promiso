@@ -31,6 +31,7 @@ public struct StepSheetContainer<
   let title: String
   let currentStep: Int
   let totalSteps: Int
+  let showsDismissButton: Bool
   let onDismiss: () -> Void
   @ViewBuilder let content: () -> Content
   @ViewBuilder let floatingContent: () -> FloatingContent
@@ -43,6 +44,7 @@ public struct StepSheetContainer<
     title: String,
     currentStep: Int,
     totalSteps: Int,
+    showsDismissButton: Bool = true,
     onDismiss: @escaping () -> Void,
     @ViewBuilder content: @escaping () -> Content,
     @ViewBuilder floatingContent: @escaping () -> FloatingContent,
@@ -51,6 +53,7 @@ public struct StepSheetContainer<
     self.title = title
     self.currentStep = currentStep
     self.totalSteps = totalSteps
+    self.showsDismissButton = showsDismissButton
     self.onDismiss = onDismiss
     self.content = content
     self.floatingContent = floatingContent
@@ -104,29 +107,34 @@ public struct StepSheetContainer<
       Spacer()
 
       // X 닫기 버튼
-      Button {
-        onDismiss()
-      } label: {
-        ZStack {
-          Circle()
-            .fill(Color(.systemGray6))
-            .frame(width: 36, height: 36)
+      if showsDismissButton {
+        Button {
+          onDismiss()
+        } label: {
+          ZStack {
+            Circle()
+              .fill(Color(.systemGray6))
+              .frame(width: 36, height: 36)
 
-          Image(systemName: "xmark")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.primary)
+            Image(systemName: "xmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(.primary)
+          }
+          .contentShape(Circle())
         }
-        .contentShape(Circle())
+        .buttonStyle(.plain)
+        .scaleEffect(isDismissPressed ? 0.9 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDismissPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: isDismissPressed)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in isDismissPressed = true }
+            .onEnded { _ in isDismissPressed = false }
+        )
+      } else {
+        Color.clear
+          .frame(width: 36, height: 36)
       }
-      .buttonStyle(.plain)
-      .scaleEffect(isDismissPressed ? 0.9 : 1.0)
-      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDismissPressed)
-      .sensoryFeedback(.impact(flexibility: .soft), trigger: isDismissPressed)
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 0)
-          .onChanged { _ in isDismissPressed = true }
-          .onEnded { _ in isDismissPressed = false }
-      )
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
@@ -192,6 +200,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
     title: String,
     currentStep: Int,
     totalSteps: Int,
+    showsDismissButton: Bool = true,
     onDismiss: @escaping () -> Void,
     @ViewBuilder content: @escaping () -> Content,
     @ViewBuilder bottomContent: @escaping () -> BottomContent
@@ -200,6 +209,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
       title: title,
       currentStep: currentStep,
       totalSteps: totalSteps,
+      showsDismissButton: showsDismissButton,
       onDismiss: onDismiss,
       content: content,
       floatingContent: { EmptyView() },
