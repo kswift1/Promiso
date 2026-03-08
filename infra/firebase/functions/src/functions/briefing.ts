@@ -106,6 +106,37 @@ async function fetchTodaySlots(
 }
 
 /**
+ * 가장 가까운 미래 일정 조회 (오늘 이후)
+ * @param {string} uid - 사용자 ID
+ * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
+ * @return {Promise<{dateKey: string, slots: ScheduleSlotEntry[]} | null>}
+ */
+async function fetchUpcomingSlots(
+  uid: string, todayKey: string
+): Promise<{
+  dateKey: string; slots: ScheduleSlotEntry[];
+} | null> {
+  const db = admin.firestore();
+  const snap = await db
+    .collection("users").doc(uid)
+    .collection("scheduleSlots")
+    .where(
+      admin.firestore.FieldPath.documentId(),
+      ">", todayKey
+    )
+    .orderBy(admin.firestore.FieldPath.documentId())
+    .limit(1)
+    .get();
+
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  const data = doc.data() as ScheduleSlotDocument | undefined;
+  const slots = data?.slots ?? [];
+  if (slots.length === 0) return null;
+  return {dateKey: doc.id, slots};
+}
+
+/**
  * promise 문서 상세 조회 + 그룹명 매핑
  * @param {string[]} promiseIds - 조회할 약속 ID 목록
  * @param {Record} userGroups - 사용자 그룹 맵
@@ -401,6 +432,7 @@ function matchWeatherToSchedule(
  * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
  * @param {string} style - 브리핑 스타일
  * @param {string} preferredTransport - 선호 교통수단 (all | transit | car)
+ * @param {object | null} upcoming - 가장 가까운 미래 일정
  * @return {string} 조립된 프롬프트
  */
 function buildPrompt(
@@ -418,6 +450,9 @@ function buildPrompt(
   todayKey: string,
   style: string,
   preferredTransport: string,
+  upcoming: {
+    dateKey: string; slots: ScheduleSlotEntry[];
+  } | null,
 ): string {
   const lines: string[] = [];
 
@@ -516,6 +551,20 @@ function buildPrompt(
   // 오늘 일정
   if (schedules.length === 0) {
     lines.push("오늘 일정: 없음");
+
+    // 가까운 미래 일정 힌트
+    if (upcoming && upcoming.slots.length > 0) {
+      const [, m, d] = upcoming.dateKey.split("-");
+      const dateLabel = `${parseInt(m)}월 ${parseInt(d)}일`;
+      const titles = upcoming.slots
+        .slice(0, 3)
+        .map((s) => `<user-data>${sanitizeUserData(s.title)}</user-data>`)
+        .join(", ");
+      lines.push("");
+      lines.push(`가장 가까운 일정: ${dateLabel}`);
+      lines.push(`- ${titles} (${upcoming.slots.length}건)`);
+      lines.push("→ 오늘 일정이 없으므로 마무리에 가까운 미래 일정을 1~2줄로 은은하게 언급해주세요.");
+    }
   } else {
     lines.push("오늘 일정:");
     const timeFmt = (d: Date): string =>
@@ -770,7 +819,15 @@ export async function generateBriefingInternal(params: {
       detailsWithLocation,
     );
 
-    // 7. 프롬프트 조립
+    // 7. 오늘 일정 없으면 미래 일정 조회
+    let upcoming: {
+      dateKey: string; slots: ScheduleSlotEntry[];
+    } | null = null;
+    if (slots.length === 0) {
+      upcoming = await fetchUpcomingSlots(uid, todayKey);
+    }
+
+    // 8. 프롬프트 조립
     const prompt = buildPrompt(
       language === "ko" ? "한국어" : language,
       dateTimeStr,
@@ -782,6 +839,7 @@ export async function generateBriefingInternal(params: {
       todayKey,
       style,
       preferredTransport || "all",
+      upcoming,
     );
 
     console.log(
