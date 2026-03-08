@@ -9,7 +9,7 @@
  * @ios BriefingView - 홈 화면 브리핑 카드에서 호출
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {GoogleGenerativeAI} from "@google/generative-ai";
+import {GoogleGenerativeAI, SchemaType} from "@google/generative-ai";
 import {
   admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
   ODSAY_API_KEY, KAKAO_REST_API_KEY,
@@ -421,64 +421,37 @@ function matchWeatherToSchedule(
 
 /* eslint-disable max-len */
 /**
- * 브리핑 프롬프트 조립
- * @param {string} language - 브리핑 언어
- * @param {string} dateTimeStr - 현재 날짜/시간 문자열
- * @param {string | null} locationTitle - 위치 텍스트
- * @param {GetWeatherResponse | null} weather - 날씨 데이터
- * @param {Array} schedules - 일정 목록
- * @param {TravelSegment[]} travelSegments - 이동 구간 목록
- * @param {string} timezone - 사용자 타임존 식별자
- * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
+ * 브리핑 시스템 인스트럭션 조립
+ * @param {string} language - 브리핑 언어 코드 (ko 등)
  * @param {string} style - 브리핑 스타일
  * @param {string} preferredTransport - 선호 교통수단 (all | transit | car)
- * @param {object | null} upcoming - 가장 가까운 미래 일정
- * @return {string} 조립된 프롬프트
+ * @return {string} 시스템 인스트럭션 문자열
  */
-function buildPrompt(
+function buildSystemInstruction(
   language: string,
-  dateTimeStr: string,
-  locationTitle: string | null,
-  weather: GetWeatherResponse | null,
-  schedules: Array<{
-    slot: ScheduleSlotEntry;
-    detail: ScheduleDetail | null;
-    weatherMatch: string | null;
-  }>,
-  travelSegments: TravelSegment[],
-  timezone: string,
-  todayKey: string,
   style: string,
   preferredTransport: string,
-  upcoming: {
-    dateKey: string; slots: ScheduleSlotEntry[];
-  } | null,
 ): string {
-  const lines: string[] = [];
-
-  // 시스템 역할
   const toneMap: Record<string, string> = {
-    friendly: "따뜻하고 친근한 말투로",
-    humorous: "위트 있고 유머러스한 말투로, 가벼운 비유나 드립을 섞어서",
-    concise: "군더더기 없이 핵심만 간결하게, 이모지 최소한으로",
-    motivational: "응원하고 격려하는 톤으로, 긍정적 에너지를 담아서",
-    calm: "조용하고 차분한 톤으로, 편안한 느낌으로",
+    friendly: "따뜻하고 친근한",
+    humorous: "위트 있고 유머러스한, 가벼운 비유나 드립을 섞는",
+    concise: "군더더기 없이 핵심만 짚는 간결한",
+    motivational: "응원하고 격려하는 긍정적인",
+    calm: "조용하고 차분하며 편안한",
   };
   const tone = toneMap[style] || toneMap["friendly"];
-  lines.push(`당신은 사용자의 오늘 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
+  const langLabel = language === "ko" ? "한국어" : language;
+
+  const lines: string[] = [];
+  lines.push("당신은 사용자의 오늘 하루를 브리핑하는 개인 비서입니다.");
+  lines.push(`말투: ${tone} ${langLabel} 말투를 사용하세요.`);
   lines.push("아래 데이터는 모두 '오늘' 일정입니다. 절대 '내일'이라고 표현하지 마세요.");
   lines.push("");
-
-  // 출력 규칙
-  lines.push("[출력 규칙]");
-  lines.push("- JSON으로만 응답: {\"summary\":\"...\", \"detail\":\"...\"}");
-  lines.push("- summary: 핵심 한 줄 (30자 이내), 날씨 + 주요 일정 키워드");
-  lines.push(`- detail: 3~5문장, 친근한 ${language} 말투, 문장 사이에 줄바꿈(\\n) 삽입`);
+  lines.push("[규칙]");
+  lines.push("- summary: 핵심 한 줄 (30자 이내), 날씨+주요 일정 키워드");
+  lines.push("- detail: 3~5문장, 문장 사이에 줄바꿈(\\n) 삽입");
   lines.push("- 인사말(안녕하세요, 좋은 아침 등) 절대 금지. 바로 본론부터 시작");
-  lines.push("- JSON 외 다른 텍스트는 절대 포함하지 마세요.");
   lines.push("");
-
-  // 브리핑 가이드
   lines.push("[브리핑 가이드]");
   lines.push("- 일정 많으면 -> 바쁜 하루 강조");
   lines.push("- 일정 없으면 -> 날씨 중심, 여유로운 톤");
@@ -492,7 +465,39 @@ function buildPrompt(
   } else if (preferredTransport === "car") {
     lines.push("- 사용자가 주로 자차를 이용합니다. 자동차 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
   }
-  lines.push("");
+
+  return lines.join("\n");
+}
+
+/**
+ * 브리핑 프롬프트 조립 (데이터 섹션)
+ * @param {string} dateTimeStr - 현재 날짜/시간 문자열
+ * @param {string | null} locationTitle - 위치 텍스트
+ * @param {GetWeatherResponse | null} weather - 날씨 데이터
+ * @param {Array} schedules - 일정 목록
+ * @param {TravelSegment[]} travelSegments - 이동 구간 목록
+ * @param {string} timezone - 사용자 타임존 식별자
+ * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
+ * @param {object | null} upcoming - 가장 가까운 미래 일정
+ * @return {string} 조립된 프롬프트
+ */
+function buildPrompt(
+  dateTimeStr: string,
+  locationTitle: string | null,
+  weather: GetWeatherResponse | null,
+  schedules: Array<{
+    slot: ScheduleSlotEntry;
+    detail: ScheduleDetail | null;
+    weatherMatch: string | null;
+  }>,
+  travelSegments: TravelSegment[],
+  timezone: string,
+  todayKey: string,
+  upcoming: {
+    dateKey: string; slots: ScheduleSlotEntry[];
+  } | null,
+): string {
+  const lines: string[] = [];
 
   // 데이터 (untrusted input은 XML 태그로 구분)
   lines.push("[데이터]");
@@ -851,7 +856,6 @@ export async function generateBriefingInternal(params: {
 
     // 8. 프롬프트 조립
     const prompt = buildPrompt(
-      language === "ko" ? "한국어" : language,
       dateTimeStr,
       location?.title ?? null,
       weather,
@@ -859,13 +863,13 @@ export async function generateBriefingInternal(params: {
       travelSegments,
       timezone,
       todayKey,
-      style,
-      preferredTransport || "all",
       upcoming,
     );
 
     console.log(
-      `[Briefing] uid=${uid}, prompt (${prompt.length} chars):\n${prompt}`
+      `[Briefing] uid=${uid}, prompt chars=${prompt.length}, ` +
+      `schedules=${enrichedSchedules.length}, ` +
+      `weather=${weather ? "yes" : "no"}`
     );
 
     // 8. Gemini API 호출
@@ -883,13 +887,37 @@ export async function generateBriefingInternal(params: {
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
+      systemInstruction: buildSystemInstruction(
+        language, style, preferredTransport,
+      ),
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            summary: {
+              type: SchemaType.STRING,
+              description: "핵심 한 줄 요약 (30자 이내)",
+            },
+            detail: {
+              type: SchemaType.STRING,
+              description: "3~5문장 브리핑 본문, 문장 사이 \\n으로 구분",
+            },
+          },
+          required: ["summary", "detail"],
+        },
+      },
     });
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
 
+    const usage = result.response.usageMetadata;
     console.log(
-      `[Briefing] uid=${uid}, Gemini raw response:\n${text}`
+      `[Briefing] uid=${uid}, tokens={` +
+      `prompt:${usage?.promptTokenCount ?? "?"},` +
+      `candidates:${usage?.candidatesTokenCount ?? "?"},` +
+      `total:${usage?.totalTokenCount ?? "?"}}`
     );
 
     if (!text) {
@@ -902,16 +930,12 @@ export async function generateBriefingInternal(params: {
 
     // JSON 파싱
     try {
-      const jsonStr = text
-        .replace(/^```json\s*/i, "")
-        .replace(/```\s*$/, "")
-        .trim();
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(text);
       if (parsed.summary && parsed.detail) {
         console.log(
-          `[Briefing] uid=${uid}, Generated successfully - ` +
-          `summary="${parsed.summary}", ` +
-          `detail="${parsed.detail.substring(0, 100)}..."`
+          `[Briefing] uid=${uid}, OK ` +
+          `summary="${parsed.summary}" ` +
+          `detail_len=${parsed.detail.length}`
         );
 
         // Firestore에 캐시 저장
@@ -929,9 +953,9 @@ export async function generateBriefingInternal(params: {
           detail: parsed.detail,
         };
       }
-    } catch {
+    } catch (e) {
       console.warn(
-        `[Briefing] uid=${uid}, JSON parse failed, using raw text`
+        `[Briefing] uid=${uid}, JSON parse failed, using raw text:`, e
       );
     }
 
