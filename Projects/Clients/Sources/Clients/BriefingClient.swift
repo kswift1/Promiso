@@ -34,7 +34,6 @@ public struct BriefingInput: Equatable, Sendable {
   public let location: BriefingLocation?
   public let forceRefresh: Bool
   public let style: BriefingStyle
-  public let preferredTransport: PreferredTransport
 
   public struct BriefingLocation: Equatable, Sendable {
     public let latitude: Double
@@ -53,15 +52,13 @@ public struct BriefingInput: Equatable, Sendable {
     language: String,
     location: BriefingLocation?,
     forceRefresh: Bool = false,
-    style: BriefingStyle = .friendly,
-    preferredTransport: PreferredTransport = .all
+    style: BriefingStyle = .friendly
   ) {
     self.timezone = timezone
     self.language = language
     self.location = location
     self.forceRefresh = forceRefresh
     self.style = style
-    self.preferredTransport = preferredTransport
   }
 }
 
@@ -126,7 +123,6 @@ extension BriefingClient: DependencyKey {
           "language": input.language,
           "forceRefresh": input.forceRefresh,
           "style": input.style.rawValue,
-          "preferredTransport": input.preferredTransport.rawValue,
         ]
         if let location = input.location {
           var locationData: [String: Any] = [

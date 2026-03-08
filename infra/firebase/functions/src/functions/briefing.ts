@@ -704,13 +704,12 @@ export async function generateBriefingInternal(params: {
   location: { latitude: number; longitude: number; title?: string } | null;
   forceRefresh: boolean;
   style: string;
-  preferredTransport: string;
 }): Promise<GenerateBriefingResponse> {
   const DEFAULT_SUMMARY = "좋은 하루 되세요!";
   const DEFAULT_DETAIL = "오늘도 화이팅!";
   const {
     uid, timezone, language, location,
-    forceRefresh, style, preferredTransport,
+    forceRefresh, style,
   } = params;
 
   const todayKey = getTodayKey(timezone);
@@ -741,7 +740,14 @@ export async function generateBriefingInternal(params: {
   }
 
   try {
-    // 2. 데이터 수집 (병렬)
+    // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
+    const settingsDoc = await admin.firestore()
+      .collection("users").doc(uid)
+      .collection("proSettings").doc("briefing")
+      .get();
+    const preferredTransport: string =
+      settingsDoc.data()?.preferredTransport || "all";
+
     const [slots, userGroups] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
@@ -964,7 +970,6 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       location: location ?? null,
       forceRefresh: forceRefresh ?? false,
       style: style || "friendly",
-      preferredTransport: request.data.preferredTransport || "all",
     });
   },
 );

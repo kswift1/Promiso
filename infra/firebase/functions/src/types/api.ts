@@ -1458,9 +1458,6 @@ export interface GenerateBriefingRequest {
 
   /** 브리핑 스타일 (Pro 설정, 기본: friendly) */
   style?: BriefingStyle;
-
-  /** 선호 교통수단 (기본: all) */
-  preferredTransport?: "all" | "transit" | "car";
 }
 
 /** 브리핑 스타일 종류 */

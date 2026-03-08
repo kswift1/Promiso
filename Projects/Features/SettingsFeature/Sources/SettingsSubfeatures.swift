@@ -1589,7 +1589,6 @@ extension BriefingSettings {
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
       var selectedTransport: PreferredTransport = .all
-      @Shared(.appStorage(AppConstants.UserDefaults.preferredTransport)) var preferredTransportRaw: String = PreferredTransport.all.rawValue
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1668,7 +1667,6 @@ extension BriefingSettings {
 
           case .transportSelected(let transport):
             state.selectedTransport = transport
-            state.$preferredTransportRaw.withLock { $0 = transport.rawValue }
             return .run { [transport] send in
               await hapticFeedback.selection()
               guard let userId = await authClient.currentUser()?.uid else { return }
@@ -1727,7 +1725,6 @@ extension BriefingSettings {
             state.notificationHour = hour
             state.selectedTransport = transport
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
-            state.$preferredTransportRaw.withLock { $0 = transport.rawValue }
             state.isLoading = false
             return .none
 

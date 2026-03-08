@@ -22,7 +22,6 @@ interface BriefingTaskPayload {
   timezone: string;
   language: string;
   style: string;
-  preferredTransport: string;
 }
 
 // MARK: - Scheduler (매 시간 정각 실행)
@@ -74,7 +73,6 @@ export const scheduledBriefingDispatch = onSchedule(
         timezone?: string;
         language?: string;
         style?: string;
-        preferredTransport?: string;
       } | undefined;
 
       if (!briefing || briefing.notificationHour == null) {
@@ -88,7 +86,6 @@ export const scheduledBriefingDispatch = onSchedule(
       const tz = briefing.timezone || "Asia/Seoul";
       const lang = briefing.language || "ko";
       const style = briefing.style || "friendly";
-      const preferredTransport = briefing.preferredTransport || "all";
 
       // 유저의 로컬 시간 계산
       const userLocalHour = getHourInTimezone(now, tz);
@@ -100,7 +97,6 @@ export const scheduledBriefingDispatch = onSchedule(
         timezone: tz,
         language: lang,
         style,
-        preferredTransport,
       });
     }
 
@@ -158,7 +154,7 @@ export const executeBriefingNotification =
       },
     },
     async (req) => {
-      const {uid, timezone, language, style, preferredTransport} = req.data;
+      const {uid, timezone, language, style} = req.data;
 
       console.log(
         `[BriefingNotification] Starting for uid=${uid}, ` +
@@ -174,7 +170,6 @@ export const executeBriefingNotification =
           location: null, // 스케줄러에서는 위치 정보 없음
           forceRefresh: false, // 캐시 활용
           style,
-          preferredTransport: preferredTransport || "all",
         });
 
         console.log(
