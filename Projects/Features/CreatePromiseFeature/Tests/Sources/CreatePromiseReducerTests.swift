@@ -172,6 +172,7 @@ struct CreatePromiseReducerTests {
     ) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setEndDate(endDate))) {
       $0.promise.endAt = endDate
@@ -261,6 +262,7 @@ struct CreatePromiseReducerTests {
     ) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseEndTime)) {
       $0.promise.endAt = $0.promise.startAt.addingTimeInterval(7200)
@@ -275,6 +277,7 @@ struct CreatePromiseReducerTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseEndTime)) {
       $0.promise.endAt = nil

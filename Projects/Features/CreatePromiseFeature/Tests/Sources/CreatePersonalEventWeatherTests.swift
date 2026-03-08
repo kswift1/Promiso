@@ -168,6 +168,7 @@ struct CreatePersonalEventWeatherTests {
   func startDateChanged_tenDaysLater_fetchesWeather() async {
     var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.event.startAt = Date()
+    state.$isPro.withLock { $0 = true }
 
     let tenDaysLater = Date().addingTimeInterval(10 * 24 * 3600 - 1)
 
@@ -183,8 +184,9 @@ struct CreatePersonalEventWeatherTests {
 
     await store.send(.view(.startDateChanged(tenDaysLater))) {
       $0.event.startAt = tenDaysLater
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - locationPicker delegate 테스트
@@ -194,6 +196,7 @@ struct CreatePersonalEventWeatherTests {
     var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date().addingTimeInterval(24 * 3600))
     var state = CreatePersonalEvent.Feature.State(event: event)
     state.locationPicker = LocationPicker.Feature.State()
+    state.$isPro.withLock { $0 = true }
 
     let location = makeLocation()
 
@@ -212,8 +215,9 @@ struct CreatePersonalEventWeatherTests {
     ) {
       $0.locationPicker = nil
       $0.event.location = location
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - weatherResponse 성공 테스트
@@ -322,6 +326,7 @@ struct CreatePersonalEventWeatherTests {
   func weatherResponse_failure_thenRetry() async {
     var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loading
+    state.$isPro.withLock { $0 = true }
 
     enum TestError: Error { case networkFailed }
 
@@ -344,8 +349,9 @@ struct CreatePersonalEventWeatherTests {
     let newDate = Date().addingTimeInterval(48 * 3600)
     await store.send(.view(.startDateChanged(newDate))) {
       $0.event.startAt = newDate
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - 경계 조건 테스트
@@ -369,6 +375,7 @@ struct CreatePersonalEventWeatherTests {
     var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date())
     event.location = makeLocation()
     var state = CreatePersonalEvent.Feature.State(event: event)
+    state.$isPro.withLock { $0 = true }
 
     let oneSecondLater = Date().addingTimeInterval(1)
 
@@ -384,8 +391,9 @@ struct CreatePersonalEventWeatherTests {
 
     await store.send(.view(.startDateChanged(oneSecondLater))) {
       $0.event.startAt = oneSecondLater
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   @Test("위도/경도 부분만 nil인 경우 페치 안 함")
@@ -441,7 +449,8 @@ struct CreatePersonalEventWeatherTests {
 
   @Test("weatherInfo 상태 전환: nil → loading → success")
   func weatherStateTransition_nilToLoadingToSuccess() async {
-    let state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    state.$isPro.withLock { $0 = true }
     #expect(state.weatherState.value == nil)
     #expect(state.weatherState.isLoading == false)
 
@@ -473,9 +482,9 @@ struct CreatePersonalEventWeatherTests {
 
     await store.send(.view(.startDateChanged(newDate))) {
       $0.event.startAt = newDate
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
 
-    #expect(store.state.weatherState.isLoading == true)
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 }

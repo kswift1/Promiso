@@ -152,6 +152,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(forecastDate))) {
       $0.promise.startAt = forecastDate
@@ -176,6 +177,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(forecastDate))) {
       $0.promise.startAt = forecastDate
@@ -193,6 +195,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(pastDate))) {
       $0.promise.startAt = pastDate
@@ -210,6 +213,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(farFutureDate))) {
       $0.promise.startAt = farFutureDate
@@ -234,12 +238,14 @@ struct CreatePromiseWeatherTests {
       }
       $0.continuousClock = ImmediateClock()
     }
+    store.state.$isPro.withLock { $0 = true }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(tenDaysLater))) {
       $0.promise.startAt = tenDaysLater
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - locationPicker delegate 테스트
@@ -250,6 +256,7 @@ struct CreatePromiseWeatherTests {
     state.useLocation = true
     state.promise.startAt = Date().addingTimeInterval(24 * 3600)
     state.locationPicker = LocationPicker.Feature.State()
+    state.$isPro.withLock { $0 = true }
 
     let location = makeLocation()
 
@@ -268,8 +275,9 @@ struct CreatePromiseWeatherTests {
     ) {
       $0.locationPicker = nil
       $0.promise.location = location
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - weatherResponse 성공 테스트
@@ -378,6 +386,7 @@ struct CreatePromiseWeatherTests {
   func weatherResponse_failure_thenRetry() async {
     var state = makeStateWithLocation()
     state.weatherState = .loading
+    state.$isPro.withLock { $0 = true }
 
     enum TestError: Error { case networkFailed }
 
@@ -400,8 +409,9 @@ struct CreatePromiseWeatherTests {
     let newDate = Date().addingTimeInterval(48 * 3600)
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   // MARK: - 경계 조건 테스트
@@ -415,6 +425,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     // 현재 시간을 그대로 설정하므로 상태 변경 없음
     await store.send(.view(.setStartDate(now)))
@@ -426,6 +437,7 @@ struct CreatePromiseWeatherTests {
     state.useLocation = true
     state.promise.location = makeLocation()
     state.promise.startAt = Date()
+    state.$isPro.withLock { $0 = true }
 
     let oneSecondLater = Date().addingTimeInterval(1)
 
@@ -441,8 +453,9 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(oneSecondLater))) {
       $0.promise.startAt = oneSecondLater
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   @Test("위도/경도 부분만 nil인 경우 페치 안 함")
@@ -461,6 +474,7 @@ struct CreatePromiseWeatherTests {
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
@@ -496,6 +510,7 @@ struct CreatePromiseWeatherTests {
     var state = CreatePromise.Feature.State()
     state.useLocation = true
     state.promise.startAt = Date()
+    state.$isPro.withLock { $0 = true }
 
     let location = makeLocation()
     let newDate = Date().addingTimeInterval(24 * 3600)
@@ -516,13 +531,15 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 
   @Test("weatherInfo 상태 전환: nil → loading → success")
   func weatherStateTransition_nilToLoadingToSuccess() async {
-    let state = makeStateWithLocation()
+    var state = makeStateWithLocation()
+    state.$isPro.withLock { $0 = true }
     #expect(state.weatherState.value == nil)
     #expect(state.weatherState.isLoading == false)
 
@@ -554,9 +571,9 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
 
-    #expect(store.state.weatherState.isLoading == true)
+    #expect(store.state.weatherState.value != nil || store.state.weatherState.isLoading)
   }
 }

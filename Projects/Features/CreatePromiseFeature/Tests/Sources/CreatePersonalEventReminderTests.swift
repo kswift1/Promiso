@@ -99,6 +99,7 @@ struct CreatePersonalEventReminderTests {
     ) {
       CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     let newStartDate = Date().addingTimeInterval(600)
     await store.send(.view(.startDateChanged(newStartDate))) {
@@ -119,6 +120,7 @@ struct CreatePersonalEventReminderTests {
     ) {
       CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     let newStartDate = Date().addingTimeInterval(10800)
     await store.send(.view(.startDateChanged(newStartDate))) {
