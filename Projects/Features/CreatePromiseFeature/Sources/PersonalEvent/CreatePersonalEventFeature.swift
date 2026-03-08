@@ -69,6 +69,7 @@ extension CreatePersonalEvent {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var hasCheckedConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
@@ -426,6 +427,7 @@ extension CreatePersonalEvent {
             AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
+            state.hasCheckedConflicts = true
             return .none
 
           case .settingsLoaded(let userId, let threshold):
@@ -437,6 +439,7 @@ extension CreatePersonalEvent {
             guard state.isPro else {
               state.isCheckingConflicts = false
               state.conflicts = []
+              state.hasCheckedConflicts = false
               state.weatherState = .idle
               return .none
             }

@@ -19,7 +19,7 @@ struct EndDateTimeSection: View {
         Toggle("", isOn: Binding(
           get: { useEndTime },
           set: { _ in
-            store.send(.view(.toggleUseEndTime), animation: .spring(response: 0.4, dampingFraction: 0.85))
+            store.send(.view(.toggleUseEndTime))
           }
         ))
         .labelsHidden()
@@ -41,6 +41,7 @@ struct EndDateTimeSection: View {
             )
           }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: useEndTime)
       }
     )
   }

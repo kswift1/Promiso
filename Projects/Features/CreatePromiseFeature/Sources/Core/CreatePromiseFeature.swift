@@ -63,6 +63,7 @@ public enum CreatePromise {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var hasCheckedConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
@@ -526,6 +527,7 @@ public enum CreatePromise {
             AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
+            state.hasCheckedConflicts = true
             return .none
 
           case .settingsLoaded(let settings):
@@ -540,6 +542,7 @@ public enum CreatePromise {
             guard state.isPro else {
               state.isCheckingConflicts = false
               state.conflicts = []
+              state.hasCheckedConflicts = false
               state.weatherState = .idle
               return .none
             }
@@ -696,6 +699,8 @@ extension CreatePromise {
     private var floatingBonusView: some View {
       if store.currentStep == .second {
         ProBonusFloatingView(
+          isPro: store.isPro,
+          hasCheckedConflicts: store.hasCheckedConflicts,
           weatherForecast: weatherForecast,
           rangeForecasts: weatherRangeForecasts,
           forecastSource: weatherForecastSource,
@@ -713,12 +718,12 @@ extension CreatePromise {
             )
           },
           isCheckingConflicts: store.isCheckingConflicts,
+          conflictThresholdMinutes: store.conflictDetectionThreshold,
           newEventTitle: store.promise.title,
           newEventEmoji: store.promise.emoji,
           newEventStartAt: store.promise.startAt,
           newEventEndAt: store.promise.endAt
         )
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       }
     }
 
