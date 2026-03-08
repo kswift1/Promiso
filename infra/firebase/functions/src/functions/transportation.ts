@@ -39,6 +39,14 @@ export interface TransportationResult {
 
 // MARK: - ODsay (대중교통)
 
+/**
+ * ODsay 대중교통 경로 조회
+ * @param {number} fromLat 출발 위도
+ * @param {number} fromLng 출발 경도
+ * @param {number} toLat 도착 위도
+ * @param {number} toLng 도착 경도
+ * @return {Promise<TransitInfo | null>} 대중교통 정보
+ */
 async function fetchTransitRoute(
   fromLat: number, fromLng: number,
   toLat: number, toLng: number,
@@ -67,7 +75,8 @@ async function fetchTransitRoute(
       return null;
     }
 
-    const data = await response.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await response.json();
     const path = data?.result?.path?.[0];
     if (!path?.info) return null;
 
@@ -86,6 +95,14 @@ async function fetchTransitRoute(
 
 // MARK: - Kakao Mobility (자동차)
 
+/**
+ * Kakao Mobility 자동차 경로 조회
+ * @param {number} fromLat 출발 위도
+ * @param {number} fromLng 출발 경도
+ * @param {number} toLat 도착 위도
+ * @param {number} toLng 도착 경도
+ * @return {Promise<DrivingInfo | null>} 자동차 경로 정보
+ */
 async function fetchDrivingRoute(
   fromLat: number, fromLng: number,
   toLat: number, toLng: number,
@@ -111,11 +128,14 @@ async function fetchDrivingRoute(
     });
 
     if (!response.ok) {
-      console.error(`[Transportation] Kakao Mobility API error: ${response.status}`);
+      console.error(
+        `[Transportation] Kakao Mobility error: ${response.status}`
+      );
       return null;
     }
 
-    const data = await response.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await response.json();
     const summary = data?.routes?.[0]?.summary;
     if (!summary) return null;
 
@@ -132,6 +152,11 @@ async function fetchDrivingRoute(
 
 // MARK: - 도보 (자체 계산)
 
+/**
+ * Haversine 거리 기반 도보 소요시간 추정
+ * @param {number} distanceKm 직선거리 (km)
+ * @return {number} 도보 소요시간 (분)
+ */
 function estimateWalkMinutes(distanceKm: number): number {
   const actualDistance = distanceKm * 1.3; // 직선 → 실제 경로 보정
   return Math.round((actualDistance / 4) * 60); // 시속 4km 기준

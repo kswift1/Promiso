@@ -10,7 +10,10 @@
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
-import {admin, REGION, GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY} from "../config";
+import {
+  admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
+  ODSAY_API_KEY, KAKAO_REST_API_KEY,
+} from "../config";
 import {
   GenerateBriefingRequest,
   GenerateBriefingResponse,
@@ -309,7 +312,9 @@ async function calculateTravelSegmentsWithTransport(
   // API 호출 구간: 병렬 교통 정보 조회
   const apiResults = await Promise.all(
     apiRequests.map(async (req) => {
-      const distKm = haversineKm(req.fromLat, req.fromLng, req.toLat, req.toLng);
+      const distKm = haversineKm(
+        req.fromLat, req.fromLng, req.toLat, req.toLng
+      );
       const distanceKm = Math.round(distKm * 10) / 10;
 
       let transportation: TransportationResult | null = null;
@@ -653,7 +658,10 @@ export async function generateBriefingInternal(params: {
 }): Promise<GenerateBriefingResponse> {
   const DEFAULT_SUMMARY = "좋은 하루 되세요!";
   const DEFAULT_DETAIL = "오늘도 화이팅!";
-  const {uid, timezone, language, location, forceRefresh, style, preferredTransport} = params;
+  const {
+    uid, timezone, language, location,
+    forceRefresh, style, preferredTransport,
+  } = params;
 
   const todayKey = getTodayKey(timezone);
   const dateTimeStr = getCurrentDateTimeStr(timezone);
