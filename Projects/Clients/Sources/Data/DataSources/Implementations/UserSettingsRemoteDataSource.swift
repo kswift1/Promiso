@@ -37,13 +37,15 @@ public actor UserSettingsRemoteDataSource {
     let briefingMap = proSettings?["briefing"] as? [String: Any]
     let briefingStyle = BriefingStyle(rawValue: briefingMap?["style"] as? String ?? "") ?? .friendly
     let briefingNotificationHour = briefingMap?["notificationHour"] as? Int
+    let preferredTransport = PreferredTransport(rawValue: briefingMap?["preferredTransport"] as? String ?? "") ?? .all
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
       groupSortOption: groupSortOption,
       conflictDetectionThreshold: conflictDetectionThreshold,
       briefingStyle: briefingStyle,
-      briefingNotificationHour: briefingNotificationHour
+      briefingNotificationHour: briefingNotificationHour,
+      preferredTransport: preferredTransport
     )
   }
 
@@ -66,6 +68,13 @@ public actor UserSettingsRemoteDataSource {
   public func updateBriefingStyle(userId: String, style: BriefingStyle) async throws {
     try await settingsRef(userId: userId).updateData([
       "proSettings.briefing.style": style.rawValue,
+    ])
+  }
+
+  /// 선호 교통수단 업데이트
+  public func updatePreferredTransport(userId: String, transport: PreferredTransport) async throws {
+    try await settingsRef(userId: userId).updateData([
+      "proSettings.briefing.preferredTransport": transport.rawValue,
     ])
   }
 

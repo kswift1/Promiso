@@ -38,6 +38,12 @@ export const SLACK_WEBHOOK_URL = defineSecret("SLACK_WEBHOOK_URL");
 // 기상청 공공데이터 API 시크릿
 export const KMA_API_KEY = defineSecret("KMA_API_KEY");
 
+// ODsay Lab API 시크릿 (대중교통 경로)
+export const ODSAY_API_KEY = defineSecret("ODSAY_API_KEY");
+
+// Kakao REST API 시크릿 (장소 검색 + Mobility)
+export const KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
+
 // APNs 호스트 설정
 export const APNS_HOST_PRODUCTION = "api.push.apple.com";
 export const APNS_HOST_DEVELOPMENT = "api.sandbox.push.apple.com";

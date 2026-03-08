@@ -1588,6 +1588,8 @@ extension BriefingSettings {
       var isLoading: Bool = false
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
+      var selectedTransport: PreferredTransport = .all
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredTransport)) var preferredTransportRaw: String = PreferredTransport.all.rawValue
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1607,6 +1609,7 @@ extension BriefingSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case styleSelected(BriefingStyle)
+      case transportSelected(PreferredTransport)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
       case proFeatureTapped
@@ -1614,7 +1617,7 @@ extension BriefingSettings {
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
-      case settingsLoaded(BriefingStyle, Int?)
+      case settingsLoaded(BriefingStyle, Int?, PreferredTransport)
       case styleSaved
       case notificationHourSaved
       case saveFailed
@@ -1637,14 +1640,14 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil)))
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil)))
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
               }
             }
 
@@ -1657,6 +1660,20 @@ extension BriefingSettings {
               do {
                 try await userSettingsClient.updateBriefingStyle(userId, style)
                 await send(.internal(.styleSaved))
+              } catch {
+                await send(.internal(.saveFailed))
+              }
+            }
+            .cancellable(id: CancelID.save, cancelInFlight: true)
+
+          case .transportSelected(let transport):
+            state.selectedTransport = transport
+            state.$preferredTransportRaw.withLock { $0 = transport.rawValue }
+            return .run { [transport] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updatePreferredTransport(userId, transport)
               } catch {
                 await send(.internal(.saveFailed))
               }
@@ -1705,10 +1722,12 @@ extension BriefingSettings {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .settingsLoaded(let style, let hour):
+          case .settingsLoaded(let style, let hour, let transport):
             state.selectedStyle = style
             state.notificationHour = hour
+            state.selectedTransport = transport
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
+            state.$preferredTransportRaw.withLock { $0 = transport.rawValue }
             state.isLoading = false
             return .none
 
@@ -1744,6 +1763,7 @@ extension BriefingSettings {
           ScrollView {
             VStack(spacing: 16) {
               styleSection
+              transportSection
               notificationSection
             }
             .padding(.horizontal, 16)
@@ -1848,6 +1868,57 @@ extension BriefingSettings {
       case .concise: return "text.alignleft"
       case .motivational: return "flame"
       case .calm: return "leaf"
+      }
+    }
+
+    // MARK: - Transport Section
+
+    private var transportSection: some View {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("선호 교통수단")
+          .font(.pmSubheadlineMedium)
+          .foregroundStyle(.primary)
+
+        Text("브리핑에서 이동 정보를 안내할 때 참고해요")
+          .font(.pmCaption)
+          .foregroundStyle(.secondary)
+
+        VStack(spacing: 8) {
+          ForEach(PreferredTransport.allCases, id: \.self) { transport in
+            Button {
+              store.send(.view(.transportSelected(transport)))
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: transport.iconName)
+                  .font(.pmBody)
+                  .foregroundStyle(store.selectedTransport == transport ? Color.pmindigo.n500 : .secondary)
+                  .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(transport.displayName)
+                    .font(.pmSubheadlineMedium)
+                    .foregroundStyle(.primary)
+
+                  Text(transport.description)
+                    .font(.pmCaption)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if store.selectedTransport == transport {
+                  Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.pmindigo.n500)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 12)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .adaptiveGlassCard(cornerRadius: 16)
       }
     }
 

@@ -10,7 +10,7 @@
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
-import {admin, REGION, GEMINI_API_KEY, KMA_API_KEY} from "../config";
+import {admin, REGION, GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY} from "../config";
 import {
   GenerateBriefingRequest,
   GenerateBriefingResponse,
@@ -18,6 +18,7 @@ import {
   ScheduleSlotEntry,
 } from "../types/api";
 import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
+import {fetchTransportation, TransportationResult} from "./transportation";
 
 // MARK: - Types
 
@@ -38,6 +39,7 @@ interface TravelSegment {
   from: string;
   to: string;
   distanceKm: number;
+  transportation: TransportationResult | null;
 }
 
 // MARK: - Sanitize
@@ -242,19 +244,19 @@ async function fetchUserGroups(
 // MARK: - Analysis
 
 /**
- * 이동 거리 계산 (현재 위치 -> 첫 약속 -> 다음 약속)
+ * 이동 거리 계산 + 교통 정보 조회 (현재 위치 -> 첫 약속 -> 다음 약속)
  * @param {number | null} userLat - 사용자 위도
  * @param {number | null} userLng - 사용자 경도
  * @param {string | null} userLocationTitle - 사용자 위치 텍스트
  * @param {ScheduleDetail[]} schedules - 약속 목록
- * @return {TravelSegment[]} 이동 구간 목록
+ * @return {Promise<TravelSegment[]>} 이동 구간 목록
  */
-function calculateTravelSegments(
+async function calculateTravelSegmentsWithTransport(
   userLat: number | null,
   userLng: number | null,
   userLocationTitle: string | null,
   schedules: ScheduleDetail[],
-): TravelSegment[] {
+): Promise<TravelSegment[]> {
   const segments: TravelSegment[] = [];
   const locatedSchedules = schedules.filter(
     (s) => s.latitude != null && s.longitude != null
@@ -262,37 +264,86 @@ function calculateTravelSegments(
 
   if (locatedSchedules.length === 0) return segments;
 
+  interface SegmentRequest {
+    from: string;
+    to: string;
+    fromLat: number;
+    fromLng: number;
+    toLat: number;
+    toLng: number;
+  }
+
+  const requests: SegmentRequest[] = [];
+
   // 현재 위치 -> 첫 번째 약속
   if (userLat != null && userLng != null) {
     const first = locatedSchedules[0];
-    const firstLat = first.latitude as number;
-    const firstLng = first.longitude as number;
-    const dist = haversineKm(
-      userLat, userLng, firstLat, firstLng
-    );
-    segments.push({
+    requests.push({
       from: userLocationTitle || "현재 위치",
       to: first.locationName || first.title,
-      distanceKm: Math.round(dist * 10) / 10,
+      fromLat: userLat,
+      fromLng: userLng,
+      toLat: first.latitude as number,
+      toLng: first.longitude as number,
     });
   }
 
-  // 연속 약속 간 거리
+  // 연속 약속 간
   for (let i = 0; i < locatedSchedules.length - 1; i++) {
     const curr = locatedSchedules[i];
     const next = locatedSchedules[i + 1];
-    const dist = haversineKm(
-      curr.latitude as number, curr.longitude as number,
-      next.latitude as number, next.longitude as number
-    );
-    segments.push({
+    requests.push({
       from: curr.locationName || curr.title,
       to: next.locationName || next.title,
-      distanceKm: Math.round(dist * 10) / 10,
+      fromLat: curr.latitude as number,
+      fromLng: curr.longitude as number,
+      toLat: next.latitude as number,
+      toLng: next.longitude as number,
     });
   }
 
-  return segments;
+  // 교통 API 호출 구간은 최대 3개로 제한
+  const apiRequests = requests.slice(0, 3);
+  const remainingRequests = requests.slice(3);
+
+  // API 호출 구간: 병렬 교통 정보 조회
+  const apiResults = await Promise.all(
+    apiRequests.map(async (req) => {
+      const distKm = haversineKm(req.fromLat, req.fromLng, req.toLat, req.toLng);
+      const distanceKm = Math.round(distKm * 10) / 10;
+
+      let transportation: TransportationResult | null = null;
+      try {
+        transportation = await fetchTransportation(
+          req.fromLat, req.fromLng,
+          req.toLat, req.toLng,
+          distKm,
+        );
+      } catch (error) {
+        console.error("[Briefing] Transportation fetch failed:", error);
+      }
+
+      return {
+        from: req.from,
+        to: req.to,
+        distanceKm,
+        transportation,
+      };
+    })
+  );
+
+  // 나머지 구간: Haversine 직선거리만 포함 (교통 정보 없음)
+  const remainingResults = remainingRequests.map((req) => {
+    const distKm = haversineKm(req.fromLat, req.fromLng, req.toLat, req.toLng);
+    return {
+      from: req.from,
+      to: req.to,
+      distanceKm: Math.round(distKm * 10) / 10,
+      transportation: null,
+    };
+  });
+
+  return [...apiResults, ...remainingResults];
 }
 
 /**
@@ -344,6 +395,7 @@ function matchWeatherToSchedule(
  * @param {string} timezone - 사용자 타임존 식별자
  * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
  * @param {string} style - 브리핑 스타일
+ * @param {string} preferredTransport - 선호 교통수단 (all | transit | car)
  * @return {string} 조립된 프롬프트
  */
 function buildPrompt(
@@ -360,6 +412,7 @@ function buildPrompt(
   timezone: string,
   todayKey: string,
   style: string,
+  preferredTransport: string,
 ): string {
   const lines: string[] = [];
 
@@ -391,7 +444,13 @@ function buildPrompt(
   lines.push("- 비/눈 예보 -> 우산 챙기기 언급");
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
-  lines.push("- 이동 거리 정보가 있으면 -> 이동 필요성 자연스럽게 언급");
+  lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
+  lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
+  if (preferredTransport === "transit") {
+    lines.push("- 사용자가 주로 대중교통을 이용합니다. 대중교통 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
+  } else if (preferredTransport === "car") {
+    lines.push("- 사용자가 주로 자차를 이용합니다. 자동차 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
+  }
   lines.push("");
 
   // 데이터 (untrusted input은 XML 태그로 구분)
@@ -501,7 +560,28 @@ function buildPrompt(
   if (travelSegments.length > 0) {
     lines.push("이동 정보:");
     for (const seg of travelSegments) {
-      lines.push(`- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>: 약 ${seg.distanceKm}km`);
+      let line = `- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>:`;
+
+      if (seg.transportation) {
+        const parts: string[] = [];
+        const t = seg.transportation;
+
+        if (t.driving) {
+          parts.push(`자동차 약 ${t.driving.duration}분${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
+        }
+        if (t.transit) {
+          const transfers = t.transit.busTransitCount + t.transit.subwayTransitCount;
+          parts.push(`대중교통 약 ${t.transit.totalTime}분 (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
+        }
+        parts.push(`도보 약 ${t.walkingMinutes}분`);
+
+        line += "\n  " + parts.join(" | ");
+      } else {
+        // Fallback: Haversine 직선거리만
+        line += ` 약 ${seg.distanceKm}km`;
+      }
+
+      lines.push(line);
     }
   }
 
@@ -559,6 +639,7 @@ function getCurrentDateTimeStr(timezone: string): string {
  * @param {object | null} params.location - 위치 정보
  * @param {boolean} params.forceRefresh - 캐시 무시 여부
  * @param {string} params.style - 브리핑 스타일
+ * @param {string} params.preferredTransport - 선호 교통수단 (all | transit | car)
  * @return {Promise<GenerateBriefingResponse>} 브리핑 응답
  */
 export async function generateBriefingInternal(params: {
@@ -568,10 +649,11 @@ export async function generateBriefingInternal(params: {
   location: { latitude: number; longitude: number; title?: string } | null;
   forceRefresh: boolean;
   style: string;
+  preferredTransport: string;
 }): Promise<GenerateBriefingResponse> {
   const DEFAULT_SUMMARY = "좋은 하루 되세요!";
   const DEFAULT_DETAIL = "오늘도 화이팅!";
-  const {uid, timezone, language, location, forceRefresh, style} = params;
+  const {uid, timezone, language, location, forceRefresh, style, preferredTransport} = params;
 
   const todayKey = getTodayKey(timezone);
   const dateTimeStr = getCurrentDateTimeStr(timezone);
@@ -667,12 +749,12 @@ export async function generateBriefingInternal(params: {
       return {slot, detail, weatherMatch};
     });
 
-    // 6. 이동 거리 계산
+    // 6. 이동 거리 계산 + 교통 정보 조회
     const detailsWithLocation = sortedSlots
       .map((s) => allDetails.get(s.id))
       .filter((d): d is ScheduleDetail => d != null);
 
-    const travelSegments = calculateTravelSegments(
+    const travelSegments = await calculateTravelSegmentsWithTransport(
       location?.latitude ?? null,
       location?.longitude ?? null,
       location?.title ?? null,
@@ -690,6 +772,7 @@ export async function generateBriefingInternal(params: {
       timezone,
       todayKey,
       style,
+      preferredTransport || "all",
     );
 
     console.log(
@@ -789,7 +872,7 @@ export async function generateBriefingInternal(params: {
 export const generateBriefing = onCall<GenerateBriefingRequest>(
   {
     region: REGION,
-    secrets: [GEMINI_API_KEY, KMA_API_KEY],
+    secrets: [GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY],
   },
   async (request): Promise<GenerateBriefingResponse> => {
     if (!request.auth) {
@@ -814,6 +897,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       location: location ?? null,
       forceRefresh: forceRefresh ?? false,
       style: style || "friendly",
+      preferredTransport: request.data.preferredTransport || "all",
     });
   },
 );

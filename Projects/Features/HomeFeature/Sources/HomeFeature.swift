@@ -79,6 +79,7 @@ extension Home {
       var lastBriefingStyle: String?
       /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredTransport)) var preferredTransportRaw: String = PreferredTransport.all.rawValue
 
       // MARK: Permission
       /// 알림 권한 상태
@@ -1179,11 +1180,13 @@ extension Home {
             state.lastBriefingStyle = currentStyleRaw
 
             let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
-            return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh] send in
+            let preferredTransport = PreferredTransport(rawValue: state.preferredTransportRaw) ?? .all
+            return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh, preferredTransport] send in
               let input = await Self.buildBriefingInput(
                 locationClient: locationClient,
                 style: briefingStyle,
-                forceRefresh: needsForceRefresh
+                forceRefresh: needsForceRefresh,
+                preferredTransport: preferredTransport
               )
 
               do {
@@ -1398,7 +1401,8 @@ extension Home {
     private static func buildBriefingInput(
       locationClient: LocationClient,
       style: BriefingStyle,
-      forceRefresh: Bool
+      forceRefresh: Bool,
+      preferredTransport: PreferredTransport = .all
     ) async -> BriefingInput {
       var location: BriefingInput.BriefingLocation?
 
@@ -1421,7 +1425,8 @@ extension Home {
         language: (AppLanguage.current ?? .korean).rawValue,
         location: location,
         forceRefresh: forceRefresh,
-        style: style
+        style: style,
+        preferredTransport: preferredTransport
       )
 
       AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh), style=\(style.rawValue)")

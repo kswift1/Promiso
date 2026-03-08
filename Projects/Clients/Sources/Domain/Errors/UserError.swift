@@ -59,6 +59,39 @@ public enum BriefingStyle: String, CaseIterable, Equatable, Sendable {
   }
 }
 
+// MARK: - Preferred Transport
+
+/// 선호 교통수단
+public enum PreferredTransport: String, CaseIterable, Equatable, Sendable {
+  case all
+  case transit
+  case car
+
+  public var displayName: String {
+    switch self {
+    case .all: return "전체"
+    case .transit: return "대중교통"
+    case .car: return "자차"
+    }
+  }
+
+  public var description: String {
+    switch self {
+    case .all: return "모든 교통수단 정보를 안내해요"
+    case .transit: return "대중교통 중심으로 안내해요"
+    case .car: return "자동차 중심으로 안내해요"
+    }
+  }
+
+  public var iconName: String {
+    switch self {
+    case .all: return "arrow.triangle.branch"
+    case .transit: return "bus.fill"
+    case .car: return "car.fill"
+    }
+  }
+}
+
 // MARK: - User Settings
 
 /// 사용자 설정 정보
@@ -68,19 +101,22 @@ public struct UserSettings: Equatable, Sendable {
   public var conflictDetectionThreshold: Int
   public var briefingStyle: BriefingStyle
   public var briefingNotificationHour: Int?
+  public var preferredTransport: PreferredTransport
 
   public init(
     notificationEnabled: Bool,
     groupSortOption: GroupSortOption = .joinedRecent,
     conflictDetectionThreshold: Int = 0,
     briefingStyle: BriefingStyle = .friendly,
-    briefingNotificationHour: Int? = nil
+    briefingNotificationHour: Int? = nil,
+    preferredTransport: PreferredTransport = .all
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
     self.conflictDetectionThreshold = conflictDetectionThreshold
     self.briefingStyle = briefingStyle
     self.briefingNotificationHour = briefingNotificationHour
+    self.preferredTransport = preferredTransport
   }
 
   /// 기본 설정값
