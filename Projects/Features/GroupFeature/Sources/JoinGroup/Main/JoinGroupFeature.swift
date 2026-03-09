@@ -28,6 +28,7 @@ extension JoinGroup {
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     public init() {}
 
@@ -124,7 +125,6 @@ extension JoinGroup {
         case calendarSyncToggled(Bool)
         case groupColorSelected(GroupColor?)
         case settingsCompleted
-        case settingsSkipped
         case settingsAppeared
         // Calendar Permission Info Alert
         case calendarPermissionInfoAlertDismissed
@@ -287,7 +287,9 @@ extension JoinGroup {
 
           case .groupColorSelected(let color):
             state.selectedGroupColor = color
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.selection()
+            }
 
           case .settingsAppeared:
             // 설정에서 돌아왔을 때 권한 상태 새로고침
@@ -322,17 +324,6 @@ extension JoinGroup {
               }
             }
             .cancellable(id: CancelID.saveSettings, cancelInFlight: true)
-
-          case .settingsSkipped:
-            guard case .settings(let group) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupJoined,
-              [
-                AnalyticsClient.ParameterKey.groupID: group.id,
-                AnalyticsClient.ParameterKey.groupName: group.name
-              ]
-            )
-            return .send(.delegate(.groupJoined(group)))
 
           case .memberImageTapped(let member):
             state.selectedMemberForImage = member

@@ -131,7 +131,6 @@ extension CreateGroup {
         case calendarSyncToggled(Bool)
         case groupColorSelected(GroupColor?)
         case settingsCompleted
-        case settingsSkipped
         case settingsAppeared
         // Calendar Permission Info Alert
         case calendarPermissionInfoAlertDismissed
@@ -342,10 +341,6 @@ extension CreateGroup {
             }
             .cancellable(id: CancelID.saveSettings, cancelInFlight: true)
 
-          case .settingsSkipped:
-            guard case .settings(let result) = state.step else { return .none }
-            state.step = .success(result)
-            return .none
           }
 
         case .internal(let internalAction):

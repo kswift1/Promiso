@@ -164,28 +164,6 @@ struct CreateGroupReducerTests {
     }
   }
 
-  // MARK: - settingsSkipped 테스트
-
-  @Test("설정 건너뛰기 시 success step으로 이동")
-  func settingsSkipped_movesToSuccessStep() async {
-    let user = makeCurrentUser()
-    let result = GroupCreationResultModel(
-      id: "group-new",
-      name: "테스트 그룹",
-      inviteCode: "ABC123"
-    )
-    var state = CreateGroup.Feature.State(currentUser: user)
-    state.step = .settings(result)
-
-    let store = TestStore(initialState: state) {
-      CreateGroup.Feature()
-    }
-
-    await store.send(.view(.settingsSkipped)) {
-      $0.step = .success(result)
-    }
-  }
-
   // MARK: - successAcknowledged 테스트
 
   @Test("성공 확인 시 delegate.groupCreated 전달")

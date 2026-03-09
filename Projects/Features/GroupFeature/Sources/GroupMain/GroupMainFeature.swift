@@ -795,7 +795,7 @@ extension GroupMain {
                 return .merge(
                   .send(.view(.groupChanged(groupInfo))),
                   .run { send in
-                    // 그룹 전환 완료 후 약속 생성 화면 열기
+                    // 그룹 전환 애니메이션 완료를 기다린 후 약속 생성 화면 열기
                     try await Task.sleep(for: .milliseconds(300))
                     await send(.view(.createNewPromise))
                   }
