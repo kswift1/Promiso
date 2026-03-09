@@ -1,5 +1,28 @@
 import Foundation
 import FirebaseFirestore
+import PromisoShared
+
+// MARK: - Ranged Event
+
+/// 시작/종료 시간을 가진 이벤트의 공통 인터페이스
+public protocol RangedEvent {
+  var startAt: Date { get }
+  var endAt: Date? { get }
+  var timeText: String { get }
+}
+
+extension RangedEvent {
+  /// 시간 범위 텍스트 (같은 날: "14:00 ~ 16:00", 다른 날: "1월 27일 14:00 ~ 1월 28일 16:00")
+  public var timeRangeText: String {
+    guard let endAt = endAt else { return timeText }
+    let calendar = Calendar.current
+    if calendar.isDate(startAt, inSameDayAs: endAt) {
+      return "\(timeText) ~ \(endAt.formattedTime)"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startAt)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endAt))"
+    }
+  }
+}
 
 // MARK: - Promise Votes Model
 
