@@ -92,7 +92,7 @@ struct DailyBriefingCard: View {
           }
         }
       }
-      .adaptiveGlassCard(cornerRadius: 20)
+      .proGlassCard(cornerRadius: 20)
     }
   }
 

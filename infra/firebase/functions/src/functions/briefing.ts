@@ -537,6 +537,7 @@ function buildPrompt(
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
   lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
+  lines.push("- 대중교통 소요시간은 환승 대기·도보 이동 등을 감안해 실제보다 5~10분 여유를 두고 안내하세요");
   lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
   lines.push("- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장");
   if (preferredTransport === "transit") {
