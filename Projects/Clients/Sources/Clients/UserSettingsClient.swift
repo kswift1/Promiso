@@ -21,6 +21,9 @@ public struct UserSettingsClient: Sendable {
 
   /// 브리핑 알림 시간 업데이트
   public var updateBriefingNotificationHour: @Sendable (_ userId: String, _ hour: Int?) async throws -> Void
+
+  /// 선호 교통수단 업데이트
+  public var updatePreferredTransport: @Sendable (_ userId: String, _ transport: PreferredTransport) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -34,7 +37,8 @@ extension UserSettingsClient: TestDependencyKey {
     updateGroupSortOption: unimplemented("\(Self.self).updateGroupSortOption"),
     updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
     updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
-    updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour")
+    updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour"),
+    updatePreferredTransport: unimplemented("\(Self.self).updatePreferredTransport")
   )
 
   public static let previewValue = Self(
@@ -55,6 +59,9 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.2))
     },
     updateBriefingNotificationHour: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updatePreferredTransport: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     }
   )
@@ -90,6 +97,9 @@ extension UserSettingsClient: DependencyKey {
       },
       updateBriefingNotificationHour: { userId, hour in
         try await dataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
+      },
+      updatePreferredTransport: { userId, transport in
+        try await dataSource.updatePreferredTransport(userId: userId, transport: transport)
       }
     )
   }()

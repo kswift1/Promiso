@@ -760,6 +760,8 @@ export interface BriefingSettingsData {
   timezone?: string;
   /** 언어 */
   language?: string;
+  /** 선호 교통수단 */
+  preferredTransport?: "all" | "transit" | "car";
 }
 
 /**

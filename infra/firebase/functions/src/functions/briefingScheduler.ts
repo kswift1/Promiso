@@ -8,7 +8,10 @@
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {getFunctions} from "firebase-admin/functions";
-import {admin, REGION, GEMINI_API_KEY, KMA_API_KEY} from "../config";
+import {
+  admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
+  ODSAY_API_KEY, KAKAO_REST_API_KEY,
+} from "../config";
 import {generateBriefingInternal} from "./briefing";
 import {DeviceInfo} from "../types/api";
 
@@ -140,7 +143,7 @@ export const executeBriefingNotification =
   onTaskDispatched<BriefingTaskPayload>(
     {
       region: REGION,
-      secrets: [GEMINI_API_KEY, KMA_API_KEY],
+      secrets: [GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY],
       retryConfig: {
         maxAttempts: 2,
         minBackoffSeconds: 30,

@@ -1588,6 +1588,7 @@ extension BriefingSettings {
       var isLoading: Bool = false
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
+      var selectedTransport: PreferredTransport = .all
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1607,6 +1608,7 @@ extension BriefingSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case styleSelected(BriefingStyle)
+      case transportSelected(PreferredTransport)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
       case proFeatureTapped
@@ -1614,7 +1616,7 @@ extension BriefingSettings {
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
-      case settingsLoaded(BriefingStyle, Int?)
+      case settingsLoaded(BriefingStyle, Int?, PreferredTransport)
       case styleSaved
       case notificationHourSaved
       case saveFailed
@@ -1637,14 +1639,14 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil)))
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil)))
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
               }
             }
 
@@ -1657,6 +1659,19 @@ extension BriefingSettings {
               do {
                 try await userSettingsClient.updateBriefingStyle(userId, style)
                 await send(.internal(.styleSaved))
+              } catch {
+                await send(.internal(.saveFailed))
+              }
+            }
+            .cancellable(id: CancelID.save, cancelInFlight: true)
+
+          case .transportSelected(let transport):
+            state.selectedTransport = transport
+            return .run { [transport] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updatePreferredTransport(userId, transport)
               } catch {
                 await send(.internal(.saveFailed))
               }
@@ -1705,9 +1720,10 @@ extension BriefingSettings {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .settingsLoaded(let style, let hour):
+          case .settingsLoaded(let style, let hour, let transport):
             state.selectedStyle = style
             state.notificationHour = hour
+            state.selectedTransport = transport
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
             state.isLoading = false
             return .none
@@ -1743,8 +1759,9 @@ extension BriefingSettings {
         } else {
           ScrollView {
             VStack(spacing: 16) {
-              styleSection
               notificationSection
+              transportSection
+              styleSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -1777,6 +1794,11 @@ extension BriefingSettings {
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
+        Text("스타일에 따라 브리핑 말투와 표현 방식이 달라져요.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+
         VStack(spacing: 0) {
           ForEach(BriefingStyle.allCases, id: \.rawValue) { style in
             styleRow(style: style)
@@ -1787,11 +1809,6 @@ extension BriefingSettings {
           }
         }
         .adaptiveGlassCard()
-
-        Text("스타일에 따라 브리핑 말투와 표현 방식이 달라져요.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
       }
     }
 
@@ -1851,12 +1868,80 @@ extension BriefingSettings {
       }
     }
 
+    // MARK: - Transport Section
+
+    private var transportSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("선호 교통수단")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        Text("브리핑에서 이동 정보를 안내할 때 참고해요.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(PreferredTransport.allCases, id: \.self) { transport in
+            Button {
+              if store.isPro {
+                store.send(.view(.transportSelected(transport)))
+              } else {
+                store.send(.view(.proFeatureTapped))
+              }
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: transport.iconName)
+                  .font(.system(size: 16, weight: .semibold))
+                  .foregroundStyle(store.isPro ? Color.pmindigo.n500 : Color.pmgray.n400)
+                  .frame(width: 20)
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(transport.displayName)
+                    .font(.body)
+                    .foregroundStyle(store.isPro ? Color.pmtext.primary : Color.pmtext.secondary)
+
+                  Text(transport.description)
+                    .font(.caption)
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
+
+                Spacer()
+
+                if store.selectedTransport == transport {
+                  Image(systemName: "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.pmindigo.n500)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+              .opacity(store.isPro ? 1 : 0.5)
+            }
+            .buttonStyle(.plain)
+
+            if transport != PreferredTransport.allCases.last {
+              Divider()
+                .padding(.leading, 48)
+            }
+          }
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
     // MARK: - Notification Section
 
     private var notificationSection: some View {
       VStack(alignment: .leading, spacing: 10) {
         Text("매일 브리핑 알림")
           .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        Text("설정한 시간에 오늘의 일정 브리핑을 알림으로 받아볼 수 있어요.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
@@ -1916,11 +2001,6 @@ extension BriefingSettings {
         }
         .adaptiveGlassCard()
         .opacity(store.isPro ? 1 : 0.5)
-
-        Text("설정한 시간에 오늘의 일정 브리핑을 알림으로 받아볼 수 있어요.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
       }
     }
 

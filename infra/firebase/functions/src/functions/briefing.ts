@@ -10,7 +10,10 @@
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
-import {admin, REGION, GEMINI_API_KEY, KMA_API_KEY} from "../config";
+import {
+  admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
+  ODSAY_API_KEY, KAKAO_REST_API_KEY,
+} from "../config";
 import {
   GenerateBriefingRequest,
   GenerateBriefingResponse,
@@ -18,6 +21,7 @@ import {
   ScheduleSlotEntry,
 } from "../types/api";
 import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
+import {fetchTransportation, TransportationResult} from "./transportation";
 
 // MARK: - Types
 
@@ -38,6 +42,7 @@ interface TravelSegment {
   from: string;
   to: string;
   distanceKm: number;
+  transportation: TransportationResult | null;
 }
 
 // MARK: - Sanitize
@@ -98,6 +103,37 @@ async function fetchTodaySlots(
   if (!doc.exists) return [];
   const data = doc.data() as ScheduleSlotDocument | undefined;
   return data?.slots ?? [];
+}
+
+/**
+ * 가장 가까운 미래 일정 조회 (오늘 이후)
+ * @param {string} uid - 사용자 ID
+ * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
+ * @return {Promise<{dateKey: string, slots: ScheduleSlotEntry[]} | null>}
+ */
+async function fetchUpcomingSlots(
+  uid: string, todayKey: string
+): Promise<{
+  dateKey: string; slots: ScheduleSlotEntry[];
+} | null> {
+  const db = admin.firestore();
+  const snap = await db
+    .collection("users").doc(uid)
+    .collection("scheduleSlots")
+    .where(
+      admin.firestore.FieldPath.documentId(),
+      ">", todayKey
+    )
+    .orderBy(admin.firestore.FieldPath.documentId())
+    .limit(1)
+    .get();
+
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  const data = doc.data() as ScheduleSlotDocument | undefined;
+  const slots = data?.slots ?? [];
+  if (slots.length === 0) return null;
+  return {dateKey: doc.id, slots};
 }
 
 /**
@@ -242,19 +278,19 @@ async function fetchUserGroups(
 // MARK: - Analysis
 
 /**
- * 이동 거리 계산 (현재 위치 -> 첫 약속 -> 다음 약속)
+ * 이동 거리 계산 + 교통 정보 조회 (현재 위치 -> 첫 약속 -> 다음 약속)
  * @param {number | null} userLat - 사용자 위도
  * @param {number | null} userLng - 사용자 경도
  * @param {string | null} userLocationTitle - 사용자 위치 텍스트
  * @param {ScheduleDetail[]} schedules - 약속 목록
- * @return {TravelSegment[]} 이동 구간 목록
+ * @return {Promise<TravelSegment[]>} 이동 구간 목록
  */
-function calculateTravelSegments(
+async function calculateTravelSegmentsWithTransport(
   userLat: number | null,
   userLng: number | null,
   userLocationTitle: string | null,
   schedules: ScheduleDetail[],
-): TravelSegment[] {
+): Promise<TravelSegment[]> {
   const segments: TravelSegment[] = [];
   const locatedSchedules = schedules.filter(
     (s) => s.latitude != null && s.longitude != null
@@ -262,37 +298,88 @@ function calculateTravelSegments(
 
   if (locatedSchedules.length === 0) return segments;
 
+  interface SegmentRequest {
+    from: string;
+    to: string;
+    fromLat: number;
+    fromLng: number;
+    toLat: number;
+    toLng: number;
+  }
+
+  const requests: SegmentRequest[] = [];
+
   // 현재 위치 -> 첫 번째 약속
   if (userLat != null && userLng != null) {
     const first = locatedSchedules[0];
-    const firstLat = first.latitude as number;
-    const firstLng = first.longitude as number;
-    const dist = haversineKm(
-      userLat, userLng, firstLat, firstLng
-    );
-    segments.push({
+    requests.push({
       from: userLocationTitle || "현재 위치",
       to: first.locationName || first.title,
-      distanceKm: Math.round(dist * 10) / 10,
+      fromLat: userLat,
+      fromLng: userLng,
+      toLat: first.latitude as number,
+      toLng: first.longitude as number,
     });
   }
 
-  // 연속 약속 간 거리
+  // 연속 약속 간
   for (let i = 0; i < locatedSchedules.length - 1; i++) {
     const curr = locatedSchedules[i];
     const next = locatedSchedules[i + 1];
-    const dist = haversineKm(
-      curr.latitude as number, curr.longitude as number,
-      next.latitude as number, next.longitude as number
-    );
-    segments.push({
+    requests.push({
       from: curr.locationName || curr.title,
       to: next.locationName || next.title,
-      distanceKm: Math.round(dist * 10) / 10,
+      fromLat: curr.latitude as number,
+      fromLng: curr.longitude as number,
+      toLat: next.latitude as number,
+      toLng: next.longitude as number,
     });
   }
 
-  return segments;
+  // 교통 API 호출 구간은 최대 3개로 제한
+  const apiRequests = requests.slice(0, 3);
+  const remainingRequests = requests.slice(3);
+
+  // API 호출 구간: 병렬 교통 정보 조회
+  const apiResults = await Promise.all(
+    apiRequests.map(async (req) => {
+      const distKm = haversineKm(
+        req.fromLat, req.fromLng, req.toLat, req.toLng
+      );
+      const distanceKm = Math.round(distKm * 10) / 10;
+
+      let transportation: TransportationResult | null = null;
+      try {
+        transportation = await fetchTransportation(
+          req.fromLat, req.fromLng,
+          req.toLat, req.toLng,
+          distKm,
+        );
+      } catch (error) {
+        console.error("[Briefing] Transportation fetch failed:", error);
+      }
+
+      return {
+        from: req.from,
+        to: req.to,
+        distanceKm,
+        transportation,
+      };
+    })
+  );
+
+  // 나머지 구간: Haversine 직선거리만 포함 (교통 정보 없음)
+  const remainingResults = remainingRequests.map((req) => {
+    const distKm = haversineKm(req.fromLat, req.fromLng, req.toLat, req.toLng);
+    return {
+      from: req.from,
+      to: req.to,
+      distanceKm: Math.round(distKm * 10) / 10,
+      transportation: null,
+    };
+  });
+
+  return [...apiResults, ...remainingResults];
 }
 
 /**
@@ -344,6 +431,8 @@ function matchWeatherToSchedule(
  * @param {string} timezone - 사용자 타임존 식별자
  * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
  * @param {string} style - 브리핑 스타일
+ * @param {string} preferredTransport - 선호 교통수단 (all | transit | car)
+ * @param {object | null} upcoming - 가장 가까운 미래 일정
  * @return {string} 조립된 프롬프트
  */
 function buildPrompt(
@@ -360,6 +449,10 @@ function buildPrompt(
   timezone: string,
   todayKey: string,
   style: string,
+  preferredTransport: string,
+  upcoming: {
+    dateKey: string; slots: ScheduleSlotEntry[];
+  } | null,
 ): string {
   const lines: string[] = [];
 
@@ -372,7 +465,8 @@ function buildPrompt(
     calm: "조용하고 차분한 톤으로, 편안한 느낌으로",
   };
   const tone = toneMap[style] || toneMap["friendly"];
-  lines.push(`당신은 사용자의 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
+  lines.push(`당신은 사용자의 오늘 하루를 ${tone} 브리핑해주는 개인 비서입니다.`);
+  lines.push("아래 데이터는 모두 '오늘' 일정입니다. 절대 '내일'이라고 표현하지 마세요.");
   lines.push("");
 
   // 출력 규칙
@@ -391,7 +485,13 @@ function buildPrompt(
   lines.push("- 비/눈 예보 -> 우산 챙기기 언급");
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
-  lines.push("- 이동 거리 정보가 있으면 -> 이동 필요성 자연스럽게 언급");
+  lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
+  lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
+  if (preferredTransport === "transit") {
+    lines.push("- 사용자가 주로 대중교통을 이용합니다. 대중교통 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
+  } else if (preferredTransport === "car") {
+    lines.push("- 사용자가 주로 자차를 이용합니다. 자동차 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
+  }
   lines.push("");
 
   // 데이터 (untrusted input은 XML 태그로 구분)
@@ -412,35 +512,51 @@ function buildPrompt(
     lines.push("날씨:");
     lines.push(`- 현재 ${currentForecast.temperature}도 (체감 ${currentForecast.feelsLikeTemperature}도), ${currentForecast.condition}, 강수확률 ${currentForecast.precipitationProbability}%`);
 
-    // 오전/오후 예보 요약 (timezone 기반)
+    // 오늘 날짜 예보만 필터링 (timezone 기반)
+    const getDateKeyInTz = (dt: string): string =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(dt));
     const getHourInTz = (dt: string): number => {
       const h = new Intl.DateTimeFormat("en-US", {
         timeZone: timezone, hour: "numeric", hour12: false,
       }).format(new Date(dt));
       return parseInt(h, 10);
     };
-    const amForecasts = weather.forecasts.filter((f) => {
+
+    const todayForecasts = weather.forecasts.filter(
+      (f) => getDateKeyInTz(f.dateTime) === todayKey
+    );
+
+    const amForecasts = todayForecasts.filter((f) => {
       const h = getHourInTz(f.dateTime);
       return h >= 6 && h < 12;
     });
-    const pmForecasts = weather.forecasts.filter((f) => {
+    const pmForecasts = todayForecasts.filter((f) => {
       const h = getHourInTz(f.dateTime);
       return h >= 12 && h < 18;
     });
 
     if (amForecasts.length > 0) {
       const amTemps = amForecasts.map((f) => f.temperature);
-      const amRain = Math.max(...amForecasts.map((f) => f.precipitationProbability));
+      const amRain = Math.max(
+        ...amForecasts.map((f) => f.precipitationProbability)
+      );
       lines.push(`- 오전: ${Math.min(...amTemps)}~${Math.max(...amTemps)}도, 강수확률 최대 ${amRain}%`);
     }
     if (pmForecasts.length > 0) {
       const pmTemps = pmForecasts.map((f) => f.temperature);
-      const pmRain = Math.max(...pmForecasts.map((f) => f.precipitationProbability));
+      const pmRain = Math.max(
+        ...pmForecasts.map((f) => f.precipitationProbability)
+      );
       lines.push(`- 오후: ${Math.min(...pmTemps)}~${Math.max(...pmTemps)}도, 강수확률 최대 ${pmRain}%`);
     }
 
-    // 일 최고/최저
-    const allTemps = weather.forecasts.map((f) => f.temperature);
+    // 오늘 최고/최저 (오늘 데이터 없으면 전체 fallback)
+    const tempSource = todayForecasts.length > 0 ?
+      todayForecasts : weather.forecasts;
+    const allTemps = tempSource.map((f) => f.temperature);
     lines.push(`- 최고 ${Math.max(...allTemps)}도 / 최저 ${Math.min(...allTemps)}도`);
     lines.push("");
   } else {
@@ -451,6 +567,20 @@ function buildPrompt(
   // 오늘 일정
   if (schedules.length === 0) {
     lines.push("오늘 일정: 없음");
+
+    // 가까운 미래 일정 힌트
+    if (upcoming && upcoming.slots.length > 0) {
+      const [, m, d] = upcoming.dateKey.split("-");
+      const dateLabel = `${parseInt(m)}월 ${parseInt(d)}일`;
+      const titles = upcoming.slots
+        .slice(0, 3)
+        .map((s) => `<user-data>${sanitizeUserData(s.title)}</user-data>`)
+        .join(", ");
+      lines.push("");
+      lines.push(`가장 가까운 일정: ${dateLabel}`);
+      lines.push(`- ${titles} (${upcoming.slots.length}건)`);
+      lines.push("→ 오늘 일정이 없으므로 마무리에 가까운 미래 일정을 1~2줄로 은은하게 언급해주세요.");
+    }
   } else {
     lines.push("오늘 일정:");
     const timeFmt = (d: Date): string =>
@@ -501,7 +631,28 @@ function buildPrompt(
   if (travelSegments.length > 0) {
     lines.push("이동 정보:");
     for (const seg of travelSegments) {
-      lines.push(`- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>: 약 ${seg.distanceKm}km`);
+      let line = `- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>:`;
+
+      if (seg.transportation) {
+        const parts: string[] = [];
+        const t = seg.transportation;
+
+        if (t.driving) {
+          parts.push(`자동차 약 ${t.driving.duration}분${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
+        }
+        if (t.transit) {
+          const transfers = t.transit.busTransitCount + t.transit.subwayTransitCount;
+          parts.push(`대중교통 약 ${t.transit.totalTime}분 (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
+        }
+        parts.push(`도보 약 ${t.walkingMinutes}분`);
+
+        line += "\n  " + parts.join(" | ");
+      } else {
+        // Fallback: Haversine 직선거리만
+        line += ` 약 ${seg.distanceKm}km`;
+      }
+
+      lines.push(line);
     }
   }
 
@@ -559,6 +710,7 @@ function getCurrentDateTimeStr(timezone: string): string {
  * @param {object | null} params.location - 위치 정보
  * @param {boolean} params.forceRefresh - 캐시 무시 여부
  * @param {string} params.style - 브리핑 스타일
+ * @param {string} params.preferredTransport - 선호 교통수단 (all | transit | car)
  * @return {Promise<GenerateBriefingResponse>} 브리핑 응답
  */
 export async function generateBriefingInternal(params: {
@@ -571,7 +723,10 @@ export async function generateBriefingInternal(params: {
 }): Promise<GenerateBriefingResponse> {
   const DEFAULT_SUMMARY = "좋은 하루 되세요!";
   const DEFAULT_DETAIL = "오늘도 화이팅!";
-  const {uid, timezone, language, location, forceRefresh, style} = params;
+  const {
+    uid, timezone, language, location,
+    forceRefresh, style,
+  } = params;
 
   const todayKey = getTodayKey(timezone);
   const dateTimeStr = getCurrentDateTimeStr(timezone);
@@ -601,7 +756,14 @@ export async function generateBriefingInternal(params: {
   }
 
   try {
-    // 2. 데이터 수집 (병렬)
+    // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
+    const settingsDoc = await admin.firestore()
+      .collection("users").doc(uid)
+      .collection("proSettings").doc("briefing")
+      .get();
+    const preferredTransport: string =
+      settingsDoc.data()?.preferredTransport || "all";
+
     const [slots, userGroups] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
@@ -667,19 +829,27 @@ export async function generateBriefingInternal(params: {
       return {slot, detail, weatherMatch};
     });
 
-    // 6. 이동 거리 계산
+    // 6. 이동 거리 계산 + 교통 정보 조회
     const detailsWithLocation = sortedSlots
       .map((s) => allDetails.get(s.id))
       .filter((d): d is ScheduleDetail => d != null);
 
-    const travelSegments = calculateTravelSegments(
+    const travelSegments = await calculateTravelSegmentsWithTransport(
       location?.latitude ?? null,
       location?.longitude ?? null,
       location?.title ?? null,
       detailsWithLocation,
     );
 
-    // 7. 프롬프트 조립
+    // 7. 오늘 일정 없으면 미래 일정 조회
+    let upcoming: {
+      dateKey: string; slots: ScheduleSlotEntry[];
+    } | null = null;
+    if (slots.length === 0) {
+      upcoming = await fetchUpcomingSlots(uid, todayKey);
+    }
+
+    // 8. 프롬프트 조립
     const prompt = buildPrompt(
       language === "ko" ? "한국어" : language,
       dateTimeStr,
@@ -690,10 +860,14 @@ export async function generateBriefingInternal(params: {
       timezone,
       todayKey,
       style,
+      preferredTransport || "all",
+      upcoming,
     );
 
     console.log(
-      `[Briefing] uid=${uid}, prompt (${prompt.length} chars):\n${prompt}`
+      `[Briefing] uid=${uid}, prompt chars=${prompt.length}, ` +
+      `schedules=${enrichedSchedules.length}, ` +
+      `weather=${weather ? "yes" : "no"}`
     );
 
     // 8. Gemini API 호출
@@ -716,8 +890,12 @@ export async function generateBriefingInternal(params: {
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
 
+    const usage = result.response.usageMetadata;
     console.log(
-      `[Briefing] uid=${uid}, Gemini raw response:\n${text}`
+      `[Briefing] uid=${uid}, tokens={` +
+      `prompt:${usage?.promptTokenCount ?? "?"},` +
+      `candidates:${usage?.candidatesTokenCount ?? "?"},` +
+      `total:${usage?.totalTokenCount ?? "?"}}`
     );
 
     if (!text) {
@@ -737,9 +915,9 @@ export async function generateBriefingInternal(params: {
       const parsed = JSON.parse(jsonStr);
       if (parsed.summary && parsed.detail) {
         console.log(
-          `[Briefing] uid=${uid}, Generated successfully - ` +
-          `summary="${parsed.summary}", ` +
-          `detail="${parsed.detail.substring(0, 100)}..."`
+          `[Briefing] uid=${uid}, OK ` +
+          `summary="${parsed.summary}" ` +
+          `detail_len=${parsed.detail.length}`
         );
 
         // Firestore에 캐시 저장
@@ -757,9 +935,9 @@ export async function generateBriefingInternal(params: {
           detail: parsed.detail,
         };
       }
-    } catch {
+    } catch (e) {
       console.warn(
-        `[Briefing] uid=${uid}, JSON parse failed, using raw text`
+        `[Briefing] uid=${uid}, JSON parse failed, using raw text:`, e
       );
     }
 
@@ -789,7 +967,7 @@ export async function generateBriefingInternal(params: {
 export const generateBriefing = onCall<GenerateBriefingRequest>(
   {
     region: REGION,
-    secrets: [GEMINI_API_KEY, KMA_API_KEY],
+    secrets: [GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY],
   },
   async (request): Promise<GenerateBriefingResponse> => {
     if (!request.auth) {
