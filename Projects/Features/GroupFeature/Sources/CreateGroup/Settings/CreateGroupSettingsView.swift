@@ -33,7 +33,7 @@ struct CreateGroupSettingsView: View {
     ScrollView {
       VStack(spacing: 32) {
         Spacer()
-          .frame(height: 20)
+          .frame(height: 8)
 
         // Header
         headerSection
@@ -79,20 +79,20 @@ struct CreateGroupSettingsView: View {
   // MARK: - Header Section
 
   private var headerSection: some View {
-    VStack(spacing: 16) {
+    VStack(spacing: 12) {
       ZStack {
         Circle()
           .fill(Color.pmindigo.n100.opacity(0.5))
-          .frame(width: 100, height: 100)
+          .frame(width: 72, height: 72)
 
         Image(systemName: "gearshape.2.fill")
-          .font(.system(size: 48))
+          .font(.system(size: 32))
           .foregroundStyle(Color.pmindigo.n500)
       }
 
       VStack(spacing: 8) {
         Text(LocalizedStrings.GroupSettings.notificationSettingsTitle(groupName))
-          .font(.title2.bold())
+          .font(.title3.bold())
 
         Text(LocalizedStrings.GroupSettings.notificationSettingsSubtitle)
           .font(.subheadline)
@@ -107,15 +107,10 @@ struct CreateGroupSettingsView: View {
 
   private var settingsSection: some View {
     VStack(alignment: .leading, spacing: 16) {
-      // 푸시 알림 서브헤더
+      // 통합 헤더
       VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 8) {
-          Image(systemName: "bell.badge.fill")
-            .font(.system(size: 16))
-            .foregroundStyle(.orange)
-          Text(LocalizedStrings.GroupSettings.notificationSectionTitle)
-            .font(.system(size: 16, weight: .semibold))
-        }
+        Text(LocalizedStrings.GroupSettings.notificationSectionTitle)
+          .font(.system(size: 16, weight: .semibold))
 
         Text(LocalizedStrings.GroupSettings.notificationSectionSubtitle)
           .font(.caption)
@@ -127,23 +122,14 @@ struct CreateGroupSettingsView: View {
 
       Divider()
 
-      // 캘린더 동기화 서브헤더
-      VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 8) {
-          Image(systemName: "calendar.badge.clock")
-            .font(.system(size: 16))
-            .foregroundStyle(.blue)
-          Text(LocalizedStrings.GroupSettings.calendarSectionTitle)
-            .font(.system(size: 16, weight: .semibold))
-        }
-
-        Text(LocalizedStrings.GroupSettings.calendarSectionSubtitle)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-
       // 캘린더 동기화 설정
       calendarSettingRow
+
+      // 변경 가능 힌트
+      Text(LocalizedStrings.GroupSettings.changeableHint)
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
     .padding(20)
     .staticGlassBackground(cornerRadius: 20)

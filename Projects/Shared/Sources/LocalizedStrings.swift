@@ -1495,6 +1495,7 @@ public enum LocalizedStrings {
     public static var copied: String { String(localized: "createGroup.copied", bundle: bundle) }
     public static var share: String { String(localized: "createGroup.share", bundle: bundle) }
     public static var kakaoInviteButton: String { String(localized: "createGroup.kakaoInviteButton", bundle: bundle) }
+    public static var inviteTooltip: String { String(localized: "createGroup.inviteTooltip", bundle: bundle) }
     // MaxMembers display
     public static func membersCount(_ count: Int) -> String {
       String(localized: "createGroup.membersCount", bundle: bundle)

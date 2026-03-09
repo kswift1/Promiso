@@ -2643,6 +2643,23 @@
         }
       }
     },
+    "createGroup.inviteTooltip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추천"
+          }
+        }
+      }
+    },
     "createGroup.maxMembers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6260,13 +6277,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notification Settings"
+            "value" : "Notifications & Calendar"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "알림 설정"
+            "value" : "알림 및 캘린더"
           }
         }
       }
@@ -6277,13 +6294,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Set up notifications and calendar sync for this group"
+            "value" : "Set up push notifications and calendar sync"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 그룹의 알림과 캘린더 동기화를 설정해주세요"
+            "value" : "약속 알림과 캘린더 동기화를 설정해요"
           }
         }
       }
@@ -6311,13 +6328,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quickly identify this group on your home screen and promise cards"
+            "value" : "This color is also used to identify the group in your calendar"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "홈 화면과 약속 카드에서 이 그룹을 빠르게 구분할 수 있어요"
+            "value" : "캘린더와 약속 카드에서 이 색상으로 그룹을 구분해요"
           }
         }
       }
