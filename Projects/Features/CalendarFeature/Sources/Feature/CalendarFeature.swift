@@ -256,13 +256,7 @@ extension CalendarFeature {
       var calendarEventsByDate: [Date: [CalendarEvent]] {
         guard showCalendarEvents else { return [:] }
         let calendar = Calendar.current
-        let currentMonthKey = currentMonth.startOfMonth
-        let prevMonthKey = calendar.date(byAdding: .month, value: -1, to: currentMonthKey)?.startOfMonth
-        let nextMonthKey = calendar.date(byAdding: .month, value: 1, to: currentMonthKey)?.startOfMonth
-        let allMonthEvents = [prevMonthKey, currentMonthKey, nextMonthKey]
-          .compactMap { $0 }
-          .flatMap { cachedCalendarEventsByMonth[$0] ?? [] }
-        let monthEvents = Dictionary(grouping: allMonthEvents, by: \.id).compactMap(\.value.first)
+        let monthEvents = uniqueItemsAcrossMonths(from: cachedCalendarEventsByMonth)
         var grouped: [Date: [CalendarEvent]] = [:]
 
         for event in monthEvents {
@@ -387,6 +381,20 @@ extension CalendarFeature {
 
       // MARK: - Schedule Indicators
 
+      /// 현재 월 ± 1개월의 캐시 데이터를 수집하고 ID 기준 중복 제거
+      private func uniqueItemsAcrossMonths<T: Identifiable>(
+        from cache: [Date: [T]]
+      ) -> [T] {
+        let calendar = Calendar.current
+        let monthKey = currentMonth.startOfMonth
+        let prevKey = calendar.date(byAdding: .month, value: -1, to: monthKey)?.startOfMonth
+        let nextKey = calendar.date(byAdding: .month, value: 1, to: monthKey)?.startOfMonth
+        let allItems = [prevKey, monthKey, nextKey]
+          .compactMap { $0 }
+          .flatMap { cache[$0] ?? [] }
+        return Dictionary(grouping: allItems, by: \.id).compactMap(\.value.first)
+      }
+
       /// 날짜별 일정 인디케이터 (월간 그리드 셀용)
       var scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]] {
         let calendar = Calendar.current
@@ -427,10 +435,7 @@ extension CalendarFeature {
 
         // 개인 일정
         if showPersonalEvents {
-          let allPersonalEvents: [PersonalEventModel] = [prevMonthKey, currentMonthKey, nextMonthKey]
-            .compactMap { $0 }
-            .flatMap { cachedPersonalEventsByMonth[$0] ?? [] }
-          let uniquePersonalEvents = Dictionary(grouping: allPersonalEvents, by: \.id).compactMap(\.value.first)
+          let uniquePersonalEvents = uniqueItemsAcrossMonths(from: cachedPersonalEventsByMonth)
           for event in uniquePersonalEvents {
             spreadIndicators(
               startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
@@ -454,10 +459,7 @@ extension CalendarFeature {
 
         // 시스템 캘린더 이벤트 (필터 OFF 시 제외)
         guard showCalendarEvents else { return indicators }
-        let allCalendarEvents: [CalendarEvent] = [prevMonthKey, currentMonthKey, nextMonthKey]
-          .compactMap { $0 }
-          .flatMap { cachedCalendarEventsByMonth[$0] ?? [] }
-        let uniqueCalendarEvents = Dictionary(grouping: allCalendarEvents, by: \.id).compactMap(\.value.first)
+        let uniqueCalendarEvents = uniqueItemsAcrossMonths(from: cachedCalendarEventsByMonth)
         for event in uniqueCalendarEvents {
           spreadIndicators(
             startAt: event.startDate, endAt: event.endDate, into: &indicators
