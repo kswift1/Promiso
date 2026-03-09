@@ -4,7 +4,7 @@ import PromisoShared
 // MARK: - Promise Model
 
 /// 약속 도메인 모델
-public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
+public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable, RangedEvent {
   // MARK: - 기본 정보
   public var id: String
   public var title: String
@@ -254,17 +254,6 @@ extension PromiseModel {
   public var endTimeText: String? {
     guard let endAt = endAt else { return nil }
     return LocalizedDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
-  }
-
-  /// 시간 범위 텍스트 (같은 날: "14:00 ~ 16:00", 다른 날: "1월 27일 14:00 ~ 1월 28일 16:00")
-  public var timeRangeText: String {
-    guard let endAt = endAt else { return timeText }
-    let calendar = Calendar.current
-    if calendar.isDate(startAt, inSameDayAs: endAt) {
-      return "\(timeText) ~ \(endAt.formattedTime)"
-    } else {
-      return "\(LocalizedDateFormatters.monthDayTimeString(from: startAt)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endAt))"
-    }
   }
 
   /// 날짜 텍스트 (예: "오늘", "내일", "1월 15일")
