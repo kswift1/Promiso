@@ -361,7 +361,6 @@ extension CalendarFeature {
     private static let defaultGridHeight: CGFloat = 306
     private static let minGridHeight: CGFloat = 150
     private static let maxDrag: CGFloat = defaultGridHeight - minGridHeight // 106
-    private static let halfDragRatio: CGFloat = 0.5
 
     private var compactGridHeight: CGFloat {
       Self.defaultGridHeight - sheetDragOffset
@@ -372,7 +371,7 @@ extension CalendarFeature {
     }
 
     private var snapOffsets: [CGFloat] {
-      [0, Self.maxDrag * Self.halfDragRatio, Self.maxDrag]
+      [0, Self.maxDrag]
     }
 
     private func nearestSnapOffset(for offset: CGFloat) -> CGFloat {
