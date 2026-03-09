@@ -257,7 +257,12 @@ extension CalendarFeature {
         guard showCalendarEvents else { return [:] }
         let calendar = Calendar.current
         let currentMonthKey = currentMonth.startOfMonth
-        let monthEvents = cachedCalendarEventsByMonth[currentMonthKey] ?? []
+        let prevMonthKey = calendar.date(byAdding: .month, value: -1, to: currentMonthKey)?.startOfMonth
+        let nextMonthKey = calendar.date(byAdding: .month, value: 1, to: currentMonthKey)?.startOfMonth
+        let allMonthEvents = [prevMonthKey, currentMonthKey, nextMonthKey]
+          .compactMap { $0 }
+          .flatMap { cachedCalendarEventsByMonth[$0] ?? [] }
+        let monthEvents = Dictionary(grouping: allMonthEvents, by: \.id).compactMap(\.value.first)
         var grouped: [Date: [CalendarEvent]] = [:]
 
         for event in monthEvents {
@@ -449,8 +454,11 @@ extension CalendarFeature {
 
         // 시스템 캘린더 이벤트 (필터 OFF 시 제외)
         guard showCalendarEvents else { return indicators }
-        let calendarMonthEvents = cachedCalendarEventsByMonth[currentMonth.startOfMonth] ?? []
-        for event in calendarMonthEvents {
+        let allCalendarEvents: [CalendarEvent] = [prevMonthKey, currentMonthKey, nextMonthKey]
+          .compactMap { $0 }
+          .flatMap { cachedCalendarEventsByMonth[$0] ?? [] }
+        let uniqueCalendarEvents = Dictionary(grouping: allCalendarEvents, by: \.id).compactMap(\.value.first)
+        for event in uniqueCalendarEvents {
           spreadIndicators(
             startAt: event.startDate, endAt: event.endDate, into: &indicators
           ) { day, position in
