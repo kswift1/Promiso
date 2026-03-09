@@ -2,6 +2,7 @@
 // 캘린더 필터 시트 View
 
 import SwiftUI
+import UIKit
 import Clients
 import PromisoShared
 import ResourceKit
@@ -253,9 +254,21 @@ struct CalendarFilterSheetView: View {
       }
 
       if !canReadCalendarEvents {
-        Text(LocalizedStrings.Calendar.calendarPermissionSubtitle)
-          .font(.system(size: 13))
-          .foregroundStyle(.tertiary)
+        HStack(spacing: 4) {
+          Text(LocalizedStrings.Calendar.calendarPermissionSubtitle)
+            .font(.system(size: 13))
+            .foregroundStyle(.tertiary)
+          Button {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+              UIApplication.shared.open(url)
+            }
+          } label: {
+            Text("설정으로 이동")
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(Color.pmbrand.primary)
+          }
+          .buttonStyle(.plain)
+        }
       }
     }
   }
