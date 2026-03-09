@@ -2620,19 +2620,19 @@
       }
     },
     "createGroup.kakaoInviteButton": {
-      "comment": "카카오톡으로 초대장 보내기 버튼",
+      "comment": "그룹 초대장 보내기 버튼",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Send Invite via KakaoTalk"
+            "value": "Send Group Invite"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "카카오톡으로 초대장 보내기"
+            "value": "그룹 초대장 보내기"
           }
         }
       }
@@ -2735,6 +2735,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "그룹 만들기"
+          }
+        }
+      }
+    },
+    "createGroup.createPromiseButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a Promise"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 생성하러 가기"
+          }
+        }
+      }
+    },
+    "createGroup.inviteTooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommended"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추천"
+          }
+        }
+      }
+    },
+    "createGroup.successTitleWithName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' group created!"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' 그룹이 만들어졌어요!"
           }
         }
       }
@@ -6378,6 +6429,176 @@
           "stringUnit": {
             "state": "translated",
             "value": "건너뛰기"
+          }
+        }
+      }
+    },
+    "groupSettings.calendarSectionSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically add confirmed plans to your device calendar"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정된 약속을 기기 캘린더에 자동으로 추가해요"
+          }
+        }
+      }
+    },
+    "groupSettings.calendarSectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar Sync"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캘린더 동기화"
+          }
+        }
+      }
+    },
+    "groupSettings.createGroupComplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Group"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 생성 완료하기"
+          }
+        }
+      }
+    },
+    "groupSettings.groupColorSectionSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This color is also used to identify the group in your calendar"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캘린더와 약속 카드에서 이 색상으로 그룹을 구분해요"
+          }
+        }
+      }
+    },
+    "groupSettings.groupColorSectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Display Color"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 표시 색상"
+          }
+        }
+      }
+    },
+    "groupSettings.joinGroupComplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join Group"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 합류 완료"
+          }
+        }
+      }
+    },
+    "groupSettings.notificationSectionSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up push notifications and calendar sync"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 알림과 캘린더 동기화를 설정해요"
+          }
+        }
+      }
+    },
+    "groupSettings.notificationSectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications & Calendar"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 및 캘린더"
+          }
+        }
+      }
+    },
+    "groupSettings.personalSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인 설정"
+          }
+        }
+      }
+    },
+    "groupSettings.settingsHeaderTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' Group Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' 그룹 기본 설정"
           }
         }
       }
@@ -23244,6 +23465,7 @@
       }
     },
     "home.briefing.updated.badge": {
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
