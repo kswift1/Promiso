@@ -148,6 +148,7 @@ public extension PromiseResponseStatus {
     case .needResponse: return "exclamationmark.circle.fill"
     case .responded: return "clock.fill"
     case .confirmed: return "checkmark.circle.fill"
+    case .expired: return "clock.badge.xmark"
     case .failed: return "xmark.circle.fill"
     }
   }

@@ -377,6 +377,8 @@ public struct PromiseDetailStatusBadgeView: View {
       return LocalizedStrings.Shared.statusWaitingConfirm
     case .confirmed:
       return LocalizedStrings.Shared.statusConfirmed
+    case .expired:
+      return "마감됨"
     case .failed:
       return LocalizedStrings.Shared.statusFailed
     }
@@ -390,6 +392,8 @@ public struct PromiseDetailStatusBadgeView: View {
       return .blue
     case .confirmed:
       return .green
+    case .expired:
+      return .gray
     case .failed:
       return .gray
     }

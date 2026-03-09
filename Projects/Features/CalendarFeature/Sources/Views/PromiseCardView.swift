@@ -12,6 +12,7 @@ extension PromiseResponseStatus {
   var color: Color {
     switch self {
     case .needResponse: return .yellow
+    case .expired:      return Color(UIColor.systemGray3)
     case .responded:    return .orange
     case .confirmed:    return .green
     case .failed:       return Color(UIColor.systemGray3)
@@ -21,6 +22,7 @@ extension PromiseResponseStatus {
   var icon: String {
     switch self {
     case .needResponse: return "questionmark.circle.fill"
+    case .expired:      return "clock.badge.xmark"
     case .responded:    return "clock.fill"
     case .confirmed:    return "checkmark.circle.fill"
     case .failed:       return "xmark.circle.fill"
@@ -30,6 +32,7 @@ extension PromiseResponseStatus {
   var statusText: String {
     switch self {
     case .needResponse: return LocalizedStrings.Calendar.statusWaiting
+    case .expired:      return "마감됨"
     case .responded:    return LocalizedStrings.Calendar.statusVoting
     case .confirmed:    return LocalizedStrings.Calendar.statusConfirmed
     case .failed:       return LocalizedStrings.Calendar.statusFailed
@@ -646,6 +649,7 @@ struct CompactDayRow: View {
     let status = promise.responseStatus(currentUserId: currentUserId)
     switch status {
     case .needResponse: return "응답 필요"
+    case .expired: return "마감됨"
     case .responded: return "확정 대기"
     case .confirmed:
       return promise.isPast ? "완료" : "확정"
@@ -657,6 +661,7 @@ struct CompactDayRow: View {
     let status = promise.responseStatus(currentUserId: currentUserId)
     switch status {
     case .needResponse: return Color.pmwarning.n500
+    case .expired: return Color.pmgray.n500
     case .responded: return Color.pminfo.n500
     case .confirmed:
       return promise.isPast ? Color.pmgray.n500 : Color.pmsuccess.n500
