@@ -8,6 +8,7 @@
  * @why 서버 전담으로 프롬프트 튜닝을 deploy만으로 가능하게
  * @ios BriefingView - 홈 화면 브리핑 카드에서 호출
  */
+import {createHash} from "crypto";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import {
@@ -284,6 +285,45 @@ async function fetchUserGroups(
 }
 
 // MARK: - Analysis
+
+/**
+ * 프롬프트에 영향을 주는 데이터로 캐시 키 해시 생성
+ * 슬롯, 스타일, 교통수단, 위치, 일정별 날씨 매칭 결과를 기반으로 함
+ * @param {object} params - 파라미터
+ * @param {ScheduleSlotEntry[]} params.slots - 정렬된 일정 슬롯 목록
+ * @param {string} params.style - 브리핑 스타일
+ * @param {string} params.preferredTransport - 선호 교통수단
+ * @param {string | null} params.locationTitle - 사용자 위치 텍스트
+ * @param {(string | null)[]} params.weatherMatches - 일정별 날씨 매칭 결과
+ * @return {string} 16자리 SHA-256 해시
+ */
+function computePromptKey(params: {
+  slots: ScheduleSlotEntry[];
+  style: string;
+  preferredTransport: string;
+  locationTitle: string | null;
+  weatherMatches: (string | null)[];
+}): string {
+  const sortedSlots = [...params.slots]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      startAt: s.startAt.toDate().getTime(),
+      endAt: s.endAt ? s.endAt.toDate().getTime() : null,
+      severity: s.severity,
+    }));
+
+  const raw = JSON.stringify({
+    slots: sortedSlots,
+    style: params.style,
+    transport: params.preferredTransport,
+    location: params.locationTitle,
+    weather: params.weatherMatches,
+  });
+
+  return createHash("sha256").update(raw).digest("hex").substring(0, 16);
+}
 
 /**
  * 이동 거리 계산 + 교통 정보 조회 (현재 위치 -> 첫 약속 -> 다음 약속)
@@ -745,24 +785,6 @@ export async function generateBriefingInternal(params: {
     `forceRefresh=${forceRefresh}, style=${style}`
   );
 
-  // 캐시 확인 (forceRefresh가 아닌 경우)
-  if (!forceRefresh) {
-    const cacheRef = admin.firestore()
-      .collection("users").doc(uid)
-      .collection("dailyBriefings").doc(todayKey);
-    const cached = await cacheRef.get();
-    if (cached.exists) {
-      const data = cached.data()!;
-      console.log(
-        `[Briefing] uid=${uid}, cache hit for ${todayKey}`
-      );
-      return {
-        summary: data.summary,
-        detail: data.detail,
-      };
-    }
-  }
-
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
     const [slots, userGroups, settingsDoc] = await Promise.all([
@@ -838,7 +860,47 @@ export async function generateBriefingInternal(params: {
       return {slot, detail, weatherMatch};
     });
 
-    // 6. 이동 거리 계산 + 교통 정보 조회
+    // 6. promptKey 계산 + 캐시 체크
+    const weatherMatches = enrichedSchedules.map((s) => s.weatherMatch);
+    const promptKey = computePromptKey({
+      slots: sortedSlots,
+      style,
+      preferredTransport,
+      locationTitle: location?.title ?? null,
+      weatherMatches,
+    });
+
+    let isUpdated = false;
+    if (!forceRefresh) {
+      const cacheRef = admin.firestore()
+        .collection("users").doc(uid)
+        .collection("dailyBriefings").doc(todayKey);
+      const cached = await cacheRef.get();
+      if (cached.exists) {
+        const data = cached.data()!;
+        if (data.promptKey === promptKey) {
+          console.log(
+            `[Briefing] uid=${uid}, ` +
+            `cache hit for ${todayKey}, ` +
+            `promptKey=${promptKey}`
+          );
+          return {
+            summary: data.summary,
+            detail: data.detail,
+            isUpdated: false,
+          };
+        }
+        // promptKey 불일치 → 재생성 필요
+        console.log(
+          `[Briefing] uid=${uid}, ` +
+          "promptKey changed: " +
+          `${data.promptKey} -> ${promptKey}`
+        );
+        isUpdated = true;
+      }
+    }
+
+    // 7. 이동 거리 계산 + 교통 정보 조회
     const detailsWithLocation = sortedSlots
       .map((s) => allDetails.get(s.id))
       .filter((d): d is ScheduleDetail => d != null);
@@ -850,7 +912,7 @@ export async function generateBriefingInternal(params: {
       detailsWithLocation,
     );
 
-    // 7. 오늘 일정 없으면 미래 일정 조회
+    // 8. 오늘 일정 없으면 미래 일정 조회
     let upcoming: {
       dateKey: string; slots: ScheduleSlotEntry[];
     } | null = null;
@@ -858,7 +920,7 @@ export async function generateBriefingInternal(params: {
       upcoming = await fetchUpcomingSlots(uid, todayKey);
     }
 
-    // 8. 프롬프트 조립
+    // 9. 프롬프트 조립
     const prompt = buildPrompt(
       language === "ko" ? "한국어" : language,
       dateTimeStr,
@@ -879,7 +941,7 @@ export async function generateBriefingInternal(params: {
       `weather=${weather ? "yes" : "no"}`
     );
 
-    // 9. Gemini API 호출
+    // 10. Gemini API 호출
     const geminiKey = GEMINI_API_KEY.value();
     if (!geminiKey) {
       console.error(
@@ -888,6 +950,7 @@ export async function generateBriefingInternal(params: {
       return {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
+        isUpdated: false,
       };
     }
 
@@ -912,6 +975,7 @@ export async function generateBriefingInternal(params: {
       return {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
+        isUpdated: false,
       };
     }
 
@@ -936,12 +1000,14 @@ export async function generateBriefingInternal(params: {
           .set({
             summary: parsed.summary,
             detail: parsed.detail,
+            promptKey,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
         return {
           summary: parsed.summary,
           detail: parsed.detail,
+          isUpdated,
         };
       }
     } catch (e) {
@@ -955,12 +1021,14 @@ export async function generateBriefingInternal(params: {
     return {
       summary: firstSentence.substring(0, 30),
       detail: text,
+      isUpdated: false,
     };
   } catch (error) {
     console.error(`[Briefing] uid=${uid}, Error:`, error);
     return {
       summary: DEFAULT_SUMMARY,
       detail: DEFAULT_DETAIL,
+      isUpdated: false,
     };
   }
 }

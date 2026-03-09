@@ -67,10 +67,13 @@ public struct BriefingInput: Equatable, Sendable {
 public struct BriefingResult: Equatable, Sendable {
   public let summary: String
   public let detail: String
+  /// 일정/날씨 변경으로 캐시가 재생성된 경우 true
+  public let isUpdated: Bool
 
-  public init(summary: String, detail: String) {
+  public init(summary: String, detail: String, isUpdated: Bool = false) {
     self.summary = summary
     self.detail = detail
+    self.isUpdated = isUpdated
   }
 }
 
@@ -149,10 +152,12 @@ extension BriefingClient: DependencyKey {
             throw BriefingClientError.invalidResponse
           }
 
+          let isUpdated = responseData["isUpdated"] as? Bool ?? false
+
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.info("🎉 [BriefingClient] 브리핑 생성 완료 - 총 소요시간: \(String(format: "%.2f", totalTime))초")
 
-          return BriefingResult(summary: summary, detail: detail)
+          return BriefingResult(summary: summary, detail: detail, isUpdated: isUpdated)
         } catch let error as NSError {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.error("❌ [BriefingClient] Firebase Functions 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")

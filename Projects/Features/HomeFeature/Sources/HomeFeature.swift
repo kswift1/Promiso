@@ -75,6 +75,8 @@ extension Home {
       var briefingGeneratedDate: Date? = nil
       /// 브리핑 상세 펼침 여부
       var isBriefingExpanded: Bool = false
+      /// 브리핑이 업데이트된 상태인지 (promptKey 변경으로 재생성됨)
+      var isBriefingUpdated: Bool = false
       /// 마지막 브리핑 생성에 사용된 스타일 (캐시 무효화용)
       var lastBriefingStyle: String?
       /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
@@ -442,6 +444,7 @@ extension Home {
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
             state.isBriefingExpanded = false
+            state.isBriefingUpdated = false
             return .send(.internal(.fetchBriefing()))
 
           case .openNotificationSettingsTapped:
@@ -468,6 +471,7 @@ extension Home {
             // 강제 새로고침
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
+            state.isBriefingUpdated = false
 
             return .merge(
               .run { [openURL] _ in
@@ -1202,8 +1206,10 @@ extension Home {
             case .success(let briefingResult):
               state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
+              state.isBriefingUpdated = briefingResult.isUpdated
             case .failure(let error):
               state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
+              state.isBriefingUpdated = false
             }
             return .none
 
