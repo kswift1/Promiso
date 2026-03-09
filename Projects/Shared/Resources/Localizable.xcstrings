@@ -2745,6 +2745,40 @@
         }
       }
     },
+    "createGroup.successTitleWithName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%@' group created!"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%@' 그룹이 만들어졌어요!"
+          }
+        }
+      }
+    },
+    "createGroup.createPromiseButton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 생성하러 가기"
+          }
+        }
+      }
+    },
     "createGroup.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6454,6 +6488,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "'%@' 알림 설정"
+          }
+        }
+      }
+    },
+    "groupSettings.settingsHeaderTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%@' Group Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%@' 그룹 기본 설정"
           }
         }
       }

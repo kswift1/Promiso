@@ -3,14 +3,14 @@ import SwiftUI
 /// 그룹별 개인 색상 설정
 /// Firestore에 hex 문자열로 저장됨
 public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
-  case indigo = "#5856D6"
   case purple = "#AF52DE"
-  case pink = "#FF2D55"
+  case pink = "#FF6B9D"
   case blue = "#007AFF"
   case cyan = "#32ADE6"
   case teal = "#30B0C7"
   case green = "#34C759"
   case mint = "#00C7BE"
+  case lime = "#84CC16"
   case yellow = "#FFCC00"
   case orange = "#FF9500"
   case red = "#FF3B30"
@@ -23,7 +23,6 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
   /// 사용자에게 표시할 이름
   public var displayName: String {
     switch self {
-    case .indigo: return "인디고"
     case .purple: return "퍼플"
     case .pink: return "핑크"
     case .blue: return "블루"
@@ -31,6 +30,7 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
     case .teal: return "틸"
     case .green: return "그린"
     case .mint: return "민트"
+    case .lime: return "라임"
     case .yellow: return "옐로"
     case .orange: return "오렌지"
     case .red: return "레드"

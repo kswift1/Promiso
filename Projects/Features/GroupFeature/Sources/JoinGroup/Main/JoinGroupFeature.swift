@@ -60,7 +60,7 @@ extension JoinGroup {
       var isSavingSettings: Bool = false
 
       // Group Color (초기 설정)
-      var selectedGroupColor: GroupColor?
+      var selectedGroupColor: GroupColor? = .purple
       var existingGroupColorMap: [GroupColor: String]
 
       // Notification Permission

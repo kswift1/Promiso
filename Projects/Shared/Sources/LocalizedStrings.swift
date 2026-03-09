@@ -1490,7 +1490,12 @@ public enum LocalizedStrings {
     public static var creationFailedDefault: String { String(localized: "createGroup.creationFailedDefault", bundle: bundle) }
     // Success
     public static var successTitle: String { String(localized: "createGroup.successTitle", bundle: bundle) }
+    public static func successTitleWithName(_ groupName: String) -> String {
+      String(localized: "createGroup.successTitleWithName", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: groupName)
+    }
     public static var successSubtitle: String { String(localized: "createGroup.successSubtitle", bundle: bundle) }
+    public static var createPromiseButton: String { String(localized: "createGroup.createPromiseButton", bundle: bundle) }
     public static var inviteCode: String { String(localized: "createGroup.inviteCode", bundle: bundle) }
     public static var copied: String { String(localized: "createGroup.copied", bundle: bundle) }
     public static var share: String { String(localized: "createGroup.share", bundle: bundle) }
@@ -1529,6 +1534,10 @@ public enum LocalizedStrings {
     public static var groupColorSectionSubtitle: String { String(localized: "groupSettings.groupColorSectionSubtitle", bundle: bundle) }
     public static var calendarSectionTitle: String { String(localized: "groupSettings.calendarSectionTitle", bundle: bundle) }
     public static var calendarSectionSubtitle: String { String(localized: "groupSettings.calendarSectionSubtitle", bundle: bundle) }
+    public static func settingsHeaderTitle(_ groupName: String) -> String {
+      String(localized: "groupSettings.settingsHeaderTitle", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: groupName)
+    }
   }
 
   // MARK: - CreatePromise

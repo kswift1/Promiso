@@ -14,6 +14,8 @@ import ResourceKit
 
 struct CreateGroupSuccessView: View {
   let result: GroupCreationResultModel
+  let photoData: Data?
+  let selectedGroupColor: GroupColor?
   let isKakaoSharing: Bool
   let onKakaoShareTapped: () -> Void
   let onConfirm: () -> Void
@@ -22,26 +24,52 @@ struct CreateGroupSuccessView: View {
   @State private var showInviteTooltip = true
 
   var body: some View {
-    ZStack {
-      ScrollView {
-        VStack(spacing: 32) {
-          Spacer()
-            .frame(height: 20)
+    ScrollView {
+      VStack(spacing: 32) {
+        Spacer()
+          .frame(height: 20)
 
           // Success Icon & Message
           VStack(spacing: 16) {
             ZStack {
-              Circle()
-                .fill(Color.pmindigo.n100.opacity(0.5))
-                .frame(width: 100, height: 100)
+              ZStack {
+                if let photoData, let uiImage = UIImage(data: photoData) {
+                  Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 100, height: 100)
+                    .clipShape(Circle())
+                } else {
+                  Circle()
+                    .fill(Color.pmindigo.n100.opacity(0.5))
+                    .frame(width: 100, height: 100)
+                    .overlay {
+                      Text(String(result.name.prefix(1)))
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(Color.pmindigo.n500)
+                    }
+                }
+              }
+              .overlay(
+                Circle()
+                  .strokeBorder(
+                    (selectedGroupColor ?? .purple).color,
+                    lineWidth: 3
+                  )
+                  .frame(width: 100, height: 100)
+              )
 
-              Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(Color.pmindigo.n500)
+              // Confetti Lottie (아이콘 주변)
+              if showConfetti {
+                LottieView(animation: LottieAsset.fanfare.animation)
+                  .playing(loopMode: .playOnce)
+                  .frame(width: 300, height: 300)
+                  .allowsHitTesting(false)
+              }
             }
 
             VStack(spacing: 8) {
-              Text(LocalizedStrings.CreateGroup.successTitle)
+              Text(LocalizedStrings.CreateGroup.successTitleWithName(result.name))
                 .font(.title2.bold())
 
               Text(LocalizedStrings.CreateGroup.successSubtitle)
@@ -107,18 +135,8 @@ struct CreateGroupSuccessView: View {
             .frame(height: 80)
         }
         .padding(.horizontal, 24)
-      }
-      .scrollIndicators(.hidden)
-
-      // Confetti Lottie
-      if showConfetti {
-        LottieView(animation: LottieAsset.fanfare.animation)
-          .playing(loopMode: .playOnce)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .allowsHitTesting(false)
-          .ignoresSafeArea()
-      }
     }
+    .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
       bottomButtons
     }
@@ -180,14 +198,14 @@ struct CreateGroupSuccessView: View {
       .disabled(isKakaoSharing)
       .opacity(isKakaoSharing ? 0.6 : 1)
 
-      // 완료
+      // 약속 생성하러 가기
       Button(action: onConfirm) {
-        Text(LocalizedStrings.Common.done)
+        Text(LocalizedStrings.CreateGroup.createPromiseButton)
           .font(.headline)
           .frame(maxWidth: .infinity)
           .frame(height: 56)
-          .background(Color.pmindigo.n100)
-          .foregroundStyle(Color.pmindigo.n700)
+          .background(Color.pmindigo.n500)
+          .foregroundStyle(.white)
           .clipShape(RoundedRectangle(cornerRadius: 16))
       }
     }

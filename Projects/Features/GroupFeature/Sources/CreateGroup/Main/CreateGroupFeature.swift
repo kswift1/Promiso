@@ -66,7 +66,7 @@ extension CreateGroup {
       var isSavingSettings: Bool = false
 
       // Group Color (초기 설정)
-      var selectedGroupColor: GroupColor?
+      var selectedGroupColor: GroupColor? = .purple
       var existingGroupColorMap: [GroupColor: String]
 
       // Notification Permission
@@ -153,6 +153,7 @@ extension CreateGroup {
       public enum Delegate: Sendable {
         case dismiss
         case groupCreated(id: String)
+        case groupCreatedAndCreatePromise(id: String)
       }
     }
 
@@ -234,7 +235,7 @@ extension CreateGroup {
                 AnalyticsClient.ParameterKey.groupName: result.name
               ]
             )
-            return .send(.delegate(.groupCreated(id: result.id)))
+            return .send(.delegate(.groupCreatedAndCreatePromise(id: result.id)))
 
           case .notificationToggled(let enabled):
             // OFF로 전환할 때는 권한 체크 불필요

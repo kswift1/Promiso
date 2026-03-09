@@ -13,6 +13,7 @@ struct CreateGroupSettingsView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let groupName: String
+  let photoData: Data?
   let notificationEnabled: Bool
   let calendarSyncEnabled: Bool
   let notificationAuthStatus: NotificationAuthorizationStatus
@@ -25,7 +26,6 @@ struct CreateGroupSettingsView: View {
   let onCalendarSyncToggle: (Bool) -> Void
   let onGroupColorSelected: (GroupColor?) -> Void
   let onComplete: () -> Void
-  let onSkip: () -> Void
   let onCalendarPermissionInfoAlertDismiss: () -> Void
   let onAppear: () -> Void
 
@@ -38,11 +38,11 @@ struct CreateGroupSettingsView: View {
         // Header
         headerSection
 
-        // Settings
-        settingsSection
-
         // Group Color
         groupColorSection
+
+        // Settings
+        settingsSection
 
         Spacer()
           .frame(height: 20)
@@ -81,25 +81,34 @@ struct CreateGroupSettingsView: View {
   private var headerSection: some View {
     VStack(spacing: 12) {
       ZStack {
+        if let photoData, let uiImage = UIImage(data: photoData) {
+          Image(uiImage: uiImage)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+        } else {
+          Circle()
+            .fill(Color.pmindigo.n100.opacity(0.5))
+            .frame(width: 72, height: 72)
+            .overlay {
+              Text(String(groupName.prefix(1)))
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(Color.pmindigo.n500)
+            }
+        }
+      }
+      .overlay(
         Circle()
-          .fill(Color.pmindigo.n100.opacity(0.5))
+          .strokeBorder(
+            (selectedGroupColor ?? .purple).color,
+            lineWidth: 3
+          )
           .frame(width: 72, height: 72)
+      )
 
-        Image(systemName: "gearshape.2.fill")
-          .font(.system(size: 32))
-          .foregroundStyle(Color.pmindigo.n500)
-      }
-
-      VStack(spacing: 8) {
-        Text(LocalizedStrings.GroupSettings.notificationSettingsTitle(groupName))
-          .font(.title3.bold())
-
-        Text(LocalizedStrings.GroupSettings.notificationSettingsSubtitle)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .lineSpacing(4)
-      }
+      Text(LocalizedStrings.GroupSettings.settingsHeaderTitle(groupName))
+        .font(.title3.bold())
     }
   }
 
@@ -323,7 +332,7 @@ struct CreateGroupSettingsView: View {
         onGroupColorSelected(color)
       }
     } label: {
-      VStack(spacing: 6) {
+      VStack(spacing: 4) {
         ZStack {
           Circle()
             .fill(color.color)
@@ -346,19 +355,19 @@ struct CreateGroupSettingsView: View {
           }
         }
 
-        // 사용 중인 그룹명 또는 색상명 표시
+        Text(color.displayName)
+          .font(.system(size: 10))
+          .foregroundStyle(isSelected ? .primary : .secondary)
+          .lineLimit(1)
+
         if let groupName = usedByGroupName, !isSelected {
-          Text(groupName)
-            .font(.system(size: 9, weight: .medium))
+          Text("'\(groupName)' 사용중")
+            .font(.system(size: 8))
             .foregroundStyle(.tertiary)
-            .lineLimit(1)
-        } else {
-          Text(color.displayName)
-            .font(.system(size: 10))
-            .foregroundStyle(isSelected ? .primary : .secondary)
             .lineLimit(1)
         }
       }
+      .frame(height: 82)
     }
     .buttonStyle(.plain)
   }
@@ -390,13 +399,6 @@ struct CreateGroupSettingsView: View {
       }
       .disabled(isSaving)
 
-      Button(action: onSkip) {
-        Text(LocalizedStrings.GroupSettings.skip)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-      .disabled(isSaving)
-
       Text(LocalizedStrings.GroupSettings.changeableHint)
         .font(.caption)
         .foregroundStyle(.tertiary)
@@ -425,19 +427,19 @@ struct CreateGroupSettingsView: View {
   NavigationStack {
     CreateGroupSettingsView(
       groupName: "대학 친구들",
+      photoData: nil,
       notificationEnabled: true,
       calendarSyncEnabled: true,
       notificationAuthStatus: .authorized,
       calendarAuthStatus: .writeOnly,
       isSaving: false,
       showCalendarPermissionInfoAlert: false,
-      selectedGroupColor: .indigo,
+      selectedGroupColor: .purple,
       existingGroupColorMap: [.blue: "회사", .green: "동아리"],
       onNotificationToggle: { _ in },
       onCalendarSyncToggle: { _ in },
       onGroupColorSelected: { _ in },
       onComplete: {},
-      onSkip: {},
       onCalendarPermissionInfoAlertDismiss: {},
       onAppear: {}
     )

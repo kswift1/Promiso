@@ -26,6 +26,7 @@ extension JoinGroup {
         case .settings(let group):
           CreateGroupSettingsView(
             groupName: group.name,
+            photoData: nil,
             notificationEnabled: store.notificationEnabled,
             calendarSyncEnabled: store.calendarSyncEnabled,
             notificationAuthStatus: store.notificationAuthStatus,
@@ -38,7 +39,6 @@ extension JoinGroup {
             onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
             onGroupColorSelected: { store.send(.view(.groupColorSelected($0))) },
             onComplete: { store.send(.view(.settingsCompleted)) },
-            onSkip: { store.send(.view(.settingsSkipped)) },
             onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
             onAppear: { store.send(.view(.settingsAppeared)) }
           )
