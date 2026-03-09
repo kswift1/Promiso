@@ -187,7 +187,7 @@ extension Home {
     // MARK: - Action
 
     @CasePathable
-    public enum Action {
+    public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
@@ -196,7 +196,7 @@ extension Home {
       case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
       case overlayCreatePromise(CreatePromise.Feature.Action)
       @CasePathable
-      public enum View {
+      public enum View: Sendable {
         /// 화면 나타남
         case onAppear
         /// Pull to refresh
@@ -262,7 +262,7 @@ extension Home {
       }
 
       @CasePathable
-      public enum Internal {
+      public enum Internal: Sendable {
         /// 홈 약속 조회 (Firestore 직접 쿼리)
         case fetchPromises
         /// 홈 약속 응답
@@ -314,7 +314,7 @@ extension Home {
       }
 
       @CasePathable
-      public enum Delegate {
+      public enum Delegate: Sendable {
         /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
         case navigateToPromise(promiseId: String, groupId: String)
         /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)

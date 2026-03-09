@@ -1586,6 +1586,7 @@ extension BriefingSettings {
       var selectedStyle: BriefingStyle = .friendly
       var notificationHour: Int? = nil
       var isLoading: Bool = false
+      var hasLoaded: Bool = false
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
       var selectedTransport: PreferredTransport = .all
@@ -1636,6 +1637,7 @@ extension BriefingSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            guard !state.hasLoaded else { return .none }
             state.isLoading = true
             return .run { send in
               guard let userId = await authClient.currentUser()?.uid else {
@@ -1726,13 +1728,27 @@ extension BriefingSettings {
             state.selectedTransport = transport
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
             state.isLoading = false
+            state.hasLoaded = true
             return .none
 
           case .styleSaved, .notificationHourSaved:
             return .none
 
           case .saveFailed:
-            return .none
+            // 저장 실패 시 서버 상태로 재동기화
+            state.isLoading = true
+            return .run { [authClient, userSettingsClient] send in
+              guard let userId = await authClient.currentUser()?.uid else {
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                return
+              }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+              } catch {
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+              }
+            }
           }
 
         case .delegate:
@@ -1770,13 +1786,13 @@ extension BriefingSettings {
         }
       }
       .auroraBackground()
-      .navigationTitle("데일리 브리핑 설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.briefingSettingsTitle)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .principal) {
           HStack(spacing: 6) {
             ProBadge()
-            Text("데일리 브리핑 설정")
+            Text(LocalizedStrings.SettingsStrings.briefingSettingsTitle)
               .font(.headline)
           }
         }
@@ -1790,11 +1806,11 @@ extension BriefingSettings {
 
     private var styleSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("브리핑 스타일")
+        Text(LocalizedStrings.SettingsStrings.briefingStyle)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        Text("스타일에 따라 브리핑 말투와 표현 방식이 달라져요.")
+        Text(LocalizedStrings.SettingsStrings.briefingStyleDescription)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1872,11 +1888,11 @@ extension BriefingSettings {
 
     private var transportSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("선호 교통수단")
+        Text(LocalizedStrings.SettingsStrings.briefingTransport)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        Text("브리핑에서 이동 정보를 안내할 때 참고해요.")
+        Text(LocalizedStrings.SettingsStrings.briefingTransportDescription)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1935,18 +1951,18 @@ extension BriefingSettings {
 
     private var notificationSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("매일 브리핑 알림")
+        Text(LocalizedStrings.SettingsStrings.briefingNotification)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        Text("설정한 시간에 오늘의 일정 브리핑을 알림으로 받아볼 수 있어요.")
+        Text(LocalizedStrings.SettingsStrings.briefingNotificationDescription)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
           HStack {
-            Text("알림 받기")
+            Text(LocalizedStrings.SettingsStrings.briefingNotificationToggle)
               .font(.body)
               .foregroundStyle(store.isPro ? Color.pmtext.primary : Color.pmtext.secondary)
 
@@ -1977,7 +1993,7 @@ extension BriefingSettings {
               .padding(.leading, 16)
 
             HStack {
-              Text("알림 시간")
+              Text(LocalizedStrings.SettingsStrings.briefingNotificationTime)
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 

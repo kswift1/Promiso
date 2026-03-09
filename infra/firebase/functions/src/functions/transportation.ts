@@ -9,6 +9,9 @@
 
 import {ODSAY_API_KEY, KAKAO_REST_API_KEY} from "../config";
 
+/** 외부 교통 API 호출을 생략하는 최소 거리 (km) */
+const MIN_DISTANCE_FOR_API_KM = 1.0;
+
 // MARK: - Types
 
 export interface TransitInfo {
@@ -182,8 +185,8 @@ export async function fetchTransportation(
 ): Promise<TransportationResult> {
   const walkingMinutes = estimateWalkMinutes(distanceKm);
 
-  // 1km 미만 단거리는 외부 API 호출 생략
-  if (distanceKm < 1.0) {
+  // 단거리는 외부 API 호출 생략
+  if (distanceKm < MIN_DISTANCE_FOR_API_KM) {
     return {transit: null, driving: null, walkingMinutes};
   }
 

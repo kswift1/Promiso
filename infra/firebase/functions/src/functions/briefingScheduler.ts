@@ -50,6 +50,7 @@ export const scheduledBriefingDispatch = onSchedule(
 
     // briefing.notificationHour가 설정된 유저만 조회
     // (Pro 유저만 설정 가능하므로 별도 plan 체크 불필요)
+    // TODO: 유저 수 증가 시 별도 briefingSubscriptions 컬렉션으로 분리 고려
     const settingsSnap = await db
       .collectionGroup("settings")
       .where(

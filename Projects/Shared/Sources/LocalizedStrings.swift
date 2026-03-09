@@ -489,6 +489,17 @@ public enum LocalizedStrings {
       String(localized: "settings.conflictDetection.currentMinutes", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
+
+    // Briefing Settings
+    public static var briefingSettingsTitle: String { String(localized: "settings.briefing.title", bundle: bundle) }
+    public static var briefingStyle: String { String(localized: "settings.briefing.style", bundle: bundle) }
+    public static var briefingStyleDescription: String { String(localized: "settings.briefing.style.description", bundle: bundle) }
+    public static var briefingTransport: String { String(localized: "settings.briefing.transport", bundle: bundle) }
+    public static var briefingTransportDescription: String { String(localized: "settings.briefing.transport.description", bundle: bundle) }
+    public static var briefingNotification: String { String(localized: "settings.briefing.notification", bundle: bundle) }
+    public static var briefingNotificationDescription: String { String(localized: "settings.briefing.notification.description", bundle: bundle) }
+    public static var briefingNotificationToggle: String { String(localized: "settings.briefing.notification.toggle", bundle: bundle) }
+    public static var briefingNotificationTime: String { String(localized: "settings.briefing.notification.time", bundle: bundle) }
   }
 
   // MARK: - Errors
