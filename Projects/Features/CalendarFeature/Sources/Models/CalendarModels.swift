@@ -264,7 +264,7 @@ extension CalendarFeature {
       self.groupImageUrl = groupImageUrl
     }
 
-    public static let personalColor = Color.pminfo.n500
+    public static let personalColor = Color.pmindigo.n500
     public static let systemEventColor = Color.gray
   }
 
