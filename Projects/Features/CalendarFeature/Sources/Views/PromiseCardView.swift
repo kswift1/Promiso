@@ -82,7 +82,7 @@ struct PromiseCardView: View {
           VStack(alignment: .leading, spacing: 8) {
           // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
-            Text(promise.timeText)
+            Text(promise.timeRangeText)
               .font(.system(size: 14, weight: .medium))
               .foregroundColor(.secondary)
 
@@ -231,6 +231,79 @@ private let promiseViewCalendar = Calendar.current
 // MARK: - Compact Day Row (약속 + 캘린더 이벤트 통합)
 
 /// 월간 뷰용 컴팩트 행 (약속과 캘린더 이벤트 모두 표시)
+enum CompactDayRowItem: Identifiable, Equatable {
+  case promise(PromiseModel)
+  case personalEvent(PersonalEventModel)
+  case calendarEvent(CalendarEvent)
+
+  var id: String {
+    switch self {
+    case .promise(let promise):
+      return "promise_\(promise.id)"
+    case .personalEvent(let event):
+      return "personal_\(event.id)"
+    case .calendarEvent(let event):
+      return "calendar_\(event.id)"
+    }
+  }
+
+  static func sortedItems(
+    for date: Date,
+    promises: [PromiseModel],
+    calendarEvents: [CalendarEvent],
+    personalEvents: [PersonalEventModel]
+  ) -> [CompactDayRowItem] {
+    let dayStart = Calendar.current.startOfDay(for: date)
+
+    return (
+      promises.map(CompactDayRowItem.promise) +
+      personalEvents.map(CompactDayRowItem.personalEvent) +
+      calendarEvents.map(CompactDayRowItem.calendarEvent)
+    )
+    .sorted { lhs, rhs in
+      let lhsDisplayStart = lhs.displayStartAt(on: dayStart)
+      let rhsDisplayStart = rhs.displayStartAt(on: dayStart)
+
+      if lhsDisplayStart != rhsDisplayStart {
+        return lhsDisplayStart < rhsDisplayStart
+      }
+      if lhs.originalStartAt != rhs.originalStartAt {
+        return lhs.originalStartAt < rhs.originalStartAt
+      }
+      if lhs.kindPriority != rhs.kindPriority {
+        return lhs.kindPriority < rhs.kindPriority
+      }
+      return lhs.id < rhs.id
+    }
+  }
+
+  private var originalStartAt: Date {
+    switch self {
+    case .promise(let promise):
+      return promise.startAt
+    case .personalEvent(let event):
+      return event.startAt
+    case .calendarEvent(let event):
+      return event.startDate
+    }
+  }
+
+  private var kindPriority: Int {
+    switch self {
+    case .promise:
+      return 0
+    case .personalEvent:
+      return 1
+    case .calendarEvent:
+      return 2
+    }
+  }
+
+  private func displayStartAt(on dayStart: Date) -> Date {
+    max(originalStartAt, dayStart)
+  }
+}
+
 struct CompactDayRow: View {
   let date: Date
   let promises: [PromiseModel]
@@ -244,6 +317,8 @@ struct CompactDayRow: View {
   var onPromiseTap: ((PromiseModel) -> Void)? = nil
   var onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil
   var onCalendarEventTap: ((CalendarEvent) -> Void)? = nil
+  var onCreatePersonalEvent: (() -> Void)? = nil
+  var onCreatePromise: (() -> Void)? = nil
 
   init(
     date: Date,
@@ -257,7 +332,9 @@ struct CompactDayRow: View {
     onDateTap: @escaping () -> Void,
     onPromiseTap: ((PromiseModel) -> Void)? = nil,
     onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil,
-    onCalendarEventTap: ((CalendarEvent) -> Void)? = nil
+    onCalendarEventTap: ((CalendarEvent) -> Void)? = nil,
+    onCreatePersonalEvent: (() -> Void)? = nil,
+    onCreatePromise: (() -> Void)? = nil
   ) {
     self.date = date
     self.promises = promises
@@ -271,6 +348,8 @@ struct CompactDayRow: View {
     self.onPromiseTap = onPromiseTap
     self.onPersonalEventTap = onPersonalEventTap
     self.onCalendarEventTap = onCalendarEventTap
+    self.onCreatePersonalEvent = onCreatePersonalEvent
+    self.onCreatePromise = onCreatePromise
   }
 
   var body: some View {
@@ -295,6 +374,12 @@ struct CompactDayRow: View {
           }
           .frame(width: 36)
 
+          if isToday {
+            Text("오늘")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(Color.pmindigo.n500)
+          }
+
           if let holidayName {
             Text(holidayName)
               .font(.system(size: 13, weight: .medium))
@@ -313,7 +398,12 @@ struct CompactDayRow: View {
       .buttonStyle(.plain)
 
       // 일정 목록
-      let allItems = makeAllItems()
+      let allItems = CompactDayRowItem.sortedItems(
+        for: date,
+        promises: promises,
+        calendarEvents: calendarEvents,
+        personalEvents: personalEvents
+      )
       if !allItems.isEmpty {
         Divider()
           .opacity(0.4)
@@ -321,14 +411,45 @@ struct CompactDayRow: View {
           .padding(.bottom, 2)
 
         VStack(alignment: .leading, spacing: 0) {
-          ForEach(Array(allItems.enumerated()), id: \.offset) { index, item in
+          ForEach(Array(allItems.enumerated()), id: \.element.id) { index, item in
             if index > 0 {
               Divider().opacity(0.3)
             }
-            item
+            rowView(for: item)
               .padding(.vertical, 8)
           }
         }
+      }
+
+      // 일정 생성 메뉴 (오늘 이후만, 최하단 오른쪽)
+      if canCreateEvent {
+        HStack {
+          Spacer()
+          Menu {
+            Button {
+              onCreatePersonalEvent?()
+            } label: {
+              Label("개인 일정 추가", systemImage: "person.fill")
+            }
+            Button {
+              onCreatePromise?()
+            } label: {
+              Label("그룹 일정 추가", systemImage: "person.3.fill")
+            }
+          } label: {
+            HStack(spacing: 4) {
+              Image(systemName: "plus")
+                .font(.system(size: 11, weight: .semibold))
+              Text("일정 추가")
+                .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(Color.pmindigo.n500)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .adaptiveGlassBackground()
+          }
+        }
+        .padding(.top, 6)
       }
     }
     .padding(.horizontal, 16)
@@ -341,20 +462,16 @@ struct CompactDayRow: View {
 
   // MARK: - Item Builder
 
-  private func makeAllItems() -> [AnyView] {
-    var items: [AnyView] = []
-
-    for promise in promises {
-      items.append(AnyView(promiseRow(promise)))
+  @ViewBuilder
+  private func rowView(for item: CompactDayRowItem) -> some View {
+    switch item {
+    case .promise(let promise):
+      promiseRow(promise)
+    case .personalEvent(let event):
+      personalEventRow(event)
+    case .calendarEvent(let event):
+      calendarEventRow(event)
     }
-    for event in personalEvents {
-      items.append(AnyView(personalEventRow(event)))
-    }
-    for event in calendarEvents {
-      items.append(AnyView(calendarEventRow(event)))
-    }
-
-    return items
   }
 
   @ViewBuilder
@@ -364,47 +481,53 @@ struct CompactDayRow: View {
     Button {
       onPromiseTap?(promise)
     } label: {
-      VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 6) {
-          Text(promise.displayEmoji)
-            .font(.system(size: 16))
-          Text(promise.title)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-          Spacer()
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 1)
+          .fill(groupColor ?? Color.pmindigo.n500)
+          .frame(width: 3)
+
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 6) {
+            Text(promise.displayEmoji)
+              .font(.system(size: 16))
+            Text(promise.title)
+              .font(.system(size: 15, weight: .medium))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+            Spacer()
+            HStack(spacing: 4) {
+              if let group = promise.group {
+                GroupThumbnailView(
+                  imageUrl: group.imageUrl,
+                  name: group.name,
+                  size: 14
+                )
+                Text(group.name)
+                  .font(.system(size: 12))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+                Text("·")
+                  .font(.system(size: 12))
+                  .foregroundColor(.secondary.opacity(0.5))
+              }
+              Text(unifiedStatusText(for: promise))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(unifiedStatusColor(for: promise))
+            }
+          }
           HStack(spacing: 4) {
-            if let group = promise.group {
-              GroupThumbnailView(
-                imageUrl: group.imageUrl,
-                name: group.name,
-                size: 14
-              )
-              Text(group.name)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+            Text(promise.timeRangeText)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+            if let location = promise.location {
               Text("·")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary.opacity(0.5))
+              Text(location.name)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
             }
-            Text(unifiedStatusText(for: promise))
-              .font(.system(size: 12, weight: .medium))
-              .foregroundColor(unifiedStatusColor(for: promise))
-          }
-        }
-        HStack(spacing: 4) {
-          Text(promise.timeText)
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-          if let location = promise.location {
-            Text("·")
-              .font(.system(size: 12))
-              .foregroundColor(.secondary.opacity(0.5))
-            Text(location.name)
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
-              .lineLimit(1)
           }
         }
       }
@@ -412,7 +535,9 @@ struct CompactDayRow: View {
       .padding(.vertical, 4)
       .background(
         RoundedRectangle(cornerRadius: 6)
-          .fill((groupColor ?? .clear).opacity(0.08))
+          .fill(promise.responseStatus(currentUserId: currentUserId) == .needResponse
+            ? Color.pmwarning.n500.opacity(0.08)
+            : Color.clear)
       )
     }
     .buttonStyle(.plain)
@@ -423,40 +548,43 @@ struct CompactDayRow: View {
     Button {
       onPersonalEventTap?(event)
     } label: {
-      VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 6) {
-          Text(event.displayEmoji)
-            .font(.system(size: 16))
-          Text(event.title)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-          Spacer()
-          Text("개인")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(Color.pmindigo.n500)
-        }
-        HStack(spacing: 4) {
-          Text(event.timeText)
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-          if let location = event.location {
-            Text("·")
-              .font(.system(size: 12))
-              .foregroundColor(.secondary.opacity(0.5))
-            Text(location.name)
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 1)
+          .fill(Color.pmindigo.n500)
+          .frame(width: 3)
+
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 6) {
+            Text(event.displayEmoji)
+              .font(.system(size: 16))
+            Text(event.title)
+              .font(.system(size: 15, weight: .medium))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+            Spacer()
+            Text("개인")
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(Color.pmindigo.n500)
+          }
+          HStack(spacing: 4) {
+            Text(event.timeRangeText)
               .font(.system(size: 12))
               .foregroundColor(.secondary)
-              .lineLimit(1)
+            if let location = event.location {
+              Text("·")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary.opacity(0.5))
+              Text(location.name)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            }
           }
         }
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
-      .background(
-        RoundedRectangle(cornerRadius: 6)
-          .fill(Color.pmindigo.n500.opacity(0.08))
-      )
+      .background(Color.clear)
     }
     .buttonStyle(.plain)
   }
@@ -466,39 +594,42 @@ struct CompactDayRow: View {
     Button {
       onCalendarEventTap?(event)
     } label: {
-      VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 6) {
-          Circle()
-            .fill(event.calendarColor)
-            .frame(width: 8, height: 8)
-          Text(event.title)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-          Spacer()
-          Text(event.calendarName)
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-            .lineLimit(1)
-        }
-        HStack(spacing: 4) {
-          if event.isAllDay {
-            Text("종일")
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
-          } else {
-            Text(event.startDate.formattedTime)
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
-          }
-          if let location = event.location, !location.isEmpty {
-            Text("·")
-              .font(.system(size: 12))
-              .foregroundColor(.secondary.opacity(0.5))
-            Text(location)
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 1)
+          .fill(event.calendarColor)
+          .frame(width: 3)
+
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 6) {
+            Text(event.title)
+              .font(.system(size: 15, weight: .medium))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+            Spacer()
+            Text(event.calendarName)
               .font(.system(size: 12))
               .foregroundColor(.secondary)
               .lineLimit(1)
+          }
+          HStack(spacing: 4) {
+            if event.isAllDay {
+              Text("종일")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+            } else {
+              Text(event.timeText)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+            }
+            if let location = event.location, !location.isEmpty {
+              Text("·")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary.opacity(0.5))
+              Text(location)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            }
           }
         }
       }
@@ -507,6 +638,7 @@ struct CompactDayRow: View {
     }
     .buttonStyle(.plain)
   }
+
 
   // MARK: - Unified Status (필터와 통일)
 
@@ -531,6 +663,15 @@ struct CompactDayRow: View {
     case .failed: return Color.pmerror.n500
     }
   }
+
+  // MARK: - Create Event
+
+  private var canCreateEvent: Bool {
+    let calendar = Calendar.current
+    let endOfDay = calendar.startOfDay(for: date).addingTimeInterval(86400)
+    return endOfDay > Date()
+  }
+
 
   // MARK: - Computed Properties
 

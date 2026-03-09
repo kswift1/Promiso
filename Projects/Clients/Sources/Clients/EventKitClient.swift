@@ -124,9 +124,14 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
       return "종일"
     }
 
-    let start = LocalizedDateFormatters.time.string(from: startDate)
-    let end = LocalizedDateFormatters.time.string(from: endDate)
-    return "\(start) - \(end)"
+    let calendar = Calendar.current
+    if calendar.isDate(startDate, inSameDayAs: endDate) {
+      let start = LocalizedDateFormatters.time.string(from: startDate)
+      let end = LocalizedDateFormatters.time.string(from: endDate)
+      return "\(start) ~ \(end)"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startDate)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endDate))"
+    }
   }
 }
 

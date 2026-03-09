@@ -226,13 +226,18 @@ extension CalendarFeature {
         let currentMonthKey = currentMonth.startOfMonth
         let allPromises = filteredPromises(for: currentMonthKey)
 
-        // 날짜별 그룹화
+        // 날짜별 그룹화 — 시작일부터 종료일까지 모든 날짜에 포함
         for promise in allPromises {
-          let dateKey = calendar.startOfDay(for: promise.startAt)
-          if grouped[dateKey] != nil {
-            grouped[dateKey]?.append(promise)
-          } else {
-            grouped[dateKey] = [promise]
+          let startDay = calendar.startOfDay(for: promise.startAt)
+          let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+
+          var day = startDay
+          var safetyCount = 0
+          while day <= endDay, safetyCount < 31 {
+            grouped[day, default: []].append(promise)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = nextDay
+            safetyCount += 1
           }
         }
 
@@ -253,8 +258,17 @@ extension CalendarFeature {
         var grouped: [Date: [CalendarEvent]] = [:]
 
         for event in monthEvents {
-          let dateKey = calendar.startOfDay(for: event.startDate)
-          grouped[dateKey, default: []].append(event)
+          let startDay = calendar.startOfDay(for: event.startDate)
+          let endDay = calendar.startOfDay(for: event.endDate)
+
+          var day = startDay
+          var safetyCount = 0
+          while day <= endDay, safetyCount < 31 {
+            grouped[day, default: []].append(event)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = nextDay
+            safetyCount += 1
+          }
         }
 
         for (date, events) in grouped {
@@ -273,8 +287,17 @@ extension CalendarFeature {
         var grouped: [Date: [PersonalEventModel]] = [:]
 
         for event in monthEvents {
-          let dateKey = calendar.startOfDay(for: event.startAt)
-          grouped[dateKey, default: []].append(event)
+          let startDay = calendar.startOfDay(for: event.startAt)
+          let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+
+          var day = startDay
+          var safetyCount = 0
+          while day <= endDay, safetyCount < 31 {
+            grouped[day, default: []].append(event)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = nextDay
+            safetyCount += 1
+          }
         }
 
         for (date, events) in grouped {
@@ -289,22 +312,34 @@ extension CalendarFeature {
         if displayMode == .week {
           return weekDates.sorted()
         } else {
-          // 월간: 약속 또는 캘린더 이벤트가 있는 날짜
           let calendar = Calendar.current
           let monthStart = currentMonth.startOfMonth
           guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
             return []
           }
 
-          var allDates = Set(promisesByDate.keys)
-          allDates.formUnion(calendarEventsByDate.keys)
-          allDates.formUnion(personalEventsByDate.keys)
-          allDates.formUnion(holidaysByDate.keys)
-
-          return allDates
-            .filter { $0 >= monthStart && $0 < monthEnd }
-            .sorted()
+          var dates: [Date] = []
+          var day = monthStart
+          while day < monthEnd {
+            dates.append(day)
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = nextDay
+          }
+          return dates
         }
+      }
+
+      /// 이벤트가 있는 날 수 (월간 헤더 표시용)
+      var datesWithEvents: Int {
+        let calendar = Calendar.current
+        let monthStart = currentMonth.startOfMonth
+        guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { return 0 }
+
+        var allDates = Set(promisesByDate.keys)
+        allDates.formUnion(calendarEventsByDate.keys)
+        allDates.formUnion(personalEventsByDate.keys)
+
+        return allDates.filter { $0 >= monthStart && $0 < monthEnd }.count
       }
 
       /// 헤더 타이틀
@@ -1380,18 +1415,29 @@ extension CalendarFeature {
         return .none
 
       case .dayLongPressCreatePersonalEvent(let date):
-        guard date > Date() else {
+        let calendar = Calendar.current
+        let endOfDay = calendar.startOfDay(for: date).addingTimeInterval(86400)
+        guard endOfDay > Date() else {
           return .send(.view(.pastTimeBlocked))
         }
-        let endDate = date.addingTimeInterval(3600)
-        return .send(.view(.createPersonalEventFromTimeline(startDate: date, endDate: endDate)))
+        // 오늘이면 현재시간+1분, 미래면 해당일 10시
+        let startDate = calendar.isDateInToday(date)
+          ? Date().addingTimeInterval(60)
+          : calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date
+        let endDate = startDate.addingTimeInterval(3600)
+        return .send(.view(.createPersonalEventFromTimeline(startDate: startDate, endDate: endDate)))
 
       case let .dayLongPressCreatePromise(date):
-        guard date > Date() else {
+        let calendar = Calendar.current
+        let endOfDay = calendar.startOfDay(for: date).addingTimeInterval(86400)
+        guard endOfDay > Date() else {
           return .send(.view(.pastTimeBlocked))
         }
-        let endDate = date.addingTimeInterval(3600)
-        return .send(.view(.createPromiseFromTimeline(startDate: date, endDate: endDate)))
+        let startDate = calendar.isDateInToday(date)
+          ? Date().addingTimeInterval(60)
+          : calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date
+        let endDate = startDate.addingTimeInterval(3600)
+        return .send(.view(.createPromiseFromTimeline(startDate: startDate, endDate: endDate)))
 
       case .filterIconTapped:
         state.isFilterSheetPresented = true

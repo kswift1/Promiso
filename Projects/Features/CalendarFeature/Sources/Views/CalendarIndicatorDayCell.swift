@@ -108,12 +108,12 @@ struct CalendarIndicatorDayCell: View {
         Button {
           onDayCreatePersonalEvent?(date)
         } label: {
-          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+          Label("개인 일정 추가", systemImage: "person.fill")
         }
         Button {
           onDayCreatePromise?(date)
         } label: {
-          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+          Label("그룹 일정 추가", systemImage: "person.3.fill")
         }
       } preview: {
         ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
@@ -143,12 +143,12 @@ struct CalendarIndicatorDayCell: View {
             Button {
               onDayCreatePersonalEvent?(date)
             } label: {
-              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+              Label("개인 일정 추가", systemImage: "person.fill")
             }
             Button {
               onDayCreatePromise?(date)
             } label: {
-              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+              Label("그룹 일정 추가", systemImage: "person.3.fill")
             }
           } preview: {
             ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)

@@ -169,6 +169,40 @@ struct CalendarFeatureTests {
     }
   }
 
+  @Test("월간 리스트는 타입과 무관하게 날짜 기준으로 통합 정렬")
+  func compactDayRowItems_sortsAcrossScheduleTypes() {
+    let date = makeDate(year: 2026, month: 3, day: 6)
+    let overnightTrip = makePersonalEvent(
+      id: "personal-trip",
+      title: "출장",
+      startAt: makeDate(year: 2026, month: 3, day: 3, hour: 10, minute: 25),
+      endAt: makeDate(year: 2026, month: 3, day: 7, hour: 11, minute: 25)
+    )
+    let earlyPromise = makePromise(
+      id: "promise-early",
+      groupId: "group-1",
+      startAt: makeDate(year: 2026, month: 3, day: 6, hour: 4, minute: 43)
+    )
+    let latePromise = makePromise(
+      id: "promise-late",
+      groupId: "group-1",
+      startAt: makeDate(year: 2026, month: 3, day: 6, hour: 6, minute: 50)
+    )
+
+    let items = CompactDayRowItem.sortedItems(
+      for: date,
+      promises: [latePromise, earlyPromise],
+      calendarEvents: [],
+      personalEvents: [overnightTrip]
+    )
+
+    #expect(items == [
+      .personalEvent(overnightTrip),
+      .promise(earlyPromise),
+      .promise(latePromise)
+    ])
+  }
+
   // MARK: - 약속 데이터 로드 테스트
 
   @Test("loadInitialData 시 현재 월만 선택적 무효화 후 약속 로드")
@@ -556,6 +590,20 @@ private extension CalendarFeatureTests {
       isAllDay: false,
       calendarName: "테스트",
       calendarColorHex: "#007AFF"
+    )
+  }
+
+  func makePersonalEvent(
+    id: String,
+    title: String = "개인 일정",
+    startAt: Date,
+    endAt: Date? = nil
+  ) -> PersonalEventModel {
+    PersonalEventModel.mock(
+      id: id,
+      title: title,
+      startAt: startAt,
+      endAt: endAt
     )
   }
 

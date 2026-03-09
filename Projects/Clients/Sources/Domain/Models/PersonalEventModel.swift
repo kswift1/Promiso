@@ -157,12 +157,15 @@ extension PersonalEventModel {
     return LocalizedDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
   }
 
-  /// 시간 범위 텍스트 (예: "오후 2:00 ~ 오후 5:00" 또는 "오후 2:00 ~ 1월 28일 오전 1:00")
+  /// 시간 범위 텍스트 (같은 날: "14:00 ~ 16:00", 다른 날: "1월 27일 14:00 ~ 1월 28일 16:00")
   public var timeRangeText: String {
-    if let endTimeText = endTimeText {
-      return "\(timeText) ~ \(endTimeText)"
+    guard let endAt = endAt else { return timeText }
+    let calendar = Calendar.current
+    if calendar.isDate(startAt, inSameDayAs: endAt) {
+      return "\(timeText) ~ \(endAt.formattedTime)"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startAt)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endAt))"
     }
-    return timeText
   }
 
   /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")

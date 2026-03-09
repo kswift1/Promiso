@@ -438,10 +438,6 @@ extension CalendarFeature {
           .foregroundColor(.primary)
 
         Spacer()
-
-        Text(LocalizedStrings.Calendar.dayCount(store.sectionDates.count))
-          .font(.system(size: 14, weight: .medium))
-          .foregroundColor(.secondary)
       }
       .padding(.horizontal, 16)
       .padding(.top, 16)
@@ -460,31 +456,35 @@ extension CalendarFeature {
       let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty || holidayName != nil {
-        CompactDayRow(
-          date: date,
-          promises: dayPromises,
-          calendarEvents: dayEvents,
-          personalEvents: dayPersonalEvents,
-          isSelected: isSelected,
-          currentUserId: store.currentUserId,
-          holidayName: holidayName,
-          groupColorMap: store.groupColorMap,
-          onDateTap: {
-            store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
-          },
-          onPromiseTap: { promise in
-            store.send(.view(.scheduleItemTapped(.promise(promise))))
-          },
-          onPersonalEventTap: { event in
-            store.send(.view(.scheduleItemTapped(.personalEvent(event))))
-          },
-          onCalendarEventTap: { event in
-            store.send(.view(.scheduleItemTapped(.calendarEvent(event))))
-          }
-        )
-        .id(date)
-      }
+      CompactDayRow(
+        date: date,
+        promises: dayPromises,
+        calendarEvents: dayEvents,
+        personalEvents: dayPersonalEvents,
+        isSelected: isSelected,
+        currentUserId: store.currentUserId,
+        holidayName: holidayName,
+        groupColorMap: store.groupColorMap,
+        onDateTap: {
+          store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
+        },
+        onPromiseTap: { promise in
+          store.send(.view(.scheduleItemTapped(.promise(promise))))
+        },
+        onPersonalEventTap: { event in
+          store.send(.view(.scheduleItemTapped(.personalEvent(event))))
+        },
+        onCalendarEventTap: { event in
+          store.send(.view(.scheduleItemTapped(.calendarEvent(event))))
+        },
+        onCreatePersonalEvent: {
+          store.send(.view(.dayLongPressCreatePersonalEvent(date)))
+        },
+        onCreatePromise: {
+          store.send(.view(.dayLongPressCreatePromise(date)))
+        }
+      )
+      .id(date)
     }
 
     // MARK: - Loading View
