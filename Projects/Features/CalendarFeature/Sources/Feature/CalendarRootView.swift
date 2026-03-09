@@ -433,7 +433,7 @@ extension CalendarFeature {
 
     private var monthModeHeader: some View {
       HStack {
-        Text(LocalizedStrings.Calendar.monthSchedule)
+        Text("\(Calendar.current.component(.month, from: store.currentMonth))월 일정")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 
@@ -469,8 +469,18 @@ extension CalendarFeature {
           isSelected: isSelected,
           currentUserId: store.currentUserId,
           holidayName: holidayName,
-          onTap: {
+          groupColorMap: store.groupColorMap,
+          onDateTap: {
             store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
+          },
+          onPromiseTap: { promise in
+            store.send(.view(.scheduleItemTapped(.promise(promise))))
+          },
+          onPersonalEventTap: { event in
+            store.send(.view(.scheduleItemTapped(.personalEvent(event))))
+          },
+          onCalendarEventTap: { event in
+            store.send(.view(.scheduleItemTapped(.calendarEvent(event))))
           }
         )
         .id(date)

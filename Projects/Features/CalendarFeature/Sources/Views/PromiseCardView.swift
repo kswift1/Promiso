@@ -239,7 +239,11 @@ struct CompactDayRow: View {
   let isSelected: Bool
   let currentUserId: String
   var holidayName: String? = nil
-  let onTap: () -> Void
+  var groupColorMap: [String: Color] = [:]
+  let onDateTap: () -> Void
+  var onPromiseTap: ((PromiseModel) -> Void)? = nil
+  var onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil
+  var onCalendarEventTap: ((CalendarEvent) -> Void)? = nil
 
   init(
     date: Date,
@@ -249,7 +253,11 @@ struct CompactDayRow: View {
     isSelected: Bool,
     currentUserId: String = "",
     holidayName: String? = nil,
-    onTap: @escaping () -> Void
+    groupColorMap: [String: Color] = [:],
+    onDateTap: @escaping () -> Void,
+    onPromiseTap: ((PromiseModel) -> Void)? = nil,
+    onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil,
+    onCalendarEventTap: ((CalendarEvent) -> Void)? = nil
   ) {
     self.date = date
     self.promises = promises
@@ -258,13 +266,17 @@ struct CompactDayRow: View {
     self.isSelected = isSelected
     self.currentUserId = currentUserId
     self.holidayName = holidayName
-    self.onTap = onTap
+    self.groupColorMap = groupColorMap
+    self.onDateTap = onDateTap
+    self.onPromiseTap = onPromiseTap
+    self.onPersonalEventTap = onPersonalEventTap
+    self.onCalendarEventTap = onCalendarEventTap
   }
 
   var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 0) {
-        // 날짜 헤더
+    VStack(alignment: .leading, spacing: 0) {
+      // 날짜 헤더 — 탭하면 타임라인으로 전환
+      Button(action: onDateTap) {
         HStack(spacing: 12) {
           VStack(spacing: 2) {
             ZStack {
@@ -296,32 +308,33 @@ struct CompactDayRow: View {
             .font(.system(size: 12, weight: .semibold))
             .foregroundColor(.secondary.opacity(0.5))
         }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
 
-        // 일정 목록
-        let allItems = makeAllItems()
-        if !allItems.isEmpty {
-          Divider()
-            .opacity(0.4)
-            .padding(.top, 10)
-            .padding(.bottom, 2)
+      // 일정 목록
+      let allItems = makeAllItems()
+      if !allItems.isEmpty {
+        Divider()
+          .opacity(0.4)
+          .padding(.top, 10)
+          .padding(.bottom, 2)
 
-          VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(allItems.enumerated()), id: \.offset) { index, item in
-              if index > 0 {
-                Divider().opacity(0.3)
-              }
-              item
-                .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: 0) {
+          ForEach(Array(allItems.enumerated()), id: \.offset) { index, item in
+            if index > 0 {
+              Divider().opacity(0.3)
             }
+            item
+              .padding(.vertical, 8)
           }
         }
       }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-      .contentShape(Rectangle())
-      .adaptiveGlassBackground()
     }
-    .buttonStyle(.plain)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .contentShape(Rectangle())
+    .adaptiveGlassBackground()
     .padding(.horizontal, 16)
     .padding(.vertical, 4)
   }
@@ -346,117 +359,176 @@ struct CompactDayRow: View {
 
   @ViewBuilder
   private func promiseRow(_ promise: PromiseModel) -> some View {
-    let status = promise.responseStatus(currentUserId: currentUserId)
-    VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 6) {
-        Text(promise.displayEmoji)
-          .font(.system(size: 16))
-        Text(promise.title)
-          .font(.system(size: 15, weight: .medium))
-          .foregroundColor(.primary)
-          .lineLimit(1)
-        Spacer()
+    let groupColor = groupColorMap[promise.groupId]
+
+    Button {
+      onPromiseTap?(promise)
+    } label: {
+      VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
+          Text(promise.displayEmoji)
+            .font(.system(size: 16))
+          Text(promise.title)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundColor(.primary)
+            .lineLimit(1)
+          Spacer()
+          HStack(spacing: 4) {
+            if let group = promise.group {
+              GroupThumbnailView(
+                imageUrl: group.imageUrl,
+                name: group.name,
+                size: 14
+              )
+              Text(group.name)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+              Text("·")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary.opacity(0.5))
+            }
+            Text(unifiedStatusText(for: promise))
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(unifiedStatusColor(for: promise))
+          }
+        }
         HStack(spacing: 4) {
-          if let group = promise.group {
-            Text(group.name)
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
-              .lineLimit(1)
+          Text(promise.timeText)
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+          if let location = promise.location {
             Text("·")
               .font(.system(size: 12))
               .foregroundColor(.secondary.opacity(0.5))
+            Text(location.name)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+              .lineLimit(1)
           }
-          Text(status.statusText)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(status.color)
         }
       }
-      HStack(spacing: 4) {
-        Text(promise.timeText)
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
-        if let location = promise.location {
-          Text("·")
-            .font(.system(size: 12))
-            .foregroundColor(.secondary.opacity(0.5))
-          Text(location.name)
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-            .lineLimit(1)
-        }
-      }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(
+        RoundedRectangle(cornerRadius: 6)
+          .fill((groupColor ?? .clear).opacity(0.08))
+      )
     }
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder
   private func personalEventRow(_ event: PersonalEventModel) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 6) {
-        Text(event.displayEmoji)
-          .font(.system(size: 16))
-        Text(event.title)
-          .font(.system(size: 15, weight: .medium))
-          .foregroundColor(.primary)
-          .lineLimit(1)
-        Spacer()
-        Text("개인")
-          .font(.system(size: 12, weight: .medium))
-          .foregroundColor(Color.pmindigo.n500)
-      }
-      HStack(spacing: 4) {
-        Text(event.timeText)
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
-        if let location = event.location {
-          Text("·")
-            .font(.system(size: 12))
-            .foregroundColor(.secondary.opacity(0.5))
-          Text(location.name)
+    Button {
+      onPersonalEventTap?(event)
+    } label: {
+      VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
+          Text(event.displayEmoji)
+            .font(.system(size: 16))
+          Text(event.title)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundColor(.primary)
+            .lineLimit(1)
+          Spacer()
+          Text("개인")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(Color.pmindigo.n500)
+        }
+        HStack(spacing: 4) {
+          Text(event.timeText)
             .font(.system(size: 12))
             .foregroundColor(.secondary)
-            .lineLimit(1)
+          if let location = event.location {
+            Text("·")
+              .font(.system(size: 12))
+              .foregroundColor(.secondary.opacity(0.5))
+            Text(location.name)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+              .lineLimit(1)
+          }
         }
       }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(
+        RoundedRectangle(cornerRadius: 6)
+          .fill(Color.pmindigo.n500.opacity(0.08))
+      )
     }
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder
   private func calendarEventRow(_ event: CalendarEvent) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 6) {
-        Circle()
-          .fill(event.calendarColor)
-          .frame(width: 8, height: 8)
-        Text(event.title)
-          .font(.system(size: 15, weight: .medium))
-          .foregroundColor(.primary)
-          .lineLimit(1)
-        Spacer()
-        Text(event.calendarName)
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
-          .lineLimit(1)
-      }
-      HStack(spacing: 4) {
-        if event.isAllDay {
-          Text("종일")
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-        } else {
-          Text(event.startDate.formattedTime)
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-        }
-        if let location = event.location, !location.isEmpty {
-          Text("·")
-            .font(.system(size: 12))
-            .foregroundColor(.secondary.opacity(0.5))
-          Text(location)
+    Button {
+      onCalendarEventTap?(event)
+    } label: {
+      VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
+          Circle()
+            .fill(event.calendarColor)
+            .frame(width: 8, height: 8)
+          Text(event.title)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundColor(.primary)
+            .lineLimit(1)
+          Spacer()
+          Text(event.calendarName)
             .font(.system(size: 12))
             .foregroundColor(.secondary)
             .lineLimit(1)
         }
+        HStack(spacing: 4) {
+          if event.isAllDay {
+            Text("종일")
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+          } else {
+            Text(event.startDate.formattedTime)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+          }
+          if let location = event.location, !location.isEmpty {
+            Text("·")
+              .font(.system(size: 12))
+              .foregroundColor(.secondary.opacity(0.5))
+            Text(location)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+              .lineLimit(1)
+          }
+        }
       }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Unified Status (필터와 통일)
+
+  private func unifiedStatusText(for promise: PromiseModel) -> String {
+    let status = promise.responseStatus(currentUserId: currentUserId)
+    switch status {
+    case .needResponse: return "응답 필요"
+    case .responded: return "확정 대기"
+    case .confirmed:
+      return promise.isPast ? "완료" : "확정"
+    case .failed: return "불발"
+    }
+  }
+
+  private func unifiedStatusColor(for promise: PromiseModel) -> Color {
+    let status = promise.responseStatus(currentUserId: currentUserId)
+    switch status {
+    case .needResponse: return Color.pmwarning.n500
+    case .responded: return Color.pminfo.n500
+    case .confirmed:
+      return promise.isPast ? Color.pmgray.n500 : Color.pmsuccess.n500
+    case .failed: return Color.pmerror.n500
     }
   }
 

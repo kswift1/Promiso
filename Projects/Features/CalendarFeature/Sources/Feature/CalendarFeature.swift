@@ -52,7 +52,7 @@ extension CalendarFeature {
       var hasAppeared: Bool = false
 
       /// 표시 모드 (주간/월간/월간확장)
-      var displayMode: CalendarDisplayMode = .week
+      public var displayMode: CalendarDisplayMode = .month
 
       /// 현재 주의 시작일
       var currentWeekStart: Date
@@ -197,7 +197,7 @@ extension CalendarFeature {
 
       public init(
         currentUser: Shared<UserPrivateModel>,
-        displayMode: CalendarDisplayMode = .week,
+        displayMode: CalendarDisplayMode = .month,
         selectedDate: Date = Date()
       ) {
         self._currentUser = currentUser

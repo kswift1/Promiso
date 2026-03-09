@@ -322,6 +322,10 @@ extension RootTab {
                 return .merge(hapticEffect, .send(.personalMode(.view(.onAppear))))
               }
             }
+            // Calendar 탭 재선택 시 모드 순환
+            if case .calendar = tab {
+              return .merge(hapticEffect, .send(.calendar(.view(.toggleDisplayMode))))
+            }
             return hapticEffect
           }
 
@@ -812,7 +816,7 @@ extension RootTab {
           .tag(Tab.promise(store.promiseMode))
 
         tabContentView(for: .calendar)
-          .tabItem { Label(LocalizedStrings.TabBar.calendar, systemImage: "calendar") }
+          .tabItem { Label(LocalizedStrings.TabBar.calendar, systemImage: store.calendar.displayMode.iconName) }
           .tag(Tab.calendar)
 
         tabContentView(for: .settings)
