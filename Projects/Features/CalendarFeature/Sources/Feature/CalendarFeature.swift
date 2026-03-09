@@ -527,7 +527,8 @@ extension CalendarFeature {
                 let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
                 return status == .responded
               case .confirmed:
-                return promise.isConfirmed && !promise.isPast
+                let hasResponded = promise.myVoteStatus(userId: currentUserId) != .pending || promise.isVotingClosed
+                return promise.isConfirmed && !promise.isPast && hasResponded
               case .completed:
                 return promise.isConfirmed && promise.isPast
               case .failed:

@@ -22,6 +22,7 @@ struct CalendarFilterSheetView: View {
   let onReset: () -> Void
 
   @State private var contentHeight: CGFloat = 200
+  @State private var showStatusLegend: Bool = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
@@ -56,27 +57,28 @@ struct CalendarFilterSheetView: View {
   // MARK: - Header Section
 
   private var headerSection: some View {
-    HStack {
-      Text(LocalizedStrings.Calendar.filterTitle)
-        .font(.system(size: 20, weight: .bold))
-      Spacer()
-      if isFilterActive {
-        Button(action: onReset) {
-          Text(LocalizedStrings.Calendar.filterSelectAll)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundColor(Color.pmbrand.primary)
-        }
-      }
-    }
+    Text(LocalizedStrings.Calendar.filterTitle)
+      .font(.system(size: 20, weight: .bold))
+      .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   // MARK: - Group Filter Section
 
   private var groupFilterSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(LocalizedStrings.Calendar.filterGroup)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundColor(.secondary)
+      HStack {
+        Text(LocalizedStrings.Calendar.filterGroup)
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundColor(.secondary)
+        Spacer()
+        if selectedGroupIds.count < groups.count {
+          Button(action: onReset) {
+            Text(LocalizedStrings.Calendar.filterSelectAll)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(Color.pmbrand.primary)
+          }
+        }
+      }
 
       FlowLayout(spacing: 8) {
         ForEach(groups) { group in
@@ -120,9 +122,26 @@ struct CalendarFilterSheetView: View {
 
   private var statusFilterSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(LocalizedStrings.Calendar.filterStatus)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundColor(.secondary)
+      HStack {
+        Text(LocalizedStrings.Calendar.filterStatus)
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundColor(.secondary)
+        Spacer()
+        Button {
+          withAnimation(.easeInOut(duration: 0.2)) {
+            showStatusLegend.toggle()
+          }
+        } label: {
+          HStack(spacing: 4) {
+            Text("상태 설명")
+              .font(.system(size: 13))
+            Image(systemName: showStatusLegend ? "chevron.up" : "chevron.down")
+              .font(.system(size: 11))
+          }
+          .foregroundStyle(.tertiary)
+        }
+        .buttonStyle(.plain)
+      }
 
       FlowLayout(spacing: 8) {
         ForEach(CalendarFeature.StatusFilter.allCases, id: \.self) { filter in
@@ -130,6 +149,11 @@ struct CalendarFilterSheetView: View {
         }
       }
       .padding(2)
+
+      if showStatusLegend {
+        statusLegendView
+          .transition(.opacity.combined(with: .move(edge: .top)))
+      }
     }
   }
 
@@ -138,18 +162,21 @@ struct CalendarFilterSheetView: View {
       ? selectedStatusFilters == CalendarFeature.StatusFilter.allIndividualFilters
       : selectedStatusFilters.contains(filter)
 
-    return Button { onStatusFilterChanged(filter) } label: {
+    return Button {
+      onStatusFilterChanged(filter)
+    } label: {
       HStack(spacing: 6) {
         Image(systemName: filter.icon)
           .font(.system(size: 12))
+          .foregroundColor(isSelected ? filter.selectedColor : Color(.systemGray3))
         Text(filter.title)
           .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+          .foregroundColor(isSelected ? .primary : .secondary)
           .lineLimit(1)
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
-      .background(isSelected ? filter.selectedColor.opacity(0.15) : Color(.systemGray6))
-      .foregroundColor(isSelected ? filter.selectedColor : .secondary)
+      .background(Color(.systemGray6))
       .cornerRadius(20)
       .overlay(
         RoundedRectangle(cornerRadius: 20)
@@ -157,6 +184,36 @@ struct CalendarFilterSheetView: View {
       )
     }
     .buttonStyle(.plain)
+  }
+
+  private var statusLegendView: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      ForEach(CalendarFeature.StatusFilter.allCases.filter { $0 != .all }, id: \.self) { filter in
+        HStack(spacing: 8) {
+          Image(systemName: filter.icon)
+            .font(.system(size: 12))
+            .foregroundColor(filter.selectedColor)
+            .frame(width: 16)
+          Text(filter.title)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(.primary)
+          Text(statusDescription(for: filter))
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+  }
+
+  private func statusDescription(for filter: CalendarFeature.StatusFilter) -> String {
+    switch filter {
+    case .all: return ""
+    case .needResponse: return LocalizedStrings.Calendar.filterStatusNeedResponse
+    case .waitingConfirmation: return LocalizedStrings.Calendar.filterStatusWaiting
+    case .confirmed: return LocalizedStrings.Calendar.filterStatusConfirmed
+    case .completed: return LocalizedStrings.Calendar.filterStatusCompleted
+    case .failed: return LocalizedStrings.Calendar.filterStatusFailed
+    }
   }
 
   // MARK: - Personal Event Toggle
