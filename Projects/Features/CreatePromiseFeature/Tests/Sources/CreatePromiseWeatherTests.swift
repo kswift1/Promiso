@@ -95,17 +95,27 @@ struct CreatePromiseWeatherTests {
     }
   }
 
-  @Test("toggleUseLocation ON 시 아무 일도 안 함")
-  func toggleUseLocation_on_doesNothing() async {
+  @Test("toggleUseLocation ON 시 날씨만 재조회")
+  func toggleUseLocation_on_fetchesWeatherOnly() async {
     var state = makeStateWithLocation(useLocation: false)
+    state.$isPro.withLock { $0 = true }
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
+    } withDependencies: {
+      $0.weatherClient.getWeather = { _, _, _ in
+        self.makeWeatherInfo()
+      }
+      $0.continuousClock = ImmediateClock()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseLocation)) {
       $0.useLocation = true
+      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
+    #expect(store.state.weatherState.value != nil)
   }
 
   // MARK: - setLocation 테스트
@@ -486,15 +496,24 @@ struct CreatePromiseWeatherTests {
 
   @Test("여러 번의 toggleUseLocation 후 최종 상태 확인")
   func multipleToggleUseLocation_finalState() async {
-    let state = makeStateWithLocation(useLocation: false)
+    var state = makeStateWithLocation(useLocation: false)
+    state.$isPro.withLock { $0 = true }
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
+    } withDependencies: {
+      $0.weatherClient.getWeather = { _, _, _ in
+        self.makeWeatherInfo()
+      }
+      $0.continuousClock = ImmediateClock()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseLocation)) {
       $0.useLocation = true
+      $0.weatherState = .loading
     }
+    await store.skipReceivedActions()
 
     await store.send(.view(.toggleUseLocation)) {
       $0.useLocation = false
