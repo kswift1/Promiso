@@ -519,7 +519,7 @@ extension CalendarFeature {
             selectedStatusFilters.contains { filter in
               switch filter {
               case .all:
-                return true
+                return false
               case .needResponse:
                 return promise.myVoteStatus(userId: currentUserId) == .pending && !promise.isVotingClosed
               case .waitingConfirmation:
