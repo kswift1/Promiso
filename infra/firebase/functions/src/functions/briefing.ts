@@ -293,12 +293,13 @@ async function fetchUserGroups(
 
 /**
  * 프롬프트에 영향을 주는 데이터로 캐시 키 해시 생성
- * 슬롯, 스타일, 교통수단, 위치, 일정별 날씨 매칭 결과를 기반으로 함
+ * 슬롯, 스타일, 교통수단, 일정별 날씨 매칭 결과를 기반으로 함
+ * 현재 위치(locationTitle)는 이동 시간 계산에만 사용되므로 캐시 키에서 제외 —
+ * 스케줄러(location: null)와 앱(location 있음) 간 거짓 양성 방지
  * @param {object} params - 파라미터
  * @param {ScheduleSlotEntry[]} params.slots - 정렬된 일정 슬롯 목록
  * @param {string} params.style - 브리핑 스타일
  * @param {string} params.preferredTransport - 선호 교통수단
- * @param {string | null} params.locationTitle - 사용자 위치 텍스트
  * @param {(string | null)[]} params.weatherMatches - 일정별 날씨 매칭 결과
  * @return {string} 16자리 SHA-256 해시
  */
@@ -306,7 +307,6 @@ function computePromptKey(params: {
   slots: ScheduleSlotEntry[];
   style: string;
   preferredTransport: string;
-  locationTitle: string | null;
   weatherMatches: (string | null)[];
 }): string {
   const sortedSlots = [...params.slots]
@@ -323,7 +323,6 @@ function computePromptKey(params: {
     slots: sortedSlots,
     style: params.style,
     transport: params.preferredTransport,
-    location: params.locationTitle,
     weather: params.weatherMatches,
   });
 
@@ -883,7 +882,6 @@ export async function generateBriefingInternal(params: {
       slots: sortedSlots,
       style,
       preferredTransport,
-      locationTitle: location?.title ?? null,
       weatherMatches,
     });
 
