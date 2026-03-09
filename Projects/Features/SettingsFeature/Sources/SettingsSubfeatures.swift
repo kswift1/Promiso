@@ -1736,8 +1736,18 @@ extension BriefingSettings {
 
           case .saveFailed:
             // 저장 실패 시 서버 상태로 재동기화
-            return .run { send in
-              await send(.view(.onAppear))
+            state.isLoading = true
+            return .run { [authClient, userSettingsClient] send in
+              guard let userId = await authClient.currentUser()?.uid else {
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                return
+              }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+              } catch {
+                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+              }
             }
           }
 

@@ -45,6 +45,14 @@ interface TravelSegment {
   transportation: TransportationResult | null;
 }
 
+interface UserSettingsDocument {
+  proSettings?: {
+    briefing?: {
+      preferredTransport?: string;
+    };
+  };
+}
+
 // MARK: - Sanitize
 
 /**
@@ -765,10 +773,10 @@ export async function generateBriefingInternal(params: {
         .collection("settings").doc("main")
         .get(),
     ]);
+    const settingsData = settingsDoc.data() as
+      UserSettingsDocument | undefined;
     const preferredTransport: string =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (settingsDoc.data()?.proSettings as any)
-        ?.briefing?.preferredTransport || "all";
+      settingsData?.proSettings?.briefing?.preferredTransport || "all";
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
