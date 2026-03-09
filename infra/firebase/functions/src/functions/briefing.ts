@@ -54,6 +54,11 @@ interface UserSettingsDocument {
   };
 }
 
+// MARK: - Constants
+
+/** 장거리 이동 기준 (km) — 이 이상이면 KTX/고속버스 안내 */
+const LONG_DISTANCE_KM = 80;
+
 // MARK: - Sanitize
 
 /**
@@ -398,7 +403,7 @@ async function calculateTravelSegmentsWithTransport(
 
       // 장거리(80km+)는 교통 API 스킵
       let transportation: TransportationResult | null = null;
-      if (distKm < 80) {
+      if (distKm < LONG_DISTANCE_KM) {
         try {
           transportation = await fetchTransportation(
             req.fromLat, req.fromLng,
@@ -683,7 +688,6 @@ function buildPrompt(
   // 이동 정보
   if (travelSegments.length > 0) {
     lines.push("이동 정보:");
-    const LONG_DISTANCE_KM = 80;
     for (const seg of travelSegments) {
       let line = `- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>:`;
 

@@ -109,7 +109,7 @@ struct DailyBriefingCard: View {
 
       // 업데이트됨 뱃지
       if isUpdated {
-        Text("업데이트됨")
+        Text(LocalizedStrings.Home.briefingUpdatedBadge)
           .font(.pmCaption)
           .foregroundStyle(Color.pmindigo.n500)
           .transition(.opacity)
