@@ -109,13 +109,18 @@ private struct EnterCodeView: View {
       Spacer()
       
       // Next Button
-      nextButton
-        .padding(.horizontal, 24)
-        .padding(.bottom, 32)
+      if !isCodeFieldFocused {
+        nextButton
+          .padding(.horizontal, 24)
+          .padding(.bottom, 32)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+      }
     }
+    .animation(.easeInOut(duration: 0.25), value: isCodeFieldFocused)
     .onAppear {
       isCodeFieldFocused = true
     }
+    .keyboardDismissToolbar()
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
         Button {

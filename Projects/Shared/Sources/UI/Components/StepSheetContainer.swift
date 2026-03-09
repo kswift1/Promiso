@@ -1,5 +1,6 @@
 import SwiftUI
 import ResourceKit
+import UIKit
 
 // MARK: - Step Sheet Container
 
@@ -30,17 +31,20 @@ public struct StepSheetContainer<
   let title: String
   let currentStep: Int
   let totalSteps: Int
+  let showsDismissButton: Bool
   let onDismiss: () -> Void
   @ViewBuilder let content: () -> Content
   @ViewBuilder let floatingContent: () -> FloatingContent
   @ViewBuilder let bottomContent: () -> BottomContent
 
   @State private var isDismissPressed = false
+  @State private var isKeyboardPresented = false
 
   public init(
     title: String,
     currentStep: Int,
     totalSteps: Int,
+    showsDismissButton: Bool = true,
     onDismiss: @escaping () -> Void,
     @ViewBuilder content: @escaping () -> Content,
     @ViewBuilder floatingContent: @escaping () -> FloatingContent,
@@ -49,6 +53,7 @@ public struct StepSheetContainer<
     self.title = title
     self.currentStep = currentStep
     self.totalSteps = totalSteps
+    self.showsDismissButton = showsDismissButton
     self.onDismiss = onDismiss
     self.content = content
     self.floatingContent = floatingContent
@@ -76,6 +81,12 @@ public struct StepSheetContainer<
     }
     .ignoresSafeArea(.keyboard, edges: .bottom)
     .keyboardDismissToolbar(iconColor: .secondary)
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+      updateKeyboardPresentation(notification)
+    }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+      updateKeyboardPresentation(notification, isHiddenOverride: true)
+    }
   }
 
   // MARK: - Sheet Toolbar
@@ -96,29 +107,34 @@ public struct StepSheetContainer<
       Spacer()
 
       // X 닫기 버튼
-      Button {
-        onDismiss()
-      } label: {
-        ZStack {
-          Circle()
-            .fill(Color(.systemGray6))
-            .frame(width: 36, height: 36)
+      if showsDismissButton {
+        Button {
+          onDismiss()
+        } label: {
+          ZStack {
+            Circle()
+              .fill(Color(.systemGray6))
+              .frame(width: 36, height: 36)
 
-          Image(systemName: "xmark")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.primary)
+            Image(systemName: "xmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(.primary)
+          }
+          .contentShape(Circle())
         }
-        .contentShape(Circle())
+        .buttonStyle(.plain)
+        .scaleEffect(isDismissPressed ? 0.9 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDismissPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: isDismissPressed)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in isDismissPressed = true }
+            .onEnded { _ in isDismissPressed = false }
+        )
+      } else {
+        Color.clear
+          .frame(width: 36, height: 36)
       }
-      .buttonStyle(.plain)
-      .scaleEffect(isDismissPressed ? 0.9 : 1.0)
-      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDismissPressed)
-      .sensoryFeedback(.impact(flexibility: .soft), trigger: isDismissPressed)
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 0)
-          .onChanged { _ in isDismissPressed = true }
-          .onEnded { _ in isDismissPressed = false }
-      )
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
@@ -128,28 +144,51 @@ public struct StepSheetContainer<
 
   @ViewBuilder
   private var bottomFixedArea: some View {
-    VStack(spacing: 12) {
-      floatingContent()
-        .padding(.horizontal, 16)
+    if !isKeyboardPresented {
+      VStack(spacing: 12) {
+        floatingContent()
+          .padding(.horizontal, 16)
 
-      bottomContent()
-        .background(Color(.systemBackground))
-        .overlay(alignment: .top) {
-          // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
-          LinearGradient(
-            colors: [
-              Color(.systemBackground).opacity(0),
-              Color(.systemBackground)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .frame(height: 24)
-          .offset(y: -24)
-          .allowsHitTesting(false)
-        }
+        bottomContent()
+          .background(Color(.systemBackground))
+          .overlay(alignment: .top) {
+            // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
+            LinearGradient(
+              colors: [
+                Color(.systemBackground).opacity(0),
+                Color(.systemBackground)
+              ],
+              startPoint: .top,
+              endPoint: .bottom
+            )
+            .frame(height: 24)
+            .offset(y: -24)
+            .allowsHitTesting(false)
+          }
+      }
+      .padding(.top, 8)
+      .transition(.move(edge: .bottom).combined(with: .opacity))
     }
-    .padding(.top, 8)
+  }
+
+  private func updateKeyboardPresentation(
+    _ notification: Notification,
+    isHiddenOverride: Bool = false
+  ) {
+    let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+
+    let isVisible: Bool
+    if isHiddenOverride {
+      isVisible = false
+    } else if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+      isVisible = endFrame.minY < UIScreen.main.bounds.height
+    } else {
+      isVisible = false
+    }
+
+    withAnimation(.easeInOut(duration: duration)) {
+      isKeyboardPresented = isVisible
+    }
   }
 }
 
@@ -161,6 +200,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
     title: String,
     currentStep: Int,
     totalSteps: Int,
+    showsDismissButton: Bool = true,
     onDismiss: @escaping () -> Void,
     @ViewBuilder content: @escaping () -> Content,
     @ViewBuilder bottomContent: @escaping () -> BottomContent
@@ -169,6 +209,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
       title: title,
       currentStep: currentStep,
       totalSteps: totalSteps,
+      showsDismissButton: showsDismissButton,
       onDismiss: onDismiss,
       content: content,
       floatingContent: { EmptyView() },

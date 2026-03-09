@@ -42,7 +42,10 @@ extension PersonalMode {
       .sheet(
         item: $store.scope(state: \.createEvent, action: \.createEvent)
       ) { createEventStore in
-        CreatePersonalEvent.RootView(store: createEventStore)
+        CreatePersonalEvent.RootView(
+          store: createEventStore,
+          dismissButtonVisibility: .hiddenForCreateMode
+        )
           .presentationDetents([.large, .medium])
           .presentationDragIndicator(.visible)
       }

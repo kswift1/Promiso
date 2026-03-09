@@ -827,6 +827,7 @@ private struct EditGroupSheet: View {
       .onTapGesture {
         dismissKeyboard()
       }
+      .keyboardDismissToolbar()
       .navigationTitle(LocalizedStrings.GroupSettingsView.editGroupTitle)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -839,12 +840,16 @@ private struct EditGroupSheet: View {
         }
       }
       .safeAreaInset(edge: .bottom) {
-        BottomButton(
-          isLoading: editState?.isSaving == true,
-          isEnabled: !saveDisabled,
-          action: { store.send(.view(.editGroupSaveTapped)) }
-        )
+        if focusedField == nil {
+          BottomButton(
+            isLoading: editState?.isSaving == true,
+            isEnabled: !saveDisabled,
+            action: { store.send(.view(.editGroupSaveTapped)) }
+          )
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
       }
+      .animation(.easeInOut(duration: 0.25), value: focusedField)
     }
     .alert(
       LocalizedStrings.GroupSettingsView.editGroupFailed,
@@ -1105,4 +1110,3 @@ private extension View {
       )
   }
 }
-

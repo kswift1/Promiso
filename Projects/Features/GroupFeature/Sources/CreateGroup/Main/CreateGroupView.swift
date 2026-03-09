@@ -155,13 +155,18 @@ extension CreateGroup {
       .onTapGesture {
         dismissKeyboard()
       }
+      .keyboardDismissToolbar()
       .safeAreaInset(edge: .bottom) {
-        BottomButton(
-          isInputValid: store.isValid,
-          isLoading: store.isCreating,
-          action: { store.send(.view(.createGroupTapped)) }
-        )
+        if focusedField == nil {
+          BottomButton(
+            isInputValid: store.isValid,
+            isLoading: store.isCreating,
+            action: { store.send(.view(.createGroupTapped)) }
+          )
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
       }
+      .animation(.easeInOut(duration: 0.25), value: focusedField)
     }
   }
 }

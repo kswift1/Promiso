@@ -3,15 +3,32 @@ import ComposableArchitecture
 import Clients
 import PromisoShared
 import PhotosUI
+import UIKit
 
 // MARK: - Root View
 
 extension CreatePersonalEvent {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @FocusState private var focusedField: Field?
+    private let dismissButtonVisibility: DismissButtonVisibility
 
-    public init(store: StoreOf<Feature>) {
+    public enum DismissButtonVisibility {
+      case always
+      case hiddenForCreateMode
+    }
+
+    public init(
+      store: StoreOf<Feature>,
+      dismissButtonVisibility: DismissButtonVisibility = .always
+    ) {
       self.store = store
+      self.dismissButtonVisibility = dismissButtonVisibility
+    }
+
+    private enum Field: Hashable {
+      case title
+      case description
     }
 
     public var body: some View {
@@ -19,6 +36,7 @@ extension CreatePersonalEvent {
         title: store.navigationTitle,
         currentStep: 0,
         totalSteps: 1,
+        showsDismissButton: showsDismissButton,
         onDismiss: { store.send(.view(.dismissTapped)) }
       ) {
         singleStepContent
@@ -52,34 +70,57 @@ extension CreatePersonalEvent {
       }
     }
 
+    private var showsDismissButton: Bool {
+      switch dismissButtonVisibility {
+      case .always:
+        return true
+      case .hiddenForCreateMode:
+        return store.mode == .edit
+      }
+    }
+
     // MARK: - Single Step Content
 
     @ViewBuilder
     private var singleStepContent: some View {
-      ScrollView {
-        VStack(spacing: 16) {
-          essentialSection
-          endTimeSection
-          locationSection
-          reminderSection
-          descriptionSection
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(spacing: 16) {
+            essentialSection
+              .id(Field.title)
+            endTimeSection
+            locationSection
+            reminderSection
+            descriptionSection
+              .id(Field.description)
 
-          ImageAttachmentSection(
-            existingImageUrls: store.event.imageUrls.filter { !store.removedImageUrls.contains($0) },
-            localImages: store.localImageData,
-            onPhotosSelected: { items in
-              store.send(.view(.photosSelected(items)))
-            },
-            onRemoveExisting: { index in
-              store.send(.view(.removeExistingImage(index)))
-            },
-            onRemoveLocal: { index in
-              store.send(.view(.removeLocalImage(index)))
-            }
-          )
+            ImageAttachmentSection(
+              existingImageUrls: store.event.imageUrls.filter { !store.removedImageUrls.contains($0) },
+              localImages: store.localImageData,
+              onPhotosSelected: { items in
+                store.send(.view(.photosSelected(items)))
+              },
+              onRemoveExisting: { index in
+                store.send(.view(.removeExistingImage(index)))
+              },
+              onRemoveLocal: { index in
+                store.send(.view(.removeLocalImage(index)))
+              }
+            )
+          }
+          .padding(16)
+          .padding(.bottom, 24)
         }
-        .padding(16)
-        .padding(.bottom, 24)
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: focusedField) { _, newValue in
+          guard let newValue else { return }
+          withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo(newValue, anchor: .center)
+          }
+        }
+      }
+      .onTapGesture {
+        dismissKeyboard()
       }
       .auroraBackground()
     }
@@ -168,6 +209,7 @@ extension CreatePersonalEvent {
                 get: { store.event.title },
                 set: { store.send(.view(.titleChanged($0))) }
               ))
+              .focused($focusedField, equals: .title)
               .font(.system(size: 18, weight: .medium))
               .textFieldStyle(.plain)
             }
@@ -446,6 +488,7 @@ extension CreatePersonalEvent {
           ),
           axis: .vertical
         )
+        .focused($focusedField, equals: .description)
         .lineLimit(3...6)
         .font(.body)
         .padding(16)
@@ -458,6 +501,15 @@ extension CreatePersonalEvent {
       }
     }
   }
+}
+
+private func dismissKeyboard() {
+  UIApplication.shared.sendAction(
+    #selector(UIResponder.resignFirstResponder),
+    to: nil,
+    from: nil,
+    for: nil
+  )
 }
 
 // MARK: - Preview
