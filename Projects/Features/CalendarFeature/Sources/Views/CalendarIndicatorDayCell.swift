@@ -27,6 +27,8 @@ struct CalendarIndicatorDayCell: View {
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
+  /// Preview용 필터 미적용 인디케이터 (long press 시 lazy 호출)
+  var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
 
   private let maxVisibleIndicators = 2
 
@@ -113,7 +115,7 @@ struct CalendarIndicatorDayCell: View {
           Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
         }
       } preview: {
-        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
+        ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
       }
 
       // 공휴일 이름 (expanded 모드에서만)
@@ -148,7 +150,7 @@ struct CalendarIndicatorDayCell: View {
               Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
             }
           } preview: {
-            ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
+            ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
           }
       }
     }

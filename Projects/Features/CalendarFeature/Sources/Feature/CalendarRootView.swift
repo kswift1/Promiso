@@ -99,6 +99,8 @@ extension CalendarFeature {
             selectedGroupIds: store.selectedGroupIds,
             showPersonalEvents: store.showPersonalEvents,
             selectedStatusFilter: store.selectedStatusFilter,
+            showCalendarEvents: store.showCalendarEvents,
+            canReadCalendarEvents: store.calendarPermissionStatus.canReadEvents,
             isFilterActive: store.isFilterActive,
             onGroupToggled: { groupId in
               store.send(.view(.filterGroupToggled(groupId)))
@@ -108,6 +110,9 @@ extension CalendarFeature {
             },
             onStatusFilterChanged: { filter in
               store.send(.view(.filterStatusChanged(filter)))
+            },
+            onCalendarEventsToggled: {
+              store.send(.view(.filterCalendarEventsToggled))
             },
             onReset: {
               store.send(.view(.filterReset))
@@ -212,6 +217,9 @@ extension CalendarFeature {
         },
         onDayCreatePromise: { date in
           store.send(.view(.dayLongPressCreatePromise(date)))
+        },
+        previewIndicatorsProvider: { [store] date in
+          store.withState { $0.unfilteredIndicators(for: date) }
         },
         onWeekPageChanged: isWeek ? { direction in
           if direction < 0 {

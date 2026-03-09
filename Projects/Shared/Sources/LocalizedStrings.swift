@@ -1393,6 +1393,7 @@ public enum LocalizedStrings {
     public static var filterSelectAll: String { String(localized: "calendar.filter.selectAll", bundle: bundle) }
     public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
     public static var filterPersonal: String { String(localized: "calendar.filter.personal", bundle: bundle) }
+    public static var filterCalendarEvents: String { String(localized: "calendar.filter.calendarEvents", defaultValue: "시스템 캘린더", bundle: bundle) }
     public static var filterStatus: String { String(localized: "calendar.filter.status", defaultValue: "약속 상태", bundle: bundle) }
     public static var filterStatusNeedResponse: String { String(localized: "calendar.filter.status.needResponse", defaultValue: "아직 투표하지 않은 약속", bundle: bundle) }
     public static var filterStatusWaiting: String { String(localized: "calendar.filter.status.waiting", defaultValue: "투표 완료, 확정 대기 중인 약속", bundle: bundle) }

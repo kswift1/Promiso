@@ -12,10 +12,13 @@ struct CalendarFilterSheetView: View {
   let selectedGroupIds: Set<String>
   let showPersonalEvents: Bool
   let selectedStatusFilter: CalendarFeature.StatusFilter
+  let showCalendarEvents: Bool
+  let canReadCalendarEvents: Bool
   let isFilterActive: Bool
   let onGroupToggled: (String) -> Void
   let onPersonalEventsToggled: () -> Void
   let onStatusFilterChanged: (CalendarFeature.StatusFilter) -> Void
+  let onCalendarEventsToggled: () -> Void
   let onReset: () -> Void
 
   @State private var contentHeight: CGFloat = 200
@@ -38,6 +41,11 @@ struct CalendarFilterSheetView: View {
 
       // 개인 일정 필터
       personalEventToggle
+
+      // 시스템 캘린더 (권한 있을 때만)
+      if canReadCalendarEvents {
+        calendarEventToggle
+      }
     }
     .padding(.horizontal, 20)
     .padding(.top, 24)
@@ -48,6 +56,11 @@ struct CalendarFilterSheetView: View {
       contentHeight = height
     }
     .presentationDetents([.height(contentHeight)])
+    .sheet(isPresented: $showStatusInfo) {
+      statusInfoPopover
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
   }
 
   // MARK: - Header Section
@@ -136,9 +149,6 @@ struct CalendarFilterSheetView: View {
             .foregroundColor(Color.pmindigo.n400)
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showStatusInfo, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
-          statusInfoPopover
-        }
       }
 
       CategoryFilterBar(
@@ -154,19 +164,24 @@ struct CalendarFilterSheetView: View {
   // MARK: - Status Info Popover
 
   private var statusInfoPopover: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      ForEach(CalendarFeature.StatusFilter.allCases.filter { $0 != .all }, id: \.self) { filter in
-        statusInfoRow(
-          icon: filter.icon,
-          color: filter.selectedColor,
-          title: filter.title,
-          description: filterDescription(for: filter)
-        )
-        .accessibilityElement(children: .combine)
+    VStack(alignment: .leading, spacing: 16) {
+      Text(LocalizedStrings.Calendar.filterStatus)
+        .font(.system(size: 18, weight: .bold))
+
+      VStack(alignment: .leading, spacing: 12) {
+        ForEach(CalendarFeature.StatusFilter.allCases.filter { $0 != .all }, id: \.self) { filter in
+          statusInfoRow(
+            icon: filter.icon,
+            color: filter.selectedColor,
+            title: filter.title,
+            description: filterDescription(for: filter)
+          )
+          .accessibilityElement(children: .combine)
+        }
       }
     }
-    .padding(16)
-    .presentationCompactAdaptation(.popover)
+    .padding(20)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
   private func filterDescription(for filter: CalendarFeature.StatusFilter) -> String {
@@ -209,6 +224,23 @@ struct CalendarFilterSheetView: View {
       Toggle("", isOn: Binding(
         get: { showPersonalEvents },
         set: { _ in onPersonalEventsToggled() }
+      ))
+      .labelsHidden()
+      .tint(Color.pmindigo.n500)
+    }
+  }
+
+  // MARK: - Calendar Event Toggle
+
+  private var calendarEventToggle: some View {
+    HStack {
+      Text(LocalizedStrings.Calendar.filterCalendarEvents)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundColor(.secondary)
+      Spacer()
+      Toggle("", isOn: Binding(
+        get: { showCalendarEvents },
+        set: { _ in onCalendarEventsToggled() }
       ))
       .labelsHidden()
       .tint(Color.pmindigo.n500)

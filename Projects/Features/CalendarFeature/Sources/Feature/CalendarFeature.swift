@@ -127,6 +127,9 @@ extension CalendarFeature {
       /// 개인 일정 표시 여부
       var showPersonalEvents: Bool = true
 
+      /// 시스템 캘린더 이벤트 표시 여부
+      var showCalendarEvents: Bool = true
+
       /// 필터 시트 표시 여부
       var isFilterSheetPresented: Bool = false
 
@@ -324,7 +327,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents || selectedStatusFilter != .all
+        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents || selectedStatusFilter != .all || !showCalendarEvents
       }
 
       // MARK: - Group Color Map
@@ -405,7 +408,8 @@ extension CalendarFeature {
           }
         }
 
-        // 시스템 캘린더 이벤트
+        // 시스템 캘린더 이벤트 (필터 OFF 시 제외)
+        guard showCalendarEvents else { return indicators }
         for event in calendarEvents {
           spreadIndicators(
             startAt: event.startDate, endAt: event.endDate, into: &indicators
@@ -515,10 +519,79 @@ extension CalendarFeature {
               .map { CalendarFeature.ScheduleItem.personalEvent($0) }
           }()
           : []
-        let calendarItems = calendarEvents
-          .filter { $0.startDate < end && $0.endDate >= start }
-          .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
+        let calendarItems: [CalendarFeature.ScheduleItem] = showCalendarEvents
+          ? calendarEvents
+            .filter { $0.startDate < end && $0.endDate >= start }
+            .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
+          : []
         return (promiseItems + personalItems + calendarItems).sorted { $0.startAt < $1.startAt }
+      }
+
+      /// Preview용 필터 미적용 인디케이터 (특정 날짜 하나만 계산)
+      func unfilteredIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+
+        let colorMap = groupColorMap
+        let groupsMap = userGroupsMap
+        var indicators: [CalendarFeature.ScheduleIndicator] = []
+
+        // 약속 (필터 미적용 — 전체 그룹)
+        let monthKey = date.startOfMonth
+        let allPromises = cachedPromisesByMonth[monthKey] ?? []
+        for promise in allPromises where promise.startAt < dayEnd && promise.effectiveEndAt >= dayStart {
+          let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
+          let groupInfo = groupsMap[promise.groupId]
+          indicators.append(.init(
+            id: "\(promise.id)_\(dayStart.timeIntervalSince1970)",
+            color: color,
+            title: promise.title,
+            spanPosition: .single,
+            startAt: promise.startAt,
+            endAt: promise.endAt,
+            emoji: promise.emoji,
+            sourceType: .promise(id: promise.id, groupId: promise.groupId),
+            description: promise.description,
+            locationName: promise.location?.name,
+            imageUrls: promise.imageUrls,
+            groupName: groupInfo?.name,
+            groupImageUrl: groupInfo?.imageUrl
+          ))
+        }
+
+        // 개인 일정 (필터 미적용)
+        let allPersonalEvents = cachedPersonalEventsByMonth[monthKey] ?? []
+        for event in allPersonalEvents where event.startAt < dayEnd && event.effectiveEndAt >= dayStart {
+          indicators.append(.init(
+            id: "\(event.id)_\(dayStart.timeIntervalSince1970)",
+            color: CalendarFeature.ScheduleIndicator.personalColor,
+            title: event.title,
+            spanPosition: .single,
+            startAt: event.startAt,
+            endAt: event.endAt,
+            emoji: event.emoji,
+            sourceType: .personalEvent(id: event.id),
+            description: event.description,
+            locationName: event.location?.name,
+            imageUrls: event.imageUrls
+          ))
+        }
+
+        // 시스템 캘린더 (필터 미적용)
+        for event in calendarEvents where event.startDate < dayEnd && event.endDate >= dayStart {
+          indicators.append(.init(
+            id: "cal_\(event.id)_\(dayStart.timeIntervalSince1970)",
+            color: event.calendarColor,
+            title: event.title,
+            spanPosition: .single,
+            startAt: event.startDate,
+            endAt: event.endDate,
+            sourceType: .calendarEvent(id: event.id)
+          ))
+        }
+
+        return indicators.sorted { $0.startAt < $1.startAt }
       }
 
       /// 일정을 날짜별로 펼쳐서 인디케이터 딕셔너리에 추가
@@ -647,6 +720,7 @@ extension CalendarFeature {
         case filterGroupToggled(String)
         case filterPersonalEventsToggled
         case filterStatusChanged(StatusFilter)
+        case filterCalendarEventsToggled
         case filterReset
         case filterSheetDismissed
       }
@@ -1309,9 +1383,14 @@ extension CalendarFeature {
         state.selectedStatusFilter = filter
         return .none
 
+      case .filterCalendarEventsToggled:
+        state.showCalendarEvents.toggle()
+        return .none
+
       case .filterReset:
         state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         state.showPersonalEvents = true
+        state.showCalendarEvents = true
         state.selectedStatusFilter = .all
         return .none
 
