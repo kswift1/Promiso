@@ -45,6 +45,7 @@ extension CreateGroup {
             CreateGroupSettingsView(
               groupName: result.name,
               photoData: store.photoData,
+              isJoining: false,
               notificationEnabled: store.notificationEnabled,
               calendarSyncEnabled: store.calendarSyncEnabled,
               notificationAuthStatus: store.notificationAuthStatus,

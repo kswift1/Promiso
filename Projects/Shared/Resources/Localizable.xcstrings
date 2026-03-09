@@ -6441,6 +6441,23 @@
         }
       }
     },
+    "groupSettings.joinGroupComplete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join Group"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 합류 완료"
+          }
+        }
+      }
+    },
     "groupSettings.personalSettings" : {
       "extractionState" : "manual",
       "localizations" : {

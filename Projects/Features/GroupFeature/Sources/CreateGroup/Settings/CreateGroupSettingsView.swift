@@ -14,6 +14,7 @@ struct CreateGroupSettingsView: View {
 
   let groupName: String
   let photoData: Data?
+  let isJoining: Bool
   let notificationEnabled: Bool
   let calendarSyncEnabled: Bool
   let notificationAuthStatus: NotificationAuthorizationStatus
@@ -378,7 +379,7 @@ struct CreateGroupSettingsView: View {
             ProgressView()
               .tint(.white)
           }
-          Text(isSaving ? LocalizedStrings.GroupSettings.saving : LocalizedStrings.GroupSettings.createGroupComplete)
+          Text(isSaving ? LocalizedStrings.GroupSettings.saving : (isJoining ? LocalizedStrings.GroupSettings.joinGroupComplete : LocalizedStrings.GroupSettings.createGroupComplete))
             .font(.headline)
         }
         .frame(maxWidth: .infinity)
@@ -424,6 +425,7 @@ struct CreateGroupSettingsView: View {
     CreateGroupSettingsView(
       groupName: "대학 친구들",
       photoData: nil,
+      isJoining: false,
       notificationEnabled: true,
       calendarSyncEnabled: true,
       notificationAuthStatus: .authorized,
