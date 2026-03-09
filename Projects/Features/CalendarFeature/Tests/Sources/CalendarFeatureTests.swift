@@ -15,7 +15,8 @@ struct CalendarFeatureTests {
     #expect(state.isLoadingPromises == false)
     #expect(state.isTransitioning == false)
     #expect(state.calendarPermissionStatus == .notDetermined)
-    #expect(state.calendarEvents.isEmpty)
+    #expect(state.cachedCalendarEventsByMonth.isEmpty)
+    #expect(state.loadedCalendarEventMonths.isEmpty)
     #expect(state.cachedPromisesByMonth.isEmpty)
     #expect(state.loadedMonths.isEmpty)
   }
@@ -201,13 +202,21 @@ struct CalendarFeatureTests {
       // loadedMonths에서 현재 월만 제거 (staleMonth는 그대로)
       $0.loadedMonths = [staleMonth]
     }
+    // 동기 액션: 현재 월 fetch → 프리페치 → 인접 월 fetch
     await store.receive(\.internal.fetchPersonalEventsForMonth)
     await store.receive(\.internal.fetchPromisesForMonth)
+    await store.receive(\.internal.prefetchAdjacentMonths)
+    await store.receive(\.internal.fetchPromisesForMonth)
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
+    // 비동기 응답
+    await store.receive(\.internal.personalEventsResponseForMonth)
+    await store.receive(\.internal.promisesResponseForMonth)
     await store.receive(\.internal.personalEventsResponseForMonth)
     await store.receive(\.internal.promisesResponseForMonth)
 
     let requests = await recorder.values()
-    #expect(requests.count == 1)
+    // 현재 월(2026-01) + 프리페치 다음 월(2026-02), staleMonth(2025-12)는 이미 로드됨
+    #expect(requests.count == 2)
     #expect(requests.first?.groupIds == ["group-1"])
     #expect(requests.first?.startDate == monthStart)
     #expect(store.state.loadedMonths.contains(monthStart))
@@ -246,6 +255,7 @@ struct CalendarFeatureTests {
   @Test("checkCalendarPermission fullAccess면 이벤트 로드")
   func checkCalendarPermission_fullAccess_fetchesEvents() async {
     let selectedDate = makeDate(year: 2026, month: 4, day: 10)
+    let monthStart = selectedDate.startOfMonth
     let events = [
       makeCalendarEvent(
         id: "event-1",
@@ -263,15 +273,17 @@ struct CalendarFeatureTests {
     await store.send(.internal(.checkCalendarPermission)) {
       $0.calendarPermissionStatus = .fullAccess
     }
-    await store.receive(\.internal.fetchCalendarEvents)
-    await store.receive(\.internal.calendarEventsResponse)
+    await store.receive(\.internal.fetchCalendarEventsForMonth)
+    await store.receive(\.internal.calendarEventsResponseForMonth)
 
-    #expect(store.state.calendarEvents == events)
-    #expect(store.state.isLoadingCalendarEvents == false)
+    #expect(store.state.cachedCalendarEventsByMonth[monthStart] == events)
+    #expect(store.state.loadedCalendarEventMonths.contains(monthStart))
   }
 
   @Test("requestCalendarPermission 허용 시 상태 업데이트 후 이벤트 로드")
   func requestCalendarPermission_granted_updatesStatusAndLoadsEvents() async {
+    let selectedDate = makeDate(year: 2026, month: 1, day: 15)
+    let monthStart = selectedDate.startOfMonth
     let events = [
       makeCalendarEvent(
         id: "event-2",
@@ -280,7 +292,7 @@ struct CalendarFeatureTests {
       )
     ]
 
-    let store = makeStore(state: makeState(key: "request-permission")) {
+    let store = makeStore(state: makeState(key: "request-permission", selectedDate: selectedDate)) {
       $0.eventKitClient.requestAccess = { true }
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.fetchEvents = { _, _ in events }
@@ -289,11 +301,11 @@ struct CalendarFeatureTests {
 
     await store.send(.view(.requestCalendarPermission))
     await store.receive(\.internal.calendarPermissionResponse)
-    await store.receive(\.internal.fetchCalendarEvents)
-    await store.receive(\.internal.calendarEventsResponse)
+    await store.receive(\.internal.fetchCalendarEventsForMonth)
+    await store.receive(\.internal.calendarEventsResponseForMonth)
 
     #expect(store.state.calendarPermissionStatus == .fullAccess)
-    #expect(store.state.calendarEvents == events)
+    #expect(store.state.cachedCalendarEventsByMonth[monthStart] == events)
   }
 
   @Test("requestCalendarPermission 거부 시 denied 상태")
@@ -308,7 +320,7 @@ struct CalendarFeatureTests {
     await store.receive(\.internal.calendarPermissionResponse)
 
     #expect(store.state.calendarPermissionStatus == .denied)
-    #expect(store.state.calendarEvents.isEmpty)
+    #expect(store.state.cachedCalendarEventsByMonth.isEmpty)
   }
 
   // MARK: - 배너 / 네비게이션 테스트
@@ -352,10 +364,11 @@ struct CalendarFeatureTests {
     }
   }
 
-  @Test("calendarEventsResponse 실패 시 기존 이벤트 유지")
-  func calendarEventsResponse_failure_preservesExistingEvents() async {
+  @Test("calendarEventsResponseForMonth 실패 시 기존 이벤트 유지")
+  func calendarEventsResponseForMonth_failure_preservesExistingEvents() async {
     enum TestError: Error { case failed }
 
+    let month = makeDate(year: 2026, month: 1, day: 1).startOfMonth
     let existingEvent = makeCalendarEvent(
       id: "old-event",
       startDate: makeDate(year: 2026, month: 1, day: 1),
@@ -363,18 +376,19 @@ struct CalendarFeatureTests {
     )
 
     var state = makeState(key: "events-failure")
-    state.isLoadingCalendarEvents = true
-    state.calendarEvents = [existingEvent]
+    state.cachedCalendarEventsByMonth[month] = [existingEvent]
+    state.loadedCalendarEventMonths.insert(month)
 
     let store = makeStore(state: state)
 
-    // 실패 시 기존 calendarEvents 유지 (빈 배열로 덮어쓰지 않음)
-    await store.send(.internal(.calendarEventsResponse(.failure(TestError.failed)))) {
-      $0.isLoadingCalendarEvents = false
-      // calendarEvents는 변경 없음
-    }
+    // 실패 시 캐시 그대로 유지 (loadedCalendarEventMonths에 추가 안 됨 → 재시도 가능)
+    let otherMonth = makeDate(year: 2026, month: 2, day: 1).startOfMonth
+    await store.send(.internal(.calendarEventsResponseForMonth(month: otherMonth, .failure(TestError.failed))))
 
-    #expect(store.state.calendarEvents == [existingEvent])
+    // 기존 캐시 유지
+    #expect(store.state.cachedCalendarEventsByMonth[month] == [existingEvent])
+    // 실패한 월은 loadedCalendarEventMonths에 없음 (재시도 가능)
+    #expect(!store.state.loadedCalendarEventMonths.contains(otherMonth))
   }
 
   // MARK: - 과거 시간 일정 생성 차단 테스트
