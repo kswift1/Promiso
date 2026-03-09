@@ -16,8 +16,8 @@ struct CreateGroupSuccessView: View {
   let isKakaoSharing: Bool
   let onKakaoShareTapped: () -> Void
   let onConfirm: () -> Void
-  @State private var isCopied = false
-  
+  @State private var toast: ToastMessage?
+
   var body: some View {
     ScrollView {
       VStack(spacing: 32) {
@@ -25,36 +25,23 @@ struct CreateGroupSuccessView: View {
           .frame(height: 20)
 
         // Success Icon & Message
-        VStack(spacing: 20) {
-          // Icon with gradient background
+        VStack(spacing: 16) {
           ZStack {
             Circle()
-              .fill(
-                LinearGradient(
-                  colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-              .frame(width: 120, height: 120)
+              .fill(Color.pmindigo.n100.opacity(0.5))
+              .frame(width: 100, height: 100)
 
             Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 60))
-              .foregroundStyle(
-                LinearGradient(
-                  colors: [.blue, .purple],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
+              .font(.system(size: 48))
+              .foregroundStyle(Color.pmindigo.n500)
           }
 
-          VStack(spacing: 12) {
+          VStack(spacing: 8) {
             Text(LocalizedStrings.CreateGroup.successTitle)
-              .font(.title.bold())
+              .font(.title2.bold())
 
             Text(LocalizedStrings.CreateGroup.successSubtitle)
-              .font(.body)
+              .font(.subheadline)
               .foregroundStyle(.secondary)
               .multilineTextAlignment(.center)
               .lineSpacing(4)
@@ -62,156 +49,130 @@ struct CreateGroupSuccessView: View {
         }
 
         // Invite Code Section
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
           HStack {
             Image(systemName: "link.circle.fill")
-              .font(.system(size: 20))
-              .foregroundStyle(
-                LinearGradient(
-                  colors: [.blue, .purple],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
+              .font(.system(size: 16))
+              .foregroundStyle(.secondary)
 
             Text(LocalizedStrings.CreateGroup.inviteCode)
-              .font(.headline)
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(.secondary)
 
             Spacer()
           }
 
-          // Code Display with Copy Button
-          HStack(spacing: 12) {
+          // Code Display with Copy & Share Buttons
+          HStack(spacing: 10) {
             Text(result.inviteCode)
-              .font(.system(size: 32, weight: .bold, design: .rounded))
+              .font(.system(size: 24, weight: .bold, design: .rounded))
               .tracking(4)
               .frame(maxWidth: .infinity)
-              .padding(.vertical, 20)
-              .background(
-                RoundedRectangle(cornerRadius: 16)
-                  .fill(Color(.systemGray6))
-                  .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-              )
+              .padding(.vertical, 14)
+              .staticGlassBackground(cornerRadius: 12)
 
             Button(action: copyCode) {
               ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                  .fill(
-                    isCopied
-                    ? LinearGradient(
-                      colors: [.green, .green],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                      colors: [.blue, .purple],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
-                  )
-                  .frame(width: 60, height: 60)
-                  .shadow(
-                    color: isCopied ? .green.opacity(0.3) : .blue.opacity(0.3),
-                    radius: 8,
-                    x: 0,
-                    y: 4
-                  )
+                RoundedRectangle(cornerRadius: 12)
+                  .fill(Color.pmindigo.n500)
+                  .frame(width: 50, height: 50)
 
-                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                  .font(.system(size: 22, weight: .semibold))
+                Image(systemName: "doc.on.doc")
+                  .font(.system(size: 18, weight: .semibold))
                   .foregroundStyle(.white)
               }
             }
-            .animation(.spring(response: 0.3), value: isCopied)
-          }
 
-          if isCopied {
-            HStack(spacing: 8) {
-              Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 14))
-              Text(LocalizedStrings.CreateGroup.copied)
-                .font(.subheadline.weight(.medium))
+            GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
+              ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                  .fill(Color.pmindigo.n500.opacity(0.12))
+                  .frame(width: 50, height: 50)
+
+                Image(systemName: "square.and.arrow.up")
+                  .font(.system(size: 18, weight: .semibold))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
             }
-            .foregroundStyle(.green)
-            .transition(.scale.combined(with: .opacity))
           }
         }
-        .padding(24)
-        .background(
-          RoundedRectangle(cornerRadius: 20)
-            .fill(Color(.systemBackground))
-            .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-        )
-
-        // Action Buttons
-        VStack(spacing: 12) {
-          // 카카오톡으로 초대장 보내기
-          Button {
-            onKakaoShareTapped()
-          } label: {
-            HStack(spacing: 8) {
-              ResourceKitAsset.kakaoLogo.swiftUIImage
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 20, height: 20)
-              Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
-                .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Color(red: 254/255, green: 229/255, blue: 0/255))
-            .foregroundStyle(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-          .buttonStyle(.scale)
-          .disabled(isKakaoSharing)
-          .opacity(isKakaoSharing ? 0.6 : 1)
-
-          // 다른 앱으로 공유
-          GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
-            HStack(spacing: 8) {
-              Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 18))
-              Text(LocalizedStrings.CreateGroup.share)
-                .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Color.pmindigo.n500.opacity(0.12))
-            .foregroundStyle(Color.pmindigo.n500)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-          .buttonStyle(.scale)
-
-          Button(action: onConfirm) {
-            Text(LocalizedStrings.Common.done)
-              .font(.headline)
-              .frame(maxWidth: .infinity)
-              .frame(height: 56)
-              .background(Color.pmindigo.n100)
-              .foregroundStyle(Color.pmindigo.n700)
-              .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-        }
+        .padding(20)
+        .staticGlassBackground(cornerRadius: 20)
 
         Spacer()
-          .frame(height: 20)
+          .frame(height: 80)
       }
       .padding(.horizontal, 24)
     }
-    .navigationBarBackButtonHidden()
-  }
-  
-  private func copyCode() {
-    UIPasteboard.general.string = result.inviteCode
-    withAnimation(.spring()) {
-      isCopied = true
+    .scrollIndicators(.hidden)
+    .safeAreaInset(edge: .bottom) {
+      bottomButtons
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-      withAnimation(.spring()) {
-        isCopied = false
+    .navigationBarBackButtonHidden()
+    .toast($toast)
+  }
+
+  // MARK: - Bottom Buttons
+
+  private var bottomButtons: some View {
+    VStack(spacing: 12) {
+      // 그룹 초대장 보내기
+      Button {
+        onKakaoShareTapped()
+      } label: {
+        HStack(spacing: 8) {
+          ResourceKitAsset.kakaoLogo.swiftUIImage
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 20, height: 20)
+          Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
+            .font(.headline)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(Color(red: 254 / 255, green: 229 / 255, blue: 0 / 255))
+        .foregroundStyle(.black)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+      }
+      .buttonStyle(.scale)
+      .disabled(isKakaoSharing)
+      .opacity(isKakaoSharing ? 0.6 : 1)
+
+      // 완료
+      Button(action: onConfirm) {
+        Text(LocalizedStrings.Common.done)
+          .font(.headline)
+          .frame(maxWidth: .infinity)
+          .frame(height: 56)
+          .background(Color.pmindigo.n100)
+          .foregroundStyle(Color.pmindigo.n700)
+          .clipShape(RoundedRectangle(cornerRadius: 16))
       }
     }
+    .padding(.horizontal, 24)
+    .padding(.top, 16)
+    .padding(.bottom, 16)
+    .background(
+      LinearGradient(
+        stops: [
+          .init(color: Color(.systemBackground).opacity(0), location: 0),
+          .init(color: Color(.systemBackground).opacity(0.8), location: 0.15),
+          .init(color: Color(.systemBackground), location: 0.3),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea(.container, edges: .bottom)
+    )
+  }
+
+  private func copyCode() {
+    UIPasteboard.general.string = result.inviteCode
+    toast = ToastMessage(
+      type: .success,
+      title: LocalizedStrings.CreateGroup.copied,
+      position: .bottom
+    )
   }
 }

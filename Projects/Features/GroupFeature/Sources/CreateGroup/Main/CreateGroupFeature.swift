@@ -65,6 +65,10 @@ extension CreateGroup {
       var calendarSyncEnabled: Bool = true
       var isSavingSettings: Bool = false
 
+      // Group Color (초기 설정)
+      var selectedGroupColor: GroupColor?
+      var existingGroupColorMap: [GroupColor: String]
+
       // Notification Permission
       var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
@@ -74,6 +78,11 @@ extension CreateGroup {
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
+        self.existingGroupColorMap = currentUser.groups.reduce(into: [:]) { result, info in
+          if let color = info.groupColor {
+            result[color] = info.name
+          }
+        }
       }
 
       // Validation
@@ -120,6 +129,7 @@ extension CreateGroup {
         // Settings
         case notificationToggled(Bool)
         case calendarSyncToggled(Bool)
+        case groupColorSelected(GroupColor?)
         case settingsCompleted
         case settingsSkipped
         case settingsAppeared
@@ -217,18 +227,14 @@ extension CreateGroup {
 
           case .successAcknowledged:
             guard case .success(let result) = state.step else { return .none }
-            state.step = .settings(result)
-            // 알림 및 캘린더 권한 상태 확인
-            return .merge(
-              .run { send in
-                let status = await notificationClient.getAuthorizationStatus()
-                await send(.internal(.notificationAuthStatusChecked(status)))
-              },
-              .run { send in
-                let status = eventKitClient.authorizationStatus()
-                await send(.internal(.calendarAuthStatusChecked(status)))
-              }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupCreated,
+              [
+                AnalyticsClient.ParameterKey.groupID: result.id,
+                AnalyticsClient.ParameterKey.groupName: result.name
+              ]
             )
+            return .send(.delegate(.groupCreated(id: result.id)))
 
           case .notificationToggled(let enabled):
             // OFF로 전환할 때는 권한 체크 불필요
@@ -295,6 +301,12 @@ extension CreateGroup {
             state.showCalendarPermissionInfoAlert = false
             return .none
 
+          case .groupColorSelected(let color):
+            state.selectedGroupColor = color
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.selection()
+            }
+
           case .settingsAppeared:
             // 설정에서 돌아왔을 때 권한 상태 새로고침
             return .merge(
@@ -315,9 +327,13 @@ extension CreateGroup {
               enabled: state.notificationEnabled,
               calendarSync: state.calendarSyncEnabled
             )
+            let selectedColor = state.selectedGroupColor
             return .run { [groupId = result.id] send in
               do {
                 try await groupClient.updateGroupNotificationSettings(groupId, settings)
+                if let color = selectedColor {
+                  try await groupClient.updateGroupColor(groupId, color)
+                }
                 await send(.internal(.saveSettingsResponse(.success(()))))
               } catch {
                 await send(.internal(.saveSettingsResponse(.failure(error))))
@@ -327,14 +343,8 @@ extension CreateGroup {
 
           case .settingsSkipped:
             guard case .settings(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
-            )
-            return .send(.delegate(.groupCreated(id: result.id)))
+            state.step = .success(result)
+            return .none
           }
 
         case .internal(let internalAction):
@@ -345,8 +355,18 @@ extension CreateGroup {
 
           case .createGroupResponse(.success(let result)):
             state.isCreating = false
-            state.step = .success(result)
-            return .none
+            state.step = .settings(result)
+            // 알림 및 캘린더 권한 상태 확인
+            return .merge(
+              .run { send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationAuthStatusChecked(status)))
+              },
+              .run { send in
+                let status = eventKitClient.authorizationStatus()
+                await send(.internal(.calendarAuthStatusChecked(status)))
+              }
+            )
 
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
@@ -357,14 +377,8 @@ extension CreateGroup {
             // .failure의 경우에도 그룹 생성은 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
-            )
-            return .send(.delegate(.groupCreated(id: result.id)))
+            state.step = .success(result)
+            return .none
 
           case .notificationAuthStatusChecked(let status):
             let previousStatus = state.notificationAuthStatus

@@ -1522,6 +1522,12 @@ public enum LocalizedStrings {
     public static var complete: String { String(localized: "groupSettings.complete", bundle: bundle) }
     public static var skip: String { String(localized: "groupSettings.skip", bundle: bundle) }
     public static var changeableHint: String { String(localized: "groupSettings.changeableHint", bundle: bundle) }
+    public static var notificationSectionTitle: String { String(localized: "groupSettings.notificationSectionTitle", bundle: bundle) }
+    public static var notificationSectionSubtitle: String { String(localized: "groupSettings.notificationSectionSubtitle", bundle: bundle) }
+    public static var groupColorSectionTitle: String { String(localized: "groupSettings.groupColorSectionTitle", bundle: bundle) }
+    public static var groupColorSectionSubtitle: String { String(localized: "groupSettings.groupColorSectionSubtitle", bundle: bundle) }
+    public static var calendarSectionTitle: String { String(localized: "groupSettings.calendarSectionTitle", bundle: bundle) }
+    public static var calendarSectionSubtitle: String { String(localized: "groupSettings.calendarSectionSubtitle", bundle: bundle) }
   }
 
   // MARK: - CreatePromise
