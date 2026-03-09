@@ -757,17 +757,18 @@ export async function generateBriefingInternal(params: {
 
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
-    const settingsDoc = await admin.firestore()
-      .collection("users").doc(uid)
-      .collection("proSettings").doc("briefing")
-      .get();
-    const preferredTransport: string =
-      settingsDoc.data()?.preferredTransport || "all";
-
-    const [slots, userGroups] = await Promise.all([
+    const [slots, userGroups, settingsDoc] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
+      admin.firestore()
+        .collection("users").doc(uid)
+        .collection("settings").doc("main")
+        .get(),
     ]);
+    const preferredTransport: string =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (settingsDoc.data()?.proSettings as any)
+        ?.briefing?.preferredTransport || "all";
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
@@ -870,7 +871,7 @@ export async function generateBriefingInternal(params: {
       `weather=${weather ? "yes" : "no"}`
     );
 
-    // 8. Gemini API 호출
+    // 9. Gemini API 호출
     const geminiKey = GEMINI_API_KEY.value();
     if (!geminiKey) {
       console.error(
