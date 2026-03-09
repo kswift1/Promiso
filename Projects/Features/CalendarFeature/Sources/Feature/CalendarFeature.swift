@@ -1148,10 +1148,9 @@ extension CalendarFeature {
           AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
-        // 캘린더 이벤트 로드
-        if state.calendarPermissionStatus.canReadEvents {
-          let monthStartKey = monthStart.startOfMonth
-          effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStartKey))))
+        // 캘린더 이벤트 로드 (캐시되지 않은 경우만)
+        if state.calendarPermissionStatus.canReadEvents && !state.loadedCalendarEventMonths.contains(monthStart) {
+          effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStart))))
         }
 
         // 개인 일정 로드 (캐시되지 않은 경우만)
@@ -1188,8 +1187,8 @@ extension CalendarFeature {
           AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
-        // 캘린더 이벤트 로드
-        if state.calendarPermissionStatus.canReadEvents {
+        // 캘린더 이벤트 로드 (캐시되지 않은 경우만)
+        if state.calendarPermissionStatus.canReadEvents && !state.loadedCalendarEventMonths.contains(monthStart) {
           effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStart))))
         }
 
