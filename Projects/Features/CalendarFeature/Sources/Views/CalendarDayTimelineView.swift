@@ -274,6 +274,19 @@ struct CalendarDayTimelineView: View {
         Color.clear
           .frame(height: hourHeight / 6)
           .contentShape(Rectangle())
+          .onTapGesture(count: 2) {
+            let slotDate = dateForSlot(slot)
+            if slotDate > Date() {
+              let impactMedium = UIImpactFeedbackGenerator(style: .medium)
+              impactMedium.impactOccurred()
+              creationStartSlot = slot
+              creationEndSlot = min(144, slot + 6)
+              dragAnchorStart = slot
+              dragAnchorEnd = min(144, slot + 6)
+            } else {
+              onPastTimeBlocked?()
+            }
+          }
           .onLongPressGesture(minimumDuration: 0.5) {
             let impactMedium = UIImpactFeedbackGenerator(style: .medium)
             impactMedium.impactOccurred()
