@@ -542,6 +542,7 @@ struct CompactDayRow: View {
             ? Color.pmwarning.n500.opacity(0.08)
             : Color.clear)
       )
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
   }
@@ -588,6 +589,7 @@ struct CompactDayRow: View {
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
       .background(Color.clear)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
   }
@@ -638,6 +640,7 @@ struct CompactDayRow: View {
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
   }

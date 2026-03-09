@@ -1420,7 +1420,12 @@ extension CalendarFeature {
             return .none
           }
           state.path.append(.personalEventDetail(.init(event: event)))
-        case .calendarEvent, .unknown:
+        case .calendarEvent(let eventId):
+          guard let event = state.cachedCalendarEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) else {
+            return .none
+          }
+          state.path.append(.calendarEventDetail(.init(event: event)))
+        case .unknown:
           break
         }
         return .none
