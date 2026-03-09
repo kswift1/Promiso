@@ -84,9 +84,6 @@ public struct StepSheetContainer<
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
       updateKeyboardPresentation(notification)
     }
-    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
-      updateKeyboardPresentation(notification, isHiddenOverride: true)
-    }
   }
 
   // MARK: - Sheet Toolbar
@@ -171,23 +168,21 @@ public struct StepSheetContainer<
     }
   }
 
-  private func updateKeyboardPresentation(
-    _ notification: Notification,
-    isHiddenOverride: Bool = false
-  ) {
+  private func updateKeyboardPresentation(_ notification: Notification) {
     let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
 
-    let isVisible: Bool
-    if isHiddenOverride {
-      isVisible = false
-    } else if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-      isVisible = endFrame.minY < UIScreen.main.bounds.height
-    } else {
-      isVisible = false
+    guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+      if isKeyboardPresented {
+        withAnimation(.easeInOut(duration: duration)) { isKeyboardPresented = false }
+      }
+      return
     }
 
-    withAnimation(.easeInOut(duration: duration)) {
-      isKeyboardPresented = isVisible
+    let isVisible = endFrame.minY < UIScreen.main.bounds.height
+    if isKeyboardPresented != isVisible {
+      withAnimation(.easeInOut(duration: duration)) {
+        isKeyboardPresented = isVisible
+      }
     }
   }
 }
