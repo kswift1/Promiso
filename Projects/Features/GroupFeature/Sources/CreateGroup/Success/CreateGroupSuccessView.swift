@@ -21,31 +21,30 @@ struct CreateGroupSuccessView: View {
   let onConfirm: () -> Void
   @State private var toast: ToastMessage?
   @State private var showConfetti = false
-  @State private var showInviteTooltip = true
 
   var body: some View {
     ScrollView {
-      VStack(spacing: 32) {
+      VStack(spacing: 24) {
         Spacer()
-          .frame(height: 20)
+          .frame(height: 12)
 
           // Success Icon & Message
-          VStack(spacing: 16) {
+          VStack(spacing: 12) {
             ZStack {
               ZStack {
                 if let photoData, let uiImage = UIImage(data: photoData) {
                   Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 100, height: 100)
+                    .frame(width: 88, height: 88)
                     .clipShape(Circle())
                 } else {
                   Circle()
                     .fill(Color.pmindigo.n100.opacity(0.5))
-                    .frame(width: 100, height: 100)
+                    .frame(width: 88, height: 88)
                     .overlay {
-                      Text(String(result.name.prefix(1)))
-                        .font(.system(size: 40, weight: .bold))
+                      Image(systemName: "person.3.fill")
+                        .font(.system(size: 28, weight: .semibold))
                         .foregroundStyle(Color.pmindigo.n500)
                     }
                 }
@@ -56,14 +55,15 @@ struct CreateGroupSuccessView: View {
                     (selectedGroupColor ?? .purple).color,
                     lineWidth: 3
                   )
-                  .frame(width: 100, height: 100)
+                  .frame(width: 88, height: 88)
               )
 
-              // Confetti Lottie (아이콘 주변)
+              // Confetti Lottie (화면 꽉 차게)
               if showConfetti {
                 LottieView(animation: LottieAsset.fanfare.animation)
                   .playing(loopMode: .playOnce)
-                  .frame(width: 300, height: 300)
+                  .frame(maxWidth: .infinity)
+                  .frame(height: 200)
                   .allowsHitTesting(false)
               }
             }
@@ -132,7 +132,7 @@ struct CreateGroupSuccessView: View {
           .staticGlassBackground(cornerRadius: 20)
 
           Spacer()
-            .frame(height: 80)
+            .frame(height: 40)
         }
         .padding(.horizontal, 24)
     }
@@ -144,12 +144,6 @@ struct CreateGroupSuccessView: View {
     .toast($toast)
     .onAppear {
       showConfetti = true
-      // 툴팁 자동 숨김
-      DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-        withAnimation(.easeOut(duration: 0.3)) {
-          showInviteTooltip = false
-        }
-      }
     }
   }
 
@@ -157,24 +151,6 @@ struct CreateGroupSuccessView: View {
 
   private var bottomButtons: some View {
     VStack(spacing: 12) {
-      // 초대장 보내기 추천 툴팁
-      if showInviteTooltip {
-        HStack(spacing: 6) {
-          Image(systemName: "sparkles")
-            .font(.system(size: 12))
-          Text(LocalizedStrings.CreateGroup.inviteTooltip)
-            .font(.caption)
-        }
-        .foregroundStyle(Color.pmindigo.n600)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-          Capsule()
-            .fill(Color.pmindigo.n100.opacity(0.8))
-        )
-        .transition(.opacity.combined(with: .move(edge: .bottom)))
-      }
-
       // 그룹 초대장 보내기
       Button {
         onKakaoShareTapped()

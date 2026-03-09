@@ -102,6 +102,8 @@ extension GroupMain {
         case createPromise
       }
       var pendingContextAction: PendingContextAction?
+      /// 그룹 생성 후 약속 생성 화면으로 이동하기 위한 pending 그룹 ID
+      var pendingCreatePromiseGroupId: String?
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
@@ -786,6 +788,21 @@ extension GroupMain {
               }
             }
 
+            // 그룹 생성 후 약속 생성으로 이동
+            if let pendingGroupId = state.pendingCreatePromiseGroupId {
+              state.pendingCreatePromiseGroupId = nil
+              if let groupInfo = groupSummaries.first(where: { $0.id == pendingGroupId }) {
+                return .merge(
+                  .send(.view(.groupChanged(groupInfo))),
+                  .run { send in
+                    // 그룹 전환 완료 후 약속 생성 화면 열기
+                    try await Task.sleep(for: .milliseconds(300))
+                    await send(.view(.createNewPromise))
+                  }
+                )
+              }
+            }
+
             if let currentGroupId = state.currentGroup?.id,
                groupSummaries.contains(where: { $0.id == currentGroupId }) {
               return .send(.internal(.fetchCurrentGroup(id: currentGroupId)))
@@ -1221,6 +1238,11 @@ extension GroupMain {
 
         case .createGroup(.presented(.delegate(.groupCreated))):
           state.createGroup = nil
+          return .send(.internal(.fetchGroupList))
+
+        case .createGroup(.presented(.delegate(.groupCreatedAndCreatePromise(let groupId)))):
+          state.createGroup = nil
+          state.pendingCreatePromiseGroupId = groupId
           return .send(.internal(.fetchGroupList))
 
         case .createGroup:

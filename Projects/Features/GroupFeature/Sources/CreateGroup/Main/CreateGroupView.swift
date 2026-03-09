@@ -105,9 +105,7 @@ extension CreateGroup {
       switch store.step {
       case .input:
         return LocalizedStrings.CreateGroup.title
-      case .success:
-        return ""
-      case .settings:
+      case .success, .settings:
         return ""
       }
     }

@@ -35,10 +35,7 @@ struct CreateGroupSettingsView: View {
         Spacer()
           .frame(height: 8)
 
-        // Header
-        headerSection
-
-        // Group Color
+        // Group Color (with thumbnail)
         groupColorSection
 
         // Settings
@@ -52,6 +49,8 @@ struct CreateGroupSettingsView: View {
     .safeAreaInset(edge: .bottom) {
       bottomButtons
     }
+    .navigationTitle(LocalizedStrings.GroupSettings.personalSettings)
+    .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
     .onAppear {
       onAppear()
@@ -76,40 +75,35 @@ struct CreateGroupSettingsView: View {
     )
   }
 
-  // MARK: - Header Section
+  // MARK: - Group Thumbnail
 
-  private var headerSection: some View {
-    VStack(spacing: 12) {
-      ZStack {
-        if let photoData, let uiImage = UIImage(data: photoData) {
-          Image(uiImage: uiImage)
-            .resizable()
-            .scaledToFill()
-            .frame(width: 72, height: 72)
-            .clipShape(Circle())
-        } else {
-          Circle()
-            .fill(Color.pmindigo.n100.opacity(0.5))
-            .frame(width: 72, height: 72)
-            .overlay {
-              Text(String(groupName.prefix(1)))
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(Color.pmindigo.n500)
-            }
-        }
-      }
-      .overlay(
-        Circle()
-          .strokeBorder(
-            (selectedGroupColor ?? .purple).color,
-            lineWidth: 3
-          )
+  private var groupThumbnail: some View {
+    ZStack {
+      if let photoData, let uiImage = UIImage(data: photoData) {
+        Image(uiImage: uiImage)
+          .resizable()
+          .scaledToFill()
           .frame(width: 72, height: 72)
-      )
-
-      Text(LocalizedStrings.GroupSettings.settingsHeaderTitle(groupName))
-        .font(.title3.bold())
+          .clipShape(Circle())
+      } else {
+        Circle()
+          .fill(Color.pmindigo.n100.opacity(0.5))
+          .frame(width: 72, height: 72)
+          .overlay {
+            Image(systemName: "person.3.fill")
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+      }
     }
+    .overlay(
+      Circle()
+        .strokeBorder(
+          (selectedGroupColor ?? .purple).color,
+          lineWidth: 3
+        )
+        .frame(width: 72, height: 72)
+    )
   }
 
   // MARK: - Settings Section
@@ -133,12 +127,6 @@ struct CreateGroupSettingsView: View {
 
       // 캘린더 동기화 설정
       calendarSettingRow
-
-      // 변경 가능 힌트
-      Text(LocalizedStrings.GroupSettings.changeableHint)
-        .font(.caption2)
-        .foregroundStyle(.tertiary)
-        .frame(maxWidth: .infinity, alignment: .trailing)
     }
     .padding(20)
     .staticGlassBackground(cornerRadius: 20)
@@ -281,7 +269,10 @@ struct CreateGroupSettingsView: View {
   // MARK: - Group Color Section
 
   private var groupColorSection: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(spacing: 16) {
+      // 그룹 썸네일
+      groupThumbnail
+
       // 섹션 헤더
       VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 8) {
@@ -302,6 +293,7 @@ struct CreateGroupSettingsView: View {
           .font(.caption)
           .foregroundStyle(.secondary)
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
 
       // 색상 그리드 (4열)
       let columns = [
@@ -311,7 +303,7 @@ struct CreateGroupSettingsView: View {
         GridItem(.flexible(), spacing: 12),
       ]
 
-      LazyVGrid(columns: columns, spacing: 12) {
+      LazyVGrid(columns: columns, alignment: .center, spacing: 12) {
         ForEach(GroupColor.allCases, id: \.self) { color in
           groupColorCell(color)
         }
@@ -360,14 +352,18 @@ struct CreateGroupSettingsView: View {
           .foregroundStyle(isSelected ? .primary : .secondary)
           .lineLimit(1)
 
-        if let groupName = usedByGroupName, !isSelected {
+        // 항상 공간 확보하여 줄 정렬 유지
+        if let groupName = usedByGroupName {
           Text("'\(groupName)' 사용중")
             .font(.system(size: 8))
             .foregroundStyle(.tertiary)
             .lineLimit(1)
+        } else {
+          Text(" ")
+            .font(.system(size: 8))
         }
       }
-      .frame(height: 82)
+      .frame(maxHeight: .infinity, alignment: .top)
     }
     .buttonStyle(.plain)
   }
@@ -382,7 +378,7 @@ struct CreateGroupSettingsView: View {
             ProgressView()
               .tint(.white)
           }
-          Text(isSaving ? LocalizedStrings.GroupSettings.saving : LocalizedStrings.GroupSettings.complete)
+          Text(isSaving ? LocalizedStrings.GroupSettings.saving : LocalizedStrings.GroupSettings.createGroupComplete)
             .font(.headline)
         }
         .frame(maxWidth: .infinity)

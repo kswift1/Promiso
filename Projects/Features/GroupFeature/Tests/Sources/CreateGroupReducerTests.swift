@@ -206,7 +206,7 @@ struct CreateGroupReducerTests {
     }
 
     await store.send(.view(.successAcknowledged))
-    await store.receive(\.delegate.groupCreated) {
+    await store.receive(\.delegate.groupCreatedAndCreatePromise) {
       $0.step = .input
     }
   }

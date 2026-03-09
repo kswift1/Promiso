@@ -6424,6 +6424,40 @@
         }
       }
     },
+    "groupSettings.createGroupComplete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Group"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 생성 완료하기"
+          }
+        }
+      }
+    },
+    "groupSettings.personalSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개인 설정"
+          }
+        }
+      }
+    },
     "groupSettings.notificationDenied" : {
       "extractionState" : "manual",
       "localizations" : {

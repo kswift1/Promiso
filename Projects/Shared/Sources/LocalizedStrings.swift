@@ -1526,6 +1526,8 @@ public enum LocalizedStrings {
     public static var calendarDescription: String { String(localized: "groupSettings.calendarDescription", bundle: bundle) }
     public static var saving: String { String(localized: "groupSettings.saving", bundle: bundle) }
     public static var complete: String { String(localized: "groupSettings.complete", bundle: bundle) }
+    public static var createGroupComplete: String { String(localized: "groupSettings.createGroupComplete", bundle: bundle) }
+    public static var personalSettings: String { String(localized: "groupSettings.personalSettings", bundle: bundle) }
     public static var skip: String { String(localized: "groupSettings.skip", bundle: bundle) }
     public static var changeableHint: String { String(localized: "groupSettings.changeableHint", bundle: bundle) }
     public static var notificationSectionTitle: String { String(localized: "groupSettings.notificationSectionTitle", bundle: bundle) }
