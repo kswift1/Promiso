@@ -24,6 +24,9 @@ public struct UserSettingsClient: Sendable {
 
   /// 선호 교통수단 업데이트
   public var updatePreferredTransport: @Sendable (_ userId: String, _ transport: PreferredTransport) async throws -> Void
+
+  /// Pro 가입 시 기본 설정값 초기화
+  public var initializeProDefaults: @Sendable (_ userId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -38,7 +41,8 @@ extension UserSettingsClient: TestDependencyKey {
     updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
     updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
     updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour"),
-    updatePreferredTransport: unimplemented("\(Self.self).updatePreferredTransport")
+    updatePreferredTransport: unimplemented("\(Self.self).updatePreferredTransport"),
+    initializeProDefaults: unimplemented("\(Self.self).initializeProDefaults")
   )
 
   public static let previewValue = Self(
@@ -63,6 +67,9 @@ extension UserSettingsClient: TestDependencyKey {
     },
     updatePreferredTransport: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
+    },
+    initializeProDefaults: { _ in
+      try await Task.sleep(for: .seconds(0.3))
     }
   )
 }
@@ -100,6 +107,9 @@ extension UserSettingsClient: DependencyKey {
       },
       updatePreferredTransport: { userId, transport in
         try await dataSource.updatePreferredTransport(userId: userId, transport: transport)
+      },
+      initializeProDefaults: { userId in
+        try await dataSource.initializeProDefaults(userId: userId)
       }
     )
   }()

@@ -78,6 +78,22 @@ public actor UserSettingsRemoteDataSource {
     ])
   }
 
+  /// Pro 가입 시 기본 설정값 초기화
+  public func initializeProDefaults(userId: String) async throws {
+    try await settingsRef(userId: userId).setData([
+      "proSettings": [
+        "conflictDetectionThresholdMinute": 0,
+        "briefing": [
+          "style": BriefingStyle.friendly.rawValue,
+          "notificationHour": 8,
+          "timezone": TimeZone.current.identifier,
+          "language": Locale.current.language.languageCode?.identifier ?? "ko",
+          "preferredTransport": PreferredTransport.all.rawValue,
+        ]
+      ]
+    ], merge: true)
+  }
+
   /// 브리핑 알림 시간 업데이트
   public func updateBriefingNotificationHour(userId: String, hour: Int?) async throws {
     if let hour {
