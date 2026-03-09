@@ -345,6 +345,13 @@ extension CalendarFeature {
           ScrollView {
             monthPromiseListContent
           }
+          .onChange(of: store.isInitialLoading) { wasLoading, isLoading in
+            guard wasLoading, !isLoading else { return }
+            let calendar = Calendar.current
+            if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: store.selectedDate) }) {
+              proxy.scrollTo(targetDate, anchor: .center)
+            }
+          }
           .onChange(of: store.selectedDate) { _, newDate in
             guard !store.isTransitioning else { return }
             let calendar = Calendar.current
