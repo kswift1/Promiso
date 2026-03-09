@@ -171,15 +171,6 @@ extension CreateGroup {
   }
 }
 
-private func dismissKeyboard() {
-  UIApplication.shared.sendAction(
-    #selector(UIResponder.resignFirstResponder),
-    to: nil,
-    from: nil,
-    for: nil
-  )
-}
-
 // MARK: - Photo Upload Section
 
 private struct PhotoUploadSection: View {

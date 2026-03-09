@@ -507,15 +507,6 @@ extension CreatePersonalEvent {
   }
 }
 
-private func dismissKeyboard() {
-  UIApplication.shared.sendAction(
-    #selector(UIResponder.resignFirstResponder),
-    to: nil,
-    from: nil,
-    for: nil
-  )
-}
-
 // MARK: - Preview
 
 #Preview {
