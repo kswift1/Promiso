@@ -48,6 +48,9 @@ extension CalendarFeature {
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
+      /// onAppear 최초 실행 여부
+      var hasAppeared: Bool = false
+
       /// 표시 모드 (주간/월간/월간확장)
       var displayMode: CalendarDisplayMode = .week
 
@@ -926,7 +929,13 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        AppLogger.calendar.debugLog("🚀 onAppear - 캘린더 탭 진입")
+        // 최초 1회만 실행 (탭 재진입 시 refresh가 담당)
+        guard !state.hasAppeared else {
+          AppLogger.calendar.debugLog("⏭️ onAppear 스킵 - 이미 초기화됨")
+          return .none
+        }
+        state.hasAppeared = true
+        AppLogger.calendar.debugLog("🚀 onAppear - 캘린더 탭 최초 진입")
         // 영속 저장된 배너 숨김 상태 복원
         if let saved = userDefaultsClient.stringForKey(AppConstants.UserDefaults.dismissedCalendarBannerTypes),
            !saved.isEmpty {
