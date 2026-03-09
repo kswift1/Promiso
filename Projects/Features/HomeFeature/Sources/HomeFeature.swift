@@ -1172,13 +1172,7 @@ extension Home {
             let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
             let needsForceRefresh = forceRefresh || styleChanged
 
-            // 캐시 확인 (스타일 변경 시에도 강제 새로고침)
-            if !needsForceRefresh,
-               let generatedDate = state.briefingGeneratedDate,
-               Calendar.current.isDateInToday(generatedDate),
-               state.briefingState.isLoaded {
-              return .none
-            }
+            // 서버에서 promptKey 기반 캐시 처리하므로 항상 서버 호출
             state.briefingState = .loading
             state.lastBriefingStyle = currentStyleRaw
 
