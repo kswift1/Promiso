@@ -396,15 +396,18 @@ async function calculateTravelSegmentsWithTransport(
       );
       const distanceKm = Math.round(distKm * 10) / 10;
 
+      // 장거리(80km+)는 교통 API 스킵
       let transportation: TransportationResult | null = null;
-      try {
-        transportation = await fetchTransportation(
-          req.fromLat, req.fromLng,
-          req.toLat, req.toLng,
-          distKm,
-        );
-      } catch (error) {
-        console.error("[Briefing] Transportation fetch failed:", error);
+      if (distKm < 80) {
+        try {
+          transportation = await fetchTransportation(
+            req.fromLat, req.fromLng,
+            req.toLat, req.toLng,
+            distKm,
+          );
+        } catch (error) {
+          console.error("[Briefing] Transportation fetch failed:", error);
+        }
       }
 
       return {
@@ -535,6 +538,7 @@ function buildPrompt(
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
   lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
   lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
+  lines.push("- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장");
   if (preferredTransport === "transit") {
     lines.push("- 사용자가 주로 대중교통을 이용합니다. 대중교통 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
   } else if (preferredTransport === "car") {
@@ -678,19 +682,27 @@ function buildPrompt(
   // 이동 정보
   if (travelSegments.length > 0) {
     lines.push("이동 정보:");
+    const LONG_DISTANCE_KM = 80;
     for (const seg of travelSegments) {
       let line = `- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>:`;
 
-      if (seg.transportation) {
+      if (seg.distanceKm >= LONG_DISTANCE_KM) {
+        // 장거리: 구체적 대중교통 시간 대신 거리 + 장거리 안내
+        line += `\n  장거리 이동 (약 ${Math.round(seg.distanceKm)}km)` +
+          " - KTX, 고속버스 등 장거리 교통수단 필요";
+      } else if (seg.transportation) {
         const parts: string[] = [];
         const t = seg.transportation;
 
         if (t.driving) {
-          parts.push(`자동차 약 ${t.driving.duration}분${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
+          parts.push(`자동차 약 ${t.driving.duration}분` +
+            `${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
         }
         if (t.transit) {
-          const transfers = t.transit.busTransitCount + t.transit.subwayTransitCount;
-          parts.push(`대중교통 약 ${t.transit.totalTime}분 (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
+          const transfers =
+            t.transit.busTransitCount + t.transit.subwayTransitCount;
+          parts.push(`대중교통 약 ${t.transit.totalTime}분` +
+            ` (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
         }
         parts.push(`도보 약 ${t.walkingMinutes}분`);
 
