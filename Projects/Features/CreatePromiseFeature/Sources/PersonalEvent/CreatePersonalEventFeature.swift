@@ -69,7 +69,10 @@ extension CreatePersonalEvent {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var hasCheckedConflicts: Bool = false
+      var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
+      var hasLoadedSettings: Bool = false
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
@@ -153,6 +156,7 @@ extension CreatePersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .onAppear:
+            guard !state.hasLoadedSettings else { return .none }
             return .merge(
               .run { [authClient, userSettingsClient] send in
                 guard let user = await authClient.currentUser() else { return }
@@ -182,6 +186,7 @@ extension CreatePersonalEvent {
 
           case .startDateChanged(let date):
             state.event.startAt = date
+            state.conflictCheckTrigger = .startTimeChanged
             if let endAt = state.event.endAt, endAt <= date {
               state.event.endAt = date.addingTimeInterval(3600)
             }
@@ -199,10 +204,12 @@ extension CreatePersonalEvent {
 
           case .endDateChanged(let date):
             state.event.endAt = date
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
+            state.conflictCheckTrigger = .endTimeChanged
             if state.useEndTime {
               state.event.endAt = state.event.startAt.addingTimeInterval(3600)
             } else {
@@ -426,17 +433,20 @@ extension CreatePersonalEvent {
             AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
+            state.hasCheckedConflicts = true
             return .none
 
           case .settingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
+            state.hasLoadedSettings = true
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .refreshProFeatures(let debounce):
             guard state.isPro else {
               state.isCheckingConflicts = false
               state.conflicts = []
+              state.hasCheckedConflicts = false
               state.weatherState = .idle
               return .none
             }

@@ -130,6 +130,8 @@ extension CreatePersonalEvent {
     @ViewBuilder
     private var floatingBonusView: some View {
       ProBonusFloatingView(
+        isPro: store.isPro,
+        hasCheckedConflicts: store.hasCheckedConflicts,
         weatherForecast: weatherForecast,
         rangeForecasts: weatherRangeForecasts,
         forecastSource: weatherForecastSource,
@@ -147,12 +149,13 @@ extension CreatePersonalEvent {
           )
         },
         isCheckingConflicts: store.isCheckingConflicts,
+        conflictCheckTrigger: store.conflictCheckTrigger,
+        conflictThresholdMinutes: store.conflictDetectionThreshold,
         newEventTitle: store.event.title,
         newEventEmoji: store.event.emoji,
         newEventStartAt: store.event.startAt,
         newEventEndAt: store.event.endAt
       )
-      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
     }
 
     private var weatherForecast: HourlyForecast? {
@@ -274,7 +277,7 @@ extension CreatePersonalEvent {
 
           Toggle("", isOn: Binding(
             get: { store.useEndTime },
-            set: { _ in store.send(.view(.toggleUseEndTime), animation: .default) }
+            set: { _ in store.send(.view(.toggleUseEndTime)) }
           ))
           .labelsHidden()
           .tint(Color.pmindigo.n500)
@@ -312,6 +315,7 @@ extension CreatePersonalEvent {
         }
       }
       .adaptiveGlassCard()
+      .animation(.default, value: store.useEndTime)
     }
 
     // MARK: - Location Section

@@ -47,7 +47,7 @@ struct LocationSection: View {
         Toggle("", isOn: Binding(
           get: { useLocation },
           set: { _ in
-            store.send(.view(.toggleUseLocation), animation: .spring(response: 0.4, dampingFraction: 0.85))
+            store.send(.view(.toggleUseLocation))
           }
         ))
         .labelsHidden()
@@ -84,6 +84,7 @@ struct LocationSection: View {
             }
           }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: useLocation)
       }
     )
     .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in

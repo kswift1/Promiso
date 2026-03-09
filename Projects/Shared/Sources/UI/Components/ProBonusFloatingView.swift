@@ -1,6 +1,14 @@
 import SwiftUI
 import ResourceKit
 
+// MARK: - Conflict Check Trigger
+
+public enum ConflictCheckTrigger: Equatable, Sendable {
+  case initial
+  case startTimeChanged
+  case endTimeChanged
+}
+
 // MARK: - Conflict Severity
 
 public enum ConflictSeverity: Equatable, Sendable {
@@ -47,6 +55,8 @@ public struct ConflictInfo: Equatable, Sendable {
 /// 날씨, 일정 충돌 힌트를 하단 버튼 위에 표시합니다.
 /// 추후 Pro Plan 전용으로 변경될 수 있으므로 이름을 ProBonusFloatingView로 유지합니다.
 public struct ProBonusFloatingView: View {
+  let isPro: Bool
+  let hasCheckedConflicts: Bool
   let weatherForecast: HourlyForecast?
   let rangeForecasts: [HourlyForecast]
   let forecastSource: ForecastSource
@@ -54,12 +64,16 @@ public struct ProBonusFloatingView: View {
   let weatherLocationName: String?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
+  let conflictCheckTrigger: ConflictCheckTrigger
+  let conflictThresholdMinutes: Int
   let newEventTitle: String
   let newEventEmoji: String?
   let newEventStartAt: Date
   let newEventEndAt: Date?
 
   public init(
+    isPro: Bool = false,
+    hasCheckedConflicts: Bool = false,
     weatherForecast: HourlyForecast? = nil,
     rangeForecasts: [HourlyForecast] = [],
     forecastSource: ForecastSource = .shortTerm,
@@ -67,11 +81,15 @@ public struct ProBonusFloatingView: View {
     weatherLocationName: String? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
+    conflictCheckTrigger: ConflictCheckTrigger = .initial,
+    conflictThresholdMinutes: Int = 0,
     newEventTitle: String = "",
     newEventEmoji: String? = nil,
     newEventStartAt: Date = .now,
     newEventEndAt: Date? = nil
   ) {
+    self.isPro = isPro
+    self.hasCheckedConflicts = hasCheckedConflicts
     self.weatherForecast = weatherForecast
     self.rangeForecasts = rangeForecasts
     self.forecastSource = forecastSource
@@ -79,6 +97,8 @@ public struct ProBonusFloatingView: View {
     self.weatherLocationName = weatherLocationName
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
+    self.conflictCheckTrigger = conflictCheckTrigger
+    self.conflictThresholdMinutes = conflictThresholdMinutes
     self.newEventTitle = newEventTitle
     self.newEventEmoji = newEventEmoji
     self.newEventStartAt = newEventStartAt
@@ -86,7 +106,8 @@ public struct ProBonusFloatingView: View {
   }
 
   private var hasContent: Bool {
-    weatherForecast != nil
+    isPro
+    || weatherForecast != nil
     || isLoadingWeather
     || isCheckingConflicts
     || !conflicts.isEmpty
@@ -98,30 +119,32 @@ public struct ProBonusFloatingView: View {
         // PRO 뱃지
         proBadge
 
-        // 날씨 로딩 행
-        if isLoadingWeather && weatherForecast == nil {
-          weatherLoadingRow
-        }
-
-        // 날씨 행
+        // 날씨 (로딩 / 결과 / 불가 — 상호 배타)
         if let forecast = weatherForecast {
           ProWeatherRow(
             forecast: forecast,
             rangeForecasts: rangeForecasts,
             forecastSource: forecastSource
           )
+        } else if isLoadingWeather {
+          weatherLoadingRow
+        } else if isPro {
+          weatherUnavailableRow
         }
 
-        // 충돌 행
+        // 충돌 (확인중 / 결과 / 없음 — 상호 배타)
         if isCheckingConflicts || !conflicts.isEmpty {
           ProConflictRow(
             conflicts: conflicts,
             isChecking: isCheckingConflicts,
+            checkTrigger: conflictCheckTrigger,
             eventTitle: newEventTitle,
             eventEmoji: newEventEmoji,
             eventStartAt: newEventStartAt,
             eventEndAt: newEventEndAt
           )
+        } else if isPro && hasCheckedConflicts {
+          noConflictRow
         }
       }
       .padding(.horizontal, 10)
@@ -130,7 +153,6 @@ public struct ProBonusFloatingView: View {
       .background(Color.pmindigo.n500.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
       .adaptiveGlassCard(cornerRadius: 12)
       .padding(.bottom, 4)
-      .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
   }
 
@@ -138,6 +160,53 @@ public struct ProBonusFloatingView: View {
 
   private var proBadge: some View {
     ProBadge()
+  }
+
+  // MARK: - Weather Unavailable Row
+
+  private var weatherUnavailableRow: some View {
+    HStack(spacing: 6) {
+      Image(systemName: weatherLocationName == nil ? "cloud.sun" : "cloud.slash")
+        .symbolRenderingMode(.multicolor)
+        .font(.system(size: 12))
+        .foregroundStyle(.tertiary)
+        .frame(width: 22, height: 22)
+
+      if weatherLocationName == nil {
+        Text("장소를 설정하면 날씨를 확인해드릴 수 있어요!")
+          .font(.system(size: 12))
+          .foregroundStyle(.tertiary)
+      } else {
+        Text("10일 이내 약속만 날씨를 확인할 수 있어요")
+          .font(.system(size: 12))
+          .foregroundStyle(.tertiary)
+      }
+
+      Spacer(minLength: 0)
+    }
+  }
+
+  // MARK: - No Conflict Row
+
+  private var noConflictRow: some View {
+    HStack(spacing: 6) {
+      Image(systemName: "checkmark.circle.fill")
+        .font(.system(size: 14))
+        .foregroundStyle(Color.pmsuccess.n500)
+
+      Text(noConflictText)
+        .font(.system(size: 12))
+        .foregroundStyle(.secondary)
+
+      Spacer(minLength: 0)
+    }
+  }
+
+  private var noConflictText: String {
+    if conflictThresholdMinutes > 0 {
+      return "전후 \(conflictThresholdMinutes)분 내 겹치는 일정이 없어요"
+    }
+    return "겹치는 일정이 없어요"
   }
 
   // MARK: - Weather Loading Row
@@ -260,15 +329,12 @@ public struct ProBonusFloatingView: View {
   }
 }
 
-#Preview("정보 없음 (EmptyView)") {
+#Preview("Pro 빈 상태") {
   VStack {
     Spacer()
-    ProBonusFloatingView()
+    ProBonusFloatingView(isPro: true, hasCheckedConflicts: true)
       .padding(.horizontal, 16)
       .padding(.bottom, 8)
-    Text("위에는 아무것도 렌더링되지 않아야 합니다")
-      .font(.caption)
-      .foregroundStyle(.secondary)
   }
 }
 

@@ -110,6 +110,9 @@
         }
       }
     },
+    "10일 이내 약속만 날씨를 확인할 수 있어요" : {
+
+    },
     "appEntry.update.action" : {
       "comment" : "업데이트 버튼",
       "extractionState" : "manual",
@@ -794,6 +797,42 @@
         }
       }
     },
+    "calendar.event.openInCalendar" : {
+      "comment" : "Apple Calendar 앱에서 보기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더에서 보기"
+          }
+        }
+      }
+    },
+    "calendar.event.source" : {
+      "comment" : "Apple Calendar 이벤트 출처 안내",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This event was imported from iOS Calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 캘린더에서 불러온 일정입니다"
+          }
+        }
+      }
+    },
     "calendar.filter.group" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -912,42 +951,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "개인"
-          }
-        }
-      }
-    },
-    "calendar.event.source" : {
-      "comment" : "Apple Calendar 이벤트 출처 안내",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This event was imported from iOS Calendar"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iOS 캘린더에서 불러온 일정입니다"
-          }
-        }
-      }
-    },
-    "calendar.event.openInCalendar" : {
-      "comment" : "Apple Calendar 앱에서 보기 버튼",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open in Calendar"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "캘린더에서 보기"
           }
         }
       }
@@ -23091,6 +23094,9 @@
           }
         }
       }
+    },
+    "장소를 설정하면 날씨를 확인해드릴 수 있어요!" : {
+
     },
     "초대 코드로 참여하기" : {
       "localizations" : {

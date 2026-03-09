@@ -63,7 +63,10 @@ public enum CreatePromise {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var hasCheckedConflicts: Bool = false
+      var conflictCheckTrigger: ConflictCheckTrigger = .initial
       var conflictDetectionThreshold: Int = 0
+      var hasLoadedSettings: Bool = false
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       // 날씨 힌트 (보너스)
@@ -225,6 +228,7 @@ public enum CreatePromise {
           switch viewAction {
             
           case .onAppear:
+            guard !state.hasLoadedSettings else { return .none }
             return .merge(
               .send(.internal(.fetchGroupList)),
               .run { [userSettingsClient, state] send in
@@ -312,6 +316,7 @@ public enum CreatePromise {
 
           case .setEndDate(let date):
             state.promise.endAt = date
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .toggleUseEndTime:
@@ -320,6 +325,7 @@ public enum CreatePromise {
             } else {
               state.promise.endAt = nil
             }
+            state.conflictCheckTrigger = .endTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
@@ -348,6 +354,7 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
+            state.conflictCheckTrigger = .startTimeChanged
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
@@ -393,7 +400,8 @@ public enum CreatePromise {
               state.weatherState = .idle
               return .cancel(id: CancelID.weatherFetchDebounce)
             }
-            return .none
+            // 장소 다시 켜면 날씨만 재조회 (충돌은 시간 기반이라 장소와 무관)
+            return fetchWeatherHintEffect(state: &state)
 
           case .photosSelected(let items):
             return .run { send in
@@ -526,10 +534,12 @@ public enum CreatePromise {
             AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
+            state.hasCheckedConflicts = true
             return .none
 
           case .settingsLoaded(let settings):
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
+            state.hasLoadedSettings = true
             return .send(.internal(.refreshProFeatures(debounce: false)))
 
           case .weatherResponse(.success(let info)):
@@ -540,6 +550,7 @@ public enum CreatePromise {
             guard state.isPro else {
               state.isCheckingConflicts = false
               state.conflicts = []
+              state.hasCheckedConflicts = false
               state.weatherState = .idle
               return .none
             }
@@ -696,6 +707,8 @@ extension CreatePromise {
     private var floatingBonusView: some View {
       if store.currentStep == .second {
         ProBonusFloatingView(
+          isPro: store.isPro,
+          hasCheckedConflicts: store.hasCheckedConflicts,
           weatherForecast: weatherForecast,
           rangeForecasts: weatherRangeForecasts,
           forecastSource: weatherForecastSource,
@@ -713,12 +726,13 @@ extension CreatePromise {
             )
           },
           isCheckingConflicts: store.isCheckingConflicts,
+          conflictCheckTrigger: store.conflictCheckTrigger,
+          conflictThresholdMinutes: store.conflictDetectionThreshold,
           newEventTitle: store.promise.title,
           newEventEmoji: store.promise.emoji,
           newEventStartAt: store.promise.startAt,
           newEventEndAt: store.promise.endAt
         )
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       }
     }
 

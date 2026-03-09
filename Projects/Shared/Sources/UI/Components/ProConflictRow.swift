@@ -9,6 +9,7 @@ import ResourceKit
 public struct ProConflictRow: View {
   let conflicts: [ConflictInfo]
   let isChecking: Bool
+  let checkTrigger: ConflictCheckTrigger
   let eventTitle: String
   let eventEmoji: String?
   let eventStartAt: Date
@@ -19,6 +20,7 @@ public struct ProConflictRow: View {
   public init(
     conflicts: [ConflictInfo],
     isChecking: Bool,
+    checkTrigger: ConflictCheckTrigger = .initial,
     eventTitle: String = "",
     eventEmoji: String? = nil,
     eventStartAt: Date = .now,
@@ -26,6 +28,7 @@ public struct ProConflictRow: View {
   ) {
     self.conflicts = conflicts
     self.isChecking = isChecking
+    self.checkTrigger = checkTrigger
     self.eventTitle = eventTitle
     self.eventEmoji = eventEmoji
     self.eventStartAt = eventStartAt
@@ -39,7 +42,7 @@ public struct ProConflictRow: View {
           .scaleEffect(0.7)
           .frame(width: 14, height: 14)
 
-        Text(LocalizedStrings.Shared.conflictCheckingEvents)
+        Text(checkingText)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
 
@@ -82,6 +85,17 @@ public struct ProConflictRow: View {
   }
 
   // MARK: - Helpers
+
+  private var checkingText: String {
+    switch checkTrigger {
+    case .startTimeChanged:
+      return "시작 시간과 겹치는 일정을 확인중이에요"
+    case .endTimeChanged:
+      return "종료 시간과 겹치는 일정을 확인중이에요"
+    case .initial:
+      return "겹치는 일정이 있는지 확인중이에요"
+    }
+  }
 
   private var conflictSummaryText: String {
     if conflicts.count == 1, let first = conflicts.first {
