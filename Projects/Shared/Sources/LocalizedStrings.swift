@@ -1407,6 +1407,13 @@ public enum LocalizedStrings {
     public static var filterSelectAll: String { String(localized: "calendar.filter.selectAll", bundle: bundle) }
     public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
     public static var filterPersonal: String { String(localized: "calendar.filter.personal", bundle: bundle) }
+    public static var filterCalendarEvents: String { String(localized: "calendar.filter.calendarEvents", defaultValue: "시스템 캘린더", bundle: bundle) }
+    public static var filterStatus: String { String(localized: "calendar.filter.status", defaultValue: "일정 상태", bundle: bundle) }
+    public static var filterStatusNeedResponse: String { String(localized: "calendar.filter.status.needResponse", defaultValue: "아직 투표하지 않은 일정", bundle: bundle) }
+    public static var filterStatusWaiting: String { String(localized: "calendar.filter.status.waiting", defaultValue: "투표 완료, 확정 최소인원 달성 대기 중인 일정", bundle: bundle) }
+    public static var filterStatusConfirmed: String { String(localized: "calendar.filter.status.confirmed", defaultValue: "투표 완료, 확정 최소인원 달성한 일정", bundle: bundle) }
+    public static var filterStatusCompleted: String { String(localized: "calendar.filter.status.completed", defaultValue: "종료된 일정", bundle: bundle) }
+    public static var filterStatusFailed: String { String(localized: "calendar.filter.status.failed", defaultValue: "확정 최소인원 미달로 무산된 일정", bundle: bundle) }
 
     // Display Mode
     public static var modeWeek: String { String(localized: "calendar.mode.week", bundle: bundle) }
@@ -1490,11 +1497,17 @@ public enum LocalizedStrings {
     public static var creationFailedDefault: String { String(localized: "createGroup.creationFailedDefault", bundle: bundle) }
     // Success
     public static var successTitle: String { String(localized: "createGroup.successTitle", bundle: bundle) }
+    public static func successTitleWithName(_ groupName: String) -> String {
+      String(localized: "createGroup.successTitleWithName", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: groupName)
+    }
     public static var successSubtitle: String { String(localized: "createGroup.successSubtitle", bundle: bundle) }
+    public static var createPromiseButton: String { String(localized: "createGroup.createPromiseButton", bundle: bundle) }
     public static var inviteCode: String { String(localized: "createGroup.inviteCode", bundle: bundle) }
     public static var copied: String { String(localized: "createGroup.copied", bundle: bundle) }
     public static var share: String { String(localized: "createGroup.share", bundle: bundle) }
     public static var kakaoInviteButton: String { String(localized: "createGroup.kakaoInviteButton", bundle: bundle) }
+    public static var inviteTooltip: String { String(localized: "createGroup.inviteTooltip", bundle: bundle) }
     // MaxMembers display
     public static func membersCount(_ count: Int) -> String {
       String(localized: "createGroup.membersCount", bundle: bundle)
@@ -1520,8 +1533,21 @@ public enum LocalizedStrings {
     public static var calendarDescription: String { String(localized: "groupSettings.calendarDescription", bundle: bundle) }
     public static var saving: String { String(localized: "groupSettings.saving", bundle: bundle) }
     public static var complete: String { String(localized: "groupSettings.complete", bundle: bundle) }
+    public static var createGroupComplete: String { String(localized: "groupSettings.createGroupComplete", bundle: bundle) }
+    public static var joinGroupComplete: String { String(localized: "groupSettings.joinGroupComplete", bundle: bundle) }
+    public static var personalSettings: String { String(localized: "groupSettings.personalSettings", bundle: bundle) }
     public static var skip: String { String(localized: "groupSettings.skip", bundle: bundle) }
     public static var changeableHint: String { String(localized: "groupSettings.changeableHint", bundle: bundle) }
+    public static var notificationSectionTitle: String { String(localized: "groupSettings.notificationSectionTitle", bundle: bundle) }
+    public static var notificationSectionSubtitle: String { String(localized: "groupSettings.notificationSectionSubtitle", bundle: bundle) }
+    public static var groupColorSectionTitle: String { String(localized: "groupSettings.groupColorSectionTitle", bundle: bundle) }
+    public static var groupColorSectionSubtitle: String { String(localized: "groupSettings.groupColorSectionSubtitle", bundle: bundle) }
+    public static var calendarSectionTitle: String { String(localized: "groupSettings.calendarSectionTitle", bundle: bundle) }
+    public static var calendarSectionSubtitle: String { String(localized: "groupSettings.calendarSectionSubtitle", bundle: bundle) }
+    public static func settingsHeaderTitle(_ groupName: String) -> String {
+      String(localized: "groupSettings.settingsHeaderTitle", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: groupName)
+    }
   }
 
   // MARK: - CreatePromise

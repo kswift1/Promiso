@@ -235,6 +235,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
 
     let description = data["description"] as? String
     let imageUrl = data["imageUrl"] as? String
+    let memberCount = data["memberCount"] as? Int
     let membersData = data["members"] as? [[String: Any]] ?? []
     let members = membersData.compactMap(parseMemberPreview(_:))
 
@@ -252,7 +253,7 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
       updatedAt: Date()
     )
 
-    return GroupPreviewModel(group: group, members: members)
+    return GroupPreviewModel(group: group, members: members, memberCount: memberCount)
   }
 
   /// 초대 코드로 그룹 참여
@@ -508,9 +509,10 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
     let nickname = data["nickname"] as? String ?? name
 
     let profileImage: ProfileImage?
-    if let remoteImage = parseRemoteImage(data["profileImage"]),
-       remoteImage.type == .externalURL {
-      profileImage = ProfileImage(url: remoteImage.url, thumbUrl: nil, updatedAt: Date())
+    if let profileData = data["profileImage"] as? [String: Any],
+       let url = profileData["url"] as? String, !url.isEmpty {
+      let thumbUrl = profileData["thumbUrl"] as? String
+      profileImage = ProfileImage(url: url, thumbUrl: thumbUrl, updatedAt: Date())
     } else {
       profileImage = nil
     }

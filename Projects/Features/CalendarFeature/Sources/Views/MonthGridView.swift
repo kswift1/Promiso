@@ -47,6 +47,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
+  var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
   var onWeekPageChanged: ((Int) -> Void)? = nil  // -1 (이전 주) or +1 (다음 주)
 
   func makeCoordinator() -> Coordinator {
@@ -59,6 +60,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     vc.showAllIndicators = showAllIndicators
     vc.selectedWeekRow = selectedWeekRow
     vc.coordinator = context.coordinator
+    vc.previewIndicatorsProvider = previewIndicatorsProvider
     context.coordinator.pagerVC = vc
     context.coordinator.lastKnownMonth = currentMonth.startOfMonth
     context.coordinator.lastKnownSelectedDate = selectedDate
@@ -85,6 +87,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   func updateUIViewController(_ vc: PagerViewController, context: Context) {
     let coordinator = context.coordinator
     coordinator.parent = self
+    vc.previewIndicatorsProvider = previewIndicatorsProvider
 
     // 모드 전환 시 6행 유지 상태로 높이/제약만 단계적으로 전환
     if vc.isCompactMode != isCompactMode || vc.showAllIndicators != showAllIndicators {
@@ -261,6 +264,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     var isCompactMode: Bool = false
     var showAllIndicators: Bool = false
     var selectedWeekRow: Int? = nil
+    var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
     private var isWeekMode: Bool { selectedWeekRow != nil }
     private var rowHeight: CGFloat { isCompactMode ? 46 : 62 }
     private let gridSpacing: CGFloat = 6
@@ -352,7 +356,8 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
           onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-          onDayCreatePromise: onDayCreatePromise
+          onDayCreatePromise: onDayCreatePromise,
+          previewIndicatorsProvider: previewIndicatorsProvider
         )
         let hostingVC = UIHostingController(rootView: gridView)
         hostingVC.view.backgroundColor = .clear
@@ -440,7 +445,8 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
           onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-          onDayCreatePromise: onDayCreatePromise
+          onDayCreatePromise: onDayCreatePromise,
+          previewIndicatorsProvider: previewIndicatorsProvider
         )
       }
     }
@@ -594,6 +600,7 @@ struct MonthGridContent: View {
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
+  var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
 
   @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
 
@@ -657,7 +664,8 @@ struct MonthGridContent: View {
               onTap: { onDateSelected(date) },
               onIndicatorTapped: onIndicatorTapped,
               onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-              onDayCreatePromise: onDayCreatePromise
+              onDayCreatePromise: onDayCreatePromise,
+              previewIndicatorsProvider: previewIndicatorsProvider
             )
             .frame(maxWidth: .infinity)
           }

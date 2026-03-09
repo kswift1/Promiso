@@ -27,8 +27,11 @@ struct CalendarIndicatorDayCell: View {
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
+  /// Preview용 필터 미적용 인디케이터 (long press 시 lazy 호출)
+  var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
 
   private let maxVisibleIndicators = 2
+  private let maxMorphingIndicators = 5
 
   // 캐싱된 날짜 숫자
   private var dayNumber: String {
@@ -105,15 +108,15 @@ struct CalendarIndicatorDayCell: View {
         Button {
           onDayCreatePersonalEvent?(date)
         } label: {
-          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+          Label("개인 일정 추가", systemImage: "person.fill")
         }
         Button {
           onDayCreatePromise?(date)
         } label: {
-          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+          Label("그룹 일정 추가", systemImage: "person.3.fill")
         }
       } preview: {
-        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
+        ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
       }
 
       // 공휴일 이름 (expanded 모드에서만)
@@ -140,15 +143,15 @@ struct CalendarIndicatorDayCell: View {
             Button {
               onDayCreatePersonalEvent?(date)
             } label: {
-              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+              Label("개인 일정 추가", systemImage: "person.fill")
             }
             Button {
               onDayCreatePromise?(date)
             } label: {
-              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+              Label("그룹 일정 추가", systemImage: "person.3.fill")
             }
           } preview: {
-            ExpandedDayPreviewView(date: date, indicators: scheduleIndicators, holidayName: holidayName)
+            ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
           }
       }
     }
@@ -164,14 +167,24 @@ struct CalendarIndicatorDayCell: View {
   @ViewBuilder
   private func morphingIndicatorSection(isCompact: Bool) -> some View {
     if isCurrentMonth && !scheduleIndicators.isEmpty {
-      let displayCount = scheduleIndicators.count
+      let visibleItems = Array(scheduleIndicators.prefix(maxMorphingIndicators))
+      let overflowCount = scheduleIndicators.count - visibleItems.count
       let layout = isCompact
         ? AnyLayout(HStackLayout(spacing: 3))
         : AnyLayout(VStackLayout(spacing: 3))
 
       layout {
-        ForEach(Array(scheduleIndicators.prefix(displayCount))) { indicator in
+        ForEach(visibleItems) { indicator in
           morphingIndicatorItem(indicator, isCompact: isCompact)
+        }
+
+        if overflowCount > 0 {
+          Text("+\(overflowCount)")
+            .font(.system(size: 7, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(height: isCompact ? 5 : nil)
+            .frame(maxWidth: isCompact ? nil : .infinity, alignment: .leading)
+            .padding(.leading, isCompact ? 0 : 3)
         }
       }
       .frame(height: isCompact ? 8 : nil)

@@ -5,12 +5,15 @@ import Foundation
 public struct GroupPreviewModel: Equatable, Sendable {
   public let group: GroupModel
   public let members: [UserPublicModel]
+  public let memberCount: Int
 
   public init(
     group: GroupModel,
-    members: [UserPublicModel]
+    members: [UserPublicModel],
+    memberCount: Int? = nil
   ) {
     self.group = group
     self.members = members
+    self.memberCount = memberCount ?? members.count
   }
 }

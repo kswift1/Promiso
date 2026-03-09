@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Lottie
 
 import Clients
 import PromisoShared
@@ -13,205 +14,200 @@ import ResourceKit
 
 struct CreateGroupSuccessView: View {
   let result: GroupCreationResultModel
+  let photoData: Data?
+  let selectedGroupColor: GroupColor?
   let isKakaoSharing: Bool
   let onKakaoShareTapped: () -> Void
   let onConfirm: () -> Void
-  @State private var isCopied = false
-  
+  @State private var toast: ToastMessage?
+  @State private var showConfetti = false
+
   var body: some View {
     ScrollView {
-      VStack(spacing: 32) {
+      VStack(spacing: 24) {
         Spacer()
-          .frame(height: 20)
+          .frame(height: 12)
 
-        // Success Icon & Message
-        VStack(spacing: 20) {
-          // Icon with gradient background
-          ZStack {
-            Circle()
-              .fill(
-                LinearGradient(
-                  colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-              .frame(width: 120, height: 120)
-
-            Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 60))
-              .foregroundStyle(
-                LinearGradient(
-                  colors: [.blue, .purple],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-          }
-
+          // Success Icon & Message
           VStack(spacing: 12) {
-            Text(LocalizedStrings.CreateGroup.successTitle)
-              .font(.title.bold())
-
-            Text(LocalizedStrings.CreateGroup.successSubtitle)
-              .font(.body)
-              .foregroundStyle(.secondary)
-              .multilineTextAlignment(.center)
-              .lineSpacing(4)
-          }
-        }
-
-        // Invite Code Section
-        VStack(spacing: 16) {
-          HStack {
-            Image(systemName: "link.circle.fill")
-              .font(.system(size: 20))
-              .foregroundStyle(
-                LinearGradient(
-                  colors: [.blue, .purple],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-
-            Text(LocalizedStrings.CreateGroup.inviteCode)
-              .font(.headline)
-
-            Spacer()
-          }
-
-          // Code Display with Copy Button
-          HStack(spacing: 12) {
-            Text(result.inviteCode)
-              .font(.system(size: 32, weight: .bold, design: .rounded))
-              .tracking(4)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 20)
-              .background(
-                RoundedRectangle(cornerRadius: 16)
-                  .fill(Color(.systemGray6))
-                  .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-              )
-
-            Button(action: copyCode) {
+            ZStack {
               ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                  .fill(
-                    isCopied
-                    ? LinearGradient(
-                      colors: [.green, .green],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                      colors: [.blue, .purple],
-                      startPoint: .topLeading,
-                      endPoint: .bottomTrailing
-                    )
+                if let photoData, let uiImage = UIImage(data: photoData) {
+                  Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 88, height: 88)
+                    .clipShape(Circle())
+                } else {
+                  Circle()
+                    .fill(Color.pmindigo.n100.opacity(0.5))
+                    .frame(width: 88, height: 88)
+                    .overlay {
+                      Image(systemName: "person.3.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(Color.pmindigo.n500)
+                    }
+                }
+              }
+              .overlay(
+                Circle()
+                  .strokeBorder(
+                    (selectedGroupColor ?? .purple).color,
+                    lineWidth: 3
                   )
-                  .frame(width: 60, height: 60)
-                  .shadow(
-                    color: isCopied ? .green.opacity(0.3) : .blue.opacity(0.3),
-                    radius: 8,
-                    x: 0,
-                    y: 4
-                  )
+                  .frame(width: 88, height: 88)
+              )
 
-                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                  .font(.system(size: 22, weight: .semibold))
-                  .foregroundStyle(.white)
+              // Confetti Lottie (화면 꽉 차게)
+              if showConfetti {
+                LottieView(animation: LottieAsset.fanfare.animation)
+                  .playing(loopMode: .playOnce)
+                  .frame(maxWidth: .infinity)
+                  .frame(height: 200)
+                  .allowsHitTesting(false)
               }
             }
-            .animation(.spring(response: 0.3), value: isCopied)
+
+            VStack(spacing: 8) {
+              Text(LocalizedStrings.CreateGroup.successTitleWithName(result.name))
+                .font(.title2.bold())
+
+              Text(LocalizedStrings.CreateGroup.successSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+            }
           }
 
-          if isCopied {
-            HStack(spacing: 8) {
-              Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 14))
-              Text(LocalizedStrings.CreateGroup.copied)
-                .font(.subheadline.weight(.medium))
+          // Invite Code Section
+          VStack(spacing: 12) {
+            HStack {
+              Image(systemName: "link.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(.secondary)
+
+              Text(LocalizedStrings.CreateGroup.inviteCode)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+              Spacer()
             }
-            .foregroundStyle(.green)
-            .transition(.scale.combined(with: .opacity))
+
+            // Code Display with Copy & Share Buttons
+            HStack(spacing: 10) {
+              Text(result.inviteCode)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .tracking(4)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .staticGlassBackground(cornerRadius: 12)
+
+              Button(action: copyCode) {
+                ZStack {
+                  RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.pmindigo.n500)
+                    .frame(width: 50, height: 50)
+
+                  Image(systemName: "doc.on.doc")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                }
+              }
+
+              GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
+                ZStack {
+                  RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.pmindigo.n500.opacity(0.12))
+                    .frame(width: 50, height: 50)
+
+                  Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.pmindigo.n500)
+                }
+              }
+            }
           }
+          .padding(20)
+          .staticGlassBackground(cornerRadius: 20)
+
+          Spacer()
+            .frame(height: 40)
         }
-        .padding(24)
-        .background(
-          RoundedRectangle(cornerRadius: 20)
-            .fill(Color(.systemBackground))
-            .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-        )
-
-        // Action Buttons
-        VStack(spacing: 12) {
-          // 카카오톡으로 초대장 보내기
-          Button {
-            onKakaoShareTapped()
-          } label: {
-            HStack(spacing: 8) {
-              ResourceKitAsset.kakaoLogo.swiftUIImage
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 20, height: 20)
-              Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
-                .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Color(red: 254/255, green: 229/255, blue: 0/255))
-            .foregroundStyle(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-          .buttonStyle(.scale)
-          .disabled(isKakaoSharing)
-          .opacity(isKakaoSharing ? 0.6 : 1)
-
-          // 다른 앱으로 공유
-          GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
-            HStack(spacing: 8) {
-              Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 18))
-              Text(LocalizedStrings.CreateGroup.share)
-                .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Color.pmindigo.n500.opacity(0.12))
-            .foregroundStyle(Color.pmindigo.n500)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-          .buttonStyle(.scale)
-
-          Button(action: onConfirm) {
-            Text(LocalizedStrings.Common.done)
-              .font(.headline)
-              .frame(maxWidth: .infinity)
-              .frame(height: 56)
-              .background(Color.pmindigo.n100)
-              .foregroundStyle(Color.pmindigo.n700)
-              .clipShape(RoundedRectangle(cornerRadius: 16))
-          }
-        }
-
-        Spacer()
-          .frame(height: 20)
-      }
-      .padding(.horizontal, 24)
+        .padding(.horizontal, 24)
+    }
+    .scrollIndicators(.hidden)
+    .safeAreaInset(edge: .bottom) {
+      bottomButtons
     }
     .navigationBarBackButtonHidden()
-  }
-  
-  private func copyCode() {
-    UIPasteboard.general.string = result.inviteCode
-    withAnimation(.spring()) {
-      isCopied = true
+    .toast($toast)
+    .onAppear {
+      showConfetti = true
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-      withAnimation(.spring()) {
-        isCopied = false
+  }
+
+  // MARK: - Bottom Buttons
+
+  private var bottomButtons: some View {
+    VStack(spacing: 12) {
+      // 그룹 초대장 보내기
+      Button {
+        onKakaoShareTapped()
+      } label: {
+        HStack(spacing: 8) {
+          ResourceKitAsset.kakaoLogo.swiftUIImage
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 20, height: 20)
+          Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
+            .font(.headline)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(Color(red: 254 / 255, green: 229 / 255, blue: 0 / 255))
+        .foregroundStyle(.black)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+      }
+      .buttonStyle(.scale)
+      .disabled(isKakaoSharing)
+      .opacity(isKakaoSharing ? 0.6 : 1)
+
+      // 약속 생성하러 가기
+      Button(action: onConfirm) {
+        Text(LocalizedStrings.CreateGroup.createPromiseButton)
+          .font(.headline)
+          .frame(maxWidth: .infinity)
+          .frame(height: 56)
+          .background(Color.pmindigo.n500)
+          .foregroundStyle(.white)
+          .clipShape(RoundedRectangle(cornerRadius: 16))
       }
     }
+    .padding(.horizontal, 24)
+    .padding(.top, 16)
+    .padding(.bottom, 16)
+    .background(
+      LinearGradient(
+        stops: [
+          .init(color: Color(.systemBackground).opacity(0), location: 0),
+          .init(color: Color(.systemBackground).opacity(0.8), location: 0.15),
+          .init(color: Color(.systemBackground), location: 0.3),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea(.container, edges: .bottom)
+    )
+  }
+
+  private func copyCode() {
+    UIPasteboard.general.string = result.inviteCode
+    toast = ToastMessage(
+      type: .success,
+      title: LocalizedStrings.CreateGroup.copied,
+      position: .top
+    )
   }
 }

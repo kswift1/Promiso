@@ -21,21 +21,26 @@ extension JoinGroup {
           PreviewView(
             store: store,
             group: preview.group,
-            members: preview.members
+            members: preview.members,
+            memberCount: preview.memberCount
           )
         case .settings(let group):
           CreateGroupSettingsView(
             groupName: group.name,
+            photoData: nil,
+            isJoining: true,
             notificationEnabled: store.notificationEnabled,
             calendarSyncEnabled: store.calendarSyncEnabled,
             notificationAuthStatus: store.notificationAuthStatus,
             calendarAuthStatus: store.calendarAuthStatus,
             isSaving: store.isSavingSettings,
             showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+            selectedGroupColor: store.selectedGroupColor,
+            existingGroupColorMap: store.existingGroupColorMap,
             onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
             onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+            onGroupColorSelected: { store.send(.view(.groupColorSelected($0))) },
             onComplete: { store.send(.view(.settingsCompleted)) },
-            onSkip: { store.send(.view(.settingsSkipped)) },
             onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
             onAppear: { store.send(.view(.settingsAppeared)) }
           )
@@ -140,24 +145,12 @@ private struct EnterCodeView: View {
       // Icon
       ZStack {
         Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .fill(Color.pmindigo.n100.opacity(0.5))
           .frame(width: 80, height: 80)
-        
+
         Image(systemName: "link.circle.fill")
           .font(.system(size: 40))
-          .foregroundStyle(
-            LinearGradient(
-              colors: [.blue, .purple],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .foregroundStyle(Color.pmindigo.n500)
       }
       
       // Title & Description
@@ -256,7 +249,7 @@ private struct EnterCodeView: View {
         .strokeBorder(
           store.inviteCode.count == index && isCodeFieldFocused
           ? LinearGradient(
-            colors: [.blue, .purple],
+            colors: [Color.pmindigo.n500],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
           )
@@ -306,19 +299,11 @@ private struct EnterCodeView: View {
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: store.canProceedToPreview
-          ? [.blue, .purple]
-          : [Color(.systemGray4)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(store.canProceedToPreview ? Color.pmindigo.n500 : Color(.systemGray4))
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .shadow(
-        color: store.canProceedToPreview ? .blue.opacity(0.3) : .clear,
+        color: store.canProceedToPreview ? Color.pmindigo.n500.opacity(0.2) : .clear,
         radius: 12,
         x: 0,
         y: 6
@@ -336,6 +321,7 @@ private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
   let members: [UserPublicModel]
+  let memberCount: Int
 
   var body: some View {
     VStack(spacing: 0) {
@@ -366,7 +352,7 @@ private struct PreviewView: View {
               statItem(
                 icon: "person.2.fill",
                 label: LocalizedStrings.ManageGroup.currentMembers,
-                value: "\(group.memberIds.count)"
+                value: "\(memberCount)"
               )
 
               Divider()
@@ -381,9 +367,7 @@ private struct PreviewView: View {
             .frame(maxWidth: .infinity)
           }
           .padding(20)
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 20))
-          .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+          .staticGlassBackground(cornerRadius: 20)
 
           // Members Section
           if !members.isEmpty {
@@ -403,9 +387,7 @@ private struct PreviewView: View {
               memberGridView
             }
             .padding(20)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+            .staticGlassBackground(cornerRadius: 20)
           }
 
           Spacer()
@@ -489,13 +471,7 @@ private struct PreviewView: View {
     VStack(spacing: 8) {
       Image(systemName: icon)
         .font(.system(size: 24))
-        .foregroundStyle(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
+        .foregroundStyle(Color.pmindigo.n500)
 
       Text(value)
         .font(.system(size: 28, weight: .bold))
@@ -558,17 +534,11 @@ private struct PreviewView: View {
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: store.canJoin ? [.blue, .purple] : [Color(.systemGray4)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(store.canJoin ? Color.pmindigo.n500 : Color(.systemGray4))
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .shadow(
-        color: store.canJoin ? .blue.opacity(0.3) : .clear,
+        color: store.canJoin ? Color.pmindigo.n500.opacity(0.2) : .clear,
         radius: 12,
         x: 0,
         y: 6
@@ -597,14 +567,7 @@ private struct MemberGridItem: View {
       )
       .overlay(
         Circle()
-          .strokeBorder(
-            LinearGradient(
-              colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            ),
-            lineWidth: 2
-          )
+          .strokeBorder(Color.pmindigo.n200, lineWidth: 2)
       )
 
       Text(member.nickname)
@@ -654,13 +617,7 @@ private struct GroupImageView: View {
   var body: some View {
     ZStack {
       Circle()
-        .fill(
-          LinearGradient(
-            colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
+        .fill(Color.pmindigo.n100.opacity(0.5))
         .frame(width: 120, height: 120)
 
       if let uiImage = loadedImage {
@@ -678,27 +635,14 @@ private struct GroupImageView: View {
         // 이미지 없음 - system image 표시
         Image(systemName: "person.2.circle.fill")
           .font(.system(size: 60))
-          .foregroundStyle(
-            LinearGradient(
-              colors: [.blue.opacity(0.7), .purple.opacity(0.5)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .foregroundStyle(Color.pmindigo.n500)
       }
     }
     .overlay(
       Circle()
-        .strokeBorder(
-          LinearGradient(
-            colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          ),
-          lineWidth: 3
-        )
+        .strokeBorder(Color.pmindigo.n200, lineWidth: 3)
     )
-    .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .shadow(color: Color.pmindigo.n500.opacity(0.15), radius: 16, x: 0, y: 8)
     .contentShape(Circle())
     .onTapGesture {
       onTap?()

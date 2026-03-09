@@ -138,13 +138,16 @@ public struct MockPromise: Identifiable, Equatable, Sendable {
   // MARK: - Computed Properties
 
   public var timeText: String {
-    let start = LocalizedDateFormatters.time.string(from: startTime)
-
-    if let endTime = endTime {
-      let end = LocalizedDateFormatters.time.string(from: endTime)
-      return "\(start) - \(end)"
+    guard let endTime = endTime else {
+      return LocalizedDateFormatters.time.string(from: startTime)
     }
-    return start
+
+    let calendar = Calendar.current
+    if calendar.isDate(startTime, inSameDayAs: endTime) {
+      return "\(LocalizedDateFormatters.time.string(from: startTime)) ~ \(LocalizedDateFormatters.time.string(from: endTime))"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startTime)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endTime))"
+    }
   }
 
   public var participantsSummary: String {

@@ -30,6 +30,8 @@ extension CreateGroup {
           case .success(let result):
             CreateGroupSuccessView(
               result: result,
+              photoData: store.photoData,
+              selectedGroupColor: store.selectedGroupColor,
               isKakaoSharing: store.isKakaoSharing,
               onKakaoShareTapped: {
                 store.send(.view(.kakaoInviteShareTapped))
@@ -42,16 +44,20 @@ extension CreateGroup {
           case .settings(let result):
             CreateGroupSettingsView(
               groupName: result.name,
+              photoData: store.photoData,
+              isJoining: false,
               notificationEnabled: store.notificationEnabled,
               calendarSyncEnabled: store.calendarSyncEnabled,
               notificationAuthStatus: store.notificationAuthStatus,
               calendarAuthStatus: store.calendarAuthStatus,
               isSaving: store.isSavingSettings,
               showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+              selectedGroupColor: store.selectedGroupColor,
+              existingGroupColorMap: store.existingGroupColorMap,
               onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
               onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+              onGroupColorSelected: { store.send(.view(.groupColorSelected($0))) },
               onComplete: { store.send(.view(.settingsCompleted)) },
-              onSkip: { store.send(.view(.settingsSkipped)) },
               onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
               onAppear: { store.send(.view(.settingsAppeared)) }
             )
@@ -100,9 +106,7 @@ extension CreateGroup {
       switch store.step {
       case .input:
         return LocalizedStrings.CreateGroup.title
-      case .success:
-        return ""
-      case .settings:
+      case .success, .settings:
         return ""
       }
     }

@@ -213,7 +213,22 @@ Button { } label: {
 
 ---
 
-## 5. Git 규칙
+## 5. xcstrings 수정 규칙 (Critical)
+
+```
+❌ json.dumps / Write로 .xcstrings 파일 전체를 다시 쓰기 금지
+❌ Python/스크립트로 파싱 후 재직렬화 금지
+✅ Edit 도구로 필요한 부분만 삽입/수정
+```
+
+- 새 키 추가: 같은 prefix 그룹의 마지막 항목 뒤에 Edit으로 삽입
+- 기존 키 수정: 해당 키의 value만 Edit으로 변경
+- 기존 파일의 JSON 포맷(들여쓰기, `" : "` 구분자, 키 순서)을 반드시 유지
+- **이유**: 전체 재직렬화 시 Xcode ↔ Python 포맷 차이로 15,000줄+ diff 발생
+
+---
+
+## 6. Git 규칙
 
 ### 커밋 메시지
 ```
@@ -235,7 +250,7 @@ gh pr create --base "$latest_release" --title "..." --body "..."
 
 ---
 
-## 6. 테스트 (Swift Testing)
+## 7. 테스트 (Swift Testing)
 
 ### 필수 사항
 - `import Testing` + `@testable import {Name}Feature`
@@ -280,7 +295,7 @@ struct FeatureTests {
 
 ---
 
-## 7. Firebase
+## 8. Firebase
 
 ### Client 패턴
 - `@DependencyClient` + `DependencyKey` + `TestDependencyKey`
@@ -293,7 +308,7 @@ struct FeatureTests {
 
 ---
 
-## 8. 참조 문서
+## 9. 참조 문서
 
 | 문서 | 설명 |
 |------|------|

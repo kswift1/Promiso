@@ -98,11 +98,21 @@ extension CalendarFeature {
             groupColorMap: store.groupColorMap,
             selectedGroupIds: store.selectedGroupIds,
             showPersonalEvents: store.showPersonalEvents,
+            selectedStatusFilters: store.selectedStatusFilters,
+            showCalendarEvents: store.showCalendarEvents,
+            canReadCalendarEvents: store.calendarPermissionStatus.canReadEvents,
+            isFilterActive: store.isFilterActive,
             onGroupToggled: { groupId in
               store.send(.view(.filterGroupToggled(groupId)))
             },
             onPersonalEventsToggled: {
               store.send(.view(.filterPersonalEventsToggled))
+            },
+            onStatusFilterChanged: { filter in
+              store.send(.view(.filterStatusChanged(filter)))
+            },
+            onCalendarEventsToggled: {
+              store.send(.view(.filterCalendarEventsToggled))
             },
             onReset: {
               store.send(.view(.filterReset))
@@ -211,6 +221,9 @@ extension CalendarFeature {
         },
         onDayCreatePromise: { date in
           store.send(.view(.dayLongPressCreatePromise(date)))
+        },
+        previewIndicatorsProvider: { [store] date in
+          store.withState { $0.unfilteredIndicators(for: date) }
         },
         onWeekPageChanged: isWeek ? { direction in
           if direction < 0 {
@@ -352,7 +365,6 @@ extension CalendarFeature {
     private static let defaultGridHeight: CGFloat = 306
     private static let minGridHeight: CGFloat = 150
     private static let maxDrag: CGFloat = defaultGridHeight - minGridHeight // 106
-    private static let halfDragRatio: CGFloat = 0.5
 
     private var compactGridHeight: CGFloat {
       Self.defaultGridHeight - sheetDragOffset
@@ -363,7 +375,7 @@ extension CalendarFeature {
     }
 
     private var snapOffsets: [CGFloat] {
-      [0, Self.maxDrag * Self.halfDragRatio, Self.maxDrag]
+      [0, Self.maxDrag]
     }
 
     private func nearestSnapOffset(for offset: CGFloat) -> CGFloat {
@@ -424,15 +436,11 @@ extension CalendarFeature {
 
     private var monthModeHeader: some View {
       HStack {
-        Text(LocalizedStrings.Calendar.monthSchedule)
+        Text("\(Calendar.current.component(.month, from: store.currentMonth))월 일정")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 
         Spacer()
-
-        Text(LocalizedStrings.Calendar.dayCount(store.sectionDates.count))
-          .font(.system(size: 14, weight: .medium))
-          .foregroundColor(.secondary)
       }
       .padding(.horizontal, 16)
       .padding(.top, 16)
@@ -451,21 +459,35 @@ extension CalendarFeature {
       let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty || holidayName != nil {
-        CompactDayRow(
-          date: date,
-          promises: dayPromises,
-          calendarEvents: dayEvents,
-          personalEvents: dayPersonalEvents,
-          isSelected: isSelected,
-          currentUserId: store.currentUserId,
-          holidayName: holidayName,
-          onTap: {
-            store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
-          }
-        )
-        .id(date)
-      }
+      CompactDayRow(
+        date: date,
+        promises: dayPromises,
+        calendarEvents: dayEvents,
+        personalEvents: dayPersonalEvents,
+        isSelected: isSelected,
+        currentUserId: store.currentUserId,
+        holidayName: holidayName,
+        groupColorMap: store.groupColorMap,
+        onDateTap: {
+          store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
+        },
+        onPromiseTap: { promise in
+          store.send(.view(.scheduleItemTapped(.promise(promise))))
+        },
+        onPersonalEventTap: { event in
+          store.send(.view(.scheduleItemTapped(.personalEvent(event))))
+        },
+        onCalendarEventTap: { event in
+          store.send(.view(.scheduleItemTapped(.calendarEvent(event))))
+        },
+        onCreatePersonalEvent: {
+          store.send(.view(.dayLongPressCreatePersonalEvent(date)))
+        },
+        onCreatePromise: {
+          store.send(.view(.dayLongPressCreatePromise(date)))
+        }
+      )
+      .id(date)
     }
 
     // MARK: - Loading View

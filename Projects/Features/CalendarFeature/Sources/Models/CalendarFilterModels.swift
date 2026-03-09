@@ -10,9 +10,11 @@ extension CalendarFeature.StatusFilter: CategoryFilterItem {
   public var title: String {
     switch self {
     case .all: return "전체"
-    case .needResponse: return "응답필요"
+    case .needResponse: return "응답 필요"
+    case .waitingConfirmation: return "확정 대기"
     case .confirmed: return "확정"
-    case .unconfirmed: return "미확정"
+    case .completed: return "완료"
+    case .failed: return "불발"
     }
   }
 
@@ -20,17 +22,21 @@ extension CalendarFeature.StatusFilter: CategoryFilterItem {
     switch self {
     case .all: return "tray.fill"
     case .needResponse: return "envelope.badge"
+    case .waitingConfirmation: return "clock.badge"
     case .confirmed: return "checkmark.circle.fill"
-    case .unconfirmed: return "clock.badge"
+    case .completed: return "checkmark.seal.fill"
+    case .failed: return "xmark.circle.fill"
     }
   }
 
   public var selectedColor: Color {
     switch self {
-    case .all: return .blue
-    case .needResponse: return .orange
-    case .confirmed: return .green
-    case .unconfirmed: return Color.pmindigo.n400
+    case .all: return Color.pmindigo.n500
+    case .needResponse: return Color.pmwarning.n500
+    case .waitingConfirmation: return Color.pminfo.n500
+    case .confirmed: return Color.pmsuccess.n500
+    case .completed: return Color.pmgray.n500
+    case .failed: return Color.pmerror.n500
     }
   }
 }
