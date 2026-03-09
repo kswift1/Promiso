@@ -143,87 +143,45 @@ extension CalendarFeature {
     }
 
     private var calendarBaseView: some View {
-      ZStack(alignment: .bottomTrailing) {
-        VStack(spacing: 0) {
-          // 헤더
-          CalendarHeader(
-            title: store.headerTitle,
-            displayMode: store.displayMode,
-            isSelectedDateToday: store.isSelectedDateToday,
-            isFilterActive: store.isFilterActive,
-            onFilterTapped: { store.send(.view(.filterIconTapped)) },
-            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
-            onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
-            onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
-            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
-            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
-          )
-
-          Divider()
-
-          // 공통 요일 헤더
-          WeekdayHeader()
-
-          // 캘린더 그리드 (주간/월간)
-          calendarGridSection
-            .layoutPriority(1)
-            .animation(.smooth(duration: 0.35), value: store.displayMode)
-            .onChange(of: store.displayMode) { _, _ in
-              withAnimation(.smooth(duration: 0.35)) {
-                sheetDragOffset = 0
-              }
-              sheetDragBaseOffset = 0
-            }
-
-          // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
-          if store.displayMode == .week || store.displayMode == .month {
-            promiseListSection
-              .transition(.move(edge: .bottom).combined(with: .opacity))
-          }
-        }
-        .auroraBackground()
-        .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
-
-        // FAB
-        createButton
-      }
-    }
-
-    private var createButton: some View {
-      Button {
-        store.send(.view(.createButtonTapped))
-      } label: {
-        Image(systemName: "plus")
-          .font(.system(size: 22, weight: .semibold))
-          .foregroundColor(.white)
-          .frame(width: 56, height: 56)
-          .background(Color.pmindigo.n500)
-          .clipShape(Circle())
-          .contentShape(Circle())
-          .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, x: 0, y: 4)
-      }
-      .accessibilityLabel(LocalizedStrings.Calendar.addSchedule)
-      .padding(.trailing, 20)
-      .padding(.bottom, 20)
-      .confirmationDialog(
-        LocalizedStrings.Calendar.addSchedule,
-        isPresented: Binding(
-          get: { store.isCreateDialogPresented },
-          set: { newValue in
-            if !newValue {
-              store.send(.view(.createDialogDismissed))
-            }
-          }
+      VStack(spacing: 0) {
+        // 헤더
+        CalendarHeader(
+          title: store.headerTitle,
+          displayMode: store.displayMode,
+          isSelectedDateToday: store.isSelectedDateToday,
+          isFilterActive: store.isFilterActive,
+          onFilterTapped: { store.send(.view(.filterIconTapped)) },
+          onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
+          onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
+          onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+          onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+          onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
         )
-      ) {
-        Button(LocalizedStrings.Calendar.personalSchedule) {
-          store.send(.view(.createButtonPersonalEventSelected))
+
+        Divider()
+
+        // 공통 요일 헤더
+        WeekdayHeader()
+
+        // 캘린더 그리드 (주간/월간)
+        calendarGridSection
+          .layoutPriority(1)
+          .animation(.smooth(duration: 0.35), value: store.displayMode)
+          .onChange(of: store.displayMode) { _, _ in
+            withAnimation(.smooth(duration: 0.35)) {
+              sheetDragOffset = 0
+            }
+            sheetDragBaseOffset = 0
+          }
+
+        // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
+        if store.displayMode == .week || store.displayMode == .month {
+          promiseListSection
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        Button(LocalizedStrings.Calendar.groupSchedule) {
-          store.send(.view(.createButtonPromiseSelected))
-        }
-        Button(LocalizedStrings.Common.cancel, role: .cancel) {}
       }
+      .auroraBackground()
+      .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
     }
 
     // MARK: - Calendar Grid Section

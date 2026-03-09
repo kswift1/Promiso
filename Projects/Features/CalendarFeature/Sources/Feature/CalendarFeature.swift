@@ -133,9 +133,6 @@ extension CalendarFeature {
       /// 필터 시트 표시 여부
       var isFilterSheetPresented: Bool = false
 
-      /// 생성 다이얼로그 표시 여부
-      var isCreateDialogPresented: Bool = false
-
       /// 그룹 정렬 옵션 (그룹 탭과 동일)
       var groupSortOption: GroupSortOption = .joinedRecent
 
@@ -726,11 +723,6 @@ extension CalendarFeature {
         case filterCalendarEventsToggled
         case filterReset
         case filterSheetDismissed
-        // FAB 생성 버튼 관련
-        case createButtonTapped
-        case createButtonPersonalEventSelected
-        case createButtonPromiseSelected
-        case createDialogDismissed
       }
 
       @CasePathable
@@ -916,21 +908,6 @@ extension CalendarFeature {
         CreatePromise.Feature()
       }
       .forEach(\.path, action: \.path)
-    }
-
-    // MARK: - Helpers
-
-    private func defaultDateRange(for selectedDate: Date, calendar: Calendar) -> (start: Date, end: Date) {
-      let now = Date()
-      let selectedDay = calendar.startOfDay(for: selectedDate)
-      let baseDate: Date
-      if calendar.isDateInToday(selectedDate) {
-        let hour = calendar.component(.hour, from: now)
-        baseDate = calendar.date(bySettingHour: hour + 1, minute: 0, second: 0, of: now) ?? now
-      } else {
-        baseDate = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: selectedDay) ?? selectedDay
-      }
-      return (baseDate, baseDate.addingTimeInterval(3600))
     }
 
     // MARK: - View Action Handler
@@ -1419,24 +1396,6 @@ extension CalendarFeature {
 
       case .filterSheetDismissed:
         state.isFilterSheetPresented = false
-        return .none
-
-      case .createButtonTapped:
-        state.isCreateDialogPresented = true
-        return .none
-
-      case .createButtonPersonalEventSelected:
-        state.isCreateDialogPresented = false
-        let (start, end) = defaultDateRange(for: state.selectedDate, calendar: calendar)
-        return .send(.view(.createPersonalEventFromTimeline(startDate: start, endDate: end)))
-
-      case .createButtonPromiseSelected:
-        state.isCreateDialogPresented = false
-        let (start, end) = defaultDateRange(for: state.selectedDate, calendar: calendar)
-        return .send(.view(.createPromiseFromTimeline(startDate: start, endDate: end)))
-
-      case .createDialogDismissed:
-        state.isCreateDialogPresented = false
         return .none
 
       }
