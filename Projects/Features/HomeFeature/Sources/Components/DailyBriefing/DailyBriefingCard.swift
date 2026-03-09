@@ -9,6 +9,7 @@ struct DailyBriefingCard: View {
   let detail: String?
   let isLoading: Bool
   let isExpanded: Bool
+  let isUpdated: Bool
   let isNotificationDenied: Bool
   let isLocationDenied: Bool
   let onTap: () -> Void
@@ -91,7 +92,7 @@ struct DailyBriefingCard: View {
           }
         }
       }
-      .adaptiveGlassCard(cornerRadius: 20)
+      .proGlassCard(cornerRadius: 20)
     }
   }
 
@@ -105,6 +106,14 @@ struct DailyBriefingCard: View {
       Text("데일리 브리핑")
         .font(.pmHeadline)
         .foregroundStyle(.primary)
+
+      // 업데이트됨 뱃지
+      if isUpdated {
+        Text(LocalizedStrings.Home.briefingUpdatedBadge)
+          .font(.pmCaption)
+          .foregroundStyle(Color.pmindigo.n500)
+          .transition(.opacity)
+      }
 
       Spacer()
 

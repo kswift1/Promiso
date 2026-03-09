@@ -75,6 +75,8 @@ extension Home {
       var briefingGeneratedDate: Date? = nil
       /// 브리핑 상세 펼침 여부
       var isBriefingExpanded: Bool = false
+      /// 브리핑이 업데이트된 상태인지 (promptKey 변경으로 재생성됨)
+      var isBriefingUpdated: Bool = false
       /// 마지막 브리핑 생성에 사용된 스타일 (캐시 무효화용)
       var lastBriefingStyle: String?
       /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
@@ -442,6 +444,7 @@ extension Home {
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
             state.isBriefingExpanded = false
+            state.isBriefingUpdated = false
             return .send(.internal(.fetchBriefing()))
 
           case .openNotificationSettingsTapped:
@@ -468,6 +471,7 @@ extension Home {
             // 강제 새로고침
             state.briefingState = .loading
             state.briefingGeneratedDate = nil
+            state.isBriefingUpdated = false
 
             return .merge(
               .run { [openURL] _ in
@@ -1168,13 +1172,7 @@ extension Home {
             let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
             let needsForceRefresh = forceRefresh || styleChanged
 
-            // 캐시 확인 (스타일 변경 시에도 강제 새로고침)
-            if !needsForceRefresh,
-               let generatedDate = state.briefingGeneratedDate,
-               Calendar.current.isDateInToday(generatedDate),
-               state.briefingState.isLoaded {
-              return .none
-            }
+            // 서버에서 promptKey 기반 캐시 처리하므로 항상 서버 호출
             state.briefingState = .loading
             state.lastBriefingStyle = currentStyleRaw
 
@@ -1202,8 +1200,10 @@ extension Home {
             case .success(let briefingResult):
               state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
+              state.isBriefingUpdated = briefingResult.isUpdated
             case .failure(let error):
               state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
+              state.isBriefingUpdated = false
             }
             return .none
 

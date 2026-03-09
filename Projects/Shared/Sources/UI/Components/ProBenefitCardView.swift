@@ -79,12 +79,7 @@ public struct ProBenefitCardView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.pmindigo.n500.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-          RoundedRectangle(cornerRadius: 12)
-            .stroke(Color.pmindigo.n500.opacity(0.12), lineWidth: 1)
-        )
+        .proGlassCard(cornerRadius: 12)
       }
     }
   }

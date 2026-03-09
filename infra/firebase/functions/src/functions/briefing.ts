@@ -8,6 +8,7 @@
  * @why 서버 전담으로 프롬프트 튜닝을 deploy만으로 가능하게
  * @ios BriefingView - 홈 화면 브리핑 카드에서 호출
  */
+import {createHash} from "crypto";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import {
@@ -52,6 +53,11 @@ interface UserSettingsDocument {
     };
   };
 }
+
+// MARK: - Constants
+
+/** 장거리 이동 기준 (km) — 이 이상이면 KTX/고속버스 안내 */
+const LONG_DISTANCE_KM = 80;
 
 // MARK: - Sanitize
 
@@ -286,6 +292,44 @@ async function fetchUserGroups(
 // MARK: - Analysis
 
 /**
+ * 프롬프트에 영향을 주는 데이터로 캐시 키 해시 생성
+ * 슬롯, 스타일, 교통수단, 일정별 날씨 매칭 결과를 기반으로 함
+ * 현재 위치(locationTitle)는 이동 시간 계산에만 사용되므로 캐시 키에서 제외 —
+ * 스케줄러(location: null)와 앱(location 있음) 간 거짓 양성 방지
+ * @param {object} params - 파라미터
+ * @param {ScheduleSlotEntry[]} params.slots - 정렬된 일정 슬롯 목록
+ * @param {string} params.style - 브리핑 스타일
+ * @param {string} params.preferredTransport - 선호 교통수단
+ * @param {(string | null)[]} params.weatherMatches - 일정별 날씨 매칭 결과
+ * @return {string} 16자리 SHA-256 해시
+ */
+function computePromptKey(params: {
+  slots: ScheduleSlotEntry[];
+  style: string;
+  preferredTransport: string;
+  weatherMatches: (string | null)[];
+}): string {
+  const sortedSlots = [...params.slots]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      startAt: s.startAt.toDate().getTime(),
+      endAt: s.endAt ? s.endAt.toDate().getTime() : null,
+      severity: s.severity,
+    }));
+
+  const raw = JSON.stringify({
+    slots: sortedSlots,
+    style: params.style,
+    transport: params.preferredTransport,
+    weather: params.weatherMatches,
+  });
+
+  return createHash("sha256").update(raw).digest("hex").substring(0, 16);
+}
+
+/**
  * 이동 거리 계산 + 교통 정보 조회 (현재 위치 -> 첫 약속 -> 다음 약속)
  * @param {number | null} userLat - 사용자 위도
  * @param {number | null} userLng - 사용자 경도
@@ -356,15 +400,18 @@ async function calculateTravelSegmentsWithTransport(
       );
       const distanceKm = Math.round(distKm * 10) / 10;
 
+      // 장거리(80km+)는 교통 API 스킵
       let transportation: TransportationResult | null = null;
-      try {
-        transportation = await fetchTransportation(
-          req.fromLat, req.fromLng,
-          req.toLat, req.toLng,
-          distKm,
-        );
-      } catch (error) {
-        console.error("[Briefing] Transportation fetch failed:", error);
+      if (distKm < LONG_DISTANCE_KM) {
+        try {
+          transportation = await fetchTransportation(
+            req.fromLat, req.fromLng,
+            req.toLat, req.toLng,
+            distKm,
+          );
+        } catch (error) {
+          console.error("[Briefing] Transportation fetch failed:", error);
+        }
       }
 
       return {
@@ -494,7 +541,9 @@ function buildPrompt(
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
   lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
+  lines.push("- 대중교통 소요시간은 환승 대기·도보 이동 등을 감안해 실제보다 5~10분 여유를 두고 안내하세요");
   lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
+  lines.push("- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장");
   if (preferredTransport === "transit") {
     lines.push("- 사용자가 주로 대중교통을 이용합니다. 대중교통 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
   } else if (preferredTransport === "car") {
@@ -641,16 +690,23 @@ function buildPrompt(
     for (const seg of travelSegments) {
       let line = `- <user-data>${sanitizeUserData(seg.from)}</user-data> -> <user-data>${sanitizeUserData(seg.to)}</user-data>:`;
 
-      if (seg.transportation) {
+      if (seg.distanceKm >= LONG_DISTANCE_KM) {
+        // 장거리: 구체적 대중교통 시간 대신 거리 + 장거리 안내
+        line += `\n  장거리 이동 (약 ${Math.round(seg.distanceKm)}km)` +
+          " - KTX, 고속버스 등 장거리 교통수단 필요";
+      } else if (seg.transportation) {
         const parts: string[] = [];
         const t = seg.transportation;
 
         if (t.driving) {
-          parts.push(`자동차 약 ${t.driving.duration}분${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
+          parts.push(`자동차 약 ${t.driving.duration}분` +
+            `${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
         }
         if (t.transit) {
-          const transfers = t.transit.busTransitCount + t.transit.subwayTransitCount;
-          parts.push(`대중교통 약 ${t.transit.totalTime}분 (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
+          const transfers =
+            t.transit.busTransitCount + t.transit.subwayTransitCount;
+          parts.push(`대중교통 약 ${t.transit.totalTime}분` +
+            ` (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
         }
         parts.push(`도보 약 ${t.walkingMinutes}분`);
 
@@ -745,24 +801,6 @@ export async function generateBriefingInternal(params: {
     `forceRefresh=${forceRefresh}, style=${style}`
   );
 
-  // 캐시 확인 (forceRefresh가 아닌 경우)
-  if (!forceRefresh) {
-    const cacheRef = admin.firestore()
-      .collection("users").doc(uid)
-      .collection("dailyBriefings").doc(todayKey);
-    const cached = await cacheRef.get();
-    if (cached.exists) {
-      const data = cached.data()!;
-      console.log(
-        `[Briefing] uid=${uid}, cache hit for ${todayKey}`
-      );
-      return {
-        summary: data.summary,
-        detail: data.detail,
-      };
-    }
-  }
-
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
     const [slots, userGroups, settingsDoc] = await Promise.all([
@@ -838,7 +876,46 @@ export async function generateBriefingInternal(params: {
       return {slot, detail, weatherMatch};
     });
 
-    // 6. 이동 거리 계산 + 교통 정보 조회
+    // 6. promptKey 계산 + 캐시 체크
+    const weatherMatches = enrichedSchedules.map((s) => s.weatherMatch);
+    const promptKey = computePromptKey({
+      slots: sortedSlots,
+      style,
+      preferredTransport,
+      weatherMatches,
+    });
+
+    let isUpdated = false;
+    if (!forceRefresh) {
+      const cacheRef = admin.firestore()
+        .collection("users").doc(uid)
+        .collection("dailyBriefings").doc(todayKey);
+      const cached = await cacheRef.get();
+      if (cached.exists) {
+        const data = cached.data()!;
+        if (data.promptKey === promptKey) {
+          console.log(
+            `[Briefing] uid=${uid}, ` +
+            `cache hit for ${todayKey}, ` +
+            `promptKey=${promptKey}`
+          );
+          return {
+            summary: data.summary,
+            detail: data.detail,
+            isUpdated: false,
+          };
+        }
+        // promptKey 불일치 → 재생성 필요
+        console.log(
+          `[Briefing] uid=${uid}, ` +
+          "promptKey changed: " +
+          `${data.promptKey} -> ${promptKey}`
+        );
+        isUpdated = true;
+      }
+    }
+
+    // 7. 이동 거리 계산 + 교통 정보 조회
     const detailsWithLocation = sortedSlots
       .map((s) => allDetails.get(s.id))
       .filter((d): d is ScheduleDetail => d != null);
@@ -850,7 +927,7 @@ export async function generateBriefingInternal(params: {
       detailsWithLocation,
     );
 
-    // 7. 오늘 일정 없으면 미래 일정 조회
+    // 8. 오늘 일정 없으면 미래 일정 조회
     let upcoming: {
       dateKey: string; slots: ScheduleSlotEntry[];
     } | null = null;
@@ -858,7 +935,7 @@ export async function generateBriefingInternal(params: {
       upcoming = await fetchUpcomingSlots(uid, todayKey);
     }
 
-    // 8. 프롬프트 조립
+    // 9. 프롬프트 조립
     const prompt = buildPrompt(
       language === "ko" ? "한국어" : language,
       dateTimeStr,
@@ -879,7 +956,7 @@ export async function generateBriefingInternal(params: {
       `weather=${weather ? "yes" : "no"}`
     );
 
-    // 9. Gemini API 호출
+    // 10. Gemini API 호출
     const geminiKey = GEMINI_API_KEY.value();
     if (!geminiKey) {
       console.error(
@@ -888,6 +965,7 @@ export async function generateBriefingInternal(params: {
       return {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
+        isUpdated: false,
       };
     }
 
@@ -912,6 +990,7 @@ export async function generateBriefingInternal(params: {
       return {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
+        isUpdated: false,
       };
     }
 
@@ -936,12 +1015,14 @@ export async function generateBriefingInternal(params: {
           .set({
             summary: parsed.summary,
             detail: parsed.detail,
+            promptKey,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
         return {
           summary: parsed.summary,
           detail: parsed.detail,
+          isUpdated,
         };
       }
     } catch (e) {
@@ -955,12 +1036,14 @@ export async function generateBriefingInternal(params: {
     return {
       summary: firstSentence.substring(0, 30),
       detail: text,
+      isUpdated: false,
     };
   } catch (error) {
     console.error(`[Briefing] uid=${uid}, Error:`, error);
     return {
       summary: DEFAULT_SUMMARY,
       detail: DEFAULT_DETAIL,
+      isUpdated: false,
     };
   }
 }

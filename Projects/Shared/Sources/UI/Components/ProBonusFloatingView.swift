@@ -150,8 +150,7 @@ public struct ProBonusFloatingView: View {
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Color.pmindigo.n500.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-      .adaptiveGlassCard(cornerRadius: 12)
+      .proGlassCard(cornerRadius: 12)
       .padding(.bottom, 4)
     }
   }

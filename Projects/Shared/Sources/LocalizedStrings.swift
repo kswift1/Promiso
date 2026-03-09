@@ -982,6 +982,9 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(hours)")
     }
 
+    // Briefing
+    public static var briefingUpdatedBadge: String { String(localized: "home.briefing.updated.badge", bundle: bundle) }
+
     // Timeline
     public static var accepted: String { String(localized: "home.timeline.accepted", bundle: bundle) }
     public static var declined: String { String(localized: "home.timeline.declined", bundle: bundle) }

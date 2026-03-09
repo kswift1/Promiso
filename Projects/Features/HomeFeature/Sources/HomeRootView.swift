@@ -189,6 +189,7 @@ extension Home {
               detail: store.briefingState.value?.detail,
               isLoading: store.briefingState.isLoading,
               isExpanded: store.isBriefingExpanded,
+              isUpdated: store.isBriefingUpdated,
               isNotificationDenied: store.isNotificationDenied,
               isLocationDenied: store.isLocationDenied,
               onTap: {

@@ -1473,6 +1473,8 @@ export interface GenerateBriefingResponse {
   summary: string;
   /** 상세 브리핑 (3~5문장) */
   detail: string;
+  /** 기존 캐시가 있었지만 promptKey 변경으로 재생성됨 */
+  isUpdated?: boolean;
 }
 
 /**
