@@ -263,33 +263,26 @@ struct CompactDayRow: View {
 
   var body: some View {
     Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 날짜
-        VStack(spacing: 2) {
-          ZStack {
-            if isSelected {
-              Circle()
-                .fill(Color.pmindigo.n500)
-                .frame(width: 32, height: 32)
+      VStack(alignment: .leading, spacing: 0) {
+        // 날짜 헤더
+        HStack(spacing: 12) {
+          VStack(spacing: 2) {
+            ZStack {
+              if isSelected {
+                Circle()
+                  .fill(Color.pmindigo.n500)
+                  .frame(width: 32, height: 32)
+              }
+              Text(dayNumber)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(dateTextColor)
             }
-            Text(dayNumber)
-              .font(.system(size: 18, weight: .bold))
-              .foregroundColor(dateTextColor)
+            Text(weekday)
+              .font(.system(size: 11, weight: .medium))
+              .foregroundColor(isSelected ? Color.pmindigo.n500 : .secondary)
           }
-          Text(weekday)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(isSelected ? Color.pmindigo.n500 : .secondary)
-        }
-        .frame(width: 36)
+          .frame(width: 36)
 
-        // 구분선
-        Rectangle()
-          .fill(Color(.separator).opacity(0.3))
-          .frame(width: 1, height: 32)
-
-        // 일정 요약
-        VStack(alignment: .leading, spacing: 4) {
-          // 공휴일
           if let holidayName {
             Text(holidayName)
               .font(.system(size: 13, weight: .medium))
@@ -297,84 +290,31 @@ struct CompactDayRow: View {
               .lineLimit(1)
           }
 
-          // 약속이 있으면 약속 먼저 표시
-          if let firstPromise = promises.first {
-            HStack(spacing: 8) {
-              Text(firstPromise.displayEmoji)
-                .font(.system(size: 16))
+          Spacer()
 
-              VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                  Text(firstPromise.title)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+          Image(systemName: "chevron.right")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(.secondary.opacity(0.5))
+        }
 
-                  if promises.count > 1 {
-                    Text(LocalizedStrings.Calendar.additionalItems(promises.count - 1))
-                      .font(.system(size: 12))
-                      .foregroundColor(.secondary)
-                  }
-                }
+        // 일정 목록
+        let allItems = makeAllItems()
+        if !allItems.isEmpty {
+          Divider()
+            .opacity(0.4)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
 
-                Text(firstPromise.timeText)
-                  .font(.system(size: 12))
-                  .foregroundColor(.secondary)
+          VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(allItems.enumerated()), id: \.offset) { index, item in
+              if index > 0 {
+                Divider().opacity(0.3)
               }
-            }
-          }
-
-          // 개인 일정이 있으면 표시
-          if !personalEvents.isEmpty {
-            HStack(spacing: 6) {
-              Circle()
-                .fill(Color.pmindigo.n500)
-                .frame(width: 6, height: 6)
-
-              if let firstEvent = personalEvents.first {
-                Text("\(firstEvent.displayEmoji) \(firstEvent.title)")
-                  .font(.system(size: 13))
-                  .foregroundColor(.secondary)
-                  .lineLimit(1)
-
-                if personalEvents.count > 1 {
-                  Text(LocalizedStrings.Calendar.additionalItems(personalEvents.count - 1))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.7))
-                }
-              }
-            }
-          }
-
-          // 캘린더 이벤트가 있으면 표시
-          if !calendarEvents.isEmpty {
-            HStack(spacing: 6) {
-              Circle()
-                .fill(Color.gray)
-                .frame(width: 6, height: 6)
-
-              if let firstEvent = calendarEvents.first {
-                Text(firstEvent.title)
-                  .font(.system(size: 13))
-                  .foregroundColor(.secondary)
-                  .lineLimit(1)
-
-                if calendarEvents.count > 1 {
-                  Text(LocalizedStrings.Calendar.additionalItems(calendarEvents.count - 1))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.7))
-                }
-              }
+              item
+                .padding(.vertical, 8)
             }
           }
         }
-
-        Spacer()
-
-        // 화살표
-        Image(systemName: "chevron.right")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundColor(.secondary.opacity(0.5))
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
@@ -384,6 +324,140 @@ struct CompactDayRow: View {
     .buttonStyle(.plain)
     .padding(.horizontal, 16)
     .padding(.vertical, 4)
+  }
+
+  // MARK: - Item Builder
+
+  private func makeAllItems() -> [AnyView] {
+    var items: [AnyView] = []
+
+    for promise in promises {
+      items.append(AnyView(promiseRow(promise)))
+    }
+    for event in personalEvents {
+      items.append(AnyView(personalEventRow(event)))
+    }
+    for event in calendarEvents {
+      items.append(AnyView(calendarEventRow(event)))
+    }
+
+    return items
+  }
+
+  @ViewBuilder
+  private func promiseRow(_ promise: PromiseModel) -> some View {
+    let status = promise.responseStatus(currentUserId: currentUserId)
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
+        Text(promise.displayEmoji)
+          .font(.system(size: 16))
+        Text(promise.title)
+          .font(.system(size: 15, weight: .medium))
+          .foregroundColor(.primary)
+          .lineLimit(1)
+        Spacer()
+        HStack(spacing: 4) {
+          if let group = promise.group {
+            Text(group.name)
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+              .lineLimit(1)
+            Text("·")
+              .font(.system(size: 12))
+              .foregroundColor(.secondary.opacity(0.5))
+          }
+          Text(status.statusText)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(status.color)
+        }
+      }
+      HStack(spacing: 4) {
+        Text(promise.timeText)
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+        if let location = promise.location {
+          Text("·")
+            .font(.system(size: 12))
+            .foregroundColor(.secondary.opacity(0.5))
+          Text(location.name)
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func personalEventRow(_ event: PersonalEventModel) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
+        Text(event.displayEmoji)
+          .font(.system(size: 16))
+        Text(event.title)
+          .font(.system(size: 15, weight: .medium))
+          .foregroundColor(.primary)
+          .lineLimit(1)
+        Spacer()
+        Text("개인")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundColor(Color.pmindigo.n500)
+      }
+      HStack(spacing: 4) {
+        Text(event.timeText)
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+        if let location = event.location {
+          Text("·")
+            .font(.system(size: 12))
+            .foregroundColor(.secondary.opacity(0.5))
+          Text(location.name)
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func calendarEventRow(_ event: CalendarEvent) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
+        Circle()
+          .fill(event.calendarColor)
+          .frame(width: 8, height: 8)
+        Text(event.title)
+          .font(.system(size: 15, weight: .medium))
+          .foregroundColor(.primary)
+          .lineLimit(1)
+        Spacer()
+        Text(event.calendarName)
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+          .lineLimit(1)
+      }
+      HStack(spacing: 4) {
+        if event.isAllDay {
+          Text("종일")
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+        } else {
+          Text(event.startDate.formattedTime)
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+        }
+        if let location = event.location, !location.isEmpty {
+          Text("·")
+            .font(.system(size: 12))
+            .foregroundColor(.secondary.opacity(0.5))
+          Text(location)
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+      }
+    }
   }
 
   // MARK: - Computed Properties
