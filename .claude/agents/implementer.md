@@ -44,3 +44,19 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 - Glass Effect Fallback (`#available(iOS 26)`)
 - `Effect.run { }` (.task, .fireAndForget 금지)
 - Client 레이어 통과 (Feature에서 Firebase 직접 호출 금지)
+
+## xcstrings 수정 규칙 (Critical)
+
+```
+❌ json.dumps / Write로 xcstrings 파일 전체를 다시 쓰기 금지
+❌ Python/스크립트로 xcstrings 파일을 파싱 후 재직렬화 금지
+✅ Edit 도구로 필요한 부분만 삽입/수정
+```
+
+Localizable.xcstrings 수정 시:
+1. Read로 파일을 열어 기존 포맷(들여쓰기, `" : "` 구분자, 키 순서) 확인
+2. 새 키 추가: 같은 prefix 그룹의 마지막 항목 뒤에 Edit으로 삽입
+3. 기존 키 수정: 해당 키의 value만 Edit으로 변경
+4. 기존 파일의 JSON 포맷(Xcode 스타일: `" : "`)을 반드시 유지
+
+**이유**: 전체 재직렬화 시 Xcode ↔ Python 포맷 차이로 15,000줄+ diff 발생
