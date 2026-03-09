@@ -98,7 +98,7 @@ extension CalendarFeature {
             groupColorMap: store.groupColorMap,
             selectedGroupIds: store.selectedGroupIds,
             showPersonalEvents: store.showPersonalEvents,
-            selectedStatusFilter: store.selectedStatusFilter,
+            selectedStatusFilters: store.selectedStatusFilters,
             showCalendarEvents: store.showCalendarEvents,
             canReadCalendarEvents: store.calendarPermissionStatus.canReadEvents,
             isFilterActive: store.isFilterActive,

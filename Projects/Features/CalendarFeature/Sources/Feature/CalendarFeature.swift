@@ -19,13 +19,16 @@ extension CalendarFeature {
 
   // MARK: - Status Filter
 
-  public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
+  public enum StatusFilter: String, Equatable, CaseIterable, Sendable, Hashable {
     case all
     case needResponse
     case waitingConfirmation
     case confirmed
     case completed
     case failed
+
+    /// all 제외한 개별 필터 Set
+    public static let allIndividualFilters: Set<StatusFilter> = Set(allCases.filter { $0 != .all })
   }
 
   // MARK: - Reducer
@@ -124,8 +127,8 @@ extension CalendarFeature {
       /// 선택된 그룹 ID (빈 Set = 전체, 필터 해제)
       var selectedGroupIds: Set<String> = []
 
-      /// 선택된 상태 필터
-      var selectedStatusFilter: StatusFilter = .all
+      /// 선택된 상태 필터 (전체 = allIndividualFilters)
+      var selectedStatusFilters: Set<StatusFilter> = StatusFilter.allIndividualFilters
 
       /// 개인 일정 표시 여부
       var showPersonalEvents: Bool = true
@@ -363,7 +366,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents || selectedStatusFilter != .all || !showCalendarEvents
+        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents || selectedStatusFilters != StatusFilter.allIndividualFilters || !showCalendarEvents
       }
 
       // MARK: - Group Color Map
@@ -510,29 +513,29 @@ extension CalendarFeature {
         // 그룹 필터
         promises = promises.filter { selectedGroupIds.contains($0.groupId) }
 
-        // 상태 필터
-        switch selectedStatusFilter {
-        case .all:
-          break
-        case .needResponse:
-          promises = promises.filter {
-            $0.myVoteStatus(userId: currentUserId) == .pending && !$0.isVotingClosed
-          }
-        case .waitingConfirmation:
+        // 상태 필터 (allIndividualFilters = 전체, 필터 안 함)
+        if selectedStatusFilters != StatusFilter.allIndividualFilters {
           promises = promises.filter { promise in
-            let totalMembers = groupMembersCache[promise.groupId]?.count
-            let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
-            return status == .responded
-          }
-        case .confirmed:
-          promises = promises.filter { $0.isConfirmed && !$0.isPast }
-        case .completed:
-          promises = promises.filter { $0.isConfirmed && $0.isPast }
-        case .failed:
-          promises = promises.filter { promise in
-            let totalMembers = groupMembersCache[promise.groupId]?.count
-            let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
-            return status == .failed
+            selectedStatusFilters.contains { filter in
+              switch filter {
+              case .all:
+                return true
+              case .needResponse:
+                return promise.myVoteStatus(userId: currentUserId) == .pending && !promise.isVotingClosed
+              case .waitingConfirmation:
+                let totalMembers = groupMembersCache[promise.groupId]?.count
+                let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+                return status == .responded
+              case .confirmed:
+                return promise.isConfirmed && !promise.isPast
+              case .completed:
+                return promise.isConfirmed && promise.isPast
+              case .failed:
+                let totalMembers = groupMembersCache[promise.groupId]?.count
+                let status = promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+                return status == .failed
+              }
+            }
           }
         }
 
@@ -1456,7 +1459,17 @@ extension CalendarFeature {
         return .none
 
       case .filterStatusChanged(let filter):
-        state.selectedStatusFilter = filter
+        if filter == .all {
+          if state.selectedStatusFilters == StatusFilter.allIndividualFilters {
+            state.selectedStatusFilters = []
+          } else {
+            state.selectedStatusFilters = StatusFilter.allIndividualFilters
+          }
+        } else if state.selectedStatusFilters.contains(filter) {
+          state.selectedStatusFilters.remove(filter)
+        } else {
+          state.selectedStatusFilters.insert(filter)
+        }
         return .none
 
       case .filterCalendarEventsToggled:
@@ -1467,7 +1480,7 @@ extension CalendarFeature {
         state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         state.showPersonalEvents = true
         state.showCalendarEvents = true
-        state.selectedStatusFilter = .all
+        state.selectedStatusFilters = StatusFilter.allIndividualFilters
         return .none
 
       case .filterSheetDismissed:
