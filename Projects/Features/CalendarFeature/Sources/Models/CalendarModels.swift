@@ -12,10 +12,10 @@ import UIKit
 // MARK: - Calendar Display Mode
 
 /// 캘린더 표시 모드 (3가지 모드)
-public enum CalendarDisplayMode: Equatable, Sendable, CaseIterable {
-  case week           // 주간 뷰 + 24시간 타임라인
-  case month          // 월간 축약 (dot 인디케이터 + 하단 약속 리스트)
-  case monthExpanded  // 월간 확장 (풀 인디케이터 바 + 스크롤)
+public enum CalendarDisplayMode: String, Equatable, Sendable, CaseIterable {
+  case week = "week"
+  case month = "month"
+  case monthExpanded = "monthExpanded"
 
   /// 다음 모드 (순환: week → month → monthExpanded → week)
   public var next: CalendarDisplayMode {
@@ -41,6 +41,15 @@ public enum CalendarDisplayMode: Equatable, Sendable, CaseIterable {
     case .week: return LocalizedStrings.Calendar.modeWeek
     case .month: return LocalizedStrings.Calendar.modeMonth
     case .monthExpanded: return LocalizedStrings.Calendar.modeMonthExpanded
+    }
+  }
+
+  /// 설정 화면용 설명
+  public var settingsDescription: String {
+    switch self {
+    case .week: return LocalizedStrings.Calendar.modeWeekDescription
+    case .month: return LocalizedStrings.Calendar.modeMonthDescription
+    case .monthExpanded: return LocalizedStrings.Calendar.modeMonthExpandedDescription
     }
   }
 

@@ -587,13 +587,13 @@ extension LanguageSettings {
   }
 }
 
-// MARK: - PromiseTabModeSettings Namespace
+// MARK: - TabSettings Namespace
 
-public enum PromiseTabModeSettings {}
+public enum TabSettings {}
 
-// MARK: - PromiseTabModeSettings Feature
+// MARK: - TabSettings Feature
 
-extension PromiseTabModeSettings {
+extension TabSettings {
 
   @Reducer
   public struct Feature {
@@ -604,6 +604,7 @@ extension PromiseTabModeSettings {
     @ObservableState
     public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultCalendarDisplayMode)) public var defaultCalendarDisplayMode: String = "month"
 
       public init() {}
     }
@@ -614,7 +615,8 @@ extension PromiseTabModeSettings {
 
     public enum View: Equatable, Sendable {
       case onAppear
-      case tabModeChanged(String)
+      case promiseTabModeChanged(String)
+      case calendarDisplayModeChanged(String)
     }
 
     public var body: some ReducerOf<Self> {
@@ -625,8 +627,14 @@ extension PromiseTabModeSettings {
           case .onAppear:
             return .none
 
-          case .tabModeChanged(let mode):
+          case .promiseTabModeChanged(let mode):
             state.$defaultPromiseTabMode.withLock { $0 = mode }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .calendarDisplayModeChanged(let mode):
+            state.$defaultCalendarDisplayMode.withLock { $0 = mode }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -647,8 +655,9 @@ extension PromiseTabModeSettings {
 
     public var body: some View {
       ScrollView {
-        VStack(spacing: 16) {
-          tabModeSection
+        VStack(spacing: 24) {
+          promiseTabModeSection
+          calendarDisplayModeSection
           tabBarPreviewSection
         }
         .padding(.horizontal, 16)
@@ -656,24 +665,26 @@ extension PromiseTabModeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
+      .navigationTitle(LocalizedStrings.SettingsStrings.tabSettingsMenu)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
     }
 
-    private var tabModeSection: some View {
+    // MARK: - Promise Tab Mode Section
+
+    private var promiseTabModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
         Text(LocalizedStrings.SettingsStrings.promiseTabModeDefault)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          tabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
+          promiseTabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
           Divider()
             .padding(.leading, 48)
-          tabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
+          promiseTabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
         }
         .adaptiveGlassCard()
 
@@ -684,9 +695,9 @@ extension PromiseTabModeSettings {
       }
     }
 
-    private func tabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
+    private func promiseTabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
       Button {
-        store.send(.view(.tabModeChanged(mode)))
+        store.send(.view(.promiseTabModeChanged(mode)))
       } label: {
         HStack(spacing: 12) {
           Image(systemName: icon)
@@ -719,14 +730,80 @@ extension PromiseTabModeSettings {
       .buttonStyle(.plain)
     }
 
+    // MARK: - Calendar Display Mode Section
+
+    private var calendarDisplayModeSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.calendarDisplayModeDefault)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          calendarDisplayModeRow(rawValue: "week", icon: "calendar.day.timeline.left", title: LocalizedStrings.Calendar.modeWeek, description: LocalizedStrings.Calendar.modeWeekDescription)
+          Divider()
+            .padding(.leading, 48)
+          calendarDisplayModeRow(rawValue: "month", icon: "calendar", title: LocalizedStrings.Calendar.modeMonth, description: LocalizedStrings.Calendar.modeMonthDescription)
+          Divider()
+            .padding(.leading, 48)
+          calendarDisplayModeRow(rawValue: "monthExpanded", icon: "square.grid.3x3", title: LocalizedStrings.Calendar.modeMonthExpanded, description: LocalizedStrings.Calendar.modeMonthExpandedDescription)
+        }
+        .adaptiveGlassCard()
+
+        Text(LocalizedStrings.SettingsStrings.calendarDisplayModeHint)
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private func calendarDisplayModeRow(rawValue: String, icon: String, title: String, description: String) -> some View {
+      Button {
+        store.send(.view(.calendarDisplayModeChanged(rawValue)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: icon)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if store.defaultCalendarDisplayMode == rawValue {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    // MARK: - Tab Bar Preview Section
+
     private var tabBarPreviewSection: some View {
       VStack(alignment: .leading, spacing: 10) {
         Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        TabBarPreview(selectedMode: store.defaultPromiseTabMode)
-          .adaptiveGlassCard()
+        TabBarPreview(
+          promiseMode: store.defaultPromiseTabMode,
+          calendarDisplayMode: store.defaultCalendarDisplayMode
+        )
+        .adaptiveGlassCard()
 
         Text(LocalizedStrings.SettingsStrings.promiseTabModePreviewHint)
           .font(.system(size: 12))
@@ -739,7 +816,16 @@ extension PromiseTabModeSettings {
   // MARK: - TabBarPreview
 
   private struct TabBarPreview: View {
-    let selectedMode: String
+    let promiseMode: String
+    let calendarDisplayMode: String
+
+    private var calendarIcon: String {
+      switch calendarDisplayMode {
+      case "week": return "calendar.day.timeline.left"
+      case "monthExpanded": return "square.grid.3x3"
+      default: return "calendar"
+      }
+    }
 
     var body: some View {
       if #available(iOS 26.0, *) {
@@ -754,11 +840,11 @@ extension PromiseTabModeSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
+          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
         TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
@@ -773,11 +859,11 @@ extension PromiseTabModeSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
+          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
         TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)

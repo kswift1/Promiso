@@ -1000,6 +1000,60 @@
         }
       }
     },
+    "calendar.mode.week.description" : {
+      "comment" : "하루 일정을 시간대별로 자세히 볼 때 좋아요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Great for viewing daily schedules by time slot"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하루 일정을 시간대별로 자세히 볼 때 좋아요"
+          }
+        }
+      }
+    },
+    "calendar.mode.month.description" : {
+      "comment" : "한 달 전체를 보면서 약속 목록을 확인할 때 좋아요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Great for browsing the full month with a promise list"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 달 전체를 보면서 약속 목록을 확인할 때 좋아요"
+          }
+        }
+      }
+    },
+    "calendar.mode.monthExpanded.description" : {
+      "comment" : "달력에서 일정 분포를 한눈에 파악할 때 좋아요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Great for seeing schedule distribution at a glance"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "달력에서 일정 분포를 한눈에 파악할 때 좋아요"
+          }
+        }
+      }
+    },
     "calendar.monthSchedule": {
       "comment": "이번 달 일정",
       "extractionState": "manual",
@@ -19080,6 +19134,60 @@
           "stringUnit": {
             "state": "translated",
             "value": "실제 탭바는 위와 같이 표시됩니다."
+          }
+        }
+      }
+    },
+    "settings.calendarDisplayModeDefault" : {
+      "comment" : "캘린더 기본 모드",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar Default Mode"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 기본 모드"
+          }
+        }
+      }
+    },
+    "settings.calendarDisplayModeHint" : {
+      "comment" : "앱 시작 시 캘린더 탭의 기본 표시 모드를 설정합니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set the default display mode for the calendar tab when opening the app"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 시작 시 캘린더 탭의 기본 표시 모드를 설정합니다"
+          }
+        }
+      }
+    },
+    "settings.tabSettings" : {
+      "comment" : "탭 설정",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭 설정"
           }
         }
       }

@@ -179,7 +179,9 @@ extension RootTab {
         self.promiseMode = savedMode == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
-        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
+        let savedCalendarMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultCalendarDisplayMode)
+          .flatMap { CalendarDisplayMode(rawValue: $0) } ?? .month
+        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser, displayMode: savedCalendarMode)
         self.settings = Settings.Feature.State(currentUser: currentUser)
         self.personalMode = PersonalMode.Feature.State(currentUser: currentUser)
       }
