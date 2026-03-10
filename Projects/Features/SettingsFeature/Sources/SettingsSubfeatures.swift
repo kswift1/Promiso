@@ -739,13 +739,13 @@ extension TabSettings {
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          calendarDisplayModeRow(rawValue: "week", icon: "calendar.day.timeline.left", title: LocalizedStrings.Calendar.modeWeek, description: LocalizedStrings.Calendar.modeWeekDescription)
-          Divider()
-            .padding(.leading, 48)
-          calendarDisplayModeRow(rawValue: "month", icon: "calendar", title: LocalizedStrings.Calendar.modeMonth, description: LocalizedStrings.Calendar.modeMonthDescription)
-          Divider()
-            .padding(.leading, 48)
-          calendarDisplayModeRow(rawValue: "monthExpanded", icon: "square.grid.3x3", title: LocalizedStrings.Calendar.modeMonthExpanded, description: LocalizedStrings.Calendar.modeMonthExpandedDescription)
+          ForEach(Array(CalendarDisplayMode.allCases.enumerated()), id: \.element) { index, mode in
+            if index > 0 {
+              Divider()
+                .padding(.leading, 48)
+            }
+            calendarDisplayModeRow(mode: mode)
+          }
         }
         .adaptiveGlassCard()
 
@@ -756,29 +756,29 @@ extension TabSettings {
       }
     }
 
-    private func calendarDisplayModeRow(rawValue: String, icon: String, title: String, description: String) -> some View {
+    private func calendarDisplayModeRow(mode: CalendarDisplayMode) -> some View {
       Button {
-        store.send(.view(.calendarDisplayModeChanged(rawValue)))
+        store.send(.view(.calendarDisplayModeChanged(mode.rawValue)))
       } label: {
         HStack(spacing: 12) {
-          Image(systemName: icon)
+          Image(systemName: mode.iconName)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 20)
 
           VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            Text(mode.label)
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
 
-            Text(description)
+            Text(mode.settingsDescription)
               .font(.caption)
               .foregroundStyle(Color.pmtext.secondary)
           }
 
           Spacer()
 
-          if store.defaultCalendarDisplayMode == rawValue {
+          if store.defaultCalendarDisplayMode == mode.rawValue {
             Image(systemName: "checkmark")
               .font(.system(size: 14, weight: .semibold))
               .foregroundStyle(Color.pmindigo.n500)
@@ -820,11 +820,7 @@ extension TabSettings {
     let calendarDisplayMode: String
 
     private var calendarIcon: String {
-      switch calendarDisplayMode {
-      case "week": return "calendar.day.timeline.left"
-      case "monthExpanded": return "square.grid.3x3"
-      default: return "calendar"
-      }
+      (CalendarDisplayMode(rawValue: calendarDisplayMode) ?? .month).iconName
     }
 
     var body: some View {
