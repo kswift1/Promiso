@@ -314,13 +314,13 @@ extension PersonalMode {
         Button {
           store.send(.view(.createOneTimeEventTapped))
         } label: {
-          Label("일회성 일정", systemImage: "calendar.badge.plus")
+          Label("개인 일정 추가", systemImage: "calendar.badge.plus")
         }
 
         Button {
           store.send(.view(.createRecurringEventTapped))
         } label: {
-          Label("반복 일정", systemImage: "repeat")
+          Label("반복 일정 추가", systemImage: "repeat")
         }
       } label: {
         ZStack {
