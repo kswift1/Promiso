@@ -203,7 +203,14 @@ extension HomeModels {
     }
   }
 
-  /// 교통수단별 이동 정보
+  /// 시트에서 선택 가능한 항목 식별
+  public enum TransportSelection: Equatable, Hashable, Sendable {
+    case driving
+    case transit(index: Int)
+    case walking
+  }
+
+  /// 교통수단별 이동 정보 (도보 / 자동차용 단순 옵션)
   public struct TransportOption: Equatable, Sendable {
     public let type: TransportType
     public let durationMinutes: Int
@@ -215,6 +222,87 @@ extension HomeModels {
       self.durationMinutes = durationMinutes
       self.departureTime = departureTime
       self.additionalInfo = additionalInfo
+    }
+  }
+
+  /// 대중교통 경로 옵션 (여러 경로 중 하나)
+  public struct TransitRouteOption: Equatable, Sendable, Identifiable {
+    public let id: Int                    // index
+    public let totalTime: Int
+    public let payment: Int
+    public let busTransitCount: Int
+    public let subwayTransitCount: Int
+    public let pathType: Int
+    public let departureTime: Date
+    public let subPaths: [TransportSubPath]
+
+    public init(
+      id: Int,
+      totalTime: Int,
+      payment: Int,
+      busTransitCount: Int,
+      subwayTransitCount: Int,
+      pathType: Int,
+      departureTime: Date,
+      subPaths: [TransportSubPath]
+    ) {
+      self.id = id
+      self.totalTime = totalTime
+      self.payment = payment
+      self.busTransitCount = busTransitCount
+      self.subwayTransitCount = subwayTransitCount
+      self.pathType = pathType
+      self.departureTime = departureTime
+      self.subPaths = subPaths
+    }
+
+    /// 총 환승 횟수
+    public var transitCount: Int { busTransitCount + subwayTransitCount }
+  }
+
+  /// 대중교통 경로의 세부 구간
+  public struct TransportSubPath: Equatable, Sendable {
+    public let trafficType: Int           // 1=지하철, 2=버스, 3=도보
+    public let sectionTime: Int
+    public let distance: Int
+    public let startName: String?
+    public let endName: String?
+    public let stationCount: Int?
+    public let laneName: String?          // 대표 노선명 (2호선, 143번 등)
+
+    public init(
+      trafficType: Int,
+      sectionTime: Int,
+      distance: Int,
+      startName: String?,
+      endName: String?,
+      stationCount: Int?,
+      laneName: String?
+    ) {
+      self.trafficType = trafficType
+      self.sectionTime = sectionTime
+      self.distance = distance
+      self.startName = startName
+      self.endName = endName
+      self.stationCount = stationCount
+      self.laneName = laneName
+    }
+  }
+
+  /// 출발 알림 시트에 표시할 전체 교통 데이터
+  public struct DepartureTransportData: Equatable, Sendable {
+    public let driving: TransportOption?
+    public let transitRoutes: [TransitRouteOption]  // 여러 대중교통 경로
+    public let walking: TransportOption
+
+    public init(
+      driving: TransportOption?,
+      transitRoutes: [TransitRouteOption],
+      walking: TransportOption
+    ) {
+      self.driving = driving
+      self.transitRoutes = transitRoutes
+      self.walking = walking
     }
   }
 

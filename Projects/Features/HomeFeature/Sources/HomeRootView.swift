@@ -18,6 +18,50 @@ extension Home {
     }
 
     public var body: some View {
+      navigationStack
+        .sheet(
+          item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
+        ) { createEventStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: createEventStore)
+          }
+        }
+        .sheet(isPresented: Binding(
+          get: { store.departureAlertItem != nil && store.transportDetail == nil },
+          set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
+        )) {
+          DepartureAlertSheet(
+            promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
+            promiseTitle: store.departureAlertItem?.title ?? "",
+            promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
+            transportData: store.departureTransportData.value,
+            loadError: store.departureTransportData.error.map { _ in "경로를 불러오지 못했어요" },
+            onSelect: { selection in
+              store.send(.view(.departureAlertConfirmed(selection)))
+            },
+            onDetailTapped: {
+              store.send(.view(.departureAlertDetailTapped))
+            },
+            onDismiss: {
+              store.send(.view(.departureAlertSheetDismissed))
+            }
+          )
+        }
+        .sheet(isPresented: Binding(
+          get: { store.transportDetail != nil },
+          set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
+        )) {
+          if let detailStore = store.scope(state: \.transportDetail, action: \.transportDetail) {
+            NavigationStack {
+              TransportDetail.RootView(store: detailStore)
+            }
+          }
+        }
+    }
+
+    // MARK: - Navigation Stack
+
+    private var navigationStack: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
@@ -121,31 +165,6 @@ extension Home {
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
-      }
-      .sheet(
-        item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
-      ) { createEventStore in
-        NavigationStack {
-          CreatePersonalEvent.RootView(store: createEventStore)
-        }
-      }
-      .sheet(isPresented: Binding(
-        get: { store.departureAlertItem != nil },
-        set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
-      )) {
-        DepartureAlertSheet(
-          promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
-          promiseTitle: store.departureAlertItem?.title ?? "",
-          promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
-          options: store.departureTransportOptions.value,
-          loadError: store.departureTransportOptions.error.map { _ in "경로를 불러오지 못했어요" },
-          onSelect: { transportType in
-            store.send(.view(.departureAlertTransportSelected(transportType)))
-          },
-          onDismiss: {
-            store.send(.view(.departureAlertSheetDismissed))
-          }
-        )
       }
     }
 
