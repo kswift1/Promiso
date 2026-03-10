@@ -17,6 +17,7 @@
    - [4. notifications](#4-notifications-컬렉션)
    - [5. liveActivities](#5-liveactivities-컬렉션)
    - [6. personalEvents](#6-personalevents-서브컬렉션)
+   - [7. recurringEvents](#7-recurringevents-서브컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -51,8 +52,10 @@ Firestore Root
 │     │  └─ main                    # 고정 문서 ID
 │     ├─ settings/                  # 설정 정보 (서브컬렉션)
 │     │  └─ main                    # 고정 문서 ID
-│     └─ cache/                     # 캐시 데이터 (서브컬렉션)
-│        └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
+│     ├─ cache/                     # 캐시 데이터 (서브컬렉션)
+│     │  └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
+│     └─ recurringEvents/           # 반복 개인 일정 (서브컬렉션)
+│        └─ {eventId}/              # 반복 일정 문서 (규칙 기반)
 │
 ├─ groups/                          # 그룹 정보
 │  └─ {groupId}/                    # 그룹 문서
@@ -1029,6 +1032,100 @@ db.collection("users").document(userId).collection("personalEvents")
 
 ---
 
+### 7. recurringEvents (서브컬렉션)
+
+반복 개인 일정의 **규칙**을 저장합니다. 개별 인스턴스는 저장하지 않고, 클라이언트에서 규칙 기반으로 계산합니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/recurringEvents/{eventId}
+```
+
+#### 🔑 문서 ID
+
+- Firestore 자동 생성 ID 사용
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 기본값 | 설명 |
+|--------|------|------|--------|------|
+| `title` | String | ✅ | - | 일정 제목 |
+| `emoji` | String | ❌ | null | 대표 이모지 (AI 자동 생성) |
+| `description` | String | ❌ | null | 일정 설명 |
+| `startTime` | Map | ✅ | - | 시작 시각 (아래 참조) |
+| `startTime.hour` | Number | ✅ | - | 시 (0~23) |
+| `startTime.minute` | Number | ✅ | - | 분 (0~59) |
+| `durationMinutes` | Number | ❌ | null | 소요 시간 (분 단위) |
+| `location` | Map | ❌ | null | 장소 정보 (personalEvents와 동일) |
+| `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위) |
+| `recurrence` | Map | ✅ | - | 반복 규칙 (아래 참조) |
+| `recurrence.frequency` | String | ✅ | - | 반복 주기 (`daily`\|`weekly`\|`biweekly`\|`monthly`) |
+| `recurrence.daysOfWeek` | Array<Number> | ❌ | null | 반복 요일 (1=일~7=토, weekly/biweekly용) |
+| `recurrence.dayOfMonth` | Number | ❌ | null | 반복 일자 (1~31, monthly용) |
+| `recurrence.seriesEndDate` | Timestamp | ❌ | null | 반복 종료일 (null=무기한) |
+| `seriesStartDate` | Timestamp | ✅ | - | 반복 시작일 |
+| `excludedDates` | Array<String> | ❌ | null | 취소된 날짜 목록 ("yyyy-MM-dd") |
+| `overrides` | Map<String, Override> | ❌ | null | 날짜별 개별 수정 (아래 참조) |
+| `createdAt` | Timestamp | ✅ | - | 생성 시각 |
+| `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
+
+#### 📦 Override 구조 (overrides Map의 Value)
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `title` | String | ❌ | 변경된 제목 (null이면 원본 유지) |
+| `startTime` | Map | ❌ | 변경된 시작 시각 |
+| `durationMinutes` | Number | ❌ | 변경된 소요 시간 |
+| `location` | Map | ❌ | 변경된 장소 |
+| `isCancelled` | Boolean | ❌ | 이 날 취소 여부 |
+
+#### 📝 예시 데이터
+
+```json
+// 경로: users/sFeDJwqJbqScbSUp4Jz54MDlnFv1/recurringEvents/xYz9Abc123
+{
+  "title": "헬스장",
+  "emoji": "🏋️",
+  "description": null,
+  "startTime": { "hour": 19, "minute": 0 },
+  "durationMinutes": 60,
+  "location": {
+    "name": "강남 피트니스",
+    "address": "서울 강남구 역삼동 123",
+    "latitude": 37.4967,
+    "longitude": 127.0276
+  },
+  "reminderMinutesBefore": 30,
+  "recurrence": {
+    "frequency": "weekly",
+    "daysOfWeek": [2, 4, 6],
+    "dayOfMonth": null,
+    "seriesEndDate": null
+  },
+  "seriesStartDate": "2026-03-01T00:00:00+09:00",
+  "excludedDates": ["2026-03-17"],
+  "overrides": {
+    "2026-03-24": {
+      "startTime": { "hour": 20, "minute": 0 },
+      "isCancelled": false
+    }
+  },
+  "createdAt": "2026-03-01T10:00:00+09:00",
+  "updatedAt": "2026-03-10T15:00:00+09:00"
+}
+```
+
+#### 💡 설계 의도
+
+- **규칙 기반**: 인스턴스를 미리 생성하지 않고 규칙만 저장 → 문서 수 최소화 (만 명 기준 ~30,000개 vs 수백만 개)
+- **클라이언트 계산**: 캘린더/홈에서 날짜 범위 조회 시 클라이언트가 규칙 → 인스턴스 확장 (한 달 최대 31개 계산, 성능 부담 없음)
+- **예외 처리**: excludedDates/overrides로 "이 날만 취소/수정" 지원, 추가 문서 불필요
+- **보안**: 기존 `users/{userId}/{subcollection}/{docId}` 와일드카드 규칙으로 자동 보호
+- **쿼리 효율성**: 문서 수가 적으므로 전체 조회(`getAllEvents`)로 충분
+
+---
+
 ## 쿼리 패턴
 
 ### 1. 사용자 관련 쿼리
@@ -1378,6 +1475,12 @@ service cloud.firestore {
 |  |  | - userId는 경로에 내포 (문서 필드에서 제거) |  |
 |  |  | - 기존 users 서브컬렉션 와일드카드 Security Rules로 보호 |  |
 |  |  | - 복합 인덱스 불필요 (startAt 단일 필드 자동 인덱스) |  |
+| 2.1 | 2026-03-10 | recurringEvents 서브컬렉션 추가 | Claude |
+|  |  | - users/{userId}/recurringEvents 서브컬렉션 추가 (반복 개인 일정) |  |
+|  |  | - 규칙 기반 저장: recurrence(frequency, daysOfWeek, dayOfMonth, seriesEndDate) |  |
+|  |  | - 시간: startTime(hour, minute) + durationMinutes (Date가 아닌 시/분 저장) |  |
+|  |  | - 예외 처리: excludedDates(취소), overrides(개별 수정) |  |
+|  |  | - 인스턴스는 클라이언트에서 계산 (RecurringEventExpander) |  |
 
 ---
 
@@ -1387,4 +1490,9 @@ service cloud.firestore {
 
 - `reminders` 기능 도입 시 스키마 확정
 - 실시간 위치 공유 (arrivalSharing) 스키마 설계
+- `location.placeId` 필드 추가 (Kakao Place ID)
+
+---
+
+*마지막 업데이트: 2026-03-10*
 - `location.placeId` 필드 추가 (Kakao Place ID)

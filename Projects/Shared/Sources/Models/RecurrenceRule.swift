@@ -1,0 +1,100 @@
+import Foundation
+
+// MARK: - Recurrence Rule
+
+/// 반복 일정의 반복 규칙
+public struct RecurrenceRule: Codable, Equatable, Hashable, Sendable {
+  /// 반복 주기
+  public enum Frequency: String, Codable, Sendable, CaseIterable {
+    case daily      // 매일
+    case weekly     // 매주
+    case biweekly   // 격주
+    case monthly    // 매월
+  }
+
+  /// 반복 주기
+  public let frequency: Frequency
+
+  /// 반복 요일 (weekly/biweekly용)
+  /// 1=일요일, 2=월요일, ..., 7=토요일 (Calendar.component(.weekday) 기준)
+  public let daysOfWeek: [Int]?
+
+  /// 반복 일자 (monthly용, 1~31)
+  public let dayOfMonth: Int?
+
+  /// 시리즈 종료일 (nil = 무기한)
+  public let seriesEndDate: Date?
+
+  public init(
+    frequency: Frequency,
+    daysOfWeek: [Int]? = nil,
+    dayOfMonth: Int? = nil,
+    seriesEndDate: Date? = nil
+  ) {
+    self.frequency = frequency
+    self.daysOfWeek = daysOfWeek
+    self.dayOfMonth = dayOfMonth
+    self.seriesEndDate = seriesEndDate
+  }
+}
+
+// MARK: - Factory Methods
+
+extension RecurrenceRule {
+  /// 매일 반복
+  public static func daily(until endDate: Date? = nil) -> RecurrenceRule {
+    RecurrenceRule(frequency: .daily, seriesEndDate: endDate)
+  }
+
+  /// 매주 특정 요일 반복
+  /// - Parameter weekdays: 1=일, 2=월, 3=화, 4=수, 5=목, 6=금, 7=토
+  public static func weekly(_ weekdays: [Int], until endDate: Date? = nil) -> RecurrenceRule {
+    RecurrenceRule(frequency: .weekly, daysOfWeek: weekdays, seriesEndDate: endDate)
+  }
+
+  /// 격주 특정 요일 반복
+  public static func biweekly(_ weekdays: [Int], until endDate: Date? = nil) -> RecurrenceRule {
+    RecurrenceRule(frequency: .biweekly, daysOfWeek: weekdays, seriesEndDate: endDate)
+  }
+
+  /// 매월 특정 일자 반복
+  public static func monthly(day: Int, until endDate: Date? = nil) -> RecurrenceRule {
+    RecurrenceRule(frequency: .monthly, dayOfMonth: day, seriesEndDate: endDate)
+  }
+}
+
+// MARK: - Display
+
+extension RecurrenceRule {
+  /// 사용자에게 보여줄 반복 규칙 설명
+  public var displayText: String {
+    switch frequency {
+    case .daily:
+      return "매일"
+    case .weekly:
+      guard let days = daysOfWeek, !days.isEmpty else { return "매주" }
+      let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
+      return "매주 \(dayNames.joined(separator: ", "))"
+    case .biweekly:
+      guard let days = daysOfWeek, !days.isEmpty else { return "격주" }
+      let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
+      return "격주 \(dayNames.joined(separator: ", "))"
+    case .monthly:
+      guard let day = dayOfMonth else { return "매월" }
+      return "매월 \(day)일"
+    }
+  }
+
+  private static func weekdayName(for weekday: Int) -> String? {
+    switch weekday {
+    case 1: return "일"
+    case 2: return "월"
+    case 3: return "화"
+    case 4: return "수"
+    case 5: return "목"
+    case 6: return "금"
+    case 7: return "토"
+    default: return nil
+    }
+  }
+}
