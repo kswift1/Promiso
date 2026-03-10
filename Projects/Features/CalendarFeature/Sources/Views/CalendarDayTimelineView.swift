@@ -1076,6 +1076,7 @@ struct CalendarDayTimelineView: View {
   private func statusColor(for status: PromiseResponseStatus) -> Color {
     switch status {
     case .needResponse: return Color.pmwarning.n500
+    case .expired:      return Color.pmgray.n400
     case .responded:    return Color.pmwarning.n600
     case .confirmed:    return Color.pmsuccess.n500
     case .failed:       return Color.pmgray.n400
@@ -1085,6 +1086,7 @@ struct CalendarDayTimelineView: View {
   private func statusText(for status: PromiseResponseStatus) -> String {
     switch status {
     case .needResponse: return "응답 필요"
+    case .expired:      return "마감됨"
     case .responded:    return "투표 완료"
     case .confirmed:    return "확정"
     case .failed:       return "미확정"

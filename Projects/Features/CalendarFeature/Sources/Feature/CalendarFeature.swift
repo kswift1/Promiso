@@ -256,8 +256,7 @@ extension CalendarFeature {
       var calendarEventsByDate: [Date: [CalendarEvent]] {
         guard showCalendarEvents else { return [:] }
         let calendar = Calendar.current
-        let currentMonthKey = currentMonth.startOfMonth
-        let monthEvents = cachedCalendarEventsByMonth[currentMonthKey] ?? []
+        let monthEvents = uniqueItemsAcrossMonths(from: cachedCalendarEventsByMonth)
         var grouped: [Date: [CalendarEvent]] = [:]
 
         for event in monthEvents {
@@ -382,6 +381,20 @@ extension CalendarFeature {
 
       // MARK: - Schedule Indicators
 
+      /// 현재 월 ± 1개월의 캐시 데이터를 수집하고 ID 기준 중복 제거
+      private func uniqueItemsAcrossMonths<T: Identifiable>(
+        from cache: [Date: [T]]
+      ) -> [T] {
+        let calendar = Calendar.current
+        let monthKey = currentMonth.startOfMonth
+        let prevKey = calendar.date(byAdding: .month, value: -1, to: monthKey)?.startOfMonth
+        let nextKey = calendar.date(byAdding: .month, value: 1, to: monthKey)?.startOfMonth
+        let allItems = [prevKey, monthKey, nextKey]
+          .compactMap { $0 }
+          .flatMap { cache[$0] ?? [] }
+        return Dictionary(grouping: allItems, by: \.id).compactMap(\.value.first)
+      }
+
       /// 날짜별 일정 인디케이터 (월간 그리드 셀용)
       var scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]] {
         let calendar = Calendar.current
@@ -422,10 +435,7 @@ extension CalendarFeature {
 
         // 개인 일정
         if showPersonalEvents {
-          let allPersonalEvents: [PersonalEventModel] = [prevMonthKey, currentMonthKey, nextMonthKey]
-            .compactMap { $0 }
-            .flatMap { cachedPersonalEventsByMonth[$0] ?? [] }
-          let uniquePersonalEvents = Dictionary(grouping: allPersonalEvents, by: \.id).compactMap(\.value.first)
+          let uniquePersonalEvents = uniqueItemsAcrossMonths(from: cachedPersonalEventsByMonth)
           for event in uniquePersonalEvents {
             spreadIndicators(
               startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
@@ -449,8 +459,8 @@ extension CalendarFeature {
 
         // 시스템 캘린더 이벤트 (필터 OFF 시 제외)
         guard showCalendarEvents else { return indicators }
-        let calendarMonthEvents = cachedCalendarEventsByMonth[currentMonth.startOfMonth] ?? []
-        for event in calendarMonthEvents {
+        let uniqueCalendarEvents = uniqueItemsAcrossMonths(from: cachedCalendarEventsByMonth)
+        for event in uniqueCalendarEvents {
           spreadIndicators(
             startAt: event.startDate, endAt: event.endDate, into: &indicators
           ) { day, position in
@@ -1148,10 +1158,9 @@ extension CalendarFeature {
           AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
-        // 캘린더 이벤트 로드
-        if state.calendarPermissionStatus.canReadEvents {
-          let monthStartKey = monthStart.startOfMonth
-          effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStartKey))))
+        // 캘린더 이벤트 로드 (캐시되지 않은 경우만)
+        if state.calendarPermissionStatus.canReadEvents && !state.loadedCalendarEventMonths.contains(monthStart) {
+          effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStart))))
         }
 
         // 개인 일정 로드 (캐시되지 않은 경우만)
@@ -1188,8 +1197,8 @@ extension CalendarFeature {
           AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
-        // 캘린더 이벤트 로드
-        if state.calendarPermissionStatus.canReadEvents {
+        // 캘린더 이벤트 로드 (캐시되지 않은 경우만)
+        if state.calendarPermissionStatus.canReadEvents && !state.loadedCalendarEventMonths.contains(monthStart) {
           effects.append(.send(.internal(.fetchCalendarEventsForMonth(monthStart))))
         }
 
@@ -1413,7 +1422,12 @@ extension CalendarFeature {
             return .none
           }
           state.path.append(.personalEventDetail(.init(event: event)))
-        case .calendarEvent, .unknown:
+        case .calendarEvent(let eventId):
+          guard let event = state.cachedCalendarEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) else {
+            return .none
+          }
+          state.path.append(.calendarEventDetail(.init(event: event)))
+        case .unknown:
           break
         }
         return .none

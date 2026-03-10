@@ -674,6 +674,7 @@ struct DayTimelineView: View {
     case .needResponse: return Color.pmwarning.n500
     case .responded:    return Color.pmwarning.n600
     case .confirmed:    return Color.pmsuccess.n500
+    case .expired:      return Color.pmgray.n400
     case .failed:       return Color.pmgray.n400
     }
   }
@@ -683,6 +684,7 @@ struct DayTimelineView: View {
     case .needResponse: return "응답 필요"
     case .responded:    return "투표 완료"
     case .confirmed:    return "확정"
+    case .expired:      return "마감됨"
     case .failed:       return "미확정"
     }
   }
