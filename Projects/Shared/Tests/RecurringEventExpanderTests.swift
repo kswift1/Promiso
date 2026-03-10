@@ -12,7 +12,6 @@
 //  ## 테스트 목적
 //  - Daily: 매일 반복 인스턴스 생성
 //  - Weekly: 매주 특정 요일 반복 인스턴스 생성
-//  - Biweekly: 격주 반복 인스턴스 생성
 //  - Monthly: 매월 특정 일자 반복 인스턴스 생성
 //  - excludedDates: 제외된 날짜 처리
 //  - overrides: 개별 수정사항 적용
@@ -144,54 +143,6 @@ struct WeeklyRecurrenceTests {
       let weekday = Calendar.current.component(.weekday, from: instance.startAt)
       #expect(weekday == 7 || weekday == 1)
     }
-  }
-}
-
-// MARK: - Biweekly 테스트
-
-@Suite("RecurringEventExpander - Biweekly 반복")
-struct BiweeklyRecurrenceTests {
-
-  @Test("격주 월요일: 4주 범위에서 2개 인스턴스 생성")
-  func biweekly_monday_fourWeeks_createsTwo() {
-    // 2025-03-03은 월요일, 이를 시작점으로
-    let seriesStart = makeDate(year: 2025, month: 3, day: 3)
-    let rangeStart = makeDate(year: 2025, month: 3, day: 3)
-    let rangeEnd = makeDate(year: 2025, month: 3, day: 30)
-
-    let event = RecurringPersonalEventModel(
-      id: "biweekly-test",
-      title: "격주 회의",
-      startTime: DateComponents(hour: 15, minute: 0),
-      recurrence: .biweekly([2]), // 월요일만
-      seriesStartDate: seriesStart
-    )
-
-    let instances = RecurringEventExpander.expand(event: event, from: rangeStart, to: rangeEnd)
-
-    // 0주차(3/3) + 2주차(3/17) = 2개
-    #expect(instances.count == 2)
-  }
-
-  @Test("격주 반복: seriesStartDate 기준으로 짝수 주에만 생성")
-  func biweekly_evenWeeks_fromSeriesStart() {
-    let seriesStart = makeDate(year: 2025, month: 3, day: 3) // 월요일
-    let rangeStart = makeDate(year: 2025, month: 3, day: 10) // 그 다음주 월요일 (1주차)
-    let rangeEnd = makeDate(year: 2025, month: 3, day: 24)
-
-    let event = RecurringPersonalEventModel(
-      id: "biweekly-test",
-      title: "격주 회의",
-      startTime: DateComponents(hour: 15, minute: 0),
-      recurrence: .biweekly([2]), // 월요일
-      seriesStartDate: seriesStart
-    )
-
-    let instances = RecurringEventExpander.expand(event: event, from: rangeStart, to: rangeEnd)
-
-    // 1주차(3/10)는 제외, 2주차(3/17)만 포함 = 1개
-    #expect(instances.count == 1)
-    #expect(instances.first?.startAt == makeDateWithTime(year: 2025, month: 3, day: 17, hour: 15, minute: 0))
   }
 }
 
@@ -638,8 +589,8 @@ struct MetadataTests {
     let event = RecurringPersonalEventModel(
       id: "daily-test",
       title: "미팅",
-      location: originalLocation,
       startTime: DateComponents(hour: 10, minute: 0),
+      location: originalLocation,
       recurrence: .daily(),
       seriesStartDate: startDate,
       overrides: overrides
@@ -662,8 +613,8 @@ struct MetadataTests {
     let event = RecurringPersonalEventModel(
       id: "daily-test",
       title: "미팅",
-      reminderMinutesBefore: 30,
       startTime: DateComponents(hour: 10, minute: 0),
+      reminderMinutesBefore: 30,
       recurrence: .daily(),
       seriesStartDate: startDate
     )

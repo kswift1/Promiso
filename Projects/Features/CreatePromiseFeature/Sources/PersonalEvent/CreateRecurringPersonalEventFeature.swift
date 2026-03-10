@@ -1,5 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
+import Clients
+import PromisoShared
 
 // MARK: - Namespace
 
@@ -11,9 +13,13 @@ extension CreateRecurringPersonalEvent {
   @Reducer
   public struct Feature {
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
+    @Dependency(\.authClient) var authClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -21,6 +27,7 @@ extension CreateRecurringPersonalEvent {
 
     private enum CancelID {
       case emojiDebounce
+      case conflictCheck
     }
 
     // MARK: - Mode
@@ -41,6 +48,10 @@ extension CreateRecurringPersonalEvent {
       var useDuration: Bool = false
       var useSeriesEndDate: Bool = false
       var errorMessage: String?
+      var currentUserId: String = ""
+      var conflicts: [ScheduleConflict] = []
+      var isCheckingConflicts: Bool = false
+      var conflictDetectionThreshold: Int = 0
 
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -105,6 +116,8 @@ extension CreateRecurringPersonalEvent {
       case emojiGenerationFailed
       case saveSuccess(RecurringPersonalEventModel)
       case saveFailed(String)
+      case conflictsLoaded([ScheduleConflict])
+      case conflictSettingsLoaded(String, Int)
     }
 
     @CasePathable
@@ -125,7 +138,16 @@ extension CreateRecurringPersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .onAppear:
-            return .none
+            guard state.currentUserId.isEmpty else { return .none }
+            return .run { [authClient, userSettingsClient] send in
+              guard let user = await authClient.currentUser() else { return }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(user.uid)
+                await send(.internal(.conflictSettingsLoaded(user.uid, settings.conflictDetectionThreshold)))
+              } catch {
+                await send(.internal(.conflictSettingsLoaded(user.uid, 0)))
+              }
+            }
 
           case .titleChanged(let title):
             let oldTitle = state.event.title
@@ -144,7 +166,7 @@ extension CreateRecurringPersonalEvent {
           case .frequencyChanged(let frequency):
             state.selectedFrequency = frequency
             rebuildRecurrence(state: &state)
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .weekdayToggled(let weekday):
             if state.selectedWeekdays.contains(weekday) {
@@ -155,12 +177,15 @@ extension CreateRecurringPersonalEvent {
               state.selectedWeekdays.insert(weekday)
             }
             rebuildRecurrence(state: &state)
-            return .run { _ in await hapticFeedback.selection() }
+            return .merge(
+              .run { _ in await hapticFeedback.selection() },
+              checkConflictsEffect(state: &state)
+            )
 
           case .dayOfMonthChanged(let day):
             state.selectedDayOfMonth = max(1, min(31, day))
             rebuildRecurrence(state: &state)
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .startTimeChanged(let date):
             let calendar = Calendar.current
@@ -168,7 +193,7 @@ extension CreateRecurringPersonalEvent {
               hour: calendar.component(.hour, from: date),
               minute: calendar.component(.minute, from: date)
             )
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .toggleUseDuration:
             state.useDuration.toggle()
@@ -181,7 +206,7 @@ extension CreateRecurringPersonalEvent {
 
           case .durationChanged(let minutes):
             state.event.durationMinutes = minutes
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .seriesStartDateChanged(let date):
             state.event.seriesStartDate = date
@@ -290,6 +315,16 @@ extension CreateRecurringPersonalEvent {
             let delegateAction: Action = state.mode == .create
               ? .delegate(.eventCreated)
               : .delegate(.eventUpdated(event))
+            if let reminder = event.reminderMinutesBefore {
+              return .merge(
+                .run { _ in await hapticFeedback.success() },
+                .run { [localNotificationClient] _ in
+                  await cancelRecurringNotifications(event: event, client: localNotificationClient)
+                  await scheduleRecurringNotifications(event: event, reminder: reminder, client: localNotificationClient)
+                },
+                .send(delegateAction)
+              )
+            }
             return .merge(
               .run { _ in await hapticFeedback.success() },
               .send(delegateAction)
@@ -299,6 +334,16 @@ extension CreateRecurringPersonalEvent {
             state.isSaving = false
             state.errorMessage = message
             return .run { _ in await hapticFeedback.error() }
+
+          case .conflictsLoaded(let conflicts):
+            state.isCheckingConflicts = false
+            state.conflicts = conflicts
+            return .none
+
+          case .conflictSettingsLoaded(let userId, let threshold):
+            state.currentUserId = userId
+            state.conflictDetectionThreshold = threshold
+            return checkConflictsEffect(state: &state)
           }
 
         // MARK: - LocationPicker
@@ -326,6 +371,54 @@ extension CreateRecurringPersonalEvent {
       }
     }
 
+    // MARK: - Conflict Check Helper
+
+    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
+      guard !state.currentUserId.isEmpty else { return .none }
+      guard state.conflictDetectionThreshold >= 0 else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
+
+      state.isCheckingConflicts = true
+
+      let now = Date()
+      let fourWeeksLater = Calendar.current.date(byAdding: .weekOfYear, value: 4, to: now)!
+      let instances = RecurringEventExpander.expand(event: state.event, from: now, to: fourWeeksLater)
+      let checkInstances = Array(instances.prefix(4))
+
+      guard !checkInstances.isEmpty else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
+
+      let userId = state.currentUserId
+      let threshold = state.conflictDetectionThreshold
+      let eventId = state.event.id
+
+      return .run { [scheduleConflictClient, clock] send in
+        try await clock.sleep(for: .milliseconds(500))
+        var allConflicts: [ScheduleConflict] = []
+        for instance in checkInstances {
+          let conflicts = try await scheduleConflictClient.checkConflicts(
+            userId,
+            instance.startAt,
+            instance.endAt ?? instance.startAt,
+            Set([eventId]),
+            threshold
+          )
+          allConflicts.append(contentsOf: conflicts)
+        }
+        let unique = Dictionary(grouping: allConflicts, by: \.id).compactMap(\.value.first)
+        await send(.internal(.conflictsLoaded(Array(unique))))
+      } catch: { _, send in
+        await send(.internal(.conflictsLoaded([])))
+      }
+      .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
+    }
+
     // MARK: - Recurrence Rebuild Helper
 
     private func rebuildRecurrence(state: inout State) {
@@ -335,11 +428,83 @@ extension CreateRecurringPersonalEvent {
         state.event.recurrence = .daily(until: endDate)
       case .weekly:
         state.event.recurrence = .weekly(Array(state.selectedWeekdays), until: endDate)
-      case .biweekly:
-        state.event.recurrence = .biweekly(Array(state.selectedWeekdays), until: endDate)
       case .monthly:
         state.event.recurrence = .monthly(day: state.selectedDayOfMonth, until: endDate)
       }
+    }
+
+    // MARK: - Notification Helpers
+
+    private func scheduleRecurringNotifications(
+      event: RecurringPersonalEventModel,
+      reminder: Int,
+      client: LocalNotificationClient
+    ) async {
+      let baseHour = event.startTime.hour ?? 0
+      let baseMinute = event.startTime.minute ?? 0
+      let totalMinutes = baseHour * 60 + baseMinute - reminder
+      let notifyHour = (totalMinutes / 60 % 24 + 24) % 24
+      let notifyMinute = (totalMinutes % 60 + 60) % 60
+      let body = reminder == 0 ? "일정이 시작됩니다" : "\(reminder)분 후 일정이 시작됩니다"
+      let notificationTitle = "\(event.displayEmoji) \(event.title)"
+
+      switch event.recurrence.frequency {
+      case .daily:
+        var components = DateComponents()
+        components.hour = notifyHour
+        components.minute = notifyMinute
+        try? await client.scheduleRepeating(
+          "recurring-\(event.id)-daily",
+          notificationTitle,
+          body,
+          components,
+          ["recurringEventId": event.id]
+        )
+
+      case .weekly:
+        guard let weekdays = event.recurrence.daysOfWeek else { return }
+        for weekday in weekdays {
+          var components = DateComponents()
+          components.weekday = weekday
+          components.hour = notifyHour
+          components.minute = notifyMinute
+          try? await client.scheduleRepeating(
+            "recurring-\(event.id)-weekly-\(weekday)",
+            notificationTitle,
+            body,
+            components,
+            ["recurringEventId": event.id]
+          )
+        }
+
+      case .monthly:
+        guard let day = event.recurrence.dayOfMonth else { return }
+        var components = DateComponents()
+        components.day = day
+        components.hour = notifyHour
+        components.minute = notifyMinute
+        try? await client.scheduleRepeating(
+          "recurring-\(event.id)-monthly",
+          notificationTitle,
+          body,
+          components,
+          ["recurringEventId": event.id]
+        )
+      }
+    }
+
+    private func cancelRecurringNotifications(
+      event: RecurringPersonalEventModel,
+      client: LocalNotificationClient
+    ) async {
+      var ids = [
+        "recurring-\(event.id)-daily",
+        "recurring-\(event.id)-monthly",
+      ]
+      for weekday in 1...7 {
+        ids.append("recurring-\(event.id)-weekly-\(weekday)")
+      }
+      await client.cancelAll(ids)
     }
   }
 }

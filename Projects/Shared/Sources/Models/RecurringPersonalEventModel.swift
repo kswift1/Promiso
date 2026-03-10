@@ -188,7 +188,7 @@ extension RecurringPersonalEventModel {
     switch recurrence.frequency {
     case .daily:
       return true
-    case .weekly, .biweekly:
+    case .weekly:
       guard let days = recurrence.daysOfWeek else { return false }
       return !days.isEmpty && days.allSatisfy { (1...7).contains($0) }
     case .monthly:

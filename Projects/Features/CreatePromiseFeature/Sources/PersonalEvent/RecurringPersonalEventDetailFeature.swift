@@ -12,6 +12,7 @@ extension RecurringPersonalEventDetail {
   @Reducer
   public struct Feature {
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
 
     public init() {}
 
@@ -174,7 +175,11 @@ extension RecurringPersonalEventDetail {
 
         case .internal(.deleteSeriesSuccess):
           state.isDeleting = false
-          return .send(.delegate(.eventDeleted(id: state.recurringEvent.id)))
+          let event = state.recurringEvent
+          return .run { [localNotificationClient] send in
+            await cancelRecurringNotifications(event: event, client: localNotificationClient)
+            await send(.delegate(.eventDeleted(id: event.id)))
+          }
 
         case .internal(.deleteSeriesFailed):
           state.isDeleting = false
@@ -215,6 +220,22 @@ extension RecurringPersonalEventDetail {
         CreateRecurringPersonalEvent.Feature()
       }
       .ifLet(\.$deleteAlert, action: \.alert)
+    }
+
+    // MARK: - Notification Helper
+
+    private func cancelRecurringNotifications(
+      event: RecurringPersonalEventModel,
+      client: LocalNotificationClient
+    ) async {
+      var ids = [
+        "recurring-\(event.id)-daily",
+        "recurring-\(event.id)-monthly",
+      ]
+      for weekday in 1...7 {
+        ids.append("recurring-\(event.id)-weekly-\(weekday)")
+      }
+      await client.cancelAll(ids)
     }
   }
 }

@@ -63,7 +63,6 @@ public enum RecurringEventExpander {
       frequency: recurrence.frequency,
       daysOfWeek: recurrence.daysOfWeek,
       dayOfMonth: recurrence.dayOfMonth,
-      seriesStartDate: event.seriesStartDate,
       from: effectiveStart,
       to: effectiveEnd,
       calendar: calendar
@@ -115,7 +114,6 @@ public enum RecurringEventExpander {
     frequency: RecurrenceRule.Frequency,
     daysOfWeek: [Int]?,
     dayOfMonth: Int?,
-    seriesStartDate: Date,
     from rangeStart: Date,
     to rangeEnd: Date,
     calendar: Calendar
@@ -128,16 +126,6 @@ public enum RecurringEventExpander {
       guard let weekdays = daysOfWeek, !weekdays.isEmpty else { return [] }
       return generateWeeklyDates(
         weekdays: weekdays,
-        from: rangeStart,
-        to: rangeEnd,
-        calendar: calendar
-      )
-
-    case .biweekly:
-      guard let weekdays = daysOfWeek, !weekdays.isEmpty else { return [] }
-      return generateBiweeklyDates(
-        weekdays: weekdays,
-        seriesStartDate: seriesStartDate,
         from: rangeStart,
         to: rangeEnd,
         calendar: calendar
@@ -185,35 +173,6 @@ public enum RecurringEventExpander {
       let weekday = calendar.component(.weekday, from: current)
       if weekdays.contains(weekday) {
         dates.append(current)
-      }
-      guard let next = calendar.date(byAdding: .day, value: 1, to: current) else { break }
-      current = next
-    }
-    return dates
-  }
-
-  private static func generateBiweeklyDates(
-    weekdays: [Int],
-    seriesStartDate: Date,
-    from start: Date,
-    to end: Date,
-    calendar: Calendar
-  ) -> [Date] {
-    var dates: [Date] = []
-    var current = calendar.startOfDay(for: start)
-    let endDay = calendar.startOfDay(for: end)
-    let seriesStart = calendar.startOfDay(for: seriesStartDate)
-
-    while current <= endDay {
-      let weekday = calendar.component(.weekday, from: current)
-      if weekdays.contains(weekday) {
-        // seriesStartDate로부터 몇 주째인지 계산
-        let daysSinceStart = calendar.dateComponents([.day], from: seriesStart, to: current).day ?? 0
-        let weeksSinceStart = daysSinceStart / 7
-        // 짝수 주(0, 2, 4...)에만 포함
-        if weeksSinceStart >= 0 && weeksSinceStart % 2 == 0 {
-          dates.append(current)
-        }
       }
       guard let next = calendar.date(byAdding: .day, value: 1, to: current) else { break }
       current = next

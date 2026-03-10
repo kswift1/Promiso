@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import SharedFeature
 
 // MARK: - Root View
 
@@ -69,6 +70,12 @@ extension CreateRecurringPersonalEvent {
               .id(Field.title)
             recurrenceSection
             timeSection
+            if store.isCheckingConflicts || !store.conflicts.isEmpty {
+              ConflictWarningSection(
+                conflicts: store.conflicts,
+                isChecking: store.isCheckingConflicts
+              )
+            }
             seriesDateSection
             locationSection
             reminderSection
@@ -170,15 +177,14 @@ extension CreateRecurringPersonalEvent {
         )) {
           Text("매일").tag(RecurrenceRule.Frequency.daily)
           Text("매주").tag(RecurrenceRule.Frequency.weekly)
-          Text("격주").tag(RecurrenceRule.Frequency.biweekly)
           Text("매월").tag(RecurrenceRule.Frequency.monthly)
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
 
-        // 요일 선택 (weekly / biweekly)
-        if store.selectedFrequency == .weekly || store.selectedFrequency == .biweekly {
+        // 요일 선택 (weekly)
+        if store.selectedFrequency == .weekly {
           Divider()
             .background(Color.white.opacity(0.12))
 

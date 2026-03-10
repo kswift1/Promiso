@@ -1060,8 +1060,8 @@ users/{userId}/recurringEvents/{eventId}
 | `location` | Map | ❌ | null | 장소 정보 (personalEvents와 동일) |
 | `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위) |
 | `recurrence` | Map | ✅ | - | 반복 규칙 (아래 참조) |
-| `recurrence.frequency` | String | ✅ | - | 반복 주기 (`daily`\|`weekly`\|`biweekly`\|`monthly`) |
-| `recurrence.daysOfWeek` | Array<Number> | ❌ | null | 반복 요일 (1=일~7=토, weekly/biweekly용) |
+| `recurrence.frequency` | String | ✅ | - | 반복 주기 (`daily`\|`weekly`\|`monthly`) |
+| `recurrence.daysOfWeek` | Array<Number> | ❌ | null | 반복 요일 (1=일~7=토, weekly용) |
 | `recurrence.dayOfMonth` | Number | ❌ | null | 반복 일자 (1~31, monthly용) |
 | `recurrence.seriesEndDate` | Timestamp | ❌ | null | 반복 종료일 (null=무기한) |
 | `seriesStartDate` | Timestamp | ✅ | - | 반복 시작일 |

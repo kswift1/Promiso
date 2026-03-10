@@ -8,14 +8,13 @@ public struct RecurrenceRule: Codable, Equatable, Hashable, Sendable {
   public enum Frequency: String, Codable, Sendable, CaseIterable {
     case daily      // 매일
     case weekly     // 매주
-    case biweekly   // 격주
     case monthly    // 매월
   }
 
   /// 반복 주기
   public let frequency: Frequency
 
-  /// 반복 요일 (weekly/biweekly용)
+  /// 반복 요일 (weekly용)
   /// 1=일요일, 2=월요일, ..., 7=토요일 (Calendar.component(.weekday) 기준)
   public let daysOfWeek: [Int]?
 
@@ -52,11 +51,6 @@ extension RecurrenceRule {
     RecurrenceRule(frequency: .weekly, daysOfWeek: weekdays, seriesEndDate: endDate)
   }
 
-  /// 격주 특정 요일 반복
-  public static func biweekly(_ weekdays: [Int], until endDate: Date? = nil) -> RecurrenceRule {
-    RecurrenceRule(frequency: .biweekly, daysOfWeek: weekdays, seriesEndDate: endDate)
-  }
-
   /// 매월 특정 일자 반복
   public static func monthly(day: Int, until endDate: Date? = nil) -> RecurrenceRule {
     RecurrenceRule(frequency: .monthly, dayOfMonth: day, seriesEndDate: endDate)
@@ -75,10 +69,6 @@ extension RecurrenceRule {
       guard let days = daysOfWeek, !days.isEmpty else { return "매주" }
       let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
       return "매주 \(dayNames.joined(separator: ", "))"
-    case .biweekly:
-      guard let days = daysOfWeek, !days.isEmpty else { return "격주" }
-      let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
-      return "격주 \(dayNames.joined(separator: ", "))"
     case .monthly:
       guard let day = dayOfMonth else { return "매월" }
       return "매월 \(day)일"
