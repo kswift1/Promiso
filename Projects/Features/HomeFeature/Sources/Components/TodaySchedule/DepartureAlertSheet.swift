@@ -20,6 +20,7 @@ struct DepartureAlertSheet: View {
 
   @State private var selection: HomeModels.TransportSelection?
   @State private var bufferMinutes: Int = 10
+  @State private var remainingTimeText: String = ""
 
   /// buffer 적용된 출발시간 계산
   private func adjustedTime(_ raw: Date) -> Date {
@@ -58,6 +59,50 @@ struct DepartureAlertSheet: View {
   /// 도보 10km 이상 비추천 여부
   private func isWalkingNotRecommended(_ walking: HomeModels.TransportOption) -> Bool {
     (walking.distanceMeters ?? 0) >= 10_000
+  }
+
+  /// 표시 순서에 따른 첫 번째 선택 가능한 교통수단
+  private func defaultSelection(for data: HomeModels.DepartureTransportData) -> HomeModels.TransportSelection? {
+    let now = Date()
+
+    // 표시 순서에 맞춰 후보 생성
+    var candidates: [HomeModels.TransportSelection] = []
+
+    if data.preferredTransport == .transit {
+      // 대중교통 먼저
+      for route in data.transitRoutes {
+        candidates.append(.transit(index: route.id))
+      }
+      if data.driving != nil { candidates.append(.driving) }
+    } else {
+      // 자동차 먼저
+      if data.driving != nil { candidates.append(.driving) }
+      for route in data.transitRoutes {
+        candidates.append(.transit(index: route.id))
+      }
+    }
+
+    // 도보 (비추천 아닌 경우만)
+    if !isWalkingNotRecommended(data.walking) {
+      candidates.append(.walking)
+    }
+
+    // 첫 번째 선택 가능한 (시간이 지나지 않은) 후보 반환
+    for candidate in candidates {
+      let departureTime: Date?
+      switch candidate {
+      case .driving:
+        departureTime = data.driving?.departureTime
+      case .transit(let index):
+        departureTime = data.transitRoutes.first(where: { $0.id == index })?.departureTime
+      case .walking:
+        departureTime = data.walking.departureTime
+      }
+      if let dep = departureTime, adjustedTime(dep) >= now {
+        return candidate
+      }
+    }
+    return nil
   }
 
   var body: some View {
@@ -111,30 +156,146 @@ struct DepartureAlertSheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.hidden)
     .presentationCornerRadius(24)
-    .onAppear { selection = nil }
+    .onAppear {
+      remainingTimeText = computeRemainingTimeText()
+      if let data = transportData {
+        selection = defaultSelection(for: data)
+      }
+    }
+    .onChange(of: transportData) { _, newData in
+      if let data = newData, selection == nil {
+        selection = defaultSelection(for: data)
+      }
+    }
+  }
+
+  // MARK: - Remaining Time
+
+  private func computeRemainingTimeText() -> String {
+    let diff = promiseStartAt.timeIntervalSince(Date())
+    if diff <= 0 {
+      return "약속 시간이 지났어요"
+    }
+    let totalMinutes = Int(diff / 60)
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    if hours >= 1 {
+      if minutes == 0 {
+        return "약속까지 \(hours)시간 남았어요"
+      } else {
+        return "약속까지 \(hours)시간 \(minutes)분 남았어요"
+      }
+    } else {
+      return "약속까지 \(minutes)분 남았어요"
+    }
   }
 
   // MARK: - Header Section
 
   private var headerSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      // 타이틀 + 상세 버튼
-      HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("출발 알림 설정")
-            .font(.pmTitle2)
-            .foregroundStyle(Color.pmtext.primary)
+      // 타이틀: 이모지 + 약속명
+      Text("\(promiseEmoji) \(promiseTitle)")
+        .font(.pmTitle3)
+        .foregroundStyle(Color.pmtext.primary)
+        .lineLimit(1)
 
-          Text("약속 시간에 딱 맞게 출발하세요")
-            .font(.pmCaption)
-            .foregroundStyle(Color.pmtext.secondary)
+      // 서브타이틀: 동적 카운트다운
+      Text(remainingTimeText)
+        .font(.pmFootnote)
+        .foregroundStyle(Color.pmtext.secondary)
+
+      // 경로 정보 카드 (탭 가능)
+      routeInfoCard
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private var routeInfoCard: some View {
+    Button {
+      onDetailTapped()
+    } label: {
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 12) {
+          // 출발 → 도착 점선 연결
+          VStack(spacing: 3) {
+            Circle()
+              .fill(Color.pmindigo.n400)
+              .frame(width: 8, height: 8)
+            ForEach(0..<3, id: \.self) { _ in
+              Circle()
+                .fill(Color.pmgray.n300)
+                .frame(width: 3, height: 3)
+            }
+            Circle()
+              .fill(Color.pmerror.n500)
+              .frame(width: 8, height: 8)
+          }
+          .padding(.vertical, 2)
+
+          // 출발지 / 도착지 텍스트
+          VStack(alignment: .leading, spacing: 10) {
+            // 출발지
+            VStack(alignment: .leading, spacing: 1) {
+              Text("출발")
+                .font(.pmMicroMedium)
+                .foregroundStyle(Color.pmindigo.n400)
+              Text(departureLocation ?? "현재 위치")
+                .font(.pmCaptionSemibold)
+                .foregroundStyle(Color.pmtext.primary)
+            }
+
+            // 도착지
+            VStack(alignment: .leading, spacing: 1) {
+              Text("도착")
+                .font(.pmMicroMedium)
+                .foregroundStyle(Color.pmerror.n500)
+              HStack(spacing: 4) {
+                Text(promiseEmoji)
+                  .font(.system(size: 12))
+                Text(promiseTitle)
+                  .font(.pmCaptionSemibold)
+                  .foregroundStyle(Color.pmtext.primary)
+                  .lineLimit(1)
+              }
+              if let location = promiseLocation {
+                Text(location)
+                  .font(.pmMicro)
+                  .foregroundStyle(Color.pmtext.secondary)
+              }
+            }
+          }
+
+          Spacer(minLength: 8)
+
+          // 약속시간 뱃지
+          Group {
+            if LocalizedDateFormatters.use24HourFormat {
+              Text(promiseStartAt.formattedTime)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.pmindigo.n500)
+            } else {
+              VStack(spacing: 0) {
+                Text(LocalizedDateFormatters.amPm.string(from: promiseStartAt))
+                  .font(.pmCaption2)
+                  .foregroundStyle(Color.pmindigo.n400)
+                Text(LocalizedDateFormatters.time12Hour.string(from: promiseStartAt))
+                  .font(.system(size: 22, weight: .bold, design: .rounded))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+            }
+          }
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .background(
+            RoundedRectangle(cornerRadius: 12)
+              .fill(Color.pmindigo.n500.opacity(0.08))
+          )
         }
 
-        Spacer(minLength: 8)
-
-        Button {
-          onDetailTapped()
-        } label: {
+        // 카드 우하단 "상세 >" 텍스트
+        HStack {
+          Spacer()
           HStack(spacing: 2) {
             Text("상세")
               .font(.pmCaption)
@@ -143,99 +304,21 @@ struct DepartureAlertSheet: View {
               .font(.system(size: 10, weight: .semibold))
               .foregroundStyle(Color.pmindigo.n500)
           }
-          .padding(.top, 4)
         }
-        .buttonStyle(.plain)
+        .padding(.top, 8)
       }
-
-      // 경로 정보 카드
-      routeInfoCard
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
-
-  private var routeInfoCard: some View {
-    HStack(spacing: 12) {
-      // 출발 → 도착 연결 아이콘
-      VStack(spacing: 2) {
-        Circle()
-          .fill(Color.pmindigo.n400)
-          .frame(width: 8, height: 8)
-        Rectangle()
-          .fill(
-            LinearGradient(
-              colors: [Color.pmindigo.n400, Color.pmerror.n500],
-              startPoint: .top,
-              endPoint: .bottom
-            )
-          )
-          .frame(width: 1.5)
-        Circle()
-          .fill(Color.pmerror.n500)
-          .frame(width: 8, height: 8)
-      }
-      .padding(.vertical, 2)
-
-      // 출발지 / 도착지 텍스트
-      VStack(alignment: .leading, spacing: 10) {
-        // 출발지
-        VStack(alignment: .leading, spacing: 1) {
-          Text("출발")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(Color.pmindigo.n400)
-          Text(departureLocation ?? "현재 위치")
-            .font(.pmCaptionSemibold)
-            .foregroundStyle(Color.pmtext.primary)
-        }
-
-        // 도착지
-        VStack(alignment: .leading, spacing: 1) {
-          Text("도착")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(Color.pmerror.n500)
-          HStack(spacing: 4) {
-            Text(promiseEmoji)
-              .font(.system(size: 12))
-            Text(promiseTitle)
-              .font(.pmCaptionSemibold)
-              .foregroundStyle(Color.pmtext.primary)
-              .lineLimit(1)
-          }
-          if let location = promiseLocation {
-            Text(location)
-              .font(.system(size: 11))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-        }
-      }
-
-      Spacer(minLength: 8)
-
-      // 약속시간 뱃지
-      VStack(spacing: 2) {
-        Text(promiseStartAt.formattedTime)
-          .font(.system(size: 20, weight: .bold, design: .rounded))
-          .foregroundStyle(Color.pmindigo.n500)
-        Text("약속")
-          .font(.system(size: 10, weight: .medium))
-          .foregroundStyle(Color.pmtext.secondary)
-      }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 8)
+      .padding(16)
       .background(
-        RoundedRectangle(cornerRadius: 12)
-          .fill(Color.pmindigo.n500.opacity(0.08))
+        RoundedRectangle(cornerRadius: 16)
+          .fill(Color(.systemBackground).opacity(0.6))
       )
+      .overlay(
+        RoundedRectangle(cornerRadius: 16)
+          .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
+      )
+      .contentShape(Rectangle())
     }
-    .padding(16)
-    .background(
-      RoundedRectangle(cornerRadius: 16)
-        .fill(Color(.systemBackground).opacity(0.6))
-    )
-    .overlay(
-      RoundedRectangle(cornerRadius: 16)
-        .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
-    )
+    .buttonStyle(.plain)
   }
 
   // MARK: - Content Section
