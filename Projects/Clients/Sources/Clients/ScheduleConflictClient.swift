@@ -95,6 +95,7 @@ extension ScheduleConflictClient: DependencyKey {
       if let endAt {
         params["endAt"] = iso8601Formatter.string(from: endAt)
       }
+      params["timeZone"] = TimeZone.current.identifier
       if !excludeIds.isEmpty {
         params["excludeIds"] = Array(excludeIds)
       }

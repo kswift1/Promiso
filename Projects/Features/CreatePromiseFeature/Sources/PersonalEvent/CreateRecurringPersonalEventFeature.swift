@@ -412,21 +412,30 @@ extension CreateRecurringPersonalEvent {
 
       let userId = state.currentUserId
       let threshold = state.conflictDetectionThreshold
-      let eventId = state.event.id
+      let excludeIds: Set<String> = state.mode == .edit ? [state.event.id] : []
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         var allConflicts: [ScheduleConflict] = []
-        for instance in checkInstances {
-          let conflicts = try await scheduleConflictClient.checkConflicts(
-            userId,
-            instance.startAt,
-            instance.endAt ?? instance.startAt,
-            Set([eventId]),
-            threshold
-          )
-          allConflicts.append(contentsOf: conflicts)
+
+        try await withThrowingTaskGroup(of: [ScheduleConflict].self) { group in
+          for instance in checkInstances {
+            group.addTask {
+              try await scheduleConflictClient.checkConflicts(
+                userId,
+                instance.startAt,
+                instance.endAt ?? instance.startAt,
+                excludeIds,
+                threshold
+              )
+            }
+          }
+
+          for try await conflicts in group {
+            allConflicts.append(contentsOf: conflicts)
+          }
         }
+
         let unique = Dictionary(grouping: allConflicts, by: \.id).compactMap(\.value.first)
         await send(.internal(.conflictsLoaded(Array(unique))))
       } catch: { _, send in
