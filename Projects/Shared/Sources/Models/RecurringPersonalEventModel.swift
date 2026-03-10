@@ -14,8 +14,8 @@ public struct RecurringPersonalEventModel: Identifiable, Equatable, Hashable, Se
   // MARK: - 시간 (시/분만 저장, 날짜는 반복 규칙으로 결정)
   /// 시작 시각 (hour, minute)
   public var startTime: DateComponents
-  /// 소요 시간 (분 단위, nil = 종료 시간 없음)
-  public var durationMinutes: Int?
+  /// 종료 시각 (hour, minute, nil = 종료 시간 없음)
+  public var endTime: DateComponents?
 
   // MARK: - 위치
   public var location: LocationInfoModel?
@@ -44,7 +44,7 @@ public struct RecurringPersonalEventModel: Identifiable, Equatable, Hashable, Se
     emoji: String? = nil,
     description: String? = nil,
     startTime: DateComponents = DateComponents(hour: 9, minute: 0),
-    durationMinutes: Int? = nil,
+    endTime: DateComponents? = nil,
     location: LocationInfoModel? = nil,
     reminderMinutesBefore: Int? = nil,
     recurrence: RecurrenceRule = .daily(),
@@ -59,7 +59,7 @@ public struct RecurringPersonalEventModel: Identifiable, Equatable, Hashable, Se
     self.emoji = emoji
     self.description = description
     self.startTime = startTime
-    self.durationMinutes = durationMinutes
+    self.endTime = endTime
     self.location = location
     self.reminderMinutesBefore = reminderMinutesBefore
     self.recurrence = recurrence
@@ -79,8 +79,8 @@ public struct EventOverride: Codable, Equatable, Hashable, Sendable {
   public var title: String?
   /// 변경된 시작 시각 (nil이면 원본 유지)
   public var startTime: DateComponents?
-  /// 변경된 소요 시간 (nil이면 원본 유지)
-  public var durationMinutes: Int?
+  /// 변경된 종료 시각 (nil이면 원본 유지)
+  public var endTime: DateComponents?
   /// 변경된 장소 (nil이면 원본 유지)
   public var location: LocationInfoModel?
   /// 이 날 취소 여부
@@ -89,13 +89,13 @@ public struct EventOverride: Codable, Equatable, Hashable, Sendable {
   public init(
     title: String? = nil,
     startTime: DateComponents? = nil,
-    durationMinutes: Int? = nil,
+    endTime: DateComponents? = nil,
     location: LocationInfoModel? = nil,
     isCancelled: Bool = false
   ) {
     self.title = title
     self.startTime = startTime
-    self.durationMinutes = durationMinutes
+    self.endTime = endTime
     self.location = location
     self.isCancelled = isCancelled
   }
@@ -119,7 +119,7 @@ extension RecurringPersonalEventModel {
     title: String = "매주 헬스장",
     emoji: String? = "🏋️",
     startTime: DateComponents = DateComponents(hour: 19, minute: 0),
-    durationMinutes: Int? = 60,
+    endTime: DateComponents? = DateComponents(hour: 20, minute: 0),
     recurrence: RecurrenceRule = .weekly([2, 4, 6])
   ) -> RecurringPersonalEventModel {
     RecurringPersonalEventModel(
@@ -127,7 +127,7 @@ extension RecurringPersonalEventModel {
       title: title,
       emoji: emoji,
       startTime: startTime,
-      durationMinutes: durationMinutes,
+      endTime: endTime,
       recurrence: recurrence,
       seriesStartDate: Date()
     )
@@ -150,23 +150,20 @@ extension RecurringPersonalEventModel {
     return String(format: "%02d:%02d", hour, minute)
   }
 
-  /// 소요 시간 텍스트
-  public var durationText: String? {
-    guard let minutes = durationMinutes else { return nil }
-    if minutes >= 60 {
-      let hours = minutes / 60
-      let remainingMinutes = minutes % 60
-      if remainingMinutes == 0 {
-        return "\(hours)시간"
-      }
-      return "\(hours)시간 \(remainingMinutes)분"
-    }
-    return "\(minutes)분"
+  /// 종료 시간 텍스트 (예: "20:00")
+  public var endTimeText: String? {
+    guard let endTime = endTime else { return nil }
+    let hour = endTime.hour ?? 0
+    let minute = endTime.minute ?? 0
+    return String(format: "%02d:%02d", hour, minute)
   }
 
-  /// 반복 규칙 + 시간 요약 (예: "매주 월, 수, 금 19:00")
+  /// 반복 규칙 + 시간 요약 (예: "매주 월, 수, 금 19:00 ~ 20:00")
   public var summaryText: String {
-    "\(recurrence.displayText) \(timeText)"
+    if let endText = endTimeText {
+      return "\(recurrence.displayText) \(timeText) ~ \(endText)"
+    }
+    return "\(recurrence.displayText) \(timeText)"
   }
 }
 

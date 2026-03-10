@@ -424,8 +424,8 @@ struct TimeCalculationTests {
     #expect(components.minute == 30)
   }
 
-  @Test("durationMinutes로 endAt 계산")
-  func durationMinutes_calculatesEndAt() {
+  @Test("endTime으로 endAt 계산")
+  func endTime_calculatesEndAt() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
     let endDate = makeDate(year: 2025, month: 3, day: 1)
 
@@ -433,7 +433,7 @@ struct TimeCalculationTests {
       id: "daily-test",
       title: "일일 미팅",
       startTime: DateComponents(hour: 10, minute: 0),
-      durationMinutes: 90,
+      endTime: DateComponents(hour: 11, minute: 30),
       recurrence: .daily(),
       seriesStartDate: startDate
     )
@@ -444,12 +444,12 @@ struct TimeCalculationTests {
     let instance = instances.first!
     #expect(instance.endAt != nil)
 
-    let expectedEnd = Calendar.current.date(byAdding: .minute, value: 90, to: instance.startAt)!
+    let expectedEnd = makeDateWithTime(year: 2025, month: 3, day: 1, hour: 11, minute: 30)
     #expect(instance.endAt == expectedEnd)
   }
 
-  @Test("durationMinutes가 nil이면 endAt도 nil")
-  func noDuration_endAtIsNil() {
+  @Test("endTime이 nil이면 endAt도 nil")
+  func noEndTime_endAtIsNil() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
     let endDate = makeDate(year: 2025, month: 3, day: 1)
 
@@ -457,7 +457,7 @@ struct TimeCalculationTests {
       id: "daily-test",
       title: "일일 미팅",
       startTime: DateComponents(hour: 10, minute: 0),
-      durationMinutes: nil,
+      endTime: nil,
       recurrence: .daily(),
       seriesStartDate: startDate
     )
@@ -469,20 +469,44 @@ struct TimeCalculationTests {
     #expect(instance.endAt == nil)
   }
 
-  @Test("override의 durationMinutes로 endAt 변경")
-  func overrideDuration_changesEndAt() {
+  @Test("endTime이 startTime보다 이전이면 다음 날로 계산")
+  func endTime_beforeStartTime_nextDay() {
+    let startDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 1)
+
+    let event = RecurringPersonalEventModel(
+      id: "daily-test",
+      title: "심야 미팅",
+      startTime: DateComponents(hour: 23, minute: 0),
+      endTime: DateComponents(hour: 1, minute: 0),
+      recurrence: .daily(),
+      seriesStartDate: startDate
+    )
+
+    let instances = RecurringEventExpander.expand(event: event, from: startDate, to: endDate)
+
+    #expect(instances.count == 1)
+    let instance = instances.first!
+    #expect(instance.endAt != nil)
+
+    let expectedEnd = makeDateWithTime(year: 2025, month: 3, day: 2, hour: 1, minute: 0)
+    #expect(instance.endAt == expectedEnd)
+  }
+
+  @Test("override의 endTime으로 endAt 변경")
+  func overrideEndTime_changesEndAt() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
     let endDate = makeDate(year: 2025, month: 3, day: 2)
 
     let overrides: [String: EventOverride] = [
-      "2025-03-02": EventOverride(durationMinutes: 120)
+      "2025-03-02": EventOverride(endTime: DateComponents(hour: 12, minute: 0))
     ]
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
       title: "일일 미팅",
       startTime: DateComponents(hour: 10, minute: 0),
-      durationMinutes: 60,
+      endTime: DateComponents(hour: 11, minute: 0),
       recurrence: .daily(),
       seriesStartDate: startDate,
       overrides: overrides
@@ -496,11 +520,13 @@ struct TimeCalculationTests {
     let march1End = march1.endAt!
     let march2End = march2.endAt!
 
-    let march1Duration = march1End.timeIntervalSince(march1.startAt)
-    let march2Duration = march2End.timeIntervalSince(march2.startAt)
+    let march1EndComponents = Calendar.current.dateComponents([.hour, .minute], from: march1End)
+    let march2EndComponents = Calendar.current.dateComponents([.hour, .minute], from: march2End)
 
-    #expect(march1Duration == 60 * 60) // 60분
-    #expect(march2Duration == 120 * 60) // 120분
+    #expect(march1EndComponents.hour == 11)
+    #expect(march1EndComponents.minute == 0)
+    #expect(march2EndComponents.hour == 12)
+    #expect(march2EndComponents.minute == 0)
   }
 }
 

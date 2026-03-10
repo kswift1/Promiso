@@ -45,7 +45,7 @@ extension CreateRecurringPersonalEvent {
       var mode: Mode
       var isSaving: Bool = false
       var isEmojiLoading: Bool = false
-      var useDuration: Bool = false
+      var useEndTime: Bool = false
       var useSeriesEndDate: Bool = false
       var errorMessage: String?
       var currentUserId: String = ""
@@ -65,7 +65,7 @@ extension CreateRecurringPersonalEvent {
         self.selectedFrequency = event.recurrence.frequency
         self.selectedWeekdays = Set(event.recurrence.daysOfWeek ?? [2])
         self.selectedDayOfMonth = event.recurrence.dayOfMonth ?? 1
-        self.useDuration = event.durationMinutes != nil
+        self.useEndTime = event.endTime != nil
         self.useSeriesEndDate = event.recurrence.seriesEndDate != nil
       }
 
@@ -95,8 +95,8 @@ extension CreateRecurringPersonalEvent {
       case weekdayToggled(Int)
       case dayOfMonthChanged(Int)
       case startTimeChanged(Date)
-      case toggleUseDuration
-      case durationChanged(Int)
+      case toggleUseEndTime
+      case endTimeChanged(Date)
       case seriesStartDateChanged(Date)
       case toggleUseSeriesEndDate
       case seriesEndDateChanged(Date)
@@ -195,17 +195,27 @@ extension CreateRecurringPersonalEvent {
             )
             return checkConflictsEffect(state: &state)
 
-          case .toggleUseDuration:
-            state.useDuration.toggle()
-            if state.useDuration {
-              state.event.durationMinutes = state.event.durationMinutes ?? 60
+          case .toggleUseEndTime:
+            state.useEndTime.toggle()
+            if state.useEndTime {
+              // 기본 종료시간: 시작시간 + 1시간
+              if state.event.endTime == nil {
+                let startHour = state.event.startTime.hour ?? 0
+                let startMinute = state.event.startTime.minute ?? 0
+                let totalMinutes = startHour * 60 + startMinute + 60
+                state.event.endTime = DateComponents(hour: (totalMinutes / 60) % 24, minute: totalMinutes % 60)
+              }
             } else {
-              state.event.durationMinutes = nil
+              state.event.endTime = nil
             }
             return .run { _ in await hapticFeedback.selection() }
 
-          case .durationChanged(let minutes):
-            state.event.durationMinutes = minutes
+          case .endTimeChanged(let date):
+            let calendar = Calendar.current
+            state.event.endTime = DateComponents(
+              hour: calendar.component(.hour, from: date),
+              minute: calendar.component(.minute, from: date)
+            )
             return checkConflictsEffect(state: &state)
 
           case .seriesStartDateChanged(let date):

@@ -18,14 +18,6 @@ extension CreateRecurringPersonalEvent {
       case description
     }
 
-    // MARK: - Duration Options
-
-    private static let durationOptions: [(title: String, minutes: Int)] = [
-      ("15분", 15), ("30분", 30), ("45분", 45),
-      ("1시간", 60), ("1시간 30분", 90), ("2시간", 120),
-      ("3시간", 180), ("4시간", 240),
-    ]
-
     public var body: some View {
       StepSheetContainer(
         title: store.navigationTitle,
@@ -282,22 +274,22 @@ extension CreateRecurringPersonalEvent {
         Divider()
           .background(Color.white.opacity(0.12))
 
-        // 소요 시간 토글
+        // 종료 시간 토글
         HStack {
           Image(systemName: "timer")
             .font(.body)
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("소요 시간")
+          Text("종료 시간")
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
           Spacer()
 
           Toggle("", isOn: Binding(
-            get: { store.useDuration },
-            set: { _ in store.send(.view(.toggleUseDuration)) }
+            get: { store.useEndTime },
+            set: { _ in store.send(.view(.toggleUseEndTime)) }
           ))
           .labelsHidden()
           .tint(Color.pmindigo.n500)
@@ -305,45 +297,31 @@ extension CreateRecurringPersonalEvent {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
 
-        // 소요 시간 선택
-        if store.useDuration {
+        // 종료 시간 선택
+        if store.useEndTime {
           Divider()
             .background(Color.white.opacity(0.12))
 
-          let currentDuration = store.event.durationMinutes ?? 60
-          let currentDurationTitle = Self.durationOptions.first { $0.minutes == currentDuration }?.title
-            ?? "\(currentDuration)분"
+          let endTimeBinding = Binding<Date>(
+            get: {
+              var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+              components.hour = store.event.endTime?.hour ?? 0
+              components.minute = store.event.endTime?.minute ?? 0
+              return Calendar.current.date(from: components) ?? Date()
+            },
+            set: { store.send(.view(.endTimeChanged($0))) }
+          )
 
           HStack {
-            Text(currentDurationTitle)
-              .font(.system(size: 15))
-              .foregroundStyle(Color.pmtext.secondary)
-
             Spacer()
-
-            Menu {
-              ForEach(Self.durationOptions, id: \.minutes) { option in
-                Button {
-                  store.send(.view(.durationChanged(option.minutes)), animation: .default)
-                } label: {
-                  if currentDuration == option.minutes {
-                    Label(option.title, systemImage: "checkmark")
-                  } else {
-                    Text(option.title)
-                  }
-                }
-              }
-            } label: {
-              HStack(spacing: 4) {
-                Text(currentDurationTitle)
-                  .font(.system(size: 15))
-                  .foregroundStyle(Color.pmindigo.n500)
-
-                Image(systemName: "chevron.up.chevron.down")
-                  .font(.system(size: 11))
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
-            }
+            DatePicker(
+              "종료 시간",
+              selection: endTimeBinding,
+              displayedComponents: [.hourAndMinute]
+            )
+            .labelsHidden()
+            .tint(Color.pmindigo.n500)
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
@@ -351,7 +329,7 @@ extension CreateRecurringPersonalEvent {
         }
       }
       .adaptiveGlassCard()
-      .animation(.default, value: store.useDuration)
+      .animation(.default, value: store.useEndTime)
     }
 
     // MARK: - Series Date Section

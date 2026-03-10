@@ -89,8 +89,20 @@ public enum RecurringEventExpander {
       ) else { return nil }
 
       // 종료 시각 계산
-      let effectiveDuration = override?.durationMinutes ?? event.durationMinutes
-      let endAt = effectiveDuration.map { startAt.addingTimeInterval(Double($0) * 60) }
+      let effectiveEndTime = override?.endTime ?? event.endTime
+      let endAt: Date?
+      if let endTime = effectiveEndTime {
+        let endHour = endTime.hour ?? 0
+        let endMinute = endTime.minute ?? 0
+        var endDate = calendar.date(bySettingHour: endHour, minute: endMinute, second: 0, of: date)!
+        // 종료시간이 시작시간보다 이전이면 다음 날
+        if endDate <= startAt {
+          endDate = calendar.date(byAdding: .day, value: 1, to: endDate)!
+        }
+        endAt = endDate
+      } else {
+        endAt = nil
+      }
 
       return ExpandedEventInstance(
         recurringEventId: event.id,

@@ -12,7 +12,7 @@ public struct RecurringPersonalEventDTO: Codable {
 
   // 시간 (Map: {hour: Int, minute: Int})
   public let startTime: TimeComponentsDTO
-  public let durationMinutes: Int?
+  public let endTime: TimeComponentsDTO?
 
   // 위치
   public let location: LocationDTO?
@@ -37,7 +37,7 @@ public struct RecurringPersonalEventDTO: Codable {
     emoji: String?,
     description: String?,
     startTime: TimeComponentsDTO,
-    durationMinutes: Int?,
+    endTime: TimeComponentsDTO?,
     location: LocationDTO?,
     reminderMinutesBefore: Int?,
     recurrence: RecurrenceRuleDTO,
@@ -51,7 +51,7 @@ public struct RecurringPersonalEventDTO: Codable {
     self.emoji = emoji
     self.description = description
     self.startTime = startTime
-    self.durationMinutes = durationMinutes
+    self.endTime = endTime
     self.location = location
     self.reminderMinutesBefore = reminderMinutesBefore
     self.recurrence = recurrence
@@ -114,14 +114,14 @@ public struct RecurrenceRuleDTO: Codable {
 public struct EventOverrideDTO: Codable {
   public let title: String?
   public let startTime: TimeComponentsDTO?
-  public let durationMinutes: Int?
+  public let endTime: TimeComponentsDTO?
   public let location: LocationDTO?
   public let isCancelled: Bool?
 
   public init(from override: EventOverride) {
     self.title = override.title
     self.startTime = override.startTime.map { TimeComponentsDTO(from: $0) }
-    self.durationMinutes = override.durationMinutes
+    self.endTime = override.endTime.map { TimeComponentsDTO(from: $0) }
     self.location = override.location.map { LocationDTO(model: $0) }
     self.isCancelled = override.isCancelled
   }
@@ -130,7 +130,7 @@ public struct EventOverrideDTO: Codable {
     EventOverride(
       title: title,
       startTime: startTime?.toDateComponents,
-      durationMinutes: durationMinutes,
+      endTime: endTime?.toDateComponents,
       location: location.map { LocationInfoModel(dto: $0) },
       isCancelled: isCancelled ?? false
     )
@@ -146,7 +146,7 @@ extension RecurringPersonalEventDTO {
       emoji: model.emoji,
       description: model.description,
       startTime: TimeComponentsDTO(from: model.startTime),
-      durationMinutes: model.durationMinutes,
+      endTime: model.endTime.map { TimeComponentsDTO(from: $0) },
       location: model.location.map { LocationDTO(model: $0) },
       reminderMinutesBefore: model.reminderMinutesBefore,
       recurrence: RecurrenceRuleDTO(from: model.recurrence),
@@ -169,7 +169,7 @@ extension RecurringPersonalEventModel {
       emoji: dto.emoji,
       description: dto.description,
       startTime: dto.startTime.toDateComponents,
-      durationMinutes: dto.durationMinutes,
+      endTime: dto.endTime?.toDateComponents,
       location: dto.location.map { LocationInfoModel(dto: $0) },
       reminderMinutesBefore: dto.reminderMinutesBefore,
       recurrence: dto.recurrence.toModel(),

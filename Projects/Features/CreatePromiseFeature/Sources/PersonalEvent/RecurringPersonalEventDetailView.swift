@@ -148,13 +148,13 @@ extension RecurringPersonalEventDetail {
             value: store.recurringEvent.timeText
           )
 
-          if let duration = store.recurringEvent.durationText {
+          if let endText = store.recurringEvent.endTimeText {
             Divider().padding(.leading, 44)
 
             PromiseDetailEmojiInfoRow(
               emoji: "⏱️",
-              title: "소요 시간",
-              value: duration
+              title: "종료 시간",
+              value: endText
             )
           }
 

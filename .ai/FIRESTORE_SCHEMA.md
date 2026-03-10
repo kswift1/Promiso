@@ -1056,7 +1056,9 @@ users/{userId}/recurringEvents/{eventId}
 | `startTime` | Map | ✅ | - | 시작 시각 (아래 참조) |
 | `startTime.hour` | Number | ✅ | - | 시 (0~23) |
 | `startTime.minute` | Number | ✅ | - | 분 (0~59) |
-| `durationMinutes` | Number | ❌ | null | 소요 시간 (분 단위) |
+| `endTime` | Map | ❌ | null | 종료 시각 (아래 참조) |
+| `endTime.hour` | Number | ✅* | - | 시 (0~23) |
+| `endTime.minute` | Number | ✅* | - | 분 (0~59) |
 | `location` | Map | ❌ | null | 장소 정보 (personalEvents와 동일) |
 | `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위) |
 | `recurrence` | Map | ✅ | - | 반복 규칙 (아래 참조) |
@@ -1076,7 +1078,7 @@ users/{userId}/recurringEvents/{eventId}
 |--------|------|------|------|
 | `title` | String | ❌ | 변경된 제목 (null이면 원본 유지) |
 | `startTime` | Map | ❌ | 변경된 시작 시각 |
-| `durationMinutes` | Number | ❌ | 변경된 소요 시간 |
+| `endTime` | Map | ❌ | 변경된 종료 시각 |
 | `location` | Map | ❌ | 변경된 장소 |
 | `isCancelled` | Boolean | ❌ | 이 날 취소 여부 |
 
@@ -1089,7 +1091,7 @@ users/{userId}/recurringEvents/{eventId}
   "emoji": "🏋️",
   "description": null,
   "startTime": { "hour": 19, "minute": 0 },
-  "durationMinutes": 60,
+  "endTime": { "hour": 20, "minute": 0 },
   "location": {
     "name": "강남 피트니스",
     "address": "서울 강남구 역삼동 123",
@@ -1478,7 +1480,8 @@ service cloud.firestore {
 | 2.1 | 2026-03-10 | recurringEvents 서브컬렉션 추가 | Claude |
 |  |  | - users/{userId}/recurringEvents 서브컬렉션 추가 (반복 개인 일정) |  |
 |  |  | - 규칙 기반 저장: recurrence(frequency, daysOfWeek, dayOfMonth, seriesEndDate) |  |
-|  |  | - 시간: startTime(hour, minute) + durationMinutes (Date가 아닌 시/분 저장) |  |
+|  |  | - 시간: startTime(hour, minute) + endTime(hour, minute) (Date가 아닌 시/분 저장) |  |
+|  |  | - endTime이 startTime보다 이전이면 다음 날로 해석 (자정 넘기는 일정 지원) |  |
 |  |  | - 예외 처리: excludedDates(취소), overrides(개별 수정) |  |
 |  |  | - 인스턴스는 클라이언트에서 계산 (RecurringEventExpander) |  |
 
