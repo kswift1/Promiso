@@ -165,6 +165,12 @@ extension Home {
       var departureAlerts: [String: HomeModels.DepartureAlertInfo] = [:]
       /// 역지오코딩된 출발지명
       var departureLocationName: String? = nil
+      /// 직전 일정 장소 정보 (출발지 선택 제안용)
+      var previousScheduleLocation: HomeModels.PreviousScheduleLocation? = nil
+      /// 현재 선택된 출발지
+      var departureOrigin: HomeModels.DepartureOrigin = .currentLocation
+      /// 현재 위치 좌표 (출발지 변경 시 재사용)
+      var currentLocationCoordinate: Coordinate? = nil
 
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
@@ -297,6 +303,8 @@ extension Home {
         case departureAlertCancelTapped(String)
         /// 출발 알림 재시도
         case departureAlertRetryTapped
+        /// 출발지 변경 (현재 위치 ↔ 직전 약속 장소)
+        case departureOriginChanged(HomeModels.DepartureOrigin)
       }
 
       @CasePathable
@@ -361,6 +369,8 @@ extension Home {
         case scheduleAlertForSelection(HomeModels.TransportSelection, Int)
         /// 출발지 역지오코딩 결과
         case departureLocationResolved(String?)
+        /// 현재 위치 좌표 저장
+        case currentLocationStored(Coordinate)
       }
 
       @CasePathable
@@ -776,23 +786,77 @@ extension Home {
             }
             state.departureAlertItem = item
             state.departureTransportData = .loading
+
+            // 직전 일정 찾기 (같은 날, 대상보다 이른 것 중 가장 가까운 것)
+            let todayItems = state.homeContentSnapshot.todayScheduleItems
+            let previousItem = todayItems
+              .filter { $0.startAt < item.startAt && $0.id != item.id }
+              .last(where: { schedule in
+                guard let loc = schedule.location,
+                      loc.latitude != nil,
+                      loc.longitude != nil else { return false }
+                return true
+              })
+            if let prev = previousItem,
+               let prevLoc = prev.location,
+               let prevLat = prevLoc.latitude,
+               let prevLng = prevLoc.longitude {
+              let prevInfo = HomeModels.PreviousScheduleLocation(
+                name: prev.title,
+                locationName: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+              state.previousScheduleLocation = prevInfo
+              // 직전 일정이 있으면 디폴트 출발지로 설정
+              state.departureOrigin = .previousSchedule(
+                name: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+            } else {
+              state.previousScheduleLocation = nil
+              state.departureOrigin = .currentLocation
+            }
+
             let scheduleItemId = item.id
             let userId = state.currentUser.userId
+            let usePreviousOrigin = state.previousScheduleLocation
             return .run { [locationClient, transportationClient, userSettingsClient] send in
+              // 현재 위치는 항상 가져옴 (나중에 출발지 변경 시 재사용)
               let currentLocation: Coordinate
               do {
                 currentLocation = try await locationClient.getCurrentLocation()
               } catch {
-                await send(.internal(.transportationResponse(
-                  scheduleItemId,
-                  .failure(LocationClientError.denied)
-                )))
-                return
+                // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
+                if usePreviousOrigin == nil {
+                  await send(.internal(.transportationResponse(
+                    scheduleItemId,
+                    .failure(LocationClientError.denied)
+                  )))
+                  return
+                }
+                // 현재 위치 없이 진행
+                currentLocation = Coordinate(latitude: 0, longitude: 0)
               }
 
-              // 출발지명 역지오코딩 (실패해도 진행)
-              let locationName = try? await locationClient.reverseGeocode(currentLocation)
-              await send(.internal(.departureLocationResolved(locationName)))
+              // 현재 위치 저장 (0,0이 아닌 경우만)
+              if currentLocation.latitude != 0 || currentLocation.longitude != 0 {
+                let locationName = try? await locationClient.reverseGeocode(currentLocation)
+                await send(.internal(.departureLocationResolved(locationName)))
+                await send(.internal(.currentLocationStored(currentLocation)))
+              }
+
+              // 출발 좌표 결정: 직전 일정 있으면 그 좌표, 없으면 현재 위치
+              let fromLat: Double
+              let fromLng: Double
+              if let prev = usePreviousOrigin {
+                fromLat = prev.latitude
+                fromLng = prev.longitude
+              } else {
+                fromLat = currentLocation.latitude
+                fromLng = currentLocation.longitude
+              }
 
               // 설정 조회 (실패해도 기본값 사용)
               let preferredTransport: PreferredTransport
@@ -805,7 +869,7 @@ extension Home {
 
               let result = await Result {
                 try await transportationClient.getTransportation(
-                  currentLocation.latitude, currentLocation.longitude,
+                  fromLat, fromLng,
                   lat, lng
                 )
               }
@@ -815,12 +879,21 @@ extension Home {
 
           case .departureAlertRetryTapped:
             guard let item = state.departureAlertItem else { return .none }
-            return .send(.view(.departureAlertTapped(item)))
+            if state.currentLocationCoordinate != nil {
+              // 좌표가 있으면 현재 origin 기준 재시도
+              return .send(.view(.departureOriginChanged(state.departureOrigin)))
+            } else {
+              // 좌표가 없으면 전체 재시도 (위치 권한 등)
+              return .send(.view(.departureAlertTapped(item)))
+            }
 
           case .departureAlertSheetDismissed:
             state.departureAlertItem = nil
             state.departureTransportData = .idle
             state.departureLocationName = nil
+            state.previousScheduleLocation = nil
+            state.departureOrigin = .currentLocation
+            state.currentLocationCoordinate = nil
             return .cancel(id: CancelID.transportationFetch)
 
           case .departureAlertConfirmed(let selection, let bufferMinutes):
@@ -848,6 +921,54 @@ extension Home {
             return .run { [localNotificationClient] _ in
               await localNotificationClient.cancel(notificationId)
             }
+
+          case .departureOriginChanged(let origin):
+            guard let item = state.departureAlertItem,
+                  let location = item.location,
+                  let toLat = location.latitude,
+                  let toLng = location.longitude else {
+              return .none
+            }
+            state.departureOrigin = origin
+            state.departureTransportData = .loading
+
+            let fromLat: Double
+            let fromLng: Double
+            let locationName: String?
+
+            switch origin {
+            case .currentLocation:
+              guard let coord = state.currentLocationCoordinate else { return .none }
+              fromLat = coord.latitude
+              fromLng = coord.longitude
+              locationName = state.departureLocationName
+            case .previousSchedule(let name, let latitude, let longitude):
+              fromLat = latitude
+              fromLng = longitude
+              locationName = name
+            }
+
+            let scheduleItemId = item.id
+            let userId = state.currentUser.userId
+
+            return .run { [transportationClient, userSettingsClient] send in
+              let preferredTransport: PreferredTransport
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                preferredTransport = settings.preferredTransport
+              } catch {
+                preferredTransport = .all
+              }
+
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  fromLat, fromLng,
+                  toLat, toLng
+                )
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result, preferredTransport)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
 
           }
 
@@ -1548,6 +1669,10 @@ extension Home {
 
           case .departureLocationResolved(let name):
             state.departureLocationName = name
+            return .none
+
+          case .currentLocationStored(let coordinate):
+            state.currentLocationCoordinate = coordinate
             return .none
 
           }

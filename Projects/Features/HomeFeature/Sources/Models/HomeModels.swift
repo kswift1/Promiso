@@ -393,4 +393,27 @@ extension HomeModels {
       self.departureTime = departureTime
     }
   }
+
+  /// 출발 알림 시트의 출발지 선택
+  public enum DepartureOrigin: Equatable, Sendable {
+    /// 현재 GPS 위치
+    case currentLocation
+    /// 직전 일정 장소
+    case previousSchedule(name: String, latitude: Double, longitude: Double)
+  }
+
+  /// 직전 일정 장소 정보 (출발지 선택용)
+  public struct PreviousScheduleLocation: Equatable, Sendable {
+    public let name: String
+    public let locationName: String?
+    public let latitude: Double
+    public let longitude: Double
+
+    public init(name: String, locationName: String?, latitude: Double, longitude: Double) {
+      self.name = name
+      self.locationName = locationName
+      self.latitude = latitude
+      self.longitude = longitude
+    }
+  }
 }

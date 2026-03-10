@@ -16,11 +16,15 @@ struct DepartureAlertSheet: View {
   let onSelect: (HomeModels.TransportSelection, Int) -> Void
   let onDetailTapped: () -> Void
   let onRetry: () -> Void
+  let previousScheduleLocation: HomeModels.PreviousScheduleLocation?
+  let onDepartureOriginChanged: (HomeModels.DepartureOrigin) -> Void
   let onDismiss: () -> Void
 
   @State private var selection: HomeModels.TransportSelection?
   @State private var bufferMinutes: Int = 10
   @State private var remainingTimeText: String = ""
+  @State private var isUsingPreviousSchedule: Bool = false
+  @State private var showExactTime: Bool = true
 
   /// buffer 적용된 출발시간 계산
   private func adjustedTime(_ raw: Date) -> Date {
@@ -158,6 +162,7 @@ struct DepartureAlertSheet: View {
     .presentationCornerRadius(24)
     .onAppear {
       remainingTimeText = computeRemainingTimeText()
+      isUsingPreviousSchedule = previousScheduleLocation != nil
       if let data = transportData {
         selection = defaultSelection(for: data)
       }
@@ -169,24 +174,29 @@ struct DepartureAlertSheet: View {
     }
   }
 
+  private var exactTimeText: String {
+    // "3월 10일 오후 5:56 시작" (년도 제외)
+    "\(LocalizedDateFormatters.monthDayTime.string(from: promiseStartAt)) 시작"
+  }
+
   // MARK: - Remaining Time
 
   private func computeRemainingTimeText() -> String {
     let diff = promiseStartAt.timeIntervalSince(Date())
     if diff <= 0 {
-      return "약속 시간이 지났어요"
+      return "일정 시간이 지났어요"
     }
     let totalMinutes = Int(diff / 60)
     let hours = totalMinutes / 60
     let minutes = totalMinutes % 60
     if hours >= 1 {
       if minutes == 0 {
-        return "약속까지 \(hours)시간 남았어요"
+        return "다음 일정까지 \(hours)시간 남았어요"
       } else {
-        return "약속까지 \(hours)시간 \(minutes)분 남았어요"
+        return "다음 일정까지 \(hours)시간 \(minutes)분 남았어요"
       }
     } else {
-      return "약속까지 \(minutes)분 남았어요"
+      return "다음 일정까지 \(minutes)분 남았어요"
     }
   }
 
@@ -194,108 +204,18 @@ struct DepartureAlertSheet: View {
 
   private var headerSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      // 타이틀: 이모지 + 약속명
-      Text("\(promiseEmoji) \(promiseTitle)")
-        .font(.pmTitle3)
-        .foregroundStyle(Color.pmtext.primary)
-        .lineLimit(1)
+      // 타이틀 + 상세 버튼
+      HStack(alignment: .top) {
+        Text("\(promiseEmoji) \(promiseTitle)")
+          .font(.pmTitle3)
+          .foregroundStyle(Color.pmtext.primary)
+          .lineLimit(1)
 
-      // 서브타이틀: 동적 카운트다운
-      Text(remainingTimeText)
-        .font(.pmFootnote)
-        .foregroundStyle(Color.pmtext.secondary)
+        Spacer(minLength: 8)
 
-      // 경로 정보 카드 (탭 가능)
-      routeInfoCard
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
-
-  private var routeInfoCard: some View {
-    Button {
-      onDetailTapped()
-    } label: {
-      VStack(alignment: .leading, spacing: 0) {
-        HStack(spacing: 12) {
-          // 출발 → 도착 점선 연결
-          VStack(spacing: 3) {
-            Circle()
-              .fill(Color.pmindigo.n400)
-              .frame(width: 8, height: 8)
-            ForEach(0..<3, id: \.self) { _ in
-              Circle()
-                .fill(Color.pmgray.n300)
-                .frame(width: 3, height: 3)
-            }
-            Circle()
-              .fill(Color.pmerror.n500)
-              .frame(width: 8, height: 8)
-          }
-          .padding(.vertical, 2)
-
-          // 출발지 / 도착지 텍스트
-          VStack(alignment: .leading, spacing: 10) {
-            // 출발지
-            VStack(alignment: .leading, spacing: 1) {
-              Text("출발")
-                .font(.pmMicroMedium)
-                .foregroundStyle(Color.pmindigo.n400)
-              Text(departureLocation ?? "현재 위치")
-                .font(.pmCaptionSemibold)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-
-            // 도착지
-            VStack(alignment: .leading, spacing: 1) {
-              Text("도착")
-                .font(.pmMicroMedium)
-                .foregroundStyle(Color.pmerror.n500)
-              HStack(spacing: 4) {
-                Text(promiseEmoji)
-                  .font(.system(size: 12))
-                Text(promiseTitle)
-                  .font(.pmCaptionSemibold)
-                  .foregroundStyle(Color.pmtext.primary)
-                  .lineLimit(1)
-              }
-              if let location = promiseLocation {
-                Text(location)
-                  .font(.pmMicro)
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
-            }
-          }
-
-          Spacer(minLength: 8)
-
-          // 약속시간 뱃지
-          Group {
-            if LocalizedDateFormatters.use24HourFormat {
-              Text(promiseStartAt.formattedTime)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.pmindigo.n500)
-            } else {
-              VStack(spacing: 0) {
-                Text(LocalizedDateFormatters.amPm.string(from: promiseStartAt))
-                  .font(.pmCaption2)
-                  .foregroundStyle(Color.pmindigo.n400)
-                Text(LocalizedDateFormatters.time12Hour.string(from: promiseStartAt))
-                  .font(.system(size: 22, weight: .bold, design: .rounded))
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-            }
-          }
-          .padding(.horizontal, 12)
-          .padding(.vertical, 8)
-          .background(
-            RoundedRectangle(cornerRadius: 12)
-              .fill(Color.pmindigo.n500.opacity(0.08))
-          )
-        }
-
-        // 카드 우하단 "상세 >" 텍스트
-        HStack {
-          Spacer()
+        Button {
+          onDetailTapped()
+        } label: {
           HStack(spacing: 2) {
             Text("상세")
               .font(.pmCaption)
@@ -304,21 +224,148 @@ struct DepartureAlertSheet: View {
               .font(.system(size: 10, weight: .semibold))
               .foregroundStyle(Color.pmindigo.n500)
           }
+          .padding(.top, 4)
+        }
+        .buttonStyle(.plain)
+      }
+
+      // 서브타이틀: 카운트다운 ↔ 정확한 시간 토글
+      Button {
+        withAnimation(.easeInOut(duration: 0.2)) {
+          showExactTime.toggle()
+        }
+      } label: {
+        HStack(spacing: 4) {
+          Text(showExactTime ? exactTimeText : remainingTimeText)
+            .font(.pmFootnote)
+            .foregroundStyle(Color.pmtext.secondary)
+            .contentTransition(.numericText())
+          Image(systemName: "arrow.left.arrow.right")
+            .font(.system(size: 8, weight: .semibold))
+            .foregroundStyle(Color.pmgray.n400)
+        }
+      }
+      .buttonStyle(.plain)
+
+      // 경로 정보 카드 (탭 가능)
+      routeInfoCard
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private var routeInfoCard: some View {
+    VStack(spacing: 0) {
+      // 메인 경로 정보
+      Button {
+        onDetailTapped()
+      } label: {
+        VStack(spacing: 8) {
+          // 출발 → 도착 (가로)
+          HStack(spacing: 0) {
+            // 출발
+            VStack(spacing: 2) {
+              HStack(spacing: 4) {
+                Circle()
+                  .fill(Color.pmindigo.n400)
+                  .frame(width: 6, height: 6)
+                Text("출발")
+                  .font(.pmCaption2Medium)
+                  .foregroundStyle(Color.pmindigo.n400)
+              }
+              Text(isUsingPreviousSchedule ? (previousScheduleLocation?.locationName ?? previousScheduleLocation?.name ?? "현재 위치") : (departureLocation ?? "현재 위치"))
+                .font(.pmCaptionSemibold)
+                .foregroundStyle(Color.pmtext.primary)
+                .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+
+            // 화살표
+            Image(systemName: "arrow.right")
+              .font(.system(size: 10, weight: .semibold))
+              .foregroundStyle(Color.pmgray.n400)
+              .frame(width: 32)
+
+            // 도착
+            VStack(spacing: 2) {
+              HStack(spacing: 4) {
+                Circle()
+                  .fill(Color.pmerror.n500)
+                  .frame(width: 6, height: 6)
+                Text("도착")
+                  .font(.pmCaption2Medium)
+                  .foregroundStyle(Color.pmerror.n500)
+              }
+              Text(promiseLocation ?? promiseTitle)
+                .font(.pmCaptionSemibold)
+                .foregroundStyle(Color.pmtext.primary)
+                .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+          }
+        }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+
+      // 하단 우측: 출발지 변경 (직전 일정 있을 때만)
+      if let prevSchedule = previousScheduleLocation {
+        HStack {
+          Spacer()
+          Menu {
+            Button {
+              if isUsingPreviousSchedule {
+                isUsingPreviousSchedule = false
+                selection = nil
+                onDepartureOriginChanged(.currentLocation)
+              }
+            } label: {
+              if !isUsingPreviousSchedule {
+                Label("현재 위치", systemImage: "checkmark")
+              } else {
+                Text("현재 위치")
+              }
+            }
+
+            Button {
+              if !isUsingPreviousSchedule {
+                isUsingPreviousSchedule = true
+                selection = nil
+                onDepartureOriginChanged(.previousSchedule(
+                  name: prevSchedule.locationName ?? prevSchedule.name,
+                  latitude: prevSchedule.latitude,
+                  longitude: prevSchedule.longitude
+                ))
+              }
+            } label: {
+              if isUsingPreviousSchedule {
+                Label(prevSchedule.name, systemImage: "checkmark")
+              } else {
+                Text(prevSchedule.name)
+              }
+            }
+          } label: {
+            HStack(spacing: 2) {
+              Text("출발지 변경하기")
+                .font(.pmCaption2)
+              Image(systemName: "chevron.right")
+                .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(Color.pmindigo.n500)
+          }
         }
         .padding(.top, 8)
       }
-      .padding(16)
-      .background(
-        RoundedRectangle(cornerRadius: 16)
-          .fill(Color(.systemBackground).opacity(0.6))
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 16)
-          .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
-      )
-      .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
+    .background(
+      RoundedRectangle(cornerRadius: 16)
+        .fill(Color(.systemBackground).opacity(0.6))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 16)
+        .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
+    )
   }
 
   // MARK: - Content Section
@@ -875,6 +922,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -910,6 +959,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -929,6 +980,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -948,6 +1001,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1002,6 +1057,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1038,6 +1095,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1086,6 +1145,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1134,6 +1195,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1204,6 +1267,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1252,6 +1317,8 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }
@@ -1274,6 +1341,63 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        previousScheduleLocation: nil,
+        onDepartureOriginChanged: { _ in },
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("직전 약속 있음") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(7200) // 2시간 뒤
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "🍻",
+        promiseTitle: "저녁 회식",
+        promiseStartAt: startAt,
+        promiseLocation: "을지로 노가리 골목",
+        departureLocation: "서울 강남구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 30,
+            departureTime: startAt.addingTimeInterval(-30 * 60),
+            distanceMeters: 12000
+          ),
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 40,
+              payment: 1250,
+              busTransitCount: 0,
+              subwayTransitCount: 1,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-40 * 60),
+              subPaths: [],
+              tags: [.fastest, .cheapest]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 60,
+            departureTime: startAt.addingTimeInterval(-60 * 60),
+            distanceMeters: 4200
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        previousScheduleLocation: HomeModels.PreviousScheduleLocation(
+          name: "팀 미팅",
+          locationName: "삼성역 위워크",
+          latitude: 37.5088,
+          longitude: 127.0632
+        ),
+        onDepartureOriginChanged: { _ in },
         onDismiss: {}
       )
     }

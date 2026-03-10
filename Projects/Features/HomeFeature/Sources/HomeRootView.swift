@@ -47,6 +47,10 @@ extension Home {
             onRetry: {
               store.send(.view(.departureAlertRetryTapped))
             },
+            previousScheduleLocation: store.previousScheduleLocation,
+            onDepartureOriginChanged: { origin in
+              store.send(.view(.departureOriginChanged(origin)))
+            },
             onDismiss: {
               store.send(.view(.departureAlertSheetDismissed))
             }
