@@ -295,6 +295,8 @@ extension Home {
         case departureAlertDetailTapped
         /// 출발 알림 취소
         case departureAlertCancelTapped(String)
+        /// 출발 알림 재시도
+        case departureAlertRetryTapped
       }
 
       @CasePathable
@@ -810,6 +812,10 @@ extension Home {
               await send(.internal(.transportationResponse(scheduleItemId, result, preferredTransport)))
             }
             .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertRetryTapped:
+            guard let item = state.departureAlertItem else { return .none }
+            return .send(.view(.departureAlertTapped(item)))
 
           case .departureAlertSheetDismissed:
             state.departureAlertItem = nil

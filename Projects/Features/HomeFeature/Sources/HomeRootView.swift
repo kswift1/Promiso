@@ -44,6 +44,9 @@ extension Home {
             onDetailTapped: {
               store.send(.view(.departureAlertDetailTapped))
             },
+            onRetry: {
+              store.send(.view(.departureAlertRetryTapped))
+            },
             onDismiss: {
               store.send(.view(.departureAlertSheetDismissed))
             }

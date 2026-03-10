@@ -15,6 +15,7 @@ struct DepartureAlertSheet: View {
   let loadError: String?
   let onSelect: (HomeModels.TransportSelection, Int) -> Void
   let onDetailTapped: () -> Void
+  let onRetry: () -> Void
   let onDismiss: () -> Void
 
   @State private var selection: HomeModels.TransportSelection?
@@ -641,32 +642,93 @@ struct DepartureAlertSheet: View {
     )
   }
 
-  // MARK: - Loading / Error Views
+  // MARK: - Loading Skeleton
 
   private var loadingView: some View {
-    VStack(spacing: 12) {
-      ProgressView()
-        .scaleEffect(1.2)
-        .tint(Color.pmindigo.n500)
+    VStack(spacing: 10) {
+      // 이동 수단 라벨 스켈레톤
+      HStack {
+        skeletonRect(width: 60, height: 14)
+        Spacer()
+      }
+      .padding(.horizontal, 4)
 
-      Text("소요 시간을 계산하는 중...")
-        .font(.pmCaption)
-        .foregroundStyle(Color.pmtext.secondary)
+      // 카드 스켈레톤 3개
+      ForEach(0..<3, id: \.self) { _ in
+        skeletonCard
+      }
     }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 40)
   }
 
-  private func errorView(message: String) -> some View {
-    VStack(spacing: 12) {
-      Image(systemName: "exclamationmark.triangle")
-        .font(.system(size: 28))
-        .foregroundStyle(Color.pmgray.n400)
+  private var skeletonCard: some View {
+    HStack(spacing: 12) {
+      skeletonRect(width: 32, height: 32, cornerRadius: 8)
 
-      Text(message)
-        .font(.pmCaption)
-        .foregroundStyle(Color.pmtext.secondary)
-        .multilineTextAlignment(.center)
+      VStack(alignment: .leading, spacing: 4) {
+        skeletonRect(width: 50, height: 13)
+        skeletonRect(width: 80, height: 11)
+      }
+
+      Spacer(minLength: 0)
+
+      skeletonRect(width: 60, height: 30, cornerRadius: 8)
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
+    .background(
+      RoundedRectangle(cornerRadius: 14)
+        .fill(Color(.systemBackground).opacity(0.5))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 14)
+        .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
+    )
+  }
+
+  private func skeletonRect(
+    width: CGFloat,
+    height: CGFloat,
+    cornerRadius: CGFloat = 4
+  ) -> some View {
+    RoundedRectangle(cornerRadius: cornerRadius)
+      .fill(Color.pmgray.n200.opacity(0.5))
+      .frame(width: width, height: height)
+      .shimmer()
+  }
+
+  // MARK: - Error View
+
+  private func errorView(message: String) -> some View {
+    VStack(spacing: 16) {
+      VStack(spacing: 8) {
+        Image(systemName: "exclamationmark.triangle")
+          .font(.system(size: 28))
+          .foregroundStyle(Color.pmgray.n400)
+
+        Text(message)
+          .font(.pmCaption)
+          .foregroundStyle(Color.pmtext.secondary)
+          .multilineTextAlignment(.center)
+      }
+
+      Button {
+        onRetry()
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "arrow.clockwise")
+            .font(.system(size: 12, weight: .medium))
+          Text("다시 시도")
+            .font(.pmCaptionSemibold)
+        }
+        .foregroundStyle(Color.pmindigo.n500)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(
+          Capsule()
+            .fill(Color.pmindigo.n500.opacity(0.1))
+        )
+      }
+      .buttonStyle(.plain)
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 40)
@@ -727,6 +789,7 @@ struct DepartureAlertSheet: View {
         loadError: nil,
         onSelect: { _, _ in },
         onDetailTapped: {},
+        onRetry: {},
         onDismiss: {}
       )
     }
@@ -761,6 +824,7 @@ struct DepartureAlertSheet: View {
         loadError: nil,
         onSelect: { _, _ in },
         onDetailTapped: {},
+        onRetry: {},
         onDismiss: {}
       )
     }
@@ -779,6 +843,7 @@ struct DepartureAlertSheet: View {
         loadError: nil,
         onSelect: { _, _ in },
         onDetailTapped: {},
+        onRetry: {},
         onDismiss: {}
       )
     }
@@ -797,6 +862,7 @@ struct DepartureAlertSheet: View {
         loadError: "경로를 불러오지 못했어요",
         onSelect: { _, _ in },
         onDetailTapped: {},
+        onRetry: {},
         onDismiss: {}
       )
     }
