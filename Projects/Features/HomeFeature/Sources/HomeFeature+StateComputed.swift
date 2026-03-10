@@ -15,6 +15,11 @@ extension Home.Feature.State {
     personalEventsState.value ?? []
   }
 
+  /// 전체 반복 개인 일정 (nil이면 빈 배열)
+  private var allRecurringEvents: [RecurringPersonalEventModel] {
+    recurringEventsState.value ?? []
+  }
+
   /// 오늘 날짜 범위 (KST 기준)
   private var todayRange: (start: Date, end: Date) {
     let calendar = Calendar.promiseDisplay
@@ -32,6 +37,14 @@ extension Home.Feature.State {
   private func buildHomeContentSnapshot() -> HomeContentSnapshot {
     let (startOfDay, endOfDay) = todayRange
     let userId = currentUser.userId
+
+    // 반복 일정 expand 범위: 오늘 ~ 30일 후
+    let calendar = Calendar.promiseDisplay
+    let rangeEnd = calendar.date(byAdding: .day, value: 30, to: startOfDay) ?? startOfDay
+    let expandedRecurringItems: [HomeModels.ScheduleItem] = allRecurringEvents.flatMap { event in
+      RecurringEventExpander.expand(event: event, from: startOfDay, to: rangeEnd)
+        .map { HomeModels.ScheduleItem.recurringPersonalEvent($0) }
+    }
 
     var todayPromises: [PromiseModel] = []
     var todayScheduleItems: [HomeModels.ScheduleItem] = []
@@ -62,6 +75,14 @@ extension Home.Feature.State {
         todayScheduleItems.append(.personalEvent(event))
       } else if event.startAt >= endOfDay {
         upcomingScheduleItems.append(.personalEvent(event))
+      }
+    }
+
+    for item in expandedRecurringItems {
+      if item.startAt < endOfDay, item.effectiveEndAt >= startOfDay {
+        todayScheduleItems.append(item)
+      } else if item.startAt >= endOfDay {
+        upcomingScheduleItems.append(item)
       }
     }
 

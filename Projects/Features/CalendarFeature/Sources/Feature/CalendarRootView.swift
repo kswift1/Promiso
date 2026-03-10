@@ -141,6 +141,10 @@ extension CalendarFeature {
           )
           .presentationDragIndicator(.visible)
         }
+        .sheet(store: store.scope(state: \.$editRecurringPersonalEvent, action: \.editRecurringPersonalEvent)) { editStore in
+          CreateRecurringPersonalEvent.RootView(store: editStore)
+            .presentationDragIndicator(.visible)
+        }
         .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
           CreatePromise.RootView(store: createStore)
         }

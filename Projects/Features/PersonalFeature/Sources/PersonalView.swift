@@ -49,6 +49,13 @@ extension PersonalMode {
           .presentationDetents([.large, .medium])
           .presentationDragIndicator(.visible)
       }
+      .sheet(
+        item: $store.scope(state: \.createRecurringEvent, action: \.createRecurringEvent)
+      ) { createRecurringStore in
+        CreateRecurringPersonalEvent.RootView(store: createRecurringStore)
+          .presentationDetents([.large, .medium])
+          .presentationDragIndicator(.visible)
+      }
       .navigationDestination(
         item: $store.scope(state: \.eventDetail, action: \.eventDetail)
       ) { detailStore in
@@ -303,8 +310,18 @@ extension PersonalMode {
 
     @ViewBuilder
     private var fabButton: some View {
-      Button {
-        store.send(.view(.createNewEventTapped))
+      Menu {
+        Button {
+          store.send(.view(.createOneTimeEventTapped))
+        } label: {
+          Label("일회성 일정", systemImage: "calendar.badge.plus")
+        }
+
+        Button {
+          store.send(.view(.createRecurringEventTapped))
+        } label: {
+          Label("반복 일정", systemImage: "repeat")
+        }
       } label: {
         ZStack {
           Circle()

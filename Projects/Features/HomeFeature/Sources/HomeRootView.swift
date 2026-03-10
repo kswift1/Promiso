@@ -221,6 +221,8 @@ extension Home {
                   store.send(.view(.todayPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
+                case .recurringPersonalEvent:
+                  break
                 }
               }
             )
@@ -248,6 +250,8 @@ extension Home {
                   store.send(.view(.upcomingPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
+                case .recurringPersonalEvent:
+                  break
                 }
               },
               onSeeAllTap: {

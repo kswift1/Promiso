@@ -79,6 +79,7 @@ extension PersonalMode {
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
+      @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
 
       public init(currentUser: Shared<UserPrivateModel>) {
@@ -183,6 +184,7 @@ extension PersonalMode {
       case view(View)
       case `internal`(Internal)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
 
       public enum View: Sendable {
@@ -190,6 +192,8 @@ extension PersonalMode {
         case refreshEvents
         case filterChanged(EventFilter)
         case createNewEventTapped
+        case createOneTimeEventTapped
+        case createRecurringEventTapped
         case eventTapped(PersonalEventModel)
         case editEvent(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
@@ -262,6 +266,14 @@ extension PersonalMode {
 
           case .createNewEventTapped:
             state.createEvent = CreatePersonalEvent.Feature.State()
+            return .none
+
+          case .createOneTimeEventTapped:
+            state.createEvent = CreatePersonalEvent.Feature.State()
+            return .none
+
+          case .createRecurringEventTapped:
+            state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State()
             return .none
 
           case .eventTapped(let event):
@@ -527,6 +539,20 @@ extension PersonalMode {
         case .createEvent:
           return .none
 
+        // MARK: - CreateRecurringEvent Delegate
+
+        case .createRecurringEvent(.presented(.delegate(.eventCreated))),
+             .createRecurringEvent(.presented(.delegate(.eventUpdated))):
+          state.createRecurringEvent = nil
+          return .none
+
+        case .createRecurringEvent(.presented(.delegate(.dismiss))):
+          state.createRecurringEvent = nil
+          return .none
+
+        case .createRecurringEvent:
+          return .none
+
         // MARK: - EventDetail Delegate
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
@@ -542,6 +568,9 @@ extension PersonalMode {
       }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$createRecurringEvent, action: \.createRecurringEvent) {
+        CreateRecurringPersonalEvent.Feature()
       }
       .ifLet(\.$eventDetail, action: \.eventDetail) {
         PersonalEventDetail.Feature()
