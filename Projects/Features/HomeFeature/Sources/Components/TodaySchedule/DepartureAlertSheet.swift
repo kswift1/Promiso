@@ -74,42 +74,36 @@ struct DepartureAlertSheet: View {
           VStack(spacing: 16) {
             headerSection
             contentSection
+            bufferSelector
           }
           .padding(.horizontal, 20)
-          .padding(.bottom, 120)
+          .padding(.bottom, 100)
         }
 
-        // 하단 고정 영역
+        // 하단 고정 영역 (버튼만)
         VStack(spacing: 0) {
-          // 여유 시간 (투명 배경)
-          bufferSelector
-            .padding(.horizontal, 20)
-            .padding(.bottom, 4)
-
-          // 선택된 수단 설명
-          if let description = selectionDescription {
-            Text(description)
-              .font(.system(size: 11))
-              .foregroundStyle(Color.pmtext.secondary)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal, 20)
-              .padding(.bottom, 8)
-          }
-
-          // 블러 그라데이션 (버튼 바로 위만)
           LinearGradient(
             colors: [Color.clear, Color(.systemBackground).opacity(0.8)],
             startPoint: .top,
             endPoint: .bottom
           )
-          .frame(height: 16)
+          .frame(height: 20)
 
-          // 알림 버튼
-          confirmButton
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
-            .padding(.top, 4)
-            .background(Color(.systemBackground).opacity(0.9))
+          VStack(spacing: 8) {
+            confirmButton
+
+            // 선택된 수단 설명
+            if let description = selectionDescription {
+              Text(description)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.pmtext.secondary)
+                .multilineTextAlignment(.center)
+            }
+          }
+          .padding(.horizontal, 20)
+          .padding(.bottom, 32)
+          .padding(.top, 4)
+          .background(Color(.systemBackground).opacity(0.9))
         }
       }
     }
@@ -290,6 +284,14 @@ struct DepartureAlertSheet: View {
       let drivingTime = adjustedTime(driving.departureTime)
       let isPast = drivingTime < Date()
       let isSelected = selection == .driving
+      let distanceText: String? = {
+        guard let meters = driving.distanceMeters, meters > 0 else { return nil }
+        let km = Double(meters) / 1000.0
+        return String(format: "약 %.0fkm", km)
+      }()
+      let detail = ["약 \(driving.durationMinutes)분", distanceText]
+        .compactMap { $0 }
+        .joined(separator: " · ")
 
       Button {
         if !isPast { selection = .driving }
@@ -297,7 +299,7 @@ struct DepartureAlertSheet: View {
         transportCard(
           iconName: HomeModels.TransportType.driving.iconName,
           label: HomeModels.TransportType.driving.displayName,
-          detail: "약 \(driving.durationMinutes)분",
+          detail: detail,
           departureTime: drivingTime,
           isPast: isPast,
           isSelected: isSelected,
@@ -473,14 +475,17 @@ struct DepartureAlertSheet: View {
         )
 
       VStack(alignment: .leading, spacing: 3) {
-        // 태그 뱃지
+        // 대중교통 라벨 + 태그 뱃지
         HStack(spacing: 4) {
+          Text("대중교통")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(isPast ? Color.pmtext.secondary : Color.pmtext.primary)
           ForEach(route.tags, id: \.self) { tag in
             Text(tag.displayName)
-              .font(.system(size: 10, weight: .semibold))
+              .font(.system(size: 9, weight: .semibold))
               .foregroundStyle(isSelected ? Color.pmindigo.n600 : Color.pmindigo.n500)
-              .padding(.horizontal, 6)
-              .padding(.vertical, 2)
+              .padding(.horizontal, 5)
+              .padding(.vertical, 1.5)
               .background(
                 Capsule().fill(Color.pmindigo.n500.opacity(isSelected ? 0.2 : 0.1))
               )
@@ -574,52 +579,49 @@ struct DepartureAlertSheet: View {
 
   // MARK: - Buffer Selector
 
+  private static let bufferOptions = [0, 5, 10, 15, 20, 30]
+
   private var bufferSelector: some View {
-    VStack(spacing: 8) {
-      HStack(spacing: 6) {
-        Image(systemName: "clock")
-          .font(.pmCaption)
-          .foregroundStyle(Color.pmtext.secondary)
-        Text("여유 시간")
-          .font(.pmCaption)
-          .foregroundStyle(Color.pmtext.secondary)
-      }
-      .frame(maxWidth: .infinity, alignment: .center)
+    HStack {
+      Text("여유 시간")
+        .font(.pmCaptionSemibold)
+        .foregroundStyle(Color.pmtext.secondary)
 
-      HStack(spacing: 8) {
-        ForEach([0, 10, 20, 30], id: \.self) { minutes in
-          bufferChip(minutes: minutes)
+      Spacer()
+
+      Menu {
+        ForEach(Self.bufferOptions, id: \.self) { minutes in
+          Button {
+            bufferMinutes = minutes
+          } label: {
+            if bufferMinutes == minutes {
+              Label(
+                minutes == 0 ? "없음" : "\(minutes)분",
+                systemImage: "checkmark"
+              )
+            } else {
+              Text(minutes == 0 ? "없음" : "\(minutes)분")
+            }
+          }
         }
-      }
-      .frame(maxWidth: .infinity, alignment: .center)
-    }
-    .padding(.top, 4)
-  }
-
-  private func bufferChip(minutes: Int) -> some View {
-    let isSelected = bufferMinutes == minutes
-    return Button {
-      bufferMinutes = minutes
-    } label: {
-      Text(minutes == 0 ? "없음" : "\(minutes)분")
-        .font(.pmCaption)
-        .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+      } label: {
+        HStack(spacing: 4) {
+          Text(bufferMinutes == 0 ? "없음" : "\(bufferMinutes)분")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmindigo.n500)
+          Image(systemName: "chevron.up.chevron.down")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
-          Capsule()
-            .fill(isSelected ? Color.pmindigo.n500.opacity(0.12) : Color.pmgray.n100)
-            .overlay(
-              Capsule()
-                .strokeBorder(
-                  isSelected ? Color.pmindigo.n300 : Color.clear,
-                  lineWidth: 1
-                )
-            )
+          RoundedRectangle(cornerRadius: 10)
+            .fill(Color.pmindigo.n500.opacity(0.08))
         )
+      }
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel(minutes == 0 ? "여유 시간 없음" : "여유 시간 \(minutes)분")
+    .padding(.horizontal, 4)
   }
 
   // MARK: - Walking Not Recommended Row
@@ -860,6 +862,332 @@ struct DepartureAlertSheet: View {
         departureLocation: "서울 마포구",
         transportData: nil,
         loadError: "경로를 불러오지 못했어요",
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("대중교통만") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(5400) // 1.5시간 뒤
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "📚",
+        promiseTitle: "스터디 모임",
+        promiseStartAt: startAt,
+        promiseLocation: "합정역 3번 출구",
+        departureLocation: "서울 종로구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: nil,
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 35,
+              payment: 1250,
+              busTransitCount: 0,
+              subwayTransitCount: 1,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-35 * 60),
+              subPaths: [],
+              tags: [.fastest, .cheapest]
+            ),
+            HomeModels.TransitRouteOption(
+              id: 1,
+              totalTime: 42,
+              payment: 1250,
+              busTransitCount: 1,
+              subwayTransitCount: 0,
+              pathType: 2,
+              departureTime: startAt.addingTimeInterval(-42 * 60),
+              subPaths: [],
+              tags: [.leastTransfers]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 90,
+            departureTime: startAt.addingTimeInterval(-90 * 60),
+            distanceMeters: 6500
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("자동차만") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(7200) // 2시간 뒤
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "⛳",
+        promiseTitle: "골프 라운딩",
+        promiseStartAt: startAt,
+        promiseLocation: "용인 골프장",
+        departureLocation: "서울 강남구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 55,
+            departureTime: startAt.addingTimeInterval(-55 * 60),
+            distanceMeters: 48000
+          ),
+          transitRoutes: [],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 300,
+            departureTime: startAt.addingTimeInterval(-300 * 60),
+            distanceMeters: 22000
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("단일 대중교통 경로") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(3600)
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "🎬",
+        promiseTitle: "영화 관람",
+        promiseStartAt: startAt,
+        promiseLocation: "CGV 용산아이파크몰",
+        departureLocation: "서울 용산구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 10,
+            departureTime: startAt.addingTimeInterval(-10 * 60),
+            distanceMeters: 3200
+          ),
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 15,
+              payment: 1250,
+              busTransitCount: 0,
+              subwayTransitCount: 0,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-15 * 60),
+              subPaths: [],
+              tags: [.fastest, .leastTransfers, .cheapest]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 25,
+            departureTime: startAt.addingTimeInterval(-25 * 60),
+            distanceMeters: 1800
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("도보 가능 근거리") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(2400) // 40분 뒤
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "☕",
+        promiseTitle: "커피챗",
+        promiseStartAt: startAt,
+        promiseLocation: "스타벅스 성수역점",
+        departureLocation: "서울 성동구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 5,
+            departureTime: startAt.addingTimeInterval(-5 * 60),
+            distanceMeters: 800
+          ),
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 10,
+              payment: 1250,
+              busTransitCount: 0,
+              subwayTransitCount: 0,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-10 * 60),
+              subPaths: [],
+              tags: [.fastest]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 12,
+            departureTime: startAt.addingTimeInterval(-12 * 60),
+            distanceMeters: 850
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("긴 장소명") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(10800) // 3시간 뒤
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "🎂",
+        promiseTitle: "민지 생일파티 + 동창회 겸 모임",
+        promiseStartAt: startAt,
+        promiseLocation: "서울특별시 송파구 올림픽로 300 롯데월드타워 31층 시그니엘 레스토랑",
+        departureLocation: "경기 수원시 영통구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 65,
+            departureTime: startAt.addingTimeInterval(-65 * 60),
+            distanceMeters: 42000
+          ),
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 80,
+              payment: 2450,
+              busTransitCount: 0,
+              subwayTransitCount: 2,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-80 * 60),
+              subPaths: [],
+              tags: [.fastest]
+            ),
+            HomeModels.TransitRouteOption(
+              id: 1,
+              totalTime: 85,
+              payment: 1850,
+              busTransitCount: 1,
+              subwayTransitCount: 0,
+              pathType: 2,
+              departureTime: startAt.addingTimeInterval(-85 * 60),
+              subPaths: [],
+              tags: [.cheapest]
+            ),
+            HomeModels.TransitRouteOption(
+              id: 2,
+              totalTime: 90,
+              payment: 2050,
+              busTransitCount: 0,
+              subwayTransitCount: 1,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-90 * 60),
+              subPaths: [],
+              tags: [.leastTransfers]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 480,
+            departureTime: startAt.addingTimeInterval(-480 * 60),
+            distanceMeters: 35000
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("출발지 없음") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(3600)
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "🍻",
+        promiseTitle: "회식",
+        promiseStartAt: startAt,
+        promiseLocation: "을지로 노가리 골목",
+        departureLocation: nil,
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 20,
+            departureTime: startAt.addingTimeInterval(-20 * 60),
+            distanceMeters: 8500
+          ),
+          transitRoutes: [
+            HomeModels.TransitRouteOption(
+              id: 0,
+              totalTime: 30,
+              payment: 1250,
+              busTransitCount: 0,
+              subwayTransitCount: 1,
+              pathType: 1,
+              departureTime: startAt.addingTimeInterval(-30 * 60),
+              subPaths: [],
+              tags: [.fastest, .leastTransfers]
+            ),
+          ],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 45,
+            departureTime: startAt.addingTimeInterval(-45 * 60),
+            distanceMeters: 3200
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onRetry: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("목적지 없음") {
+  let now = Date()
+  let startAt = now.addingTimeInterval(5400)
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "📞",
+        promiseTitle: "전화 미팅",
+        promiseStartAt: startAt,
+        promiseLocation: nil,
+        departureLocation: "서울 강남구",
+        transportData: nil,
+        loadError: nil,
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
