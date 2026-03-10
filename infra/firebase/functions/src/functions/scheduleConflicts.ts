@@ -30,6 +30,26 @@ import {
 const MAX_SLOT_DATE_RANGE_DAYS = 31;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
+type LocalDate = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+type LocalDateTime = LocalDate & {
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+type TimeComponents = {
+  hour: number;
+  minute: number;
+};
+
+const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
+const dateTimeFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -84,11 +104,190 @@ function assertDateRangeWithinLimit(startAt: Date, endAt: Date): void {
   }
 }
 
+function getDateFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = dateFormatterCache.get(timeZone);
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  dateFormatterCache.set(timeZone, formatter);
+  return formatter;
+}
+
+function getDateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = dateTimeFormatterCache.get(timeZone);
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  dateTimeFormatterCache.set(timeZone, formatter);
+  return formatter;
+}
+
+function parseFormatterParts(
+  formatter: Intl.DateTimeFormat,
+  date: Date,
+): Record<string, number> {
+  return formatter
+    .formatToParts(date)
+    .reduce<Record<string, number>>((result, part) => {
+      if (part.type !== "literal") {
+        result[part.type] = Number(part.value);
+      }
+      return result;
+    }, {});
+}
+
+function getLocalDate(date: Date, timeZone: string): LocalDate {
+  const parts = parseFormatterParts(getDateFormatter(timeZone), date);
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+  };
+}
+
+function getLocalDateTime(date: Date, timeZone: string): LocalDateTime {
+  const parts = parseFormatterParts(getDateTimeFormatter(timeZone), date);
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour,
+    minute: parts.minute,
+    second: parts.second,
+  };
+}
+
+function localDateKey(date: LocalDate): string {
+  return [
+    String(date.year).padStart(4, "0"),
+    String(date.month).padStart(2, "0"),
+    String(date.day).padStart(2, "0"),
+  ].join("-");
+}
+
+function compareLocalDates(a: LocalDate, b: LocalDate): number {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
+}
+
+function maxLocalDate(a: LocalDate, b: LocalDate): LocalDate {
+  return compareLocalDates(a, b) >= 0 ? a : b;
+}
+
+function minLocalDate(a: LocalDate, b: LocalDate): LocalDate {
+  return compareLocalDates(a, b) <= 0 ? a : b;
+}
+
+function addDays(date: LocalDate, days: number): LocalDate {
+  const next = new Date(Date.UTC(date.year, date.month - 1, date.day));
+  next.setUTCDate(next.getUTCDate() + days);
+  return {
+    year: next.getUTCFullYear(),
+    month: next.getUTCMonth() + 1,
+    day: next.getUTCDate(),
+  };
+}
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function getWeekday(date: LocalDate): number {
+  const jsWeekday = new Date(
+    Date.UTC(date.year, date.month - 1, date.day, 12),
+  ).getUTCDay();
+  return jsWeekday === 0 ? 1 : jsWeekday + 1;
+}
+
+function localDateTimeToComparableMs(date: LocalDateTime): number {
+  return Date.UTC(
+    date.year,
+    date.month - 1,
+    date.day,
+    date.hour,
+    date.minute,
+    date.second,
+    0,
+  );
+}
+
+function makeDateInTimeZone(
+  date: LocalDate,
+  time: TimeComponents,
+  timeZone: string,
+): Date {
+  const target: LocalDateTime = {
+    ...date,
+    hour: time.hour,
+    minute: time.minute,
+    second: 0,
+  };
+
+  let candidate = new Date(Date.UTC(
+    date.year,
+    date.month - 1,
+    date.day,
+    time.hour,
+    time.minute,
+    0,
+    0,
+  ));
+
+  for (let i = 0; i < 3; i++) {
+    const zoned = getLocalDateTime(candidate, timeZone);
+    const diffMs =
+      localDateTimeToComparableMs(zoned) -
+      localDateTimeToComparableMs(target);
+
+    if (diffMs === 0) {
+      return candidate;
+    }
+
+    candidate = new Date(candidate.getTime() - diffMs);
+  }
+
+  return candidate;
+}
+
+function getRecurringSeriesId(slotId: string): string | null {
+  const match = /^recurring_(.+)_\d{4}-\d{2}-\d{2}$/.exec(slotId);
+  return match?.[1] ?? null;
+}
+
+function shouldExcludeSlot(
+  slot: ScheduleSlotEntry,
+  excludeIds: Set<string>,
+): boolean {
+  if (excludeIds.has(slot.id)) return true;
+
+  if (slot.type !== "recurringPersonalEvent") {
+    return false;
+  }
+
+  const seriesId = getRecurringSeriesId(slot.id);
+  return seriesId ? excludeIds.has(seriesId) : false;
+}
+
 /**
  * ScheduleSlotEntry 생성 헬퍼
  *
  * @param {string} id - 일정 ID
- * @param {"promise" | "personalEvent"} type - 일정 종류
+ * @param {"promise" | "personalEvent" | "recurringPersonalEvent"} type - 일정 종류
  * @param {string} title - 일정 제목
  * @param {string | null} emoji - 이모지
  * @param {Date} startAt - 시작 시간
@@ -98,7 +297,7 @@ function assertDateRangeWithinLimit(startAt: Date, endAt: Date): void {
  */
 function createSlotEntry(
   id: string,
-  type: "promise" | "personalEvent",
+  type: "promise" | "personalEvent" | "recurringPersonalEvent",
   title: string,
   emoji: string | null,
   startAt: Date,
@@ -114,6 +313,178 @@ function createSlotEntry(
     endAt: endAt ? Timestamp.fromDate(endAt) : null,
     severity,
   };
+}
+
+/**
+ * 반복 일정 문서를 쿼리 범위 내 ScheduleSlotEntry 배열로 확장
+ *
+ * @param {string} eventId - 반복 일정 문서 ID
+ * @param {FirebaseFirestore.DocumentData} data - Firestore 문서 데이터
+ * @param {Date} queryStartAt - 조회 범위 시작 (minGap 포함)
+ * @param {Date} queryEndAt - 조회 범위 종료 (minGap 포함)
+ * @return {ScheduleSlotEntry[]} 확장된 슬롯 목록
+ */
+function expandRecurringEvent(
+  eventId: string,
+  data: FirebaseFirestore.DocumentData,
+  queryStartAt: Date,
+  queryEndAt: Date,
+  timeZone: string,
+): ScheduleSlotEntry[] {
+  const results: ScheduleSlotEntry[] = [];
+
+  // 기본 필드 파싱
+  const title = (data.title as string) ?? "";
+  const emoji = (data.emoji as string) || null;
+
+  const startTimeRaw = data.startTime as TimeComponents | null;
+  const endTimeRaw = data.endTime as TimeComponents | null;
+
+  if (!startTimeRaw) return results;
+
+  const recurrence = data.recurrence as {
+    frequency: "daily" | "weekly" | "monthly";
+    daysOfWeek: number[] | null;
+    dayOfMonth: number | null;
+    seriesEndDate: Timestamp | null;
+  } | null;
+
+  if (!recurrence) return results;
+
+  const seriesStartDateTs = data.seriesStartDate as Timestamp | null;
+  if (!seriesStartDateTs) return results;
+  const seriesStartDate = seriesStartDateTs.toDate();
+
+  const seriesEndDate = recurrence.seriesEndDate ?
+    recurrence.seriesEndDate.toDate() :
+    null;
+
+  const excludedDates = (data.excludedDates as string[] | null) ?? [];
+  const overrides = (data.overrides as Record<string, {
+    title?: string;
+    startTime?: { hour: number; minute: number };
+    endTime?: { hour: number; minute: number };
+    isCancelled?: boolean;
+  }> | null) ?? {};
+
+  const seriesStartLocalDate = getLocalDate(seriesStartDate, timeZone);
+  const queryStartLocalDate = getLocalDate(queryStartAt, timeZone);
+  const queryEndLocalDate = getLocalDate(queryEndAt, timeZone);
+
+  // 유효 범위: [max(seriesStart, queryStart), min(seriesEnd, queryEnd)]
+  const effectiveStart = maxLocalDate(
+    seriesStartLocalDate,
+    queryStartLocalDate,
+  );
+  const effectiveEnd = seriesEndDate ?
+    minLocalDate(getLocalDate(seriesEndDate, timeZone), queryEndLocalDate) :
+    queryEndLocalDate;
+
+  if (compareLocalDates(effectiveStart, effectiveEnd) > 0) return results;
+
+  // 후보 날짜 생성 (사용자 로컬 날짜 기준)
+  const candidateDates: LocalDate[] = [];
+  const {frequency} = recurrence;
+
+  if (frequency === "daily") {
+    let current = effectiveStart;
+    while (compareLocalDates(current, effectiveEnd) <= 0) {
+      candidateDates.push(current);
+      current = addDays(current, 1);
+    }
+  } else if (frequency === "weekly") {
+    const daysOfWeek = recurrence.daysOfWeek ?? [];
+    if (daysOfWeek.length === 0) return results;
+
+    let current = effectiveStart;
+    while (compareLocalDates(current, effectiveEnd) <= 0) {
+      if (daysOfWeek.includes(getWeekday(current))) {
+        candidateDates.push(current);
+      }
+      current = addDays(current, 1);
+    }
+  } else if (frequency === "monthly") {
+    const {dayOfMonth} = recurrence;
+    if (!dayOfMonth) return results;
+
+    // 최대 24개월 안전장치
+    const startYear = effectiveStart.year;
+    const startMonth = effectiveStart.month;
+    const endYear = effectiveEnd.year;
+    const endMonth = effectiveEnd.month;
+
+    const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth);
+    const maxMonths = Math.min(totalMonths, 23); // 최대 24개월(인덱스 0~23)
+
+    for (let i = 0; i <= maxMonths; i++) {
+      const zeroBasedMonth = startMonth - 1 + i;
+      const year = startYear + Math.floor(zeroBasedMonth / 12);
+      const month = (zeroBasedMonth % 12) + 1;
+      const lastDay = getDaysInMonth(year, month);
+
+      if (dayOfMonth > lastDay) {
+        continue;
+      }
+
+      const candidate = {year, month, day: dayOfMonth};
+      if (
+        compareLocalDates(candidate, effectiveStart) >= 0 &&
+        compareLocalDates(candidate, effectiveEnd) <= 0
+      ) {
+        candidateDates.push(candidate);
+      }
+    }
+  }
+
+  // 각 후보 날짜를 슬롯으로 변환
+  for (const date of candidateDates) {
+    const dateKey = localDateKey(date);
+
+    // excludedDates 확인
+    if (excludedDates.includes(dateKey)) continue;
+
+    // override 확인
+    const override = overrides[dateKey];
+    if (override?.isCancelled) continue;
+
+    // startTime/endTime 결정 (override 우선)
+    const effectiveStartTime = override?.startTime ?? startTimeRaw;
+    const effectiveEndTime = override?.endTime ?? endTimeRaw;
+    const effectiveTitle = override?.title ?? title;
+
+    const slotStart = makeDateInTimeZone(
+      date,
+      effectiveStartTime,
+      timeZone,
+    );
+
+    let slotEnd: Date | null = null;
+    if (effectiveEndTime) {
+      let endDate = makeDateInTimeZone(
+        date,
+        effectiveEndTime,
+        timeZone,
+      );
+      // endTime < startTime이면 다음날 자정 넘김 처리
+      if (endDate.getTime() < slotStart.getTime()) {
+        endDate = new Date(endDate.getTime() + MILLISECONDS_PER_DAY);
+      }
+      slotEnd = endDate;
+    }
+
+    const slotId = `recurring_${eventId}_${dateKey}`;
+    results.push(createSlotEntry(
+      slotId,
+      "recurringPersonalEvent",
+      effectiveTitle,
+      emoji,
+      slotStart,
+      slotEnd,
+      "confirmed",
+    ));
+  }
+
+  return results;
 }
 
 /**
@@ -278,6 +649,9 @@ export const checkScheduleConflicts =
         0;
       const minGapMs = minGapMinutes * 60 * 1000;
       const excludeIds = new Set(data.excludeIds ?? []);
+      const timeZone = typeof data.timeZone === "string" && data.timeZone ?
+        data.timeZone :
+        "UTC";
 
       // dateKey 조회 범위를 minGap만큼 확장 (기존 일정이 gap 안에 있을 수 있으므로)
       const queryStartAt = new Date(startAt.getTime() - minGapMs);
@@ -318,10 +692,40 @@ export const checkScheduleConflicts =
         }
       }
 
+      // --- 반복 일정 확장 추가 ---
+      const recurringEventsSnap = await db
+        .collection("users").doc(userId)
+        .collection("recurringEvents").get();
+
+      let expandedCount = 0;
+      for (const doc of recurringEventsSnap.docs) {
+        const recurringData = doc.data();
+        const expanded = expandRecurringEvent(
+          doc.id,
+          recurringData,
+          queryStartAt,
+          queryEndAt,
+          timeZone,
+        );
+        for (const slot of expanded) {
+          if (!allSlots.has(slot.id)) {
+            allSlots.set(slot.id, slot);
+            expandedCount++;
+          }
+        }
+      }
+
+      if (expandedCount > 0) {
+        console.log(
+          `🔄 recurringEvents expanded: ${expandedCount} slots ` +
+          `from ${recurringEventsSnap.size} series`,
+        );
+      }
+
       // 겹침 판정
       const conflicts: ScheduleConflictItem[] = [];
       for (const [, slot] of allSlots) {
-        if (excludeIds.has(slot.id)) continue;
+        if (shouldExcludeSlot(slot, excludeIds)) continue;
 
         const slotStart = slot.startAt.toDate();
         const slotEnd = slot.endAt ?
