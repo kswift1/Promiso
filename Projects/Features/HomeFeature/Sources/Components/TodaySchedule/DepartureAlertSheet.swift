@@ -344,13 +344,9 @@ struct DepartureAlertSheet: View {
               }
             }
           } label: {
-            HStack(spacing: 2) {
-              Text("출발지 변경하기")
-                .font(.pmCaption2)
-              Image(systemName: "chevron.right")
-                .font(.system(size: 9, weight: .semibold))
-            }
-            .foregroundStyle(Color.pmindigo.n500)
+            Text("출발지 변경하기")
+              .font(.pmCaption2)
+              .foregroundStyle(Color.pmindigo.n500)
           }
         }
         .padding(.top, 8)
