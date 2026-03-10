@@ -30,6 +30,8 @@ extension Home {
     @Dependency(\.holidayClient) var holidayClient
     @Dependency(\.briefingClient) var briefingClient
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.transportationClient) var transportationClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
     public init() {}
 
     // MARK: - CancelID
@@ -39,6 +41,7 @@ extension Home {
       case overlayWeatherFetch
       case overlayScheduleFetch
       case briefingFetch
+      case transportationFetch
     }
 
     // MARK: - State
@@ -151,6 +154,16 @@ extension Home {
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
+
+      // MARK: Departure Alert
+      /// 출발 알림 설정 시트 대상 일정 (약속 또는 개인 일정)
+      var departureAlertItem: HomeModels.ScheduleItem? = nil
+      /// 교통수단 옵션 로딩 상태
+      var departureTransportOptions: LoadingState<[HomeModels.TransportOption]> = .idle
+      /// 출발 알림 설정된 일정 (ScheduleItem.id → 알림 정보)
+      var departureAlerts: [String: HomeModels.DepartureAlertInfo] = [:]
+      /// 출발 알림 여유시간 (분)
+      var departureAlertBuffer: Int = 10
 
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
@@ -270,6 +283,14 @@ extension Home {
         case overlayScheduleDetailBackTapped
         /// 오버레이 약속 생성에서 뒤로가기
         case overlayCreatePromiseBackTapped
+        /// 출발 알림 버튼 탭
+        case departureAlertTapped(HomeModels.ScheduleItem)
+        /// 출발 알림 시트 닫기
+        case departureAlertSheetDismissed
+        /// 교통수단 선택 (알림 설정)
+        case departureAlertTransportSelected(HomeModels.TransportType)
+        /// 출발 알림 취소
+        case departureAlertCancelTapped(String)
       }
 
       @CasePathable
@@ -326,6 +347,10 @@ extension Home {
         case checkPermissions
         /// 권한 상태 확인 결과
         case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
+        /// 교통 정보 응답
+        case transportationResponse(String, Result<TransportationResult, Error>)
+        /// 출발 알림 스케줄 완료
+        case departureAlertScheduled(HomeModels.DepartureAlertInfo)
       }
 
       @CasePathable
@@ -729,6 +754,83 @@ extension Home {
             state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
             state.overlayCalendarModeBeforeFeature = nil
             return .none
+
+          case .departureAlertTapped(let item):
+            guard state.isPro else {
+              return .none
+            }
+            guard let location = item.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            state.departureAlertItem = item
+            state.departureTransportOptions = .loading
+            let scheduleItemId = item.id
+            return .run { [locationClient, transportationClient] send in
+              let currentLocation: Coordinate
+              do {
+                currentLocation = try await locationClient.getCurrentLocation()
+              } catch {
+                await send(.internal(.transportationResponse(
+                  scheduleItemId,
+                  .failure(LocationClientError.denied)
+                )))
+                return
+              }
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  currentLocation.latitude, currentLocation.longitude,
+                  lat, lng
+                )
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertSheetDismissed:
+            state.departureAlertItem = nil
+            state.departureTransportOptions = .idle
+            return .cancel(id: CancelID.transportationFetch)
+
+          case .departureAlertTransportSelected(let transportType):
+            guard let item = state.departureAlertItem,
+                  let options = state.departureTransportOptions.value,
+                  let option = options.first(where: { $0.type == transportType }) else {
+              return .none
+            }
+            let scheduleItemId = item.id
+            let alertInfo = HomeModels.DepartureAlertInfo(
+              scheduleItemId: scheduleItemId,
+              selectedTransport: transportType,
+              durationMinutes: option.durationMinutes,
+              departureTime: option.departureTime
+            )
+            state.departureAlerts[scheduleItemId] = alertInfo
+            state.departureAlertItem = nil
+            state.departureTransportOptions = .idle
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            let title = "지금 출발하세요!"
+            let body = "\(item.title) · \(transportType.displayName) 약 \(option.durationMinutes)분 소요"
+            let triggerDate = option.departureTime
+            return .run { [localNotificationClient] send in
+              do {
+                try await localNotificationClient.schedule(
+                  notificationId, title, body, triggerDate,
+                  ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+                )
+              } catch {
+                // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+              }
+              await send(.internal(.departureAlertScheduled(alertInfo)))
+            }
+
+          case .departureAlertCancelTapped(let scheduleItemId):
+            state.departureAlerts[scheduleItemId] = nil
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            return .run { [localNotificationClient] _ in
+              await localNotificationClient.cancel(notificationId)
+            }
 
           }
 
@@ -1282,6 +1384,54 @@ extension Home {
           case .permissionsChecked(let notificationStatus, let locationStatus):
             state.notificationAuthStatus = notificationStatus
             state.locationAuthStatus = locationStatus
+            return .none
+
+          case .transportationResponse(let scheduleItemId, let result):
+            guard let item = state.departureAlertItem,
+                  item.id == scheduleItemId else {
+              return .none
+            }
+            switch result {
+            case .success(let transportation):
+              let buffer = TimeInterval(state.departureAlertBuffer * 60)
+              var options: [HomeModels.TransportOption] = []
+              let itemStartAt = item.startAt
+
+              if let driving = transportation.driving {
+                let departureTime = itemStartAt.addingTimeInterval(-Double(driving.duration * 60) - buffer)
+                var info: String? = nil
+                if driving.toll > 0 {
+                  info = "통행료 \(driving.toll.formatted())원"
+                }
+                options.append(.init(type: .driving, durationMinutes: driving.duration, departureTime: departureTime, additionalInfo: info))
+              }
+
+              if let transit = transportation.transit {
+                let departureTime = itemStartAt.addingTimeInterval(-Double(transit.totalTime * 60) - buffer)
+                let transfers = transit.busTransitCount + transit.subwayTransitCount
+                var info = "요금 \(transit.payment.formatted())원"
+                if transfers > 0 {
+                  info += " · 환승 \(transfers)회"
+                }
+                options.append(.init(type: .transit, durationMinutes: transit.totalTime, departureTime: departureTime, additionalInfo: info))
+              }
+
+              let walkDepartureTime = itemStartAt.addingTimeInterval(-Double(transportation.walkingMinutes * 60) - buffer)
+              options.append(.init(type: .walking, durationMinutes: transportation.walkingMinutes, departureTime: walkDepartureTime))
+
+              state.departureTransportOptions = .loaded(options)
+            case .failure(let error):
+              state.departureTransportOptions = .failed(error)
+              if error is LocationClientError {
+                state.toastMessage = ToastMessage(type: .error, title: "위치 권한이 필요합니다")
+              } else {
+                state.toastMessage = ToastMessage(type: .error, title: "교통 정보를 불러올 수 없습니다")
+              }
+            }
+            return .none
+
+          case .departureAlertScheduled:
+            state.toastMessage = ToastMessage(type: .success, title: "출발 알림이 설정되었습니다")
             return .none
 
           }

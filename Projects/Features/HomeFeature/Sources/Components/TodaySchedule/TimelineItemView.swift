@@ -10,7 +10,11 @@ struct TimelineItemView: View {
   let isFirst: Bool
   let isLast: Bool
   let weather: WeatherInfo?
+  let departureAlert: HomeModels.DepartureAlertInfo?
+  let isPro: Bool
   let onTap: () -> Void
+  let onDepartureAlertTap: () -> Void
+  let onDepartureAlertCancel: () -> Void
 
   @State private var showLiveActivityInfo = false
 
@@ -175,6 +179,45 @@ struct TimelineItemView: View {
         }
         .foregroundStyle(.secondary)
       }
+
+      // 출발 알림
+      if let departureAlert = departureAlert {
+        HStack(spacing: 4) {
+          Image(systemName: departureAlert.selectedTransport.iconName)
+            .font(.pmCaption2)
+          Text("\(departureAlert.departureTime.formattedTime) 출발 알림")
+            .font(.pmCaption)
+          Image(systemName: "checkmark.circle.fill")
+            .font(.pmCaption2)
+            .foregroundStyle(Color.pmindigo.n500)
+          Spacer(minLength: 0)
+          Button {
+            onDepartureAlertCancel()
+          } label: {
+            Text("취소")
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmgray.n500)
+          }
+        }
+        .foregroundStyle(Color.pmindigo.n500)
+      } else if promise.location != nil && isFuture {
+        Button {
+          onDepartureAlertTap()
+        } label: {
+          HStack(spacing: 4) {
+            Image(systemName: "bell.badge")
+              .font(.pmCaption2)
+            Text("출발 알림 받기")
+              .font(.pmCaption)
+            if !isPro {
+              ProBadge()
+            }
+          }
+          .foregroundStyle(Color.pmindigo.n500)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
     }
   }
 
@@ -301,7 +344,11 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: false,
       weather: nil,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
 
     TimelineItemView(
@@ -313,7 +360,11 @@ struct TimelineItemView: View {
       isFirst: false,
       isLast: true,
       weather: nil,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()

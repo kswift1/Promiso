@@ -129,6 +129,24 @@ extension Home {
           CreatePersonalEvent.RootView(store: createEventStore)
         }
       }
+      .sheet(isPresented: Binding(
+        get: { store.departureAlertItem != nil },
+        set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
+      )) {
+        DepartureAlertSheet(
+          promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
+          promiseTitle: store.departureAlertItem?.title ?? "",
+          promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
+          options: store.departureTransportOptions.value,
+          loadError: store.departureTransportOptions.error.map { _ in "경로를 불러오지 못했어요" },
+          onSelect: { transportType in
+            store.send(.view(.departureAlertTransportSelected(transportType)))
+          },
+          onDismiss: {
+            store.send(.view(.departureAlertSheetDismissed))
+          }
+        )
+      }
     }
 
     // MARK: - Overlay Feature Content
@@ -217,6 +235,8 @@ extension Home {
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,
               weatherCache: store.weatherCache,
+              departureAlerts: store.departureAlerts,
+              isPro: store.isPro,
               onItemTap: { item in
                 switch item {
                 case .promise(let p):
@@ -226,6 +246,12 @@ extension Home {
                 case .recurringPersonalEvent(let instance):
                   store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
+              },
+              onDepartureAlertTap: { item in
+                store.send(.view(.departureAlertTapped(item)))
+              },
+              onDepartureAlertCancel: { scheduleItemId in
+                store.send(.view(.departureAlertCancelTapped(scheduleItemId)))
               }
             )
             .padding(.horizontal, 16)

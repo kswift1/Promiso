@@ -13,7 +13,11 @@ struct PersonalEventTimelineItemView: View {
   let event: PersonalEventModel
   let isFirst: Bool
   let isLast: Bool
+  let departureAlert: HomeModels.DepartureAlertInfo?
+  let isPro: Bool
   let onTap: () -> Void
+  let onDepartureAlertTap: () -> Void
+  let onDepartureAlertCancel: () -> Void
 
   var body: some View {
     Button(action: onTap) {
@@ -152,6 +156,45 @@ struct PersonalEventTimelineItemView: View {
           }
         }
       }
+
+      // Row 4: 출발 알림
+      if let departureAlert = departureAlert {
+        HStack(spacing: 4) {
+          Image(systemName: departureAlert.selectedTransport.iconName)
+            .font(.pmCaption2)
+          Text("\(departureAlert.departureTime.formattedTime) 출발 알림")
+            .font(.pmCaption)
+          Image(systemName: "checkmark.circle.fill")
+            .font(.pmCaption2)
+            .foregroundStyle(Color.pmindigo.n500)
+          Spacer(minLength: 0)
+          Button {
+            onDepartureAlertCancel()
+          } label: {
+            Text("취소")
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmgray.n500)
+          }
+        }
+        .foregroundStyle(Color.pmindigo.n500)
+      } else if event.location != nil && isFuture {
+        Button {
+          onDepartureAlertTap()
+        } label: {
+          HStack(spacing: 4) {
+            Image(systemName: "bell.badge")
+              .font(.pmCaption2)
+            Text("출발 알림 받기")
+              .font(.pmCaption)
+            if !isPro {
+              ProBadge()
+            }
+          }
+          .foregroundStyle(Color.pmindigo.n500)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
     }
   }
 
@@ -224,6 +267,11 @@ struct PersonalEventTimelineItemView: View {
     Date() > event.effectiveEndAt
   }
 
+  /// 아직 시작 전인 일정인지
+  var isFuture: Bool {
+    Date() < event.startAt
+  }
+
   /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
   private var dotColor: Color {
     if isNow {
@@ -253,7 +301,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: true,
       isLast: false,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
 
     PersonalEventTimelineItemView(
@@ -265,7 +317,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: false,
       isLast: true,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()
@@ -285,7 +341,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: true,
       isLast: true,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()

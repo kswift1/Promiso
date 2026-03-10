@@ -7,7 +7,8 @@
  * @added 2026-03-08
  */
 
-import {ODSAY_API_KEY, KAKAO_REST_API_KEY} from "../config";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {REGION, ODSAY_API_KEY, KAKAO_REST_API_KEY} from "../config";
 
 /** 외부 교통 API 호출을 생략하는 최소 거리 (km) */
 const MIN_DISTANCE_FOR_API_KM = 1.0;
@@ -165,6 +166,30 @@ function estimateWalkMinutes(distanceKm: number): number {
   return Math.round((actualDistance / 4) * 60); // 시속 4km 기준
 }
 
+// MARK: - Haversine Distance
+
+/**
+ * 두 좌표 간 직선거리 계산 (km)
+ * @param {number} lat1 첫 번째 위도
+ * @param {number} lng1 첫 번째 경도
+ * @param {number} lat2 두 번째 위도
+ * @param {number} lng2 두 번째 경도
+ * @return {number} 직선거리 (km)
+ */
+function haversineDistance(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // MARK: - Public API
 
 /**
@@ -202,3 +227,52 @@ export async function fetchTransportation(
     walkingMinutes,
   };
 }
+
+// MARK: - Callable Function
+
+interface GetTransportationRequest {
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+}
+
+/**
+ * 두 좌표 간 교통 정보 조회 (대중교통 + 자동차 + 도보)
+ *
+ * @ios HomeFeature - 출발 알림 설정 시 이동 시간 조회
+ * @added 2026-03-10
+ *
+ * @param fromLat 출발 위도
+ * @param fromLng 출발 경도
+ * @param toLat 도착 위도
+ * @param toLng 도착 경도
+ */
+export const getTransportation = onCall<GetTransportationRequest>(
+  {
+    region: REGION,
+    secrets: [ODSAY_API_KEY, KAKAO_REST_API_KEY],
+  },
+  async (request): Promise<TransportationResult> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "인증이 필요합니다");
+    }
+
+    const {fromLat, fromLng, toLat, toLng} = request.data;
+
+    if (typeof fromLat !== "number" || typeof fromLng !== "number" ||
+        typeof toLat !== "number" || typeof toLng !== "number" ||
+        isNaN(fromLat) || isNaN(fromLng) || isNaN(toLat) || isNaN(toLng)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "출발지와 도착지 좌표가 필요합니다"
+      );
+    }
+
+    const distanceKm = haversineDistance(fromLat, fromLng, toLat, toLng);
+
+    return await fetchTransportation(
+      fromLat, fromLng, toLat, toLng, distanceKm
+    );
+  }
+);

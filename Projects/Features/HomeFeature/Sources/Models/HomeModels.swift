@@ -176,3 +176,60 @@ extension HomeModels {
     }
   }
 }
+
+// MARK: - Departure Alert
+
+extension HomeModels {
+  /// 교통수단 타입
+  public enum TransportType: String, Equatable, CaseIterable, Sendable {
+    case driving
+    case transit
+    case walking
+
+    public var displayName: String {
+      switch self {
+      case .driving: return "자동차"
+      case .transit: return "대중교통"
+      case .walking: return "도보"
+      }
+    }
+
+    public var iconName: String {
+      switch self {
+      case .driving: return "car.fill"
+      case .transit: return "tram.fill"
+      case .walking: return "figure.walk"
+      }
+    }
+  }
+
+  /// 교통수단별 이동 정보
+  public struct TransportOption: Equatable, Sendable {
+    public let type: TransportType
+    public let durationMinutes: Int
+    public let departureTime: Date
+    public let additionalInfo: String?
+
+    public init(type: TransportType, durationMinutes: Int, departureTime: Date, additionalInfo: String? = nil) {
+      self.type = type
+      self.durationMinutes = durationMinutes
+      self.departureTime = departureTime
+      self.additionalInfo = additionalInfo
+    }
+  }
+
+  /// 출발 알림 설정 정보
+  public struct DepartureAlertInfo: Equatable, Sendable {
+    public let scheduleItemId: String  // ScheduleItem.id (promise-xxx 또는 personal-xxx)
+    public let selectedTransport: TransportType
+    public let durationMinutes: Int
+    public let departureTime: Date
+
+    public init(scheduleItemId: String, selectedTransport: TransportType, durationMinutes: Int, departureTime: Date) {
+      self.scheduleItemId = scheduleItemId
+      self.selectedTransport = selectedTransport
+      self.durationMinutes = durationMinutes
+      self.departureTime = departureTime
+    }
+  }
+}
