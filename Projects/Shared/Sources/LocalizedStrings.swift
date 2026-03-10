@@ -231,6 +231,7 @@ public enum LocalizedStrings {
     public static var themeMode: String { String(localized: "settings.themeMode", bundle: bundle) }
     public static var calendarSettings: String { String(localized: "settings.calendarSettings", bundle: bundle) }
     public static var promiseTabDefaultMode: String { String(localized: "settings.promiseTabDefaultMode", bundle: bundle) }
+    public static var tabSettingsMenu: String { String(localized: "settings.tabSettings", bundle: bundle) }
     public static var termsAndPolicies: String { String(localized: "settings.termsAndPolicies", bundle: bundle) }
     public static var appInfo: String { String(localized: "settings.appInfo", bundle: bundle) }
     public static var developerSettings: String { String(localized: "settings.developerSettings", bundle: bundle) }
@@ -305,6 +306,10 @@ public enum LocalizedStrings {
     public static var promiseTabModeOwnDescription: String { String(localized: "settings.promiseTabModeOwnDescription", bundle: bundle) }
     public static var promiseTabModeHint: String { String(localized: "settings.promiseTabModeHint", bundle: bundle) }
     public static var promiseTabModePreviewHint: String { String(localized: "settings.promiseTabModePreviewHint", bundle: bundle) }
+
+    // Calendar Display Mode Settings
+    public static var calendarDisplayModeDefault: String { String(localized: "settings.calendarDisplayModeDefault", bundle: bundle) }
+    public static var calendarDisplayModeHint: String { String(localized: "settings.calendarDisplayModeHint", bundle: bundle) }
 
     // Tab Bar Labels
     public static var tabHome: String { String(localized: "settings.tab.home", bundle: bundle) }
@@ -1420,6 +1425,9 @@ public enum LocalizedStrings {
     public static var modeWeek: String { String(localized: "calendar.mode.week", bundle: bundle) }
     public static var modeMonth: String { String(localized: "calendar.mode.month", bundle: bundle) }
     public static var modeMonthExpanded: String { String(localized: "calendar.mode.monthExpanded", bundle: bundle) }
+    public static var modeWeekDescription: String { String(localized: "calendar.mode.week.description", bundle: bundle) }
+    public static var modeMonthDescription: String { String(localized: "calendar.mode.month.description", bundle: bundle) }
+    public static var modeMonthExpandedDescription: String { String(localized: "calendar.mode.monthExpanded.description", bundle: bundle) }
 
     // Indicator
     public static var indicatorPersonal: String { String(localized: "calendar.indicator.personal", bundle: bundle) }

@@ -234,6 +234,8 @@ public enum AppConstants {
     public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
     /// 브리핑 스타일 (friendly/humorous/concise/motivational/calm)
     public static let briefingStyle = "promisoBriefingStyle"
+    /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
+    public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
   }
 
   // MARK: - Calendar Helpers
