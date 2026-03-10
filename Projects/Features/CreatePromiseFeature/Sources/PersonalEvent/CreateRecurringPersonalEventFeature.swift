@@ -52,6 +52,7 @@ extension CreateRecurringPersonalEvent {
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -353,6 +354,11 @@ extension CreateRecurringPersonalEvent {
           case .conflictSettingsLoaded(let userId, let threshold):
             state.currentUserId = userId
             state.conflictDetectionThreshold = threshold
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              return .none
+            }
             return checkConflictsEffect(state: &state)
           }
 
@@ -384,7 +390,7 @@ extension CreateRecurringPersonalEvent {
     // MARK: - Conflict Check Helper
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
-      guard !state.currentUserId.isEmpty else { return .none }
+      guard state.isPro, !state.currentUserId.isEmpty else { return .none }
       guard state.conflictDetectionThreshold >= 0 else {
         state.isCheckingConflicts = false
         state.conflicts = []
