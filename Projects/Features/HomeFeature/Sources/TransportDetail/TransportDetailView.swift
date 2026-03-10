@@ -12,6 +12,10 @@ extension TransportDetail {
       self.store = store
     }
 
+    private func adjustedTime(_ raw: Date) -> Date {
+      raw.addingTimeInterval(-Double(store.bufferMinutes * 60))
+    }
+
     public var body: some View {
       VStack(spacing: 0) {
         // 일정 정보 헤더
@@ -34,6 +38,11 @@ extension TransportDetail {
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
         }
+
+        // 여유시간 선택
+        bufferSelector
+          .padding(.horizontal, 20)
+          .padding(.top, 8)
 
         // 하단 알림 버튼
         alertButton
@@ -121,7 +130,7 @@ extension TransportDetail {
             infoRow(
               iconName: "car.fill",
               label: "예상 출발",
-              value: "\(driving.departureTime.formattedTime)"
+              value: adjustedTime(driving.departureTime).formattedTime
             )
             if let info = driving.additionalInfo {
               Divider()
@@ -203,7 +212,7 @@ extension TransportDetail {
           VStack(spacing: 12) {
             infoRow(iconName: "clock", label: "총 소요시간", value: "약 \(route.totalTime)분")
             Divider()
-            infoRow(iconName: "tram.fill", label: "예상 출발", value: route.departureTime.formattedTime)
+            infoRow(iconName: "tram.fill", label: "예상 출발", value: adjustedTime(route.departureTime).formattedTime)
             if route.payment > 0 {
               Divider()
               infoRow(iconName: "wonsign.circle", label: "요금", value: "\(route.payment.formatted())원")
@@ -355,11 +364,33 @@ extension TransportDetail {
 
     private var walkingContent: some View {
       let walking = store.transportData.walking
-      return infoCard {
-        VStack(spacing: 12) {
-          infoRow(iconName: "clock", label: "소요시간", value: "약 \(walking.durationMinutes)분")
-          Divider()
-          infoRow(iconName: "figure.walk", label: "예상 출발", value: walking.departureTime.formattedTime)
+      return VStack(spacing: 16) {
+        infoCard {
+          VStack(spacing: 12) {
+            infoRow(iconName: "clock", label: "소요시간", value: "약 \(walking.durationMinutes)분")
+            Divider()
+            infoRow(iconName: "figure.walk", label: "예상 출발", value: adjustedTime(walking.departureTime).formattedTime)
+            if let meters = walking.distanceMeters, meters > 0 {
+              Divider()
+              infoRow(
+                iconName: "map",
+                label: "예상 거리",
+                value: String(format: "%.1fkm", Double(meters) / 1000.0)
+              )
+            }
+          }
+        }
+        if (walking.distanceMeters ?? 0) >= 10_000 {
+          HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle")
+              .font(.system(size: 13))
+              .foregroundStyle(Color.pmwarning.n500)
+            Text("10km 이상으로 도보는 비추천이에요")
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, 4)
         }
       }
     }
@@ -392,6 +423,55 @@ extension TransportDetail {
           .font(.pmCaptionSemibold)
           .foregroundStyle(Color.pmtext.primary)
       }
+    }
+
+    // MARK: - Buffer Selector
+
+    private var bufferSelector: some View {
+      HStack(spacing: 0) {
+        HStack(spacing: 6) {
+          Image(systemName: "clock")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+          Text("여유 시간")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+
+        Spacer()
+
+        HStack(spacing: 6) {
+          ForEach([0, 10, 20, 30], id: \.self) { minutes in
+            bufferChip(minutes: minutes)
+          }
+        }
+      }
+    }
+
+    private func bufferChip(minutes: Int) -> some View {
+      let isSelected = store.bufferMinutes == minutes
+      return Button {
+        store.send(.view(.bufferChanged(minutes)))
+      } label: {
+        Text(minutes == 0 ? "없음" : "\(minutes)분")
+          .font(.pmCaption)
+          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 5)
+          .background(
+            Capsule()
+              .fill(isSelected ? Color.pmindigo.n500.opacity(0.12) : Color.pmgray.n100)
+              .overlay(
+                Capsule()
+                  .strokeBorder(
+                    isSelected ? Color.pmindigo.n300 : Color.clear,
+                    lineWidth: 1
+                  )
+              )
+          )
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(minutes == 0 ? "여유 시간 없음" : "여유 시간 \(minutes)분")
     }
 
     // MARK: - Alert Button

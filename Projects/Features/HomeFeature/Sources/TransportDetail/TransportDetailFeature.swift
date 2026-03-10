@@ -23,6 +23,8 @@ extension TransportDetail {
       public let transportData: HomeModels.DepartureTransportData
       public var selectedSegment: HomeModels.TransportType = .transit
       public var selectedTransitIndex: Int = 0
+      /// 출발 여유시간 (분, 0/10/20/30)
+      public var bufferMinutes: Int = 10
 
       public init(
         scheduleTitle: String,
@@ -35,6 +37,7 @@ extension TransportDetail {
         self.scheduleStartAt = scheduleStartAt
         self.transportData = transportData
       }
+
 
       /// 현재 선택된 TransportSelection
       public var currentSelection: HomeModels.TransportSelection {
@@ -64,6 +67,7 @@ extension TransportDetail {
       public enum View: Equatable {
         case segmentChanged(HomeModels.TransportType)
         case transitRouteChanged(Int)
+        case bufferChanged(Int)
         case alertButtonTapped
       }
 
@@ -72,7 +76,7 @@ extension TransportDetail {
 
       @CasePathable
       public enum Delegate: Equatable {
-        case alertRequested(HomeModels.TransportSelection)
+        case alertRequested(HomeModels.TransportSelection, Int)
       }
     }
 
@@ -91,8 +95,12 @@ extension TransportDetail {
             state.selectedTransitIndex = index
             return .none
 
+          case .bufferChanged(let minutes):
+            state.bufferMinutes = minutes
+            return .none
+
           case .alertButtonTapped:
-            return .send(.delegate(.alertRequested(state.currentSelection)))
+            return .send(.delegate(.alertRequested(state.currentSelection, state.bufferMinutes)))
           }
 
         case .internal:

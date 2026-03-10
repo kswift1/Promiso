@@ -8,6 +8,8 @@ public struct TransportationResult: Equatable, Sendable {
   public let transitRoutes: [TransitRouteInfo]
   public let driving: DrivingInfo?
   public let walkingMinutes: Int
+  /// 도보 예상 거리 (미터, 직선거리 × 1.3 보정)
+  public let walkingDistanceMeters: Int
 
   public struct TransitRouteInfo: Equatable, Sendable {
     public let totalTime: Int
@@ -129,11 +131,13 @@ extension TransportationClient: DependencyKey {
         }
 
         let walkingMinutes = data["walkingMinutes"] as? Int ?? 0
+        let walkingDistanceMeters = Int((data["walkingDistanceKm"] as? Double ?? 0) * 1000)
 
         return TransportationResult(
           transitRoutes: transitRoutes,
           driving: driving,
-          walkingMinutes: walkingMinutes
+          walkingMinutes: walkingMinutes,
+          walkingDistanceMeters: walkingDistanceMeters
         )
       }
     )
@@ -183,7 +187,8 @@ extension TransportationClient: TestDependencyKey {
           )
         ],
         driving: .init(distance: 15000, duration: 25, toll: 0),
-        walkingMinutes: 55
+        walkingMinutes: 55,
+        walkingDistanceMeters: 4000
       )
     }
   )

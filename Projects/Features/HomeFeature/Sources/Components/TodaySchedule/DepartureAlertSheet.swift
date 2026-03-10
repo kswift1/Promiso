@@ -9,13 +9,26 @@ struct DepartureAlertSheet: View {
   let promiseEmoji: String
   let promiseTitle: String
   let promiseStartAt: Date
+  let promiseLocation: String?
+  let departureLocation: String?
   let transportData: HomeModels.DepartureTransportData?
   let loadError: String?
-  let onSelect: (HomeModels.TransportSelection) -> Void
+  let onSelect: (HomeModels.TransportSelection, Int) -> Void
   let onDetailTapped: () -> Void
   let onDismiss: () -> Void
 
   @State private var selection: HomeModels.TransportSelection?
+  @State private var bufferMinutes: Int = 10
+
+  /// buffer 적용된 출발시간 계산
+  private func adjustedTime(_ raw: Date) -> Date {
+    raw.addingTimeInterval(-Double(bufferMinutes * 60))
+  }
+
+  /// 도보 10km 이상 비추천 여부
+  private func isWalkingNotRecommended(_ walking: HomeModels.TransportOption) -> Bool {
+    (walking.distanceMeters ?? 0) >= 10_000
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -26,25 +39,41 @@ struct DepartureAlertSheet: View {
         .padding(.top, 12)
         .padding(.bottom, 20)
 
-      VStack(spacing: 0) {
+      ZStack(alignment: .bottom) {
         ScrollView {
           VStack(spacing: 16) {
             headerSection
             contentSection
-            footerNote
           }
           .padding(.horizontal, 20)
-          .padding(.bottom, 16)
+          .padding(.bottom, 120)
         }
 
-        // 하단 고정 버튼
-        confirmButton
-          .padding(.horizontal, 20)
-          .padding(.bottom, 32)
-          .padding(.top, 12)
+        // 하단 고정 영역
+        VStack(spacing: 0) {
+          // 여유 시간 (투명 배경)
+          bufferSelector
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+
+          // 블러 그라데이션 (버튼 바로 위만)
+          LinearGradient(
+            colors: [Color.clear, Color(.systemBackground).opacity(0.8)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .frame(height: 16)
+
+          // 알림 버튼
+          confirmButton
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+            .padding(.top, 4)
+            .background(Color(.systemBackground).opacity(0.9))
+        }
       }
     }
-    .background(Color.pmgray.n50)
+    .auroraBackground()
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.hidden)
     .presentationCornerRadius(24)
@@ -60,22 +89,55 @@ struct DepartureAlertSheet: View {
           .font(.pmTitle2)
           .foregroundStyle(Color.pmtext.primary)
 
-        HStack(spacing: 6) {
-          Text(promiseEmoji)
-            .font(.pmBody)
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 6) {
+            Text(promiseEmoji)
+              .font(.pmBody)
 
-          Text(promiseTitle)
-            .font(.pmBodySemibold)
-            .foregroundStyle(Color.pmtext.primary)
-            .lineLimit(1)
+            Text(promiseTitle)
+              .font(.pmBodySemibold)
+              .foregroundStyle(Color.pmtext.primary)
+              .lineLimit(1)
+          }
 
-          Text("·")
-            .font(.pmBody)
-            .foregroundStyle(Color.pmtext.secondary)
+          // 출발지 → 도착지
+          HStack(spacing: 4) {
+            Image(systemName: "location.fill")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmindigo.n400)
+            if let departure = departureLocation {
+              Text(departure)
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmtext.secondary)
+            } else {
+              Text("현재 위치")
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmtext.secondary)
+            }
 
-          Text(promiseStartAt.formattedTime)
-            .font(.pmBody)
-            .foregroundStyle(Color.pmtext.secondary)
+            Image(systemName: "arrow.right")
+              .font(.system(size: 9, weight: .medium))
+              .foregroundStyle(Color.pmgray.n400)
+
+            Image(systemName: "mappin")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmerror.n500)
+            if let location = promiseLocation {
+              Text(location)
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+          }
+
+          // 시간
+          HStack(spacing: 4) {
+            Image(systemName: "clock")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+            Text(promiseStartAt.formattedTime)
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
         }
       }
 
@@ -117,48 +179,82 @@ struct DepartureAlertSheet: View {
 
   private func transportList(data: HomeModels.DepartureTransportData) -> some View {
     VStack(spacing: 10) {
-      // 자동차 로우
-      if let driving = data.driving {
-        transportRow(
-          iconName: HomeModels.TransportType.driving.iconName,
-          label: HomeModels.TransportType.driving.displayName,
-          detail: "약 \(driving.durationMinutes)분",
-          subDetail: "\(driving.departureTime.formattedTime) 출발",
-          isPast: driving.departureTime < Date(),
-          isSelected: selection == .driving
-        ) {
-          selection = .driving
-        }
+      if data.preferredTransport == .transit {
+        // 대중교통 먼저
+        transitSection(data: data)
+        drivingSection(data: data)
+      } else {
+        // 자동차 먼저 (기본)
+        drivingSection(data: data)
+        transitSection(data: data)
       }
+      // 도보는 항상 마지막
+      walkingSection(data: data)
+    }
+  }
 
-      // 대중교통 섹션 헤더
-      if !data.transitRoutes.isEmpty {
-        HStack {
-          Image(systemName: HomeModels.TransportType.transit.iconName)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(Color.pmtext.secondary)
-          Text(HomeModels.TransportType.transit.displayName)
-            .font(.pmCaptionSemibold)
-            .foregroundStyle(Color.pmtext.secondary)
-          Spacer()
-        }
-        .padding(.top, 4)
-        .padding(.horizontal, 4)
+  @ViewBuilder
+  private func drivingSection(data: HomeModels.DepartureTransportData) -> some View {
+    if let driving = data.driving {
+      let drivingTime = adjustedTime(driving.departureTime)
 
-        // 대중교통 경로별 로우
-        ForEach(data.transitRoutes) { route in
-          transitRouteRow(route: route, index: route.id)
-        }
-      }
+      // 섹션 헤더
+      sectionHeader(
+        iconName: HomeModels.TransportType.driving.iconName,
+        label: HomeModels.TransportType.driving.displayName
+      )
 
-      // 도보 로우
-      let walking = data.walking
+      // 카드 (아이콘/라벨 없이 정보만)
       transportRow(
-        iconName: HomeModels.TransportType.walking.iconName,
-        label: HomeModels.TransportType.walking.displayName,
+        detail: "약 \(driving.durationMinutes)분",
+        subDetail: "\(drivingTime.formattedTime) 출발",
+        isPast: drivingTime < Date(),
+        isSelected: selection == .driving
+      ) {
+        selection = .driving
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func transitSection(data: HomeModels.DepartureTransportData) -> some View {
+    if !data.transitRoutes.isEmpty {
+      sectionHeader(
+        iconName: HomeModels.TransportType.transit.iconName,
+        label: HomeModels.TransportType.transit.displayName
+      )
+
+      // 대중교통 경로별 로우
+      ForEach(data.transitRoutes) { route in
+        transitRouteRow(route: route, index: route.id)
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func walkingSection(data: HomeModels.DepartureTransportData) -> some View {
+    let walking = data.walking
+    let walkingNotRecommended = isWalkingNotRecommended(walking)
+    let walkingTime = adjustedTime(walking.departureTime)
+    let walkingDistanceText: String? = {
+      guard let meters = walking.distanceMeters, meters > 0 else { return nil }
+      let km = Double(meters) / 1000.0
+      return String(format: "%.1fkm", km)
+    }()
+
+    // 섹션 헤더
+    sectionHeader(
+      iconName: HomeModels.TransportType.walking.iconName,
+      label: HomeModels.TransportType.walking.displayName
+    )
+
+    if walkingNotRecommended {
+      walkingNotRecommendedRow(walking: walking, distanceText: walkingDistanceText)
+    } else {
+      transportRow(
         detail: "약 \(walking.durationMinutes)분",
-        subDetail: "\(walking.departureTime.formattedTime) 출발",
-        isPast: walking.departureTime < Date(),
+        subDetail: "\(walkingTime.formattedTime) 출발",
+        isPast: walkingTime < Date(),
         isSelected: selection == .walking
       ) {
         selection = .walking
@@ -166,11 +262,25 @@ struct DepartureAlertSheet: View {
     }
   }
 
+  // MARK: - Section Header
+
+  private func sectionHeader(iconName: String, label: String) -> some View {
+    HStack(spacing: 6) {
+      Image(systemName: iconName)
+        .font(.system(size: 13, weight: .medium))
+        .foregroundStyle(Color.pmtext.secondary)
+      Text(label)
+        .font(.pmCaptionSemibold)
+        .foregroundStyle(Color.pmtext.secondary)
+      Spacer()
+    }
+    .padding(.top, 4)
+    .padding(.horizontal, 4)
+  }
+
   // MARK: - Transport Row
 
   private func transportRow(
-    iconName: String,
-    label: String,
     detail: String,
     subDetail: String,
     isPast: Bool,
@@ -181,12 +291,11 @@ struct DepartureAlertSheet: View {
       if !isPast { onTap() }
     } label: {
       rowContent(
-        iconName: iconName,
-        label: label,
         detail: detail,
         subDetail: subDetail,
         isPast: isPast,
-        isSelected: isSelected
+        isSelected: isSelected,
+        isNotRecommended: false
       )
       .contentShape(Rectangle())
     }
@@ -196,33 +305,30 @@ struct DepartureAlertSheet: View {
 
   @ViewBuilder
   private func rowContent(
-    iconName: String,
-    label: String,
     detail: String,
     subDetail: String,
     isPast: Bool,
-    isSelected: Bool
+    isSelected: Bool,
+    isNotRecommended: Bool
   ) -> some View {
     if #available(iOS 26.0, *) {
       GlassEffectContainer {
         rowInner(
-          iconName: iconName,
-          label: label,
           detail: detail,
           subDetail: subDetail,
           isPast: isPast,
-          isSelected: isSelected
+          isSelected: isSelected,
+          isNotRecommended: isNotRecommended
         )
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
       }
     } else {
       rowInner(
-        iconName: iconName,
-        label: label,
         detail: detail,
         subDetail: subDetail,
         isPast: isPast,
-        isSelected: isSelected
+        isSelected: isSelected,
+        isNotRecommended: isNotRecommended
       )
       .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
       .overlay(
@@ -236,25 +342,20 @@ struct DepartureAlertSheet: View {
   }
 
   private func rowInner(
-    iconName: String,
-    label: String,
     detail: String,
     subDetail: String,
     isPast: Bool,
-    isSelected: Bool
+    isSelected: Bool,
+    isNotRecommended: Bool
   ) -> some View {
-    HStack(spacing: 12) {
-      Image(systemName: iconName)
-        .font(.system(size: 18, weight: .medium))
-        .foregroundStyle(isPast ? Color.pmgray.n400 : (isSelected ? Color.pmindigo.n500 : Color.pmindigo.n400))
-        .frame(width: 28, height: 28)
-
+    let disabled = isPast || isNotRecommended
+    return HStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 2) {
-        Text(label)
-          .font(.pmBodySemibold)
-          .foregroundStyle(isPast ? Color.pmtext.secondary : Color.pmtext.primary)
-
-        if isPast {
+        if isNotRecommended {
+          Text(detail)
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+        } else if isPast {
           Text("출발 시간이 지났어요")
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
@@ -263,11 +364,9 @@ struct DepartureAlertSheet: View {
             Text(detail)
               .font(.pmCaption)
               .foregroundStyle(Color.pmtext.secondary)
-
             Text("·")
               .font(.pmCaption)
               .foregroundStyle(Color.pmtext.secondary)
-
             Text(subDetail)
               .font(.pmCaptionSemibold)
               .foregroundStyle(Color.pmindigo.n500)
@@ -277,8 +376,14 @@ struct DepartureAlertSheet: View {
 
       Spacer(minLength: 0)
 
-      // 라디오 버튼
-      if !isPast {
+      if isNotRecommended {
+        Text("비추천")
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(Color.pmgray.n500)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 3)
+          .background(Capsule().fill(Color.pmgray.n200))
+      } else if !isPast {
         Image(systemName: isSelected ? "circle.inset.filled" : "circle")
           .font(.system(size: 20))
           .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmgray.n300)
@@ -287,7 +392,7 @@ struct DepartureAlertSheet: View {
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 12)
-    .opacity(isPast ? 0.6 : 1.0)
+    .opacity(disabled ? 0.6 : 1.0)
   }
 
   // MARK: - Transit Route Row
@@ -295,12 +400,13 @@ struct DepartureAlertSheet: View {
   private func transitRouteRow(route: HomeModels.TransitRouteOption, index: Int) -> some View {
     let sel = HomeModels.TransportSelection.transit(index: index)
     let isSelected = selection == sel
-    let isPast = route.departureTime < Date()
+    let adjustedDep = adjustedTime(route.departureTime)
+    let isPast = adjustedDep < Date()
 
     return Button {
       if !isPast { selection = sel }
     } label: {
-      transitRouteContent(route: route, isSelected: isSelected, isPast: isPast)
+      transitRouteContent(route: route, adjustedDepartureTime: adjustedDep, isSelected: isSelected, isPast: isPast)
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -310,16 +416,17 @@ struct DepartureAlertSheet: View {
   @ViewBuilder
   private func transitRouteContent(
     route: HomeModels.TransitRouteOption,
+    adjustedDepartureTime: Date,
     isSelected: Bool,
     isPast: Bool
   ) -> some View {
     if #available(iOS 26.0, *) {
       GlassEffectContainer {
-        transitRouteInner(route: route, isSelected: isSelected, isPast: isPast)
+        transitRouteInner(route: route, adjustedDepartureTime: adjustedDepartureTime, isSelected: isSelected, isPast: isPast)
           .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
       }
     } else {
-      transitRouteInner(route: route, isSelected: isSelected, isPast: isPast)
+      transitRouteInner(route: route, adjustedDepartureTime: adjustedDepartureTime, isSelected: isSelected, isPast: isPast)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
           RoundedRectangle(cornerRadius: 12)
@@ -333,15 +440,25 @@ struct DepartureAlertSheet: View {
 
   private func transitRouteInner(
     route: HomeModels.TransitRouteOption,
+    adjustedDepartureTime: Date,
     isSelected: Bool,
     isPast: Bool
   ) -> some View {
     HStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 3) {
-        // 경로 번호
-        Text("경로 \(route.id + 1)")
-          .font(.pmCaptionSemibold)
-          .foregroundStyle(isPast ? Color.pmtext.secondary : (isSelected ? Color.pmindigo.n500 : Color.pmtext.primary))
+        // 태그 뱃지
+        HStack(spacing: 4) {
+          ForEach(route.tags, id: \.self) { tag in
+            Text(tag.displayName)
+              .font(.system(size: 11, weight: .medium))
+              .foregroundStyle(Color.pmindigo.n500)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 2)
+              .background(
+                Capsule().fill(Color.pmindigo.n500.opacity(0.12))
+              )
+          }
+        }
 
         if isPast {
           Text("출발 시간이 지났어요")
@@ -373,7 +490,7 @@ struct DepartureAlertSheet: View {
             }
           }
 
-          Text("\(route.departureTime.formattedTime) 출발")
+          Text("\(adjustedDepartureTime.formattedTime) 출발")
             .font(.pmCaptionSemibold)
             .foregroundStyle(Color.pmindigo.n500)
         }
@@ -398,7 +515,7 @@ struct DepartureAlertSheet: View {
   private var confirmButton: some View {
     Button {
       if let sel = selection {
-        onSelect(sel)
+        onSelect(sel, bufferMinutes)
         onDismiss()
       }
     } label: {
@@ -417,20 +534,72 @@ struct DepartureAlertSheet: View {
     .animation(.easeInOut(duration: 0.2), value: selection)
   }
 
-  // MARK: - Footer Note
+  // MARK: - Buffer Selector
 
-  private var footerNote: some View {
-    HStack(spacing: 6) {
-      Image(systemName: "clock")
-        .font(.pmCaption)
-        .foregroundStyle(Color.pmtext.secondary)
+  private var bufferSelector: some View {
+    VStack(spacing: 8) {
+      HStack(spacing: 6) {
+        Image(systemName: "clock")
+          .font(.pmCaption)
+          .foregroundStyle(Color.pmtext.secondary)
+        Text("여유 시간")
+          .font(.pmCaption)
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .center)
 
-      Text("여유 시간 10분 포함")
-        .font(.pmCaption)
-        .foregroundStyle(Color.pmtext.secondary)
+      HStack(spacing: 8) {
+        ForEach([0, 10, 20, 30], id: \.self) { minutes in
+          bufferChip(minutes: minutes)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .center)
     }
-    .frame(maxWidth: .infinity, alignment: .center)
     .padding(.top, 4)
+  }
+
+  private func bufferChip(minutes: Int) -> some View {
+    let isSelected = bufferMinutes == minutes
+    return Button {
+      bufferMinutes = minutes
+    } label: {
+      Text(minutes == 0 ? "없음" : "\(minutes)분")
+        .font(.pmCaption)
+        .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background(
+          Capsule()
+            .fill(isSelected ? Color.pmindigo.n500.opacity(0.12) : Color.pmgray.n100)
+            .overlay(
+              Capsule()
+                .strokeBorder(
+                  isSelected ? Color.pmindigo.n300 : Color.clear,
+                  lineWidth: 1
+                )
+            )
+        )
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(minutes == 0 ? "여유 시간 없음" : "여유 시간 \(minutes)분")
+  }
+
+  // MARK: - Walking Not Recommended Row
+
+  private func walkingNotRecommendedRow(
+    walking: HomeModels.TransportOption,
+    distanceText: String?
+  ) -> some View {
+    let detailParts = ["약 \(walking.durationMinutes)분", distanceText]
+      .compactMap { $0 }
+      .joined(separator: " · ")
+    return rowContent(
+      detail: detailParts,
+      subDetail: "",
+      isPast: true,
+      isSelected: false,
+      isNotRecommended: true
+    )
   }
 
   // MARK: - Loading / Error Views
@@ -477,6 +646,8 @@ struct DepartureAlertSheet: View {
         promiseEmoji: "🍕",
         promiseTitle: "점심 모임",
         promiseStartAt: startAt,
+        promiseLocation: "강남역 2번 출구",
+        departureLocation: "서울 강남구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
             type: .driving,
@@ -510,11 +681,46 @@ struct DepartureAlertSheet: View {
             type: .walking,
             durationMinutes: 55,
             departureTime: Calendar.current.date(bySettingHour: 12, minute: 55, second: 0, of: now) ?? now,
-            additionalInfo: nil
+            additionalInfo: nil,
+            distanceMeters: 4000
           )
         ),
         loadError: nil,
-        onSelect: { _ in },
+        onSelect: { _, _ in },
+        onDetailTapped: {},
+        onDismiss: {}
+      )
+    }
+}
+
+#Preview("도보 비추천") {
+  let now = Date()
+  let startAt = Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now
+
+  Color.clear
+    .sheet(isPresented: .constant(true)) {
+      DepartureAlertSheet(
+        promiseEmoji: "🏢",
+        promiseTitle: "부산 출장",
+        promiseStartAt: startAt,
+        promiseLocation: "부산역",
+        departureLocation: "서울 서초구",
+        transportData: HomeModels.DepartureTransportData(
+          driving: HomeModels.TransportOption(
+            type: .driving,
+            durationMinutes: 40,
+            departureTime: Calendar.current.date(bySettingHour: 13, minute: 10, second: 0, of: now) ?? now
+          ),
+          transitRoutes: [],
+          walking: HomeModels.TransportOption(
+            type: .walking,
+            durationMinutes: 170,
+            departureTime: Calendar.current.date(bySettingHour: 11, minute: 10, second: 0, of: now) ?? now,
+            distanceMeters: 12300
+          )
+        ),
+        loadError: nil,
+        onSelect: { _, _ in },
         onDetailTapped: {},
         onDismiss: {}
       )
@@ -528,9 +734,11 @@ struct DepartureAlertSheet: View {
         promiseEmoji: "☕",
         promiseTitle: "카페 미팅",
         promiseStartAt: Date().addingTimeInterval(3600),
+        promiseLocation: nil,
+        departureLocation: nil,
         transportData: nil,
         loadError: nil,
-        onSelect: { _ in },
+        onSelect: { _, _ in },
         onDetailTapped: {},
         onDismiss: {}
       )
@@ -544,9 +752,11 @@ struct DepartureAlertSheet: View {
         promiseEmoji: "🎉",
         promiseTitle: "생일 파티",
         promiseStartAt: Date().addingTimeInterval(7200),
+        promiseLocation: "홍대입구역",
+        departureLocation: "서울 마포구",
         transportData: nil,
         loadError: "경로를 불러오지 못했어요",
-        onSelect: { _ in },
+        onSelect: { _, _ in },
         onDetailTapped: {},
         onDismiss: {}
       )

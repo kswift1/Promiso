@@ -62,6 +62,8 @@ export interface TransportationResult {
   transitRoutes: TransitRouteInfo[];
   driving: DrivingInfo | null;
   walkingMinutes: number;
+  /** 도보 예상 거리 (km, 직선거리 × 1.3 보정) */
+  walkingDistanceKm: number;
 }
 
 // MARK: - ODsay (대중교통)
@@ -261,10 +263,16 @@ export async function fetchTransportation(
   distanceKm: number,
 ): Promise<TransportationResult> {
   const walkingMinutes = estimateWalkMinutes(distanceKm);
+  const walkingDistanceKm = distanceKm * 1.3;
 
   // 단거리는 외부 API 호출 생략
   if (distanceKm < MIN_DISTANCE_FOR_API_KM) {
-    return {transitRoutes: [], driving: null, walkingMinutes};
+    return {
+      transitRoutes: [],
+      driving: null,
+      walkingMinutes,
+      walkingDistanceKm,
+    };
   }
 
   // 대중교통 + 자동차 병렬 호출
@@ -277,6 +285,7 @@ export async function fetchTransportation(
     transitRoutes,
     driving,
     walkingMinutes,
+    walkingDistanceKm,
   };
 }
 

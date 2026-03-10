@@ -214,14 +214,39 @@ extension HomeModels {
   public struct TransportOption: Equatable, Sendable {
     public let type: TransportType
     public let durationMinutes: Int
+    /// buffer=0 기준 순수 출발 시간 (startAt - durationMinutes)
     public let departureTime: Date
     public let additionalInfo: String?
+    /// 이동 거리 (미터, 도보/자동차에서만 사용)
+    public let distanceMeters: Int?
 
-    public init(type: TransportType, durationMinutes: Int, departureTime: Date, additionalInfo: String? = nil) {
+    public init(
+      type: TransportType,
+      durationMinutes: Int,
+      departureTime: Date,
+      additionalInfo: String? = nil,
+      distanceMeters: Int? = nil
+    ) {
       self.type = type
       self.durationMinutes = durationMinutes
       self.departureTime = departureTime
       self.additionalInfo = additionalInfo
+      self.distanceMeters = distanceMeters
+    }
+  }
+
+  /// 대중교통 경로 카테고리 태그
+  public enum TransitRouteTag: String, Equatable, Sendable {
+    case fastest           // 최단
+    case leastTransfers    // 최소환승
+    case cheapest          // 최저요금
+
+    public var displayName: String {
+      switch self {
+      case .fastest: return "최단"
+      case .leastTransfers: return "최소환승"
+      case .cheapest: return "최저요금"
+      }
     }
   }
 
@@ -235,6 +260,7 @@ extension HomeModels {
     public let pathType: Int
     public let departureTime: Date
     public let subPaths: [TransportSubPath]
+    public let tags: [TransitRouteTag]
 
     public init(
       id: Int,
@@ -244,7 +270,8 @@ extension HomeModels {
       subwayTransitCount: Int,
       pathType: Int,
       departureTime: Date,
-      subPaths: [TransportSubPath]
+      subPaths: [TransportSubPath],
+      tags: [TransitRouteTag] = []
     ) {
       self.id = id
       self.totalTime = totalTime
@@ -254,6 +281,7 @@ extension HomeModels {
       self.pathType = pathType
       self.departureTime = departureTime
       self.subPaths = subPaths
+      self.tags = tags
     }
 
     /// 총 환승 횟수
@@ -294,15 +322,60 @@ extension HomeModels {
     public let driving: TransportOption?
     public let transitRoutes: [TransitRouteOption]  // 여러 대중교통 경로
     public let walking: TransportOption
+    /// 선호 교통수단 (표시 순서 결정)
+    public let preferredTransport: PreferredTransport
 
     public init(
       driving: TransportOption?,
       transitRoutes: [TransitRouteOption],
-      walking: TransportOption
+      walking: TransportOption,
+      preferredTransport: PreferredTransport = .all
     ) {
       self.driving = driving
       self.transitRoutes = transitRoutes
       self.walking = walking
+      self.preferredTransport = preferredTransport
+    }
+
+    /// 서버 응답에서 카테고리별 최적 경로를 선별 (최단/최소환승/최저요금)
+    public static func categorizeTransitRoutes(
+      _ routes: [TransitRouteOption]
+    ) -> [TransitRouteOption] {
+      guard !routes.isEmpty else { return [] }
+
+      // 각 카테고리 최적 경로 찾기 (인덱스)
+      var fastestIdx = 0
+      var leastTransfersIdx = 0
+      var cheapestIdx = 0
+
+      for (i, route) in routes.enumerated() {
+        if route.totalTime < routes[fastestIdx].totalTime { fastestIdx = i }
+        if route.transitCount < routes[leastTransfersIdx].transitCount { leastTransfersIdx = i }
+        if route.payment < routes[cheapestIdx].payment { cheapestIdx = i }
+      }
+
+      // 중복 제거 + 태그 병합
+      var indexToTags: [Int: [TransitRouteTag]] = [:]
+      indexToTags[fastestIdx, default: []].append(.fastest)
+      indexToTags[leastTransfersIdx, default: []].append(.leastTransfers)
+      indexToTags[cheapestIdx, default: []].append(.cheapest)
+
+      // 인덱스 순서대로 정렬, 새 id 부여
+      let sorted = indexToTags.sorted { $0.key < $1.key }
+      return sorted.enumerated().map { (newId, entry) in
+        let route = routes[entry.key]
+        return TransitRouteOption(
+          id: newId,
+          totalTime: route.totalTime,
+          payment: route.payment,
+          busTransitCount: route.busTransitCount,
+          subwayTransitCount: route.subwayTransitCount,
+          pathType: route.pathType,
+          departureTime: route.departureTime,
+          subPaths: route.subPaths,
+          tags: entry.value
+        )
+      }
     }
   }
 

@@ -27,17 +27,19 @@ extension Home {
           }
         }
         .sheet(isPresented: Binding(
-          get: { store.departureAlertItem != nil && store.transportDetail == nil },
+          get: { store.departureAlertItem != nil },
           set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
         )) {
           DepartureAlertSheet(
             promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
             promiseTitle: store.departureAlertItem?.title ?? "",
             promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
+            promiseLocation: store.departureAlertItem?.location?.name,
+            departureLocation: store.departureLocationName,
             transportData: store.departureTransportData.value,
             loadError: store.departureTransportData.error.map { _ in "경로를 불러오지 못했어요" },
-            onSelect: { selection in
-              store.send(.view(.departureAlertConfirmed(selection)))
+            onSelect: { selection, bufferMinutes in
+              store.send(.view(.departureAlertConfirmed(selection, bufferMinutes)))
             },
             onDetailTapped: {
               store.send(.view(.departureAlertDetailTapped))
@@ -46,16 +48,6 @@ extension Home {
               store.send(.view(.departureAlertSheetDismissed))
             }
           )
-        }
-        .sheet(isPresented: Binding(
-          get: { store.transportDetail != nil },
-          set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
-        )) {
-          if let detailStore = store.scope(state: \.transportDetail, action: \.transportDetail) {
-            NavigationStack {
-              TransportDetail.RootView(store: detailStore)
-            }
-          }
         }
     }
 
@@ -164,6 +156,8 @@ extension Home {
           RecurringPersonalEventDetail.RootView(store: detailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
+        case .transportDetail(let detailStore):
+          TransportDetail.RootView(store: detailStore)
         }
       }
     }
