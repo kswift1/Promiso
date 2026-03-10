@@ -378,6 +378,10 @@ extension RootTab {
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseWithExtractedInfo(info))))
 
+        case .home(.delegate(.proPlanRequested)):
+          state.selectedTab = .settings
+          return .send(.settings(.view(.proPlanTapped)))
+
         case .home:
           return .none
 

@@ -190,6 +190,7 @@ extension Home {
               isLoading: store.briefingState.isLoading,
               isExpanded: store.isBriefingExpanded,
               isUpdated: store.isBriefingUpdated,
+              isPro: store.isPro,
               isNotificationDenied: store.isNotificationDenied,
               isLocationDenied: store.isLocationDenied,
               onTap: {
@@ -203,6 +204,9 @@ extension Home {
               },
               onReportError: {
                 store.send(.view(.reportBriefingErrorTapped))
+              },
+              onProUpgradeTapped: {
+                store.send(.view(.briefingProUpgradeTapped))
               }
             )
             .padding(.horizontal, 16)
