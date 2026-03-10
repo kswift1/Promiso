@@ -4,6 +4,10 @@ import SwiftUI
 
 // MARK: - DailyBriefingCard
 
+private enum Constants {
+  static let proBlurRadius: CGFloat = 6
+}
+
 struct DailyBriefingCard: View {
   let summary: String?
   let detail: String?
@@ -74,7 +78,7 @@ struct DailyBriefingCard: View {
                       .foregroundStyle(.secondary)
                       .lineSpacing(4)
                       .fixedSize(horizontal: false, vertical: true)
-                      .blur(radius: 6)
+                      .blur(radius: Constants.proBlurRadius)
 
                     Button {
                       onProUpgradeTapped?()
@@ -82,7 +86,7 @@ struct DailyBriefingCard: View {
                       HStack(spacing: 4) {
                         Image(systemName: "sparkles")
                           .font(.system(size: 13, weight: .semibold))
-                        Text("PRO로 전체 보기")
+                        Text(LocalizedStrings.Home.briefingProUpgrade)
                           .font(.pmSubheadlineSemibold)
                       }
                       .foregroundStyle(.white)

@@ -23464,6 +23464,22 @@
         }
       }
     },
+    "home.briefing.pro.upgrade": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View full with PRO"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRO로 전체 보기"
+          }
+        }
+      }
+    },
     "home.briefing.updated.badge": {
       "extractionState": "stale",
       "localizations": {
