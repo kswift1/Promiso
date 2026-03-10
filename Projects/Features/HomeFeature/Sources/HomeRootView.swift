@@ -116,6 +116,8 @@ extension Home {
           PromiseDetail.RootView(store: detailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .recurringPersonalEventDetail(let detailStore):
+          RecurringPersonalEventDetail.RootView(store: detailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
@@ -221,8 +223,8 @@ extension Home {
                   store.send(.view(.todayPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
-                case .recurringPersonalEvent:
-                  break
+                case .recurringPersonalEvent(let instance):
+                  store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
               }
             )
@@ -250,8 +252,8 @@ extension Home {
                   store.send(.view(.upcomingPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
-                case .recurringPersonalEvent:
-                  break
+                case .recurringPersonalEvent(let instance):
+                  store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
               },
               onSeeAllTap: {

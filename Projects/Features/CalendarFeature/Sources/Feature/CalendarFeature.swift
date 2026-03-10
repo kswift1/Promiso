@@ -742,6 +742,7 @@ extension CalendarFeature {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case calendarEventDetail(CalendarEventDetailFeature)
     }
 
@@ -935,6 +936,17 @@ extension CalendarFeature {
           state.loadedPersonalEventMonths.remove(eventMonth)
           state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
           return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted(let id))))):
+          _ = state.path.popLast()
+          _ = id
+          state.isRecurringEventsLoaded = false
+          return .send(.internal(.fetchRecurringEvents))
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated(let updated))))):
+          if let index = state.recurringEvents.firstIndex(where: { $0.id == updated.id }) {
+            state.recurringEvents[index] = updated
+          }
+          _ = state.path.popLast()
+          return .none
         case .path:
           return .none
 
@@ -1380,8 +1392,13 @@ extension CalendarFeature {
           state.path.append(.personalEventDetail(.init(event: event)))
         case .calendarEvent(let event):
           state.path.append(.calendarEventDetail(.init(event: event)))
-        case .recurringPersonalEvent:
-          break
+        case .recurringPersonalEvent(let instance):
+          if let recurring = state.recurringEvents.first(where: { $0.id == instance.recurringEventId }) {
+            state.path.append(.recurringPersonalEventDetail(.init(
+              recurringEvent: recurring,
+              selectedInstance: instance
+            )))
+          }
         }
         return .none
 

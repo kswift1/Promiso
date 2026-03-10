@@ -187,6 +187,7 @@ extension Home {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
     }
 
@@ -229,6 +230,8 @@ extension Home {
         case refreshNotificationBadge
         /// 개인 일정 카드 탭
         case personalEventTapped(PersonalEventModel)
+        /// 반복 개인 일정 인스턴스 카드 탭
+        case recurringPersonalEventTapped(ExpandedEventInstance)
         /// 토스트 닫힘
         case toastDismissed
         /// 브리핑 카드 탭 (expand/collapse)
@@ -444,6 +447,16 @@ extension Home {
 
           case .personalEventTapped(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
+            return .none
+
+          case .recurringPersonalEventTapped(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
             return .none
 
           case .toastDismissed:
@@ -1313,8 +1326,14 @@ extension Home {
             )))
           case .personalEvent(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
-          case .recurringPersonalEvent:
-            break
+          case .recurringPersonalEvent(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
           }
           return .cancel(id: CancelID.overlayWeatherFetch)
 
@@ -1409,6 +1428,16 @@ extension Home {
 
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
           return .send(.internal(.fetchPersonalEvents))
+
+        // MARK: - RecurringPersonalEventDetail Path Actions
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
 
         // MARK: - NotificationCenter Path Actions
 
