@@ -272,21 +272,37 @@ jobs:
         run: |
           set -eo pipefail
           MODULES="${{ steps.changes.outputs.modules }}"
-          FAILED=""
+          PIDS=""
+          mkdir -p /tmp/build-logs
+
           for module in $MODULES; do
-            echo ""
-            echo "━━━ 🔨 빌드: $module ━━━"
-            BUILD_LOG=$(xcodebuild build-for-testing \
-              -scheme "$module" \
-              -workspace Promiso.xcworkspace \
-              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-              -skipPackagePluginValidation \
-              2>&1)
-            echo "$BUILD_LOG" | grep -iE '(BUILD SUCCEEDED|BUILD FAILED|error:)' | grep -v 'warning:' || true
-            if ! echo "$BUILD_LOG" | grep -qi 'BUILD SUCCEEDED'; then
-              FAILED="$FAILED $module"
-            fi
+            echo "━━━ 🔨 빌드 시작: $module ━━━"
+            (
+              xcodebuild build-for-testing \
+                -scheme "$module" \
+                -workspace Promiso.xcworkspace \
+                -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+                -derivedDataPath "/tmp/DerivedData-${module}" \
+                -skipPackagePluginValidation \
+                > "/tmp/build-logs/${module}.log" 2>&1
+            ) &
+            PIDS="$PIDS $!"
           done
+
+          FAILED=""
+          i=0
+          for module in $MODULES; do
+            i=$((i + 1))
+            PID=$(echo $PIDS | cut -d' ' -f$i)
+            if ! wait "$PID"; then
+              FAILED="$FAILED $module"
+              echo "❌ 빌드 실패: $module"
+            else
+              echo "✅ 빌드 성공: $module"
+            fi
+            grep -iE '(BUILD SUCCEEDED|BUILD FAILED|error:)' "/tmp/build-logs/${module}.log" | grep -v 'warning:' || true
+          done
+
           if [ -n "$FAILED" ]; then
             echo "❌ 빌드 실패:$FAILED"
             exit 1
@@ -309,21 +325,39 @@ jobs:
         run: |
           set -eo pipefail
           MODULES="${{ steps.changes.outputs.modules }}"
-          FAILED=""
+          PIDS=""
+          mkdir -p /tmp/test-logs
+
           for module in $MODULES; do
-            echo ""
-            echo "━━━ 🧪 테스트: $module ━━━"
-            if ! xcodebuild test \
-              -scheme "$module" \
-              -workspace Promiso.xcworkspace \
-              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-              -skipPackagePluginValidation \
-              -enableCodeCoverage YES \
-              -resultBundlePath "TestResults-${module}.xcresult" \
-              2>&1; then
-              FAILED="$FAILED $module"
-            fi
+            echo "━━━ 🧪 테스트 시작: $module ━━━"
+            (
+              xcodebuild test-without-building \
+                -scheme "$module" \
+                -workspace Promiso.xcworkspace \
+                -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+                -derivedDataPath "/tmp/DerivedData-${module}" \
+                -skipPackagePluginValidation \
+                -enableCodeCoverage YES \
+                -resultBundlePath "TestResults-${module}.xcresult" \
+                > "/tmp/test-logs/${module}.log" 2>&1
+            ) &
+            PIDS="$PIDS $!"
           done
+
+          FAILED=""
+          i=0
+          for module in $MODULES; do
+            i=$((i + 1))
+            PID=$(echo $PIDS | cut -d' ' -f$i)
+            if ! wait "$PID"; then
+              FAILED="$FAILED $module"
+              echo "❌ 테스트 실패: $module"
+            else
+              echo "✅ 테스트 성공: $module"
+            fi
+            tail -20 "/tmp/test-logs/${module}.log" || true
+          done
+
           if [ -n "$FAILED" ]; then
             echo "❌ 테스트 실패:$FAILED"
             exit 1

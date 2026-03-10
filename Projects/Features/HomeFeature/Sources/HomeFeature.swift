@@ -237,6 +237,8 @@ extension Home {
         case openLocationSettingsTapped
         /// 브리핑 오류 제보
         case reportBriefingErrorTapped
+        /// 브리핑 Pro 업그레이드 CTA 탭
+        case briefingProUpgradeTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -327,6 +329,8 @@ extension Home {
         case navigateToCreatePromise
         /// 빠른 약속 생성 요청 (추출 정보 → CreatePromise pre-fill)
         case createPromiseWithExtractedInfo(PromiseExtractedInfo)
+        /// Pro 플랜 업그레이드 요청
+        case proPlanRequested
       }
     }
 
@@ -439,6 +443,9 @@ extension Home {
           case .briefingCardTapped:
             state.isBriefingExpanded.toggle()
             return .none
+
+          case .briefingProUpgradeTapped:
+            return .send(.delegate(.proPlanRequested))
 
           case .refreshBriefingTapped:
             state.briefingState = .loading

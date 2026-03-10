@@ -4,18 +4,24 @@ import SwiftUI
 
 // MARK: - DailyBriefingCard
 
+private enum Constants {
+  static let proBlurRadius: CGFloat = 6
+}
+
 struct DailyBriefingCard: View {
   let summary: String?
   let detail: String?
   let isLoading: Bool
   let isExpanded: Bool
   let isUpdated: Bool
+  let isPro: Bool
   let isNotificationDenied: Bool
   let isLocationDenied: Bool
   let onTap: () -> Void
   let onOpenNotificationSettings: (() -> Void)?
   let onOpenLocationSettings: (() -> Void)?
   let onReportError: (() -> Void)?
+  let onProUpgradeTapped: (() -> Void)?
 
   var body: some View {
     if isLoading || summary != nil {
@@ -59,19 +65,53 @@ struct DailyBriefingCard: View {
                 .foregroundStyle(.primary)
 
               if let detail {
-                Text(detail)
-                  .font(.pmSubheadline)
-                  .foregroundStyle(.secondary)
-                  .lineSpacing(4)
-                  .fixedSize(horizontal: false, vertical: true)
+                if isPro {
+                  Text(detail)
+                    .font(.pmSubheadline)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                } else {
+                  ZStack {
+                    Text(detail)
+                      .font(.pmSubheadline)
+                      .foregroundStyle(.secondary)
+                      .lineSpacing(4)
+                      .fixedSize(horizontal: false, vertical: true)
+                      .blur(radius: Constants.proBlurRadius)
+
+                    Button {
+                      onProUpgradeTapped?()
+                    } label: {
+                      HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                          .font(.system(size: 13, weight: .semibold))
+                        Text(LocalizedStrings.Home.briefingProUpgrade)
+                          .font(.pmSubheadlineSemibold)
+                      }
+                      .foregroundStyle(.white)
+                      .padding(.horizontal, 16)
+                      .padding(.vertical, 10)
+                      .background(
+                        LinearGradient(
+                          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+                          startPoint: .leading,
+                          endPoint: .trailing
+                        ),
+                        in: Capsule()
+                      )
+                    }
+                    .buttonStyle(.plain)
+                  }
+                }
               }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .transition(.opacity.combined(with: .move(edge: .top)))
 
-            // 권한 안내 배너
-            if isNotificationDenied || isLocationDenied {
+            // 권한 안내 배너 - Pro만
+            if isPro, isNotificationDenied || isLocationDenied {
               Divider()
                 .padding(.horizontal, 16)
 
@@ -81,14 +121,16 @@ struct DailyBriefingCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            // 오류 제보
-            Divider()
-              .padding(.horizontal, 16)
+            // 오류 제보 - Pro만
+            if isPro {
+              Divider()
+                .padding(.horizontal, 16)
 
-            reportErrorButton
-              .padding(.horizontal, 16)
-              .padding(.vertical, 10)
-              .transition(.opacity.combined(with: .move(edge: .top)))
+              reportErrorButton
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
           }
         }
       }
