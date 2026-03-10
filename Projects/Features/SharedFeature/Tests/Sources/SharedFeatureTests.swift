@@ -937,9 +937,11 @@ struct EditPromiseFeatureTests {
     ) {
       EditPromise.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.editedPromise.startAt = newDate
+      $0.conflictCheckTrigger = .startTimeChanged
     }
   }
 
@@ -954,11 +956,13 @@ struct EditPromiseFeatureTests {
     ) {
       EditPromise.Feature()
     }
+    store.exhaustivity = .off
 
     let newStartDate = Date().addingTimeInterval(7200) // endDate보다 이후
     await store.send(.view(.setStartDate(newStartDate))) {
       $0.editedPromise.startAt = newStartDate
       $0.editedPromise.endAt = newStartDate.addingTimeInterval(7200)
+      $0.conflictCheckTrigger = .startTimeChanged
     }
   }
 
@@ -971,9 +975,11 @@ struct EditPromiseFeatureTests {
     ) {
       EditPromise.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.toggleUseEndTime)) {
       $0.editedPromise.endAt = $0.editedPromise.startAt.addingTimeInterval(7200)
+      $0.conflictCheckTrigger = .endTimeChanged
     }
   }
 
@@ -987,9 +993,11 @@ struct EditPromiseFeatureTests {
     ) {
       EditPromise.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.toggleUseEndTime)) {
       $0.editedPromise.endAt = nil
+      $0.conflictCheckTrigger = .endTimeChanged
     }
   }
 
@@ -1106,9 +1114,11 @@ struct EditPromiseFeatureTests {
     ) {
       EditPromise.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.setEndDate(newEndDate))) {
       $0.editedPromise.endAt = newEndDate
+      $0.conflictCheckTrigger = .endTimeChanged
     }
   }
 

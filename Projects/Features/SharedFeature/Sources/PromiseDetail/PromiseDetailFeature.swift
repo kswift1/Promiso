@@ -254,7 +254,8 @@ extension PromiseDetail {
             let maxMembers = state.groupMembers?.count ?? state.promise.minimumParticipants
             state.editPromise = EditPromise.Feature.State(
               promise: state.promise,
-              maxMembers: maxMembers
+              maxMembers: maxMembers,
+              currentUserId: state.currentUserId
             )
             return .none
 

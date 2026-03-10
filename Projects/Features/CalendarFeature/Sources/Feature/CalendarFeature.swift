@@ -1406,7 +1406,7 @@ extension CalendarFeature {
         switch item {
         case .promise(let promise):
           let maxMembers = state.groupMembersCache[promise.groupId]?.count ?? promise.minimumParticipants
-          state.editPromise = EditPromise.Feature.State(promise: promise, maxMembers: maxMembers)
+          state.editPromise = EditPromise.Feature.State(promise: promise, maxMembers: maxMembers, currentUserId: state.currentUserId)
         case .personalEvent(let event):
           state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: event, mode: .edit)
         case .calendarEvent:
