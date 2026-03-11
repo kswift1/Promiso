@@ -79,13 +79,42 @@ extension Home.Feature.State {
       }
     }
 
+    // 반복 규칙 텍스트 매핑 (원본 모델에서 가져옴)
+    let recurrenceTextMap: [String: String] = Dictionary(
+      uniqueKeysWithValues: allRecurringEvents.map { ($0.id, $0.recurrence.displayText) }
+    )
+
+    var upcomingRecurringGroups: [String: (title: String, emoji: String, recurrenceText: String, nextDate: Date)] = [:]
     for item in expandedRecurringItems {
       if item.startAt < endOfDay, item.effectiveEndAt >= startOfDay {
         todayScheduleItems.append(item)
       } else if item.startAt >= endOfDay {
-        upcomingScheduleItems.append(item)
+        if case .recurringPersonalEvent(let instance) = item {
+          let id = instance.recurringEventId
+          if upcomingRecurringGroups[id] == nil {
+            upcomingRecurringGroups[id] = (
+              title: instance.title,
+              emoji: instance.emoji ?? "🔄",
+              recurrenceText: recurrenceTextMap[id] ?? "반복",
+              nextDate: item.startAt
+            )
+          } else {
+            let currentNext = upcomingRecurringGroups[id]!.nextDate
+            upcomingRecurringGroups[id]?.nextDate = min(currentNext, item.startAt)
+          }
+        }
       }
     }
+
+    let upcomingRecurringSummaries = upcomingRecurringGroups
+      .map { HomeModels.RecurringEventSummary(
+        recurringEventId: $0.key,
+        title: $0.value.title,
+        emoji: $0.value.emoji,
+        recurrenceText: $0.value.recurrenceText,
+        nextInstanceDate: $0.value.nextDate
+      )}
+      .sorted { $0.nextInstanceDate < $1.nextInstanceDate }
 
     pendingPromises.sort { lhs, rhs in
       lhs.votes.until < rhs.votes.until
@@ -102,7 +131,8 @@ extension Home.Feature.State {
       todayScheduleItems: todayScheduleItems,
       pendingPromises: pendingPromises,
       upcomingPromises: upcomingPromises,
-      upcomingScheduleItems: upcomingScheduleItems
+      upcomingScheduleItems: upcomingScheduleItems,
+      upcomingRecurringSummaries: upcomingRecurringSummaries
     )
   }
 

@@ -184,13 +184,15 @@ extension Home {
         let pendingPromises: [PromiseModel]
         let upcomingPromises: [PromiseModel]
         let upcomingScheduleItems: [HomeModels.ScheduleItem]
+        let upcomingRecurringSummaries: [HomeModels.RecurringEventSummary]
 
         static let empty = Self(
           todayPromises: [],
           todayScheduleItems: [],
           pendingPromises: [],
           upcomingPromises: [],
-          upcomingScheduleItems: []
+          upcomingScheduleItems: [],
+          upcomingRecurringSummaries: []
         )
       }
 

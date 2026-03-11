@@ -301,6 +301,7 @@ extension Home {
             UpcomingSection(
               items: snapshot.upcomingScheduleItems,
               weatherCache: store.weatherCache,
+              recurringSummaries: snapshot.upcomingRecurringSummaries,
               onItemTap: { item in
                 switch item {
                 case .promise(let p):
