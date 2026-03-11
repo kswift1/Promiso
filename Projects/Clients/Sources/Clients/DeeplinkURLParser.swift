@@ -42,7 +42,7 @@ public enum DeeplinkURLParser {
     case "group":
       return parseGroup(from: url)
 
-    case "schedule", "promise":
+    case "schedule":
       return parseSchedule(from: url)
 
     case "live":

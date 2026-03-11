@@ -120,13 +120,6 @@ struct DeeplinkURLParserTests {
     #expect(result == .schedule(scheduleId: "schedule123", groupId: "group456"))
   }
 
-  @Test("promiso://promise/{scheduleId}/{groupId} legacy 파싱")
-  func parse_legacyPromise_extractsIds() {
-    let url = URL(string: "promiso://promise/promise123/group456")!
-    let result = DeeplinkURLParser.parse(url)
-    #expect(result == .schedule(scheduleId: "promise123", groupId: "group456"))
-  }
-
   @Test("schedule 경로에 groupId 없으면 nil")
   func parse_schedule_withoutGroupId_returnsNil() {
     let url = URL(string: "promiso://schedule/schedule123")!
@@ -144,13 +137,6 @@ struct DeeplinkURLParserTests {
     let url = URL(string: "promiso://schedule/schedule789/eta")!
     let result = DeeplinkURLParser.parse(url)
     #expect(result == .liveActivityETA(scheduleId: "schedule789"))
-  }
-
-  @Test("promiso://promise/{scheduleId}/eta legacy 파싱")
-  func parse_legacyPromiseETA_extractsScheduleId() {
-    let url = URL(string: "promiso://promise/promise789/eta")!
-    let result = DeeplinkURLParser.parse(url)
-    #expect(result == .liveActivityETA(scheduleId: "promise789"))
   }
 
   // MARK: - liveSchedule 딥링크

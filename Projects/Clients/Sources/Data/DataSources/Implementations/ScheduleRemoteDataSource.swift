@@ -7,6 +7,9 @@ import PromisoShared
 // MARK: - Firebase Functions 상수
 
 private enum FirebaseFunctionNames {
+  static let createSchedule = "createPromise"
+  static let respondSchedule = "respondPromise"
+  static let updateSchedule = "updatePromise"
   static let deleteSchedule = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
@@ -97,7 +100,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     }
 
     // Firebase Functions 호출
-    let result = try await functions.httpsCallable("createPromise").call(callableData)
+    let result = try await functions.httpsCallable(FirebaseFunctionNames.createSchedule).call(callableData)
 
     guard let data = result.data as? [String: Any],
           let scheduleId = data["promiseId"] as? String else {
@@ -118,7 +121,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
 
     AppLogger.calendar.debug("🌐 [DataSource] respondSchedule 호출 - scheduleId: \(scheduleId), status: \(status)")
 
-    let result = try await functions.httpsCallable("respondPromise").call(callableData)
+    let result = try await functions.httpsCallable(FirebaseFunctionNames.respondSchedule).call(callableData)
 
     AppLogger.calendar.debug("🌐 [DataSource] respondSchedule 응답 수신")
 
@@ -230,7 +233,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     }
 
     // Firebase Functions 호출
-    _ = try await functions.httpsCallable("updatePromise").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.updateSchedule).call(callableData)
   }
   
   /// 일정 삭제 (hard delete)
