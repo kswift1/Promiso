@@ -831,7 +831,36 @@ extension Home {
               // 현재 위치와 설정을 병렬로 조회
               async let locationTask: Coordinate = {
                 do {
-                  return try await locationClient.getCurrentLocation()
+                  // 권한 거부 시 liveUpdates() 스트림이 멈추므로 타임아웃 + 권한 재체크
+                  let location = try await withThrowingTaskGroup(of: Coordinate.self) { group in
+                    group.addTask {
+                      try await locationClient.getCurrentLocation()
+                    }
+                    group.addTask {
+                      // 권한 다이얼로그 대기 후 거부 감지 (최대 10초 타임아웃)
+                      try await Task.sleep(for: .seconds(1))
+                      for _ in 0..<18 { // 0.5초 * 18 = 9초
+                        let status = locationClient.authorizationStatus()
+                        if status == .denied {
+                          throw LocationClientError.denied
+                        }
+                        if status == .authorized {
+                          // getCurrentLocation 태스크가 위치를 반환할 때까지 대기
+                          try await Task.sleep(for: .seconds(10))
+                          throw LocationClientError.unavailable
+                        }
+                        try await Task.sleep(for: .milliseconds(500))
+                      }
+                      // 타임아웃
+                      throw LocationClientError.unavailable
+                    }
+                    guard let result = try await group.next() else {
+                      throw LocationClientError.unavailable
+                    }
+                    group.cancelAll()
+                    return result
+                  }
+                  return location
                 } catch {
                   // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
                   if usePreviousOrigin == nil {
@@ -854,7 +883,9 @@ extension Home {
               let currentLocation: Coordinate
               do {
                 currentLocation = try await locationTask
+                print("📍 [DepartureAlert] 위치 조회 성공 — (\(currentLocation.latitude), \(currentLocation.longitude))")
               } catch {
+                print("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
                 await send(.internal(.transportationResponse(
                   scheduleItemId,
                   .failure(LocationClientError.denied)
@@ -882,11 +913,18 @@ extension Home {
                 fromLng = currentLocation.longitude
               }
 
+              print("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
               let result = await Result {
                 try await transportationClient.getTransportation(
                   fromLat, fromLng,
                   lat, lng
                 )
+              }
+              switch result {
+              case .success(let data):
+                print("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
+              case .failure(let error):
+                print("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
               }
               await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
             }
@@ -979,7 +1017,6 @@ extension Home {
               return .none
             }
             state.departureOrigin = origin
-            state.departureTransportData = .loading
 
             let fromLat: Double
             let fromLng: Double
@@ -987,7 +1024,11 @@ extension Home {
 
             switch origin {
             case .currentLocation:
-              guard let coord = state.currentLocationCoordinate else { return .none }
+              guard let coord = state.currentLocationCoordinate else {
+                // 위치 권한 없어서 좌표가 없으면 에러 표시
+                state.departureTransportData = .failed(LocationClientError.denied)
+                return .none
+              }
               fromLat = coord.latitude
               fromLng = coord.longitude
               locationName = state.departureLocationName
@@ -997,6 +1038,7 @@ extension Home {
               locationName = name
             }
 
+            state.departureTransportData = .loading
             let scheduleItemId = item.id
             let userId = state.currentUser.userId
 
