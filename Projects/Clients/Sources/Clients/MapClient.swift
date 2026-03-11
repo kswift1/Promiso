@@ -58,6 +58,7 @@ public struct MapClient: Sendable {
     _ from: Coordinate?,
     _ to: Coordinate,
     _ name: String?,
+    _ fromName: String?,
     _ transportMode: TransportMode
   ) -> Void
 }
@@ -125,6 +126,7 @@ extension MapClient: DependencyKey {
       from: Coordinate?,
       to: Coordinate,
       name: String?,
+      fromName: String?,
       transportMode: TransportMode
     ) {
       let routePath = naverRoutePath(for: transportMode)
@@ -139,14 +141,14 @@ extension MapClient: DependencyKey {
         queryItems.append(contentsOf: [
           URLQueryItem(name: "slat", value: "\(from.latitude)"),
           URLQueryItem(name: "slng", value: "\(from.longitude)"),
-          URLQueryItem(name: "sname", value: "출발지")
+          URLQueryItem(name: "sname", value: fromName ?? "출발지")
         ])
       }
       queryItems.append(contentsOf: [
         URLQueryItem(name: "dlat", value: "\(to.latitude)"),
         URLQueryItem(name: "dlng", value: "\(to.longitude)"),
         URLQueryItem(name: "dname", value: name ?? ""),
-        URLQueryItem(name: "appname", value: "com.promiso.app")
+        URLQueryItem(name: "appname", value: Bundle.main.bundleIdentifier ?? "com.promiso.app")
       ])
       components.queryItems = queryItems
 
@@ -181,13 +183,13 @@ extension MapClient: DependencyKey {
           return UIApplication.shared.canOpenURL(url)
         }
       },
-      openDirectionsInApp: { app, from, to, name, transportMode in
+      openDirectionsInApp: { app, from, to, name, fromName, transportMode in
         Task { @MainActor in
           switch app {
           case .kakao:
             openKakaoDirections(from: from, to: to, name: name, transportMode: transportMode)
           case .naver:
-            openNaverDirections(from: from, to: to, name: name, transportMode: transportMode)
+            openNaverDirections(from: from, to: to, name: name, fromName: fromName, transportMode: transportMode)
           }
         }
       }
@@ -224,7 +226,7 @@ extension MapClient: TestDependencyKey {
     },
     openDirections: { _, _, _, _ in },
     availableMapApps: { MapApp.allCases },
-    openDirectionsInApp: { _, _, _, _, _ in }
+    openDirectionsInApp: { _, _, _, _, _, _ in }
   )
 
   public static let testValue = Self(

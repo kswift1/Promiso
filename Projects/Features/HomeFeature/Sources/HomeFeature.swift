@@ -883,9 +883,9 @@ extension Home {
               let currentLocation: Coordinate
               do {
                 currentLocation = try await locationTask
-                print("📍 [DepartureAlert] 위치 조회 성공 — (\(currentLocation.latitude), \(currentLocation.longitude))")
+                AppLogger.home.debug("📍 [DepartureAlert] 위치 조회 성공 — (\(currentLocation.latitude), \(currentLocation.longitude))")
               } catch {
-                print("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
+                AppLogger.home.debug("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
                 await send(.internal(.transportationResponse(
                   scheduleItemId,
                   .failure(LocationClientError.denied)
@@ -913,7 +913,7 @@ extension Home {
                 fromLng = currentLocation.longitude
               }
 
-              print("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
+              AppLogger.home.debug("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
               let result = await Result {
                 try await transportationClient.getTransportation(
                   fromLat, fromLng,
@@ -922,9 +922,9 @@ extension Home {
               }
               switch result {
               case .success(let data):
-                print("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
+                AppLogger.home.debug("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
               case .failure(let error):
-                print("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
+                AppLogger.home.debug("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
               }
               await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
             }
@@ -982,11 +982,13 @@ extension Home {
               state.previousScheduleLocation?.locationName
             }
             // 도착지 좌표
-            let destCoord = Coordinate(
-              latitude: item.location?.latitude ?? 0,
-              longitude: item.location?.longitude ?? 0
-            )
-            let destName = item.location?.name ?? item.title
+            guard let location = item.location,
+                  let destLat = location.latitude,
+                  let destLng = location.longitude else {
+              return .none
+            }
+            let destCoord = Coordinate(latitude: destLat, longitude: destLng)
+            let destName = location.name ?? item.title
 
             state.path.append(.transportDetail(.init(
               scheduleTitle: item.title,

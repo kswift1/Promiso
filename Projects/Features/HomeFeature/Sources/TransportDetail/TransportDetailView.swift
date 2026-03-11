@@ -262,7 +262,7 @@ extension TransportDetail {
             HStack(spacing: 4) {
               ForEach(route.tags, id: \.self) { tag in
                 Text(tag.displayName)
-                  .font(.system(size: 10, weight: .medium))
+                  .font(.pmMicro2Medium)
                   .foregroundStyle(Color.pmindigo.n500)
                   .padding(.horizontal, 6)
                   .padding(.vertical, 2)
