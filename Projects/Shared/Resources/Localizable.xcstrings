@@ -15421,7 +15421,7 @@
       }
     },
     "scheduleModeSegment.group" : {
-      "comment" : "일정 모드 세그먼트 - 그룹 일정",
+      "comment" : "일정 모드 세그먼트 - 그룹",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15433,7 +15433,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 일정"
+            "value" : "그룹"
           }
         }
       }
@@ -15457,7 +15457,7 @@
       }
     },
     "scheduleModeSegment.personal" : {
-      "comment" : "일정 모드 세그먼트 - 개인 일정",
+      "comment" : "일정 모드 세그먼트 - 개인",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15469,7 +15469,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "개인 일정"
+            "value" : "개인"
           }
         }
       }
