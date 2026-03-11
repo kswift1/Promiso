@@ -3,6 +3,10 @@
 
 default_platform(:ios)
 
+DEFAULT_CHANGELOG_DEV = "Dev 빌드 - 개발 환경 테스트용 빌드입니다."
+DEFAULT_CHANGELOG_STAGE = "Stage 테스트 빌드 - 스테이지 환경 테스트용 빌드입니다."
+DEFAULT_CHANGELOG_PROD = "프로덕션 빌드 - 심사 제출 및 배포용 빌드입니다."
+
 platform :ios do
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 설정
@@ -60,7 +64,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "Dev 빌드"
+    changelog_text = ENV["CHANGELOG"] || DEFAULT_CHANGELOG_DEV
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
@@ -132,7 +136,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "Stage 테스트 빌드"
+    changelog_text = ENV["CHANGELOG"] || DEFAULT_CHANGELOG_STAGE
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
@@ -214,7 +218,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "프로덕션 빌드"
+    changelog_text = ENV["CHANGELOG"] || DEFAULT_CHANGELOG_PROD
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
