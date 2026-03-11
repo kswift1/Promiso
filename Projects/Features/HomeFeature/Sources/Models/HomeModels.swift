@@ -322,19 +322,19 @@ extension HomeModels {
     public let driving: TransportOption?
     public let transitRoutes: [TransitRouteOption]  // 여러 대중교통 경로
     public let walking: TransportOption
-    /// 선호 교통수단 (표시 순서 결정)
-    public let preferredTransport: PreferredTransport
+    /// 이용 가능 교통수단 (표시 순서 결정)
+    public let availableTransports: Set<AvailableTransport>
 
     public init(
       driving: TransportOption?,
       transitRoutes: [TransitRouteOption],
       walking: TransportOption,
-      preferredTransport: PreferredTransport = .all
+      availableTransports: Set<AvailableTransport> = [.transit, .car]
     ) {
       self.driving = driving
       self.transitRoutes = transitRoutes
       self.walking = walking
-      self.preferredTransport = preferredTransport
+      self.availableTransports = availableTransports
     }
 
     /// 서버 응답에서 카테고리별 최적 경로를 선별 (최단/최소환승/최저요금)

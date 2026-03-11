@@ -1671,7 +1671,7 @@ extension BriefingSettings {
       var hasLoaded: Bool = false
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
-      var selectedTransport: PreferredTransport = .all
+      var selectedTransports: Set<AvailableTransport> = [.transit, .car]
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1691,7 +1691,7 @@ extension BriefingSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case styleSelected(BriefingStyle)
-      case transportSelected(PreferredTransport)
+      case transportToggled(AvailableTransport)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
       case proFeatureTapped
@@ -1699,7 +1699,7 @@ extension BriefingSettings {
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
-      case settingsLoaded(BriefingStyle, Int?, PreferredTransport)
+      case settingsLoaded(BriefingStyle, Int?, Set<AvailableTransport>)
       case styleSaved
       case notificationHourSaved
       case saveFailed
@@ -1723,14 +1723,14 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
               }
             }
 
@@ -1749,13 +1749,20 @@ extension BriefingSettings {
             }
             .cancellable(id: CancelID.save, cancelInFlight: true)
 
-          case .transportSelected(let transport):
-            state.selectedTransport = transport
-            return .run { [transport] send in
+          case .transportToggled(let transport):
+            if state.selectedTransports.contains(transport) {
+              // 최소 1개는 유지
+              guard state.selectedTransports.count > 1 else { return .none }
+              state.selectedTransports.remove(transport)
+            } else {
+              state.selectedTransports.insert(transport)
+            }
+            let transports = state.selectedTransports
+            return .run { [transports] send in
               await hapticFeedback.selection()
               guard let userId = await authClient.currentUser()?.uid else { return }
               do {
-                try await userSettingsClient.updatePreferredTransport(userId, transport)
+                try await userSettingsClient.updateAvailableTransports(userId, transports)
               } catch {
                 await send(.internal(.saveFailed))
               }
@@ -1804,10 +1811,10 @@ extension BriefingSettings {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .settingsLoaded(let style, let hour, let transport):
+          case .settingsLoaded(let style, let hour, let transports):
             state.selectedStyle = style
             state.notificationHour = hour
-            state.selectedTransport = transport
+            state.selectedTransports = transports
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
             state.isLoading = false
             state.hasLoaded = true
@@ -1821,14 +1828,14 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { [authClient, userSettingsClient] send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
               }
             }
           }
@@ -1980,37 +1987,31 @@ extension BriefingSettings {
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          ForEach(PreferredTransport.allCases, id: \.self) { transport in
+          ForEach(AvailableTransport.allCases, id: \.self) { transport in
             Button {
               if store.isPro {
-                store.send(.view(.transportSelected(transport)))
+                store.send(.view(.transportToggled(transport)))
               } else {
                 store.send(.view(.proFeatureTapped))
               }
             } label: {
               HStack(spacing: 12) {
                 Image(systemName: transport.iconName)
-                  .font(.system(size: 16, weight: .semibold))
-                  .foregroundStyle(store.isPro ? Color.pmindigo.n500 : Color.pmgray.n400)
-                  .frame(width: 20)
+                  .font(.system(size: 16))
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
                   Text(transport.displayName)
-                    .font(.body)
-                    .foregroundStyle(store.isPro ? Color.pmtext.primary : Color.pmtext.secondary)
-
-                  Text(transport.description)
-                    .font(.caption)
-                    .foregroundStyle(Color.pmtext.secondary)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.pmtext.primary)
                 }
 
                 Spacer()
 
-                if store.selectedTransport == transport {
-                  Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.pmindigo.n500)
-                }
+                Image(systemName: store.selectedTransports.contains(transport) ? "checkmark.circle.fill" : "circle")
+                  .font(.system(size: 20))
+                  .foregroundStyle(store.selectedTransports.contains(transport) ? Color.pmindigo.n500 : Color.pmtext.secondary)
               }
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
@@ -2019,7 +2020,7 @@ extension BriefingSettings {
             }
             .buttonStyle(.plain)
 
-            if transport != PreferredTransport.allCases.last {
+            if transport != AvailableTransport.allCases.last {
               Divider()
                 .padding(.leading, 48)
             }
