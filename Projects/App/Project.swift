@@ -377,7 +377,7 @@ let schemes: [Scheme] = {
         runAction: .runAction(
           configuration: .debug,
           options: .options(
-            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan-Stage.storekit")
           )
         )
       )
