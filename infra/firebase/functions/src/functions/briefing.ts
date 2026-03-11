@@ -49,7 +49,8 @@ interface TravelSegment {
 interface UserSettingsDocument {
   proSettings?: {
     briefing?: {
-      preferredTransport?: string;
+      preferredTransport?: string;  // 하위 호환
+      availableTransports?: string[];
     };
   };
 }
@@ -299,14 +300,14 @@ async function fetchUserGroups(
  * @param {object} params - 파라미터
  * @param {ScheduleSlotEntry[]} params.slots - 정렬된 일정 슬롯 목록
  * @param {string} params.style - 브리핑 스타일
- * @param {string} params.preferredTransport - 선호 교통수단
+ * @param {string[]} params.availableTransports - 이용 가능 교통수단
  * @param {(string | null)[]} params.weatherMatches - 일정별 날씨 매칭 결과
  * @return {string} 16자리 SHA-256 해시
  */
 function computePromptKey(params: {
   slots: ScheduleSlotEntry[];
   style: string;
-  preferredTransport: string;
+  availableTransports: string[];
   weatherMatches: (string | null)[];
 }): string {
   const sortedSlots = [...params.slots]
@@ -322,7 +323,7 @@ function computePromptKey(params: {
   const raw = JSON.stringify({
     slots: sortedSlots,
     style: params.style,
-    transport: params.preferredTransport,
+    transport: [...params.availableTransports].sort(),
     weather: params.weatherMatches,
   });
 
@@ -486,7 +487,7 @@ function matchWeatherToSchedule(
  * @param {string} timezone - 사용자 타임존 식별자
  * @param {string} todayKey - 오늘 날짜 키 (YYYY-MM-DD)
  * @param {string} style - 브리핑 스타일
- * @param {string} preferredTransport - 선호 교통수단 (all | transit | car)
+ * @param {string[]} availableTransports - 이용 가능 교통수단 (["transit", "car"])
  * @param {object | null} upcoming - 가장 가까운 미래 일정
  * @return {string} 조립된 프롬프트
  */
@@ -504,7 +505,7 @@ function buildPrompt(
   timezone: string,
   todayKey: string,
   style: string,
-  preferredTransport: string,
+  availableTransports: string[],
   upcoming: {
     dateKey: string; slots: ScheduleSlotEntry[];
   } | null,
@@ -527,7 +528,7 @@ function buildPrompt(
   // 출력 규칙
   lines.push("[출력 규칙]");
   lines.push("- JSON으로만 응답: {\"summary\":\"...\", \"detail\":\"...\"}");
-  lines.push("- summary: 핵심 한 줄 (30자 이내), 날씨 + 주요 일정 키워드");
+  lines.push("- summary: 행동 추천 한 줄 (30자 이내). 예: '우산 챙기세요, 약속 2개', '마스크 필수! 미세먼지 나쁨', '여유있게 출발하세요'");
   lines.push(`- detail: 3~5문장, 친근한 ${language} 말투, 문장 사이에 줄바꿈(\\n) 삽입`);
   lines.push("- 인사말(안녕하세요, 좋은 아침 등) 절대 금지. 바로 본론부터 시작");
   lines.push("- JSON 외 다른 텍스트는 절대 포함하지 마세요.");
@@ -542,12 +543,22 @@ function buildPrompt(
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
   lines.push("- 교통 정보가 있으면 -> 교통수단별 소요시간을 자연스럽게 언급");
   lines.push("- 대중교통 소요시간은 환승 대기·도보 이동 등을 감안해 실제보다 5~10분 여유를 두고 안내하세요");
+  lines.push("- 대중교통 경로가 여러 개 주어지면, 시간·환승·요금을 비교하여 최적 경로 1개를 추천하고 이유를 간단히 설명");
   lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천");
   lines.push("- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장");
-  if (preferredTransport === "transit") {
-    lines.push("- 사용자가 주로 대중교통을 이용합니다. 대중교통 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
-  } else if (preferredTransport === "car") {
-    lines.push("- 사용자가 주로 자차를 이용합니다. 자동차 중심으로 안내하되, 필요시 다른 수단도 언급해주세요.");
+  // 이용 가능 교통수단 안내
+  const hasTransit = availableTransports.includes("transit");
+  const hasCar = availableTransports.includes("car");
+  if (hasTransit && hasCar) {
+    lines.push("- 사용자는 대중교통과 자차 모두 이용 가능합니다. 아래 기준으로 최적 교통수단을 판단해 추천하세요:");
+    lines.push("  · 도심(서울, 부산 등 대도시 중심부): 주차 난이도·교통 체증 고려하여 대중교통 우선 추천");
+    lines.push("  · 외곽/교외/경기 지역: 대중교통 접근성·배차 간격 고려하여 자차 우선 추천");
+    lines.push("  · 출퇴근 시간대(7~9시, 17~19시): 교통 체증 반영");
+    lines.push("  · 여러 약속 연속 이동: 이동 효율성 고려");
+  } else if (hasTransit) {
+    lines.push("- 사용자는 대중교통만 이용 가능합니다. 자동차 경로 정보가 있더라도 대중교통 중심으로 안내하세요.");
+  } else if (hasCar) {
+    lines.push("- 사용자는 자차만 이용 가능합니다. 대중교통 정보가 있더라도 자동차 중심으로 안내하세요.");
   }
   lines.push("");
 
@@ -695,22 +706,42 @@ function buildPrompt(
         line += `\n  장거리 이동 (약 ${Math.round(seg.distanceKm)}km)` +
           " - KTX, 고속버스 등 장거리 교통수단 필요";
       } else if (seg.transportation) {
-        const parts: string[] = [];
         const t = seg.transportation;
+        const parts: string[] = [];
 
         if (t.driving) {
           parts.push(`자동차 약 ${t.driving.duration}분` +
             `${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
         }
-        const bestTransit = t.transitRoutes?.[0];
-        if (bestTransit) {
-          const transfers =
-            bestTransit.busTransitCount + bestTransit.subwayTransitCount;
-          parts.push(`대중교통 약 ${bestTransit.totalTime}분` +
-            ` (환승 ${transfers}회, ${bestTransit.payment.toLocaleString()}원)`);
-        }
-        parts.push(`도보 약 ${t.walkingMinutes}분`);
 
+        const transitRoutes = t.transitRoutes?.slice(0, 3) ?? [];
+        if (transitRoutes.length === 1) {
+          const r = transitRoutes[0];
+          const transfers = r.busTransitCount + r.subwayTransitCount;
+          parts.push(`대중교통 약 ${r.totalTime}분 (환승 ${transfers}회, ${r.payment.toLocaleString()}원)`);
+        } else if (transitRoutes.length > 1) {
+          parts.push("대중교통 옵션:");
+          line += "\n  " + parts.join(" | ");
+          for (let i = 0; i < transitRoutes.length; i++) {
+            const r = transitRoutes[i];
+            const transfers = r.busTransitCount + r.subwayTransitCount;
+            const subPathDesc = r.subPaths
+              ?.filter((sp) => sp.trafficType !== 3)
+              .map((sp) => {
+                if (sp.trafficType === 1) return sp.lanes?.[0]?.name || "지하철";
+                if (sp.trafficType === 2) return sp.lanes?.[0]?.busNo || "버스";
+                return "";
+              })
+              .filter(Boolean)
+              .join(" → ") || "";
+            line += `\n    ${i + 1}) 약 ${r.totalTime}분 (환승 ${transfers}회, ${r.payment.toLocaleString()}원)${subPathDesc ? ` - ${subPathDesc}` : ""}`;
+          }
+          line += `\n  도보 약 ${t.walkingMinutes}분`;
+          lines.push(line);
+          continue;  // 이미 line을 push했으므로 아래 push 스킵
+        }
+
+        parts.push(`도보 약 ${t.walkingMinutes}분`);
         line += "\n  " + parts.join(" | ");
       } else {
         // Fallback: Haversine 직선거리만
@@ -775,7 +806,6 @@ function getCurrentDateTimeStr(timezone: string): string {
  * @param {object | null} params.location - 위치 정보
  * @param {boolean} params.forceRefresh - 캐시 무시 여부
  * @param {string} params.style - 브리핑 스타일
- * @param {string} params.preferredTransport - 선호 교통수단 (all | transit | car)
  * @return {Promise<GenerateBriefingResponse>} 브리핑 응답
  */
 export async function generateBriefingInternal(params: {
@@ -814,8 +844,12 @@ export async function generateBriefingInternal(params: {
     ]);
     const settingsData = settingsDoc.data() as
       UserSettingsDocument | undefined;
-    const preferredTransport: string =
-      settingsData?.proSettings?.briefing?.preferredTransport || "all";
+    const briefingSettings = settingsData?.proSettings?.briefing;
+    const availableTransports: string[] =
+      briefingSettings?.availableTransports ??
+      (briefingSettings?.preferredTransport === "car" ? ["car"] :
+       briefingSettings?.preferredTransport === "transit" ? ["transit"] :
+       ["transit", "car"]);
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
@@ -882,7 +916,7 @@ export async function generateBriefingInternal(params: {
     const promptKey = computePromptKey({
       slots: sortedSlots,
       style,
-      preferredTransport,
+      availableTransports,
       weatherMatches,
     });
 
@@ -947,7 +981,7 @@ export async function generateBriefingInternal(params: {
       timezone,
       todayKey,
       style,
-      preferredTransport || "all",
+      availableTransports,
       upcoming,
     );
 

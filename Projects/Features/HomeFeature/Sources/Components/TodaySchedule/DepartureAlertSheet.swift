@@ -72,14 +72,14 @@ struct DepartureAlertSheet: View {
     // 표시 순서에 맞춰 후보 생성
     var candidates: [HomeModels.TransportSelection] = []
 
-    if data.preferredTransport == .transit {
+    if data.availableTransports.contains(.transit) && !data.availableTransports.contains(.car) {
       // 대중교통 먼저
       for route in data.transitRoutes {
         candidates.append(.transit(index: route.id))
       }
       if data.driving != nil { candidates.append(.driving) }
     } else {
-      // 자동차 먼저
+      // 자동차 먼저 (기본)
       if data.driving != nil { candidates.append(.driving) }
       for route in data.transitRoutes {
         candidates.append(.transit(index: route.id))
@@ -390,7 +390,7 @@ struct DepartureAlertSheet: View {
       }
       .padding(.horizontal, 4)
 
-      if data.preferredTransport == .transit {
+      if data.availableTransports.contains(.transit) && !data.availableTransports.contains(.car) {
         // 대중교통 먼저
         transitSection(data: data)
         drivingSection(data: data)

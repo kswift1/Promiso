@@ -178,7 +178,7 @@ export const executeBriefingNotification =
         );
 
         // 2. FCM 푸시 전송
-        await sendBriefingPush(uid, briefing.summary);
+        await sendBriefingPush(uid, briefing.summary, briefing.detail);
 
         console.log(`[BriefingNotification] uid=${uid}, push sent`);
       } catch (error) {
@@ -216,12 +216,14 @@ function getHourInTimezone(date: Date, timezone: string): number {
 /**
  * 브리핑 요약을 FCM 푸시로 전송
  * @param {string} uid - 사용자 ID
- * @param {string} summary - 브리핑 요약 (알림 본문)
+ * @param {string} summary - 브리핑 요약 (알림 제목)
+ * @param {string} detail - 브리핑 상세 내용 (알림 본문)
  * @return {Promise<void>}
  */
 async function sendBriefingPush(
   uid: string,
-  summary: string
+  summary: string,
+  detail: string
 ): Promise<void> {
   const db = admin.firestore();
   const userDoc = await db.collection("users").doc(uid).get();
@@ -257,8 +259,8 @@ async function sendBriefingPush(
   const message: admin.messaging.MulticastMessage = {
     tokens,
     notification: {
-      title: "오늘의 브리핑 ✨",
-      body: summary,
+      title: summary,
+      body: detail,
     },
     data: {
       type: "daily_briefing",

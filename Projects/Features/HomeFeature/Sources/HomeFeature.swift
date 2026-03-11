@@ -362,7 +362,7 @@ extension Home {
         /// 권한 상태 확인 결과
         case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
         /// 교통 정보 응답
-        case transportationResponse(String, Result<TransportationResult, Error>, PreferredTransport = .all)
+        case transportationResponse(String, Result<TransportationResult, Error>, Set<AvailableTransport> = [.transit, .car])
         /// 출발 알림 스케줄 완료
         case departureAlertScheduled(HomeModels.DepartureAlertInfo)
         /// 출발 알림 설정 실행 (TransportSelection → DepartureAlertInfo 변환 후 스케줄)
@@ -837,12 +837,12 @@ extension Home {
                 }
               }()
 
-              async let settingsTask: PreferredTransport = {
+              async let settingsTask: Set<AvailableTransport> = {
                 do {
                   let settings = try await userSettingsClient.fetchSettings(userId)
-                  return settings.preferredTransport
+                  return settings.availableTransports
                 } catch {
-                  return .all
+                  return [.transit, .car]
                 }
               }()
 
@@ -857,7 +857,7 @@ extension Home {
                 return
               }
 
-              let preferredTransport = await settingsTask
+              let availableTransports = await settingsTask
 
               // 현재 위치 저장 (0,0이 아닌 경우만)
               if currentLocation.latitude != 0 || currentLocation.longitude != 0 {
@@ -883,7 +883,7 @@ extension Home {
                   lat, lng
                 )
               }
-              await send(.internal(.transportationResponse(scheduleItemId, result, preferredTransport)))
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
             }
             .cancellable(id: CancelID.transportationFetch)
 
@@ -962,12 +962,12 @@ extension Home {
             let userId = state.currentUser.userId
 
             return .run { [transportationClient, userSettingsClient] send in
-              let preferredTransport: PreferredTransport
+              let availableTransports: Set<AvailableTransport>
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                preferredTransport = settings.preferredTransport
+                availableTransports = settings.availableTransports
               } catch {
-                preferredTransport = .all
+                availableTransports = [.transit, .car]
               }
 
               let result = await Result {
@@ -976,7 +976,7 @@ extension Home {
                   toLat, toLng
                 )
               }
-              await send(.internal(.transportationResponse(scheduleItemId, result, preferredTransport)))
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
             }
             .cancellable(id: CancelID.transportationFetch)
 
@@ -1534,7 +1534,7 @@ extension Home {
             state.locationAuthStatus = locationStatus
             return .none
 
-          case .transportationResponse(let scheduleItemId, let result, let preferredTransport):
+          case .transportationResponse(let scheduleItemId, let result, let availableTransports):
             guard let item = state.departureAlertItem,
                   item.id == scheduleItemId else {
               return .none
@@ -1607,7 +1607,7 @@ extension Home {
                 driving: drivingOption,
                 transitRoutes: HomeModels.DepartureTransportData.categorizeTransitRoutes(transitRoutes),
                 walking: walkingOption,
-                preferredTransport: preferredTransport
+                availableTransports: availableTransports
               )
               state.departureTransportData = .loaded(transportData)
 
