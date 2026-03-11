@@ -379,7 +379,7 @@ extension GroupMain {
               return .none
             }
             let coordinate = Coordinate(latitude: latitude, longitude: longitude)
-            mapClient.openDirections(coordinate, location.name)
+            mapClient.openDirections(nil, coordinate, location.name, .car)
             return .none
 
           case .createNewPromise:

@@ -74,6 +74,21 @@ public struct TransportationResult: Equatable, Sendable {
       self.stationCount = stationCount
       self.lanes = lanes
     }
+
+    private enum CodingKeys: String, CodingKey {
+      case trafficType, sectionTime, distance, startName, endName, stationCount, lanes
+    }
+
+    public init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      trafficType = try container.decode(Int.self, forKey: .trafficType)
+      sectionTime = try container.decode(Int.self, forKey: .sectionTime)
+      distance = try container.decode(Int.self, forKey: .distance)
+      startName = try container.decodeIfPresent(String.self, forKey: .startName)
+      endName = try container.decodeIfPresent(String.self, forKey: .endName)
+      stationCount = try container.decodeIfPresent(Int.self, forKey: .stationCount)
+      lanes = (try? container.decode([LaneInfo].self, forKey: .lanes)) ?? []
+    }
   }
 
   public struct LaneInfo: Equatable, Sendable, Decodable {

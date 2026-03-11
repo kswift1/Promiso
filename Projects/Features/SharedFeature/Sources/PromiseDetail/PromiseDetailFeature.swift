@@ -327,7 +327,7 @@ extension PromiseDetail {
               return .none
             }
             let coordinate = Coordinate(latitude: lat, longitude: lng)
-            mapClient.openDirections(coordinate, location.name)
+            mapClient.openDirections(nil, coordinate, location.name, .car)
             return .none
 
           case .mapTapped:
