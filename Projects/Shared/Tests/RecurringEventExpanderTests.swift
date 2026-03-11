@@ -55,7 +55,7 @@ struct DailyRecurrenceTests {
   @Test("매일 반복: 7일 범위에서 7개 인스턴스 생성")
   func daily_sevenDayRange_createsSeven() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 7)
+    let endDate = makeDate(year: 2025, month: 3, day: 8) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -76,7 +76,7 @@ struct DailyRecurrenceTests {
   func daily_beforeSeriesStart_excludes() {
     let seriesStart = makeDate(year: 2025, month: 3, day: 5)
     let rangeStart = makeDate(year: 2025, month: 3, day: 1)
-    let rangeEnd = makeDate(year: 2025, month: 3, day: 10)
+    let rangeEnd = makeDate(year: 2025, month: 3, day: 11) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -125,7 +125,7 @@ struct WeeklyRecurrenceTests {
   func weekly_satSun_onlyWeekend() {
     // 2025-03-01은 토요일
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 9)
+    let endDate = makeDate(year: 2025, month: 3, day: 10) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "weekly-test",
@@ -176,7 +176,7 @@ struct MonthlyRecurrenceTests {
   @Test("매월 31일: 2월은 건너뜀")
   func monthly_31st_skipFebruary() {
     let startDate = makeDate(year: 2025, month: 1, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 31)
+    let endDate = makeDate(year: 2025, month: 4, day: 1) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "monthly-test",
@@ -203,7 +203,7 @@ struct ExcludedDatesTests {
   @Test("excludedDates에 포함된 날짜는 제외")
   func excludedDates_filtersOutSpecificDates() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 7)
+    let endDate = makeDate(year: 2025, month: 3, day: 8) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -233,7 +233,7 @@ struct OverridesTests {
   @Test("override로 시간 변경된 인스턴스")
   func overrides_changesStartTime() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 3)
+    let endDate = makeDate(year: 2025, month: 3, day: 4) // exclusive upper bound
 
     let overrides: [String: EventOverride] = [
       "2025-03-02": EventOverride(startTime: DateComponents(hour: 14, minute: 30))
@@ -258,7 +258,7 @@ struct OverridesTests {
   @Test("override.isCancelled = true면 제외")
   func overrides_cancelled_excludesInstance() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 5)
+    let endDate = makeDate(year: 2025, month: 3, day: 6) // exclusive upper bound
 
     let overrides: [String: EventOverride] = [
       "2025-03-03": EventOverride(isCancelled: true)
@@ -285,7 +285,7 @@ struct OverridesTests {
   @Test("override로 제목 변경된 인스턴스")
   func overrides_changesTitle() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 2)
+    let endDate = makeDate(year: 2025, month: 3, day: 3) // exclusive upper bound
 
     let overrides: [String: EventOverride] = [
       "2025-03-02": EventOverride(title: "특별 미팅")
@@ -405,7 +405,7 @@ struct TimeCalculationTests {
   @Test("startTime이 올바르게 적용됨")
   func startTime_appliedCorrectly() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -427,7 +427,7 @@ struct TimeCalculationTests {
   @Test("endTime으로 endAt 계산")
   func endTime_calculatesEndAt() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -451,7 +451,7 @@ struct TimeCalculationTests {
   @Test("endTime이 nil이면 endAt도 nil")
   func noEndTime_endAtIsNil() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -472,7 +472,7 @@ struct TimeCalculationTests {
   @Test("endTime이 startTime보다 이전이면 다음 날로 계산")
   func endTime_beforeStartTime_nextDay() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -496,7 +496,7 @@ struct TimeCalculationTests {
   @Test("override의 endTime으로 endAt 변경")
   func overrideEndTime_changesEndAt() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 2)
+    let endDate = makeDate(year: 2025, month: 3, day: 3) // exclusive upper bound
 
     let overrides: [String: EventOverride] = [
       "2025-03-02": EventOverride(endTime: DateComponents(hour: 12, minute: 0))
@@ -538,7 +538,7 @@ struct SortingAndIdTests {
   @Test("인스턴스는 startAt 순서로 정렬됨")
   func instances_sortedByStartAt() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 7)
+    let endDate = makeDate(year: 2025, month: 3, day: 8) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -558,7 +558,7 @@ struct SortingAndIdTests {
   @Test("expandedEventInstance id는 eventId + dateKey 조합")
   func expandedEventInstanceId_combines() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "test-event-123",
@@ -584,7 +584,7 @@ struct MetadataTests {
   @Test("emoji는 원본 이벤트에서 가져옴")
   func emoji_preservedFromEvent() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
@@ -603,7 +603,7 @@ struct MetadataTests {
   @Test("location은 override 또는 원본 사용")
   func location_overriddenOrPreserved() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 2)
+    let endDate = makeDate(year: 2025, month: 3, day: 3) // exclusive upper bound
 
     let originalLocation = LocationInfoModel(name: "원래 장소", address: "주소1")
     let overrideLocation = LocationInfoModel(name: "변경된 장소", address: "주소2")
@@ -634,7 +634,7 @@ struct MetadataTests {
   @Test("reminderMinutesBefore는 원본 이벤트에서 가져옴")
   func reminderMinutesBefore_preservedFromEvent() {
     let startDate = makeDate(year: 2025, month: 3, day: 1)
-    let endDate = makeDate(year: 2025, month: 3, day: 1)
+    let endDate = makeDate(year: 2025, month: 3, day: 2) // exclusive upper bound
 
     let event = RecurringPersonalEventModel(
       id: "daily-test",
