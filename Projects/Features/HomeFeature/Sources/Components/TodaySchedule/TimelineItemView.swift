@@ -191,11 +191,24 @@ struct TimelineItemView: View {
   // MARK: - Type-Specific Meta Rows
 
   private func promiseMetaRow(_ promise: PromiseModel) -> some View {
-    HStack(spacing: 4) {
+    HStack(spacing: 6) {
+      // 확정/미확정 배지
+      HStack(spacing: 3) {
+        Image(systemName: promise.isConfirmed ? "checkmark.circle.fill" : "clock.badge")
+          .font(.system(size: 10))
+        Text(promise.isConfirmed ? "확정" : "미확정")
+          .font(.system(size: 11, weight: .semibold))
+      }
+      .foregroundStyle(promise.isConfirmed ? Color.green : Color.orange)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background((promise.isConfirmed ? Color.green : Color.orange).opacity(0.1))
+      .clipShape(Capsule())
+
       Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
         .font(.pmCaption)
+        .foregroundStyle(.secondary)
     }
-    .foregroundStyle(.secondary)
   }
 
   @ViewBuilder
@@ -327,14 +340,12 @@ struct TimelineItemView: View {
 
         // 날씨 (promise만)
         if let forecast = weatherForecast {
-          WeatherCardStrip(
+          ProWeatherRow(
             forecast: forecast,
             rangeForecasts: weatherRangeForecasts,
-            referenceTimeText: item.startAt.formattedMonthDayTime,
-            forecastSource: weatherForecastSource
+            forecastSource: weatherForecastSource,
+            referenceTimeText: item.startAt.formattedMonthDayTime
           )
-        } else if weatherShouldShowSkeleton {
-          weatherLoadingPlaceholder
         }
 
         // 출발 알림 (설정됨)
@@ -346,13 +357,25 @@ struct TimelineItemView: View {
           Button {
             onDepartureAlertTap()
           } label: {
-            HStack(spacing: 4) {
-              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                .font(.pmCaption2)
-              Text("추천 출발 시간 설정")
-                .font(.pmCaption)
+            HStack(spacing: 6) {
+              Image(systemName: "figure.walk.departure")
+                .font(.system(size: 12))
+                .frame(width: 22, height: 22)
+                .background(
+                  Circle()
+                    .fill(Color.pmindigo.n500.opacity(0.12))
+                )
+
+              Text("언제 출발할지 알려드릴게요")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+
+              Spacer(minLength: 0)
+
+              Image(systemName: "chevron.right")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
             }
-            .foregroundStyle(.primary)
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
@@ -370,43 +393,45 @@ struct TimelineItemView: View {
   /// 출발 알림 행 (설정된 상태)
   private func departureAlertRow(_ alert: HomeModels.DepartureAlertInfo) -> some View {
     let isAlertPassed = alert.departureTime < Date()
+    let accentColor = isAlertPassed ? Color.pmgray.n400 : Color.pmindigo.n500
 
-    return HStack {
-      HStack(spacing: 4) {
-        Image(systemName: alert.selectedTransport.iconName)
-          .font(.pmCaption2)
-        if isAlertPassed {
-          Text("\(alert.departureTime.formattedTime) 알림 완료")
-            .font(.pmCaption)
-            .fontWeight(.semibold)
-          Image(systemName: "checkmark.circle.fill")
-            .font(.pmCaption2)
-            .foregroundStyle(Color.pmgray.n400)
-        } else {
-          Text("\(alert.departureTime.formattedTime) 출발 예정")
-            .font(.pmCaption)
-            .fontWeight(.semibold)
-          Image(systemName: "checkmark.circle.fill")
-            .font(.pmCaption2)
-            .foregroundStyle(Color.pmindigo.n500)
-        }
+    return HStack(spacing: 6) {
+      Image(systemName: alert.selectedTransport.iconName)
+        .font(.system(size: 12))
+        .frame(width: 22, height: 22)
+        .background(
+          Circle()
+            .fill(accentColor.opacity(0.12))
+        )
+
+      if isAlertPassed {
+        Text("\(alert.departureTime.formattedTime) 알림 완료")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+      } else {
+        Text("\(alert.departureTime.formattedTime) 출발 예정")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.primary)
       }
-      .foregroundStyle(isAlertPassed ? Color.pmtext.secondary : .primary)
-      .opacity(isAlertPassed ? 0.7 : 1.0)
 
-      Spacer()
+      Spacer(minLength: 0)
 
-      if !isAlertPassed {
+      if isAlertPassed {
+        Image(systemName: "checkmark.circle.fill")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmgray.n400)
+      } else {
         Button {
           onDepartureAlertCancel()
         } label: {
           Image(systemName: "xmark.circle.fill")
-            .font(.pmCaption)
+            .font(.system(size: 12))
             .foregroundStyle(Color.pmgray.n400)
         }
         .buttonStyle(.plain)
       }
     }
+    .opacity(isAlertPassed ? 0.7 : 1.0)
   }
 
   // MARK: - Weather Helpers
