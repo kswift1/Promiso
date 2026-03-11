@@ -9,8 +9,11 @@ import ResourceKit
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
+  let recurringSummaries: [HomeModels.RecurringEventSummary]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
+
+  @State private var isRecurringExpanded = false
 
   /// 표시할 최대 개수
   private let maxDisplayCount = 5
@@ -21,7 +24,7 @@ struct UpcomingSection: View {
       sectionHeader
 
       // 카드들 (날짜별 그룹)
-      if items.isEmpty {
+      if items.isEmpty && recurringSummaries.isEmpty {
         emptyState
       } else {
         VStack(spacing: 10) {
@@ -32,6 +35,11 @@ struct UpcomingSection: View {
               weatherCache: weatherCache,
               onItemTap: onItemTap
             )
+          }
+
+          // 반복 일정 요약
+          if !recurringSummaries.isEmpty {
+            recurringEventsBadge
           }
         }
       }
@@ -65,11 +73,84 @@ struct UpcomingSection: View {
     }
   }
 
+  // MARK: - Recurring Events Badge
+
+  private var recurringEventsBadge: some View {
+    VStack(spacing: 0) {
+      // 헤더 (탭하면 펼침/접힘)
+      Button {
+        withAnimation(.easeInOut(duration: 0.2)) {
+          isRecurringExpanded.toggle()
+        }
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "arrow.trianglehead.2.counterclockwise")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Text("반복 일정 \(recurringSummaries.count)개")
+            .font(.pmCaption)
+            .foregroundStyle(.secondary)
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.tertiary)
+            .rotationEffect(.degrees(isRecurringExpanded ? 90 : 0))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+
+      // 펼침 시 종류별 목록
+      if isRecurringExpanded {
+        VStack(spacing: 0) {
+          Divider()
+            .padding(.horizontal, 14)
+
+          ForEach(Array(recurringSummaries.enumerated()), id: \.element.id) { index, summary in
+            HStack(spacing: 8) {
+              Text(summary.emoji)
+                .font(.pmCaption)
+
+              Text(summary.title)
+                .font(.pmCaption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+              Text("·")
+                .font(.pmCaption)
+                .foregroundStyle(.tertiary)
+
+              Text(summary.recurrenceText)
+                .font(.pmCaption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+              Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+
+            if index < recurringSummaries.count - 1 {
+              Divider()
+                .padding(.horizontal, 14)
+            }
+          }
+        }
+      }
+    }
+    .background(Color.pmindigo.n500.opacity(0.03))
+    .adaptiveGlassCard(cornerRadius: 10)
+  }
+
   // MARK: - Empty State
 
   private var emptyState: some View {
     HStack(spacing: 14) {
-      // 캘린더 아이콘
       ZStack {
         Circle()
           .fill(Color.pmindigo.n500.opacity(0.1))
@@ -80,7 +161,6 @@ struct UpcomingSection: View {
           .foregroundStyle(Color.pmindigo.n500)
       }
 
-      // 텍스트
       VStack(alignment: .leading, spacing: 2) {
         Text(LocalizedStrings.Home.noUpcomingTitle)
           .font(.pmSubheadlineSemibold)
@@ -128,7 +208,7 @@ private struct DateGroup {
 
 // MARK: - Preview
 
-#Preview("일정 있음") {
+#Preview("일정 + 반복") {
   UpcomingSection(
     items: [
       .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
@@ -138,10 +218,12 @@ private struct DateGroup {
         emoji: "🦷",
         startAt: Date().addingTimeInterval(90000)
       )),
-      .promise(PromiseModel.mock(id: "2", title: "저녁 식사", startAt: Date().addingTimeInterval(172800))),
-      .promise(PromiseModel.mock(id: "3", title: "영화 관람", startAt: Date().addingTimeInterval(259200)))
     ],
     weatherCache: [:],
+    recurringSummaries: [
+      .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
+      .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
+    ],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )
@@ -153,6 +235,23 @@ private struct DateGroup {
   UpcomingSection(
     items: [],
     weatherCache: [:],
+    recurringSummaries: [],
+    onItemTap: { _ in },
+    onSeeAllTap: {}
+  )
+  .padding()
+  .auroraBackground()
+}
+
+#Preview("반복 일정만") {
+  UpcomingSection(
+    items: [],
+    weatherCache: [:],
+    recurringSummaries: [
+      .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
+      .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
+      .init(recurringEventId: "r3", title: "영어 수업", emoji: "📚", recurrenceText: "매주 화, 목", nextInstanceDate: Date().addingTimeInterval(259200)),
+    ],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )

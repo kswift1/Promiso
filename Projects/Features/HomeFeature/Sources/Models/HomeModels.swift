@@ -185,6 +185,21 @@ extension HomeModels {
   }
 }
 
+// MARK: - Recurring Event Summary
+
+extension HomeModels {
+  /// 반복 일정 시리즈 요약 (다가오는 일정 섹션용)
+  public struct RecurringEventSummary: Equatable, Identifiable {
+    public let recurringEventId: String
+    public let title: String
+    public let emoji: String
+    public let recurrenceText: String
+    public let nextInstanceDate: Date
+
+    public var id: String { recurringEventId }
+  }
+}
+
 // MARK: - Departure Alert
 
 extension HomeModels {
