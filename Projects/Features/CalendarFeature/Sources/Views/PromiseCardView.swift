@@ -687,7 +687,7 @@ struct CompactDayRow: View {
               .foregroundColor(Color.pmindigo.n500)
           }
           HStack(spacing: 4) {
-            Text(recurringEventTimeText(event))
+            Text(recurringEventTimeRow(event))
               .font(.system(size: 12))
               .foregroundColor(.secondary)
             if let location = event.location {
