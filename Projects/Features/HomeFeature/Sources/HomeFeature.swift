@@ -1683,31 +1683,44 @@ extension Home {
             state.departureTransportData = .idle
             let notificationId = "departure_alert_\(scheduleItemId)"
             let timeText = item.startAt.formattedTime
-            let title: String
-            let body: String
-            switch Int.random(in: 0...2) {
-            case 0:
-              title = "\(item.title), 슬슬 출발할 시간이에요"
-              if bufferMinutes > 0 {
-                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분 · \(bufferMinutes)분 여유를 두었어요"
-              } else {
-                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분 걸려요"
-              }
-            case 1:
-              title = "\(item.title), 이제 출발해볼까요?"
-              if bufferMinutes > 0 {
-                body = "\(timeText) 약속 · \(transportType.displayName) 약 \(durationMinutes)분 · 여유 \(bufferMinutes)분 포함"
-              } else {
-                body = "\(timeText) 약속 · \(transportType.displayName)로 약 \(durationMinutes)분 거리예요"
-              }
-            default:
-              title = "\(item.title), 슬슬 준비해볼까요?"
-              if bufferMinutes > 0 {
-                body = "\(timeText)까지 약 \(durationMinutes)분 거리예요 · 여유 \(bufferMinutes)분 챙겼어요"
-              } else {
-                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분이면 도착해요"
-              }
-            }
+            let transport = transportType.displayName
+
+            typealias NotificationTemplate = (
+              title: (String) -> String,
+              body: (String, String, Int, Int) -> String
+            )
+
+            let templates: [NotificationTemplate] = [
+              (
+                title: { "\($0), 슬슬 출발할 시간이에요" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 · \(buffer)분 여유를 두었어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분 걸려요"
+                }
+              ),
+              (
+                title: { "\($0), 이제 출발해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time) 약속 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
+                    : "\(time) 약속 · \(trans)로 약 \(duration)분 거리예요"
+                }
+              ),
+              (
+                title: { "\($0), 슬슬 준비해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 거리예요 · 여유 \(buffer)분 챙겼어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분이면 도착해요"
+                }
+              ),
+            ]
+
+            // swiftlint:disable:next force_unwrapping
+            let template = templates.randomElement()!
+            let title = template.title(item.title)
+            let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
             let triggerDate = departureTime
             return .run { [localNotificationClient, userDefaultsClient] send in
               Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
