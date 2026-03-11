@@ -1682,8 +1682,32 @@ extension Home {
             state.departureAlertItem = nil
             state.departureTransportData = .idle
             let notificationId = "departure_alert_\(scheduleItemId)"
-            let title = "지금 출발하세요!"
-            let body = "\(item.title) · \(transportType.displayName) 약 \(durationMinutes)분 소요"
+            let timeText = item.startAt.formattedTime
+            let title: String
+            let body: String
+            switch Int.random(in: 0...2) {
+            case 0:
+              title = "\(item.title), 슬슬 출발할 시간이에요"
+              if bufferMinutes > 0 {
+                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분 · \(bufferMinutes)분 여유를 두었어요"
+              } else {
+                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분 걸려요"
+              }
+            case 1:
+              title = "\(item.title), 이제 출발해볼까요?"
+              if bufferMinutes > 0 {
+                body = "\(timeText) 약속 · \(transportType.displayName) 약 \(durationMinutes)분 · 여유 \(bufferMinutes)분 포함"
+              } else {
+                body = "\(timeText) 약속 · \(transportType.displayName)로 약 \(durationMinutes)분 거리예요"
+              }
+            default:
+              title = "\(item.title), 슬슬 준비해볼까요?"
+              if bufferMinutes > 0 {
+                body = "\(timeText)까지 약 \(durationMinutes)분 거리예요 · 여유 \(bufferMinutes)분 챙겼어요"
+              } else {
+                body = "\(timeText)까지 \(transportType.displayName)로 약 \(durationMinutes)분이면 도착해요"
+              }
+            }
             let triggerDate = departureTime
             return .run { [localNotificationClient, userDefaultsClient] send in
               Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
