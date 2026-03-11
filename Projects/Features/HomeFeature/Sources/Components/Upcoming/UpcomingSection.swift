@@ -111,7 +111,7 @@ struct UpcomingSection: View {
           Divider()
             .padding(.horizontal, 14)
 
-          ForEach(Array(recurringSummaries.enumerated()), id: \.element.id) { index, summary in
+          ForEach(recurringSummaries) { summary in
             HStack(spacing: 8) {
               Text(summary.emoji)
                 .font(.pmCaption)
@@ -135,7 +135,7 @@ struct UpcomingSection: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
 
-            if index < recurringSummaries.count - 1 {
+            if summary.id != recurringSummaries.last?.id {
               Divider()
                 .padding(.horizontal, 14)
             }
