@@ -49,7 +49,7 @@ interface TravelSegment {
 interface UserSettingsDocument {
   proSettings?: {
     briefing?: {
-      preferredTransport?: string;  // 하위 호환
+      preferredTransport?: string; // 하위 호환
       availableTransports?: string[];
     };
   };
@@ -738,7 +738,7 @@ function buildPrompt(
           }
           line += `\n  도보 약 ${t.walkingMinutes}분`;
           lines.push(line);
-          continue;  // 이미 line을 push했으므로 아래 push 스킵
+          continue; // 이미 line을 push했으므로 아래 push 스킵
         }
 
         parts.push(`도보 약 ${t.walkingMinutes}분`);
@@ -847,9 +847,9 @@ export async function generateBriefingInternal(params: {
     const briefingSettings = settingsData?.proSettings?.briefing;
     const availableTransports: string[] =
       briefingSettings?.availableTransports ??
-      (briefingSettings?.preferredTransport === "car" ? ["car"] :
-       briefingSettings?.preferredTransport === "transit" ? ["transit"] :
-       ["transit", "car"]);
+        (briefingSettings?.preferredTransport === "car" ? ["car"] :
+          briefingSettings?.preferredTransport === "transit" ? ["transit"] :
+            ["transit", "car"]);
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
