@@ -19112,19 +19112,19 @@
       }
     },
     "settings.scheduleTabModeDefault" : {
-      "comment" : "기본 모드",
+      "comment" : "일정 기본 모드",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default Mode"
+            "value" : "Schedule Default Mode"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기본 모드"
+            "value" : "일정 기본 모드"
           }
         }
       }
@@ -19166,19 +19166,19 @@
       }
     },
     "settings.scheduleTabModeHint" : {
-      "comment" : "일정 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.",
+      "comment" : "앱 시작 시 일정 탭의 기본 모드를 설정합니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose the default mode to display when opening the schedule tab."
+            "value" : "Set the default mode for the schedule tab when opening the app"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "일정 탭을 열었을 때 기본으로 표시할 모드를 선택합니다."
+            "value" : "앱 시작 시 일정 탭의 기본 모드를 설정합니다"
           }
         }
       }
