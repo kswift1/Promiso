@@ -56,8 +56,8 @@ public enum RecurringEventExpander {
   /// 반복 일정을 특정 날짜 범위 내의 인스턴스로 확장
   /// - Parameters:
   ///   - event: 반복 일정 모델
-  ///   - rangeStart: 범위 시작일
-  ///   - rangeEnd: 범위 종료일
+  ///   - rangeStart: 범위 시작일 (포함)
+  ///   - rangeEnd: 범위 종료일 (미포함, half-open interval)
   /// - Returns: 확장된 인스턴스 배열 (startAt 오름차순)
   public static func expand(
     event: RecurringPersonalEventModel,
@@ -71,9 +71,11 @@ public enum RecurringEventExpander {
     let effectiveStart = max(event.seriesStartDate, rangeStart)
 
     // 실제 종료일: seriesEndDate와 rangeEnd 중 이른 쪽
+    // seriesEndDate는 inclusive이므로 +1일하여 exclusive 범위로 변환
     let effectiveEnd: Date
     if let seriesEnd = recurrence.seriesEndDate {
-      effectiveEnd = min(seriesEnd, rangeEnd)
+      let dayAfterSeriesEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: seriesEnd)) ?? seriesEnd
+      effectiveEnd = min(dayAfterSeriesEnd, rangeEnd)
     } else {
       effectiveEnd = rangeEnd
     }
@@ -185,7 +187,7 @@ public enum RecurringEventExpander {
     var current = calendar.startOfDay(for: start)
     let endDay = calendar.startOfDay(for: end)
 
-    while current <= endDay {
+    while current < endDay {
       dates.append(current)
       guard let next = calendar.date(byAdding: .day, value: 1, to: current) else { break }
       current = next
@@ -203,7 +205,7 @@ public enum RecurringEventExpander {
     var current = calendar.startOfDay(for: start)
     let endDay = calendar.startOfDay(for: end)
 
-    while current <= endDay {
+    while current < endDay {
       let weekday = calendar.component(.weekday, from: current)
       if weekdays.contains(weekday) {
         dates.append(current)
@@ -222,6 +224,7 @@ public enum RecurringEventExpander {
   ) -> [Date] {
     var dates: [Date] = []
     var components = calendar.dateComponents([.year, .month], from: start)
+    let startDay = calendar.startOfDay(for: start)
     let endDay = calendar.startOfDay(for: end)
 
     // 최대 24개월 반복 (안전장치)
@@ -229,15 +232,19 @@ public enum RecurringEventExpander {
       components.day = dayOfMonth
       if let date = calendar.date(from: components) {
         let startOfDate = calendar.startOfDay(for: date)
-        if startOfDate >= calendar.startOfDay(for: start) && startOfDate <= endDay {
-          dates.append(startOfDate)
+        // 월 오버플로우 방지 (예: 2월 31일 → 3월 3일 무시)
+        let generatedMonth = calendar.component(.month, from: startOfDate)
+        if generatedMonth == (components.month ?? 0) {
+          if startOfDate >= startDay && startOfDate < endDay {
+            dates.append(startOfDate)
+          }
+          if startOfDate >= endDay { break }
         }
-        // 이미 범위를 넘었으면 종료
-        if startOfDate > endDay { break }
       }
-      // 다음 달로 이동
-      guard let nextMonth = calendar.date(from: components),
-            let advanced = calendar.date(byAdding: .month, value: 1, to: nextMonth) else { break }
+      // 다음 달로 이동 (day=1로 오버플로우 방지)
+      components.day = 1
+      guard let baseDate = calendar.date(from: components),
+            let advanced = calendar.date(byAdding: .month, value: 1, to: baseDate) else { break }
       components = calendar.dateComponents([.year, .month], from: advanced)
     }
     return dates

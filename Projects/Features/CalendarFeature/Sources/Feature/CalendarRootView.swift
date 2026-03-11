@@ -469,6 +469,7 @@ extension CalendarFeature {
       let dayPromises = store.promisesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
+      let dayRecurringEvents = store.recurringEventsByDate[dateKey] ?? []
       let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
@@ -477,6 +478,7 @@ extension CalendarFeature {
         promises: dayPromises,
         calendarEvents: dayEvents,
         personalEvents: dayPersonalEvents,
+        recurringPersonalEvents: dayRecurringEvents,
         isSelected: isSelected,
         currentUserId: store.currentUserId,
         holidayName: holidayName,
@@ -492,6 +494,9 @@ extension CalendarFeature {
         },
         onCalendarEventTap: { event in
           store.send(.view(.scheduleItemTapped(.calendarEvent(event))))
+        },
+        onRecurringPersonalEventTap: { event in
+          store.send(.view(.scheduleItemTapped(.recurringPersonalEvent(event))))
         },
         onCreatePersonalEvent: {
           store.send(.view(.dayLongPressCreatePersonalEvent(date)))
