@@ -1723,6 +1723,20 @@ extension BriefingSettings {
     }
 
     public var body: some ReducerOf<Self> {
+      let saveNotificationHour = { [hapticFeedback, authClient, userSettingsClient] (hour: Int?) -> Effect<Action> in
+        .run { send in
+          await hapticFeedback.selection()
+          guard let userId = await authClient.currentUser()?.uid else { return }
+          do {
+            try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
+            await send(.internal(.notificationHourSaved))
+          } catch {
+            await send(.internal(.saveFailed))
+          }
+        }
+        .cancellable(id: CancelID.save, cancelInFlight: true)
+      }
+
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
@@ -1791,31 +1805,11 @@ extension BriefingSettings {
             } else {
               state.notificationHour = nil
             }
-            let hour = state.notificationHour
-            return .run { [hour] send in
-              await hapticFeedback.selection()
-              guard let userId = await authClient.currentUser()?.uid else { return }
-              do {
-                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
-                await send(.internal(.notificationHourSaved))
-              } catch {
-                await send(.internal(.saveFailed))
-              }
-            }
-            .cancellable(id: CancelID.save, cancelInFlight: true)
+            return saveNotificationHour(state.notificationHour)
 
           case .notificationHourChanged(let hour):
             state.notificationHour = hour
-            return .run { [hour] send in
-              guard let userId = await authClient.currentUser()?.uid else { return }
-              do {
-                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
-                await send(.internal(.notificationHourSaved))
-              } catch {
-                await send(.internal(.saveFailed))
-              }
-            }
-            .cancellable(id: CancelID.save, cancelInFlight: true)
+            return saveNotificationHour(hour)
 
           case .notificationPermissionBannerTapped:
             if state.notificationAuthStatus == .denied {
@@ -1885,18 +1879,7 @@ extension BriefingSettings {
           if isGranted {
             state.notificationAuthStatus = .authorized
             state.notificationHour = 8
-            let hour = state.notificationHour
-            return .run { [hour] send in
-              await hapticFeedback.selection()
-              guard let userId = await authClient.currentUser()?.uid else { return }
-              do {
-                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
-                await send(.internal(.notificationHourSaved))
-              } catch {
-                await send(.internal(.saveFailed))
-              }
-            }
-            .cancellable(id: CancelID.save, cancelInFlight: true)
+            return saveNotificationHour(state.notificationHour)
           } else {
             return .run { [notificationClient] send in
               let status = await notificationClient.getAuthorizationStatus()
