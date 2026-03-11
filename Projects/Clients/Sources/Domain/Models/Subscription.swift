@@ -13,8 +13,7 @@ public enum SubscriptionProductType: String, Sendable, CaseIterable {
   /// - stage: com.promiso.stage.pro.monthly
   /// - prod: com.promiso.pro.monthly
   public var productId: String {
-    let bundleId = Bundle.main.bundleIdentifier ?? "com.promiso"
-    return "\(bundleId).pro.\(rawValue)"
+    "\(Self.bundleIdPrefix).pro.\(rawValue)"
   }
 
   /// 모든 Product ID 목록 (StoreKit 조회용)
@@ -29,6 +28,17 @@ public enum SubscriptionProductType: String, Sendable, CaseIterable {
     }
     self = match
   }
+
+  /// 앱 번들 ID prefix (com.promiso / com.promiso.dev / com.promiso.stage)
+  /// 테스트 환경에서도 안정적으로 동작하도록 알려진 번들 ID만 허용
+  private static let bundleIdPrefix: String = {
+    let knownPrefixes = ["com.promiso.dev", "com.promiso.stage", "com.promiso"]
+    if let bundleId = Bundle.main.bundleIdentifier,
+       knownPrefixes.contains(bundleId) {
+      return bundleId
+    }
+    return "com.promiso"
+  }()
 }
 
 extension SubscriptionProductType {
