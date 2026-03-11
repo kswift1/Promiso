@@ -21777,7 +21777,7 @@
 
     },
     "tab.calendar" : {
-      "comment" : "달력",
+      "comment" : "캘린더",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21789,7 +21789,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "달력"
+            "value" : "캘린더"
           }
         }
       }
