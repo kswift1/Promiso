@@ -1,6 +1,7 @@
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import SharedFeature
 import SwiftUI
 
 // MARK: - DateTimeSettings Namespace
@@ -1660,6 +1661,7 @@ extension BriefingSettings {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -1672,6 +1674,8 @@ extension BriefingSettings {
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
       var selectedTransports: Set<AvailableTransport> = [.transit, .car]
+      var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
+      @Presents var notificationPermission: NotificationPermission.Feature.State?
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1681,10 +1685,11 @@ extension BriefingSettings {
     }
 
     @CasePathable
-    public enum Action: Equatable, Sendable {
+    public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
     }
 
     @CasePathable
@@ -1694,17 +1699,21 @@ extension BriefingSettings {
       case transportToggled(AvailableTransport)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
+      case notificationPermissionBannerTapped
+      case onSceneActive
       case proFeatureTapped
     }
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
       case settingsLoaded(BriefingStyle, Int?, Set<AvailableTransport>)
+      case notificationAuthStatusLoaded(NotificationAuthorizationStatus)
       case styleSaved
       case notificationHourSaved
       case saveFailed
     }
 
+    @CasePathable
     public enum Delegate: Equatable, Sendable {
       case proPlanRequested
     }
@@ -1722,8 +1731,10 @@ extension BriefingSettings {
             guard !state.hasLoaded else { return .none }
             state.isLoading = true
             return .run { send in
+              async let authStatus = notificationClient.getAuthorizationStatus()
               guard let userId = await authClient.currentUser()?.uid else {
                 await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.notificationAuthStatusLoaded(authStatus)))
                 return
               }
               do {
@@ -1732,6 +1743,7 @@ extension BriefingSettings {
               } catch {
                 await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
               }
+              await send(.internal(.notificationAuthStatusLoaded(authStatus)))
             }
 
           case .styleSelected(let style):
@@ -1771,6 +1783,10 @@ extension BriefingSettings {
 
           case .notificationToggled(let enabled):
             if enabled {
+              guard state.notificationAuthStatus.isGranted else {
+                state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
+                return .none
+              }
               state.notificationHour = 8
             } else {
               state.notificationHour = nil
@@ -1801,6 +1817,22 @@ extension BriefingSettings {
             }
             .cancellable(id: CancelID.save, cancelInFlight: true)
 
+          case .notificationPermissionBannerTapped:
+            if state.notificationAuthStatus == .denied {
+              return .run { [notificationClient] _ in
+                await notificationClient.openNotificationSettings()
+              }
+            } else {
+              state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
+              return .none
+            }
+
+          case .onSceneActive:
+            return .run { [notificationClient] send in
+              let status = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusLoaded(status)))
+            }
+
           case .proFeatureTapped:
             guard !state.isPro else { return .none }
             return .run { send in
@@ -1818,6 +1850,10 @@ extension BriefingSettings {
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
             state.isLoading = false
             state.hasLoaded = true
+            return .none
+
+          case .notificationAuthStatusLoaded(let status):
+            state.notificationAuthStatus = status
             return .none
 
           case .styleSaved, .notificationHourSaved:
@@ -1842,7 +1878,42 @@ extension BriefingSettings {
 
         case .delegate:
           return .none
+
+        // MARK: - NotificationPermission
+
+        case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
+          if isGranted {
+            state.notificationAuthStatus = .authorized
+            state.notificationHour = 8
+            let hour = state.notificationHour
+            return .run { [hour] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
+                await send(.internal(.notificationHourSaved))
+              } catch {
+                await send(.internal(.saveFailed))
+              }
+            }
+            .cancellable(id: CancelID.save, cancelInFlight: true)
+          } else {
+            return .run { [notificationClient] send in
+              let status = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusLoaded(status)))
+            }
+          }
+
+        case .notificationPermission(.presented(.delegate(.dismissed))):
+          state.notificationPermission = nil
+          return .none
+
+        case .notificationPermission:
+          return .none
         }
+      }
+      .ifLet(\.$notificationPermission, action: \.notificationPermission) {
+        NotificationPermission.Feature()
       }
     }
   }
@@ -1851,6 +1922,7 @@ extension BriefingSettings {
 
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -1888,6 +1960,20 @@ extension BriefingSettings {
       }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        if newPhase == .active {
+          store.send(.view(.onSceneActive))
+        }
+      }
+      .sheet(
+        item: $store.scope(
+          state: \.notificationPermission,
+          action: \.notificationPermission
+        )
+      ) { permissionStore in
+        NotificationPermission.View(store: permissionStore)
+          .presentationDetents([.large])
       }
     }
 
@@ -2096,6 +2182,33 @@ extension BriefingSettings {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
+          }
+
+          if store.isNotificationEnabled && store.isPro && !store.notificationAuthStatus.isGranted {
+            Divider()
+              .padding(.leading, 16)
+
+            HStack(spacing: 8) {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.pmwarning.n500)
+
+              Text(LocalizedStrings.SettingsStrings.briefingNotificationPermissionRequired)
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
+
+              Spacer()
+
+              Button {
+                store.send(.view(.notificationPermissionBannerTapped))
+              } label: {
+                Text(LocalizedStrings.Shared.goToSettings)
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
           }
         }
         .adaptiveGlassCard()
