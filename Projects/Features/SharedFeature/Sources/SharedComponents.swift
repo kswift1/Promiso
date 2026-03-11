@@ -21,21 +21,21 @@ public struct ShareSheet: UIViewControllerRepresentable {
   public func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-// MARK: - PromiseShareSheet
+// MARK: - ScheduleShareSheet
 
-public struct PromiseShareSheet: View {
-  let promise: PromiseModel
+public struct ScheduleShareSheet: View {
+  let schedule: ScheduleModel
   let isKakaoSharing: Bool
   let onKakaoShareTapped: () -> Void
   let onSystemShareTapped: () -> Void
 
   public init(
-    promise: PromiseModel,
+    schedule: ScheduleModel,
     isKakaoSharing: Bool,
     onKakaoShareTapped: @escaping () -> Void,
     onSystemShareTapped: @escaping () -> Void
   ) {
-    self.promise = promise
+    self.schedule = schedule
     self.isKakaoSharing = isKakaoSharing
     self.onKakaoShareTapped = onKakaoShareTapped
     self.onSystemShareTapped = onSystemShareTapped
@@ -45,10 +45,10 @@ public struct PromiseShareSheet: View {
     VStack(spacing: 20) {
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 4) {
-          Text(LocalizedStrings.PromiseShare.title)
+          Text(LocalizedStrings.ScheduleShare.title)
             .font(.system(size: 20, weight: .bold))
 
-          Text(LocalizedStrings.PromiseShare.subtitle)
+          Text(LocalizedStrings.ScheduleShare.subtitle)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
         }
@@ -58,19 +58,19 @@ public struct PromiseShareSheet: View {
       }
 
       HStack(spacing: 12) {
-        Text(promise.displayEmoji)
+        Text(schedule.displayEmoji)
           .font(.system(size: 32))
 
         VStack(alignment: .leading, spacing: 4) {
-          Text(promise.title)
+          Text(schedule.title)
             .font(.system(size: 16, weight: .semibold))
             .lineLimit(1)
 
-          Text("\(promise.dateText) \(promise.timeText)")
+          Text("\(schedule.dateText) \(schedule.timeText)")
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
 
-          if let locationName = promise.location?.name {
+          if let locationName = schedule.location?.name {
             Text(locationName)
               .font(.system(size: 13))
               .foregroundStyle(.secondary)
@@ -93,7 +93,7 @@ public struct PromiseShareSheet: View {
             .resizable()
             .scaledToFit()
             .frame(width: 20, height: 20)
-          Text(LocalizedStrings.PromiseShare.kakaoButton)
+          Text(LocalizedStrings.ScheduleShare.kakaoButton)
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
@@ -111,7 +111,7 @@ public struct PromiseShareSheet: View {
       } label: {
         HStack(spacing: 8) {
           Image(systemName: "square.and.arrow.up")
-          Text(LocalizedStrings.PromiseShare.systemButton)
+          Text(LocalizedStrings.ScheduleShare.systemButton)
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
@@ -140,9 +140,9 @@ public struct ShareTextItem: Identifiable {
   }
 }
 
-// MARK: - PromiseResponseStatus Extensions
+// MARK: - ScheduleResponseStatus Extensions
 
-public extension PromiseResponseStatus {
+public extension ScheduleResponseStatus {
   var iconName: String {
     switch self {
     case .needResponse: return "exclamationmark.circle.fill"

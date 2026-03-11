@@ -308,7 +308,7 @@ struct AppEntryFeatureTests {
   @Test("profileCheckResponse 기존 사용자면 메인 전환 및 pending 딥링크 처리")
   func profileCheck_existingUser_routesToMainAndProcessesPendingDeeplink() async {
     var state = AppEntry.Feature.State()
-    state.pendingDeeplink = .livePromise(promiseId: "p-1")
+    state.pendingDeeplink = .liveSchedule(scheduleId: "p-1")
     state.splash = .visible
 
     let user = makeUser(id: "user-main", nickname: "기존유저")
@@ -329,7 +329,7 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("profileCheckResponse 신규 사용자면 profile setup으로 전환")
@@ -398,7 +398,7 @@ struct AppEntryFeatureTests {
   func notificationPermissionChecked_authorized_routesMainAndPendingDeeplink() async {
     let user = makeUser(id: "permission-ok", nickname: "권한완료")
     var state = AppEntry.Feature.State()
-    state.pendingDeeplink = .livePromise(promiseId: "live-1")
+    state.pendingDeeplink = .liveSchedule(scheduleId: "live-1")
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -414,7 +414,7 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("notificationPermissionChecked 미허용 시 온보딩 표시")
@@ -767,11 +767,11 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "p-1") }
     }
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!))) {
-      $0.pendingDeeplink = .livePromise(promiseId: "p-1")
+      $0.pendingDeeplink = .liveSchedule(scheduleId: "p-1")
     }
   }
 
@@ -793,12 +793,12 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "p-1") }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!)))
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("pushNotificationTapped 시 메인 아니면 pendingDeeplink에 저장")

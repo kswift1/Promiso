@@ -615,8 +615,8 @@ struct GroupColorPickerView: View {
         Divider()
           .padding(.horizontal, 8)
 
-        // 2. 약속 카드 미리보기
-        promiseCardPreview
+        // 2. 일정 카드 미리보기
+        scheduleCardPreview
       }
       .padding(16)
       .adaptiveGlassCard()
@@ -662,12 +662,12 @@ struct GroupColorPickerView: View {
     }
   }
 
-  /// 약속 카드 미리보기 - 약속 카드 왼쪽에 색상 바로 표시
-  private var promiseCardPreview: some View {
+  /// 일정 카드 미리보기 - 일정 카드 왼쪽에 색상 바로 표시
+  private var scheduleCardPreview: some View {
     HStack(spacing: 16) {
       // 미리보기 라벨
       VStack(alignment: .leading, spacing: 4) {
-        Text(LocalizedStrings.GroupSettingsView.groupColorPromiseCard)
+        Text(LocalizedStrings.GroupSettingsView.groupColorScheduleCard)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
         Text(LocalizedStrings.GroupSettingsView.colorPreviewCardDescription)
@@ -677,7 +677,7 @@ struct GroupColorPickerView: View {
 
       Spacer()
 
-      // 미니 약속 카드 미리보기
+      // 미니 일정 카드 미리보기
       HStack(spacing: 0) {
         // 왼쪽 색상 바
         RoundedRectangle(cornerRadius: 2)

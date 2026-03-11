@@ -11,7 +11,7 @@ struct DayTimelineView: View {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let calendarMode: CalendarMode
@@ -197,7 +197,7 @@ struct DayTimelineView: View {
   // MARK: - Current Time Indicator
 
   private var isToday: Bool {
-    Calendar.promiseDisplay.isDateInToday(displayDate)
+    Calendar.scheduleDisplay.isDateInToday(displayDate)
   }
 
   private var currentTimeIndicator: some View {
@@ -300,7 +300,7 @@ struct DayTimelineView: View {
   /// 일정 아이템의 시작 시간을 10분 슬롯으로 변환
   private func slotForItem(_ item: HomeModels.ScheduleItem) -> Int {
     let start = clampedStartAt(for: item)
-    let cal = Calendar.promiseDisplay
+    let cal = Calendar.scheduleDisplay
     let hour = cal.component(.hour, from: start)
     let minute = cal.component(.minute, from: start)
     return hour * 6 + minute / 10
@@ -386,8 +386,8 @@ struct DayTimelineView: View {
               .foregroundStyle(.primary)
               .lineLimit(1)
 
-            if case .promise(let p) = item {
-              let status = promiseResponseStatus(p)
+            if case .schedule(let p) = item {
+              let status = scheduleResponseStatus(p)
               Text(statusText(for: status))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(statusColor(for: status))
@@ -452,19 +452,19 @@ struct DayTimelineView: View {
     .buttonStyle(.plain)
     .contextMenu {
       switch item {
-      case .promise(let promise):
-        // Host인 경우 수정/삭제 옵션 (PromiseCard 패턴)
-        if promise.isHost(userId: currentUserId) {
+      case .schedule(let schedule):
+        // Host인 경우 수정/삭제 옵션 (ScheduleCard 패턴)
+        if schedule.isHost(userId: currentUserId) {
           Button {
             onEditScheduleItem?(item)
           } label: {
-            Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
+            Label(LocalizedStrings.ScheduleCard.editSchedule, systemImage: "pencil")
           }
 
           Button(role: .destructive) {
             onDeleteScheduleItem?(item)
           } label: {
-            Label(LocalizedStrings.PromiseCard.deletePromise, systemImage: "trash")
+            Label(LocalizedStrings.ScheduleCard.deleteSchedule, systemImage: "trash")
           }
         }
 
@@ -472,13 +472,13 @@ struct DayTimelineView: View {
         Button {
           onScheduleItemTapped(item)
         } label: {
-          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+          Label(LocalizedStrings.ScheduleCard.viewDetail, systemImage: "info.circle")
         }
 
         Button {
           onShareScheduleItem?(item)
         } label: {
-          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
+          Label(LocalizedStrings.ScheduleCard.share, systemImage: "square.and.arrow.up")
         }
 
       case .personalEvent:
@@ -568,7 +568,7 @@ struct DayTimelineView: View {
 
   /// 시간 기반 y 좌표 계산
   private func yOffset(for date: Date) -> CGFloat {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let hour = calendar.component(.hour, from: date)
     let minute = calendar.component(.minute, from: date)
     return (CGFloat(hour) + CGFloat(minute) / 60.0) * hourHeight
@@ -576,11 +576,11 @@ struct DayTimelineView: View {
 
   /// 해당 날짜의 시작/종료 시각
   private var dayStart: Date {
-    Calendar.promiseDisplay.startOfDay(for: displayDate)
+    Calendar.scheduleDisplay.startOfDay(for: displayDate)
   }
 
   private var dayEnd: Date {
-    Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+    Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
   }
 
   /// multi-day 일정의 시작 시간을 해당 날짜로 클램핑
@@ -620,7 +620,7 @@ struct DayTimelineView: View {
 
   private func barColor(for item: HomeModels.ScheduleItem) -> Color {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return groupColorMap[p.groupId] ?? Color.pmindigo.n500
     case .personalEvent:
       return Color.pminfo.n500
@@ -631,7 +631,7 @@ struct DayTimelineView: View {
 
   private func groupName(for item: HomeModels.ScheduleItem) -> String? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.group?.name
     case .personalEvent:
       return nil
@@ -643,7 +643,7 @@ struct DayTimelineView: View {
   @ViewBuilder
   private func weatherBadge(for item: HomeModels.ScheduleItem) -> some View {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       if let weatherInfo = weatherCache[p.id],
          let forecast = weatherInfo.forecast(for: p.startAt) {
         WeatherBadge(
@@ -677,13 +677,13 @@ struct DayTimelineView: View {
     Formatters.dateTime.string(from: date)
   }
 
-  private func promiseResponseStatus(_ promise: PromiseModel) -> PromiseResponseStatus {
-    let memberCount = promise.group?.memberIds.count
+  private func scheduleResponseStatus(_ schedule: ScheduleModel) -> ScheduleResponseStatus {
+    let memberCount = schedule.group?.memberIds.count
     let totalMembers = (memberCount ?? 0) > 0 ? memberCount : nil
-    return promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+    return schedule.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
   }
 
-  private func statusColor(for status: PromiseResponseStatus) -> Color {
+  private func statusColor(for status: ScheduleResponseStatus) -> Color {
     switch status {
     case .needResponse: return Color.pmwarning.n500
     case .responded:    return Color.pmwarning.n600
@@ -693,7 +693,7 @@ struct DayTimelineView: View {
     }
   }
 
-  private func statusText(for status: PromiseResponseStatus) -> String {
+  private func statusText(for status: ScheduleResponseStatus) -> String {
     switch status {
     case .needResponse: return "응답 필요"
     case .responded:    return "투표 완료"
@@ -705,7 +705,7 @@ struct DayTimelineView: View {
 
   private func itemLocation(for item: HomeModels.ScheduleItem) -> String? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.location?.name
     case .personalEvent(let e):
       return e.location?.name
@@ -717,7 +717,7 @@ struct DayTimelineView: View {
   // MARK: - Formatters
 
   private enum Formatters {
-    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+    static let displayTimeZone = Calendar.scheduleDisplay.timeZone
     static let time: DateFormatter = {
       let f = DateFormatter()
       f.locale = Locale(identifier: "en_US_POSIX")
@@ -739,11 +739,11 @@ struct DayTimelineView: View {
 // MARK: - Preview
 
 #Preview("일정 있음") {
-  let calendar = Calendar.promiseDisplay
+  let calendar = Calendar.scheduleDisplay
   let today = Date()
 
   let items: [HomeModels.ScheduleItem] = [
-    .promise(PromiseModel.mock(
+    .schedule(ScheduleModel.mock(
       id: "1",
       title: "팀 미팅",
       emoji: "🤝",
@@ -766,9 +766,9 @@ struct DayTimelineView: View {
       startAt: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: today)!,
       endAt: calendar.date(bySettingHour: 11, minute: 30, second: 0, of: today)
     )),
-    .promise(PromiseModel.mock(
+    .schedule(ScheduleModel.mock(
       id: "3",
-      title: "점심 약속",
+      title: "점심 일정",
       emoji: "🍽️",
       hostId: "host1",
       groupId: "g2",
@@ -790,7 +790,7 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreateSchedule: {},
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     calendarMode: .weekly,
@@ -809,7 +809,7 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreateSchedule: {},
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     calendarMode: .weekly,

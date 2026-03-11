@@ -9,10 +9,10 @@ import ResourceKit
 
 /// 잠금화면 라이브액티비티 배너 뷰
 struct LockScreenBannerView: View {
-  let context: ActivityViewContext<PromiseActivityAttributes>
+  let context: ActivityViewContext<ScheduleActivityAttributes>
 
-  private var state: PromiseActivityAttributes.ContentState { context.state }
-  private var attrs: PromiseActivityAttributes { context.attributes }
+  private var state: ScheduleActivityAttributes.ContentState { context.state }
+  private var attrs: ScheduleActivityAttributes { context.attributes }
 
   private var trackingDuration: Int { state.trackingDurationMinutes }
   private var amPm: String { Calendar.current.component(.hour, from: attrs.scheduledTime) >= 12 ? "PM" : "AM" }
@@ -49,7 +49,7 @@ struct LockScreenBannerView: View {
 
   private var headerSection: some View {
     HStack {
-      // 왼쪽: 약속 정보
+      // 왼쪽: 일정 정보
       VStack(alignment: .leading, spacing: 6) {
         Text("\(attrs.emoji) \(attrs.title)")
           .font(.subheadline.weight(.bold))
@@ -69,9 +69,9 @@ struct LockScreenBannerView: View {
 
       Spacer()
 
-      // 오른쪽: 약속 시간
+      // 오른쪽: 일정 시간
       VStack(alignment: .trailing, spacing: 2) {
-        Text(LocalizedStrings.LivePromise.promiseTime)
+        Text(LocalizedStrings.LiveSchedule.scheduleTime)
           .font(.caption2)
           .foregroundStyle(.white.opacity(0.6))
 
@@ -126,10 +126,10 @@ struct LockScreenBannerView: View {
 // TODO: n분 버튼 커스텀 가능하게 추후 구현
 struct ETASegmentedControl: View {
   let selectedMinutes: Int?
-  let context: ActivityViewContext<PromiseActivityAttributes>
+  let context: ActivityViewContext<ScheduleActivityAttributes>
 
-  private var attrs: PromiseActivityAttributes { context.attributes }
-  private var state: PromiseActivityAttributes.ContentState { context.state }
+  private var attrs: ScheduleActivityAttributes { context.attributes }
+  private var state: ScheduleActivityAttributes.ContentState { context.state }
 
   /// participants를 JSON 문자열로 인코딩
   private var participantsJSON: String {
@@ -192,9 +192,9 @@ struct ETASegmentedControl: View {
       }
 
       // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
-      if let url = AppConstants.Deeplink.url(path: "promise/\(attrs.promiseId)/eta") {
+      if let url = AppConstants.Deeplink.url(path: "promise/\(attrs.scheduleId)/eta") {
         Link(destination: url) {
-          Text(LocalizedStrings.LivePromise.manualInput)
+          Text(LocalizedStrings.LiveSchedule.manualInput)
             .font(.system(size: 11, weight: .medium))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

@@ -6,13 +6,13 @@
 //
 //  ## 사용처
 //  - CalendarSyncClientTests
-//  - PromiseModelValidationTests
+//  - ScheduleModelValidationTests
 //  - GroupMainStateTests
 //  - 기타 Clients/Features 테스트
 //
 //  ## 사용법
 //  ```swift
-//  let promise = TestFactories.makePromise(title: "점심 약속")
+//  let schedule = TestFactories.makeSchedule(title: "점심 일정")
 //  let group = TestFactories.makeGroup(memberIds: ["user1", "user2"])
 //  ```
 //
@@ -27,14 +27,14 @@ import PromisoShared
 
 enum TestFactories {
 
-  // MARK: - PromiseModel
+  // MARK: - ScheduleModel
 
-  /// 테스트용 PromiseModel 생성
+  /// 테스트용 ScheduleModel 생성
   ///
   /// 모든 파라미터에 기본값이 있어 필요한 것만 오버라이드 가능
   /// - Parameters:
-  ///   - id: 약속 ID (기본: "test-promise-id")
-  ///   - title: 제목 (기본: "테스트 약속")
+  ///   - id: 일정 ID (기본: "test-schedule-id")
+  ///   - title: 제목 (기본: "테스트 일정")
   ///   - emoji: 이모지 (기본: nil)
   ///   - description: 설명 (기본: nil)
   ///   - hostId: 호스트 ID (기본: "host-id")
@@ -48,24 +48,24 @@ enum TestFactories {
   ///   - trackingStartMinutesBefore: LiveActivity 시작 시간 (기본: nil)
   ///   - createdAt: 생성 시각 (기본: 현재)
   ///   - updatedAt: 수정 시각 (기본: 현재)
-  static func makePromise(
-    id: String = "test-promise-id",
-    title: String = "테스트 약속",
+  static func makeSchedule(
+    id: String = "test-schedule-id",
+    title: String = "테스트 일정",
     emoji: String? = nil,
     description: String? = nil,
     hostId: String = "host-id",
     groupId: String = "group-id",
     group: GroupModel? = nil,
     minimumParticipants: Int = 2,
-    votes: PromiseVotesModel = PromiseVotesModel(),
+    votes: ScheduleVotesModel = ScheduleVotesModel(),
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
-  ) -> PromiseModel {
-    PromiseModel(
+  ) -> ScheduleModel {
+    ScheduleModel(
       id: id,
       title: title,
       emoji: emoji,
@@ -167,10 +167,10 @@ enum TestFactories {
   /// - Parameters:
   ///   - notificationId: 알림 ID (기본: "test-notification-id")
   ///   - userId: 수신자 ID (기본: "current-user")
-  ///   - type: 알림 카테고리 (기본: .promiseInvitation)
+  ///   - type: 알림 카테고리 (기본: .scheduleInvitation)
   ///   - title: 제목 (기본: "테스트 알림")
   ///   - body: 본문 (기본: "알림 내용입니다")
-  ///   - promiseId: 관련 약속 ID (기본: nil)
+  ///   - scheduleId: 관련 일정 ID (기본: nil)
   ///   - groupId: 관련 그룹 ID (기본: nil)
   ///   - relatedUserId: 발신자 ID (기본: nil)
   ///   - isRead: 읽음 여부 (기본: false)
@@ -179,10 +179,10 @@ enum TestFactories {
   static func makeNotification(
     notificationId: String = "test-notification-id",
     userId: String = "current-user",
-    type: NotificationCategory = .promiseInvitation,
+    type: NotificationCategory = .scheduleInvitation,
     title: String = "테스트 알림",
     body: String = "알림 내용입니다",
-    promiseId: String? = nil,
+    scheduleId: String? = nil,
     groupId: String? = nil,
     relatedUserId: String? = nil,
     isRead: Bool = false,
@@ -195,7 +195,7 @@ enum TestFactories {
       type: type,
       title: title,
       body: body,
-      promiseId: promiseId,
+      scheduleId: scheduleId,
       groupId: groupId,
       relatedUserId: relatedUserId,
       isRead: isRead,
@@ -204,9 +204,9 @@ enum TestFactories {
     )
   }
 
-  // MARK: - PromiseVotesModel
+  // MARK: - ScheduleVotesModel
 
-  /// 테스트용 PromiseVotesModel 생성
+  /// 테스트용 ScheduleVotesModel 생성
   ///
   /// - Parameters:
   ///   - accepted: 수락한 유저 ID 목록 (기본: [])
@@ -216,8 +216,8 @@ enum TestFactories {
     accepted: [String] = [],
     declined: [String] = [],
     until: Date = Date().addingTimeInterval(1800)
-  ) -> PromiseVotesModel {
-    PromiseVotesModel(
+  ) -> ScheduleVotesModel {
+    ScheduleVotesModel(
       accepted: accepted,
       declined: declined,
       until: until

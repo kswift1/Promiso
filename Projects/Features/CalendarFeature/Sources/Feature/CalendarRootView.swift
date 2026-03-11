@@ -7,7 +7,7 @@ import Clients
 import PromisoShared
 import ResourceKit
 import SharedFeature
-import CreatePromiseFeature
+import CreateScheduleFeature
 
 // MARK: - Root View
 
@@ -50,8 +50,8 @@ extension CalendarFeature {
         calendarContentView
       } destination: { store in
         switch store.case {
-        case .promiseDetail(let promiseDetailStore):
-          PromiseDetail.RootView(store: promiseDetailStore)
+        case .scheduleDetail(let scheduleDetailStore):
+          ScheduleDetail.RootView(store: scheduleDetailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
         case .recurringPersonalEventDetail(let detailStore):
@@ -67,17 +67,17 @@ extension CalendarFeature {
     private var calendarContentView: some View {
       calendarWithEditCovers
         .sheet(item: Binding(
-          get: { store.sharePromise },
-          set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
-        )) { promise in
-          PromiseShareSheet(
-            promise: promise,
-            isKakaoSharing: store.isKakaoPromiseSharing,
+          get: { store.shareSchedule },
+          set: { _ in store.send(.view(.dismissScheduleShareSheet)) }
+        )) { schedule in
+          ScheduleShareSheet(
+            schedule: schedule,
+            isKakaoSharing: store.isKakaoScheduleSharing,
             onKakaoShareTapped: {
-              store.send(.view(.kakaoPromiseShareTapped))
+              store.send(.view(.kakaoScheduleShareTapped))
             },
             onSystemShareTapped: {
-              store.send(.view(.systemPromiseShareTapped))
+              store.send(.view(.systemScheduleShareTapped))
             }
           )
         }
@@ -133,8 +133,8 @@ extension CalendarFeature {
 
     private var calendarWithEditCovers: some View {
       calendarBaseView
-        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
-          EditPromise.RootView(store: editStore)
+        .sheet(store: store.scope(state: \.$editSchedule, action: \.editSchedule)) { editStore in
+          EditSchedule.RootView(store: editStore)
         }
         .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
           CreatePersonalEvent.RootView(
@@ -147,8 +147,8 @@ extension CalendarFeature {
           CreateRecurringPersonalEvent.RootView(store: editStore)
             .presentationDragIndicator(.visible)
         }
-        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
-          CreatePromise.RootView(store: createStore)
+        .sheet(store: store.scope(state: \.$createSchedule, action: \.createSchedule)) { createStore in
+          CreateSchedule.RootView(store: createStore)
         }
     }
 
@@ -184,9 +184,9 @@ extension CalendarFeature {
             sheetDragBaseOffset = 0
           }
 
-        // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
+        // 일정 리스트 (시트 스타일) — monthExpanded일 때 숨김
         if store.displayMode == .week || store.displayMode == .month {
-          promiseListSection
+          scheduleListSection
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
@@ -225,8 +225,8 @@ extension CalendarFeature {
         onDayCreatePersonalEvent: { date in
           store.send(.view(.dayLongPressCreatePersonalEvent(date)))
         },
-        onDayCreatePromise: { date in
-          store.send(.view(.dayLongPressCreatePromise(date)))
+        onDayCreateSchedule: { date in
+          store.send(.view(.dayLongPressCreateSchedule(date)))
         },
         previewIndicatorsProvider: { [store] date in
           store.withState { $0.unfilteredIndicators(for: date) }
@@ -255,9 +255,9 @@ extension CalendarFeature {
       )
     }
 
-    // MARK: - Promise List Section
+    // MARK: - Schedule List Section
 
-    private var promiseListSection: some View {
+    private var scheduleListSection: some View {
       VStack(spacing: 0) {
         if store.displayMode == .week {
           weekTimelineView
@@ -319,8 +319,8 @@ extension CalendarFeature {
             onCreatePersonalEvent: { startDate, endDate in
               store.send(.view(.createPersonalEventFromTimeline(startDate: startDate, endDate: endDate)))
             },
-            onCreatePromise: { startDate, endDate in
-              store.send(.view(.createPromiseFromTimeline(startDate: startDate, endDate: endDate)))
+            onCreateSchedule: { startDate, endDate in
+              store.send(.view(.createScheduleFromTimeline(startDate: startDate, endDate: endDate)))
             },
             onDeleteScheduleItem: { item in
               store.send(.view(.deleteScheduleItem(item)))
@@ -349,7 +349,7 @@ extension CalendarFeature {
 
         ScrollViewReader { proxy in
           ScrollView {
-            monthPromiseListContent
+            monthScheduleListContent
           }
           .onChange(of: store.isInitialLoading) { wasLoading, isLoading in
             guard wasLoading, !isLoading else { return }
@@ -427,9 +427,9 @@ extension CalendarFeature {
       .gesture(sheetDragGesture)
     }
 
-    // MARK: - Month Promise List Content
+    // MARK: - Month Schedule List Content
 
-    private var monthPromiseListContent: some View {
+    private var monthScheduleListContent: some View {
       LazyVStack(spacing: 0) {
         if store.isInitialLoading {
           loadingView
@@ -466,7 +466,7 @@ extension CalendarFeature {
     private func monthModeRow(for date: Date) -> some View {
       let calendar = Calendar.current
       let dateKey = calendar.startOfDay(for: date)
-      let dayPromises = store.promisesByDate[dateKey] ?? []
+      let daySchedules = store.schedulesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
       let holidayName = store.holidaysByDate[dateKey]
@@ -474,7 +474,7 @@ extension CalendarFeature {
 
       CompactDayRow(
         date: date,
-        promises: dayPromises,
+        schedules: daySchedules,
         calendarEvents: dayEvents,
         personalEvents: dayPersonalEvents,
         isSelected: isSelected,
@@ -484,8 +484,8 @@ extension CalendarFeature {
         onDateTap: {
           store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
         },
-        onPromiseTap: { promise in
-          store.send(.view(.scheduleItemTapped(.promise(promise))))
+        onScheduleTap: { schedule in
+          store.send(.view(.scheduleItemTapped(.schedule(schedule))))
         },
         onPersonalEventTap: { event in
           store.send(.view(.scheduleItemTapped(.personalEvent(event))))
@@ -496,8 +496,8 @@ extension CalendarFeature {
         onCreatePersonalEvent: {
           store.send(.view(.dayLongPressCreatePersonalEvent(date)))
         },
-        onCreatePromise: {
-          store.send(.view(.dayLongPressCreatePromise(date)))
+        onCreateSchedule: {
+          store.send(.view(.dayLongPressCreateSchedule(date)))
         }
       )
       .id(date)
@@ -514,7 +514,7 @@ extension CalendarFeature {
           .scaleEffect(1.2)
           .tint(Color.pmindigo.n500)
 
-        Text(LocalizedStrings.Calendar.loadingPromises)
+        Text(LocalizedStrings.Calendar.loadingSchedules)
           .font(.system(size: 15))
           .foregroundColor(.secondary)
 
@@ -536,11 +536,11 @@ extension CalendarFeature {
           .font(.system(size: 52, weight: .light))
           .foregroundColor(.secondary.opacity(0.6))
 
-        Text(LocalizedStrings.Calendar.noPromises)
+        Text(LocalizedStrings.Calendar.noSchedulesTitle)
           .font(.system(size: 18, weight: .semibold))
           .foregroundColor(.primary)
 
-        Text(LocalizedStrings.Calendar.createNewPromise)
+        Text(LocalizedStrings.Calendar.createNewSchedule)
           .font(.system(size: 15))
           .foregroundColor(.secondary)
 

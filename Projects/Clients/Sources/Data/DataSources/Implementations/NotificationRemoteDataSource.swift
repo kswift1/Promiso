@@ -180,7 +180,7 @@ public actor NotificationRemoteDataSource {
           type: NotificationCategory(rawValue: dto.type.rawValue) ?? .system,
           title: dto.title,
           body: dto.body,
-          promiseId: dto.promiseId,
+          scheduleId: dto.scheduleId,
           groupId: dto.groupId,
           relatedUserId: dto.relatedUserId,
           isRead: dto.isRead,

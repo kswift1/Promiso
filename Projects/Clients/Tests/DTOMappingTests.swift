@@ -5,7 +5,7 @@
 //  DTO -> Model 변환 테스트
 //
 //  ## 테스트 대상
-//  - `Clients/Sources/Data/DTOs/Responses/PromiseDTO.swift`
+//  - `Clients/Sources/Data/DTOs/Responses/ScheduleDTO.swift`
 //  - `Clients/Sources/Data/DTOs/Responses/GroupDTO.swift`
 //  - `Clients/Sources/Data/DTOs/Responses/UserDTO.swift`
 //  - `Clients/Sources/Data/DTOs/Responses/NotificationDTO.swift`
@@ -22,10 +22,10 @@ import Testing
 @testable import Clients
 import PromisoShared
 
-// MARK: - PromiseDTO -> PromiseModel 변환 테스트
+// MARK: - ScheduleDTO -> ScheduleModel 변환 테스트
 
-@Suite("PromiseDTO -> PromiseModel 변환 테스트")
-struct PromiseDTOToModelTests {
+@Suite("ScheduleDTO -> ScheduleModel 변환 테스트")
+struct ScheduleDTOToModelTests {
 
   @Test("모든 필드를 포함한 DTO에서 Model로 정확히 변환")
   func fullDTO_convertsToModelCorrectly() {
@@ -35,7 +35,7 @@ struct PromiseDTOToModelTests {
     let updatedDate = Date(timeIntervalSince1970: 1_699_950_000)
     let votesUntil = Date(timeIntervalSince1970: 1_699_990_000)
 
-    let dto = PromiseDTO(
+    let dto = ScheduleDTO(
       title: "팀 회식",
       emoji: "🍻",
       description: "분기 회식입니다",
@@ -60,9 +60,9 @@ struct PromiseDTOToModelTests {
       updatedAt: Timestamp(date: updatedDate)
     )
 
-    let model = PromiseModel(dto: dto, id: "promise-123")
+    let model = ScheduleModel(dto: dto, id: "schedule-123")
 
-    #expect(model.id == "promise-123")
+    #expect(model.id == "schedule-123")
     #expect(model.title == "팀 회식")
     #expect(model.emoji == "🍻")
     #expect(model.description == "분기 회식입니다")
@@ -82,8 +82,8 @@ struct PromiseDTOToModelTests {
   @Test("선택적 필드가 nil인 DTO에서 Model로 변환")
   func minimalDTO_convertsWithNilOptionals() {
     let now = Date()
-    let dto = PromiseDTO(
-      title: "간단 약속",
+    let dto = ScheduleDTO(
+      title: "간단 일정",
       emoji: nil,
       description: nil,
       hostId: "host-1",
@@ -98,7 +98,7 @@ struct PromiseDTOToModelTests {
       updatedAt: Timestamp(date: now)
     )
 
-    let model = PromiseModel(dto: dto, id: "p-minimal")
+    let model = ScheduleModel(dto: dto, id: "p-minimal")
 
     #expect(model.emoji == nil)
     #expect(model.description == nil)
@@ -108,10 +108,10 @@ struct PromiseDTOToModelTests {
   }
 }
 
-// MARK: - PromiseModel -> PromiseDTO 역변환 테스트
+// MARK: - ScheduleModel -> ScheduleDTO 역변환 테스트
 
-@Suite("PromiseModel -> PromiseDTO 역변환 테스트")
-struct PromiseModelToDTOTests {
+@Suite("ScheduleModel -> ScheduleDTO 역변환 테스트")
+struct ScheduleModelToDTOTests {
 
   @Test("Model에서 DTO로 변환 시 모든 필드가 정확히 매핑")
   func model_convertsToDTOCorrectly() {
@@ -121,12 +121,12 @@ struct PromiseModelToDTOTests {
       latitude: 37.5547,
       longitude: 126.9706
     )
-    let votes = PromiseVotesModel(
+    let votes = ScheduleVotesModel(
       accepted: ["user-1", "user-2"],
       declined: ["user-3"],
       until: Date(timeIntervalSince1970: 1_700_000_000)
     )
-    let model = TestFactories.makePromise(
+    let model = TestFactories.makeSchedule(
       title: "역변환 테스트",
       emoji: "🚂",
       description: "DTO 변환 검증용",
@@ -138,7 +138,7 @@ struct PromiseModelToDTOTests {
       trackingStartMinutesBefore: 15
     )
 
-    let dto = PromiseDTO(model: model)
+    let dto = ScheduleDTO(model: model)
 
     #expect(dto.title == "역변환 테스트")
     #expect(dto.emoji == "🚂")
@@ -157,14 +157,14 @@ struct PromiseModelToDTOTests {
 
   @Test("선택적 필드가 nil인 Model에서 DTO 변환")
   func model_nilOptionals_convertsToDTOWithNils() {
-    let model = TestFactories.makePromise(
+    let model = TestFactories.makeSchedule(
       emoji: nil,
       description: nil,
       location: nil,
       trackingStartMinutesBefore: nil
     )
 
-    let dto = PromiseDTO(model: model)
+    let dto = ScheduleDTO(model: model)
 
     #expect(dto.emoji == nil)
     #expect(dto.description == nil)
@@ -179,7 +179,7 @@ struct PromiseModelToDTOTests {
 @Suite("VotesDTO 및 LocationDTO 변환 테스트")
 struct SupportingDTOConversionTests {
 
-  @Test("VotesDTO에서 PromiseVotesModel로 정확히 변환")
+  @Test("VotesDTO에서 ScheduleVotesModel로 정확히 변환")
   func votesDTO_convertsToModel() {
     let until = Date(timeIntervalSince1970: 1_700_100_000)
     let dto = VotesDTO(
@@ -188,7 +188,7 @@ struct SupportingDTOConversionTests {
       until: Timestamp(date: until)
     )
 
-    let model = PromiseVotesModel(dto: dto)
+    let model = ScheduleVotesModel(dto: dto)
 
     #expect(model.accepted == ["a", "b", "c"])
     #expect(model.declined == ["d"])
@@ -247,10 +247,10 @@ struct SupportingDTOConversionTests {
     #expect(dto.longitude == 127.0495)
   }
 
-  @Test("PromiseVotesModel에서 VotesDTO로 역변환")
+  @Test("ScheduleVotesModel에서 VotesDTO로 역변환")
   func votesModel_convertsToDTO() {
     let until = Date(timeIntervalSince1970: 1_700_200_000)
-    let model = PromiseVotesModel(
+    let model = ScheduleVotesModel(
       accepted: ["x", "y"],
       declined: ["z"],
       until: until

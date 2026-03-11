@@ -12,8 +12,8 @@
 //  - onAppear 시 초기화 로직 검증
 //  - 그룹 변경 시 상태 전환 검증
 //  - 필터 변경 로직 검증
-//  - 약속 생성/참여 시트 표시 검증
-//  - 약속 응답 상태 관리 검증
+//  - 일정 생성/참여 시트 표시 검증
+//  - 일정 응답 상태 관리 검증
 //
 
 import Testing
@@ -64,22 +64,22 @@ struct GroupFeatureTests {
     )
   }
 
-  /// 테스트용 약속 생성
-  private func makePromise(
-    id: String = "promise-1",
+  /// 테스트용 일정 생성
+  private func makeSchedule(
+    id: String = "schedule-1",
     groupId: String = "group-1",
     startAt: Date = Date().addingTimeInterval(3600),
     accepted: [String] = [],
     declined: [String] = [],
     minimumParticipants: Int = 2
-  ) -> PromiseModel {
-    PromiseModel(
+  ) -> ScheduleModel {
+    ScheduleModel(
       id: id,
-      title: "테스트 약속 \(id)",
+      title: "테스트 일정 \(id)",
       hostId: "host-id",
       groupId: groupId,
       minimumParticipants: minimumParticipants,
-      votes: PromiseVotesModel(
+      votes: ScheduleVotesModel(
         accepted: accepted,
         declined: declined,
         until: Date().addingTimeInterval(1800)
@@ -164,8 +164,8 @@ struct GroupFeatureTests {
     }
   }
 
-  @Test("과거 필터 선택 시 과거 약속 fetch")
-  func filterChanged_toPast_fetchesPastPromises() async {
+  @Test("과거 필터 선택 시 과거 일정 fetch")
+  func filterChanged_toPast_fetchesPastSchedules() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-filter-past")) var currentUser = user
 
@@ -175,28 +175,28 @@ struct GroupFeatureTests {
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     } withDependencies: {
-      $0.promiseClient.getPastPromises = { _, _, _ in [] }
+      $0.scheduleClient.getPastSchedules = { _, _, _ in [] }
     }
 
     await store.send(.view(.filterChanged(.past))) {
       $0.selectedFilter = .past
     }
 
-    await store.receive(\.internal.fetchPastPromises) {
-      $0.pastPromisesState = .loading
+    await store.receive(\.internal.fetchPastSchedules) {
+      $0.pastSchedulesState = .loading
     }
 
-    await store.receive(\.internal.pastPromisesResponse.success) {
-      $0.pastPromisesState = .loaded([])
+    await store.receive(\.internal.pastSchedulesResponse.success) {
+      $0.pastSchedulesState = .loaded([])
     }
   }
 
-  // MARK: - 약속 생성 테스트
+  // MARK: - 일정 생성 테스트
 
-  @Test("약속 생성 시 createPromise 시트 표시")
-  func createNewPromise_showsCreatePromiseSheet() async {
+  @Test("일정 생성 시 createSchedule 시트 표시")
+  func createNewSchedule_showsCreateScheduleSheet() async {
     let user = makeCurrentUser()
-    @Shared(.inMemory("test-create-promise")) var currentUser = user
+    @Shared(.inMemory("test-create-schedule")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.currentGroup = makeGroup()
@@ -206,7 +206,7 @@ struct GroupFeatureTests {
     }
     store.exhaustivity = .off
 
-    await store.send(.view(.createNewPromise))
+    await store.send(.view(.createNewSchedule))
   }
 
   // MARK: - 그룹 생성/참여 테스트
@@ -243,99 +243,99 @@ struct GroupFeatureTests {
 
   // MARK: - 하이라이트 클리어 테스트
 
-  @Test("하이라이트된 약속 클리어")
-  func clearHighlightedPromise_clearsHighlight() async {
+  @Test("하이라이트된 일정 클리어")
+  func clearHighlightedSchedule_clearsHighlight() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-highlight")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.highlightedPromiseId = "promise-1"
+    state.highlightedScheduleId = "schedule-1"
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
 
-    await store.send(.view(.clearHighlightedPromise)) {
-      $0.highlightedPromiseId = nil
+    await store.send(.view(.clearHighlightedSchedule)) {
+      $0.highlightedScheduleId = nil
     }
   }
 
-  // MARK: - 약속 응답 테스트
+  // MARK: - 일정 응답 테스트
 
-  @Test("약속 수락 시 accepting 상태 설정")
+  @Test("일정 수락 시 accepting 상태 설정")
   func proposalAccepted_setsAcceptingState() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-accept")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.currentGroup = makeGroup()
-    state.promisesState = .loaded([makePromise()])
+    state.schedulesState = .loaded([makeSchedule()])
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     } withDependencies: {
-      $0.promiseClient.respondPromise = { _, _ in
-        RespondPromiseResult(promiseId: "promise-1", status: "accepted", isConfirmed: false, confirmedPromise: nil)
+      $0.scheduleClient.respondSchedule = { _, _ in
+        RespondScheduleResult(scheduleId: "schedule-1", status: "accepted", isConfirmed: false, confirmedSchedule: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
     store.exhaustivity = .off
 
-    await store.send(.view(.proposalAccepted("promise-1"))) {
-      $0.proposalResponding["promise-1"] = .accepting
+    await store.send(.view(.proposalAccepted("schedule-1"))) {
+      $0.proposalResponding["schedule-1"] = .accepting
     }
   }
 
-  @Test("약속 거절 시 rejecting 상태 설정")
+  @Test("일정 거절 시 rejecting 상태 설정")
   func proposalRejected_setsRejectingState() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-reject")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.currentGroup = makeGroup()
-    state.promisesState = .loaded([makePromise()])
+    state.schedulesState = .loaded([makeSchedule()])
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     } withDependencies: {
-      $0.promiseClient.respondPromise = { _, _ in
-        RespondPromiseResult(promiseId: "promise-1", status: "accepted", isConfirmed: false, confirmedPromise: nil)
+      $0.scheduleClient.respondSchedule = { _, _ in
+        RespondScheduleResult(scheduleId: "schedule-1", status: "accepted", isConfirmed: false, confirmedSchedule: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
-      $0.calendarSyncClient.removePromise = { _ in }
+      $0.calendarSyncClient.removeSchedule = { _ in }
     }
     store.exhaustivity = .off
 
-    await store.send(.view(.proposalRejected("promise-1"))) {
-      $0.proposalResponding["promise-1"] = .rejecting
+    await store.send(.view(.proposalRejected("schedule-1"))) {
+      $0.proposalResponding["schedule-1"] = .rejecting
     }
   }
 
-  // MARK: - 약속 삭제 테스트
+  // MARK: - 일정 삭제 테스트
 
-  @Test("약속 삭제 요청 시 알럿 표시")
-  func promiseDeleteRequested_showsAlert() async {
+  @Test("일정 삭제 요청 시 알럿 표시")
+  func scheduleDeleteRequested_showsAlert() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-delete-alert")) var currentUser = user
 
-    let promise = makePromise()
+    let schedule = makeSchedule()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.promisesState = .loaded([promise])
+    state.schedulesState = .loaded([schedule])
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
     store.exhaustivity = .off
 
-    await store.send(.view(.promiseDeleteRequested("promise-1"))) {
-      $0.promiseToDelete = "promise-1"
+    await store.send(.view(.scheduleDeleteRequested("schedule-1"))) {
+      $0.scheduleToDelete = "schedule-1"
     }
   }
 
   // MARK: - Widget 딥링크 테스트
 
-  @Test("그룹 없을 때 openCreatePromiseIfPossible 무시")
-  func openCreatePromiseIfPossible_noGroups_doesNothing() async {
+  @Test("그룹 없을 때 openCreateScheduleIfPossible 무시")
+  func openCreateScheduleIfPossible_noGroups_doesNothing() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-widget-no-groups")) var currentUser = user
 
@@ -346,12 +346,12 @@ struct GroupFeatureTests {
       GroupMain.Feature()
     }
 
-    await store.send(.view(.openCreatePromiseIfPossible))
+    await store.send(.view(.openCreateScheduleIfPossible))
     // 그룹 없으므로 아무 동작 없음
   }
 
-  @Test("그룹 있을 때 openCreatePromiseIfPossible 약속 생성")
-  func openCreatePromiseIfPossible_withGroups_createsPromise() async {
+  @Test("그룹 있을 때 openCreateScheduleIfPossible 일정 생성")
+  func openCreateScheduleIfPossible_withGroups_createsSchedule() async {
     let groupInfo = makeGroupInfo()
     let user = makeCurrentUser(groups: [groupInfo])
     @Shared(.inMemory("test-widget-with-groups")) var currentUser = user
@@ -365,7 +365,7 @@ struct GroupFeatureTests {
     }
     store.exhaustivity = .off
 
-    await store.send(.view(.openCreatePromiseIfPossible))
+    await store.send(.view(.openCreateScheduleIfPossible))
   }
 
   // MARK: - 그룹 변경 테스트
@@ -389,42 +389,42 @@ struct GroupFeatureTests {
 
   // MARK: - proposalRespondFailed 테스트
 
-  @Test("약속 응답 실패 시 responding 초기화 및 에러 설정")
+  @Test("일정 응답 실패 시 responding 초기화 및 에러 설정")
   func proposalRespondFailed_clearsRespondingAndSetsError() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-respond-failed")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.proposalResponding["promise-1"] = .accepting
+    state.proposalResponding["schedule-1"] = .accepting
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
 
     let error = AppError(message: "응답 실패")
-    await store.send(.internal(.proposalRespondFailed(promiseId: "promise-1", error: error))) {
-      $0.proposalResponding["promise-1"] = nil
-      $0.promisesState = .failed(error)
+    await store.send(.internal(.proposalRespondFailed(scheduleId: "schedule-1", error: error))) {
+      $0.proposalResponding["schedule-1"] = nil
+      $0.schedulesState = .failed(error)
     }
   }
 
-  // MARK: - deletePromiseFailed 테스트
+  // MARK: - deleteScheduleFailed 테스트
 
-  @Test("약속 삭제 실패 시 에러 상태 설정")
-  func deletePromiseFailed_setsErrorState() async {
+  @Test("일정 삭제 실패 시 에러 상태 설정")
+  func deleteScheduleFailed_setsErrorState() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-delete-failed")) var currentUser = user
 
     var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.promisesState = .loaded([])
+    state.schedulesState = .loaded([])
 
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
 
     let error = AppError(message: "삭제 실패")
-    await store.send(.internal(.deletePromiseFailed(promiseId: "promise-1", error: error))) {
-      $0.promisesState = .failed(error)
+    await store.send(.internal(.deleteScheduleFailed(scheduleId: "schedule-1", error: error))) {
+      $0.schedulesState = .failed(error)
     }
   }
 }

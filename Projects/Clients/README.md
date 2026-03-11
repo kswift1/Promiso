@@ -13,7 +13,7 @@
 Clients/
 ├── AuthClient/
 ├── GroupClient/
-├── PromiseClient/
+├── ScheduleClient/
 ├── UserProfileClient/
 ├── Infrastructure/
 └── Networking/
@@ -34,13 +34,13 @@ import ComposableArchitecture
 
 @Reducer
 public struct Feature {
-  @Dependency(\.promiseClient) var promiseClient
+  @Dependency(\.scheduleClient) var scheduleClient
 
   public var body: some ReducerOf<Self> {
     Reduce { state, action in
-      case .createPromise:
-        return .run { [proposal = state.promiseProposal] send in
-          let id = try await promiseClient.createPromise(proposal, "userId")
+      case .createSchedule:
+        return .run { [proposal = state.scheduleProposal] send in
+          let id = try await scheduleClient.createSchedule(proposal, "userId")
           await send(._response(.success(id)))
         }
     }
@@ -50,30 +50,30 @@ public struct Feature {
 
 ### Client 정의
 ```swift
-// Clients/PromiseClient/PromiseClient.swift
+// Clients/ScheduleClient/ScheduleClient.swift
 import ComposableArchitecture
 import Shared
 
 @DependencyClient
-public struct PromiseClient: Sendable {
-  public var createPromise: @Sendable (_ proposal: PromiseProposal, _ hostId: String) async throws -> String
+public struct ScheduleClient: Sendable {
+  public var createSchedule: @Sendable (_ proposal: ScheduleProposal, _ hostId: String) async throws -> String
 }
 
-extension PromiseClient: DependencyKey {
-  public static let liveValue: PromiseClient = {
-    let repository: PromiseRepositoryProtocol = PromiseRepository()
+extension ScheduleClient: DependencyKey {
+  public static let liveValue: ScheduleClient = {
+    let repository: ScheduleRepositoryProtocol = ScheduleRepository()
 
     return Self(
-      createPromise: { proposal, hostId in
+      createSchedule: { proposal, hostId in
         // Feature Model → Shared Model 변환
-        let model = PromiseModel(
+        let model = ScheduleModel(
           id: UUID().uuidString,
           title: proposal.title,
           emoji: proposal.emoji
         )
 
         // Repository 호출
-        return try await repository.createPromise(model)
+        return try await repository.createSchedule(model)
       }
     )
   }()
@@ -83,8 +83,8 @@ extension PromiseClient: DependencyKey {
 ## 모델 변환 규칙
 
 ### Feature Model vs Shared Model
-- **Feature Model** (PromiseProposal): UI 친화적, Optional 많음, Partial 상태
-- **Shared Model** (PromiseModel): 비즈니스 규칙 반영, 완전한 데이터
+- **Feature Model** (ScheduleProposal): UI 친화적, Optional 많음, Partial 상태
+- **Shared Model** (ScheduleModel): 비즈니스 규칙 반영, 완전한 데이터
 
 ### 변환 시점
 - **Feature → Shared**: Client의 liveValue에서 변환
@@ -98,15 +98,15 @@ extension PromiseClient: DependencyKey {
 import Clients
 
 @Test
-func testCreatePromise() async {
+func testCreateSchedule() async {
   await withDependencies {
-    $0.promiseClient.createPromise = { _, _ in "test-id" }
+    $0.scheduleClient.createSchedule = { _, _ in "test-id" }
   } operation: {
     let store = TestStore(initialState: Feature.State()) {
       Feature()
     }
 
-    await store.send(.createPromise)
+    await store.send(.createSchedule)
     await store.receive(._response(.success("test-id")))
   }
 }
@@ -118,5 +118,5 @@ func testCreatePromise() async {
 - ✅ ExternalDependency 모듈 의존
 
 ⚠️ **Shared Model을 Feature에 직접 노출하지 않도록 주의**
-- Feature는 PromiseProposal 사용
-- Shared의 PromiseModel은 Client 내부에서만 사용
+- Feature는 ScheduleProposal 사용
+- Shared의 ScheduleModel은 Client 내부에서만 사용

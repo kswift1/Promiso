@@ -1,5 +1,5 @@
 // MARK: - OnboardingStartFeature.swift
-// 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 약속
+// 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 일정
 
 import ComposableArchitecture
 

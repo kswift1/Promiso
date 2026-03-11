@@ -67,8 +67,8 @@ extension GroupSettings {
       var isKakaoSharing: Bool = false
       var showSystemShareSheet: Bool = false
 
-      // Upcoming Promises (카카오 공유용)
-      var upcomingPromises: [PromiseModel] = []
+      // Upcoming Schedules (카카오 공유용)
+      var upcomingSchedules: [ScheduleModel] = []
 
       public init(
         group: GroupModel,
@@ -76,14 +76,14 @@ extension GroupSettings {
         currentUserId: String,
         isPro: Bool,
         preloadedMembers: [UserPublicModel]? = nil,
-        upcomingPromises: [PromiseModel] = []
+        upcomingSchedules: [ScheduleModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
         self.isPro = isPro
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
-        self.upcomingPromises = upcomingPromises
+        self.upcomingSchedules = upcomingSchedules
         self.groupColor = summary?.groupColor
 
         if let preloadedMembers = preloadedMembers {
@@ -178,7 +178,7 @@ extension GroupSettings {
         case notificationSettingsTapped
         case membersTapped
         case inviteTapped
-        case pastPromisesTapped
+        case pastSchedulesTapped
         case leaveGroupTapped
         case deleteGroupTapped
         case confirmLeave
@@ -237,7 +237,7 @@ extension GroupSettings {
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
-        case pastPromisesTapped
+        case pastSchedulesTapped
         case hostTransferred
         case memberExpelled
         case groupColorChanged(GroupColor?)
@@ -414,9 +414,9 @@ extension GroupSettings {
               await hapticFeedback.buttonTap()
             }
 
-          case .pastPromisesTapped:
+          case .pastSchedulesTapped:
             return .merge(
-              .send(.delegate(.pastPromisesTapped)),
+              .send(.delegate(.pastSchedulesTapped)),
               .run { [hapticFeedback] _ in
                 await hapticFeedback.buttonTap()
               }
@@ -604,18 +604,18 @@ extension GroupSettings {
             let groupImageUrl = state.group.imageUrl
             let inviterName = state.members
               .first { $0.userId == state.currentUserId }?.displayName ?? ""
-            let promiseInfos = state.upcomingPromises
+            let scheduleInfos = state.upcomingSchedules
               .filter { $0.isUpcoming }
               .sorted { $0.startAt < $1.startAt }
               .prefix(3)
-              .map { promise in
-                PromiseShareInfo(
-                  title: promise.title,
-                  emoji: promise.displayEmoji,
-                  dateText: promise.dateText,
-                  timeText: promise.timeText,
-                  locationName: promise.location?.name,
-                  imageUrl: promise.imageUrls.first
+              .map { schedule in
+                ScheduleShareInfo(
+                  title: schedule.title,
+                  emoji: schedule.displayEmoji,
+                  dateText: schedule.dateText,
+                  timeText: schedule.timeText,
+                  locationName: schedule.location?.name,
+                  imageUrl: schedule.imageUrls.first
                 )
               }
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
@@ -625,7 +625,7 @@ extension GroupSettings {
                 [
                   AnalyticsClient.ParameterKey.groupName: groupName,
                   "share_method": "kakao",
-                  "promise_count": "\(promiseInfos.count)"
+                  "schedule_count": "\(scheduleInfos.count)"
                 ]
               )
               let result = await kakaoShareClient.shareGroupInvite(
@@ -635,7 +635,7 @@ extension GroupSettings {
                 maxMembers,
                 groupImageUrl,
                 inviterName,
-                promiseInfos
+                scheduleInfos
               )
               await send(.internal(.kakaoShareResult(result)))
             }

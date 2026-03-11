@@ -5,7 +5,7 @@ import ResourceKit
 
 // MARK: - Today Schedule Card
 
-/// 오늘의 일정 카드 - 확정된 오늘 약속과 개인 일정을 타임라인으로 표시
+/// 오늘의 일정 카드 - 확정된 오늘 일정과 개인 일정을 타임라인으로 표시
 struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
@@ -89,16 +89,16 @@ struct TodayScheduleCard: View {
       ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
         // 현재 시간 마커 삽입 (이 일정 전에 표시해야 하는 경우)
         if currentTimePosition == .beforeIndex(index) {
-          CurrentTimeMarkerView(nextPromiseStartAt: item.startAt)
+          CurrentTimeMarkerView(nextScheduleStartAt: item.startAt)
         }
 
         let weather: WeatherInfo? = {
-          if case .promise(let p) = item { return weatherCache[p.id] }
+          if case .schedule(let p) = item { return weatherCache[p.id] }
           return nil
         }()
 
         let groupColor: Color? = {
-          if case .promise(let p) = item { return groupColorMap[p.groupId] }
+          if case .schedule(let p) = item { return groupColorMap[p.groupId] }
           return nil
         }()
 
@@ -175,7 +175,7 @@ struct TodayScheduleCard: View {
 #Preview("일정 있음") {
   TodayScheduleCard(
     items: [
-      .promise(PromiseModel.mock(
+      .schedule(ScheduleModel.mock(
         id: "1",
         title: "점심 모임",
         startAt: Date().addingTimeInterval(3600)
@@ -187,7 +187,7 @@ struct TodayScheduleCard: View {
         startAt: Date().addingTimeInterval(1800),
         endAt: Date().addingTimeInterval(5400)
       )),
-      .promise(PromiseModel.mock(
+      .schedule(ScheduleModel.mock(
         id: "2",
         title: "카페 미팅",
         startAt: Date().addingTimeInterval(7200)

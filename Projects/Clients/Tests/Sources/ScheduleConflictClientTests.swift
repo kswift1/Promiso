@@ -23,7 +23,7 @@ struct ScheduleConflictClientTests {
 
   private static func makeConflict(
     id: String,
-    source: ScheduleConflict.Source = .promise,
+    source: ScheduleConflict.Source = .schedule,
     severity: ScheduleConflict.Severity = .confirmed,
     title: String = "테스트",
     emoji: String? = nil,
@@ -57,15 +57,15 @@ struct ScheduleConflictClientTests {
     #expect(result.isEmpty)
   }
 
-  // MARK: - Test 2: 확정된 그룹 약속 충돌
+  // MARK: - Test 2: 확정된 그룹 일정 충돌
 
-  @Test("확정된 그룹 약속 충돌 반환")
-  func confirmedPromiseConflict() async throws {
+  @Test("확정된 그룹 일정 충돌 반환")
+  func confirmedScheduleConflict() async throws {
     let expected = Self.makeConflict(
-      id: "confirmed-promise",
-      source: .promise,
+      id: "confirmed-schedule",
+      source: .schedule,
       severity: .confirmed,
-      title: "확정 약속",
+      title: "확정 일정",
       emoji: "🎉",
       overlapMinutes: 60
     )
@@ -78,22 +78,22 @@ struct ScheduleConflictClientTests {
     #expect(result.count == 1)
 
     let conflict = try #require(result.first)
-    #expect(conflict.id == "confirmed-promise")
-    #expect(conflict.source == .promise)
+    #expect(conflict.id == "confirmed-schedule")
+    #expect(conflict.source == .schedule)
     #expect(conflict.severity == .confirmed)
-    #expect(conflict.title == "확정 약속")
+    #expect(conflict.title == "확정 일정")
     #expect(conflict.overlapMinutes == 60)
   }
 
-  // MARK: - Test 3: 미확정 그룹 약속 - pending severity
+  // MARK: - Test 3: 미확정 그룹 일정 - pending severity
 
-  @Test("미확정 그룹 약속은 pending severity")
-  func pendingPromiseConflict() async throws {
+  @Test("미확정 그룹 일정은 pending severity")
+  func pendingScheduleConflict() async throws {
     let expected = Self.makeConflict(
-      id: "pending-promise",
-      source: .promise,
+      id: "pending-schedule",
+      source: .schedule,
       severity: .pending,
-      title: "미확정 약속"
+      title: "미확정 일정"
     )
 
     let client = ScheduleConflictClient(
@@ -167,11 +167,11 @@ struct ScheduleConflictClientTests {
 
   // MARK: - Test 7: 혼합 충돌 결과
 
-  @Test("그룹 약속과 개인 일정 혼합 충돌")
+  @Test("그룹 일정과 개인 일정 혼합 충돌")
   func mixedConflicts() async throws {
     let conflicts = [
-      Self.makeConflict(id: "promise-1", source: .promise, severity: .confirmed, overlapMinutes: 90),
-      Self.makeConflict(id: "promise-2", source: .promise, severity: .pending, overlapMinutes: 60),
+      Self.makeConflict(id: "schedule-1", source: .schedule, severity: .confirmed, overlapMinutes: 90),
+      Self.makeConflict(id: "schedule-2", source: .schedule, severity: .pending, overlapMinutes: 60),
       Self.makeConflict(id: "event-1", source: .personalEvent, severity: .confirmed, overlapMinutes: 30),
     ]
 
@@ -182,9 +182,9 @@ struct ScheduleConflictClientTests {
     let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(result.count == 3)
 
-    let promiseConflicts = result.filter { $0.source == .promise }
+    let scheduleConflicts = result.filter { $0.source == .schedule }
     let eventConflicts = result.filter { $0.source == .personalEvent }
-    #expect(promiseConflicts.count == 2)
+    #expect(scheduleConflicts.count == 2)
     #expect(eventConflicts.count == 1)
   }
 

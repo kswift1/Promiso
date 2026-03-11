@@ -53,7 +53,7 @@ struct GroupHorizontalBar: View {
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
   let onSortSettings: () -> Void
-  let onCreatePromise: (String) -> Void
+  let onCreateSchedule: (String) -> Void
 
   init(
     groups: [GroupBarItem],
@@ -64,7 +64,7 @@ struct GroupHorizontalBar: View {
     onCreateGroup: @escaping () -> Void,
     onJoinGroup: @escaping () -> Void,
     onSortSettings: @escaping () -> Void,
-    onCreatePromise: @escaping (String) -> Void
+    onCreateSchedule: @escaping (String) -> Void
   ) {
     self.groups = groups
     self.isLoading = isLoading
@@ -74,7 +74,7 @@ struct GroupHorizontalBar: View {
     self.onCreateGroup = onCreateGroup
     self.onJoinGroup = onJoinGroup
     self.onSortSettings = onSortSettings
-    self.onCreatePromise = onCreatePromise
+    self.onCreateSchedule = onCreateSchedule
   }
 
   var body: some View {
@@ -94,7 +94,7 @@ struct GroupHorizontalBar: View {
                 onInvite: { onGroupInvite(group.id) },
                 onSettings: { onGroupSettings(group.id) },
                 onSortSettings: { onSortSettings() },
-                onCreatePromise: { onCreatePromise(group.id) }
+                onCreateSchedule: { onCreateSchedule(group.id) }
               )
               .id(group.id)
             }
@@ -159,7 +159,7 @@ private struct GroupBarItemView: View {
   let onInvite: () -> Void
   let onSettings: () -> Void
   let onSortSettings: () -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
 
   var body: some View {
     Button {
@@ -224,9 +224,9 @@ private struct GroupBarItemView: View {
       }
 
       Button {
-        onCreatePromise()
+        onCreateSchedule()
       } label: {
-        Label(LocalizedStrings.GroupHorizontalBar.createPromise, systemImage: "plus.circle")
+        Label(LocalizedStrings.GroupHorizontalBar.createSchedule, systemImage: "plus.circle")
       }
     }
   }
@@ -321,7 +321,7 @@ private struct AddGroupMenuButton: View {
       onCreateGroup: { },
       onJoinGroup: { },
       onSortSettings: { },
-      onCreatePromise: { _ in }
+      onCreateSchedule: { _ in }
     )
     .background(Color(.systemGroupedBackground))
 
@@ -338,7 +338,7 @@ private struct AddGroupMenuButton: View {
     onCreateGroup: { },
     onJoinGroup: { },
     onSortSettings: { },
-    onCreatePromise: { _ in }
+    onCreateSchedule: { _ in }
   )
   .background(Color(.systemGroupedBackground))
 }
@@ -353,7 +353,7 @@ private struct AddGroupMenuButton: View {
     onCreateGroup: { },
     onJoinGroup: { },
     onSortSettings: { },
-    onCreatePromise: { _ in }
+    onCreateSchedule: { _ in }
   )
   .background(Color(.systemGroupedBackground))
 }

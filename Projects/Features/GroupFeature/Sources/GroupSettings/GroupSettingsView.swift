@@ -189,10 +189,10 @@ extension GroupSettings {
           dividerLine
 
           menuRow(
-            title: LocalizedStrings.ManageGroup.pastPromises,
+            title: LocalizedStrings.ManageGroup.pastSchedules,
             systemImage: "clock.arrow.circlepath",
             trailingText: nil,
-            action: { store.send(.view(.pastPromisesTapped)) }
+            action: { store.send(.view(.pastSchedulesTapped)) }
           )
         }
         .adaptiveGlassCard()
@@ -344,7 +344,7 @@ private struct NotificationSettingsView: View {
         }
 
         groupNotificationSection
-        promiseNotificationSection
+        scheduleNotificationSection
         groupActivityNotificationSection
       }
       .padding(.horizontal, 16)
@@ -458,20 +458,20 @@ private struct NotificationSettingsView: View {
     }
   }
 
-  private var promiseNotificationSection: some View {
+  private var scheduleNotificationSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text(LocalizedStrings.GroupSettingsView.promiseSection)
+      Text(LocalizedStrings.GroupSettingsView.scheduleSection)
         .font(.system(size: 16, weight: .semibold))
         .padding(.horizontal, 4)
 
       VStack(spacing: 0) {
-        let promiseKeys: [GroupNotificationPreferenceKey] = [
-          .promiseInvitation,
-          .promiseConfirmed,
-          .promiseCancelled,
-          .promiseUpdated
+        let scheduleKeys: [GroupNotificationPreferenceKey] = [
+          .scheduleInvitation,
+          .scheduleConfirmed,
+          .scheduleCancelled,
+          .scheduleUpdated
         ]
-        ForEach(Array(promiseKeys.enumerated()), id: \.element.rawValue) { index, key in
+        ForEach(Array(scheduleKeys.enumerated()), id: \.element.rawValue) { index, key in
           notificationPreferenceRow(
               key: key,
               activeTooltip: $activeTooltip,
@@ -480,7 +480,7 @@ private struct NotificationSettingsView: View {
               set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
             )
           )
-          if index != promiseKeys.count - 1 {
+          if index != scheduleKeys.count - 1 {
             dividerLine
           }
         }
@@ -748,16 +748,16 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var previewTitle: String {
     switch self {
     case .groupNotifications:
-      return LocalizedStrings.GroupSettingsView.tooltipNewPromise
+      return LocalizedStrings.GroupSettingsView.tooltipNewSchedule
     case .preference(let key):
       switch key {
-      case .promiseInvitation:
-        return LocalizedStrings.GroupSettingsView.tooltipNewPromise
-      case .promiseConfirmed:
+      case .scheduleInvitation:
+        return LocalizedStrings.GroupSettingsView.tooltipNewSchedule
+      case .scheduleConfirmed:
         return LocalizedStrings.GroupSettingsView.tooltipConfirmed
-      case .promiseCancelled:
+      case .scheduleCancelled:
         return LocalizedStrings.GroupSettingsView.tooltipCancelled
-      case .promiseUpdated:
+      case .scheduleUpdated:
         return LocalizedStrings.GroupSettingsView.tooltipUpdated
       case .groupUpdate:
         return LocalizedStrings.GroupSettingsView.tooltipNewMember
@@ -768,16 +768,16 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var previewBody: String {
     switch self {
     case .groupNotifications:
-      return LocalizedStrings.GroupSettingsView.tooltipNewPromiseBody
+      return LocalizedStrings.GroupSettingsView.tooltipNewScheduleBody
     case .preference(let key):
       switch key {
-      case .promiseInvitation:
-        return LocalizedStrings.GroupSettingsView.tooltipNewPromiseBody
-      case .promiseConfirmed:
+      case .scheduleInvitation:
+        return LocalizedStrings.GroupSettingsView.tooltipNewScheduleBody
+      case .scheduleConfirmed:
         return LocalizedStrings.GroupSettingsView.tooltipConfirmedBody
-      case .promiseCancelled:
+      case .scheduleCancelled:
         return LocalizedStrings.GroupSettingsView.tooltipCancelledBody
-      case .promiseUpdated:
+      case .scheduleUpdated:
         return LocalizedStrings.GroupSettingsView.tooltipUpdatedBody
       case .groupUpdate:
         return LocalizedStrings.GroupSettingsView.tooltipNewMemberBody

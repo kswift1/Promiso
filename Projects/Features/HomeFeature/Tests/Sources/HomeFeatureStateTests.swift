@@ -19,24 +19,24 @@ struct HomeFeatureStateTests {
     )
   }
 
-  /// 테스트용 PromiseModel 생성
+  /// 테스트용 ScheduleModel 생성
   /// isConfirmed를 true로 만들려면 votes.accepted에 minimumParticipants 이상의 사용자 필요
-  private func makePromise(
-    id: String = "test-promise",
-    title: String = "테스트 약속",
+  private func makeSchedule(
+    id: String = "test-schedule",
+    title: String = "테스트 일정",
     groupId: String = "group-id",
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     minimumParticipants: Int = 2,
-    votes: PromiseVotesModel? = nil
-  ) -> PromiseModel {
-    let defaultVotes = votes ?? PromiseVotesModel(
+    votes: ScheduleVotesModel? = nil
+  ) -> ScheduleModel {
+    let defaultVotes = votes ?? ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(1800)
     )
     
-    return PromiseModel(
+    return ScheduleModel(
       id: id,
       title: title,
       groupId: groupId,
@@ -49,13 +49,13 @@ struct HomeFeatureStateTests {
 
   /// 테스트용 State 생성
   private func makeState(
-    promisesState: LoadingState<[PromiseModel]> = .idle,
+    schedulesState: LoadingState<[ScheduleModel]> = .idle,
     selectedStatusFilter: HomeModels.StatusFilter = .all,
     selectedGroupId: String? = nil
   ) -> Home.Feature.State {
     @Shared(.inMemory("test-\(UUID().uuidString.prefix(8))")) var currentUser = makeCurrentUser()
     var state = Home.Feature.State(currentUser: $currentUser)
-    state.promisesState = promisesState
+    state.schedulesState = schedulesState
     state.selectedStatusFilter = selectedStatusFilter
     state.selectedGroupId = selectedGroupId
     state.refreshHomeContentSnapshot()
@@ -64,245 +64,245 @@ struct HomeFeatureStateTests {
 
   // MARK: - isLoading 테스트
 
-  @Test("promisesState가 loading이면 true")
+  @Test("schedulesState가 loading이면 true")
   func isLoading_whenLoading_returnsTrue() {
-    let state = makeState(promisesState: .loading)
+    let state = makeState(schedulesState: .loading)
     #expect(state.isLoading == true)
   }
 
-  @Test("promisesState가 loaded이면 false")
+  @Test("schedulesState가 loaded이면 false")
   func isLoading_whenLoaded_returnsFalse() {
-    let state = makeState(promisesState: .loaded([]))
+    let state = makeState(schedulesState: .loaded([]))
     #expect(state.isLoading == false)
   }
 
-  @Test("promisesState가 idle이면 false")
+  @Test("schedulesState가 idle이면 false")
   func isLoading_whenIdle_returnsFalse() {
-    let state = makeState(promisesState: .idle)
+    let state = makeState(schedulesState: .idle)
     #expect(state.isLoading == false)
   }
 
-  // MARK: - homeContentSnapshot.todayPromises 테스트
+  // MARK: - homeContentSnapshot.todaySchedules 테스트
 
-  @Test("오늘 약속 목록 반환")
-  func homeContentSnapshot_todayPromises_returnsConfirmedTodayPromises() {
+  @Test("오늘 일정 목록 반환")
+  func homeContentSnapshot_todaySchedules_returnsConfirmedTodaySchedules() {
     // KST 타임존 사용 (실제 코드와 동일)
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
-    // isMyPromise = true (current-user가 accepted에 포함)
-    let confirmedVotes = PromiseVotesModel(
+    // isMySchedule = true (current-user가 accepted에 포함)
+    let confirmedVotes = ScheduleVotesModel(
       accepted: ["current-user", "user2"],  // minimumParticipants(2) 이상 + 현재 유저 포함
       declined: [],
       until: Date()
     )
 
-    let promise1 = makePromise(
+    let schedule1 = makeSchedule(
       id: "today-1",
       startAt: todayAfternoon,
       votes: confirmedVotes
     )
-    let promise2 = makePromise(
+    let schedule2 = makeSchedule(
       id: "today-2",
       startAt: todayAfternoon.addingTimeInterval(3600),
       votes: confirmedVotes
     )
 
-    let state = makeState(promisesState: .loaded([promise1, promise2]))
+    let state = makeState(schedulesState: .loaded([schedule1, schedule2]))
 
-    #expect(state.homeContentSnapshot.todayPromises.count == 2)
+    #expect(state.homeContentSnapshot.todaySchedules.count == 2)
   }
 
-  // MARK: - homeContentSnapshot.pendingPromises 테스트
+  // MARK: - homeContentSnapshot.pendingSchedules 테스트
 
-  @Test("응답 필요 약속 목록 반환")
-  func homeContentSnapshot_pendingPromises_returnsPendingVotePromises() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
+  @Test("응답 필요 일정 목록 반환")
+  func homeContentSnapshot_pendingSchedules_returnsPendingVoteSchedules() {
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
     
     // current-user가 pending (accepted/declined에 없음)
-    let votes = PromiseVotesModel(
+    let votes = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(3600)
     )
     
-    let promise = makePromise(
+    let schedule = makeSchedule(
       id: "pending-1",
       startAt: tomorrow,
       votes: votes
     )
 
-    let state = makeState(promisesState: .loaded([promise]))
+    let state = makeState(schedulesState: .loaded([schedule]))
 
-    #expect(state.homeContentSnapshot.pendingPromises.count == 1)
+    #expect(state.homeContentSnapshot.pendingSchedules.count == 1)
   }
 
-  // MARK: - homeContentSnapshot.upcomingPromises 테스트
+  // MARK: - homeContentSnapshot.upcomingSchedules 테스트
 
-  @Test("다가오는 약속 목록 반환")
-  func homeContentSnapshot_upcomingPromises_returnsConfirmedUpcomingPromises() {
+  @Test("다가오는 일정 목록 반환")
+  func homeContentSnapshot_upcomingSchedules_returnsConfirmedUpcomingSchedules() {
     // 실제 구현(Home.Feature.State.todayRange)과 동일하게 KST 기준으로 계산
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
     // isConfirmed = true, current-user가 accepted
-    let votes = PromiseVotesModel(
+    let votes = ScheduleVotesModel(
       accepted: ["current-user", "user2"],  // minimumParticipants(2) 이상
       declined: [],
       until: Date()
     )
 
-    let promise = makePromise(
+    let schedule = makeSchedule(
       id: "upcoming-1",
       startAt: tomorrow,
       votes: votes
     )
 
-    let state = makeState(promisesState: .loaded([promise]))
+    let state = makeState(schedulesState: .loaded([schedule]))
 
-    #expect(state.homeContentSnapshot.upcomingPromises.count == 1)
+    #expect(state.homeContentSnapshot.upcomingSchedules.count == 1)
   }
 
-  // MARK: - allPromises 테스트
+  // MARK: - allSchedules 테스트
 
-  @Test("모든 약속 반환")
-  func allPromises_returnsAllPromises() {
-    let calendar = Calendar.promiseDisplay
+  @Test("모든 일정 반환")
+  func allSchedules_returnsAllSchedules() {
+    let calendar = Calendar.scheduleDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
-    let confirmedVotes = PromiseVotesModel(
+    let confirmedVotes = ScheduleVotesModel(
       accepted: ["user1", "user2"],
       declined: [],
       until: Date()
     )
-    let today = makePromise(id: "today", startAt: todayAfternoon, votes: confirmedVotes)
+    let today = makeSchedule(id: "today", startAt: todayAfternoon, votes: confirmedVotes)
     
-    let pendingVotes = PromiseVotesModel(
+    let pendingVotes = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(3600)
     )
-    let pending = makePromise(
+    let pending = makeSchedule(
       id: "pending",
       startAt: tomorrow,
       votes: pendingVotes
     )
     
-    let upcomingVotes = PromiseVotesModel(
+    let upcomingVotes = ScheduleVotesModel(
       accepted: ["current-user", "user2"],
       declined: [],
       until: Date()
     )
-    let upcoming = makePromise(
+    let upcoming = makeSchedule(
       id: "upcoming",
       startAt: tomorrow.addingTimeInterval(3600),
       votes: upcomingVotes
     )
 
-    let state = makeState(promisesState: .loaded([today, pending, upcoming]))
+    let state = makeState(schedulesState: .loaded([today, pending, upcoming]))
 
-    #expect(state.allPromises.count == 3)
+    #expect(state.allSchedules.count == 3)
   }
 
   // MARK: - pendingResponseCount 테스트
 
   @Test("응답 필요 개수 반환")
   func pendingResponseCount_returnsPendingCount() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
     
-    let votes1 = PromiseVotesModel(
+    let votes1 = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(3600)
     )
-    let promise1 = makePromise(
+    let schedule1 = makeSchedule(
       id: "pending-1",
       startAt: tomorrow,
       votes: votes1
     )
     
-    let votes2 = PromiseVotesModel(
+    let votes2 = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(7200)
     )
-    let promise2 = makePromise(
+    let schedule2 = makeSchedule(
       id: "pending-2",
       startAt: tomorrow.addingTimeInterval(3600),
       votes: votes2
     )
 
-    let state = makeState(promisesState: .loaded([promise1, promise2]))
+    let state = makeState(schedulesState: .loaded([schedule1, schedule2]))
 
     #expect(state.pendingResponseCount == 2)
   }
 
   @Test("응답 필요 없으면 0")
   func pendingResponseCount_whenNoPending_returnsZero() {
-    let state = makeState(promisesState: .loaded([]))
+    let state = makeState(schedulesState: .loaded([]))
 
     #expect(state.pendingResponseCount == 0)
   }
 
   // MARK: - overviewData 테스트
 
-  @Test("오늘 약속 개수 계산")
+  @Test("오늘 일정 개수 계산")
   func overviewData_todayCount() {
     // KST 타임존 사용 (실제 코드와 동일)
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
-    let confirmedVotes = PromiseVotesModel(
+    let confirmedVotes = ScheduleVotesModel(
       accepted: ["current-user", "user2"],  // 현재 유저 포함
       declined: [],
       until: Date()
     )
 
-    let promise1 = makePromise(id: "today-1", startAt: todayAfternoon, votes: confirmedVotes)
-    let promise2 = makePromise(id: "today-2", startAt: todayAfternoon.addingTimeInterval(3600), votes: confirmedVotes)
-    let promise3 = makePromise(id: "today-3", startAt: todayAfternoon.addingTimeInterval(7200), votes: confirmedVotes)
+    let schedule1 = makeSchedule(id: "today-1", startAt: todayAfternoon, votes: confirmedVotes)
+    let schedule2 = makeSchedule(id: "today-2", startAt: todayAfternoon.addingTimeInterval(3600), votes: confirmedVotes)
+    let schedule3 = makeSchedule(id: "today-3", startAt: todayAfternoon.addingTimeInterval(7200), votes: confirmedVotes)
 
-    let state = makeState(promisesState: .loaded([promise1, promise2, promise3]))
+    let state = makeState(schedulesState: .loaded([schedule1, schedule2, schedule3]))
 
     #expect(state.overviewData.todayCount == 3)
   }
 
   @Test("응답 필요 개수 계산")
   func overviewData_needResponseCount() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
     
-    let votes1 = PromiseVotesModel(
+    let votes1 = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(3600)
     )
-    let promise1 = makePromise(
+    let schedule1 = makeSchedule(
       id: "pending-1",
       startAt: tomorrow,
       votes: votes1
     )
     
-    let votes2 = PromiseVotesModel(
+    let votes2 = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: Date().addingTimeInterval(7200)
     )
-    let promise2 = makePromise(
+    let schedule2 = makeSchedule(
       id: "pending-2",
       startAt: tomorrow.addingTimeInterval(3600),
       votes: votes2
     )
 
-    let state = makeState(promisesState: .loaded([promise1, promise2]))
+    let state = makeState(schedulesState: .loaded([schedule1, schedule2]))
 
     #expect(state.overviewData.needResponseCount == 2)
   }
@@ -310,153 +310,153 @@ struct HomeFeatureStateTests {
   // MARK: - Empty State 테스트
 
   @Test("빈 배열에서 빈 배열 반환")
-  func emptyPromises_returnsEmptyArrays() {
-    let state = makeState(promisesState: .loaded([]))
+  func emptySchedules_returnsEmptyArrays() {
+    let state = makeState(schedulesState: .loaded([]))
 
-    #expect(state.homeContentSnapshot.todayPromises.isEmpty)
-    #expect(state.homeContentSnapshot.pendingPromises.isEmpty)
-    #expect(state.homeContentSnapshot.upcomingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.todaySchedules.isEmpty)
+    #expect(state.homeContentSnapshot.pendingSchedules.isEmpty)
+    #expect(state.homeContentSnapshot.upcomingSchedules.isEmpty)
   }
 
   @Test("idle 상태에서 빈 배열 반환")
   func idleState_returnsEmptyArrays() {
-    let state = makeState(promisesState: .idle)
+    let state = makeState(schedulesState: .idle)
 
-    #expect(state.homeContentSnapshot.todayPromises.isEmpty)
-    #expect(state.homeContentSnapshot.pendingPromises.isEmpty)
-    #expect(state.homeContentSnapshot.upcomingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.todaySchedules.isEmpty)
+    #expect(state.homeContentSnapshot.pendingSchedules.isEmpty)
+    #expect(state.homeContentSnapshot.upcomingSchedules.isEmpty)
   }
 
-  // MARK: - filteredPromises 테스트
+  // MARK: - filteredSchedules 테스트
 
-  @Test("그룹 필터 적용 시 해당 그룹 약속만 반환")
-  func filteredPromises_withGroupFilter_filtersByGroup() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
-    let promise1 = makePromise(id: "p1", groupId: "group-1", startAt: tomorrow)
-    let promise2 = makePromise(id: "p2", groupId: "group-2", startAt: tomorrow)
+  @Test("그룹 필터 적용 시 해당 그룹 일정만 반환")
+  func filteredSchedules_withGroupFilter_filtersByGroup() {
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
+    let schedule1 = makeSchedule(id: "p1", groupId: "group-1", startAt: tomorrow)
+    let schedule2 = makeSchedule(id: "p2", groupId: "group-2", startAt: tomorrow)
 
     let state = makeState(
-      promisesState: .loaded([promise1, promise2]),
+      schedulesState: .loaded([schedule1, schedule2]),
       selectedGroupId: "group-1"
     )
 
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "p1")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "p1")
   }
 
-  @Test("확정됨 필터 적용 시 확정 약속만 반환")
-  func filteredPromises_confirmed_returnsOnlyConfirmed() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
-    let confirmedVotes = PromiseVotesModel(
+  @Test("확정됨 필터 적용 시 확정 일정만 반환")
+  func filteredSchedules_confirmed_returnsOnlyConfirmed() {
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
+    let confirmedVotes = ScheduleVotesModel(
       accepted: ["u1", "u2"],
       declined: [],
       until: Date()
     )
-    let unconfirmedVotes = PromiseVotesModel(
+    let unconfirmedVotes = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: tomorrow
     )
 
-    let confirmed = makePromise(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
-    let unconfirmed = makePromise(id: "unconfirmed", startAt: tomorrow, votes: unconfirmedVotes)
+    let confirmed = makeSchedule(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
+    let unconfirmed = makeSchedule(id: "unconfirmed", startAt: tomorrow, votes: unconfirmedVotes)
 
     let state = makeState(
-      promisesState: .loaded([confirmed, unconfirmed]),
+      schedulesState: .loaded([confirmed, unconfirmed]),
       selectedStatusFilter: .confirmed
     )
 
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "confirmed")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "confirmed")
   }
 
-  @Test("응답 필요 필터 적용 시 미응답 약속만 반환")
-  func filteredPromises_needResponse_returnsOnlyPending() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
+  @Test("응답 필요 필터 적용 시 미응답 일정만 반환")
+  func filteredSchedules_needResponse_returnsOnlyPending() {
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
     // current-user가 accepted/declined에 없음 → pending
-    let pendingVotes = PromiseVotesModel(
+    let pendingVotes = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: tomorrow
     )
     // current-user가 accepted → not pending
-    let acceptedVotes = PromiseVotesModel(
+    let acceptedVotes = ScheduleVotesModel(
       accepted: ["current-user", "u2"],
       declined: [],
       until: Date()
     )
 
-    let pending = makePromise(id: "pending", startAt: tomorrow, votes: pendingVotes)
-    let accepted = makePromise(id: "accepted", startAt: tomorrow, votes: acceptedVotes)
+    let pending = makeSchedule(id: "pending", startAt: tomorrow, votes: pendingVotes)
+    let accepted = makeSchedule(id: "accepted", startAt: tomorrow, votes: acceptedVotes)
 
     let state = makeState(
-      promisesState: .loaded([pending, accepted]),
+      schedulesState: .loaded([pending, accepted]),
       selectedStatusFilter: .needResponse
     )
 
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "pending")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "pending")
   }
 
-  @Test("진행 중 필터 적용 시 미확정+투표 마감 전 약속만 반환")
-  func filteredPromises_inProgress_returnsInProgress() {
-    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
+  @Test("진행 중 필터 적용 시 미확정+투표 마감 전 일정만 반환")
+  func filteredSchedules_inProgress_returnsInProgress() {
+    let tomorrow = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: Date())!
     // 미확정 + 투표 마감 전
-    let inProgressVotes = PromiseVotesModel(
+    let inProgressVotes = ScheduleVotesModel(
       accepted: [],
       declined: [],
       until: tomorrow
     )
     // 확정됨 → inProgress 아님
-    let confirmedVotes = PromiseVotesModel(
+    let confirmedVotes = ScheduleVotesModel(
       accepted: ["u1", "u2"],
       declined: [],
       until: Date()
     )
 
-    let inProgress = makePromise(id: "in-progress", startAt: tomorrow, votes: inProgressVotes)
-    let confirmed = makePromise(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
+    let inProgress = makeSchedule(id: "in-progress", startAt: tomorrow, votes: inProgressVotes)
+    let confirmed = makeSchedule(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
 
     let state = makeState(
-      promisesState: .loaded([inProgress, confirmed]),
+      schedulesState: .loaded([inProgress, confirmed]),
       selectedStatusFilter: .inProgress
     )
 
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "in-progress")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "in-progress")
   }
 
   // MARK: - timelineData 테스트
 
   @Test("날짜별 그룹화된 타임라인 반환")
   func timelineData_groupsByDate() {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
     let dayAfter = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
 
-    let p1 = makePromise(id: "p1", startAt: tomorrow)
-    let p2 = makePromise(id: "p2", startAt: tomorrow.addingTimeInterval(3600))
-    let p3 = makePromise(id: "p3", startAt: dayAfter)
+    let p1 = makeSchedule(id: "p1", startAt: tomorrow)
+    let p2 = makeSchedule(id: "p2", startAt: tomorrow.addingTimeInterval(3600))
+    let p3 = makeSchedule(id: "p3", startAt: dayAfter)
 
-    let state = makeState(promisesState: .loaded([p1, p2, p3]))
+    let state = makeState(schedulesState: .loaded([p1, p2, p3]))
 
     #expect(state.timelineData.count == 2)
-    #expect(state.timelineData[0].promises.count == 2)
-    #expect(state.timelineData[1].promises.count == 1)
+    #expect(state.timelineData[0].schedules.count == 2)
+    #expect(state.timelineData[1].schedules.count == 1)
   }
 
   @Test("타임라인 시간순 정렬 확인")
   func timelineData_sortedByTime() {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
 
-    let later = makePromise(id: "later", startAt: tomorrow.addingTimeInterval(7200))
-    let earlier = makePromise(id: "earlier", startAt: tomorrow.addingTimeInterval(3600))
+    let later = makeSchedule(id: "later", startAt: tomorrow.addingTimeInterval(7200))
+    let earlier = makeSchedule(id: "earlier", startAt: tomorrow.addingTimeInterval(3600))
 
-    let state = makeState(promisesState: .loaded([later, earlier]))
+    let state = makeState(schedulesState: .loaded([later, earlier]))
 
     #expect(state.timelineData.count == 1)
-    #expect(state.timelineData[0].promises[0].id == "earlier")
-    #expect(state.timelineData[0].promises[1].id == "later")
+    #expect(state.timelineData[0].schedules[0].id == "earlier")
+    #expect(state.timelineData[0].schedules[1].id == "later")
   }
 }

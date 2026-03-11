@@ -9,7 +9,7 @@ struct CalendarMonthGridView: View {
   let days: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
@@ -39,9 +39,9 @@ struct CalendarMonthGridView: View {
             }
 
             Button {
-              onCreatePromise()
+              onCreateSchedule()
             } label: {
-              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+              Label(LocalizedStrings.Calendar.createSchedule, systemImage: "person.2.circle")
             }
           } preview: {
             DaySchedulePreviewView(day: day)

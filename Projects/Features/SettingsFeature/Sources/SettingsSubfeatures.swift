@@ -215,7 +215,7 @@ extension DateTimeSettings {
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        ExamplePromiseCard(use24Hour: store.selectedValue)
+        ExampleScheduleCard(use24Hour: store.selectedValue)
 
         Text(LocalizedStrings.SettingsStrings.previewHint)
           .font(.system(size: 12))
@@ -225,9 +225,9 @@ extension DateTimeSettings {
     }
   }
 
-  // MARK: - Example Promise Card
+  // MARK: - Example Schedule Card
 
-  private struct ExamplePromiseCard: View {
+  private struct ExampleScheduleCard: View {
     let use24Hour: Bool
 
     private var timeString: String {
@@ -604,7 +604,7 @@ extension TabSettings {
 
     @ObservableState
     public struct State: Equatable, Sendable {
-      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) public var defaultScheduleTabMode: String = "group"
       @Shared(.appStorage(AppConstants.UserDefaults.defaultCalendarDisplayMode)) public var defaultCalendarDisplayMode: String = "month"
 
       public init() {}
@@ -616,7 +616,7 @@ extension TabSettings {
 
     public enum View: Equatable, Sendable {
       case onAppear
-      case promiseTabModeChanged(String)
+      case scheduleTabModeChanged(String)
       case calendarDisplayModeChanged(String)
     }
 
@@ -628,8 +628,8 @@ extension TabSettings {
           case .onAppear:
             return .none
 
-          case .promiseTabModeChanged(let mode):
-            state.$defaultPromiseTabMode.withLock { $0 = mode }
+          case .scheduleTabModeChanged(let mode):
+            state.$defaultScheduleTabMode.withLock { $0 = mode }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -657,7 +657,7 @@ extension TabSettings {
     public var body: some View {
       ScrollView {
         VStack(spacing: 24) {
-          promiseTabModeSection
+          scheduleTabModeSection
           calendarDisplayModeSection
           tabBarPreviewSection
         }
@@ -673,32 +673,32 @@ extension TabSettings {
       }
     }
 
-    // MARK: - Promise Tab Mode Section
+    // MARK: - Schedule Tab Mode Section
 
-    private var promiseTabModeSection: some View {
+    private var scheduleTabModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text(LocalizedStrings.SettingsStrings.promiseTabModeDefault)
+        Text(LocalizedStrings.SettingsStrings.scheduleTabModeDefault)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          promiseTabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
+          scheduleTabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.scheduleTabModeGroup, description: LocalizedStrings.SettingsStrings.scheduleTabModeGroupDescription)
           Divider()
             .padding(.leading, 48)
-          promiseTabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
+          scheduleTabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.scheduleTabModeOwn, description: LocalizedStrings.SettingsStrings.scheduleTabModeOwnDescription)
         }
         .adaptiveGlassCard()
 
-        Text(LocalizedStrings.SettingsStrings.promiseTabModeHint)
+        Text(LocalizedStrings.SettingsStrings.scheduleTabModeHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
       }
     }
 
-    private func promiseTabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
+    private func scheduleTabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
       Button {
-        store.send(.view(.promiseTabModeChanged(mode)))
+        store.send(.view(.scheduleTabModeChanged(mode)))
       } label: {
         HStack(spacing: 12) {
           Image(systemName: icon)
@@ -718,7 +718,7 @@ extension TabSettings {
 
           Spacer()
 
-          if store.defaultPromiseTabMode == mode {
+          if store.defaultScheduleTabMode == mode {
             Image(systemName: "checkmark")
               .font(.system(size: 14, weight: .semibold))
               .foregroundStyle(Color.pmindigo.n500)
@@ -801,12 +801,12 @@ extension TabSettings {
           .padding(.horizontal, 4)
 
         TabBarPreview(
-          promiseMode: store.defaultPromiseTabMode,
+          scheduleMode: store.defaultScheduleTabMode,
           calendarDisplayMode: store.defaultCalendarDisplayMode
         )
         .adaptiveGlassCard()
 
-        Text(LocalizedStrings.SettingsStrings.promiseTabModePreviewHint)
+        Text(LocalizedStrings.SettingsStrings.scheduleTabModePreviewHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -817,7 +817,7 @@ extension TabSettings {
   // MARK: - TabBarPreview
 
   private struct TabBarPreview: View {
-    let promiseMode: String
+    let scheduleMode: String
     let calendarDisplayMode: String
 
     private var calendarIcon: String {
@@ -837,8 +837,8 @@ extension TabSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
-          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: scheduleMode == "group" ? "person.3.fill" : "person.fill",
+          label: scheduleMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
         TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
@@ -856,8 +856,8 @@ extension TabSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
-          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: scheduleMode == "group" ? "person.3.fill" : "person.fill",
+          label: scheduleMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
         TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
@@ -1369,13 +1369,13 @@ extension ConflictThresholdSettings {
     }
 
     // 시나리오:
-    // 점심 약속: 1:50~2:10, 내 약속(2~4시)과 10분 겹침
-    // 팀 미팅: 4:10~5:00, 내 약속과 gap = 10분, 겹침 없음
-    // 저녁 약속: 4:30~6:00, 내 약속과 gap = 30분, 겹침 없음
+    // 점심 일정: 1:50~2:10, 내 일정(2~4시)과 10분 겹침
+    // 팀 미팅: 4:10~5:00, 내 일정과 gap = 10분, 겹침 없음
+    // 저녁 일정: 4:30~6:00, 내 일정과 gap = 30분, 겹침 없음
     private let scenarios: [Scenario] = [
-      .init(title: "점심 약속", emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
+      .init(title: "점심 일정", emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
       .init(title: "팀 미팅",  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0,  gapMinutes: 10),
-      .init(title: "저녁 약속", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
+      .init(title: "저녁 일정", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
     ]
 
     private func frac(_ m: CGFloat) -> CGFloat { m / totalMinutes }
@@ -1390,7 +1390,7 @@ extension ConflictThresholdSettings {
 
     var body: some View {
       VStack(alignment: .leading, spacing: 8) {
-        // 타임라인 + 새로 만드는 약속 (카드 밖)
+        // 타임라인 + 새로 만드는 일정 (카드 밖)
         VStack(alignment: .leading, spacing: 4) {
           timeAxis
 

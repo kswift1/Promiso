@@ -174,9 +174,9 @@ struct CreateGroupSuccessView: View {
       .disabled(isKakaoSharing)
       .opacity(isKakaoSharing ? 0.6 : 1)
 
-      // 약속 생성하러 가기
+      // 일정 생성하러 가기
       Button(action: onConfirm) {
-        Text(LocalizedStrings.CreateGroup.createPromiseButton)
+        Text(LocalizedStrings.CreateGroup.createScheduleButton)
           .font(.headline)
           .frame(maxWidth: .infinity)
           .frame(height: 56)

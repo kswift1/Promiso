@@ -12,29 +12,29 @@ public struct LiveActivityClient: Sendable {
   /// 현재 활성화된 라이브액티비티가 있는지
   public var hasActiveActivity: @Sendable () -> Bool
 
-  /// 현재 활성화된 약속 ID
-  public var activePromiseId: @Sendable () -> String?
+  /// 현재 활성화된 일정 ID
+  public var activeScheduleId: @Sendable () -> String?
 
   /// 현재 활성화된 Activity ID
   public var activeActivityId: @Sendable () -> String?
 
   /// 현재 활성화된 Activity의 ContentState
-  public var currentState: @Sendable () -> PromiseActivityAttributes.ContentState?
+  public var currentState: @Sendable () -> ScheduleActivityAttributes.ContentState?
 
   /// 현재 활성화된 Activity의 Attributes
-  public var currentAttributes: @Sendable () -> PromiseActivityAttributes?
+  public var currentAttributes: @Sendable () -> ScheduleActivityAttributes?
 
   /// 라이브액티비티 시작
   /// - Returns: Activity ID
   public var start: @Sendable (
-    _ attributes: PromiseActivityAttributes,
-    _ initialState: PromiseActivityAttributes.ContentState
+    _ attributes: ScheduleActivityAttributes,
+    _ initialState: ScheduleActivityAttributes.ContentState
   ) async throws -> String
 
   /// 상태 업데이트
   public var update: @Sendable (
     _ activityId: String,
-    _ state: PromiseActivityAttributes.ContentState
+    _ state: ScheduleActivityAttributes.ContentState
   ) async throws -> Void
 
   /// 라이브액티비티 종료
@@ -52,8 +52,8 @@ public struct LiveActivityClient: Sendable {
   /// ContentState 업데이트 스트림 구독
   /// APNs 업데이트 시 앱 내 View 자동 동기화를 위해 사용
   public var observeStateUpdates: @Sendable (
-    _ promiseId: String
-  ) -> AsyncStream<PromiseActivityAttributes.ContentState>?
+    _ scheduleId: String
+  ) -> AsyncStream<ScheduleActivityAttributes.ContentState>?
 
   // Push Token 관련 기능 제거됨 - iOS 18 Broadcast 방식 사용
   // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
@@ -81,8 +81,8 @@ public struct LiveActivityClient: Sendable {
 // MARK: - Activity Update
 
 public struct ActivityUpdate: Sendable, Equatable {
-  public let attributes: PromiseActivityAttributes?
-  public let contentState: PromiseActivityAttributes.ContentState?
+  public let attributes: ScheduleActivityAttributes?
+  public let contentState: ScheduleActivityAttributes.ContentState?
   public let activityState: ActivityStateValue
 
   public var isActive: Bool {
@@ -90,8 +90,8 @@ public struct ActivityUpdate: Sendable, Equatable {
   }
 
   public init(
-    attributes: PromiseActivityAttributes?,
-    contentState: PromiseActivityAttributes.ContentState?,
+    attributes: ScheduleActivityAttributes?,
+    contentState: ScheduleActivityAttributes.ContentState?,
     activityState: ActivityStateValue
   ) {
     self.attributes = attributes
@@ -115,7 +115,7 @@ extension LiveActivityClient: TestDependencyKey {
   public static let previewValue = Self(
     isSupported: { true },
     hasActiveActivity: { false },
-    activePromiseId: { nil },
+    activeScheduleId: { nil },
     activeActivityId: { nil },
     currentState: { nil },
     currentAttributes: { nil },
@@ -135,7 +135,7 @@ extension LiveActivityClient: TestDependencyKey {
   public static let testValue = Self(
     isSupported: unimplemented("\(Self.self).isSupported", placeholder: false),
     hasActiveActivity: unimplemented("\(Self.self).hasActiveActivity", placeholder: false),
-    activePromiseId: unimplemented("\(Self.self).activePromiseId", placeholder: nil),
+    activeScheduleId: unimplemented("\(Self.self).activeScheduleId", placeholder: nil),
     activeActivityId: unimplemented("\(Self.self).activeActivityId", placeholder: nil),
     currentState: unimplemented("\(Self.self).currentState", placeholder: nil),
     currentAttributes: unimplemented("\(Self.self).currentAttributes", placeholder: nil),
@@ -162,23 +162,23 @@ extension LiveActivityClient: DependencyKey {
     },
 
     hasActiveActivity: {
-      !Activity<PromiseActivityAttributes>.activities.isEmpty
+      !Activity<ScheduleActivityAttributes>.activities.isEmpty
     },
 
-    activePromiseId: {
-      Activity<PromiseActivityAttributes>.activities.first?.attributes.promiseId
+    activeScheduleId: {
+      Activity<ScheduleActivityAttributes>.activities.first?.attributes.scheduleId
     },
 
     activeActivityId: {
-      Activity<PromiseActivityAttributes>.activities.first?.id
+      Activity<ScheduleActivityAttributes>.activities.first?.id
     },
 
     currentState: {
-      Activity<PromiseActivityAttributes>.activities.first?.content.state
+      Activity<ScheduleActivityAttributes>.activities.first?.content.state
     },
 
     currentAttributes: {
-      Activity<PromiseActivityAttributes>.activities.first?.attributes
+      Activity<ScheduleActivityAttributes>.activities.first?.attributes
     },
 
     start: { attributes, initialState in
@@ -199,7 +199,7 @@ extension LiveActivityClient: DependencyKey {
     },
 
     update: { activityId, state in
-      guard let activity = Activity<PromiseActivityAttributes>.activities
+      guard let activity = Activity<ScheduleActivityAttributes>.activities
         .first(where: { $0.id == activityId }) else {
         throw LiveActivityClientError.activityNotFound
       }
@@ -209,7 +209,7 @@ extension LiveActivityClient: DependencyKey {
     },
 
     end: { activityId in
-      guard let activity = Activity<PromiseActivityAttributes>.activities
+      guard let activity = Activity<ScheduleActivityAttributes>.activities
         .first(where: { $0.id == activityId }) else {
         throw LiveActivityClientError.activityNotFound
       }
@@ -218,7 +218,7 @@ extension LiveActivityClient: DependencyKey {
     },
 
     endAll: {
-      for activity in Activity<PromiseActivityAttributes>.activities {
+      for activity in Activity<ScheduleActivityAttributes>.activities {
         await activity.end(nil, dismissalPolicy: .immediate)
       }
     },
@@ -236,9 +236,9 @@ extension LiveActivityClient: DependencyKey {
         .removeObject(forKey: LiveActivityIntentKey.etaUpdateKey)
     },
 
-    observeStateUpdates: { promiseId in
-      guard let activity = Activity<PromiseActivityAttributes>.activities
-        .first(where: { $0.attributes.promiseId == promiseId }) else {
+    observeStateUpdates: { scheduleId in
+      guard let activity = Activity<ScheduleActivityAttributes>.activities
+        .first(where: { $0.attributes.scheduleId == scheduleId }) else {
         return nil
       }
 
@@ -259,7 +259,7 @@ extension LiveActivityClient: DependencyKey {
     // MARK: - Push to Start
 
     pushToStartToken: {
-      for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+      for await tokenData in Activity<ScheduleActivityAttributes>.pushToStartTokenUpdates {
         let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
         return tokenString
       }
@@ -269,7 +269,7 @@ extension LiveActivityClient: DependencyKey {
     observePushToStartTokenUpdates: {
       AsyncStream { continuation in
         let task = Task {
-          for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+          for await tokenData in Activity<ScheduleActivityAttributes>.pushToStartTokenUpdates {
             let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
             continuation.yield(tokenString)
           }
@@ -287,7 +287,7 @@ extension LiveActivityClient: DependencyKey {
     observeActivityUpdates: {
       AsyncStream { continuation in
         let task = Task {
-          for await activity in Activity<PromiseActivityAttributes>.activityUpdates {
+          for await activity in Activity<ScheduleActivityAttributes>.activityUpdates {
             let stateValue: ActivityStateValue
             switch activity.activityState {
             case .active:
@@ -323,7 +323,7 @@ extension LiveActivityClient: DependencyKey {
     // MARK: - Activity State Updates
 
     observeActivityStateUpdates: { activityId in
-      guard let activity = Activity<PromiseActivityAttributes>.activities
+      guard let activity = Activity<ScheduleActivityAttributes>.activities
         .first(where: { $0.id == activityId }) else {
         AppLogger.liveActivity.warning("observeActivityStateUpdates: Activity not found")
         return nil

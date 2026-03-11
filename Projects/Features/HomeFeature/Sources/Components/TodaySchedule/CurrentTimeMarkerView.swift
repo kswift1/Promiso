@@ -5,7 +5,7 @@ import PromisoShared
 
 /// 일정 사이 빈 시간에 현재 위치를 표시하는 마커
 struct CurrentTimeMarkerView: View {
-  let nextPromiseStartAt: Date
+  let nextScheduleStartAt: Date
 
   @State private var currentTime = Date()
 
@@ -81,7 +81,7 @@ struct CurrentTimeMarkerView: View {
 
   private var nextScheduleInfo: some View {
     VStack(alignment: .leading, spacing: 2) {
-      let remaining = remainingTimeString(until: nextPromiseStartAt)
+      let remaining = remainingTimeString(until: nextScheduleStartAt)
       Text(LocalizedStrings.Home.nextScheduleUntil)
         .font(.pmCaption)
         .foregroundStyle(.secondary)
@@ -115,7 +115,7 @@ struct CurrentTimeMarkerView: View {
 #Preview {
   VStack(spacing: 0) {
     CurrentTimeMarkerView(
-      nextPromiseStartAt: Date().addingTimeInterval(4 * 3600)
+      nextScheduleStartAt: Date().addingTimeInterval(4 * 3600)
     )
   }
   .padding()

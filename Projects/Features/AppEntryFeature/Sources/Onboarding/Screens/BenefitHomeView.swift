@@ -183,7 +183,7 @@ struct BenefitHomeView: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
-  // MARK: - Section 3: 다가오는 약속
+  // MARK: - Section 3: 다가오는 일정
 
   private var upcomingCard: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -284,7 +284,7 @@ struct BenefitHomeView: View {
       showNeedResponseSection = true
     }
 
-    // 다가오는 약속 슬라이드 인
+    // 다가오는 일정 슬라이드 인
     try? await Task.sleep(for: .seconds(0.9))
     withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       showUpcomingSection = true

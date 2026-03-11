@@ -22,7 +22,7 @@ extension BottomAccessoryInfo {
       var isEnabled: Bool
 
       public init() {
-        self.isEnabled = UserDefaults.standard.bool(forKey: "dev.livePromise.enabled")
+        self.isEnabled = UserDefaults.standard.bool(forKey: "dev.liveSchedule.enabled")
       }
     }
 
@@ -41,7 +41,7 @@ extension BottomAccessoryInfo {
         switch action {
         case let .view(.toggleChanged(isEnabled)):
           state.isEnabled = isEnabled
-          UserDefaults.standard.set(isEnabled, forKey: "dev.livePromise.enabled")
+          UserDefaults.standard.set(isEnabled, forKey: "dev.liveSchedule.enabled")
           return .none
         }
       }
@@ -62,12 +62,12 @@ extension BottomAccessoryInfo {
         VStack(spacing: 16) {
           // Toggle 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Toggle(LocalizedStrings.SettingsStrings.livePromiseDisplay, isOn: $store.isEnabled.sending(\.view.toggleChanged))
+            Toggle(LocalizedStrings.SettingsStrings.liveScheduleDisplay, isOn: $store.isEnabled.sending(\.view.toggleChanged))
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
               .adaptiveGlassCard()
 
-            Text(LocalizedStrings.SettingsStrings.livePromiseDescription)
+            Text(LocalizedStrings.SettingsStrings.liveScheduleDescription)
               .font(.system(size: 12))
               .foregroundStyle(Color.pmtext.secondary)
               .padding(.horizontal, 4)
@@ -109,7 +109,7 @@ extension BottomAccessoryInfo {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.SettingsStrings.livePromiseSettings)
+      .navigationTitle(LocalizedStrings.SettingsStrings.liveScheduleSettings)
       .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -11,7 +11,7 @@ public enum OverlayScheduleDetail {}
 extension OverlayScheduleDetail {
   @Reducer
   public struct Feature {
-    @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.mapClient) var mapClient
@@ -81,8 +81,8 @@ extension OverlayScheduleDetail {
 
       @CasePathable
       public enum InternalAction: Sendable {
-        case respondPromise(status: PromiseAttendanceStatus)
-        case respondDone(status: PromiseAttendanceStatus)
+        case respondSchedule(status: ScheduleAttendanceStatus)
+        case respondDone(status: ScheduleAttendanceStatus)
         case respondFailed(error: AppError)
         case fetchWeather
         case weatherFetched(Result<WeatherInfo, Error>)
@@ -91,7 +91,7 @@ extension OverlayScheduleDetail {
       @CasePathable
       public enum DelegateAction: Sendable {
         case openFullDetail(HomeModels.ScheduleItem)
-        case promiseResponseUpdated(PromiseModel)
+        case scheduleResponseUpdated(ScheduleModel)
         case dismiss
       }
     }
@@ -122,19 +122,19 @@ extension OverlayScheduleDetail {
             return .send(.delegate(.dismiss))
 
           case .acceptTapped:
-            guard state.respondingState == .idle, state.promise != nil else { return .none }
+            guard state.respondingState == .idle, state.schedule != nil else { return .none }
             state.respondingState = .accepting
-            return .send(.internal(.respondPromise(status: .accepted)))
+            return .send(.internal(.respondSchedule(status: .accepted)))
 
           case .rejectTapped:
-            guard state.respondingState == .idle, state.promise != nil else { return .none }
+            guard state.respondingState == .idle, state.schedule != nil else { return .none }
             state.respondingState = .rejecting
-            return .send(.internal(.respondPromise(status: .declined)))
+            return .send(.internal(.respondSchedule(status: .declined)))
 
           case .resetTapped:
-            guard state.respondingState == .idle, state.promise != nil else { return .none }
+            guard state.respondingState == .idle, state.schedule != nil else { return .none }
             state.respondingState = .resetting
-            return .send(.internal(.respondPromise(status: .pending)))
+            return .send(.internal(.respondSchedule(status: .pending)))
 
           case .openFullDetailTapped:
             return .send(.delegate(.openFullDetail(state.item)))
@@ -162,24 +162,24 @@ extension OverlayScheduleDetail {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .respondPromise(let status):
-            guard let promise = state.promise else { return .none }
-            let promiseId = promise.id
-            return .run { [promiseClient, calendarSyncClient] send in
+          case .respondSchedule(let status):
+            guard let schedule = state.schedule else { return .none }
+            let scheduleId = schedule.id
+            return .run { [scheduleClient, calendarSyncClient] send in
               do {
-                let result = try await promiseClient.respondPromise(promiseId, status)
+                let result = try await scheduleClient.respondSchedule(scheduleId, status)
                 await send(.internal(.respondDone(status: status)))
 
                 // 캘린더 동기화: 수락 + 확정 시 추가
                 if status == .accepted,
                    result.isConfirmed,
-                   let confirmedPromise = result.confirmedPromise {
-                  try? await calendarSyncClient.addPromise(confirmedPromise, true)
+                   let confirmedSchedule = result.confirmedSchedule {
+                  try? await calendarSyncClient.addSchedule(confirmedSchedule, true)
                 }
 
                 // 캘린더 동기화: 거절 시 제거
                 if status == .declined {
-                  try? await calendarSyncClient.removePromise(promiseId)
+                  try? await calendarSyncClient.removeSchedule(scheduleId)
                 }
               } catch {
                 await send(.internal(.respondFailed(error: AppError(error))))
@@ -188,10 +188,10 @@ extension OverlayScheduleDetail {
 
           case .respondDone(let status):
             state.respondingState = .idle
-            guard var promise = state.promise else { return .none }
+            guard var schedule = state.schedule else { return .none }
 
-            var newAccepted = promise.votes.accepted.filter { $0 != state.currentUserId }
-            var newDeclined = promise.votes.declined.filter { $0 != state.currentUserId }
+            var newAccepted = schedule.votes.accepted.filter { $0 != state.currentUserId }
+            var newDeclined = schedule.votes.declined.filter { $0 != state.currentUserId }
 
             switch status {
             case .accepted:
@@ -202,13 +202,13 @@ extension OverlayScheduleDetail {
               break
             }
 
-            promise.votes = PromiseVotesModel(
+            schedule.votes = ScheduleVotesModel(
               accepted: newAccepted,
               declined: newDeclined,
-              until: promise.votes.until
+              until: schedule.votes.until
             )
-            state.item = .promise(promise)
-            return .send(.delegate(.promiseResponseUpdated(promise)))
+            state.item = .schedule(schedule)
+            return .send(.delegate(.scheduleResponseUpdated(schedule)))
 
           case .respondFailed(let error):
             state.respondingState = .idle
@@ -274,15 +274,15 @@ extension OverlayScheduleDetail {
 // MARK: - Computed Properties
 
 extension OverlayScheduleDetail.Feature.State {
-  var promise: PromiseModel? {
-    if case .promise(let p) = item { return p } else { return nil }
+  var schedule: ScheduleModel? {
+    if case .schedule(let p) = item { return p } else { return nil }
   }
 
   var personalEvent: PersonalEventModel? {
     if case .personalEvent(let e) = item { return e } else { return nil }
   }
 
-  var isPromise: Bool { promise != nil }
+  var isSchedule: Bool { schedule != nil }
 
   var timeContext: OverlayScheduleDetail.Feature.TimeContext {
     let now = Date()
@@ -310,28 +310,28 @@ extension OverlayScheduleDetail.Feature.State {
     return "\(minutes)분"
   }
 
-  var myVoteStatus: PromiseAttendanceStatus {
-    guard let promise else { return .pending }
-    switch promise.myVoteStatus(userId: currentUserId) {
+  var myVoteStatus: ScheduleAttendanceStatus {
+    guard let schedule else { return .pending }
+    switch schedule.myVoteStatus(userId: currentUserId) {
     case .accepted: return .accepted
     case .declined: return .declined
     case .pending: return .pending
     }
   }
 
-  var acceptedCount: Int { promise?.votes.accepted.count ?? 0 }
-  var declinedCount: Int { promise?.votes.declined.count ?? 0 }
+  var acceptedCount: Int { schedule?.votes.accepted.count ?? 0 }
+  var declinedCount: Int { schedule?.votes.declined.count ?? 0 }
 
-  var totalMemberCount: Int { groupMembers?.count ?? promise?.minimumParticipants ?? 0 }
+  var totalMemberCount: Int { groupMembers?.count ?? schedule?.minimumParticipants ?? 0 }
 
   var confirmationProgress: String {
-    guard let promise else { return "" }
-    let needed = promise.minimumParticipants - acceptedCount
+    guard let schedule else { return "" }
+    let needed = schedule.minimumParticipants - acceptedCount
     if needed <= 0 { return LocalizedStrings.OverlayScheduleDetail.confirmed }
     return LocalizedStrings.OverlayScheduleDetail.confirmationRemaining(needed)
   }
 
-  var responseStatus: PromiseResponseStatus {
-    promise?.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count) ?? .needResponse
+  var responseStatus: ScheduleResponseStatus {
+    schedule?.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count) ?? .needResponse
   }
 }

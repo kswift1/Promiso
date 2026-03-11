@@ -18,7 +18,7 @@ struct NeedResponseBanner: View {
             .fontWeight(.semibold)
             .foregroundStyle(.white)
 
-          Text(LocalizedStrings.Home.promisesToRespond(count))
+          Text(LocalizedStrings.Home.schedulesToRespond(count))
             .font(.caption)
             .foregroundStyle(.white.opacity(0.9))
         }

@@ -1,12 +1,12 @@
 import ComposableArchitecture
 import PromisoShared
 import Clients
-import CreatePromiseFeature
+import CreateScheduleFeature
 
 extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
-    case promiseSubscription
+    case scheduleSubscription
     case needResponseShake
     case conflictCheck
     case weatherFetch
@@ -27,7 +27,7 @@ extension GroupMain {
   public struct Feature {
 
     @Dependency(\.groupClient) var groupClient
-    @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
@@ -45,7 +45,7 @@ extension GroupMain {
       /// 현재 사용자 정보 (RootTab과 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
-      var promisesState: LoadingState<[PromiseModel]> = .idle
+      var schedulesState: LoadingState<[ScheduleModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
 
@@ -60,8 +60,8 @@ extension GroupMain {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       public var groupCalendarSyncCache: [String: Bool] = [:]
 
-      /// 날씨 결과 (promiseId → WeatherInfo)
-      var weatherByPromiseId: [String: WeatherInfo] = [:]
+      /// 날씨 결과 (scheduleId → WeatherInfo)
+      var weatherByScheduleId: [String: WeatherInfo] = [:]
 
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
@@ -73,7 +73,7 @@ extension GroupMain {
       var pendingGroupId: String?
 
       /// 현재 선택된 필터
-      var selectedFilter: GroupMain.PromiseFilter = .all
+      var selectedFilter: GroupMain.ScheduleFilter = .all
 
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
@@ -81,12 +81,12 @@ extension GroupMain {
       /// Pro 구독 여부
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
-      /// 과거 약속 상태 (별도 fetch)
-      var pastPromisesState: LoadingState<[PromiseModel]> = .idle
+      /// 과거 일정 상태 (별도 fetch)
+      var pastSchedulesState: LoadingState<[ScheduleModel]> = .idle
 
-      // 약속 공유 시트용
-      var sharePromise: PromiseModel?
-      var isKakaoPromiseSharing: Bool = false
+      // 일정 공유 시트용
+      var shareSchedule: ScheduleModel?
+      var isKakaoScheduleSharing: Bool = false
       var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
@@ -99,41 +99,41 @@ extension GroupMain {
       enum PendingContextAction: Equatable, Sendable {
         case invite
         case settings
-        case createPromise
+        case createSchedule
       }
       var pendingContextAction: PendingContextAction?
-      /// 그룹 생성 후 약속 생성 화면으로 이동하기 위한 pending 그룹 ID
-      var pendingCreatePromiseGroupId: String?
+      /// 그룹 생성 후 일정 생성 화면으로 이동하기 위한 pending 그룹 ID
+      var pendingCreateScheduleGroupId: String?
 
-      @Presents var createPromise: CreatePromise.Feature.State?
+      @Presents var createSchedule: CreateSchedule.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
-      @Presents var editPromise: EditPromise.Feature.State?
+      @Presents var editSchedule: EditSchedule.Feature.State?
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
       @Presents var groupActionSheet: ConfirmationDialogState<GroupActionSheetAction>?
       var sortSettings: GroupSortSettings.Feature.State?
 
-      /// 삭제 대상 약속 ID (알럿 확인 시 사용)
-      var promiseToDelete: String?
+      /// 삭제 대상 일정 ID (알럿 확인 시 사용)
+      var scheduleToDelete: String?
 
-      /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
+      /// 딥링크로 열려는 목적지 (그룹/일정 로드 후 처리)
       var pendingDeeplink: GroupMain.Deeplink?
 
-      /// 하이라이트할 약속 ID (목록에서 스크롤 및 강조 표시)
-      var highlightedPromiseId: String?
+      /// 하이라이트할 일정 ID (목록에서 스크롤 및 강조 표시)
+      var highlightedScheduleId: String?
 
       /// 응답 필요 탭 진입 시 전체 흔들기 애니메이션 활성화
       var isNeedResponseShaking: Bool = false
 
-      /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
-      public var liveActivityPromiseId: String?
+      /// 현재 실시간 공유 중인 일정 ID (nil이면 비활성)
+      public var liveActivityScheduleId: String?
 
       /// LiveActivity 활성화 여부 (FAB 위치 조정용)
-      public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
+      public var hasLiveActivity: Bool { liveActivityScheduleId != nil }
 
-      /// 약속별 충돌 결과 캐시 (promiseId → conflicts)
-      var conflictsByPromiseId: [String: [ScheduleConflict]] = [:]
-      /// 현재 충돌 확인 중인 약속 ID 집합
+      /// 일정별 충돌 결과 캐시 (scheduleId → conflicts)
+      var conflictsByScheduleId: [String: [ScheduleConflict]] = [:]
+      /// 현재 충돌 확인 중인 일정 ID 집합
       var conflictCheckingIds: Set<String> = []
       /// 충돌 감지 임계값 (분). -1이면 비활성화
       var conflictDetectionThreshold: Int = 0
@@ -146,9 +146,9 @@ extension GroupMain {
     @Reducer(state: .equatable)
     public enum Path {
       case groupSettings(GroupSettings.Feature)
-      case groupPromiseList(GroupPromiseList.Feature)
-      case promiseDetail(PromiseDetail.Feature)
-      case pastPromises(PastPromises.Feature)
+      case groupScheduleList(GroupScheduleList.Feature)
+      case scheduleDetail(ScheduleDetail.Feature)
+      case pastSchedules(PastSchedules.Feature)
     }
 
     @CasePathable
@@ -167,10 +167,10 @@ extension GroupMain {
       case binding(BindingAction<State>)
       case `internal`(Internal)
 
-      case createPromise(PresentationAction<CreatePromise.Feature.Action>)
+      case createSchedule(PresentationAction<CreateSchedule.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
       case joinGroup(PresentationAction<JoinGroup.Feature.Action>)
-      case editPromise(PresentationAction<EditPromise.Feature.Action>)
+      case editSchedule(PresentationAction<EditSchedule.Feature.Action>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case groupActionSheet(PresentationAction<GroupActionSheetAction>)
       case sortSettingsDismissed
@@ -185,12 +185,12 @@ extension GroupMain {
         case groupChanged(UserGroupInfo)
         case proposalAccepted(String)
         case proposalRejected(String)
-        case promiseDeleteRequested(String)
-        case promiseEditTapped(PromiseModel)
-        case responseChanged(String, PromiseAttendanceStatus)
-        case promiseTapped(PromiseModel)
-        case promiseShared(String)
-        case createNewPromise
+        case scheduleDeleteRequested(String)
+        case scheduleEditTapped(ScheduleModel)
+        case responseChanged(String, ScheduleAttendanceStatus)
+        case scheduleTapped(ScheduleModel)
+        case scheduleShared(String)
+        case createNewSchedule
         case createGroup
         case joinGroup
         case joinGroupWithCode(String) // 딥링크로 초대 코드와 함께 열기
@@ -198,29 +198,29 @@ extension GroupMain {
 
         // MARK: - New UI Actions
         case groupTapped(String)  // 가로 바에서 그룹 선택
-        case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
-        case clearHighlightedPromise  // 하이라이트 클리어
+        case filterChanged(GroupMain.ScheduleFilter)  // 필터 변경
+        case clearHighlightedSchedule  // 하이라이트 클리어
         case needResponseShakeCompleted  // 응답 필요 흔들기 완료
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
-        case allPromisesTapped  // "모든 약속 보기"
+        case allSchedulesTapped  // "모든 일정 보기"
         case groupSettingsTapped  // "그룹 설정"
         case sortSettingsTapped  // "그룹 정렬"
-        case directionsTapped(String)  // 길찾기 (promiseId)
-        case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
-        case openCreatePromiseWithExtractedInfo(PromiseExtractedInfo)  // 퀵 약속: 추출 정보 pre-fill
+        case directionsTapped(String)  // 길찾기 (scheduleId)
+        case openCreateScheduleIfPossible  // Widget 딥링크: 그룹 있으면 일정 생성
+        case openCreateScheduleWithExtractedInfo(ScheduleExtractedInfo)  // 퀵 일정: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
         case tabReturned
         // Context Menu Actions
         case groupInviteTapped(String)  // 그룹 초대 (groupId)
         case groupContextSettingsTapped(String)  // 그룹 설정 (groupId)
-        case contextCreatePromiseTapped(String)  // 약속 만들기 (groupId)
+        case contextCreateScheduleTapped(String)  // 일정 만들기 (groupId)
         case dismissGroupInviteSheet
         case kakaoInviteShareTapped
-        case kakaoPromiseShareTapped
-        case systemPromiseShareTapped
-        case dismissPromiseShareSheet
+        case kakaoScheduleShareTapped
+        case systemScheduleShareTapped
+        case dismissScheduleShareSheet
         case systemShareSheetDismissed
       }
 
@@ -233,30 +233,30 @@ extension GroupMain {
         case currentGroupResponse(Result<GroupModel, AppError>)
         case fetchGroupMembers(groupId: String)
         case groupMembersResponse(Result<[UserPublicModel], AppError>)
-        case subscribeToPromises(groupId: String)
+        case subscribeToSchedules(groupId: String)
         case cancelSubscription
-        case promisesUpdated([PromiseModel])
-        case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
-        case proposalRespondFailed(promiseId: String, error: AppError)
-        case respondPromise(promiseId: String, status: PromiseAttendanceStatus)
-        case deletePromise(promiseId: String)
-        case deletePromiseDone(promiseId: String)
-        case deletePromiseFailed(promiseId: String, error: AppError)
+        case schedulesUpdated([ScheduleModel])
+        case proposalRespondDone(scheduleId: String, status: ScheduleAttendanceStatus)
+        case proposalRespondFailed(scheduleId: String, error: AppError)
+        case respondSchedule(scheduleId: String, status: ScheduleAttendanceStatus)
+        case deleteSchedule(scheduleId: String)
+        case deleteScheduleDone(scheduleId: String)
+        case deleteScheduleFailed(scheduleId: String, error: AppError)
         case toggleGroupNotifications
         case clearBadge(groupId: String)
-        case liveActivityChanged(promiseId: String?)
-        case fetchPastPromises(groupId: String)
-        case pastPromisesResponse(Result<[PromiseModel], AppError>)
+        case liveActivityChanged(scheduleId: String?)
+        case fetchPastSchedules(groupId: String)
+        case pastSchedulesResponse(Result<[ScheduleModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
-        case kakaoPromiseShareResult(KakaoShareResult)
-        case refreshProFeatures([PromiseModel])
-        case checkConflicts([PromiseModel])
-        case conflictsLoaded(promiseId: String, [ScheduleConflict])
-        case conflictCheckFailed(promiseId: String)
+        case kakaoScheduleShareResult(KakaoShareResult)
+        case refreshProFeatures([ScheduleModel])
+        case checkConflicts([ScheduleModel])
+        case conflictsLoaded(scheduleId: String, [ScheduleConflict])
+        case conflictCheckFailed(scheduleId: String)
         case conflictSettingsLoaded(Int)
-        case fetchWeather([PromiseModel])
+        case fetchWeather([ScheduleModel])
         case weatherBatchResponse([String: WeatherInfo])
       }
     }
@@ -275,13 +275,13 @@ extension GroupMain {
             return .send(.internal(.fetchSettings))
 
           case .tabReturned:
-            // 탭 복귀 시 그룹 목록만 갱신 (약속은 실시간 리스너로 처리)
+            // 탭 복귀 시 그룹 목록만 갱신 (일정은 실시간 리스너로 처리)
             guard state.isInitialized else { return .none }
             return .send(.internal(.fetchGroupList))
 
           case .refreshTriggered:
-            if !state.promisesState.isLoaded {
-              state.promisesState = .loading
+            if !state.schedulesState.isLoaded {
+              state.schedulesState = .loading
             }
             // 현재 그룹 멤버 캐시 무효화 후 다시 로드
             if let groupId = state.currentGroup?.id {
@@ -299,29 +299,29 @@ extension GroupMain {
                   group.id != state.pendingGroupId else { return .none }
             state.currentGroup = nil
             state.pendingGroupId = group.id
-            state.promisesState = .loading
-            state.pastPromisesState = .idle  // 그룹 변경 시 과거 약속 초기화
+            state.schedulesState = .loading
+            state.pastSchedulesState = .idle  // 그룹 변경 시 과거 일정 초기화
             return .send(.internal(.fetchCurrentGroup(id: group.id)))
 
           case .proposalAccepted(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .accepting
-            return .send(.internal(.respondPromise(promiseId: id, status: .accepted)))
+            return .send(.internal(.respondSchedule(scheduleId: id, status: .accepted)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
           case .proposalRejected(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .rejecting
-            return .send(.internal(.respondPromise(promiseId: id, status: .declined)))
+            return .send(.internal(.respondSchedule(scheduleId: id, status: .declined)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
-          case .promiseDeleteRequested(let id):
-            guard let promise = state.promisesState.value?.first(where: { $0.id == id }) else {
+          case .scheduleDeleteRequested(let id):
+            guard let schedule = state.schedulesState.value?.first(where: { $0.id == id }) else {
               return .none
             }
-            state.promiseToDelete = id
+            state.scheduleToDelete = id
             state.deleteAlert = AlertState {
-              TextState(LocalizedStrings.GroupMain.deletePromiseTitle)
+              TextState(LocalizedStrings.GroupMain.deleteScheduleTitle)
             } actions: {
               ButtonState(role: .cancel) {
                 TextState(LocalizedStrings.Common.cancel)
@@ -330,14 +330,14 @@ extension GroupMain {
                 TextState(LocalizedStrings.Common.delete)
               }
             } message: {
-              TextState(LocalizedStrings.GroupMain.deletePromiseConfirm(promise.title))
+              TextState(LocalizedStrings.GroupMain.deleteScheduleConfirm(schedule.title))
             }
             return .none
 
-          case .promiseEditTapped(let promise):
-            let maxMembers = state.currentGroupMembers?.count ?? promise.minimumParticipants
-            state.editPromise = EditPromise.Feature.State(
-              promise: promise,
+          case .scheduleEditTapped(let schedule):
+            let maxMembers = state.currentGroupMembers?.count ?? schedule.minimumParticipants
+            state.editSchedule = EditSchedule.Feature.State(
+              schedule: schedule,
               maxMembers: maxMembers,
               currentUserId: state.currentUser.userId
             )
@@ -353,27 +353,27 @@ extension GroupMain {
             case .pending:
               state.proposalResponding[id] = .resetting
             }
-            return .send(.internal(.respondPromise(promiseId: id, status: status)))
+            return .send(.internal(.respondSchedule(scheduleId: id, status: status)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
-          case .promiseTapped(let promise):
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+          case .scheduleTapped(let schedule):
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: state.currentGroupMembers
             )))
             return .none
 
-          case .promiseShared(let promiseId):
-            guard let promise = state.promisesState.value?.first(where: { $0.id == promiseId }) else {
+          case .scheduleShared(let scheduleId):
+            guard let schedule = state.schedulesState.value?.first(where: { $0.id == scheduleId }) else {
               return .none
             }
-            state.sharePromise = promise
+            state.shareSchedule = schedule
             return .none
 
-          case .directionsTapped(let promiseId):
-            guard let promise = state.promisesState.value?.first(where: { $0.id == promiseId }),
-                  let location = promise.location,
+          case .directionsTapped(let scheduleId):
+            guard let schedule = state.schedulesState.value?.first(where: { $0.id == scheduleId }),
+                  let location = schedule.location,
                   let latitude = location.latitude,
                   let longitude = location.longitude else {
               return .none
@@ -382,15 +382,15 @@ extension GroupMain {
             mapClient.openDirections(nil, coordinate, location.name, .car)
             return .none
 
-          case .createNewPromise:
-            var promise = PromiseModel.empty
+          case .createNewSchedule:
+            var schedule = ScheduleModel.empty
             // 현재 보고 있는 그룹을 기본 선택
             if let currentGroup = state.currentGroup {
-              promise.group = currentGroup
-              promise.groupId = currentGroup.id
+              schedule.group = currentGroup
+              schedule.groupId = currentGroup.id
             }
-            state.createPromise = CreatePromise.Feature.State(
-              promise: promise,
+            state.createSchedule = CreateSchedule.Feature.State(
+              schedule: schedule,
               groupSummaries: state.allGroupSummaries,
               currentUserId: state.currentUser.userId
             )
@@ -423,29 +423,29 @@ extension GroupMain {
             let groupId: String
             switch deeplink {
             case .group(let gid): groupId = gid
-            case .promise(_, let gid): groupId = gid
-            case .promiseInList(_, let gid, _): groupId = gid
+            case .schedule(_, let gid): groupId = gid
+            case .scheduleInList(_, let gid, _): groupId = gid
             }
 
-            // 현재 그룹이고 약속이 이미 로드된 경우 바로 적용
+            // 현재 그룹이고 일정이 이미 로드된 경우 바로 적용
             if state.currentGroup?.id == groupId,
-               let promises = state.promisesState.value {
+               let schedules = state.schedulesState.value {
               switch deeplink {
-              case .promise(let promiseId, _):
-                if let promise = promises.first(where: { $0.id == promiseId }) {
-                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, navigating to detail immediately")
-                  state.path.append(.promiseDetail(.init(
-                    promise: promise,
+              case .schedule(let scheduleId, _):
+                if let schedule = schedules.first(where: { $0.id == scheduleId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Schedule already loaded, navigating to detail immediately")
+                  state.path.append(.scheduleDetail(.init(
+                    schedule: schedule,
                     currentUserId: state.currentUser.userId,
                     groupMembers: state.currentGroupMembers
                   )))
                   return .none
                 }
-              case .promiseInList(let promiseId, _, let filter):
-                if promises.contains(where: { $0.id == promiseId }) {
-                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
+              case .scheduleInList(let scheduleId, _, let filter):
+                if schedules.contains(where: { $0.id == scheduleId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Schedule already loaded, applying highlight immediately")
                   state.selectedFilter = filter
-                  state.highlightedPromiseId = promiseId
+                  state.highlightedScheduleId = scheduleId
                   return .none
                 }
               case .group:
@@ -503,18 +503,18 @@ extension GroupMain {
             // 과거 필터 선택 시 별도 fetch
             if filter == .past, let groupId = state.currentGroup?.id {
               // 이미 로드된 경우 재요청 안 함
-              guard !state.pastPromisesState.isLoaded else {
+              guard !state.pastSchedulesState.isLoaded else {
                 return .cancel(id: CancelID.needResponseShake)
               }
               return .merge(
                 .cancel(id: CancelID.needResponseShake),
-                .send(.internal(.fetchPastPromises(groupId: groupId)))
+                .send(.internal(.fetchPastSchedules(groupId: groupId)))
               )
             }
             return .cancel(id: CancelID.needResponseShake)
 
-          case .clearHighlightedPromise:
-            state.highlightedPromiseId = nil
+          case .clearHighlightedSchedule:
+            state.highlightedScheduleId = nil
             return .none
 
           case .needResponseShakeCompleted:
@@ -527,8 +527,8 @@ extension GroupMain {
           case .moreConfirmedTapped:
             return handleMoreConfirmedTapped(&state)
 
-          case .allPromisesTapped:
-            return handleAllPromisesTapped(&state)
+          case .allSchedulesTapped:
+            return handleAllSchedulesTapped(&state)
 
           case .groupSettingsTapped:
             return handleGroupSettingsTapped(&state)
@@ -551,7 +551,7 @@ extension GroupMain {
             )
             return .none
 
-          case .openCreatePromiseIfPossible:
+          case .openCreateScheduleIfPossible:
             // onAppear 전이면 currentUser.groups에서 fallback 로드
             if state.allGroupSummaries == nil {
               let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
@@ -561,34 +561,34 @@ extension GroupMain {
               // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
               return .none
             }
-            // 그룹 있음 → 약속 생성 화면 열기
-            return .send(.view(.createNewPromise))
+            // 그룹 있음 → 일정 생성 화면 열기
+            return .send(.view(.createNewSchedule))
 
-          case .openCreatePromiseWithExtractedInfo(let info):
-            // 퀵 약속: 추출 정보로 CreatePromise 열기
+          case .openCreateScheduleWithExtractedInfo(let info):
+            // 퀵 일정: 추출 정보로 CreateSchedule 열기
             guard let groups = state.allGroupSummaries, !groups.isEmpty else {
               return .none
             }
-            var promise = PromiseModel.empty
+            var schedule = ScheduleModel.empty
             if let currentGroup = state.currentGroup {
-              promise.group = currentGroup
-              promise.groupId = currentGroup.id
+              schedule.group = currentGroup
+              schedule.groupId = currentGroup.id
             }
             // 추출 정보 적용
             if let title = info.title {
-              promise.title = title
+              schedule.title = title
             }
             if let date = info.date {
-              promise.startAt = date
+              schedule.startAt = date
             }
             if let description = info.description {
-              promise.description = description
+              schedule.description = description
             }
             if let location = info.location {
-              promise.location = LocationInfoModel(name: location)
+              schedule.location = LocationInfoModel(name: location)
             }
-            state.createPromise = CreatePromise.Feature.State(
-              promise: promise,
+            state.createSchedule = CreateSchedule.Feature.State(
+              schedule: schedule,
               groupSummaries: state.allGroupSummaries,
               currentUserId: state.currentUser.userId,
               prefillInfo: info
@@ -622,11 +622,11 @@ extension GroupMain {
               return .send(.view(.groupTapped(groupId)))
             }
 
-          case .contextCreatePromiseTapped(let groupId):
+          case .contextCreateScheduleTapped(let groupId):
             if groupId == state.currentGroup?.id {
-              return .send(.view(.createNewPromise))
+              return .send(.view(.createNewSchedule))
             } else {
-              state.pendingContextAction = .createPromise
+              state.pendingContextAction = .createSchedule
               return .send(.view(.groupTapped(groupId)))
             }
 
@@ -644,18 +644,18 @@ extension GroupMain {
             let groupImageUrl = group.imageUrl
             let inviterName = state.currentGroupMembers?
               .first { $0.userId == state.currentUser.userId }?.displayName ?? state.currentUser.nickname
-            let promiseInfos = state.allPromises
+            let scheduleInfos = state.allSchedules
               .filter { $0.isUpcoming }
               .sorted { $0.startAt < $1.startAt }
               .prefix(3)
-              .map { promise in
-                PromiseShareInfo(
-                  title: promise.title,
-                  emoji: promise.displayEmoji,
-                  dateText: promise.dateText,
-                  timeText: promise.timeText,
-                  locationName: promise.location?.name,
-                  imageUrl: promise.imageUrls.first
+              .map { schedule in
+                ScheduleShareInfo(
+                  title: schedule.title,
+                  emoji: schedule.displayEmoji,
+                  dateText: schedule.dateText,
+                  timeText: schedule.timeText,
+                  locationName: schedule.location?.name,
+                  imageUrl: schedule.imageUrls.first
                 )
               }
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
@@ -665,7 +665,7 @@ extension GroupMain {
                 [
                   AnalyticsClient.ParameterKey.groupName: groupName,
                   "share_method": "kakao",
-                  "promise_count": "\(promiseInfos.count)"
+                  "schedule_count": "\(scheduleInfos.count)"
                 ]
               )
               let result = await kakaoShareClient.shareGroupInvite(
@@ -675,47 +675,47 @@ extension GroupMain {
                 maxMembers,
                 groupImageUrl,
                 inviterName,
-                promiseInfos
+                scheduleInfos
               )
               await send(.internal(.kakaoInviteShareResult(result)))
             }
 
-          case .kakaoPromiseShareTapped:
-            guard let promise = state.sharePromise else { return .none }
-            state.isKakaoPromiseSharing = true
+          case .kakaoScheduleShareTapped:
+            guard let schedule = state.shareSchedule else { return .none }
+            state.isKakaoScheduleSharing = true
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
               await hapticFeedback.buttonTap()
               analyticsClient.logEvent(
-                "kakao_promise_shared",
+                "kakao_schedule_shared",
                 [
-                  AnalyticsClient.ParameterKey.promiseID: promise.id,
+                  AnalyticsClient.ParameterKey.scheduleID: schedule.id,
                   "share_method": "kakao"
                 ]
               )
-              let result = await kakaoShareClient.sharePromise(
-                promise.title,
-                promise.displayEmoji,
-                promise.dateText,
-                promise.timeText,
-                promise.location?.name,
-                promise.location?.address,
-                promise.id,
-                promise.groupId,
-                promise.description,
-                promise.imageUrls.first
+              let result = await kakaoShareClient.shareSchedule(
+                schedule.title,
+                schedule.displayEmoji,
+                schedule.dateText,
+                schedule.timeText,
+                schedule.location?.name,
+                schedule.location?.address,
+                schedule.id,
+                schedule.groupId,
+                schedule.description,
+                schedule.imageUrls.first
               )
-              await send(.internal(.kakaoPromiseShareResult(result)))
+              await send(.internal(.kakaoScheduleShareResult(result)))
             }
 
-          case .systemPromiseShareTapped:
-            guard let promise = state.sharePromise else { return .none }
-            state.systemShareText = promise.shareText
-            state.sharePromise = nil
+          case .systemScheduleShareTapped:
+            guard let schedule = state.shareSchedule else { return .none }
+            state.systemShareText = schedule.shareText
+            state.shareSchedule = nil
             return .none
 
-          case .dismissPromiseShareSheet:
-            state.sharePromise = nil
-            state.isKakaoPromiseSharing = false
+          case .dismissScheduleShareSheet:
+            state.shareSchedule = nil
+            state.isKakaoScheduleSharing = false
             return .none
 
           case .systemShareSheetDismissed:
@@ -771,9 +771,9 @@ extension GroupMain {
             if let deeplink = state.pendingDeeplink {
               let groupId: String
               switch deeplink {
-              case .promise(_, let gid): groupId = gid
+              case .schedule(_, let gid): groupId = gid
               case .group(let gid): groupId = gid
-              case .promiseInList(_, let gid, _): groupId = gid
+              case .scheduleInList(_, let gid, _): groupId = gid
               }
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
                 AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
@@ -789,16 +789,16 @@ extension GroupMain {
               }
             }
 
-            // 그룹 생성 후 약속 생성으로 이동
-            if let pendingGroupId = state.pendingCreatePromiseGroupId {
-              state.pendingCreatePromiseGroupId = nil
+            // 그룹 생성 후 일정 생성으로 이동
+            if let pendingGroupId = state.pendingCreateScheduleGroupId {
+              state.pendingCreateScheduleGroupId = nil
               if let groupInfo = groupSummaries.first(where: { $0.id == pendingGroupId }) {
                 return .merge(
                   .send(.view(.groupChanged(groupInfo))),
                   .run { send in
-                    // 그룹 전환 애니메이션 완료를 기다린 후 약속 생성 화면 열기
+                    // 그룹 전환 애니메이션 완료를 기다린 후 일정 생성 화면 열기
                     try await Task.sleep(for: .milliseconds(300))
-                    await send(.view(.createNewPromise))
+                    await send(.view(.createNewSchedule))
                   }
                 )
               }
@@ -811,7 +811,7 @@ extension GroupMain {
             return .send(.internal(.setDefaultGroup(groups: groupSummaries)))
 
           case .groupListResponse(.failure(let error)):
-            state.promisesState = .failed(error)
+            state.schedulesState = .failed(error)
             return .none
 
           case .setDefaultGroup(let groups):
@@ -849,15 +849,15 @@ extension GroupMain {
                 state.showGroupInviteSheet = true
               case .settings:
                 effects.append(handleGroupSettingsTapped(&state))
-              case .createPromise:
-                effects.append(.send(.view(.createNewPromise)))
+              case .createSchedule:
+                effects.append(.send(.view(.createNewSchedule)))
               }
             }
             return .merge(effects)
 
           case .currentGroupResponse(.failure(let error)):
             state.pendingGroupId = nil
-            state.promisesState = .failed(error)
+            state.schedulesState = .failed(error)
             return .none
 
           case .fetchGroupMembers(let groupId):
@@ -877,71 +877,71 @@ extension GroupMain {
             // LiveActivity 프로필 이미지 사전 캐싱 (APNs 원격 시작 대응)
             // 상세: cacheProfileImagesForLiveActivity 함수 주석 참고
             return .merge(
-              .send(.internal(.subscribeToPromises(groupId: groupId))),
+              .send(.internal(.subscribeToSchedules(groupId: groupId))),
               .run(priority: .utility) { _ in
                 await cacheProfileImagesForLiveActivity(members: members)
               }
             )
 
           case .groupMembersResponse(.failure):
-            // 멤버 조회 실패해도 promises는 subscribe (캐시에 없으면 computed property가 nil 반환)
+            // 멤버 조회 실패해도 schedules는 subscribe (캐시에 없으면 computed property가 nil 반환)
             guard let groupId = state.currentGroup?.id else { return .none }
-            return .send(.internal(.subscribeToPromises(groupId: groupId)))
+            return .send(.internal(.subscribeToSchedules(groupId: groupId)))
 
-          case .subscribeToPromises(let groupId):
-            if !state.promisesState.isLoaded {
-              state.promisesState = .loading
+          case .subscribeToSchedules(let groupId):
+            if !state.schedulesState.isLoaded {
+              state.schedulesState = .loading
             }
-            AppLogger.group.debug("[GroupMain] subscribeToPromises 시작: groupId=\(groupId)")
-            return .run { [promiseClient] send in
+            AppLogger.group.debug("[GroupMain] subscribeToSchedules 시작: groupId=\(groupId)")
+            return .run { [scheduleClient] send in
               AppLogger.group.debug("[GroupMain] 리스너 연결 시작...")
-              for await promises in promiseClient.subscribeToPromises(groupId, 20) {
-                AppLogger.group.debug("[GroupMain] promises 수신: \(promises.count)개")
-                await send(.internal(.promisesUpdated(promises)))
+              for await schedules in scheduleClient.subscribeToSchedules(groupId, 20) {
+                AppLogger.group.debug("[GroupMain] schedules 수신: \(schedules.count)개")
+                await send(.internal(.schedulesUpdated(schedules)))
               }
               AppLogger.group.warning("[GroupMain] 리스너 스트림 종료됨")
             }
-            .cancellable(id: CancelID.promiseSubscription, cancelInFlight: true)
+            .cancellable(id: CancelID.scheduleSubscription, cancelInFlight: true)
 
           case .cancelSubscription:
             AppLogger.group.debug("[GroupMain] 백그라운드 진입 - 구독 취소")
-            return .cancel(id: CancelID.promiseSubscription)
+            return .cancel(id: CancelID.scheduleSubscription)
 
-          case .promisesUpdated(let promises):
-            AppLogger.group.debug("[GroupMain] promisesUpdated: \(promises.count)개 로드됨")
-            state.promisesState = .loaded(promises)
+          case .schedulesUpdated(let schedules):
+            AppLogger.group.debug("[GroupMain] schedulesUpdated: \(schedules.count)개 로드됨")
+            state.schedulesState = .loaded(schedules)
 
             // 딥링크 처리
             switch state.pendingDeeplink {
-            case .promise(let promiseId, _):
-              // 약속 상세 화면으로 바로 이동
-              if let promise = promises.first(where: { $0.id == promiseId }) {
-                AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
-                state.path.append(.promiseDetail(.init(
-                  promise: promise,
+            case .schedule(let scheduleId, _):
+              // 일정 상세 화면으로 바로 이동
+              if let schedule = schedules.first(where: { $0.id == scheduleId }) {
+                AppLogger.deeplink.debug("[GroupMain] Schedule found, navigating to detail: \(schedule.title)")
+                state.path.append(.scheduleDetail(.init(
+                  schedule: schedule,
                   currentUserId: state.currentUser.userId,
                   groupMembers: state.currentGroupMembers
                 )))
               } else {
-                AppLogger.deeplink.warning("[GroupMain] Promise not found in loaded list: \(promiseId)")
+                AppLogger.deeplink.warning("[GroupMain] Schedule not found in loaded list: \(scheduleId)")
               }
               state.pendingDeeplink = nil
 
-            case .promiseInList(let promiseId, _, let filter):
-              // 필터 적용 후 목록에서 해당 약속으로 스크롤
-              if promises.contains(where: { $0.id == promiseId }) {
-                AppLogger.deeplink.debug("[GroupMain] Promise found in list, setting filter: \(filter.rawValue)")
+            case .scheduleInList(let scheduleId, _, let filter):
+              // 필터 적용 후 목록에서 해당 일정으로 스크롤
+              if schedules.contains(where: { $0.id == scheduleId }) {
+                AppLogger.deeplink.debug("[GroupMain] Schedule found in list, setting filter: \(filter.rawValue)")
                 state.selectedFilter = filter
-                state.highlightedPromiseId = promiseId
+                state.highlightedScheduleId = scheduleId
               } else {
-                AppLogger.deeplink.warning("[GroupMain] Promise not found in list: \(promiseId)")
+                AppLogger.deeplink.warning("[GroupMain] Schedule not found in list: \(scheduleId)")
               }
               state.pendingDeeplink = nil
 
             case .group, .none:
               state.pendingDeeplink = nil
             }
-            return .send(.internal(.refreshProFeatures(promises)))
+            return .send(.internal(.refreshProFeatures(schedules)))
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
@@ -950,27 +950,27 @@ extension GroupMain {
 
           case .proposalRespondFailed(let id, let error):
             state.proposalResponding[id] = nil
-            state.promisesState = .failed(error)
+            state.schedulesState = .failed(error)
             return .none
 
-          case .respondPromise(let promiseId, let status):
+          case .respondSchedule(let scheduleId, let status):
             // 캘린더 동기화 설정 캐시에서 조회
             let calendarSyncCache = state.groupCalendarSyncCache
-            AppLogger.calendar.debug("📱 [GroupMain] respondPromise 시작 - promiseId: \(promiseId), status: \(String(describing: status))")
+            AppLogger.calendar.debug("📱 [GroupMain] respondSchedule 시작 - scheduleId: \(scheduleId), status: \(String(describing: status))")
             AppLogger.calendar.debug("📱 [GroupMain] calendarSyncCache: \(calendarSyncCache)")
-            return .run { [promiseClient, calendarSyncClient] send in
+            return .run { [scheduleClient, calendarSyncClient] send in
               do {
-                let result = try await promiseClient.respondPromise(promiseId, status)
-                AppLogger.calendar.debug("📱 [GroupMain] respondPromise 결과 - isConfirmed: \(result.isConfirmed)")
-                await send(.internal(.proposalRespondDone(promiseId: promiseId, status: status)))
+                let result = try await scheduleClient.respondSchedule(scheduleId, status)
+                AppLogger.calendar.debug("📱 [GroupMain] respondSchedule 결과 - isConfirmed: \(result.isConfirmed)")
+                await send(.internal(.proposalRespondDone(scheduleId: scheduleId, status: status)))
 
                 // 캘린더 동기화: 수락 + 확정 시 추가
                 if status == .accepted,
                    result.isConfirmed,
-                   let confirmedPromise = result.confirmedPromise {
-                  let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+                   let confirmedSchedule = result.confirmedSchedule {
+                  let groupCalendarSync = calendarSyncCache[confirmedSchedule.groupId] ?? true
                   AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 시도 - groupCalendarSync: \(groupCalendarSync)")
-                  try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+                  try? await calendarSyncClient.addSchedule(confirmedSchedule, groupCalendarSync)
                 } else {
                   AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 조건 불충족 - status: \(String(describing: status)), isConfirmed: \(result.isConfirmed)")
                 }
@@ -978,29 +978,29 @@ extension GroupMain {
                 // 캘린더 동기화: 거절 시 제거
                 if status == .declined {
                   AppLogger.calendar.debug("📱 [GroupMain] 캘린더 제거 시도")
-                  try? await calendarSyncClient.removePromise(promiseId)
+                  try? await calendarSyncClient.removeSchedule(scheduleId)
                 }
               } catch {
-                AppLogger.calendar.error("📱 [GroupMain] respondPromise 에러: \(error.localizedDescription)")
-                await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: AppError(error))))
+                AppLogger.calendar.error("📱 [GroupMain] respondSchedule 에러: \(error.localizedDescription)")
+                await send(.internal(.proposalRespondFailed(scheduleId: scheduleId, error: AppError(error))))
               }
             }
 
-          case .deletePromise(let promiseId):
-            return .run { [promiseClient] send in
+          case .deleteSchedule(let scheduleId):
+            return .run { [scheduleClient] send in
               do {
-                try await promiseClient.deletePromise(promiseId)
-                await send(.internal(.deletePromiseDone(promiseId: promiseId)))
+                try await scheduleClient.deleteSchedule(scheduleId)
+                await send(.internal(.deleteScheduleDone(scheduleId: scheduleId)))
               } catch {
-                await send(.internal(.deletePromiseFailed(promiseId: promiseId, error: AppError(error))))
+                await send(.internal(.deleteScheduleFailed(scheduleId: scheduleId, error: AppError(error))))
               }
             }
 
-          case .deletePromiseDone:
+          case .deleteScheduleDone:
             return .none
 
-          case .deletePromiseFailed(_, let error):
-            state.promisesState = .failed(error)
+          case .deleteScheduleFailed(_, let error):
+            state.schedulesState = .failed(error)
             return .none
 
           case .toggleGroupNotifications:
@@ -1021,27 +1021,27 @@ extension GroupMain {
               await groupClient.clearGroupBadge(groupId)
             }
 
-          case .liveActivityChanged(let promiseId):
-            state.liveActivityPromiseId = promiseId
+          case .liveActivityChanged(let scheduleId):
+            state.liveActivityScheduleId = scheduleId
             return .none
 
-          case .fetchPastPromises(let groupId):
-            state.pastPromisesState = .loading
-            return .run { [promiseClient] send in
+          case .fetchPastSchedules(let groupId):
+            state.pastSchedulesState = .loading
+            return .run { [scheduleClient] send in
               do {
-                let promises = try await promiseClient.getPastPromises(groupId, 20, nil)
-                await send(.internal(.pastPromisesResponse(.success(promises))))
+                let schedules = try await scheduleClient.getPastSchedules(groupId, 20, nil)
+                await send(.internal(.pastSchedulesResponse(.success(schedules))))
               } catch {
-                await send(.internal(.pastPromisesResponse(.failure(AppError(error)))))
+                await send(.internal(.pastSchedulesResponse(.failure(AppError(error)))))
               }
             }
 
-          case .pastPromisesResponse(.success(let promises)):
-            state.pastPromisesState = .loaded(promises)
+          case .pastSchedulesResponse(.success(let schedules)):
+            state.pastSchedulesState = .loaded(schedules)
             return .none
 
-          case .pastPromisesResponse(.failure(let error)):
-            state.pastPromisesState = .failed(error)
+          case .pastSchedulesResponse(.failure(let error)):
+            state.pastSchedulesState = .failed(error)
             return .none
 
           case .fetchSettings:
@@ -1109,14 +1109,14 @@ extension GroupMain {
               return .none
             }
 
-          case .kakaoPromiseShareResult(let result):
-            state.isKakaoPromiseSharing = false
+          case .kakaoScheduleShareResult(let result):
+            state.isKakaoScheduleSharing = false
             switch result {
             case .shared, .webShared:
-              state.sharePromise = nil
+              state.shareSchedule = nil
               state.toastMessage = ToastMessage(
                 type: .success,
-                title: LocalizedStrings.KakaoShare.promiseShared,
+                title: LocalizedStrings.KakaoShare.scheduleShared,
                 position: .top
               )
               return .run { [hapticFeedback] _ in
@@ -1126,74 +1126,74 @@ extension GroupMain {
               return .none
             }
 
-          case .refreshProFeatures(let promises):
+          case .refreshProFeatures(let schedules):
             guard state.isPro else { return .none }
             return .merge(
-              .send(.internal(.checkConflicts(promises))),
-              .send(.internal(.fetchWeather(promises)))
+              .send(.internal(.checkConflicts(schedules))),
+              .send(.internal(.fetchWeather(schedules)))
             )
 
-          case .checkConflicts(let promises):
+          case .checkConflicts(let schedules):
             let userId = state.currentUser.userId
             let threshold = state.conflictDetectionThreshold
             guard threshold >= 0 else {
               AppLogger.group.debug("[ConflictCheck] threshold=\(threshold), 충돌 체크 스킵")
               return .none
             }
-            let futurePromises = promises.filter { $0.startAt > Date() }
-            AppLogger.group.debug("[ConflictCheck] 전체 \(promises.count)건 중 미래 \(futurePromises.count)건")
-            guard !futurePromises.isEmpty else { return .none }
-            for promise in futurePromises {
-              state.conflictCheckingIds.insert(promise.id)
+            let futureSchedules = schedules.filter { $0.startAt > Date() }
+            AppLogger.group.debug("[ConflictCheck] 전체 \(schedules.count)건 중 미래 \(futureSchedules.count)건")
+            guard !futureSchedules.isEmpty else { return .none }
+            for schedule in futureSchedules {
+              state.conflictCheckingIds.insert(schedule.id)
             }
-            return .merge(futurePromises.map { promise in
+            return .merge(futureSchedules.map { schedule in
               .run { [scheduleConflictClient] send in
                 do {
                   let conflicts = try await scheduleConflictClient.checkConflicts(
-                    userId, promise.startAt, promise.endAt, Set([promise.id]), threshold
+                    userId, schedule.startAt, schedule.endAt, Set([schedule.id]), threshold
                   )
-                  await send(.internal(.conflictsLoaded(promiseId: promise.id, conflicts)))
+                  await send(.internal(.conflictsLoaded(scheduleId: schedule.id, conflicts)))
                 } catch {
-                  AppLogger.group.error("[ConflictCheck] CF 실패 promiseId=\(promise.id): \(error)")
-                  await send(.internal(.conflictCheckFailed(promiseId: promise.id)))
+                  AppLogger.group.error("[ConflictCheck] CF 실패 scheduleId=\(schedule.id): \(error)")
+                  await send(.internal(.conflictCheckFailed(scheduleId: schedule.id)))
                 }
               }
             })
             .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
 
-          case .conflictsLoaded(let promiseId, let conflicts):
-            state.conflictCheckingIds.remove(promiseId)
-            state.conflictsByPromiseId[promiseId] = conflicts
+          case .conflictsLoaded(let scheduleId, let conflicts):
+            state.conflictCheckingIds.remove(scheduleId)
+            state.conflictsByScheduleId[scheduleId] = conflicts
             return .none
 
-          case .conflictCheckFailed(let promiseId):
-            state.conflictCheckingIds.remove(promiseId)
+          case .conflictCheckFailed(let scheduleId):
+            state.conflictCheckingIds.remove(scheduleId)
             return .none
 
           case .conflictSettingsLoaded(let threshold):
             state.conflictDetectionThreshold = threshold
             return .none
 
-          case .fetchWeather(let promises):
-            let existing = state.weatherByPromiseId
+          case .fetchWeather(let schedules):
+            let existing = state.weatherByScheduleId
             let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
-            let targets = promises.filter { promise in
-              promise.location?.latitude != nil &&
-              promise.location?.longitude != nil &&
-              !promise.isPast &&
-              promise.startAt < maxDate &&
-              existing[promise.id] == nil
+            let targets = schedules.filter { schedule in
+              schedule.location?.latitude != nil &&
+              schedule.location?.longitude != nil &&
+              !schedule.isPast &&
+              schedule.startAt < maxDate &&
+              existing[schedule.id] == nil
             }
             guard !targets.isEmpty else { return .none }
             return .run { [weatherClient] send in
               var updates: [String: WeatherInfo] = [:]
               await withTaskGroup(of: (String, WeatherInfo?).self) { group in
-                for promise in targets {
+                for schedule in targets {
                   group.addTask {
-                    guard let lat = promise.location?.latitude,
-                          let lng = promise.location?.longitude else { return (promise.id, nil) }
-                    let info = try? await weatherClient.getWeather(lat, lng, promise.startAt)
-                    return (promise.id, info)
+                    guard let lat = schedule.location?.latitude,
+                          let lng = schedule.location?.longitude else { return (schedule.id, nil) }
+                    let info = try? await weatherClient.getWeather(lat, lng, schedule.startAt)
+                    return (schedule.id, info)
                   }
                 }
                 for await (id, info) in group {
@@ -1208,29 +1208,29 @@ extension GroupMain {
 
           case .weatherBatchResponse(let updates):
             for (id, info) in updates {
-              state.weatherByPromiseId[id] = info
+              state.weatherByScheduleId[id] = info
             }
             return .none
 
           }
 
         // MARK: - Child Feature Actions
-        case .createPromise(.presented(.delegate(.dismiss))):
-          state.createPromise = nil
+        case .createSchedule(.presented(.delegate(.dismiss))):
+          state.createSchedule = nil
           return .none
 
-        case .createPromise(.presented(.delegate(.promiseCreated))):
-          state.createPromise = nil
+        case .createSchedule(.presented(.delegate(.scheduleCreated))):
+          state.createSchedule = nil
           return .none
 
-        case .createPromise(.presented(.delegate(.createGroupRequested))):
-          state.createPromise = nil
+        case .createSchedule(.presented(.delegate(.createGroupRequested))):
+          state.createSchedule = nil
           state.createGroup = CreateGroup.Feature.State(
             currentUser: state.currentUser
           )
           return .none
 
-        case .createPromise:
+        case .createSchedule:
           return .none
 
         case .createGroup(.presented(.delegate(.dismiss))):
@@ -1241,9 +1241,9 @@ extension GroupMain {
           state.createGroup = nil
           return .send(.internal(.fetchGroupList))
 
-        case .createGroup(.presented(.delegate(.groupCreatedAndCreatePromise(let groupId)))):
+        case .createGroup(.presented(.delegate(.groupCreatedAndCreateSchedule(let groupId)))):
           state.createGroup = nil
-          state.pendingCreatePromiseGroupId = groupId
+          state.pendingCreateScheduleGroupId = groupId
           return .send(.internal(.fetchGroupList))
 
         case .createGroup:
@@ -1260,15 +1260,15 @@ extension GroupMain {
         case .joinGroup:
           return .none
 
-        case .editPromise(.presented(.delegate(.cancelled))):
-          state.editPromise = nil
+        case .editSchedule(.presented(.delegate(.cancelled))):
+          state.editSchedule = nil
           return .none
 
-        case .editPromise(.presented(.delegate(.promiseUpdated))):
-          state.editPromise = nil
+        case .editSchedule(.presented(.delegate(.scheduleUpdated))):
+          state.editSchedule = nil
           return .none
 
-        case .editPromise:
+        case .editSchedule:
           return .none
 
         case .sortSettingsDismissed:
@@ -1288,12 +1288,12 @@ extension GroupMain {
           }
 
         case .deleteAlert(.presented(.confirmDelete)):
-          guard let promiseId = state.promiseToDelete else { return .none }
-          state.promiseToDelete = nil
-          return .send(.internal(.deletePromise(promiseId: promiseId)))
+          guard let scheduleId = state.scheduleToDelete else { return .none }
+          state.scheduleToDelete = nil
+          return .send(.internal(.deleteSchedule(scheduleId: scheduleId)))
 
         case .deleteAlert:
-          state.promiseToDelete = nil
+          state.scheduleToDelete = nil
           return .none
 
         // MARK: - Group Action Sheet
@@ -1357,9 +1357,9 @@ extension GroupMain {
           state.currentGroup = nil
           return .send(.internal(.fetchGroupList))
 
-        case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
+        case .path(.element(id: _, action: .groupSettings(.delegate(.pastSchedulesTapped)))):
           guard let groupId = state.currentGroup?.id else { return .none }
-          state.path.append(.pastPromises(.init(
+          state.path.append(.pastSchedules(.init(
             groupId: groupId,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers
@@ -1374,32 +1374,32 @@ extension GroupMain {
           state.path.removeAll()
           return .send(.internal(.fetchGroupList))
 
-        // GroupPromiseList delegate actions
-        case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
-          state.path.append(.promiseDetail(.init(
-            promise: promise,
+        // GroupScheduleList delegate actions
+        case .path(.element(id: _, action: .groupScheduleList(.delegate(.scheduleSelected(let schedule))))):
+          state.path.append(.scheduleDetail(.init(
+            schedule: schedule,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
 
-        case .path(.element(id: _, action: .pastPromises(.delegate(.promiseSelected(let promise))))):
-          state.path.append(.promiseDetail(.init(
-            promise: promise,
+        case .path(.element(id: _, action: .pastSchedules(.delegate(.scheduleSelected(let schedule))))):
+          state.path.append(.scheduleDetail(.init(
+            schedule: schedule,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.dismiss)))):
           _ = state.path.popLast()
           return .none
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleDeleted)))):
           _ = state.path.popLast()
           return .none
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated)))):
           return .none
 
         case .path:
@@ -1409,10 +1409,10 @@ extension GroupMain {
           return .none
         }
       }
-      .ifLet(\.$createPromise, action: \.createPromise) { CreatePromise.Feature() }
+      .ifLet(\.$createSchedule, action: \.createSchedule) { CreateSchedule.Feature() }
       .ifLet(\.$createGroup, action: \.createGroup) { CreateGroup.Feature() }
       .ifLet(\.$joinGroup, action: \.joinGroup) { JoinGroup.Feature() }
-      .ifLet(\.$editPromise, action: \.editPromise) { EditPromise.Feature() }
+      .ifLet(\.$editSchedule, action: \.editSchedule) { EditSchedule.Feature() }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .ifLet(\.$groupActionSheet, action: \.groupActionSheet)
       .forEach(\.path, action: \.path)

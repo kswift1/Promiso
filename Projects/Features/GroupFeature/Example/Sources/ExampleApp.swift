@@ -5,7 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import GroupFeature
-import CreatePromiseFeature
+import CreateScheduleFeature
 import Clients
 import PromisoShared
 
@@ -34,15 +34,15 @@ private struct ExampleContentView: View {
 
   var body: some View {
     List {
-      Section("약속 메인") {
+      Section("일정 메인") {
         NavigationLink("GroupMain Feature") {
           groupMainExample
         }
       }
 
-      Section("약속 생성") {
-        NavigationLink("CreatePromise Feature") {
-          createPromiseExample
+      Section("일정 생성") {
+        NavigationLink("CreateSchedule Feature") {
+          createScheduleExample
         }
       }
     }
@@ -67,7 +67,7 @@ private struct ExampleContentView: View {
       GroupMain.Feature()
     } withDependencies: { dependencies in
       dependencies.groupClient = .previewValue
-      dependencies.promiseClient = .previewValue
+      dependencies.scheduleClient = .previewValue
       dependencies.authClient = .previewValue
       dependencies.userProfileClient = .previewValue
     }
@@ -75,17 +75,17 @@ private struct ExampleContentView: View {
     GroupMain.RootView(store: store)
   }
 
-  /// CreatePromise feature example
+  /// CreateSchedule feature example
   @ViewBuilder
-  private var createPromiseExample: some View {
-    let store = Store(initialState: CreatePromise.Feature.State()) {
-      CreatePromise.Feature()
+  private var createScheduleExample: some View {
+    let store = Store(initialState: CreateSchedule.Feature.State()) {
+      CreateSchedule.Feature()
     } withDependencies: { dependencies in
       dependencies.groupClient = .previewValue
-      dependencies.promiseClient = .previewValue
+      dependencies.scheduleClient = .previewValue
     }
 
-    CreatePromise.RootView(store: store)
+    CreateSchedule.RootView(store: store)
   }
 }
 
@@ -106,7 +106,7 @@ private struct ExampleContentView: View {
     GroupMain.Feature()
   } withDependencies: { dependencies in
     dependencies.groupClient = .previewValue
-    dependencies.promiseClient = .previewValue
+    dependencies.scheduleClient = .previewValue
     dependencies.authClient = .previewValue
     dependencies.userProfileClient = .previewValue
   }

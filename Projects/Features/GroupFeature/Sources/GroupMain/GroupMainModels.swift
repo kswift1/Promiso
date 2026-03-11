@@ -5,11 +5,11 @@ import UIKit
 
 public enum GroupMain {}
 
-// MARK: - Promise Filter
+// MARK: - Schedule Filter
 
 extension GroupMain {
-  /// 약속 목록 필터 (Apple Mail 스타일)
-  public enum PromiseFilter: String, CaseIterable, Sendable, CategoryFilterItem {
+  /// 일정 목록 필터 (Apple Mail 스타일)
+  public enum ScheduleFilter: String, CaseIterable, Sendable, CategoryFilterItem {
     case all
     case needResponse
     case responded
@@ -59,10 +59,10 @@ extension GroupMain {
   public enum Deeplink: Equatable, Sendable {
     /// 그룹 상세 화면
     case group(groupId: String)
-    /// 약속 상세 화면
-    case promise(promiseId: String, groupId: String)
-    /// 약속 목록에서 특정 약속으로 스크롤 (필터 적용)
-    case promiseInList(promiseId: String, groupId: String, filter: PromiseFilter)
+    /// 일정 상세 화면
+    case schedule(scheduleId: String, groupId: String)
+    /// 일정 목록에서 특정 일정으로 스크롤 (필터 적용)
+    case scheduleInList(scheduleId: String, groupId: String, filter: ScheduleFilter)
   }
 }
 

@@ -215,7 +215,7 @@ extension Auth {
                 animated: animated,
                 lines: [
                   .init(
-                    text: LocalizedStrings.Auth.heroPromisesWord,
+                    text: LocalizedStrings.Auth.heroSchedulesWord,
                     font: .system(size: 48, weight: .black),
                     style: AnyShapeStyle(Color.pmtext.primary)
                   ),

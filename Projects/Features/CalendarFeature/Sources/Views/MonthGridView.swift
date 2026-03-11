@@ -46,7 +46,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   let onCollapseToWeek: (Date) -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
-  var onDayCreatePromise: ((Date) -> Void)? = nil
+  var onDayCreateSchedule: ((Date) -> Void)? = nil
   var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
   var onWeekPageChanged: ((Int) -> Void)? = nil  // -1 (이전 주) or +1 (다음 주)
 
@@ -79,7 +79,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       onCollapseToWeek: onCollapseToWeek,
       onIndicatorTapped: onIndicatorTapped,
       onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-      onDayCreatePromise: onDayCreatePromise
+      onDayCreateSchedule: onDayCreateSchedule
     )
     return vc
   }
@@ -146,7 +146,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         onCollapseToWeek: onCollapseToWeek,
         onIndicatorTapped: onIndicatorTapped,
         onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-        onDayCreatePromise: onDayCreatePromise
+        onDayCreateSchedule: onDayCreateSchedule
       )
       vc.recenterToCurrentPage(animated: false)
     } else if let direction = coordinator.pendingSlideDirection {
@@ -169,7 +169,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           onCollapseToWeek: self.onCollapseToWeek,
           onIndicatorTapped: self.onIndicatorTapped,
           onDayCreatePersonalEvent: self.onDayCreatePersonalEvent,
-          onDayCreatePromise: self.onDayCreatePromise
+          onDayCreateSchedule: self.onDayCreateSchedule
         )
         vc.recenterToCurrentPage(animated: false)
       }
@@ -190,7 +190,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         onCollapseToWeek: onCollapseToWeek,
         onIndicatorTapped: onIndicatorTapped,
         onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-        onDayCreatePromise: onDayCreatePromise
+        onDayCreateSchedule: onDayCreateSchedule
       )
     }
   }
@@ -322,7 +322,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       onCollapseToWeek: @escaping (Date) -> Void,
       onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
       onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
-      onDayCreatePromise: ((Date) -> Void)? = nil
+      onDayCreateSchedule: ((Date) -> Void)? = nil
     ) {
       scrollView.delegate = coordinator
 
@@ -356,7 +356,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
           onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-          onDayCreatePromise: onDayCreatePromise,
+          onDayCreateSchedule: onDayCreateSchedule,
           previewIndicatorsProvider: previewIndicatorsProvider
         )
         let hostingVC = UIHostingController(rootView: gridView)
@@ -414,7 +414,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       onCollapseToWeek: @escaping (Date) -> Void,
       onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
       onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
-      onDayCreatePromise: ((Date) -> Void)? = nil
+      onDayCreateSchedule: ((Date) -> Void)? = nil
     ) {
       // 주간 모드: 각 페이지에 이전/현재/다음 주의 월+행 설정
       let pageMonths: [Date]
@@ -445,7 +445,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
           onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-          onDayCreatePromise: onDayCreatePromise,
+          onDayCreateSchedule: onDayCreateSchedule,
           previewIndicatorsProvider: previewIndicatorsProvider
         )
       }
@@ -599,7 +599,7 @@ struct MonthGridContent: View {
   let onCollapseToWeek: (Date) -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
-  var onDayCreatePromise: ((Date) -> Void)? = nil
+  var onDayCreateSchedule: ((Date) -> Void)? = nil
   var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
 
   @AppStorage(AppConstants.UserDefaults.calendarStartOnMonday) private var calendarStartOnMonday = true
@@ -664,7 +664,7 @@ struct MonthGridContent: View {
               onTap: { onDateSelected(date) },
               onIndicatorTapped: onIndicatorTapped,
               onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-              onDayCreatePromise: onDayCreatePromise,
+              onDayCreateSchedule: onDayCreateSchedule,
               previewIndicatorsProvider: previewIndicatorsProvider
             )
             .frame(maxWidth: .infinity)

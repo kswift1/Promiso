@@ -5,13 +5,13 @@
 //  LiveActivity 참가자 상태 모델 테스트
 //
 //  ## 테스트 대상
-//  - `PromisoShared/Sources/LiveActivity/PromiseActivityAttributes.swift`
+//  - `PromisoShared/Sources/LiveActivity/ScheduleActivityAttributes.swift`
 //  - `ParticipantState` 구조체
 //
 //  ## 사용처
 //  - **LiveActivity Widget**: Dynamic Island, Lock Screen에서 참가자 위치 표시
-//  - **LivePromiseExpandedView**: Racing Track에서 참가자 진행률 시각화
-//  - **LivePromiseCompactView**: 참가자 도착 상태 표시
+//  - **LiveScheduleExpandedView**: Racing Track에서 참가자 진행률 시각화
+//  - **LiveScheduleCompactView**: 참가자 도착 상태 표시
 //
 //  ## 테스트 목적
 //  - trackPosition(): 참가자의 레이싱 트랙 위치 계산 (0.0 ~ 1.0)
@@ -91,12 +91,12 @@ struct ParticipantStateTests {
     #expect(original.estimatedArrivalMinutes == 10)  // immutable 확인
   }
 
-  // MARK: - PromiseActivityAttributes 테스트
+  // MARK: - ScheduleActivityAttributes 테스트
 
-  @Test("[L5] PromiseActivityAttributes 기본 trackingDurationMinutes = 30")
+  @Test("[L5] ScheduleActivityAttributes 기본 trackingDurationMinutes = 30")
   func l5_defaultTrackingDuration_is30() {
-    let attrs = PromiseActivityAttributes(
-      promiseId: "test",
+    let attrs = ScheduleActivityAttributes(
+      scheduleId: "test",
       currentUserId: "user",
       emoji: "📌",
       title: "테스트",

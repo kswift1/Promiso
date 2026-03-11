@@ -191,7 +191,7 @@ public extension SlidingSegmentControl where Option: RawRepresentable, Option.Ra
       VStack(spacing: 0) {
         // 헤더
         VStack(spacing: 12) {
-          Text("약속")
+          Text("일정")
             .font(.largeTitle.bold())
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -214,7 +214,7 @@ public extension SlidingSegmentControl where Option: RawRepresentable, Option.Ra
                 .frame(width: 44, height: 44)
 
               VStack(alignment: .leading) {
-                Text("약속 \(index + 1)")
+                Text("일정 \(index + 1)")
                   .font(.headline)
                 Text("설명 텍스트")
                   .font(.subheadline)

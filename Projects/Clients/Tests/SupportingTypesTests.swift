@@ -9,7 +9,7 @@
 //  - `Clients/Sources/Domain/Models/MapTypes.swift`
 //
 //  ## 테스트 목적
-//  - PromiseVotesModel: acceptedCount, declinedCount, votedCount, isConfirmed, myStatus, pendingMembers 검증
+//  - ScheduleVotesModel: acceptedCount, declinedCount, votedCount, isConfirmed, myStatus, pendingMembers 검증
 //  - LocationInfoModel: 초기화, 속성 검증
 //  - VoteStatus: rawValue 검증
 //  - Coordinate, Place: 초기화, displayAddress, toLocationInfo 변환 검증
@@ -20,10 +20,10 @@ import Foundation
 import Testing
 @testable import Clients
 
-// MARK: - PromiseVotesModel 테스트
+// MARK: - ScheduleVotesModel 테스트
 
-@Suite("PromiseVotesModel 테스트")
-struct PromiseVotesModelTests {
+@Suite("ScheduleVotesModel 테스트")
+struct ScheduleVotesModelTests {
 
   @Test("acceptedCount는 accepted 배열 길이")
   func acceptedCount_returnsArrayCount() {
@@ -95,7 +95,7 @@ struct PromiseVotesModelTests {
 
   @Test("기본 초기화 시 빈 배열과 현재 시간")
   func defaultInit_hasEmptyArrays() {
-    let votes = PromiseVotesModel()
+    let votes = ScheduleVotesModel()
     #expect(votes.accepted.isEmpty)
     #expect(votes.declined.isEmpty)
     #expect(votes.acceptedCount == 0)
@@ -259,19 +259,19 @@ struct ProposalTests {
   func init_setsProperties() {
     let proposal = Proposal(
       id: "prop-1",
-      title: "점심 약속 제안",
+      title: "점심 일정 제안",
       description: "같이 점심 먹을래요?",
       fromUserId: "from-user",
       toUserId: "to-user",
-      promiseId: "promise-1",
+      scheduleId: "schedule-1",
       status: .pending
     )
     #expect(proposal.id == "prop-1")
-    #expect(proposal.title == "점심 약속 제안")
+    #expect(proposal.title == "점심 일정 제안")
     #expect(proposal.description == "같이 점심 먹을래요?")
     #expect(proposal.fromUserId == "from-user")
     #expect(proposal.toUserId == "to-user")
-    #expect(proposal.promiseId == "promise-1")
+    #expect(proposal.scheduleId == "schedule-1")
     #expect(proposal.status == .pending)
   }
 

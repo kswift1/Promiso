@@ -9,15 +9,15 @@ public enum HomeModels {}
 // MARK: - Schedule Item (통합 일정 아이템)
 
 extension HomeModels {
-  /// 홈 화면에서 그룹 약속과 개인 일정을 통합 표시하기 위한 타입
+  /// 홈 화면에서 그룹 일정과 개인 일정을 통합 표시하기 위한 타입
   public enum ScheduleItem: Identifiable, Equatable {
-    case promise(PromiseModel)
+    case schedule(ScheduleModel)
     case personalEvent(PersonalEventModel)
     case recurringPersonalEvent(ExpandedEventInstance)
 
     public var id: String {
       switch self {
-      case .promise(let p): return "promise-\(p.id)"
+      case .schedule(let p): return "schedule-\(p.id)"
       case .personalEvent(let e): return "personal-\(e.id)"
       case .recurringPersonalEvent(let e): return "recurring-\(e.id)"
       }
@@ -25,7 +25,7 @@ extension HomeModels {
 
     public var startAt: Date {
       switch self {
-      case .promise(let p): return p.startAt
+      case .schedule(let p): return p.startAt
       case .personalEvent(let e): return e.startAt
       case .recurringPersonalEvent(let e): return e.startAt
       }
@@ -33,7 +33,7 @@ extension HomeModels {
 
     public var endAt: Date? {
       switch self {
-      case .promise(let p): return p.endAt
+      case .schedule(let p): return p.endAt
       case .personalEvent(let e): return e.endAt
       case .recurringPersonalEvent(let e): return e.endAt
       }
@@ -46,7 +46,7 @@ extension HomeModels {
 
     public var displayEmoji: String {
       switch self {
-      case .promise(let p): return p.displayEmoji
+      case .schedule(let p): return p.displayEmoji
       case .personalEvent(let e): return e.displayEmoji
       case .recurringPersonalEvent(let e): return e.emoji ?? "🔄"
       }
@@ -54,7 +54,7 @@ extension HomeModels {
 
     public var title: String {
       switch self {
-      case .promise(let p): return p.title
+      case .schedule(let p): return p.title
       case .personalEvent(let e): return e.title
       case .recurringPersonalEvent(let e): return e.title
       }
@@ -62,16 +62,16 @@ extension HomeModels {
 
     public var location: LocationInfoModel? {
       switch self {
-      case .promise(let p): return p.location
+      case .schedule(let p): return p.location
       case .personalEvent(let e): return e.location
       case .recurringPersonalEvent(let e): return e.location
       }
     }
 
-    /// 확정 여부 (약속만 해당, 개인 일정은 항상 true)
+    /// 확정 여부 (일정만 해당, 개인 일정은 항상 true)
     public var isConfirmed: Bool {
       switch self {
-      case .promise(let p): return p.isConfirmed
+      case .schedule(let p): return p.isConfirmed
       case .personalEvent, .recurringPersonalEvent: return true
       }
     }
@@ -83,16 +83,16 @@ extension HomeModels {
 extension HomeModels {
   public struct OverviewData: Equatable {
     public let todayCount: Int
-    public let nextPromise: PromiseModel?
+    public let nextSchedule: ScheduleModel?
     public let needResponseCount: Int
 
     public init(
       todayCount: Int,
-      nextPromise: PromiseModel?,
+      nextSchedule: ScheduleModel?,
       needResponseCount: Int
     ) {
       self.todayCount = todayCount
-      self.nextPromise = nextPromise
+      self.nextSchedule = nextSchedule
       self.needResponseCount = needResponseCount
     }
   }
@@ -103,7 +103,7 @@ extension HomeModels {
 extension HomeModels {
   public struct TimelineSection: Equatable, Identifiable {
     public let day: Date               // startOfDay로 정규화
-    public let promises: [PromiseModel]
+    public let schedules: [ScheduleModel]
 
     public var id: String { dayKey }   // "2026-01-26" 형식 (타임존 안전)
 
@@ -111,9 +111,9 @@ extension HomeModels {
       LocalizedDateFormatters.date.string(from: day)
     }
 
-    public init(day: Date, promises: [PromiseModel]) {
+    public init(day: Date, schedules: [ScheduleModel]) {
       self.day = day
-      self.promises = promises
+      self.schedules = schedules
     }
   }
 }
@@ -166,11 +166,11 @@ extension HomeModels {
 extension HomeModels {
   public struct CriticalZoneData: Equatable {
     public let reason: CriticalReason
-    public let promise: PromiseModel
+    public let schedule: ScheduleModel
 
-    public init(reason: CriticalReason, promise: PromiseModel) {
+    public init(reason: CriticalReason, schedule: ScheduleModel) {
       self.reason = reason
-      self.promise = promise
+      self.schedule = schedule
     }
 
     public enum CriticalReason: Int, Comparable, Equatable {
@@ -404,7 +404,7 @@ extension HomeModels {
 
   /// 출발 알림 설정 정보
   public struct DepartureAlertInfo: Equatable, Sendable, Codable {
-    public let scheduleItemId: String  // ScheduleItem.id (promise-xxx 또는 personal-xxx)
+    public let scheduleItemId: String  // ScheduleItem.id (schedule-xxx 또는 personal-xxx)
     public let selectedTransport: TransportType
     public let durationMinutes: Int
     public let departureTime: Date

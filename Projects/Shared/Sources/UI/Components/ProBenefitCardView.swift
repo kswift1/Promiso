@@ -104,7 +104,7 @@ public struct ProBenefitCardView: View {
       ]
     ),
     eventStartAt: Date(),
-    eventTitle: "팀 점심 약속",
+    eventTitle: "팀 점심 일정",
     eventEmoji: "🍱"
   )
   .padding()
@@ -116,7 +116,7 @@ public struct ProBenefitCardView: View {
     conflicts: [
       ConflictInfo(title: "팀 회의", overlapMinutes: 30)
     ],
-    eventTitle: "저녁 약속",
+    eventTitle: "저녁 일정",
     eventEmoji: "🍽️"
   )
   .padding()
@@ -141,7 +141,7 @@ public struct ProBenefitCardView: View {
     conflicts: [
       ConflictInfo(title: "스터디 모임", overlapMinutes: 45)
     ],
-    eventTitle: "저녁 약속",
+    eventTitle: "저녁 일정",
     eventEmoji: "🍽️"
   )
   .padding()
@@ -151,7 +151,7 @@ public struct ProBenefitCardView: View {
   ProBenefitCardView(
     eventStartAt: Date(),
     isCheckingConflicts: true,
-    eventTitle: "저녁 약속",
+    eventTitle: "저녁 일정",
     eventEmoji: "🍽️"
   )
   .padding()
@@ -165,7 +165,7 @@ public struct ProBenefitCardView: View {
 
     ProBenefitCardView(
       eventStartAt: Date(),
-      eventTitle: "저녁 약속",
+      eventTitle: "저녁 일정",
       eventEmoji: nil
     )
   }

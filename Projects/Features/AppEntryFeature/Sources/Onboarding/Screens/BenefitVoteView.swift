@@ -26,7 +26,7 @@ struct BenefitVoteView: View {
       VStack(spacing: 0) {
         Spacer()
 
-        // 약속 카드
+        // 일정 카드
         if showCard {
           voteCard
             .transition(.scale(scale: 0.9).combined(with: .opacity))

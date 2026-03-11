@@ -38,7 +38,7 @@ extension Group {
     @ObservableState
     public struct State: Equatable {
       // MARK: - Segment Control
-      public var selectedSegment: PromiseSegment = .received
+      public var selectedSegment: ScheduleSegment = .received
       public var proposals: ProposalModel = .example
       
       // MARK: - Groups
@@ -63,7 +63,7 @@ extension Group {
       case onAppear
       
       // MARK: Segment Actions
-      case segmentChanged(PromiseSegment)
+      case segmentChanged(ScheduleSegment)
       
       // MARK: Proposal Actions
       case proposalSelected(String) // Proposal ID
@@ -213,7 +213,7 @@ extension Group {
     
     private var segmentControl: some View {
       HStack(spacing: 0) {
-        ForEach(PromiseSegment.allCases, id: \.self) { segment in
+        ForEach(ScheduleSegment.allCases, id: \.self) { segment in
           Button(action: {
               store.send(.segmentChanged(segment))
             }) {
@@ -262,7 +262,7 @@ extension Group {
               .font(.title2)
               .foregroundColor(.white)
             
-            Text("새 약속 만들기")
+            Text("새 일정 만들기")
               .font(.headline)
               .fontWeight(.semibold)
               .foregroundColor(.white)
@@ -392,8 +392,8 @@ private struct ProposalCard: View {
 
 // MARK: - Data Models
 
-/// 약속 세그먼트를 나타내는 열거형
-public enum PromiseSegment: CaseIterable, Equatable, Sendable {
+/// 일정 세그먼트를 나타내는 열거형
+public enum ScheduleSegment: CaseIterable, Equatable, Sendable {
   case received
   case sent
   case confirmed

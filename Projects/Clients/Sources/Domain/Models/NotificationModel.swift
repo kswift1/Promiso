@@ -26,8 +26,8 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
   /// 알림 본문
   public let body: String
 
-  /// 관련 약속 ID (딥링크용)
-  public let promiseId: String?
+  /// 관련 일정 ID (딥링크용)
+  public let scheduleId: String?
 
   /// 관련 그룹 ID (딥링크용)
   public let groupId: String?
@@ -52,7 +52,7 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     type: NotificationCategory,
     title: String,
     body: String,
-    promiseId: String? = nil,
+    scheduleId: String? = nil,
     groupId: String? = nil,
     relatedUserId: String? = nil,
     isRead: Bool = false,
@@ -64,7 +64,7 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     self.type = type
     self.title = title
     self.body = body
-    self.promiseId = promiseId
+    self.scheduleId = scheduleId
     self.groupId = groupId
     self.relatedUserId = relatedUserId
     self.isRead = isRead
@@ -77,11 +77,11 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
 
 /// 알림 카테고리 (UI 표시용)
 public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hashable, Sendable {
-  case promiseInvitation = "promise_invitation"
-  case promiseReminder = "promise_reminder"
-  case promiseConfirmed = "promise_confirmed"
-  case promiseCancelled = "promise_cancelled"
-  case promiseUpdated = "promise_updated"
+  case scheduleInvitation = "schedule_invitation"
+  case scheduleReminder = "schedule_reminder"
+  case scheduleConfirmed = "schedule_confirmed"
+  case scheduleCancelled = "schedule_cancelled"
+  case scheduleUpdated = "schedule_updated"
   case groupInvitation = "group_invitation"
   case groupUpdate = "group_update"
   case attendanceResponse = "attendance_response"
@@ -90,11 +90,11 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
   /// 아이콘 이름 (SF Symbol)
   public var iconName: String {
     switch self {
-    case .promiseInvitation: return "envelope.fill"
-    case .promiseReminder: return "bell.fill"
-    case .promiseConfirmed: return "checkmark.circle.fill"
-    case .promiseCancelled: return "xmark.circle.fill"
-    case .promiseUpdated: return "pencil.circle.fill"
+    case .scheduleInvitation: return "envelope.fill"
+    case .scheduleReminder: return "bell.fill"
+    case .scheduleConfirmed: return "checkmark.circle.fill"
+    case .scheduleCancelled: return "xmark.circle.fill"
+    case .scheduleUpdated: return "pencil.circle.fill"
     case .groupInvitation: return "person.badge.plus.fill"
     case .groupUpdate: return "person.3.fill"
     case .attendanceResponse: return "hand.raised.fill"
@@ -105,11 +105,11 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
   /// 아이콘 색상
   public var iconColorName: String {
     switch self {
-    case .promiseInvitation: return "pmindigo"
-    case .promiseReminder: return "pmorange"
-    case .promiseConfirmed: return "pmgreen"
-    case .promiseCancelled: return "pmred"
-    case .promiseUpdated: return "pmblue"
+    case .scheduleInvitation: return "pmindigo"
+    case .scheduleReminder: return "pmorange"
+    case .scheduleConfirmed: return "pmgreen"
+    case .scheduleCancelled: return "pmred"
+    case .scheduleUpdated: return "pmblue"
     case .groupInvitation: return "pmpurple"
     case .groupUpdate: return "pmteal"
     case .attendanceResponse: return "pmyellow"
@@ -119,20 +119,20 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
 
   /// 딥링크 타입
   public enum DeeplinkType {
-    case promise(promiseId: String, groupId: String)
+    case schedule(scheduleId: String, groupId: String)
     case group(groupId: String)
     case none
   }
 
   /// 딥링크 생성
-  public func deeplink(promiseId: String?, groupId: String?) -> DeeplinkType {
+  public func deeplink(scheduleId: String?, groupId: String?) -> DeeplinkType {
     switch self {
-    case .promiseInvitation, .promiseReminder, .promiseConfirmed,
-         .promiseCancelled, .promiseUpdated, .attendanceResponse:
-      guard let promiseId = promiseId, let groupId = groupId else {
+    case .scheduleInvitation, .scheduleReminder, .scheduleConfirmed,
+         .scheduleCancelled, .scheduleUpdated, .attendanceResponse:
+      guard let scheduleId = scheduleId, let groupId = groupId else {
         return .none
       }
-      return .promise(promiseId: promiseId, groupId: groupId)
+      return .schedule(scheduleId: scheduleId, groupId: groupId)
     case .groupInvitation, .groupUpdate:
       guard let groupId = groupId else {
         return .none
@@ -165,6 +165,6 @@ extension NotificationModel {
 
   /// 딥링크 타입
   public var deeplinkType: NotificationCategory.DeeplinkType {
-    type.deeplink(promiseId: promiseId, groupId: groupId)
+    type.deeplink(scheduleId: scheduleId, groupId: groupId)
   }
 }

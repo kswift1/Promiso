@@ -21,10 +21,10 @@ struct UpcomingDateCard: View {
       VStack(spacing: 0) {
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
           switch item {
-          case .promise(let promise):
-            UpcomingPromiseRow(
-              promise: promise,
-              weather: weatherCache[promise.id],
+          case .schedule(let schedule):
+            UpcomingScheduleRow(
+              schedule: schedule,
+              weather: weatherCache[schedule.id],
               onTap: { onItemTap(item) }
             )
 
@@ -89,7 +89,7 @@ struct UpcomingDateCard: View {
   }
 
   private var weekdayColor: Color {
-    let weekday = Calendar.promiseDisplay.component(.weekday, from: date)
+    let weekday = Calendar.scheduleDisplay.component(.weekday, from: date)
     switch weekday {
     case 1: return .red      // 일요일
     case 7: return .blue     // 토요일
@@ -98,25 +98,25 @@ struct UpcomingDateCard: View {
   }
 }
 
-// MARK: - Upcoming Promise Row
+// MARK: - Upcoming Schedule Row
 
-/// 카드 내부의 개별 약속 행
-private struct UpcomingPromiseRow: View {
-  let promise: PromiseModel
+/// 카드 내부의 개별 일정 행
+private struct UpcomingScheduleRow: View {
+  let schedule: ScheduleModel
   let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
     Button(action: onTap) {
       HStack(spacing: 8) {
-        // 약속 정보
+        // 일정 정보
         VStack(alignment: .leading, spacing: 4) {
           // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
-            Text(promise.displayEmoji)
+            Text(schedule.displayEmoji)
               .font(.pmBody)
 
-            Text(promise.title)
+            Text(schedule.title)
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
@@ -124,12 +124,12 @@ private struct UpcomingPromiseRow: View {
             Spacer(minLength: 0)
 
             if let weather = weather,
-               let forecast = weather.forecast(for: promise.startAt) {
+               let forecast = weather.forecast(for: schedule.startAt) {
               WeatherBadge(
                 forecast: forecast,
-                rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-                referenceTimeText: promise.startAt.formattedMonthDayTime,
-                forecastSource: weather.forecastSource(for: promise.startAt)
+                rangeForecasts: weather.forecasts(from: schedule.startAt, to: schedule.endAt),
+                referenceTimeText: schedule.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: schedule.startAt)
               )
             } else if shouldShowWeatherSkeleton {
               WeatherBadgeLoadingPlaceholder()
@@ -148,7 +148,7 @@ private struct UpcomingPromiseRow: View {
                 .font(.pmCaption)
             }
 
-            if let location = promise.location {
+            if let location = schedule.location {
               HStack(spacing: 3) {
                 ResourceKitAsset.locationIcon.swiftUIImage
                   .resizable()
@@ -185,17 +185,17 @@ private struct UpcomingPromiseRow: View {
     HStack(spacing: 4) {
       // 그룹 아이콘
       GroupThumbnailView(
-        imageUrl: promise.group?.imageUrl,
-        name: promise.group?.name ?? "",
+        imageUrl: schedule.group?.imageUrl,
+        name: schedule.group?.name ?? "",
         size: 14
       )
 
       // 그룹명 · 참여자
-      if let groupName = promise.group?.name {
-        Text(LocalizedStrings.Home.groupParticipants(groupName, promise.votes.accepted.count))
+      if let groupName = schedule.group?.name {
+        Text(LocalizedStrings.Home.groupParticipants(groupName, schedule.votes.accepted.count))
           .font(.pmCaption)
       } else {
-        Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
+        Text(LocalizedStrings.Home.participantsConfirmed(schedule.votes.accepted.count))
           .font(.pmCaption)
       }
     }
@@ -205,18 +205,18 @@ private struct UpcomingPromiseRow: View {
   // MARK: - Computed Properties
 
   private var timeString: String {
-    promise.startAt.formattedTime
+    schedule.startAt.formattedTime
   }
 
   private var shouldShowWeatherSkeleton: Bool {
     guard weather == nil else { return false }
-    guard let location = promise.location,
+    guard let location = schedule.location,
           location.latitude != nil,
           location.longitude != nil else { return false }
 
     let now = Date()
     let maxDate = now.addingTimeInterval(10 * 24 * 3600)
-    return promise.startAt >= now && promise.startAt < maxDate
+    return schedule.startAt >= now && schedule.startAt < maxDate
   }
 }
 
@@ -345,11 +345,11 @@ private struct WeatherBadgeLoadingPlaceholder: View {
 
 #Preview {
   VStack(spacing: 10) {
-    // 같은 날짜에 약속 + 개인 일정 혼합
+    // 같은 날짜에 일정 + 개인 일정 혼합
     UpcomingDateCard(
       date: Date().addingTimeInterval(86400),
       items: [
-        .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
+        .schedule(ScheduleModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
         .personalEvent(PersonalEventModel.mock(
           id: "pe-1",
           title: "치과 예약",
@@ -357,7 +357,7 @@ private struct WeatherBadgeLoadingPlaceholder: View {
           startAt: Date().addingTimeInterval(86400 + 3600),
           location: LocationInfoModel(name: "서울치과")
         )),
-        .promise(PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200)))
+        .schedule(ScheduleModel.mock(id: "3", title: "저녁 일정", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
       weatherCache: [:],
       onItemTap: { _ in }
