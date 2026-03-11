@@ -1919,11 +1919,14 @@ extension Home {
       let activeAlerts = alerts.filter {
         $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
       }
-      if let data = try? JSONEncoder().encode(activeAlerts) {
+      do {
+        let data = try JSONEncoder().encode(activeAlerts)
         userDefaultsClient.setString(
           data.base64EncodedString(),
           departureAlertsKey
         )
+      } catch {
+        AppLogger.home.error("Failed to encode departure alerts for persistence: \(error)")
       }
     }
 
@@ -1931,13 +1934,18 @@ extension Home {
       userDefaultsClient: UserDefaultsClient
     ) -> [String: HomeModels.DepartureAlertInfo] {
       guard let base64 = userDefaultsClient.stringForKey(departureAlertsKey),
-            let data = Data(base64Encoded: base64),
-            let alerts = try? JSONDecoder().decode([String: HomeModels.DepartureAlertInfo].self, from: data) else {
+            let data = Data(base64Encoded: base64) else {
         return [:]
       }
-      // 만료된 알림 제거
-      return alerts.filter {
-        $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+      do {
+        let alerts = try JSONDecoder().decode([String: HomeModels.DepartureAlertInfo].self, from: data)
+        // 만료된 알림 제거
+        return alerts.filter {
+          $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+        }
+      } catch {
+        AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
+        return [:]
       }
     }
 
