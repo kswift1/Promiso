@@ -163,7 +163,7 @@ struct LivePromiseDetailTests {
     let data = makeLiveData(latitude: 37.4979, longitude: 127.0276)
 
     let store = makeStore(data: data) {
-      $0.mapClient.openDirections = { _, _ in
+      $0.mapClient.openDirections = { _, _, _, _ in
         flag.setValue(true)
       }
     }
@@ -231,6 +231,6 @@ private extension LivePromiseDetailTests {
     deps.hapticFeedback.medium = {}
     deps.hapticFeedback.error = {}
     deps.hapticFeedback.selection = {}
-    deps.mapClient.openDirections = { _, _ in }
+    deps.mapClient.openDirections = { _, _, _, _ in }
   }
 }

@@ -928,11 +928,37 @@ extension Home {
             // 시트 닫고 NavigationStack으로 push
             state.departureAlertItem = nil
             state.departureTransportData = .idle
+            // 출발지 좌표 결정
+            let originCoordinate: Coordinate? = switch state.departureOrigin {
+            case .currentLocation:
+              state.currentLocationCoordinate
+            case .previousSchedule:
+              state.previousScheduleLocation.map {
+                Coordinate(latitude: $0.latitude, longitude: $0.longitude)
+              }
+            }
+            let originName: String? = switch state.departureOrigin {
+            case .currentLocation:
+              state.departureLocationName
+            case .previousSchedule:
+              state.previousScheduleLocation?.locationName
+            }
+            // 도착지 좌표
+            let destCoord = Coordinate(
+              latitude: item.location?.latitude ?? 0,
+              longitude: item.location?.longitude ?? 0
+            )
+            let destName = item.location?.name ?? item.title
+
             state.path.append(.transportDetail(.init(
               scheduleTitle: item.title,
               scheduleEmoji: item.displayEmoji,
               scheduleStartAt: item.startAt,
-              transportData: data
+              transportData: data,
+              originCoordinate: originCoordinate,
+              originName: originName,
+              destinationCoordinate: destCoord,
+              destinationName: destName
             )))
             return .cancel(id: CancelID.transportationFetch)
 

@@ -1,3 +1,4 @@
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import SwiftUI
@@ -22,6 +23,11 @@ extension TransportDetail {
         scheduleHeader
           .padding(.horizontal, 20)
           .padding(.top, 20)
+          .padding(.bottom, 12)
+
+        // 경로 요약 카드
+        routeSummaryCard
+          .padding(.horizontal, 20)
           .padding(.bottom, 16)
 
         // 세그먼트 컨트롤
@@ -44,15 +50,36 @@ extension TransportDetail {
           .padding(.horizontal, 20)
           .padding(.top, 8)
 
+        // 지도에서 경로보기 버튼
+        openMapButton
+          .padding(.horizontal, 20)
+          .padding(.top, 12)
+
         // 하단 알림 버튼
         alertButton
           .padding(.horizontal, 20)
           .padding(.bottom, 32)
-          .padding(.top, 12)
+          .padding(.top, 8)
       }
       .auroraBackground()
       .navigationTitle("교통 수단 상세")
       .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+      .confirmationDialog(
+        "지도 앱 선택",
+        isPresented: Binding(
+          get: { store.isMapAppSheetPresented },
+          set: { _ in store.send(.view(.mapAppSheetDismissed)) }
+        )
+      ) {
+        ForEach(store.availableMapApps, id: \.self) { app in
+          Button(app.displayName) {
+            store.send(.view(.mapAppSelected(app)))
+          }
+        }
+      }
     }
 
     // MARK: - Schedule Header
@@ -75,6 +102,48 @@ extension TransportDetail {
 
         Spacer()
       }
+    }
+
+    // MARK: - Route Summary Card
+
+    private var routeSummaryCard: some View {
+      VStack(spacing: 12) {
+        // 출발지
+        HStack(spacing: 8) {
+          Circle()
+            .fill(Color.pmindigo.n500)
+            .frame(width: 8, height: 8)
+          Text(store.originName ?? "현재 위치")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+          Spacer()
+        }
+
+        // 연결선
+        HStack(spacing: 8) {
+          Rectangle()
+            .fill(Color.pmgray.n300)
+            .frame(width: 2, height: 16)
+            .padding(.leading, 3)
+          Spacer()
+        }
+
+        // 도착지
+        HStack(spacing: 8) {
+          Circle()
+            .fill(Color.pmerror.n500)
+            .frame(width: 8, height: 8)
+          Text(store.destinationName)
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmtext.primary)
+          Spacer()
+        }
+      }
+      .padding(16)
+      .background(
+        RoundedRectangle(cornerRadius: 14)
+          .fill(Color.pmgray.n100)
+      )
     }
 
     // MARK: - Segment Control
@@ -182,13 +251,25 @@ extension TransportDetail {
       return Button {
         store.send(.view(.transitRouteChanged(route.id)))
       } label: {
-        VStack(spacing: 2) {
+        VStack(spacing: 4) {
           Text("경로 \(route.id + 1)")
             .font(.pmCaptionSemibold)
             .foregroundStyle(labelColor)
           Text("약 \(route.totalTime)분")
             .font(.pmCaption)
             .foregroundStyle(subColor)
+          if !route.tags.isEmpty {
+            HStack(spacing: 4) {
+              ForEach(route.tags, id: \.self) { tag in
+                Text(tag.displayName)
+                  .font(.system(size: 10, weight: .medium))
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(Capsule().fill(Color.pmindigo.n500.opacity(0.1)))
+              }
+            }
+          }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -474,6 +555,29 @@ extension TransportDetail {
       .accessibilityLabel(minutes == 0 ? "여유 시간 없음" : "여유 시간 \(minutes)분")
     }
 
+    // MARK: - Open Map Button
+
+    private var openMapButton: some View {
+      Button {
+        store.send(.view(.openMapTapped))
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "map")
+            .font(.system(size: 14))
+          Text("지도에서 경로보기")
+            .font(.pmCaptionSemibold)
+        }
+        .foregroundStyle(Color.pmindigo.n500)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+          RoundedRectangle(cornerRadius: 14)
+            .strokeBorder(Color.pmindigo.n300, lineWidth: 1)
+        )
+      }
+      .buttonStyle(.plain)
+    }
+
     // MARK: - Alert Button
 
     private var alertButton: some View {
@@ -527,7 +631,8 @@ extension TransportDetail {
                   HomeModels.TransportSubPath(trafficType: 3, sectionTime: 5, distance: 400, startName: nil, endName: "강남역", stationCount: nil, laneName: nil),
                   HomeModels.TransportSubPath(trafficType: 1, sectionTime: 28, distance: 18000, startName: "강남역", endName: "홍대입구역", stationCount: 6, laneName: "2호선"),
                   HomeModels.TransportSubPath(trafficType: 3, sectionTime: 7, distance: 550, startName: "홍대입구역", endName: nil, stationCount: nil, laneName: nil),
-                ]
+                ],
+                tags: [.fastest]
               ),
             ],
             walking: HomeModels.TransportOption(
@@ -535,7 +640,11 @@ extension TransportDetail {
               durationMinutes: 55,
               departureTime: Calendar.current.date(bySettingHour: 12, minute: 55, second: 0, of: now) ?? now
             )
-          )
+          ),
+          originCoordinate: Coordinate(latitude: 37.498095, longitude: 127.027610),
+          originName: "강남역",
+          destinationCoordinate: Coordinate(latitude: 37.556, longitude: 126.923),
+          destinationName: "홍대입구역"
         )
       ) {
         TransportDetail.Feature()
