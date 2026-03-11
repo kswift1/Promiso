@@ -1682,8 +1682,45 @@ extension Home {
             state.departureAlertItem = nil
             state.departureTransportData = .idle
             let notificationId = "departure_alert_\(scheduleItemId)"
-            let title = "지금 출발하세요!"
-            let body = "\(item.title) · \(transportType.displayName) 약 \(durationMinutes)분 소요"
+            let timeText = item.startAt.formattedTime
+            let transport = transportType.displayName
+
+            typealias NotificationTemplate = (
+              title: (String) -> String,
+              body: (String, String, Int, Int) -> String
+            )
+
+            let templates: [NotificationTemplate] = [
+              (
+                title: { "\($0), 슬슬 출발할 시간이에요" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 · \(buffer)분 여유를 두었어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분 걸려요"
+                }
+              ),
+              (
+                title: { "\($0), 이제 출발해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time) 약속 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
+                    : "\(time) 약속 · \(trans)로 약 \(duration)분 거리예요"
+                }
+              ),
+              (
+                title: { "\($0), 슬슬 준비해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 거리예요 · 여유 \(buffer)분 챙겼어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분이면 도착해요"
+                }
+              ),
+            ]
+
+            // swiftlint:disable:next force_unwrapping
+            let template = templates.randomElement()!
+            let title = template.title(item.title)
+            let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
             let triggerDate = departureTime
             return .run { [localNotificationClient, userDefaultsClient] send in
               Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
