@@ -2,11 +2,15 @@
 
 ## 상품 구성
 
-| 상품 | Product ID | 가격 | 비고 |
-|------|-----------|------|------|
-| 월간 | `com.promiso.pro.monthly` | ₩3,900/월 | 자동 갱신 |
-| 연간 | `com.promiso.pro.yearly` | ₩39,000/년 (월 ₩3,250) | 3일 무료체험, 자동 갱신 |
-| 평생 | `com.promiso.pro.lifetime` | ₩59,000 | 일회성 구매 |
+Product ID는 `Bundle.main.bundleIdentifier` 기반으로 환경별 자동 생성:
+
+| 상품 | Dev | Stage | Prod | 가격 |
+|------|-----|-------|------|------|
+| 월간 | `com.promiso.dev.pro.monthly` | `com.promiso.stage.pro.monthly` | `com.promiso.pro.monthly` | ₩3,900/월 |
+| 연간 | `com.promiso.dev.pro.yearly` | `com.promiso.stage.pro.yearly` | `com.promiso.pro.yearly` | ₩39,000/년 |
+| 평생 | `com.promiso.dev.pro.lifetime` | `com.promiso.stage.pro.lifetime` | `com.promiso.pro.lifetime` | ₩59,000 |
+
+코드에서 `SubscriptionProductType.monthly.productId` 로 접근 (하드코딩 금지).
 
 ## Pro 기능
 
@@ -76,7 +80,8 @@ Apple Server Notifications V2 → appleServerNotification (Cloud Function) ─�
 | `Projects/Clients/Sources/Clients/SubscriptionClient.swift` | 구독 클라이언트 |
 | `Projects/Clients/Sources/Data/DataSources/Implementations/StoreKitDataSource.swift` | StoreKit 2 구현 |
 | `Projects/Clients/Sources/Domain/Models/Subscription.swift` | 구독 모델/상태 |
-| `Projects/App/ProPlan.storekit` | StoreKit 설정 파일 |
+| `Projects/App/ProPlan.storekit` | StoreKit 설정 파일 (Dev/Prod용) |
+| `Projects/App/ProPlan-Stage.storekit` | StoreKit 설정 파일 (Stage용) |
 | `infra/firebase/functions/src/functions/subscription.ts` | Cloud Functions |
 | `Projects/Shared/Sources/UI/Components/ProBadge.swift` | Pro 뱃지 UI |
 

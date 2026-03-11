@@ -864,7 +864,7 @@ extension ProPlan {
       initialState: ProPlan.Feature.State(
         products: [
           SubscriptionProduct(
-            id: "com.promiso.pro.monthly",
+            id: SubscriptionProductType.monthly.productId,
             type: .monthly,
             displayName: "월간 프로",
             description: "매월 자동 갱신",
@@ -872,7 +872,7 @@ extension ProPlan {
             price: 3900
           ),
           SubscriptionProduct(
-            id: "com.promiso.pro.yearly",
+            id: SubscriptionProductType.yearly.productId,
             type: .yearly,
             displayName: "연간 프로",
             description: "매년 자동 갱신 (월 ₩3,250)",
@@ -880,7 +880,7 @@ extension ProPlan {
             price: 39000
           ),
           SubscriptionProduct(
-            id: "com.promiso.pro.lifetime",
+            id: SubscriptionProductType.lifetime.productId,
             type: .lifetime,
             displayName: "평생 프로",
             description: "한 번 결제, 영구 사용",
@@ -888,7 +888,7 @@ extension ProPlan {
             price: 59000
           )
         ],
-        selectedProductId: "com.promiso.pro.yearly"
+        selectedProductId: SubscriptionProductType.yearly.productId
       )
     ) {
       ProPlan.Feature()
@@ -904,7 +904,7 @@ extension ProPlan {
       initialState: ProPlan.Feature.State(
         products: [
           SubscriptionProduct(
-            id: "com.promiso.pro.yearly",
+            id: SubscriptionProductType.yearly.productId,
             type: .yearly,
             displayName: "연간 프로",
             description: "매년 자동 갱신 (월 ₩3,250)",
@@ -913,7 +913,7 @@ extension ProPlan {
           )
         ],
         isPurchasing: true,
-        selectedProductId: "com.promiso.pro.yearly"
+        selectedProductId: SubscriptionProductType.yearly.productId
       )
     ) {
       ProPlan.Feature()

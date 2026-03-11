@@ -3,10 +3,32 @@ import Foundation
 // MARK: - Subscription Models
 
 /// 구독 상품 유형
-public enum SubscriptionProductType: String, Sendable {
-  case monthly = "com.promiso.pro.monthly"
-  case yearly = "com.promiso.pro.yearly"
-  case lifetime = "com.promiso.pro.lifetime"
+public enum SubscriptionProductType: String, Sendable, CaseIterable {
+  case monthly
+  case yearly
+  case lifetime
+
+  /// 현재 앱 환경에 맞는 Product ID
+  /// - dev: com.promiso.dev.pro.monthly
+  /// - stage: com.promiso.stage.pro.monthly
+  /// - prod: com.promiso.pro.monthly
+  public var productId: String {
+    let bundleId = Bundle.main.bundleIdentifier ?? "com.promiso"
+    return "\(bundleId).pro.\(rawValue)"
+  }
+
+  /// 모든 Product ID 목록 (StoreKit 조회용)
+  public static var allProductIds: Set<String> {
+    Set(allCases.map(\.productId))
+  }
+
+  /// Product ID로부터 타입 역매핑
+  public init?(productId: String) {
+    guard let match = Self.allCases.first(where: { $0.productId == productId }) else {
+      return nil
+    }
+    self = match
+  }
 }
 
 extension SubscriptionProductType {
