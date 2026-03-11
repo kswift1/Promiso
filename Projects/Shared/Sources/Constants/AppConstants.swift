@@ -216,12 +216,12 @@ public enum AppConstants {
     public static let preferredThemeMode = "promisoPreferredThemeMode"
     /// 캘린더 동기화 idempotency를 위한 해시 캐시
     public static let calendarSyncWriteFingerprints = "promisoCalendarSyncWriteFingerprints"
-    /// 캘린더 이벤트 매핑 (promiseId → eventIdentifier)
+    /// 캘린더 이벤트 매핑 (scheduleId → eventIdentifier)
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
-    /// 약속 탭 기본 모드 (group/own)
-    public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
+    /// 일정 탭 기본 모드 (group/own)
+    public static let defaultScheduleTabMode = "promisoDefaultScheduleTabMode"
     /// 선호하는 앱 언어 (ko/en, nil이면 시스템 기본)
     public static let preferredLanguage = "promisoPreferredLanguage"
     /// 개인 일정 캘린더 동기화 활성화 여부
@@ -265,7 +265,7 @@ public enum AppConstants {
   public enum Notifications {
     /// FCM 토큰 수신 시 발송 (userInfo: ["token": String])
     public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
-    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
+    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "scheduleId": String?, "groupId": String?])
     public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
   }
 

@@ -2,7 +2,7 @@
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
 
 import Clients
-import CreatePromiseFeature
+import CreateScheduleFeature
 import NotificationCenterFeature
 import PromisoShared
 import SharedFeature
@@ -21,7 +21,7 @@ extension Home {
 
   @Reducer
   public struct Feature {
-    @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.weatherClient) var weatherClient
@@ -59,8 +59,8 @@ extension Home {
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
       // MARK: Data (직접 쿼리 기반)
-      /// 홈 약속 데이터 (Firestore 직접 쿼리)
-      var promisesState: LoadingState<[PromiseModel]> = .idle
+      /// 홈 일정 데이터 (Firestore 직접 쿼리)
+      var schedulesState: LoadingState<[ScheduleModel]> = .idle
 
       /// 개인 일정 데이터
       var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
@@ -130,8 +130,8 @@ extension Home {
       var overlayWeatherInfo: WeatherInfo? = nil
       /// 오버레이 캘린더 표시 모드
       var overlayCalendarMode: CalendarMode = .monthly
-      /// 오버레이 월별 약속 캐시 (키: 월 시작일)
-      var overlayPromisesByMonth: [Date: [PromiseModel]] = [:]
+      /// 오버레이 월별 일정 캐시 (키: 월 시작일)
+      var overlaySchedulesByMonth: [Date: [ScheduleModel]] = [:]
       /// 이미 로드된 오버레이 월 (중복 요청 방지)
       var overlayLoadedMonths: Set<Date> = []
       /// 오버레이 월별 개인 일정 캐시 (키: 월 시작일)
@@ -148,17 +148,17 @@ extension Home {
       /// 개인 일정 생성 모달
       @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
 
-      /// 오버레이 내 일정 상세 (약속 + 개인 일정 통합)
+      /// 오버레이 내 일정 상세 (일정 + 개인 일정 통합)
       var overlayScheduleDetail: OverlayScheduleDetail.Feature.State?
-      /// 오버레이 내 약속 생성
-      var overlayCreatePromise: CreatePromise.Feature.State?
+      /// 오버레이 내 일정 생성
+      var overlayCreateSchedule: CreateSchedule.Feature.State?
 
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
 
       // MARK: Departure Alert
-      /// 출발 알림 설정 시트 대상 일정 (약속 또는 개인 일정)
+      /// 출발 알림 설정 시트 대상 일정 (일정 또는 개인 일정)
       var departureAlertItem: HomeModels.ScheduleItem? = nil
       /// 교통 데이터 로딩 상태
       var departureTransportData: LoadingState<HomeModels.DepartureTransportData> = .idle
@@ -174,23 +174,23 @@ extension Home {
       var currentLocationCoordinate: Coordinate? = nil
 
       // MARK: Navigation
-      /// 네비게이션 경로 (약속 상세)
+      /// 네비게이션 경로 (일정 상세)
       var path = StackState<Path.State>()
 
       /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷
       struct HomeContentSnapshot: Equatable {
-        let todayPromises: [PromiseModel]
+        let todaySchedules: [ScheduleModel]
         let todayScheduleItems: [HomeModels.ScheduleItem]
-        let pendingPromises: [PromiseModel]
-        let upcomingPromises: [PromiseModel]
+        let pendingSchedules: [ScheduleModel]
+        let upcomingSchedules: [ScheduleModel]
         let upcomingScheduleItems: [HomeModels.ScheduleItem]
         let upcomingRecurringSummaries: [HomeModels.RecurringEventSummary]
 
         static let empty = Self(
-          todayPromises: [],
+          todaySchedules: [],
           todayScheduleItems: [],
-          pendingPromises: [],
-          upcomingPromises: [],
+          pendingSchedules: [],
+          upcomingSchedules: [],
           upcomingScheduleItems: [],
           upcomingRecurringSummaries: []
         )
@@ -208,7 +208,7 @@ extension Home {
 
     @Reducer(state: .equatable)
     public enum Path {
-      case promiseDetail(PromiseDetail.Feature)
+      case scheduleDetail(ScheduleDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
       case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
@@ -225,19 +225,19 @@ extension Home {
       case path(StackActionOf<Path>)
       case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
       case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
-      case overlayCreatePromise(CreatePromise.Feature.Action)
+      case overlayCreateSchedule(CreateSchedule.Feature.Action)
       @CasePathable
       public enum View: Sendable {
         /// 화면 나타남
         case onAppear
         /// Pull to refresh
         case refreshTriggered
-        /// 오늘 일정 약속 카드 탭
-        case todayPromiseTapped(PromiseModel)
-        /// 응답 필요 약속 카드 탭 (그룹 탭으로 이동)
-        case pendingPromiseTapped(PromiseModel)
-        /// 다가오는 약속 카드 탭
-        case upcomingPromiseTapped(PromiseModel)
+        /// 오늘 일정 일정 카드 탭
+        case todayScheduleTapped(ScheduleModel)
+        /// 응답 필요 일정 카드 탭 (그룹 탭으로 이동)
+        case pendingScheduleTapped(ScheduleModel)
+        /// 다가오는 일정 카드 탭
+        case upcomingScheduleTapped(ScheduleModel)
         /// "전체 보기" 버튼 탭
         case seeAllUpcomingTapped
         /// 그룹 필터 변경
@@ -288,12 +288,12 @@ extension Home {
         case overlayScheduleItemTapped(HomeModels.ScheduleItem)
         /// 오버레이 개인 일정 추가 (context menu)
         case overlayCreatePersonalEventTapped(Date)
-        /// 오버레이 약속 만들기 (context menu)
-        case overlayCreatePromiseTapped
+        /// 오버레이 일정 만들기 (context menu)
+        case overlayCreateScheduleTapped
         /// 오버레이 일정 상세에서 뒤로가기
         case overlayScheduleDetailBackTapped
-        /// 오버레이 약속 생성에서 뒤로가기
-        case overlayCreatePromiseBackTapped
+        /// 오버레이 일정 생성에서 뒤로가기
+        case overlayCreateScheduleBackTapped
         /// 출발 알림 버튼 탭
         case departureAlertTapped(HomeModels.ScheduleItem)
         /// 출발 알림 시트 닫기
@@ -306,7 +306,7 @@ extension Home {
         case departureAlertCancelTapped(String)
         /// 출발 알림 재시도
         case departureAlertRetryTapped
-        /// 출발지 변경 (현재 위치 ↔ 직전 약속 장소)
+        /// 출발지 변경 (현재 위치 ↔ 직전 일정 장소)
         case departureOriginChanged(HomeModels.DepartureOrigin)
         /// 출발 알림 시트에서 설정으로 이동
         case departureAlertOpenSettingsTapped
@@ -314,10 +314,10 @@ extension Home {
 
       @CasePathable
       public enum Internal: Sendable {
-        /// 홈 약속 조회 (Firestore 직접 쿼리)
-        case fetchPromises
-        /// 홈 약속 응답
-        case promisesResponse(Result<[PromiseModel], Error>)
+        /// 홈 일정 조회 (Firestore 직접 쿼리)
+        case fetchSchedules
+        /// 홈 일정 응답
+        case schedulesResponse(Result<[ScheduleModel], Error>)
         /// 개인 일정 조회
         case fetchPersonalEvents
         /// 개인 일정 응답
@@ -340,10 +340,10 @@ extension Home {
         case fetchOverlayWeather
         /// 오버레이 날씨 응답
         case overlayWeatherResponse(Result<WeatherInfo, Error>, String?)
-        /// 오버레이 월별 약속 조회
+        /// 오버레이 월별 일정 조회
         case fetchOverlaySchedules(month: Date)
-        /// 오버레이 월별 약속 응답
-        case overlaySchedulesResponse(month: Date, Result<[PromiseModel], Error>)
+        /// 오버레이 월별 일정 응답
+        case overlaySchedulesResponse(month: Date, Result<[ScheduleModel], Error>)
         /// 오버레이 인접 월 프리페치
         case prefetchOverlayAdjacentMonths
         /// 오버레이 월별 개인 일정 조회
@@ -380,16 +380,16 @@ extension Home {
 
       @CasePathable
       public enum Delegate: Sendable {
-        /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
-        case navigateToPromise(promiseId: String, groupId: String)
-        /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
-        case navigateToGroupWithPromise(groupId: String, promiseId: String)
-        /// 모든 약속 보기 화면으로 네비게이션
-        case navigateToAllPromises
-        /// 오버레이에서 약속 만들기 요청 (→ RootTab → GroupMain)
-        case navigateToCreatePromise
-        /// 빠른 약속 생성 요청 (추출 정보 → CreatePromise pre-fill)
-        case createPromiseWithExtractedInfo(PromiseExtractedInfo)
+        /// 일정 상세로 네비게이션 (legacy - 그룹 탭 이동용)
+        case navigateToSchedule(scheduleId: String, groupId: String)
+        /// 그룹 탭의 특정 일정으로 네비게이션 (응답 필요 카드에서)
+        case navigateToGroupWithSchedule(groupId: String, scheduleId: String)
+        /// 모든 일정 보기 화면으로 네비게이션
+        case navigateToAllSchedules
+        /// 오버레이에서 일정 만들기 요청 (→ RootTab → GroupMain)
+        case navigateToCreateSchedule
+        /// 빠른 일정 생성 요청 (추출 정보 → CreateSchedule pre-fill)
+        case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
         /// Pro 플랜 업그레이드 요청
         case proPlanRequested
       }
@@ -427,10 +427,10 @@ extension Home {
               }
             }
 
-            // Firestore에서 직접 쿼리 (약속 + 개인 일정 + 반복 개인 일정 병렬)
+            // Firestore에서 직접 쿼리 (일정 + 개인 일정 + 반복 개인 일정 병렬)
             return .merge(
               weatherEffect,
-              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchSchedules)),
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents)),
               .send(.internal(.checkPermissions))
@@ -439,39 +439,39 @@ extension Home {
           case .refreshTriggered:
             // Pull-to-refresh도 동일하게 쿼리
             return .merge(
-              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchSchedules)),
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents))
             )
 
-          case .todayPromiseTapped(let promise):
+          case .todayScheduleTapped(let schedule):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: groupMembers
             )))
             return .none
 
-          case .pendingPromiseTapped(let promise):
-            return .send(.delegate(.navigateToGroupWithPromise(
-              groupId: promise.groupId,
-              promiseId: promise.id
+          case .pendingScheduleTapped(let schedule):
+            return .send(.delegate(.navigateToGroupWithSchedule(
+              groupId: schedule.groupId,
+              scheduleId: schedule.id
             )))
 
-          case .upcomingPromiseTapped(let promise):
+          case .upcomingScheduleTapped(let schedule):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: groupMembers
             )))
             return .none
 
           case .seeAllUpcomingTapped:
-            return .send(.delegate(.navigateToAllPromises))
+            return .send(.delegate(.navigateToAllSchedules))
 
           case .groupFilterChanged(let groupId):
             state.selectedGroupId = groupId
@@ -586,7 +586,7 @@ extension Home {
             state.overlaySelectedDate = Date()
             state.showCalendarOverlay = true
             // 오버레이 캐시 초기화
-            state.overlayPromisesByMonth.removeAll()
+            state.overlaySchedulesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
             state.overlayPersonalEventsByMonth.removeAll()
             state.overlayLoadedPersonalEventMonths.removeAll()
@@ -638,8 +638,8 @@ extension Home {
             state.overlayCalendarMode = .monthly
             state.overlayCalendarModeBeforeFeature = nil
             state.overlayScheduleDetail = nil
-            state.overlayCreatePromise = nil
-            state.overlayPromisesByMonth.removeAll()
+            state.overlayCreateSchedule = nil
+            state.overlaySchedulesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
             state.overlayPersonalEventsByMonth.removeAll()
             state.overlayLoadedPersonalEventMonths.removeAll()
@@ -649,7 +649,7 @@ extension Home {
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
-            let calendar = Calendar.promiseDisplay
+            let calendar = Calendar.scheduleDisplay
             var effects: [Effect<Action>] = []
             if !calendar.isDate(date, equalTo: state.overlayCalendarMonth, toGranularity: .month) {
               state.overlayCalendarMonth = date
@@ -662,7 +662,7 @@ extension Home {
             return effects.isEmpty ? .none : .merge(effects)
 
           case .overlayPreviousMonth:
-            if let prev = Calendar.promiseDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
+            if let prev = Calendar.scheduleDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = prev
             }
             return .merge(
@@ -671,7 +671,7 @@ extension Home {
             )
 
           case .overlayNextMonth:
-            if let next = Calendar.promiseDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
+            if let next = Calendar.scheduleDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = next
             }
             return .merge(
@@ -706,15 +706,15 @@ extension Home {
 
           case .overlayScheduleItemTapped(let item):
             switch item {
-            case .promise(let promise):
-              let groupMembers = state.groupMembersCache[promise.groupId]
+            case .schedule(let schedule):
+              let groupMembers = state.groupMembersCache[schedule.groupId]
               state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
                 item: item,
                 currentUserId: state.currentUser.userId,
                 groupMembers: groupMembers
               )
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
-              state.overlayCalendarMode = .promiseDetail
+              state.overlayCalendarMode = .scheduleDetail
               return .none
             case .personalEvent:
               // 개인 일정도 오버레이 내에서 인라인 표시
@@ -723,7 +723,7 @@ extension Home {
                 currentUserId: state.currentUser.userId
               )
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
-              state.overlayCalendarMode = .promiseDetail
+              state.overlayCalendarMode = .scheduleDetail
               return .none
             case .recurringPersonalEvent:
               state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
@@ -731,7 +731,7 @@ extension Home {
                 currentUserId: state.currentUser.userId
               )
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
-              state.overlayCalendarMode = .promiseDetail
+              state.overlayCalendarMode = .scheduleDetail
               return .none
             }
 
@@ -743,7 +743,7 @@ extension Home {
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
             // 개인 일정 생성 모달 열기 (선택 날짜로 초기화)
-            let calendar = Calendar.promiseDisplay
+            let calendar = Calendar.scheduleDisplay
             let components = calendar.dateComponents([.hour, .minute], from: date)
             let isTimePrecise = (components.hour ?? 0) != 0 || (components.minute ?? 0) != 0
             let startAt: Date
@@ -757,14 +757,14 @@ extension Home {
             )
             return .cancel(id: CancelID.overlayWeatherFetch)
 
-          case .overlayCreatePromiseTapped:
-            // 오버레이 내에서 약속 생성 인라인 표시
-            state.overlayCreatePromise = CreatePromise.Feature.State(
+          case .overlayCreateScheduleTapped:
+            // 오버레이 내에서 일정 생성 인라인 표시
+            state.overlayCreateSchedule = CreateSchedule.Feature.State(
               groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
               currentUserId: state.currentUser.userId
             )
             state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
-            state.overlayCalendarMode = .promiseCreate
+            state.overlayCalendarMode = .scheduleCreate
             return .none
 
           case .overlayScheduleDetailBackTapped:
@@ -776,8 +776,8 @@ extension Home {
               await send(.internal(.clearOverlayScheduleDetail))
             }
 
-          case .overlayCreatePromiseBackTapped:
-            state.overlayCreatePromise = nil
+          case .overlayCreateScheduleBackTapped:
+            state.overlayCreateSchedule = nil
             state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
             state.overlayCalendarModeBeforeFeature = nil
             return .none
@@ -1076,10 +1076,10 @@ extension Home {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .fetchPromises:
+          case .fetchSchedules:
             // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
-            if state.promisesState.value == nil {
-              state.promisesState = .loading
+            if state.schedulesState.value == nil {
+              state.schedulesState = .loading
             }
 
             // 그룹이 없으면 빈 배열 반환
@@ -1088,32 +1088,32 @@ extension Home {
               seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
             }
             guard !groupIds.isEmpty else {
-              state.promisesState = .loaded([])
+              state.schedulesState = .loaded([])
               state.refreshHomeContentSnapshot()
               return .none
             }
 
-            return .run { [promiseClient] send in
+            return .run { [scheduleClient] send in
               do {
-                let promises = try await promiseClient.getHomePromises(groupIds, 10)
-                await send(.internal(.promisesResponse(.success(promises))))
+                let schedules = try await scheduleClient.getHomeSchedules(groupIds, 10)
+                await send(.internal(.schedulesResponse(.success(schedules))))
               } catch {
-                await send(.internal(.promisesResponse(.failure(error))))
+                await send(.internal(.schedulesResponse(.failure(error))))
               }
             }
 
-          case .promisesResponse(let result):
+          case .schedulesResponse(let result):
             switch result {
-            case .success(let promises):
+            case .success(let schedules):
               // 그룹 정보 매핑 (UserGroupInfo → GroupModel 변환)
               var groupsDict: [String: UserGroupInfo] = [:]
               for groupInfo in state.currentUser.groups {
                 groupsDict[groupInfo.id] = groupInfo
               }
-              let promisesWithGroup = promises.map { promise in
-                var mutablePromise = promise
-                if let groupInfo = groupsDict[promise.groupId] {
-                  mutablePromise.group = GroupModel(
+              let schedulesWithGroup = schedules.map { schedule in
+                var mutableSchedule = schedule
+                if let groupInfo = groupsDict[schedule.groupId] {
+                  mutableSchedule.group = GroupModel(
                     id: groupInfo.id,
                     name: groupInfo.name,
                     imageUrl: groupInfo.imageUrl,
@@ -1122,18 +1122,18 @@ extension Home {
                     createdBy: ""
                   )
                 }
-                return mutablePromise
+                return mutableSchedule
               }
-              state.promisesState = .loaded(promisesWithGroup)
+              state.schedulesState = .loaded(schedulesWithGroup)
               state.refreshHomeContentSnapshot()
 
-              // 위젯 캐시 업데이트 (확정된 약속만)
-              WidgetDataManager.savePromises(
-                promisesWithGroup.filter(\.isConfirmed).toWidgetData()
+              // 위젯 캐시 업데이트 (확정된 일정만)
+              WidgetDataManager.saveSchedules(
+                schedulesWithGroup.filter(\.isConfirmed).toWidgetData()
               )
               WidgetDataManager.reloadWidgets()
 
-              // 약속 로드 성공 시 알림 개수 + 날씨 + 브리핑 조회
+              // 일정 로드 성공 시 알림 개수 + 날씨 + 브리핑 조회
               return .merge(
                 .send(.internal(.fetchUnreadNotificationCount)),
                 .send(.internal(.fetchWeather)),
@@ -1141,7 +1141,7 @@ extension Home {
               )
 
             case .failure(let error):
-              state.promisesState = .failed(error)
+              state.schedulesState = .failed(error)
               state.refreshHomeContentSnapshot()
             }
             return .none
@@ -1222,11 +1222,11 @@ extension Home {
           case .fetchWeather:
             guard state.isPro else { return .none }
             let cachedIds = state.weatherCache
-            let promises = state.allPromises.filter { promise in
-              let hasLat = promise.location?.latitude != nil
-              let hasLng = promise.location?.longitude != nil
-              let notPast = !promise.isPast
-              let notCached = cachedIds[promise.id] == nil
+            let schedules = state.allSchedules.filter { schedule in
+              let hasLat = schedule.location?.latitude != nil
+              let hasLng = schedule.location?.longitude != nil
+              let notPast = !schedule.isPast
+              let notCached = cachedIds[schedule.id] == nil
               return hasLat && hasLng && notPast && notCached
             }
             let events = (state.personalEventsState.value ?? []).filter { event in
@@ -1259,7 +1259,7 @@ extension Home {
               lng: Double,
               date: Date
             ) {
-              let hour = Calendar.promiseDisplay.component(.hour, from: date)
+              let hour = Calendar.scheduleDisplay.component(.hour, from: date)
               let key = LocationKey(
                 lat: (lat * 100).rounded() / 100,
                 lng: (lng * 100).rounded() / 100,
@@ -1282,14 +1282,14 @@ extension Home {
               )
             }
 
-            for promise in promises where promise.startAt < maxDate {
-              guard let lat = promise.location?.latitude,
-                    let lng = promise.location?.longitude else { continue }
+            for schedule in schedules where schedule.startAt < maxDate {
+              guard let lat = schedule.location?.latitude,
+                    let lng = schedule.location?.longitude else { continue }
               upsertTarget(
-                scheduleId: promise.id,
+                scheduleId: schedule.id,
                 lat: lat,
                 lng: lng,
-                date: promise.startAt
+                date: schedule.startAt
               )
             }
 
@@ -1436,7 +1436,7 @@ extension Home {
               seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
             }
             guard !groupIds.isEmpty else {
-              state.overlayPromisesByMonth[monthStart] = []
+              state.overlaySchedulesByMonth[monthStart] = []
               return .none
             }
 
@@ -1444,10 +1444,10 @@ extension Home {
             let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
 
             return .merge(
-              .run { [promiseClient] send in
+              .run { [scheduleClient] send in
                 do {
-                  let promises = try await promiseClient.getPromisesByDateRange(groupIds, monthStart, endDate)
-                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .success(promises))))
+                  let schedules = try await scheduleClient.getSchedulesByDateRange(groupIds, monthStart, endDate)
+                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .success(schedules))))
                 } catch {
                   await send(.internal(.overlaySchedulesResponse(month: monthStart, .failure(error))))
                 }
@@ -1457,15 +1457,15 @@ extension Home {
 
           case .overlaySchedulesResponse(let month, let result):
             switch result {
-            case .success(let promises):
+            case .success(let schedules):
               var groupsDict: [String: UserGroupInfo] = [:]
               for groupInfo in state.currentUser.groups {
                 groupsDict[groupInfo.id] = groupInfo
               }
-              let promisesWithGroup = promises.map { promise in
-                var mutablePromise = promise
-                if let groupInfo = groupsDict[promise.groupId] {
-                  mutablePromise.group = GroupModel(
+              let schedulesWithGroup = schedules.map { schedule in
+                var mutableSchedule = schedule
+                if let groupInfo = groupsDict[schedule.groupId] {
+                  mutableSchedule.group = GroupModel(
                     id: groupInfo.id,
                     name: groupInfo.name,
                     imageUrl: groupInfo.imageUrl,
@@ -1474,9 +1474,9 @@ extension Home {
                     createdBy: ""
                   )
                 }
-                return mutablePromise
+                return mutableSchedule
               }
-              state.overlayPromisesByMonth[month] = promisesWithGroup
+              state.overlaySchedulesByMonth[month] = schedulesWithGroup
             case .failure:
               state.overlayLoadedMonths.remove(month)
             }
@@ -1777,8 +1777,8 @@ extension Home {
                 title: { "\($0), 이제 출발해볼까요?" },
                 body: { time, trans, duration, buffer in
                   buffer > 0
-                    ? "\(time) 약속 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
-                    : "\(time) 약속 · \(trans)로 약 \(duration)분 거리예요"
+                    ? "\(time) 일정 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
+                    : "\(time) 일정 · \(trans)로 약 \(duration)분 거리예요"
                 }
               ),
               (
@@ -1854,10 +1854,10 @@ extension Home {
           state.overlayWeatherLocationText = nil
           state.overlayWeatherInfo = nil
           switch item {
-          case .promise(let promise):
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+          case .schedule(let schedule):
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: groupMembers
             )))
@@ -1874,17 +1874,17 @@ extension Home {
           }
           return .cancel(id: CancelID.overlayWeatherFetch)
 
-        case .overlayScheduleDetail(.delegate(.promiseResponseUpdated(let promise))):
+        case .overlayScheduleDetail(.delegate(.scheduleResponseUpdated(let schedule))):
           // 오버레이 캐시 업데이트
-          let monthKey = promise.startAt.startOfMonth
-          if let index = state.overlayPromisesByMonth[monthKey]?.firstIndex(where: { $0.id == promise.id }) {
-            state.overlayPromisesByMonth[monthKey]?[index] = promise
+          let monthKey = schedule.startAt.startOfMonth
+          if let index = state.overlaySchedulesByMonth[monthKey]?.firstIndex(where: { $0.id == schedule.id }) {
+            state.overlaySchedulesByMonth[monthKey]?[index] = schedule
           }
-          // 홈 약속 목록도 업데이트
-          if case .loaded(var promises) = state.promisesState,
-             let index = promises.firstIndex(where: { $0.id == promise.id }) {
-            promises[index] = promise
-            state.promisesState = .loaded(promises)
+          // 홈 일정 목록도 업데이트
+          if case .loaded(var schedules) = state.schedulesState,
+             let index = schedules.firstIndex(where: { $0.id == schedule.id }) {
+            schedules[index] = schedule
+            state.schedulesState = .loaded(schedules)
             state.refreshHomeContentSnapshot()
           }
           return .none
@@ -1892,39 +1892,39 @@ extension Home {
         case .overlayScheduleDetail:
           return .none
 
-        // MARK: - Overlay Create Promise Actions
+        // MARK: - Overlay Create Schedule Actions
 
-        case .overlayCreatePromise(.delegate(.promiseCreated)):
-          state.overlayCreatePromise = nil
+        case .overlayCreateSchedule(.delegate(.scheduleCreated)):
+          state.overlayCreateSchedule = nil
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
-          // 약속이 어느 월에 생성되었을지 모르므로 전체 캐시 무효화
+          // 일정이 어느 월에 생성되었을지 모르므로 전체 캐시 무효화
           state.overlayLoadedMonths.removeAll()
-          state.overlayPromisesByMonth.removeAll()
+          state.overlaySchedulesByMonth.removeAll()
           let month = state.overlaySelectedDate.startOfMonth
           return .merge(
-            .send(.internal(.fetchPromises)),
+            .send(.internal(.fetchSchedules)),
             .send(.internal(.fetchOverlaySchedules(month: month)))
           )
 
-        case .overlayCreatePromise(.delegate(.dismiss)):
-          state.overlayCreatePromise = nil
+        case .overlayCreateSchedule(.delegate(.dismiss)):
+          state.overlayCreateSchedule = nil
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
           return .none
 
-        case .overlayCreatePromise(.delegate(.createGroupRequested)):
+        case .overlayCreateSchedule(.delegate(.createGroupRequested)):
           // 그룹 생성은 오버레이에서 불가 → 오버레이 닫고 기존 플로우로 위임
-          state.overlayCreatePromise = nil
+          state.overlayCreateSchedule = nil
           state.overlayCalendarModeBeforeFeature = nil
           state.showCalendarOverlay = false
           state.overlayCalendarMode = .monthly
           return .merge(
             .cancel(id: CancelID.overlayWeatherFetch),
-            .send(.delegate(.navigateToCreatePromise))
+            .send(.delegate(.navigateToCreateSchedule))
           )
 
-        case .overlayCreatePromise:
+        case .overlayCreateSchedule:
           return .none
 
         case .delegate:
@@ -1932,28 +1932,28 @@ extension Home {
 
         // MARK: - Path Actions
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.dismiss)))):
           _ = state.path.popLast()
           return .none
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleDeleted)))):
           _ = state.path.popLast()
           // 오버레이 캐시 무효화
           let deletedMonth = state.overlaySelectedDate.startOfMonth
           state.overlayLoadedMonths.remove(deletedMonth)
-          state.overlayPromisesByMonth.removeValue(forKey: deletedMonth)
+          state.overlaySchedulesByMonth.removeValue(forKey: deletedMonth)
           return .merge(
-            .send(.internal(.fetchPromises)),
+            .send(.internal(.fetchSchedules)),
             state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: deletedMonth))) : .none
           )
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated)))):
           // 오버레이 캐시 무효화
           let updatedMonth = state.overlaySelectedDate.startOfMonth
           state.overlayLoadedMonths.remove(updatedMonth)
-          state.overlayPromisesByMonth.removeValue(forKey: updatedMonth)
+          state.overlaySchedulesByMonth.removeValue(forKey: updatedMonth)
           return .merge(
-            .send(.internal(.fetchPromises)),
+            .send(.internal(.fetchSchedules)),
             state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: updatedMonth))) : .none
           )
 
@@ -1982,13 +1982,13 @@ extension Home {
           _ = state.path.popLast()
           return .send(.internal(.fetchUnreadNotificationCount))
 
-        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToPromise(let promiseId, let groupId))))):
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToSchedule(let scheduleId, let groupId))))):
           _ = state.path.popLast()
-          return .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+          return .send(.delegate(.navigateToSchedule(scheduleId: scheduleId, groupId: groupId)))
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToGroup(let groupId))))):
           _ = state.path.popLast()
-          return .send(.delegate(.navigateToGroupWithPromise(groupId: groupId, promiseId: "")))
+          return .send(.delegate(.navigateToGroupWithSchedule(groupId: groupId, scheduleId: "")))
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.refreshBadgeCount)))):
           return .send(.internal(.fetchUnreadNotificationCount))
@@ -2009,8 +2009,8 @@ extension Home {
       .ifLet(\.overlayScheduleDetail, action: \.overlayScheduleDetail) {
         OverlayScheduleDetail.Feature()
       }
-      .ifLet(\.overlayCreatePromise, action: \.overlayCreatePromise) {
-        CreatePromise.Feature()
+      .ifLet(\.overlayCreateSchedule, action: \.overlayCreateSchedule) {
+        CreateSchedule.Feature()
       }
 
     }

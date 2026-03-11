@@ -12,8 +12,8 @@ struct RootTabFeatureTests {
     let state = makeState(key: "initial")
 
     #expect(state.selectedTab == .home)
-    #expect(state.livePromise == nil)
-    #expect(state.livePromiseDetail == nil)
+    #expect(state.liveSchedule == nil)
+    #expect(state.liveScheduleDetail == nil)
     #expect(state.pendingETASheetRequest == false)
   }
 
@@ -111,8 +111,8 @@ struct RootTabFeatureTests {
   func tabSelected_group_updatesSelectedTab() async {
     let store = makeStore(state: makeState(key: "tab-group"))
 
-    await store.send(.tabSelected(.promise(.group))) {
-      $0.selectedTab = .promise(.group)
+    await store.send(.tabSelected(.schedule(.group))) {
+      $0.selectedTab = .schedule(.group)
     }
     await store.receive(\.groupMain.view.tabReturned)
   }
@@ -127,7 +127,7 @@ struct RootTabFeatureTests {
   @Test("home 탭 선택 시 selectedTab 업데이트")
   func tabSelected_home_updatesSelectedTab() async {
     var state = makeState(key: "tab-home")
-    state.selectedTab = .promise(.group)
+    state.selectedTab = .schedule(.group)
 
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -179,7 +179,7 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.openJoinGroupWithCode("INVITE123")) {
-      $0.selectedTab = .promise(.group)
+      $0.selectedTab = .schedule(.group)
     }
     await store.receive(\.groupMain.view.joinGroupWithCode)
   }
@@ -190,20 +190,20 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.handleGroupDeeplink(.group(groupId: "group-1"))) {
-      $0.selectedTab = .promise(.group)
+      $0.selectedTab = .schedule(.group)
     }
     await store.receive(\.groupMain.view.handleDeeplink)
   }
 
-  @Test("openCreatePromiseIfPossible 시 그룹 탭으로 전환")
-  func openCreatePromiseIfPossible_switchesToGroupTab() async {
-    let store = makeStore(state: makeState(key: "create-promise"))
+  @Test("openCreateScheduleIfPossible 시 그룹 탭으로 전환")
+  func openCreateScheduleIfPossible_switchesToGroupTab() async {
+    let store = makeStore(state: makeState(key: "create-schedule"))
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.openCreatePromiseIfPossible) {
-      $0.selectedTab = .promise(.group)
+    await store.send(.openCreateScheduleIfPossible) {
+      $0.selectedTab = .schedule(.group)
     }
-    await store.receive(\.groupMain.view.openCreatePromiseIfPossible)
+    await store.receive(\.groupMain.view.openCreateScheduleIfPossible)
   }
 
   @Test("openPersonalEventDetail 시 개인 모드 탭 전환 후 딥링크 전달")
@@ -212,42 +212,42 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.openPersonalEventDetail(eventId: "event-123")) {
-      $0.promiseMode = .own
-      $0.selectedTab = .promise(.own)
+      $0.scheduleMode = .own
+      $0.selectedTab = .schedule(.own)
     }
     await store.receive(\.personalMode)
   }
 
-  @Test("Home navigateToGroupWithPromise delegate 시 그룹 탭 전환")
-  func homeNavigateToGroupWithPromise_switchesToGroupTab() async {
+  @Test("Home navigateToGroupWithSchedule delegate 시 그룹 탭 전환")
+  func homeNavigateToGroupWithSchedule_switchesToGroupTab() async {
     let store = makeStore(state: makeState(key: "home-to-group"))
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.home(.delegate(.navigateToGroupWithPromise(groupId: "g-1", promiseId: "p-1")))) {
-      $0.selectedTab = .promise(.group)
+    await store.send(.home(.delegate(.navigateToGroupWithSchedule(groupId: "g-1", scheduleId: "p-1")))) {
+      $0.selectedTab = .schedule(.group)
     }
     await store.receive(\.groupMain.view.handleDeeplink)
   }
 
-  @Test("Home navigateToPromise delegate 시 그룹 없으면 탭만 변경")
-  func homeNavigateToPromise_missingGroup_onlyChangesTab() async {
-    let store = makeStore(state: makeState(key: "home-promise-missing"))
+  @Test("Home navigateToSchedule delegate 시 그룹 없으면 탭만 변경")
+  func homeNavigateToSchedule_missingGroup_onlyChangesTab() async {
+    let store = makeStore(state: makeState(key: "home-schedule-missing"))
 
-    await store.send(.home(.delegate(.navigateToPromise(promiseId: "promise-1", groupId: "missing")))) {
-      $0.selectedTab = .promise(.group)
+    await store.send(.home(.delegate(.navigateToSchedule(scheduleId: "schedule-1", groupId: "missing")))) {
+      $0.selectedTab = .schedule(.group)
     }
   }
 
-  @Test("Home navigateToAllPromises delegate 시 아무 동작 안 함")
-  func homeNavigateToAllPromises_doesNothing() async {
-    let store = makeStore(state: makeState(key: "home-all-promises"))
-    await store.send(.home(.delegate(.navigateToAllPromises)))
+  @Test("Home navigateToAllSchedules delegate 시 아무 동작 안 함")
+  func homeNavigateToAllSchedules_doesNothing() async {
+    let store = makeStore(state: makeState(key: "home-all-schedules"))
+    await store.send(.home(.delegate(.navigateToAllSchedules)))
   }
 
-  // MARK: - LivePromise 테스트
+  // MARK: - LiveSchedule 테스트
 
-  @Test("livePromise 없을 때 ETA 시트 요청 시 pending 플래그 설정")
-  func openLiveActivityETASheet_withoutLivePromise_setsPendingFlag() async {
+  @Test("liveSchedule 없을 때 ETA 시트 요청 시 pending 플래그 설정")
+  func openLiveActivityETASheet_withoutLiveSchedule_setsPendingFlag() async {
     let store = makeStore(state: makeState(key: "eta-without-live"))
 
     await store.send(.openLiveActivityETASheet) {
@@ -255,46 +255,46 @@ struct RootTabFeatureTests {
     }
   }
 
-  @Test("livePromise 있을 때 ETA 시트 요청 시 detail 생성 후 시트 표시")
-  func openLiveActivityETASheet_withLivePromise_opensDetailAndSheet() async {
-    let state = stateWithLivePromise(base: makeState(key: "eta-with-live"))
+  @Test("liveSchedule 있을 때 ETA 시트 요청 시 detail 생성 후 시트 표시")
+  func openLiveActivityETASheet_withLiveSchedule_opensDetailAndSheet() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "eta-with-live"))
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.openLiveActivityETASheet)
-    #expect(store.state.livePromiseDetail != nil)
+    #expect(store.state.liveScheduleDetail != nil)
     await store.receive(\.internal.openETASheetAfterDelay) {
-      $0.livePromiseDetail?.isETASheetPresented = true
+      $0.liveScheduleDetail?.isETASheetPresented = true
     }
   }
 
-  @Test("openLivePromiseDetail 시 livePromise 있으면 detail 생성")
-  func openLivePromiseDetail_withLivePromise_setsDetail() async {
-    let state = stateWithLivePromise(base: makeState(key: "open-live-detail"))
+  @Test("openLiveScheduleDetail 시 liveSchedule 있으면 detail 생성")
+  func openLiveScheduleDetail_withLiveSchedule_setsDetail() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "open-live-detail"))
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.openLivePromiseDetail)
-    #expect(store.state.livePromiseDetail != nil)
+    await store.send(.openLiveScheduleDetail)
+    #expect(store.state.liveScheduleDetail != nil)
     await store.finish()
   }
 
-  @Test("openLivePromiseDetail 시 livePromise 없으면 pending 플래그 설정")
-  func openLivePromiseDetail_withoutLivePromise_setsPending() async {
+  @Test("openLiveScheduleDetail 시 liveSchedule 없으면 pending 플래그 설정")
+  func openLiveScheduleDetail_withoutLiveSchedule_setsPending() async {
     let store = makeStore(state: makeState(key: "open-live-detail-nil"))
-    await store.send(.openLivePromiseDetail) {
-      $0.pendingLivePromiseDetailRequest = true
+    await store.send(.openLiveScheduleDetail) {
+      $0.pendingLiveScheduleDetailRequest = true
     }
   }
 
-  @Test("livePromise delegate showDetail 시 detail 생성")
-  func livePromiseShowDetail_setsDetail() async {
-    let state = stateWithLivePromise(base: makeState(key: "delegate-show-detail"))
+  @Test("liveSchedule delegate showDetail 시 detail 생성")
+  func liveScheduleShowDetail_setsDetail() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "delegate-show-detail"))
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.livePromise(.delegate(.showDetail)))
-    #expect(store.state.livePromiseDetail != nil)
+    await store.send(.liveSchedule(.delegate(.showDetail)))
+    #expect(store.state.liveScheduleDetail != nil)
   }
 
   // MARK: - 내부 액션 테스트 (Widget/Auth)
@@ -376,17 +376,17 @@ struct RootTabFeatureTests {
 
   // MARK: - 내부 액션 테스트 (LiveActivity)
 
-  @Test("activityUpdateReceived active면 livePromise 생성")
-  func activityUpdateReceived_active_setsLivePromise() async {
+  @Test("activityUpdateReceived active면 liveSchedule 생성")
+  func activityUpdateReceived_active_setsLiveSchedule() async {
     let update = makeActiveUpdate()
     let expectedData = makeLiveData(participants: update.contentState?.participants)
     let store = makeStore(state: makeState(key: "activity-active"))
 
     await store.send(.internal(.activityUpdateReceived(update))) {
-      $0.livePromise = LivePromise.Feature.State(data: Shared(value: expectedData))
+      $0.liveSchedule = LiveSchedule.Feature.State(data: Shared(value: expectedData))
     }
     await store.receive(\.groupMain.internal.liveActivityChanged) {
-      $0.groupMain.liveActivityPromiseId = "promise-1"
+      $0.groupMain.liveActivityScheduleId = "schedule-1"
     }
   }
 
@@ -399,18 +399,18 @@ struct RootTabFeatureTests {
 
     await store.send(.internal(.activityUpdateReceived(makeActiveUpdate())))
     #expect(store.state.pendingETASheetRequest == false)
-    #expect(store.state.livePromise != nil)
+    #expect(store.state.liveSchedule != nil)
     await store.finish()
   }
 
-  @Test("activityUpdateReceived inactive면 livePromise 제거")
-  func activityUpdateReceived_inactive_clearsLivePromise() async {
-    let state = stateWithLivePromise(base: makeState(key: "activity-inactive"))
+  @Test("activityUpdateReceived inactive면 liveSchedule 제거")
+  func activityUpdateReceived_inactive_clearsLiveSchedule() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "activity-inactive"))
     let update = ActivityUpdate(attributes: nil, contentState: nil, activityState: .ended)
     let store = makeStore(state: state)
 
     await store.send(.internal(.activityUpdateReceived(update))) {
-      $0.livePromise = nil
+      $0.liveSchedule = nil
     }
     await store.receive(\.groupMain.internal.liveActivityChanged)
   }
@@ -437,42 +437,42 @@ struct RootTabFeatureTests {
     await store.send(.internal(.observeActivityState(activityId: "no-stream")))
   }
 
-  @Test("activityStateChanged dismissed면 livePromise 제거")
-  func activityStateChanged_dismissed_clearsLivePromise() async {
-    let state = stateWithLivePromise(base: makeState(key: "activity-dismissed"))
+  @Test("activityStateChanged dismissed면 liveSchedule 제거")
+  func activityStateChanged_dismissed_clearsLiveSchedule() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "activity-dismissed"))
     let store = makeStore(state: state)
 
     await store.send(.internal(.activityStateChanged(.dismissed))) {
-      $0.livePromise = nil
+      $0.liveSchedule = nil
     }
     await store.receive(\.groupMain.internal.liveActivityChanged)
   }
 
-  @Test("activityStateChanged ended면 livePromise 제거")
-  func activityStateChanged_ended_clearsLivePromise() async {
-    let state = stateWithLivePromise(base: makeState(key: "activity-ended"))
+  @Test("activityStateChanged ended면 liveSchedule 제거")
+  func activityStateChanged_ended_clearsLiveSchedule() async {
+    let state = stateWithLiveSchedule(base: makeState(key: "activity-ended"))
     let store = makeStore(state: state)
 
     await store.send(.internal(.activityStateChanged(.ended))) {
-      $0.livePromise = nil
+      $0.liveSchedule = nil
     }
     await store.receive(\.groupMain.internal.liveActivityChanged)
   }
 
   @Test("activityStateChanged active면 아무 동작 안 함")
   func activityStateChanged_active_doesNothing() async {
-    let state = stateWithLivePromise(base: makeState(key: "activity-active-noop"))
+    let state = stateWithLiveSchedule(base: makeState(key: "activity-active-noop"))
     let store = makeStore(state: state)
     await store.send(.internal(.activityStateChanged(.active)))
   }
 
   @Test("openETASheetAfterDelay 시 detail ETA 시트 표시")
   func openETASheetAfterDelay_setsPresentedFlag() async {
-    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "open-eta-delay")))
+    let state = stateWithLiveScheduleDetail(base: stateWithLiveSchedule(base: makeState(key: "open-eta-delay")))
     let store = makeStore(state: state)
 
     await store.send(.internal(.openETASheetAfterDelay)) {
-      $0.livePromiseDetail?.isETASheetPresented = true
+      $0.liveScheduleDetail?.isETASheetPresented = true
     }
     await store.finish()
   }
@@ -575,29 +575,29 @@ struct RootTabFeatureTests {
     #expect(await counter.value() == 2)
   }
 
-  // MARK: - livePromiseDetail delegate 테스트
+  // MARK: - liveScheduleDetail delegate 테스트
 
-  @Test("livePromiseDetail updateETA 시 활성 Activity 없으면 무시")
-  func livePromiseDetailUpdateETA_withoutActiveActivity_doesNothing() async {
-    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "update-eta-no-activity")))
+  @Test("liveScheduleDetail updateETA 시 활성 Activity 없으면 무시")
+  func liveScheduleDetailUpdateETA_withoutActiveActivity_doesNothing() async {
+    let state = stateWithLiveScheduleDetail(base: stateWithLiveSchedule(base: makeState(key: "update-eta-no-activity")))
     let recorder = CallCounter()
 
     let store = makeStore(state: state) {
       $0.liveActivityClient.currentAttributes = { nil }
       $0.liveActivityClient.currentState = { nil }
-      $0.promiseClient.updateETA = { _, _, _ in
+      $0.scheduleClient.updateETA = { _, _, _ in
         await recorder.increment()
       }
     }
 
-    await store.send(.livePromiseDetail(.presented(.delegate(.updateETA(10)))))
+    await store.send(.liveScheduleDetail(.presented(.delegate(.updateETA(10)))))
     await store.finish()
     #expect(await recorder.value() == 0)
   }
 
-  @Test("livePromiseDetail updateETA 시 활성 Activity 있으면 API 호출")
-  func livePromiseDetailUpdateETA_withActiveActivity_callsPromiseClient() async {
-    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "update-eta-active")))
+  @Test("liveScheduleDetail updateETA 시 활성 Activity 있으면 API 호출")
+  func liveScheduleDetailUpdateETA_withActiveActivity_callsScheduleClient() async {
+    let state = stateWithLiveScheduleDetail(base: stateWithLiveSchedule(base: makeState(key: "update-eta-active")))
     let attributes = makeActivityAttributes(channelId: "channel-1")
     let contentState = makeActivityContentState()
     let recorder = ETAUpdateRecorder()
@@ -605,12 +605,12 @@ struct RootTabFeatureTests {
     let store = makeStore(state: state) {
       $0.liveActivityClient.currentAttributes = { attributes }
       $0.liveActivityClient.currentState = { contentState }
-      $0.promiseClient.updateETA = { channelId, participants, trackingDuration in
+      $0.scheduleClient.updateETA = { channelId, participants, trackingDuration in
         await recorder.record(channelId: channelId, participants: participants, trackingDuration: trackingDuration)
       }
     }
 
-    await store.send(.livePromiseDetail(.presented(.delegate(.updateETA(12)))))
+    await store.send(.liveScheduleDetail(.presented(.delegate(.updateETA(12)))))
     await store.finish()
 
     let snapshot = await recorder.value()
@@ -758,29 +758,29 @@ private extension RootTabFeatureTests {
     return RootTab.Feature.State(currentUser: $currentUser)
   }
 
-  func stateWithLivePromise(base: RootTab.Feature.State) -> RootTab.Feature.State {
+  func stateWithLiveSchedule(base: RootTab.Feature.State) -> RootTab.Feature.State {
     var state = base
-    state.livePromise = LivePromise.Feature.State(data: Shared(value: makeLiveData()))
+    state.liveSchedule = LiveSchedule.Feature.State(data: Shared(value: makeLiveData()))
     return state
   }
 
-  func stateWithLivePromiseDetail(base: RootTab.Feature.State) -> RootTab.Feature.State {
+  func stateWithLiveScheduleDetail(base: RootTab.Feature.State) -> RootTab.Feature.State {
     var state = base
-    if let livePromise = state.livePromise {
-      state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+    if let liveSchedule = state.liveSchedule {
+      state.liveScheduleDetail = LiveSchedule.Detail.State(data: liveSchedule.$data)
     }
     return state
   }
 
-  func makeLiveData(participants: [ParticipantState]? = nil) -> LivePromise.Data {
+  func makeLiveData(participants: [ParticipantState]? = nil) -> LiveSchedule.Data {
     let resolvedParticipants = participants ?? [
       ParticipantState(id: "test-user", name: "나", estimatedArrivalMinutes: 5),
       ParticipantState(id: "user-2", name: "친구", estimatedArrivalMinutes: 8)
     ]
 
-    return LivePromise.Data(
+    return LiveSchedule.Data(
       emoji: "📍",
-      title: "약속",
+      title: "일정",
       location: "강남역",
       scheduledTime: Date(timeIntervalSince1970: 1_700_000_000),
       participants: resolvedParticipants,
@@ -793,12 +793,12 @@ private extension RootTabFeatureTests {
     )
   }
 
-  func makeActivityAttributes(channelId: String = "channel-1") -> PromiseActivityAttributes {
-    PromiseActivityAttributes(
-      promiseId: "promise-1",
+  func makeActivityAttributes(channelId: String = "channel-1") -> ScheduleActivityAttributes {
+    ScheduleActivityAttributes(
+      scheduleId: "schedule-1",
       currentUserId: "test-user",
       emoji: "📍",
-      title: "약속",
+      title: "일정",
       location: "강남역",
       scheduledTime: Date(timeIntervalSince1970: 1_700_000_000),
       trackingDurationMinutes: 30,
@@ -810,8 +810,8 @@ private extension RootTabFeatureTests {
     )
   }
 
-  func makeActivityContentState() -> PromiseActivityAttributes.ContentState {
-    PromiseActivityAttributes.ContentState(
+  func makeActivityContentState() -> ScheduleActivityAttributes.ContentState {
+    ScheduleActivityAttributes.ContentState(
       trackingDurationMinutes: 30,
       participants: [
         ParticipantState(id: "test-user", name: "나", estimatedArrivalMinutes: 5),
@@ -869,13 +869,13 @@ private extension RootTabFeatureTests {
     dependencies.groupClient.previewGroup = { _ in preview }
     dependencies.groupClient.clearGroupBadge = { _ in }
 
-    dependencies.promiseClient.subscribeToPromises = { _, _ in
+    dependencies.scheduleClient.subscribeToSchedules = { _, _ in
       AsyncStream { continuation in
         continuation.finish()
       }
     }
-    dependencies.promiseClient.getPastPromises = { _, _, _ in [] }
-    dependencies.promiseClient.updateETA = { _, _, _ in }
+    dependencies.scheduleClient.getPastSchedules = { _, _, _ in [] }
+    dependencies.scheduleClient.updateETA = { _, _, _ in }
 
     dependencies.subscriptionClient.fetchStatus = { .none }
     dependencies.subscriptionClient.unifiedStatusStream = { AsyncStream { $0.finish() } }

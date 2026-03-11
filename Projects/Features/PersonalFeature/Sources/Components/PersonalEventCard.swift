@@ -4,7 +4,7 @@ import PromisoShared
 // MARK: - Personal Event Card
 
 /// 개인 일정 카드 컴포넌트
-/// - PromiseCard와 동일한 VStack 레이아웃 패턴
+/// - ScheduleCard와 동일한 VStack 레이아웃 패턴
 /// - Glass Effect 적용 (iOS 26 fallback 포함)
 /// - 상태별 배지 표시 (진행 중/오늘/다가오는/지난)
 public struct PersonalEventCard: View {
@@ -204,7 +204,7 @@ private struct PersonalEventStatusBadge: View {
   }
 
   private var statusText: String {
-    if event.isOngoing { return LocalizedStrings.Promise.ongoing }
+    if event.isOngoing { return LocalizedStrings.Schedule.ongoing }
     if event.isPast { return LocalizedStrings.Personal.statusEnded }
     let calendar = Calendar.current
     if calendar.isDateInToday(event.startAt) { return LocalizedStrings.Personal.statusToday }

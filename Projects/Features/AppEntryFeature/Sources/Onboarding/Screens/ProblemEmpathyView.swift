@@ -1,5 +1,5 @@
 // MARK: - ProblemEmpathyView.swift
-// Screen 2: 문제 공감 - "약속 하나 잡는 데 카톡 47개"
+// Screen 2: 문제 공감 - "일정 하나 잡는 데 카톡 47개"
 
 import PromisoShared
 import SwiftUI

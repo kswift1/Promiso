@@ -26,7 +26,7 @@ struct CalendarIndicatorDayCell: View {
   let onTap: () -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
-  var onDayCreatePromise: ((Date) -> Void)? = nil
+  var onDayCreateSchedule: ((Date) -> Void)? = nil
   /// Preview용 필터 미적용 인디케이터 (long press 시 lazy 호출)
   var previewIndicatorsProvider: ((Date) -> [CalendarFeature.ScheduleIndicator])? = nil
 
@@ -111,7 +111,7 @@ struct CalendarIndicatorDayCell: View {
           Label("개인 일정 추가", systemImage: "person.fill")
         }
         Button {
-          onDayCreatePromise?(date)
+          onDayCreateSchedule?(date)
         } label: {
           Label("그룹 일정 추가", systemImage: "person.3.fill")
         }
@@ -146,7 +146,7 @@ struct CalendarIndicatorDayCell: View {
               Label("개인 일정 추가", systemImage: "person.fill")
             }
             Button {
-              onDayCreatePromise?(date)
+              onDayCreateSchedule?(date)
             } label: {
               Label("그룹 일정 추가", systemImage: "person.3.fill")
             }
@@ -232,7 +232,7 @@ struct CalendarIndicatorDayCell: View {
       Button {
         onIndicatorTapped?(indicator)
       } label: {
-        Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        Label(LocalizedStrings.ScheduleCard.viewDetail, systemImage: "info.circle")
       }
     } preview: {
       IndicatorPreviewView(indicator: indicator)
@@ -380,7 +380,7 @@ private struct IndicatorPreviewView: View {
   @ViewBuilder
   private var indicatorSourceLabel: some View {
     switch indicator.sourceType {
-    case .promise:
+    case .schedule:
       if let groupName = indicator.groupName {
         HStack(spacing: 3) {
           if let imageUrl = indicator.groupImageUrl, let url = URL(string: imageUrl) {
@@ -514,7 +514,7 @@ private struct ExpandedDayPreviewView: View {
           Image(systemName: "calendar.badge.checkmark")
             .font(.system(size: 28, weight: .light))
             .foregroundStyle(.secondary.opacity(0.6))
-          Text(LocalizedStrings.Calendar.noPromises)
+          Text(LocalizedStrings.Calendar.noSchedules)
             .font(.system(size: 14))
             .foregroundStyle(.secondary)
         }
@@ -609,7 +609,7 @@ private struct ExpandedDayPreviewView: View {
   @ViewBuilder
   private func sourceLabel(for indicator: CalendarFeature.ScheduleIndicator) -> some View {
     switch indicator.sourceType {
-    case .promise:
+    case .schedule:
       if let groupName = indicator.groupName {
         HStack(spacing: 3) {
           if let imageUrl = indicator.groupImageUrl, let url = URL(string: imageUrl) {
@@ -728,7 +728,7 @@ private struct ExpandedDayPreviewView: View {
           isCurrentMonth: true,
           scheduleIndicators: [
             .init(id: "1", color: .red, title: "팀 미팅"),
-            .init(id: "2", color: .blue, title: "점심 약속")
+            .init(id: "2", color: .blue, title: "점심 일정")
           ],
           namespace: namespace,
           selectionId: "selected",
@@ -784,7 +784,7 @@ private struct ExpandedDayPreviewView: View {
           isToday: false,
           isCurrentMonth: false,
           scheduleIndicators: [
-            .init(id: "7", color: .teal, title: "약속")
+            .init(id: "7", color: .teal, title: "일정")
           ],
           namespace: namespace,
           selectionId: "out",
@@ -809,7 +809,7 @@ private struct ExpandedDayPreviewView: View {
           isCurrentMonth: true,
           scheduleIndicators: [
             .init(id: "c1", color: .red, title: "팀 미팅"),
-            .init(id: "c2", color: .blue, title: "점심 약속"),
+            .init(id: "c2", color: .blue, title: "점심 일정"),
             .init(id: "c3", color: .green, title: "저녁")
           ],
           namespace: namespace,
@@ -870,7 +870,7 @@ private struct ExpandedDayPreviewView: View {
           isToday: false,
           isCurrentMonth: false,
           scheduleIndicators: [
-            .init(id: "c8", color: .teal, title: "약속")
+            .init(id: "c8", color: .teal, title: "일정")
           ],
           namespace: namespace,
           selectionId: "compact-out",

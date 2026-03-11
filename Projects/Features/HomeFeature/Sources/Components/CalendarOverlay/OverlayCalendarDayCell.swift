@@ -75,7 +75,7 @@ struct OverlayCalendarDayCell: View {
         date: Date(), dayNumber: 6, isSelected: true, scheduleCount: 3,
         scheduleIndicators: [
           .init(id: "1", color: .red, title: "팀 미팅"),
-          .init(id: "2", color: .blue, title: "점심 약속"),
+          .init(id: "2", color: .blue, title: "점심 일정"),
           .init(id: "3", color: .green, title: "저녁"),
         ]
       )

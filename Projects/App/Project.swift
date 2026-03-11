@@ -22,7 +22,7 @@ let promisoDev = Target.target(
   entitlements: .file(path: "PromisoDev.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
-    .target(name: "PromiseWidgetExtension-Dev")
+    .target(name: "ScheduleWidgetExtension-Dev")
   ],
   settings: .settings(
     base: [
@@ -52,7 +52,7 @@ let promisoStage = Target.target(
   entitlements: .file(path: "PromisoStage.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
-    .target(name: "PromiseWidgetExtension-Stage")
+    .target(name: "ScheduleWidgetExtension-Stage")
   ],
   settings: .settings(
     base: [
@@ -88,7 +88,7 @@ let promisoProd = Target.target(
   entitlements: .file(path: "Promiso.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
-    .target(name: "PromiseWidgetExtension")
+    .target(name: "ScheduleWidgetExtension")
   ],
   settings: .settings(
     base: [
@@ -218,11 +218,11 @@ let liveActivityProd = Target.target(
   )
 )
 
-let promiseWidgetDev = Target.target(
-  name: "PromiseWidgetExtension-Dev",
+let scheduleWidgetDev = Target.target(
+  name: "ScheduleWidgetExtension-Dev",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "com.promiso.dev.promisewidget",
+  bundleId: "com.promiso.dev.schedulewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
@@ -233,8 +233,8 @@ let promiseWidgetDev = Target.target(
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget-Dev.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget-Dev.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -245,11 +245,11 @@ let promiseWidgetDev = Target.target(
   ])
 )
 
-let promiseWidgetStage = Target.target(
-  name: "PromiseWidgetExtension-Stage",
+let scheduleWidgetStage = Target.target(
+  name: "ScheduleWidgetExtension-Stage",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "com.promiso.stage.promisewidget",
+  bundleId: "com.promiso.stage.schedulewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
@@ -260,8 +260,8 @@ let promiseWidgetStage = Target.target(
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget-Stage.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget-Stage.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -273,22 +273,22 @@ let promiseWidgetStage = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.schedulewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.schedulewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
   )
 )
 
-let promiseWidgetProd = Target.target(
-  name: "PromiseWidgetExtension",
+let scheduleWidgetProd = Target.target(
+  name: "ScheduleWidgetExtension",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "\(AppConfig.bundleId).promisewidget",
+  bundleId: "\(AppConfig.bundleId).schedulewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
@@ -299,8 +299,8 @@ let promiseWidgetProd = Target.target(
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -312,11 +312,11 @@ let promiseWidgetProd = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.promisewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.schedulewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.promisewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.schedulewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
@@ -339,14 +339,14 @@ let environment: String = {
 let targets: [Target] = {
   switch environment {
   case "dev":
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev]
   case "stage":
-    return [promisoStage, liveActivityStage, promiseWidgetStage]
+    return [promisoStage, liveActivityStage, scheduleWidgetStage]
   case "prod":
-    return [promisoProd, liveActivityProd, promiseWidgetProd]
+    return [promisoProd, liveActivityProd, scheduleWidgetProd]
   default:
     // 잘못된 값이 들어오면 dev로 fallback
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev]
   }
 }()
 

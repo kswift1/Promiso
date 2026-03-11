@@ -41,7 +41,7 @@ public enum WeatherHintHelper {
       .maxTemperature
   }
 
-  /// 약속 시간 구간 시간별 예보 목록 (팝오버 타임라인용)
+  /// 일정 시간 구간 시간별 예보 목록 (팝오버 타임라인용)
   public static func rangeForecasts(
     from weatherInfo: WeatherInfo,
     startAt: Date,

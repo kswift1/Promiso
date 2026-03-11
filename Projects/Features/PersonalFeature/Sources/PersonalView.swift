@@ -1,6 +1,6 @@
 import Clients
 import ComposableArchitecture
-import CreatePromiseFeature
+import CreateScheduleFeature
 import PromisoShared
 import SharedFeature
 import SwiftUI
@@ -70,14 +70,14 @@ extension PersonalMode {
 
     // MARK: - Header
 
-    private var defaultMode: PromiseMode {
-      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+    private var defaultMode: ScheduleMode {
+      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultScheduleTabMode) ?? "group"
       return saved == "own" ? .personal : .group
     }
 
     @ViewBuilder
     private var headerSection: some View {
-      PromiseTabHeader(
+      ScheduleTabHeader(
         selectedMode: .personal,
         defaultMode: defaultMode
       ) { mode in

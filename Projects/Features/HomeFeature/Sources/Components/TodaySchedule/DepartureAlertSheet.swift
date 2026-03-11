@@ -6,10 +6,10 @@ import SwiftUI
 /// 출발 알림 설정 시트
 /// 교통수단별 소요시간과 예상 출발시간을 보여주고 알림을 설정
 struct DepartureAlertSheet: View {
-  let promiseEmoji: String
-  let promiseTitle: String
-  let promiseStartAt: Date
-  let promiseLocation: String?
+  let scheduleEmoji: String
+  let scheduleTitle: String
+  let scheduleStartAt: Date
+  let scheduleLocation: String?
   let departureLocation: String?
   let transportData: HomeModels.DepartureTransportData?
   let loadError: HomeModels.DepartureLoadError?
@@ -177,13 +177,13 @@ struct DepartureAlertSheet: View {
 
   private var exactTimeText: String {
     // "3월 10일 오후 5:56 시작" (년도 제외)
-    "\(LocalizedDateFormatters.monthDayTime.string(from: promiseStartAt)) 시작"
+    "\(LocalizedDateFormatters.monthDayTime.string(from: scheduleStartAt)) 시작"
   }
 
   // MARK: - Remaining Time
 
   private func computeRemainingTimeText() -> String {
-    let diff = promiseStartAt.timeIntervalSince(Date())
+    let diff = scheduleStartAt.timeIntervalSince(Date())
     if diff <= 0 {
       return "일정 시간이 지났어요"
     }
@@ -207,7 +207,7 @@ struct DepartureAlertSheet: View {
     VStack(alignment: .leading, spacing: 12) {
       // 타이틀 + 상세 버튼
       HStack(alignment: .top) {
-        Text("\(promiseEmoji) \(promiseTitle)")
+        Text("\(scheduleEmoji) \(scheduleTitle)")
           .font(.pmTitle3)
           .foregroundStyle(Color.pmtext.primary)
           .lineLimit(1)
@@ -296,7 +296,7 @@ struct DepartureAlertSheet: View {
                   .font(.pmCaption2Medium)
                   .foregroundStyle(Color.pmerror.n500)
               }
-              Text(promiseLocation ?? promiseTitle)
+              Text(scheduleLocation ?? scheduleTitle)
                 .font(.pmCaptionSemibold)
                 .foregroundStyle(Color.pmtext.primary)
                 .lineLimit(1)
@@ -902,10 +902,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🍕",
-        promiseTitle: "점심 모임",
-        promiseStartAt: startAt,
-        promiseLocation: "강남역 2번 출구",
+        scheduleEmoji: "🍕",
+        scheduleTitle: "점심 모임",
+        scheduleStartAt: startAt,
+        scheduleLocation: "강남역 2번 출구",
         departureLocation: "서울 강남구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -963,10 +963,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🏢",
-        promiseTitle: "부산 출장",
-        promiseStartAt: startAt,
-        promiseLocation: "부산역",
+        scheduleEmoji: "🏢",
+        scheduleTitle: "부산 출장",
+        scheduleStartAt: startAt,
+        scheduleLocation: "부산역",
         departureLocation: "서울 서초구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -998,10 +998,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "☕",
-        promiseTitle: "카페 미팅",
-        promiseStartAt: Date().addingTimeInterval(3600),
-        promiseLocation: nil,
+        scheduleEmoji: "☕",
+        scheduleTitle: "카페 미팅",
+        scheduleStartAt: Date().addingTimeInterval(3600),
+        scheduleLocation: nil,
         departureLocation: nil,
         transportData: nil,
         loadError: nil,
@@ -1020,10 +1020,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🎉",
-        promiseTitle: "생일 파티",
-        promiseStartAt: Date().addingTimeInterval(7200),
-        promiseLocation: "홍대입구역",
+        scheduleEmoji: "🎉",
+        scheduleTitle: "생일 파티",
+        scheduleStartAt: Date().addingTimeInterval(7200),
+        scheduleLocation: "홍대입구역",
         departureLocation: "서울 마포구",
         transportData: nil,
         loadError: .general("경로를 불러오지 못했어요"),
@@ -1045,10 +1045,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "📚",
-        promiseTitle: "스터디 모임",
-        promiseStartAt: startAt,
-        promiseLocation: "합정역 3번 출구",
+        scheduleEmoji: "📚",
+        scheduleTitle: "스터디 모임",
+        scheduleStartAt: startAt,
+        scheduleLocation: "합정역 3번 출구",
         departureLocation: "서울 종로구",
         transportData: HomeModels.DepartureTransportData(
           driving: nil,
@@ -1102,10 +1102,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "⛳",
-        promiseTitle: "골프 라운딩",
-        promiseStartAt: startAt,
-        promiseLocation: "용인 골프장",
+        scheduleEmoji: "⛳",
+        scheduleTitle: "골프 라운딩",
+        scheduleStartAt: startAt,
+        scheduleLocation: "용인 골프장",
         departureLocation: "서울 강남구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -1141,10 +1141,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🎬",
-        promiseTitle: "영화 관람",
-        promiseStartAt: startAt,
-        promiseLocation: "CGV 용산아이파크몰",
+        scheduleEmoji: "🎬",
+        scheduleTitle: "영화 관람",
+        scheduleStartAt: startAt,
+        scheduleLocation: "CGV 용산아이파크몰",
         departureLocation: "서울 용산구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -1192,10 +1192,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "☕",
-        promiseTitle: "커피챗",
-        promiseStartAt: startAt,
-        promiseLocation: "스타벅스 성수역점",
+        scheduleEmoji: "☕",
+        scheduleTitle: "커피챗",
+        scheduleStartAt: startAt,
+        scheduleLocation: "스타벅스 성수역점",
         departureLocation: "서울 성동구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -1243,10 +1243,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🎂",
-        promiseTitle: "민지 생일파티 + 동창회 겸 모임",
-        promiseStartAt: startAt,
-        promiseLocation: "서울특별시 송파구 올림픽로 300 롯데월드타워 31층 시그니엘 레스토랑",
+        scheduleEmoji: "🎂",
+        scheduleTitle: "민지 생일파티 + 동창회 겸 모임",
+        scheduleStartAt: startAt,
+        scheduleLocation: "서울특별시 송파구 올림픽로 300 롯데월드타워 31층 시그니엘 레스토랑",
         departureLocation: "경기 수원시 영통구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -1316,10 +1316,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🍻",
-        promiseTitle: "회식",
-        promiseStartAt: startAt,
-        promiseLocation: "을지로 노가리 골목",
+        scheduleEmoji: "🍻",
+        scheduleTitle: "회식",
+        scheduleStartAt: startAt,
+        scheduleLocation: "을지로 노가리 골목",
         departureLocation: nil,
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(
@@ -1367,10 +1367,10 @@ struct DepartureAlertSheet: View {
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "📞",
-        promiseTitle: "전화 미팅",
-        promiseStartAt: startAt,
-        promiseLocation: nil,
+        scheduleEmoji: "📞",
+        scheduleTitle: "전화 미팅",
+        scheduleStartAt: startAt,
+        scheduleLocation: nil,
         departureLocation: "서울 강남구",
         transportData: nil,
         loadError: nil,
@@ -1385,17 +1385,17 @@ struct DepartureAlertSheet: View {
     }
 }
 
-#Preview("직전 약속 있음") {
+#Preview("직전 일정 있음") {
   let now = Date()
   let startAt = now.addingTimeInterval(7200) // 2시간 뒤
 
   Color.clear
     .sheet(isPresented: .constant(true)) {
       DepartureAlertSheet(
-        promiseEmoji: "🍻",
-        promiseTitle: "저녁 회식",
-        promiseStartAt: startAt,
-        promiseLocation: "을지로 노가리 골목",
+        scheduleEmoji: "🍻",
+        scheduleTitle: "저녁 회식",
+        scheduleStartAt: startAt,
+        scheduleLocation: "을지로 노가리 골목",
         departureLocation: "서울 강남구",
         transportData: HomeModels.DepartureTransportData(
           driving: HomeModels.TransportOption(

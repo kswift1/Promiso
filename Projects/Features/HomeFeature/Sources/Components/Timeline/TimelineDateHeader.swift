@@ -19,7 +19,7 @@ struct TimelineDateHeader: View {
   }
 
   private var dateText: String {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let now = Date()
     let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: now)
 

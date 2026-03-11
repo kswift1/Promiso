@@ -32,12 +32,12 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
-  /// promiseDetail/promiseCreate 모드에서 표시할 뷰
+  /// scheduleDetail/scheduleCreate 모드에서 표시할 뷰
   let overlayFeatureContent: AnyView?
-  /// promiseDetail/promiseCreate 뒤로가기 클로저
+  /// scheduleDetail/scheduleCreate 뒤로가기 클로저
   let onFeatureBack: (() -> Void)?
 
   func makeCoordinator() -> Coordinator {
@@ -118,7 +118,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
-          onCreatePromise: onCreatePromise,
+          onCreateSchedule: onCreateSchedule,
           onDeleteScheduleItem: onDeleteScheduleItem,
           onShareScheduleItem: onShareScheduleItem
         )

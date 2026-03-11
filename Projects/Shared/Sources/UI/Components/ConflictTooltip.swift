@@ -461,7 +461,7 @@ private struct TooltipPreviewWrapper: View {
       TooltipPreviewWrapper(
         title: "뒷부분 겹침",
         tooltip: ConflictTooltip(
-          newEventTitle: "저녁 약속",
+          newEventTitle: "저녁 일정",
           newEventEmoji: "🍽️",
           newEventStartAt: Date().addingTimeInterval(3600),
           newEventEndAt: Date().addingTimeInterval(3600 * 3),
@@ -482,7 +482,7 @@ private struct TooltipPreviewWrapper: View {
       TooltipPreviewWrapper(
         title: "앞부분 겹침",
         tooltip: ConflictTooltip(
-          newEventTitle: "점심 약속",
+          newEventTitle: "점심 일정",
           newEventEmoji: "🍜",
           newEventStartAt: Date().addingTimeInterval(3600 * 2),
           newEventEndAt: Date().addingTimeInterval(3600 * 4),
@@ -524,7 +524,7 @@ private struct TooltipPreviewWrapper: View {
       TooltipPreviewWrapper(
         title: "장기 일정 (출장)",
         tooltip: ConflictTooltip(
-          newEventTitle: "저녁 약속",
+          newEventTitle: "저녁 일정",
           newEventEmoji: "🍻",
           newEventStartAt: Date().addingTimeInterval(3600),
           newEventEndAt: Date().addingTimeInterval(3600 * 3),
@@ -566,7 +566,7 @@ private struct TooltipPreviewWrapper: View {
       TooltipPreviewWrapper(
         title: "여러 건 겹침 (3건)",
         tooltip: ConflictTooltip(
-          newEventTitle: "저녁 약속",
+          newEventTitle: "저녁 일정",
           newEventEmoji: "🍽️",
           newEventStartAt: Date().addingTimeInterval(3600),
           newEventEndAt: Date().addingTimeInterval(3600 * 4),
@@ -580,7 +580,7 @@ private struct TooltipPreviewWrapper: View {
               severity: .confirmed
             ),
             ConflictInfo(
-              title: "점심 약속",
+              title: "점심 일정",
               overlapMinutes: 60,
               startAt: Date().addingTimeInterval(3600 * 2),
               endAt: Date().addingTimeInterval(3600 * 3),
@@ -599,11 +599,11 @@ private struct TooltipPreviewWrapper: View {
         )
       )
 
-      // 7) 미확정 약속
+      // 7) 미확정 일정
       TooltipPreviewWrapper(
-        title: "미확정 약속",
+        title: "미확정 일정",
         tooltip: ConflictTooltip(
-          newEventTitle: "저녁 약속",
+          newEventTitle: "저녁 일정",
           newEventStartAt: Date().addingTimeInterval(3600),
           newEventEndAt: Date().addingTimeInterval(3600 * 3),
           conflicts: [
@@ -637,7 +637,7 @@ private struct TooltipPreviewWrapper: View {
               severity: .confirmed
             ),
             ConflictInfo(
-              title: "저녁 약속",
+              title: "저녁 일정",
               overlapMinutes: 1,
               startAt: Date().addingTimeInterval(3600 * 25.83),
               endAt: Date().addingTimeInterval(3600 * 27.83),
@@ -665,7 +665,7 @@ private struct TooltipPreviewWrapper: View {
               severity: .confirmed
             ),
             ConflictInfo(
-              title: "저녁 약속",
+              title: "저녁 일정",
               overlapMinutes: 120,
               startAt: Date().addingTimeInterval(3600 * 24 * 14),
               endAt: Date().addingTimeInterval(3600 * 24 * 14 + 7200),

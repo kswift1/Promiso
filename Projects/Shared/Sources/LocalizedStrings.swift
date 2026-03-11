@@ -89,7 +89,7 @@ public enum LocalizedStrings {
     public static var loginRequestFailed: String { String(localized: "auth.error.loginRequestFailed", bundle: bundle) }
 
     // Hero Text
-    public static var heroPromisesWord: String { String(localized: "auth.hero.promisesWord", bundle: bundle) }
+    public static var heroSchedulesWord: String { String(localized: "auth.hero.schedulesWord", bundle: bundle) }
     public static var heroMoreSpecial: String { String(localized: "auth.hero.moreSpecial", bundle: bundle) }
     public static var heroPreciousMoments: String { String(localized: "auth.hero.preciousMoments", bundle: bundle) }
     public static var heroWithPromiso: String { String(localized: "auth.hero.withPromiso", bundle: bundle) }
@@ -99,49 +99,49 @@ public enum LocalizedStrings {
     public static var continueWithGoogle: String { String(localized: "auth.continueWithGoogle", bundle: bundle) }
   }
 
-  // MARK: - Promises
-  public enum Promise {
-    public static var promise: String { String(localized: "promise.promise", bundle: bundle) }
-    public static var promises: String { String(localized: "promise.promises", bundle: bundle) }
-    public static var createPromise: String { String(localized: "promise.create", bundle: bundle) }
-    public static var editPromise: String { String(localized: "promise.edit", bundle: bundle) }
-    public static var deletePromise: String { String(localized: "promise.delete", bundle: bundle) }
-    public static var joinPromise: String { String(localized: "promise.join", bundle: bundle) }
-    public static var leavePromise: String { String(localized: "promise.leave", bundle: bundle) }
-    public static var completePromise: String { String(localized: "promise.complete", bundle: bundle) }
-    public static var cancelPromise: String { String(localized: "promise.cancel", bundle: bundle) }
+  // MARK: - Schedules
+  public enum Schedule {
+    public static var schedule: String { String(localized: "schedule.schedule", bundle: bundle) }
+    public static var schedules: String { String(localized: "schedule.schedules", bundle: bundle) }
+    public static var createSchedule: String { String(localized: "schedule.create", bundle: bundle) }
+    public static var editSchedule: String { String(localized: "schedule.edit", bundle: bundle) }
+    public static var deleteSchedule: String { String(localized: "schedule.delete", bundle: bundle) }
+    public static var joinSchedule: String { String(localized: "schedule.join", bundle: bundle) }
+    public static var leaveSchedule: String { String(localized: "schedule.leave", bundle: bundle) }
+    public static var completeSchedule: String { String(localized: "schedule.complete", bundle: bundle) }
+    public static var cancelSchedule: String { String(localized: "schedule.cancel", bundle: bundle) }
 
-    public static var title: String { String(localized: "promise.title", bundle: bundle) }
-    public static var description: String { String(localized: "promise.description", bundle: bundle) }
-    public static var location: String { String(localized: "promise.location", bundle: bundle) }
-    public static var dateTime: String { String(localized: "promise.dateTime", bundle: bundle) }
-    public static var participants: String { String(localized: "promise.participants", bundle: bundle) }
+    public static var title: String { String(localized: "schedule.title", bundle: bundle) }
+    public static var description: String { String(localized: "schedule.description", bundle: bundle) }
+    public static var location: String { String(localized: "schedule.location", bundle: bundle) }
+    public static var dateTime: String { String(localized: "schedule.dateTime", bundle: bundle) }
+    public static var participants: String { String(localized: "schedule.participants", bundle: bundle) }
 
     // Status
-    public static var scheduled: String { String(localized: "promise.status.scheduled", bundle: bundle) }
-    public static var ongoing: String { String(localized: "promise.status.ongoing", bundle: bundle) }
-    public static var completed: String { String(localized: "promise.status.completed", bundle: bundle) }
-    public static var missed: String { String(localized: "promise.status.missed", bundle: bundle) }
-    public static var cancelled: String { String(localized: "promise.status.cancelled", bundle: bundle) }
+    public static var scheduled: String { String(localized: "schedule.status.scheduled", bundle: bundle) }
+    public static var ongoing: String { String(localized: "schedule.status.ongoing", bundle: bundle) }
+    public static var completed: String { String(localized: "schedule.status.completed", bundle: bundle) }
+    public static var missed: String { String(localized: "schedule.status.missed", bundle: bundle) }
+    public static var cancelled: String { String(localized: "schedule.status.cancelled", bundle: bundle) }
 
     // Priority
-    public static var priorityLow: String { String(localized: "promise.priority.low", bundle: bundle) }
-    public static var priorityNormal: String { String(localized: "promise.priority.normal", bundle: bundle) }
-    public static var priorityHigh: String { String(localized: "promise.priority.high", bundle: bundle) }
-    public static var priorityUrgent: String { String(localized: "promise.priority.urgent", bundle: bundle) }
+    public static var priorityLow: String { String(localized: "schedule.priority.low", bundle: bundle) }
+    public static var priorityNormal: String { String(localized: "schedule.priority.normal", bundle: bundle) }
+    public static var priorityHigh: String { String(localized: "schedule.priority.high", bundle: bundle) }
+    public static var priorityUrgent: String { String(localized: "schedule.priority.urgent", bundle: bundle) }
 
     // Messages
-    public static var noPromises: String { String(localized: "promise.empty.title", bundle: bundle) }
-    public static var noPromisesSubtitle: String { String(localized: "promise.empty.subtitle", bundle: bundle) }
-    public static var createFirstPromise: String { String(localized: "promise.empty.action", bundle: bundle) }
+    public static var noSchedules: String { String(localized: "schedule.empty.title", bundle: bundle) }
+    public static var noSchedulesSubtitle: String { String(localized: "schedule.empty.subtitle", bundle: bundle) }
+    public static var createFirstSchedule: String { String(localized: "schedule.empty.action", bundle: bundle) }
 
     // Success Messages
-    public static var createSuccess: String { String(localized: "promise.success.create", bundle: bundle) }
-    public static var updateSuccess: String { String(localized: "promise.success.update", bundle: bundle) }
-    public static var deleteSuccess: String { String(localized: "promise.success.delete", bundle: bundle) }
-    public static var joinSuccess: String { String(localized: "promise.success.join", bundle: bundle) }
-    public static var leaveSuccess: String { String(localized: "promise.success.leave", bundle: bundle) }
-    public static var completeSuccess: String { String(localized: "promise.success.complete", bundle: bundle) }
+    public static var createSuccess: String { String(localized: "schedule.success.create", bundle: bundle) }
+    public static var updateSuccess: String { String(localized: "schedule.success.update", bundle: bundle) }
+    public static var deleteSuccess: String { String(localized: "schedule.success.delete", bundle: bundle) }
+    public static var joinSuccess: String { String(localized: "schedule.success.join", bundle: bundle) }
+    public static var leaveSuccess: String { String(localized: "schedule.success.leave", bundle: bundle) }
+    public static var completeSuccess: String { String(localized: "schedule.success.complete", bundle: bundle) }
   }
 
   // MARK: - Groups
@@ -230,7 +230,7 @@ public enum LocalizedStrings {
     public static var dateTimeDisplay: String { String(localized: "settings.dateTimeDisplay", bundle: bundle) }
     public static var themeMode: String { String(localized: "settings.themeMode", bundle: bundle) }
     public static var calendarSettings: String { String(localized: "settings.calendarSettings", bundle: bundle) }
-    public static var promiseTabDefaultMode: String { String(localized: "settings.promiseTabDefaultMode", bundle: bundle) }
+    public static var scheduleTabDefaultMode: String { String(localized: "settings.scheduleTabDefaultMode", bundle: bundle) }
     public static var tabSettingsMenu: String { String(localized: "settings.tabSettings", bundle: bundle) }
     public static var termsAndPolicies: String { String(localized: "settings.termsAndPolicies", bundle: bundle) }
     public static var appInfo: String { String(localized: "settings.appInfo", bundle: bundle) }
@@ -298,14 +298,14 @@ public enum LocalizedStrings {
     public static var themeModeDark: String { String(localized: "settings.themeModeDark", bundle: bundle) }
     public static var themeModeRestartMessage: String { String(localized: "settings.themeModeRestartMessage", bundle: bundle) }
 
-    // Promise Tab Mode Settings
-    public static var promiseTabModeDefault: String { String(localized: "settings.promiseTabModeDefault", bundle: bundle) }
-    public static var promiseTabModeGroup: String { String(localized: "settings.promiseTabModeGroup", bundle: bundle) }
-    public static var promiseTabModeGroupDescription: String { String(localized: "settings.promiseTabModeGroupDescription", bundle: bundle) }
-    public static var promiseTabModeOwn: String { String(localized: "settings.promiseTabModeOwn", bundle: bundle) }
-    public static var promiseTabModeOwnDescription: String { String(localized: "settings.promiseTabModeOwnDescription", bundle: bundle) }
-    public static var promiseTabModeHint: String { String(localized: "settings.promiseTabModeHint", bundle: bundle) }
-    public static var promiseTabModePreviewHint: String { String(localized: "settings.promiseTabModePreviewHint", bundle: bundle) }
+    // Schedule Tab Mode Settings
+    public static var scheduleTabModeDefault: String { String(localized: "settings.scheduleTabModeDefault", bundle: bundle) }
+    public static var scheduleTabModeGroup: String { String(localized: "settings.scheduleTabModeGroup", bundle: bundle) }
+    public static var scheduleTabModeGroupDescription: String { String(localized: "settings.scheduleTabModeGroupDescription", bundle: bundle) }
+    public static var scheduleTabModeOwn: String { String(localized: "settings.scheduleTabModeOwn", bundle: bundle) }
+    public static var scheduleTabModeOwnDescription: String { String(localized: "settings.scheduleTabModeOwnDescription", bundle: bundle) }
+    public static var scheduleTabModeHint: String { String(localized: "settings.scheduleTabModeHint", bundle: bundle) }
+    public static var scheduleTabModePreviewHint: String { String(localized: "settings.scheduleTabModePreviewHint", bundle: bundle) }
 
     // Calendar Display Mode Settings
     public static var calendarDisplayModeDefault: String { String(localized: "settings.calendarDisplayModeDefault", bundle: bundle) }
@@ -333,15 +333,15 @@ public enum LocalizedStrings {
     public static var notificationTypes: String { String(localized: "settings.notificationSettings.types", bundle: bundle) }
     public static var groupNotificationMustBeOn: String { String(localized: "settings.notificationSettings.mustBeOn", bundle: bundle) }
     public static var notificationCanToggle: String { String(localized: "settings.notificationSettings.canToggle", bundle: bundle) }
-    public static var newPromiseArrived: String { String(localized: "settings.notificationSettings.newPromise", bundle: bundle) }
-    public static var promiseConfirmedTitle: String { String(localized: "settings.notificationSettings.confirmed", bundle: bundle) }
-    public static var promiseCancelledTitle: String { String(localized: "settings.notificationSettings.cancelled", bundle: bundle) }
-    public static var promiseUpdatedTitle: String { String(localized: "settings.notificationSettings.updated", bundle: bundle) }
+    public static var newScheduleArrived: String { String(localized: "settings.notificationSettings.newSchedule", bundle: bundle) }
+    public static var scheduleConfirmedTitle: String { String(localized: "settings.notificationSettings.confirmed", bundle: bundle) }
+    public static var scheduleCancelledTitle: String { String(localized: "settings.notificationSettings.cancelled", bundle: bundle) }
+    public static var scheduleUpdatedTitle: String { String(localized: "settings.notificationSettings.updated", bundle: bundle) }
     public static var newMemberJoinedTitle: String { String(localized: "settings.notificationSettings.newMember", bundle: bundle) }
-    public static var promiseInvitationBody: String { String(localized: "settings.notificationSettings.invitationBody", bundle: bundle) }
-    public static var promiseConfirmedBody: String { String(localized: "settings.notificationSettings.confirmedBody", bundle: bundle) }
-    public static var promiseCancelledBody: String { String(localized: "settings.notificationSettings.cancelledBody", bundle: bundle) }
-    public static var promiseUpdatedBody: String { String(localized: "settings.notificationSettings.updatedBody", bundle: bundle) }
+    public static var scheduleInvitationBody: String { String(localized: "settings.notificationSettings.invitationBody", bundle: bundle) }
+    public static var scheduleConfirmedBody: String { String(localized: "settings.notificationSettings.confirmedBody", bundle: bundle) }
+    public static var scheduleCancelledBody: String { String(localized: "settings.notificationSettings.cancelledBody", bundle: bundle) }
+    public static var scheduleUpdatedBody: String { String(localized: "settings.notificationSettings.updatedBody", bundle: bundle) }
     public static var newMemberJoinedBody: String { String(localized: "settings.notificationSettings.newMemberBody", bundle: bundle) }
     public static var now: String { String(localized: "settings.notificationSettings.now", bundle: bundle) }
 
@@ -389,7 +389,7 @@ public enum LocalizedStrings {
     // Developer Settings
     public static var uiTest: String { String(localized: "settings.developer.uiTest", bundle: bundle) }
     public static var liveActivityTest: String { String(localized: "settings.developer.liveActivityTest", bundle: bundle) }
-    public static var livePromiseSettings: String { String(localized: "settings.developer.livePromiseSettings", bundle: bundle) }
+    public static var liveScheduleSettings: String { String(localized: "settings.developer.liveScheduleSettings", bundle: bundle) }
     public static var statusOn: String { String(localized: "settings.developer.statusOn", bundle: bundle) }
     public static var statusOff: String { String(localized: "settings.developer.statusOff", bundle: bundle) }
     public static var crashlyticsTest: String { String(localized: "settings.developer.crashlyticsTest", bundle: bundle) }
@@ -445,8 +445,8 @@ public enum LocalizedStrings {
     public static var eta5Min: String { String(localized: "settings.liveActivityTest.eta5Min", bundle: bundle) }
 
     // Bottom Accessory Info
-    public static var livePromiseDisplay: String { String(localized: "settings.bottomAccessory.livePromiseDisplay", bundle: bundle) }
-    public static var livePromiseDescription: String { String(localized: "settings.bottomAccessory.description", bundle: bundle) }
+    public static var liveScheduleDisplay: String { String(localized: "settings.bottomAccessory.liveScheduleDisplay", bundle: bundle) }
+    public static var liveScheduleDescription: String { String(localized: "settings.bottomAccessory.description", bundle: bundle) }
     public static var currentAPIMode: String { String(localized: "settings.bottomAccessory.currentAPIMode", bundle: bundle) }
 
     // Policy View
@@ -575,16 +575,16 @@ public enum LocalizedStrings {
     public static var ocrNoTextFound: String { String(localized: "error.ocr.noTextFound", bundle: bundle) }
 
     // Feature Error Messages (Toast/Alert)
-    public static var promiseCreationFailed: String { String(localized: "error.promiseCreationFailed", bundle: bundle) }
+    public static var scheduleCreationFailed: String { String(localized: "error.scheduleCreationFailed", bundle: bundle) }
     public static var eventDeleteFailed: String { String(localized: "error.eventDeleteFailed", bundle: bundle) }
     public static var markAsReadFailed: String { String(localized: "error.markAsReadFailed", bundle: bundle) }
-    public static var promiseFetchFailed: String { String(localized: "error.promiseFetchFailed", bundle: bundle) }
+    public static var scheduleFetchFailed: String { String(localized: "error.scheduleFetchFailed", bundle: bundle) }
     public static var logoutFailed: String { String(localized: "error.logoutFailed", bundle: bundle) }
     public static var profileSaveFailed: String { String(localized: "error.profileSaveFailed", bundle: bundle) }
     public static var calendarSyncSaveFailed: String { String(localized: "error.calendarSyncSaveFailed", bundle: bundle) }
     public static var notificationSettingSaveFailed: String { String(localized: "error.notificationSettingSaveFailed", bundle: bundle) }
     public static var responseSendFailed: String { String(localized: "error.responseSendFailed", bundle: bundle) }
-    public static var promiseDeleteFailed: String { String(localized: "error.promiseDeleteFailed", bundle: bundle) }
+    public static var scheduleDeleteFailed: String { String(localized: "error.scheduleDeleteFailed", bundle: bundle) }
     public static var accountDeleteFailed: String { String(localized: "error.accountDeleteFailed", bundle: bundle) }
     public static var notificationPermissionDenied: String { String(localized: "error.notificationPermissionDenied", bundle: bundle) }
     public static var memberExpelFailed: String { String(localized: "error.memberExpelFailed", bundle: bundle) }
@@ -595,7 +595,7 @@ public enum LocalizedStrings {
   // MARK: - Tab Bar
   public enum TabBar {
     public static var home: String { String(localized: "tab.home", bundle: bundle) }
-    public static var promise: String { String(localized: "tab.promise", bundle: bundle) }
+    public static var schedule: String { String(localized: "tab.schedule", bundle: bundle) }
     public static var calendar: String { String(localized: "tab.calendar", bundle: bundle) }
     public static var group: String { String(localized: "tab.group", bundle: bundle) }
     public static var settings: String { String(localized: "tab.settings", bundle: bundle) }
@@ -1000,19 +1000,19 @@ public enum LocalizedStrings {
 
     // Need Response Banner
     public static var responseNeeded: String { String(localized: "home.banner.responseNeeded", bundle: bundle) }
-    public static func promisesToRespond(_ count: Int) -> String {
-      String(localized: "home.banner.promisesToRespond", bundle: bundle)
+    public static func schedulesToRespond(_ count: Int) -> String {
+      String(localized: "home.banner.schedulesToRespond", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
 
     // Empty State
-    public static var emptyNoPromisesTitle: String { String(localized: "home.empty.noPromises.title", bundle: bundle) }
-    public static var emptyNoPromisesMessage: String { String(localized: "home.empty.noPromises.message", bundle: bundle) }
+    public static var emptyNoSchedulesTitle: String { String(localized: "home.empty.noSchedules.title", bundle: bundle) }
+    public static var emptyNoSchedulesMessage: String { String(localized: "home.empty.noSchedules.message", bundle: bundle) }
     public static var emptyNoFilterTitle: String { String(localized: "home.empty.noFilter.title", bundle: bundle) }
     public static var emptyNoFilterMessage: String { String(localized: "home.empty.noFilter.message", bundle: bundle) }
     public static var emptyNoGroupsTitle: String { String(localized: "home.empty.noGroups.title", bundle: bundle) }
     public static var emptyNoGroupsMessage: String { String(localized: "home.empty.noGroups.message", bundle: bundle) }
-    public static var createNewPromise: String { String(localized: "home.empty.createPromise", bundle: bundle) }
+    public static var createNewSchedule: String { String(localized: "home.empty.createSchedule", bundle: bundle) }
     public static var resetFilter: String { String(localized: "home.empty.resetFilter", bundle: bundle) }
     public static var findGroups: String { String(localized: "home.empty.findGroups", bundle: bundle) }
     public static var joinWithInviteLink: String { String(localized: "home.empty.joinWithLink", bundle: bundle) }
@@ -1129,67 +1129,67 @@ public enum LocalizedStrings {
 
   // MARK: - Shared (SharedFeature)
   public enum Shared {
-    // Edit Promise
-    public static var editPromiseTitle: String { String(localized: "shared.editPromise.title", bundle: bundle) }
-    public static var editFailed: String { String(localized: "shared.editPromise.failed", bundle: bundle) }
-    public static var promiseTitlePlaceholder: String { String(localized: "shared.editPromise.titlePlaceholder", bundle: bundle) }
-    public static var optional: String { String(localized: "shared.editPromise.optional", bundle: bundle) }
-    public static var addLocation: String { String(localized: "shared.editPromise.addLocation", bundle: bundle) }
-    public static var minimumParticipants: String { String(localized: "shared.editPromise.minimumParticipants", bundle: bundle) }
+    // Edit Schedule
+    public static var editScheduleTitle: String { String(localized: "shared.editSchedule.title", bundle: bundle) }
+    public static var editFailed: String { String(localized: "shared.editSchedule.failed", bundle: bundle) }
+    public static var scheduleTitlePlaceholder: String { String(localized: "shared.editSchedule.titlePlaceholder", bundle: bundle) }
+    public static var optional: String { String(localized: "shared.editSchedule.optional", bundle: bundle) }
+    public static var addLocation: String { String(localized: "shared.editSchedule.addLocation", bundle: bundle) }
+    public static var minimumParticipants: String { String(localized: "shared.editSchedule.minimumParticipants", bundle: bundle) }
     public static func maxMembers(_ count: Int) -> String {
-      String(localized: "shared.editPromise.maxMembers", bundle: bundle)
+      String(localized: "shared.editSchedule.maxMembers", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static func minMembersDescription(_ count: Int) -> String {
-      String(localized: "shared.editPromise.minMembersDescription", bundle: bundle)
+      String(localized: "shared.editSchedule.minMembersDescription", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    public static var liveSharing: String { String(localized: "shared.editPromise.liveSharing", bundle: bundle) }
+    public static var liveSharing: String { String(localized: "shared.editSchedule.liveSharing", bundle: bundle) }
     public static func liveStartMinutes(_ minutes: Int) -> String {
-      String(localized: "shared.editPromise.liveStartMinutes", bundle: bundle)
+      String(localized: "shared.editSchedule.liveStartMinutes", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
     public static func liveSharingDescription(_ minutes: Int) -> String {
-      String(localized: "shared.editPromise.liveSharingDescription", bundle: bundle)
+      String(localized: "shared.editSchedule.liveSharingDescription", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
-    public static var manualStart: String { String(localized: "shared.editPromise.manualStart", bundle: bundle) }
+    public static var manualStart: String { String(localized: "shared.editSchedule.manualStart", bundle: bundle) }
     public static func minutesBefore(_ minutes: Int) -> String {
-      String(localized: "shared.editPromise.minutesBefore", bundle: bundle)
+      String(localized: "shared.editSchedule.minutesBefore", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
-    public static var minutesBeforeStartLabel: String { String(localized: "shared.editPromise.minutesBeforeStartLabel", bundle: bundle) }
+    public static var minutesBeforeStartLabel: String { String(localized: "shared.editSchedule.minutesBeforeStartLabel", bundle: bundle) }
 
-    // Promise Detail
-    public static var voteDeadline: String { String(localized: "shared.promiseDetail.voteDeadline", bundle: bundle) }
-    public static var minimumConfirmMembers: String { String(localized: "shared.promiseDetail.minimumConfirm", bundle: bundle) }
+    // Schedule Detail
+    public static var voteDeadline: String { String(localized: "shared.scheduleDetail.voteDeadline", bundle: bundle) }
+    public static var minimumConfirmMembers: String { String(localized: "shared.scheduleDetail.minimumConfirm", bundle: bundle) }
     public static func membersCount(_ count: Int) -> String {
-      String(localized: "shared.promiseDetail.membersCount", bundle: bundle)
+      String(localized: "shared.scheduleDetail.membersCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    public static var participantsSection: String { String(localized: "shared.promiseDetail.participants", bundle: bundle) }
+    public static var participantsSection: String { String(localized: "shared.scheduleDetail.participants", bundle: bundle) }
     public static func participantsJoined(_ current: Int, _ total: Int) -> String {
-      String(localized: "shared.promiseDetail.participantsJoined", bundle: bundle)
+      String(localized: "shared.scheduleDetail.participantsJoined", bundle: bundle)
         .replacingOccurrences(of: "%1$lld", with: "\(current)")
         .replacingOccurrences(of: "%2$lld", with: "\(total)")
     }
-    public static var responseAccepted: String { String(localized: "shared.promiseDetail.accepted", bundle: bundle) }
-    public static var responseDeclined: String { String(localized: "shared.promiseDetail.declined", bundle: bundle) }
-    public static var responseNoAnswer: String { String(localized: "shared.promiseDetail.noAnswer", bundle: bundle) }
-    public static var myResponse: String { String(localized: "shared.promiseDetail.myResponse", bundle: bundle) }
-    public static var editPromise: String { String(localized: "shared.promiseDetail.edit", bundle: bundle) }
-    public static var deletePromise: String { String(localized: "shared.promiseDetail.delete", bundle: bundle) }
-    public static var undetermined: String { String(localized: "shared.promiseDetail.undetermined", bundle: bundle) }
-    public static func deletePromiseConfirm(_ title: String) -> String {
-      String(localized: "shared.promiseDetail.deleteConfirm", bundle: bundle)
+    public static var responseAccepted: String { String(localized: "shared.scheduleDetail.accepted", bundle: bundle) }
+    public static var responseDeclined: String { String(localized: "shared.scheduleDetail.declined", bundle: bundle) }
+    public static var responseNoAnswer: String { String(localized: "shared.scheduleDetail.noAnswer", bundle: bundle) }
+    public static var myResponse: String { String(localized: "shared.scheduleDetail.myResponse", bundle: bundle) }
+    public static var editSchedule: String { String(localized: "shared.scheduleDetail.edit", bundle: bundle) }
+    public static var deleteSchedule: String { String(localized: "shared.scheduleDetail.delete", bundle: bundle) }
+    public static var undetermined: String { String(localized: "shared.scheduleDetail.undetermined", bundle: bundle) }
+    public static func deleteScheduleConfirm(_ title: String) -> String {
+      String(localized: "shared.scheduleDetail.deleteConfirm", bundle: bundle)
         .replacingOccurrences(of: "%@", with: title)
     }
 
-    // Promise Detail Status
-    public static var statusNeedResponse: String { String(localized: "shared.promiseDetail.status.needResponse", bundle: bundle) }
-    public static var statusWaitingConfirm: String { String(localized: "shared.promiseDetail.status.waitingConfirm", bundle: bundle) }
-    public static var statusConfirmed: String { String(localized: "shared.promiseDetail.status.confirmed", bundle: bundle) }
-    public static var statusFailed: String { String(localized: "shared.promiseDetail.status.failed", bundle: bundle) }
+    // Schedule Detail Status
+    public static var statusNeedResponse: String { String(localized: "shared.scheduleDetail.status.needResponse", bundle: bundle) }
+    public static var statusWaitingConfirm: String { String(localized: "shared.scheduleDetail.status.waitingConfirm", bundle: bundle) }
+    public static var statusConfirmed: String { String(localized: "shared.scheduleDetail.status.confirmed", bundle: bundle) }
+    public static var statusFailed: String { String(localized: "shared.scheduleDetail.status.failed", bundle: bundle) }
 
     // Location Picker
     public static var locationSearch: String { String(localized: "shared.location.search", bundle: bundle) }
@@ -1310,9 +1310,9 @@ public enum LocalizedStrings {
 
   // MARK: - Calendar
   public enum Calendar {
-    public static var loadingPromises: String { String(localized: "calendar.loading", bundle: bundle) }
-    public static var noPromises: String { String(localized: "calendar.empty.title", bundle: bundle) }
-    public static var createNewPromise: String { String(localized: "calendar.empty.subtitle", bundle: bundle) }
+    public static var loadingSchedules: String { String(localized: "calendar.loading", bundle: bundle) }
+    public static var noSchedulesTitle: String { String(localized: "calendar.empty.title", bundle: bundle) }
+    public static var createNewSchedule: String { String(localized: "calendar.empty.subtitle", bundle: bundle) }
     public static var monthSchedule: String { String(localized: "calendar.monthSchedule", bundle: bundle) }
     public static func dayCount(_ count: Int) -> String {
       String(localized: "calendar.dayCount", bundle: bundle)
@@ -1387,14 +1387,14 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%2$@", with: high)
     }
 
-    // Promise Card Status
-    public static var statusWaiting: String { String(localized: "calendar.promise.statusWaiting", bundle: bundle) }
-    public static var statusVoting: String { String(localized: "calendar.promise.statusVoting", bundle: bundle) }
-    public static var statusConfirmed: String { String(localized: "calendar.promise.statusConfirmed", bundle: bundle) }
-    public static var statusFailed: String { String(localized: "calendar.promise.statusFailed", bundle: bundle) }
-    public static var respondAction: String { String(localized: "calendar.promise.respond", bundle: bundle) }
+    // Schedule Card Status
+    public static var statusWaiting: String { String(localized: "calendar.schedule.statusWaiting", bundle: bundle) }
+    public static var statusVoting: String { String(localized: "calendar.schedule.statusVoting", bundle: bundle) }
+    public static var statusConfirmed: String { String(localized: "calendar.schedule.statusConfirmed", bundle: bundle) }
+    public static var statusFailed: String { String(localized: "calendar.schedule.statusFailed", bundle: bundle) }
+    public static var respondAction: String { String(localized: "calendar.schedule.respond", bundle: bundle) }
     public static func additionalItems(_ count: Int) -> String {
-      String(localized: "calendar.promise.additionalItems", bundle: bundle)
+      String(localized: "calendar.schedule.additionalItems", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
 
@@ -1407,7 +1407,7 @@ public enum LocalizedStrings {
     // Context Menu
     public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }
     public static var addPersonalEvent: String { String(localized: "calendar.contextMenu.addPersonalEvent", bundle: bundle) }
-    public static var createPromise: String { String(localized: "calendar.contextMenu.createPromise", bundle: bundle) }
+    public static var createSchedule: String { String(localized: "calendar.contextMenu.createSchedule", bundle: bundle) }
 
     // Filter
     public static var filterTitle: String { String(localized: "calendar.filter.title", bundle: bundle) }
@@ -1483,7 +1483,7 @@ public enum LocalizedStrings {
 
   // MARK: - RootTab
   public enum RootTab {
-    // PromiseTabMode
+    // ScheduleTabMode
     public static var tabModeGroup: String { String(localized: "rootTab.tabMode.group", bundle: bundle) }
     public static var tabModePersonal: String { String(localized: "rootTab.tabMode.personal", bundle: bundle) }
   }
@@ -1512,7 +1512,7 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%@", with: groupName)
     }
     public static var successSubtitle: String { String(localized: "createGroup.successSubtitle", bundle: bundle) }
-    public static var createPromiseButton: String { String(localized: "createGroup.createPromiseButton", bundle: bundle) }
+    public static var createScheduleButton: String { String(localized: "createGroup.createScheduleButton", bundle: bundle) }
     public static var inviteCode: String { String(localized: "createGroup.inviteCode", bundle: bundle) }
     public static var copied: String { String(localized: "createGroup.copied", bundle: bundle) }
     public static var share: String { String(localized: "createGroup.share", bundle: bundle) }
@@ -1560,66 +1560,66 @@ public enum LocalizedStrings {
     }
   }
 
-  // MARK: - CreatePromise
-  public enum CreatePromise {
+  // MARK: - CreateSchedule
+  public enum CreateSchedule {
     // Step headers
-    public static var step1Title: String { String(localized: "createPromise.step1Title", bundle: bundle) }
-    public static var step1Subtitle: String { String(localized: "createPromise.step1Subtitle", bundle: bundle) }
-    public static var step2Title: String { String(localized: "createPromise.step2Title", bundle: bundle) }
-    public static var step2Subtitle: String { String(localized: "createPromise.step2Subtitle", bundle: bundle) }
-    public static var step3Title: String { String(localized: "createPromise.step3Title", bundle: bundle) }
-    public static var step3Subtitle: String { String(localized: "createPromise.step3Subtitle", bundle: bundle) }
+    public static var step1Title: String { String(localized: "createSchedule.step1Title", bundle: bundle) }
+    public static var step1Subtitle: String { String(localized: "createSchedule.step1Subtitle", bundle: bundle) }
+    public static var step2Title: String { String(localized: "createSchedule.step2Title", bundle: bundle) }
+    public static var step2Subtitle: String { String(localized: "createSchedule.step2Subtitle", bundle: bundle) }
+    public static var step3Title: String { String(localized: "createSchedule.step3Title", bundle: bundle) }
+    public static var step3Subtitle: String { String(localized: "createSchedule.step3Subtitle", bundle: bundle) }
     // Step 1
-    public static var titleSection: String { String(localized: "createPromise.titleSection", bundle: bundle) }
-    public static var titlePlaceholder: String { String(localized: "createPromise.titlePlaceholder", bundle: bundle) }
-    public static var groupSelection: String { String(localized: "createPromise.groupSelection", bundle: bundle) }
-    public static var noGroupsTitle: String { String(localized: "createPromise.noGroupsTitle", bundle: bundle) }
-    public static var noGroupsSubtitle: String { String(localized: "createPromise.noGroupsSubtitle", bundle: bundle) }
-    public static var createNewGroup: String { String(localized: "createPromise.createNewGroup", bundle: bundle) }
-    public static var loadGroupsFailed: String { String(localized: "createPromise.loadGroupsFailed", bundle: bundle) }
-    public static var retryButton: String { String(localized: "createPromise.retryButton", bundle: bundle) }
+    public static var titleSection: String { String(localized: "createSchedule.titleSection", bundle: bundle) }
+    public static var titlePlaceholder: String { String(localized: "createSchedule.titlePlaceholder", bundle: bundle) }
+    public static var groupSelection: String { String(localized: "createSchedule.groupSelection", bundle: bundle) }
+    public static var noGroupsTitle: String { String(localized: "createSchedule.noGroupsTitle", bundle: bundle) }
+    public static var noGroupsSubtitle: String { String(localized: "createSchedule.noGroupsSubtitle", bundle: bundle) }
+    public static var createNewGroup: String { String(localized: "createSchedule.createNewGroup", bundle: bundle) }
+    public static var loadGroupsFailed: String { String(localized: "createSchedule.loadGroupsFailed", bundle: bundle) }
+    public static var retryButton: String { String(localized: "createSchedule.retryButton", bundle: bundle) }
     public static func memberCount(_ count: Int) -> String {
-      String(localized: "createPromise.memberCount", bundle: bundle)
+      String(localized: "createSchedule.memberCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    public static var noMembersInGroup: String { String(localized: "createPromise.noMembersInGroup", bundle: bundle) }
-    public static func activePromisesAtLimit(_ count: Int) -> String {
-      String(localized: "createPromise.activePromisesAtLimit", bundle: bundle)
+    public static var noMembersInGroup: String { String(localized: "createSchedule.noMembersInGroup", bundle: bundle) }
+    public static func activeSchedulesAtLimit(_ count: Int) -> String {
+      String(localized: "createSchedule.activeSchedulesAtLimit", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     // Step 2
-    public static var startTime: String { String(localized: "createPromise.startTime", bundle: bundle) }
-    public static var endTime: String { String(localized: "createPromise.endTime", bundle: bundle) }
-    public static var locationSection: String { String(localized: "createPromise.locationSection", bundle: bundle) }
-    public static var searchLocation: String { String(localized: "createPromise.searchLocation", bundle: bundle) }
-    public static var totalDurationPrefix: String { String(localized: "createPromise.totalDurationPrefix", bundle: bundle) }
-    public static var startTimeWarning: String { String(localized: "createPromise.startTimeWarning", bundle: bundle) }
+    public static var startTime: String { String(localized: "createSchedule.startTime", bundle: bundle) }
+    public static var endTime: String { String(localized: "createSchedule.endTime", bundle: bundle) }
+    public static var locationSection: String { String(localized: "createSchedule.locationSection", bundle: bundle) }
+    public static var searchLocation: String { String(localized: "createSchedule.searchLocation", bundle: bundle) }
+    public static var totalDurationPrefix: String { String(localized: "createSchedule.totalDurationPrefix", bundle: bundle) }
+    public static var startTimeWarning: String { String(localized: "createSchedule.startTimeWarning", bundle: bundle) }
     // Step 3
-    public static var liveSharing: String { String(localized: "createPromise.liveSharing", bundle: bundle) }
-    public static var liveSharingDescription: String { String(localized: "createPromise.liveSharingDescription", bundle: bundle) }
-    public static var minutes15Before: String { String(localized: "createPromise.minutes15Before", bundle: bundle) }
-    public static var minutes30Before: String { String(localized: "createPromise.minutes30Before", bundle: bundle) }
-    public static var hour1Before: String { String(localized: "createPromise.hour1Before", bundle: bundle) }
-    public static var customInput: String { String(localized: "createPromise.customInput", bundle: bundle) }
-    public static var minutesBefore: String { String(localized: "createPromise.minutesBefore", bundle: bundle) }
-    public static var descriptionSection: String { String(localized: "createPromise.descriptionSection", bundle: bundle) }
-    public static var descriptionPlaceholder: String { String(localized: "createPromise.descriptionPlaceholder", bundle: bundle) }
-    public static var minimumParticipants: String { String(localized: "createPromise.minimumParticipants", bundle: bundle) }
+    public static var liveSharing: String { String(localized: "createSchedule.liveSharing", bundle: bundle) }
+    public static var liveSharingDescription: String { String(localized: "createSchedule.liveSharingDescription", bundle: bundle) }
+    public static var minutes15Before: String { String(localized: "createSchedule.minutes15Before", bundle: bundle) }
+    public static var minutes30Before: String { String(localized: "createSchedule.minutes30Before", bundle: bundle) }
+    public static var hour1Before: String { String(localized: "createSchedule.hour1Before", bundle: bundle) }
+    public static var customInput: String { String(localized: "createSchedule.customInput", bundle: bundle) }
+    public static var minutesBefore: String { String(localized: "createSchedule.minutesBefore", bundle: bundle) }
+    public static var descriptionSection: String { String(localized: "createSchedule.descriptionSection", bundle: bundle) }
+    public static var descriptionPlaceholder: String { String(localized: "createSchedule.descriptionPlaceholder", bundle: bundle) }
+    public static var minimumParticipants: String { String(localized: "createSchedule.minimumParticipants", bundle: bundle) }
     public static func participantsCount(_ count: Int) -> String {
-      String(localized: "createPromise.participantsCount", bundle: bundle)
+      String(localized: "createSchedule.participantsCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static func maxParticipants(_ count: Int) -> String {
-      String(localized: "createPromise.maxParticipants", bundle: bundle)
+      String(localized: "createSchedule.maxParticipants", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    public static var fixedParticipantsInfo: String { String(localized: "createPromise.fixedParticipantsInfo", bundle: bundle) }
+    public static var fixedParticipantsInfo: String { String(localized: "createSchedule.fixedParticipantsInfo", bundle: bundle) }
     public static func autoConfirmInfo(_ count: Int) -> String {
-      String(localized: "createPromise.autoConfirmInfo", bundle: bundle)
+      String(localized: "createSchedule.autoConfirmInfo", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    public static var maxParticipantsWarning: String { String(localized: "createPromise.maxParticipantsWarning", bundle: bundle) }
-    public static var navigationTitle: String { String(localized: "createPromise.navigationTitle", bundle: bundle) }
+    public static var maxParticipantsWarning: String { String(localized: "createSchedule.maxParticipantsWarning", bundle: bundle) }
+    public static var navigationTitle: String { String(localized: "createSchedule.navigationTitle", bundle: bundle) }
   }
 
   // MARK: - ManageGroup
@@ -1628,8 +1628,8 @@ public enum LocalizedStrings {
     public static var introduction: String { String(localized: "manageGroup.introduction", bundle: bundle) }
     public static var currentMembers: String { String(localized: "manageGroup.currentMembers", bundle: bundle) }
     public static var maxMembers: String { String(localized: "manageGroup.maxMembers", bundle: bundle) }
-    public static var activePromises: String { String(localized: "manageGroup.activePromises", bundle: bundle) }
-    public static var pastPromises: String { String(localized: "manageGroup.pastPromises", bundle: bundle) }
+    public static var activeSchedules: String { String(localized: "manageGroup.activeSchedules", bundle: bundle) }
+    public static var pastSchedules: String { String(localized: "manageGroup.pastSchedules", bundle: bundle) }
     public static var memberLoadFailed: String { String(localized: "manageGroup.memberLoadFailed", bundle: bundle) }
     public static var host: String { String(localized: "manageGroup.host", bundle: bundle) }
     public static var memberRole: String { String(localized: "manageGroup.memberRole", bundle: bundle) }
@@ -1653,23 +1653,23 @@ public enum LocalizedStrings {
     }
   }
 
-  // MARK: - PastPromises
-  public enum PastPromises {
-    public static var title: String { String(localized: "pastPromises.title", bundle: bundle) }
-    public static var searchPlaceholder: String { String(localized: "pastPromises.searchPlaceholder", bundle: bundle) }
-    public static var emptyTitle: String { String(localized: "pastPromises.emptyTitle", bundle: bundle) }
-    public static var emptySubtitle: String { String(localized: "pastPromises.emptySubtitle", bundle: bundle) }
-    public static var emptyFilteredTitle: String { String(localized: "pastPromises.emptyFilteredTitle", bundle: bundle) }
-    public static var emptyFilteredSubtitle: String { String(localized: "pastPromises.emptyFilteredSubtitle", bundle: bundle) }
-    public static var loadFailed: String { String(localized: "pastPromises.loadFailed", bundle: bundle) }
+  // MARK: - PastSchedules
+  public enum PastSchedules {
+    public static var title: String { String(localized: "pastSchedules.title", bundle: bundle) }
+    public static var searchPlaceholder: String { String(localized: "pastSchedules.searchPlaceholder", bundle: bundle) }
+    public static var emptyTitle: String { String(localized: "pastSchedules.emptyTitle", bundle: bundle) }
+    public static var emptySubtitle: String { String(localized: "pastSchedules.emptySubtitle", bundle: bundle) }
+    public static var emptyFilteredTitle: String { String(localized: "pastSchedules.emptyFilteredTitle", bundle: bundle) }
+    public static var emptyFilteredSubtitle: String { String(localized: "pastSchedules.emptyFilteredSubtitle", bundle: bundle) }
+    public static var loadFailed: String { String(localized: "pastSchedules.loadFailed", bundle: bundle) }
     // StatusFilter
-    public static var filterAll: String { String(localized: "pastPromises.filter.all", bundle: bundle) }
-    public static var filterConfirmed: String { String(localized: "pastPromises.filter.confirmed", bundle: bundle) }
-    public static var filterFailed: String { String(localized: "pastPromises.filter.failed", bundle: bundle) }
+    public static var filterAll: String { String(localized: "pastSchedules.filter.all", bundle: bundle) }
+    public static var filterConfirmed: String { String(localized: "pastSchedules.filter.confirmed", bundle: bundle) }
+    public static var filterFailed: String { String(localized: "pastSchedules.filter.failed", bundle: bundle) }
     // SortOption
-    public static var sortNewest: String { String(localized: "pastPromises.sort.newest", bundle: bundle) }
-    public static var sortOldest: String { String(localized: "pastPromises.sort.oldest", bundle: bundle) }
-    public static var sortParticipants: String { String(localized: "pastPromises.sort.participants", bundle: bundle) }
+    public static var sortNewest: String { String(localized: "pastSchedules.sort.newest", bundle: bundle) }
+    public static var sortOldest: String { String(localized: "pastSchedules.sort.oldest", bundle: bundle) }
+    public static var sortParticipants: String { String(localized: "pastSchedules.sort.participants", bundle: bundle) }
   }
 
   // MARK: - JoinGroup
@@ -1701,14 +1701,14 @@ public enum LocalizedStrings {
     // Notification sections
     public static var groupAll: String { String(localized: "groupSettingsView.groupAll", bundle: bundle) }
     public static var groupNotification: String { String(localized: "groupSettingsView.groupNotification", bundle: bundle) }
-    public static var promiseSection: String { String(localized: "groupSettingsView.promiseSection", bundle: bundle) }
+    public static var scheduleSection: String { String(localized: "groupSettingsView.scheduleSection", bundle: bundle) }
     public static var groupSection: String { String(localized: "groupSettingsView.groupSection", bundle: bundle) }
     // Tooltip
     public static var tooltipGroupNotificationSubtitle: String { String(localized: "groupSettingsView.tooltip.groupNotificationSubtitle", bundle: bundle) }
     public static var tooltipToggleDescription: String { String(localized: "groupSettingsView.tooltip.toggleDescription", bundle: bundle) }
     // Tooltip previews
-    public static var tooltipNewPromise: String { String(localized: "groupSettingsView.tooltip.newPromise", bundle: bundle) }
-    public static var tooltipNewPromiseBody: String { String(localized: "groupSettingsView.tooltip.newPromiseBody", bundle: bundle) }
+    public static var tooltipNewSchedule: String { String(localized: "groupSettingsView.tooltip.newSchedule", bundle: bundle) }
+    public static var tooltipNewScheduleBody: String { String(localized: "groupSettingsView.tooltip.newScheduleBody", bundle: bundle) }
     public static var tooltipConfirmed: String { String(localized: "groupSettingsView.tooltip.confirmed", bundle: bundle) }
     public static var tooltipConfirmedBody: String { String(localized: "groupSettingsView.tooltip.confirmedBody", bundle: bundle) }
     public static var tooltipCancelled: String { String(localized: "groupSettingsView.tooltip.cancelled", bundle: bundle) }
@@ -1774,7 +1774,7 @@ public enum LocalizedStrings {
     public static var groupColorTitle: String { String(localized: "groupSettingsView.groupColor.title", bundle: bundle) }
     public static var groupColorPreview: String { String(localized: "groupSettingsView.groupColor.preview", bundle: bundle) }
     public static var groupColorGroupTab: String { String(localized: "groupSettingsView.groupColor.groupTab", bundle: bundle) }
-    public static var groupColorPromiseCard: String { String(localized: "groupSettingsView.groupColor.promiseCard", bundle: bundle) }
+    public static var groupColorScheduleCard: String { String(localized: "groupSettingsView.groupColor.scheduleCard", bundle: bundle) }
     public static var groupColorReset: String { String(localized: "groupSettingsView.groupColor.reset", bundle: bundle) }
 
     // Color Settings
@@ -1788,7 +1788,7 @@ public enum LocalizedStrings {
 
   // MARK: - GroupMain
   public enum GroupMain {
-    public static var createPromise: String { String(localized: "groupMain.createPromise", bundle: bundle) }
+    public static var createSchedule: String { String(localized: "groupMain.createSchedule", bundle: bundle) }
     public static var groupSettings: String { String(localized: "groupMain.groupSettings", bundle: bundle) }
     public static var noGroupsTitle: String { String(localized: "groupMain.noGroupsTitle", bundle: bundle) }
     // Swipe actions
@@ -1803,7 +1803,7 @@ public enum LocalizedStrings {
     public static var emptyPast: String { String(localized: "groupMain.empty.past", bundle: bundle) }
     public static var retry: String { String(localized: "groupMain.retry", bundle: bundle) }
     public static var noGroupsDescription: String { String(localized: "groupMain.noGroupsDescription", bundle: bundle) }
-    // PromiseFilter displayTitles
+    // ScheduleFilter displayTitles
     public static var filterNeedResponse: String { String(localized: "groupMain.filter.needResponse", bundle: bundle) }
     public static var filterResponded: String { String(localized: "groupMain.filter.responded", bundle: bundle) }
     public static var filterConfirmed: String { String(localized: "groupMain.filter.confirmed", bundle: bundle) }
@@ -1819,9 +1819,9 @@ public enum LocalizedStrings {
     public static var joinGroupRequiredForDeeplinkTitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.title", bundle: bundle) }
     public static var joinGroupRequiredForDeeplinkSubtitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.subtitle", bundle: bundle) }
     // Delete alert
-    public static var deletePromiseTitle: String { String(localized: "groupMain.deletePromise.title", bundle: bundle) }
-    public static func deletePromiseConfirm(_ title: String) -> String {
-      String(localized: "groupMain.deletePromise.confirm", bundle: bundle)
+    public static var deleteScheduleTitle: String { String(localized: "groupMain.deleteSchedule.title", bundle: bundle) }
+    public static func deleteScheduleConfirm(_ title: String) -> String {
+      String(localized: "groupMain.deleteSchedule.confirm", bundle: bundle)
         .replacingOccurrences(of: "%@", with: title)
     }
   }
@@ -1835,7 +1835,7 @@ public enum LocalizedStrings {
     public static var inviteMembers: String { String(localized: "groupHorizontalBar.inviteMembers", bundle: bundle) }
     public static var notificationSettings: String { String(localized: "groupHorizontalBar.notificationSettings", bundle: bundle) }
     public static var groupSettings: String { String(localized: "groupHorizontalBar.groupSettings", bundle: bundle) }
-    public static var createPromise: String { String(localized: "groupHorizontalBar.createPromise", bundle: bundle) }
+    public static var createSchedule: String { String(localized: "groupHorizontalBar.createSchedule", bundle: bundle) }
   }
 
   // MARK: - GroupSortSettings
@@ -1849,12 +1849,12 @@ public enum LocalizedStrings {
     public static var sortCustom: String { String(localized: "groupSortSettings.sort.custom", bundle: bundle) }
   }
 
-  // MARK: - PromiseShare
-  public enum PromiseShare {
-    public static var title: String { String(localized: "promiseShare.title", bundle: bundle) }
-    public static var subtitle: String { String(localized: "promiseShare.subtitle", bundle: bundle) }
-    public static var kakaoButton: String { String(localized: "promiseShare.kakaoButton", bundle: bundle) }
-    public static var systemButton: String { String(localized: "promiseShare.systemButton", bundle: bundle) }
+  // MARK: - ScheduleShare
+  public enum ScheduleShare {
+    public static var title: String { String(localized: "scheduleShare.title", bundle: bundle) }
+    public static var subtitle: String { String(localized: "scheduleShare.subtitle", bundle: bundle) }
+    public static var kakaoButton: String { String(localized: "scheduleShare.kakaoButton", bundle: bundle) }
+    public static var systemButton: String { String(localized: "scheduleShare.systemButton", bundle: bundle) }
   }
 
   // MARK: - Weather
@@ -1876,8 +1876,8 @@ public enum LocalizedStrings {
     public static var wind: String { String(localized: "weather.wind", bundle: bundle) }
     public static var midTermSource: String { String(localized: "weather.midTermSource", bundle: bundle) }
     public static var shortTermSource: String { String(localized: "weather.shortTermSource", bundle: bundle) }
-    public static func promiseTime(_ time: String) -> String {
-      String(localized: "weather.promiseTime", bundle: bundle)
+    public static func scheduleTime(_ time: String) -> String {
+      String(localized: "weather.scheduleTime", bundle: bundle)
         .replacingOccurrences(of: "%@", with: time)
     }
     public static func hourLabel(_ hour: Int) -> String {
@@ -2004,7 +2004,7 @@ public enum LocalizedStrings {
   // MARK: - KakaoShare (Toast)
   public enum KakaoShare {
     public static var inviteLinkShared: String { String(localized: "kakaoShare.inviteLinkShared", bundle: bundle) }
-    public static var promiseShared: String { String(localized: "kakaoShare.promiseShared", bundle: bundle) }
+    public static var scheduleShared: String { String(localized: "kakaoShare.scheduleShared", bundle: bundle) }
     public static var kakaoInviteButton: String { String(localized: "kakaoShare.kakaoInviteButton", bundle: bundle) }
     public static var joinButton: String { String(localized: "kakaoShare.joinButton", bundle: bundle) }
   }
@@ -2032,12 +2032,12 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static var tomorrow: String { String(localized: "groupComponents.tomorrow", bundle: bundle) }
-    // PromiseSectionView
+    // ScheduleSectionView
     public static func seeMoreCount(_ count: Int) -> String {
       String(localized: "groupComponents.seeMoreCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
-    // PromiseTimelineView
+    // ScheduleTimelineView
     public static var errorOccurred: String { String(localized: "groupComponents.errorOccurred", bundle: bundle) }
     public static var emptyAll: String { String(localized: "groupComponents.empty.all", bundle: bundle) }
     public static var emptyNeedResponse: String { String(localized: "groupComponents.empty.needResponse", bundle: bundle) }
@@ -2045,75 +2045,75 @@ public enum LocalizedStrings {
     public static var emptyConfirmed: String { String(localized: "groupComponents.empty.confirmed", bundle: bundle) }
   }
 
-  // MARK: - PromiseCard
-  public enum PromiseCard {
+  // MARK: - ScheduleCard
+  public enum ScheduleCard {
     // Host section
-    public static var myProposal: String { String(localized: "promiseCard.myProposal", bundle: bundle) }
+    public static var myProposal: String { String(localized: "scheduleCard.myProposal", bundle: bundle) }
     public static func hostProposal(_ name: String) -> String {
-      String(localized: "promiseCard.hostProposal", bundle: bundle)
+      String(localized: "scheduleCard.hostProposal", bundle: bundle)
         .replacingOccurrences(of: "%@", with: name)
     }
-    public static var proposal: String { String(localized: "promiseCard.proposal", bundle: bundle) }
+    public static var proposal: String { String(localized: "scheduleCard.proposal", bundle: bundle) }
     // Confirmation progress
     public static func confirmationRemaining(_ count: Int) -> String {
-      String(localized: "promiseCard.confirmationRemaining", bundle: bundle)
+      String(localized: "scheduleCard.confirmationRemaining", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     // Arrival sharing
     public static func liveShareStart(_ minutes: Int) -> String {
-      String(localized: "promiseCard.liveShareStart", bundle: bundle)
+      String(localized: "scheduleCard.liveShareStart", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
     // Photo count
     public static func photoCount(_ count: Int) -> String {
-      String(localized: "promiseCard.photoCount", bundle: bundle)
+      String(localized: "scheduleCard.photoCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     // Vote count
     public static func voteCount(_ voted: Int, _ total: Int) -> String {
-      String(localized: "promiseCard.voteCount", bundle: bundle)
+      String(localized: "scheduleCard.voteCount", bundle: bundle)
         .replacingOccurrences(of: "%1$lld", with: "\(voted)")
         .replacingOccurrences(of: "%2$lld", with: "\(total)")
     }
     // Context menu
-    public static var changeResponse: String { String(localized: "promiseCard.changeResponse", bundle: bundle) }
-    public static var acceptAction: String { String(localized: "promiseCard.acceptAction", bundle: bundle) }
-    public static var rejectAction: String { String(localized: "promiseCard.rejectAction", bundle: bundle) }
-    public static var resetToPending: String { String(localized: "promiseCard.resetToPending", bundle: bundle) }
-    public static var editPromise: String { String(localized: "promiseCard.editPromise", bundle: bundle) }
-    public static var deletePromise: String { String(localized: "promiseCard.deletePromise", bundle: bundle) }
-    public static var viewDetail: String { String(localized: "promiseCard.viewDetail", bundle: bundle) }
-    public static var share: String { String(localized: "promiseCard.share", bundle: bundle) }
+    public static var changeResponse: String { String(localized: "scheduleCard.changeResponse", bundle: bundle) }
+    public static var acceptAction: String { String(localized: "scheduleCard.acceptAction", bundle: bundle) }
+    public static var rejectAction: String { String(localized: "scheduleCard.rejectAction", bundle: bundle) }
+    public static var resetToPending: String { String(localized: "scheduleCard.resetToPending", bundle: bundle) }
+    public static var editSchedule: String { String(localized: "scheduleCard.editSchedule", bundle: bundle) }
+    public static var deleteSchedule: String { String(localized: "scheduleCard.deleteSchedule", bundle: bundle) }
+    public static var viewDetail: String { String(localized: "scheduleCard.viewDetail", bundle: bundle) }
+    public static var share: String { String(localized: "scheduleCard.share", bundle: bundle) }
     // Response badge
-    public static var responseAccepted: String { String(localized: "promiseCard.responseAccepted", bundle: bundle) }
-    public static var responseDeclined: String { String(localized: "promiseCard.responseDeclined", bundle: bundle) }
+    public static var responseAccepted: String { String(localized: "scheduleCard.responseAccepted", bundle: bundle) }
+    public static var responseDeclined: String { String(localized: "scheduleCard.responseDeclined", bundle: bundle) }
     public static func myResponseLabel(_ status: String) -> String {
-      String(localized: "promiseCard.myResponseLabel", bundle: bundle)
+      String(localized: "scheduleCard.myResponseLabel", bundle: bundle)
         .replacingOccurrences(of: "%@", with: status)
     }
     // Status badge (responding)
-    public static var accepting: String { String(localized: "promiseCard.accepting", bundle: bundle) }
-    public static var rejecting: String { String(localized: "promiseCard.rejecting", bundle: bundle) }
-    public static var resetting: String { String(localized: "promiseCard.resetting", bundle: bundle) }
-    // Promise response status
-    public static var statusNeedResponse: String { String(localized: "promiseCard.status.needResponse", bundle: bundle) }
-    public static var statusResponded: String { String(localized: "promiseCard.status.responded", bundle: bundle) }
-    public static var statusConfirmed: String { String(localized: "promiseCard.status.confirmed", bundle: bundle) }
-    public static var statusFailed: String { String(localized: "promiseCard.status.failed", bundle: bundle) }
+    public static var accepting: String { String(localized: "scheduleCard.accepting", bundle: bundle) }
+    public static var rejecting: String { String(localized: "scheduleCard.rejecting", bundle: bundle) }
+    public static var resetting: String { String(localized: "scheduleCard.resetting", bundle: bundle) }
+    // Schedule response status
+    public static var statusNeedResponse: String { String(localized: "scheduleCard.status.needResponse", bundle: bundle) }
+    public static var statusResponded: String { String(localized: "scheduleCard.status.responded", bundle: bundle) }
+    public static var statusConfirmed: String { String(localized: "scheduleCard.status.confirmed", bundle: bundle) }
+    public static var statusFailed: String { String(localized: "scheduleCard.status.failed", bundle: bundle) }
     public static func acceptedCount(_ count: Int) -> String {
-      String(localized: "promiseCard.acceptedCount", bundle: bundle)
+      String(localized: "scheduleCard.acceptedCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static func declinedCount(_ count: Int) -> String {
-      String(localized: "promiseCard.declinedCount", bundle: bundle)
+      String(localized: "scheduleCard.declinedCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static func confirmedCount(_ count: Int) -> String {
-      String(localized: "promiseCard.confirmedCount", bundle: bundle)
+      String(localized: "scheduleCard.confirmedCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static func totalCount(_ count: Int) -> String {
-      String(localized: "promiseCard.totalCount", bundle: bundle)
+      String(localized: "scheduleCard.totalCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
   }
@@ -2155,91 +2155,91 @@ public enum LocalizedStrings {
     public static var declined: String { String(localized: "overlayScheduleDetail.declined", bundle: bundle) }
   }
 
-  // MARK: - GroupPromiseList
-  public enum GroupPromiseList {
+  // MARK: - GroupScheduleList
+  public enum GroupScheduleList {
     public static func navigationTitle(_ groupName: String) -> String {
-      String(localized: "groupPromiseList.navigationTitle", bundle: bundle)
+      String(localized: "groupScheduleList.navigationTitle", bundle: bundle)
         .replacingOccurrences(of: "%@", with: groupName)
     }
-    public static var emptyNeedResponse: String { String(localized: "groupPromiseList.empty.needResponse", bundle: bundle) }
-    public static var emptyResponded: String { String(localized: "groupPromiseList.empty.responded", bundle: bundle) }
-    public static var emptyConfirmed: String { String(localized: "groupPromiseList.empty.confirmed", bundle: bundle) }
-    public static var emptyAll: String { String(localized: "groupPromiseList.empty.all", bundle: bundle) }
+    public static var emptyNeedResponse: String { String(localized: "groupScheduleList.empty.needResponse", bundle: bundle) }
+    public static var emptyResponded: String { String(localized: "groupScheduleList.empty.responded", bundle: bundle) }
+    public static var emptyConfirmed: String { String(localized: "groupScheduleList.empty.confirmed", bundle: bundle) }
+    public static var emptyAll: String { String(localized: "groupScheduleList.empty.all", bundle: bundle) }
     // StatusFilter display titles
-    public static var filterNeedResponse: String { String(localized: "groupPromiseList.filter.needResponse", bundle: bundle) }
-    public static var filterResponded: String { String(localized: "groupPromiseList.filter.responded", bundle: bundle) }
-    public static var filterConfirmed: String { String(localized: "groupPromiseList.filter.confirmed", bundle: bundle) }
-    public static var filterAll: String { String(localized: "groupPromiseList.filter.all", bundle: bundle) }
+    public static var filterNeedResponse: String { String(localized: "groupScheduleList.filter.needResponse", bundle: bundle) }
+    public static var filterResponded: String { String(localized: "groupScheduleList.filter.responded", bundle: bundle) }
+    public static var filterConfirmed: String { String(localized: "groupScheduleList.filter.confirmed", bundle: bundle) }
+    public static var filterAll: String { String(localized: "groupScheduleList.filter.all", bundle: bundle) }
   }
 
-  // MARK: - LivePromise
-  public enum LivePromise {
+  // MARK: - LiveSchedule
+  public enum LiveSchedule {
     // Detail Tabs
-    public static var tabStatus: String { String(localized: "livePromise.tab.status", bundle: bundle) }
-    public static var tabMap: String { String(localized: "livePromise.tab.map", bundle: bundle) }
-    public static var tabChat: String { String(localized: "livePromise.tab.chat", bundle: bundle) }
+    public static var tabStatus: String { String(localized: "liveSchedule.tab.status", bundle: bundle) }
+    public static var tabMap: String { String(localized: "liveSchedule.tab.map", bundle: bundle) }
+    public static var tabChat: String { String(localized: "liveSchedule.tab.chat", bundle: bundle) }
 
     // Participant
     public static func participantCount(_ count: Int) -> String {
-      String(localized: "livePromise.participantCount", bundle: bundle)
+      String(localized: "liveSchedule.participantCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
 
     // Time Display
     public static func hoursMinutes(_ hours: Int, _ minutes: Int) -> String {
-      String(localized: "livePromise.time.hoursMinutes", bundle: bundle)
+      String(localized: "liveSchedule.time.hoursMinutes", bundle: bundle)
         .replacingOccurrences(of: "%1$lld", with: "\(hours)")
         .replacingOccurrences(of: "%2$lld", with: "\(minutes)")
     }
     public static func minutesOnly(_ minutes: Int) -> String {
-      String(localized: "livePromise.time.minutesOnly", bundle: bundle)
+      String(localized: "liveSchedule.time.minutesOnly", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
-    public static var elapsed: String { String(localized: "livePromise.time.elapsed", bundle: bundle) }
-    public static var realtime: String { String(localized: "livePromise.realtime", bundle: bundle) }
-    public static var directions: String { String(localized: "livePromise.directions", bundle: bundle) }
+    public static var elapsed: String { String(localized: "liveSchedule.time.elapsed", bundle: bundle) }
+    public static var realtime: String { String(localized: "liveSchedule.realtime", bundle: bundle) }
+    public static var directions: String { String(localized: "liveSchedule.directions", bundle: bundle) }
 
     // Participants Section
-    public static var participantsStatus: String { String(localized: "livePromise.participants.status", bundle: bundle) }
+    public static var participantsStatus: String { String(localized: "liveSchedule.participants.status", bundle: bundle) }
     public static func arrivedCount(_ arrived: Int, _ total: Int) -> String {
-      String(localized: "livePromise.participants.arrivedCount", bundle: bundle)
+      String(localized: "liveSchedule.participants.arrivedCount", bundle: bundle)
         .replacingOccurrences(of: "%1$lld", with: "\(arrived)")
         .replacingOccurrences(of: "%2$lld", with: "\(total)")
     }
-    public static var etaNotice1: String { String(localized: "livePromise.eta.notice1", bundle: bundle) }
-    public static var etaNotice2: String { String(localized: "livePromise.eta.notice2", bundle: bundle) }
-    public static var me: String { String(localized: "livePromise.me", bundle: bundle) }
-    public static var changeAction: String { String(localized: "livePromise.change", bundle: bundle) }
+    public static var etaNotice1: String { String(localized: "liveSchedule.eta.notice1", bundle: bundle) }
+    public static var etaNotice2: String { String(localized: "liveSchedule.eta.notice2", bundle: bundle) }
+    public static var me: String { String(localized: "liveSchedule.me", bundle: bundle) }
+    public static var changeAction: String { String(localized: "liveSchedule.change", bundle: bundle) }
 
     // Status
-    public static var arrived: String { String(localized: "livePromise.status.arrived", bundle: bundle) }
+    public static var arrived: String { String(localized: "liveSchedule.status.arrived", bundle: bundle) }
     public static func etaMinutes(_ minutes: Int) -> String {
-      String(localized: "livePromise.status.etaMinutes", bundle: bundle)
+      String(localized: "liveSchedule.status.etaMinutes", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
-    public static var waiting: String { String(localized: "livePromise.status.waiting", bundle: bundle) }
-    public static var late: String { String(localized: "livePromise.status.late", bundle: bundle) }
+    public static var waiting: String { String(localized: "liveSchedule.status.waiting", bundle: bundle) }
+    public static var late: String { String(localized: "liveSchedule.status.late", bundle: bundle) }
 
     // ETA Sheet
-    public static var etaArrived: String { String(localized: "livePromise.eta.arrived", bundle: bundle) }
-    public static var directInput: String { String(localized: "livePromise.eta.directInput", bundle: bundle) }
-    public static var minuteUnit: String { String(localized: "livePromise.eta.minuteUnit", bundle: bundle) }
-    public static var minutesUntilArrival: String { String(localized: "livePromise.eta.minutesUntilArrival", bundle: bundle) }
-    public static var confirm: String { String(localized: "livePromise.eta.confirm", bundle: bundle) }
+    public static var etaArrived: String { String(localized: "liveSchedule.eta.arrived", bundle: bundle) }
+    public static var directInput: String { String(localized: "liveSchedule.eta.directInput", bundle: bundle) }
+    public static var minuteUnit: String { String(localized: "liveSchedule.eta.minuteUnit", bundle: bundle) }
+    public static var minutesUntilArrival: String { String(localized: "liveSchedule.eta.minutesUntilArrival", bundle: bundle) }
+    public static var confirm: String { String(localized: "liveSchedule.eta.confirm", bundle: bundle) }
 
     // Error
-    public static var errorNotSupported: String { String(localized: "livePromise.error.notSupported", bundle: bundle) }
-    public static var errorActivityNotFound: String { String(localized: "livePromise.error.activityNotFound", bundle: bundle) }
-    public static var errorStartFailed: String { String(localized: "livePromise.error.startFailed", bundle: bundle) }
-    public static var errorUpdateFailed: String { String(localized: "livePromise.error.updateFailed", bundle: bundle) }
+    public static var errorNotSupported: String { String(localized: "liveSchedule.error.notSupported", bundle: bundle) }
+    public static var errorActivityNotFound: String { String(localized: "liveSchedule.error.activityNotFound", bundle: bundle) }
+    public static var errorStartFailed: String { String(localized: "liveSchedule.error.startFailed", bundle: bundle) }
+    public static var errorUpdateFailed: String { String(localized: "liveSchedule.error.updateFailed", bundle: bundle) }
 
     // Fallback
-    public static var groupFallback: String { String(localized: "livePromise.groupFallback", bundle: bundle) }
+    public static var groupFallback: String { String(localized: "liveSchedule.groupFallback", bundle: bundle) }
 
     // LiveActivity
-    public static var promiseTime: String { String(localized: "livePromise.promiseTime", bundle: bundle) }
-    public static var manualInput: String { String(localized: "livePromise.manualInput", bundle: bundle) }
-    public static var autoStartDescription: String { String(localized: "livePromise.autoStartDescription", bundle: bundle) }
+    public static var scheduleTime: String { String(localized: "liveSchedule.scheduleTime", bundle: bundle) }
+    public static var manualInput: String { String(localized: "liveSchedule.manualInput", bundle: bundle) }
+    public static var autoStartDescription: String { String(localized: "liveSchedule.autoStartDescription", bundle: bundle) }
   }
 }
 
@@ -2352,20 +2352,20 @@ extension LocalizedStrings {
     public static var authOpenAppHint: String { String(localized: "widget.auth.openAppHint", bundle: bundle) }
 
     // MARK: - Empty
-    public static var emptyCreatePromiseButton: String { String(localized: "widget.empty.createPromiseButton", bundle: bundle) }
-    public static var emptyNoPromisesMessage: String { String(localized: "widget.empty.noPromisesMessage", bundle: bundle) }
+    public static var emptyCreateScheduleButton: String { String(localized: "widget.empty.createScheduleButton", bundle: bundle) }
+    public static var emptyNoSchedulesMessage: String { String(localized: "widget.empty.noSchedulesMessage", bundle: bundle) }
     public static var emptyCreateNewHint: String { String(localized: "widget.empty.createNewHint", bundle: bundle) }
-    public static var emptyNoTodayPromises: String { String(localized: "widget.empty.noTodayPromises", bundle: bundle) }
+    public static var emptyNoTodaySchedules: String { String(localized: "widget.empty.noTodaySchedules", bundle: bundle) }
 
     // MARK: - Configuration
-    public static var configNextPromise: String { String(localized: "widget.config.nextPromise", bundle: bundle) }
-    public static var configNextPromiseDescription: String { String(localized: "widget.config.nextPromiseDescription", bundle: bundle) }
-    public static var configTodayPromises: String { String(localized: "widget.config.todayPromises", bundle: bundle) }
-    public static var configTodayPromisesDescription: String { String(localized: "widget.config.todayPromisesDescription", bundle: bundle) }
-    public static var configAllPromises: String { String(localized: "widget.config.allPromises", bundle: bundle) }
-    public static var configAllPromisesDescription: String { String(localized: "widget.config.allPromisesDescription", bundle: bundle) }
+    public static var configNextSchedule: String { String(localized: "widget.config.nextSchedule", bundle: bundle) }
+    public static var configNextScheduleDescription: String { String(localized: "widget.config.nextScheduleDescription", bundle: bundle) }
+    public static var configTodaySchedules: String { String(localized: "widget.config.todaySchedules", bundle: bundle) }
+    public static var configTodaySchedulesDescription: String { String(localized: "widget.config.todaySchedulesDescription", bundle: bundle) }
+    public static var configAllSchedules: String { String(localized: "widget.config.allSchedules", bundle: bundle) }
+    public static var configAllSchedulesDescription: String { String(localized: "widget.config.allSchedulesDescription", bundle: bundle) }
     public static var configDaysRemaining: String { String(localized: "widget.config.daysRemaining", bundle: bundle) }
-    public static var configPromiseInfo: String { String(localized: "widget.config.promiseInfo", bundle: bundle) }
+    public static var configScheduleInfo: String { String(localized: "widget.config.scheduleInfo", bundle: bundle) }
 
     // MARK: - Common
     public static var today: String { String(localized: "widget.common.today", bundle: bundle) }
@@ -2376,9 +2376,9 @@ extension LocalizedStrings {
     public static var participantCount: String { String(localized: "widget.common.participantCount", bundle: bundle) }
     public static var updatedBasis: String { String(localized: "widget.common.updatedBasis", bundle: bundle) }
     public static var refresh: String { String(localized: "widget.common.refresh", bundle: bundle) }
-    public static var noPromises: String { String(localized: "widget.common.noPromises", bundle: bundle) }
+    public static var noSchedules: String { String(localized: "widget.common.noSchedules", bundle: bundle) }
     public static var loginRequired: String { String(localized: "widget.common.loginRequired", bundle: bundle) }
-    public static var noScheduledPromises: String { String(localized: "widget.common.noScheduledPromises", bundle: bundle) }
+    public static var noScheduledSchedules: String { String(localized: "widget.common.noScheduledSchedules", bundle: bundle) }
     public static var dataLoadFailed: String { String(localized: "widget.common.dataLoadFailed", bundle: bundle) }
     public static var button: String { String(localized: "widget.button", bundle: bundle) }
     public static var update: String { String(localized: "widget.update", bundle: bundle) }
@@ -2386,12 +2386,12 @@ extension LocalizedStrings {
     public static var participantCountShort: String { String(localized: "widget.participantCountShort", bundle: bundle) }
   }
 
-  // MARK: - PromiseModeSegment
-  public enum PromiseModeSegment {
-    public static var group: String { String(localized: "promiseModeSegment.group", bundle: bundle) }
-    public static var personal: String { String(localized: "promiseModeSegment.personal", bundle: bundle) }
-    public static var promiseTitle: String { String(localized: "promiseModeSegment.promiseTitle", bundle: bundle) }
-    public static var modePickerLabel: String { String(localized: "promiseModeSegment.modePickerLabel", bundle: bundle) }
+  // MARK: - ScheduleModeSegment
+  public enum ScheduleModeSegment {
+    public static var group: String { String(localized: "scheduleModeSegment.group", bundle: bundle) }
+    public static var personal: String { String(localized: "scheduleModeSegment.personal", bundle: bundle) }
+    public static var scheduleTitle: String { String(localized: "scheduleModeSegment.scheduleTitle", bundle: bundle) }
+    public static var modePickerLabel: String { String(localized: "scheduleModeSegment.modePickerLabel", bundle: bundle) }
   }
 
 }

@@ -15,7 +15,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let calendarMode: CalendarMode
@@ -42,7 +42,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: onScheduleItemTapped,
       onEditScheduleItem: onEditScheduleItem,
       onCreatePersonalEvent: onCreatePersonalEvent,
-      onCreatePromise: onCreatePromise,
+      onCreateSchedule: onCreateSchedule,
       onDeleteScheduleItem: onDeleteScheduleItem,
       onShareScheduleItem: onShareScheduleItem,
       currentUserId: currentUserId,
@@ -56,7 +56,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     let coordinator = context.coordinator
     coordinator.pager = self
     vc.calendarMode = calendarMode
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let selectedDay = calendar.startOfDay(for: selectedDate)
 
     // 날짜 탭 슬라이드 애니메이션 중에는 업데이트 스킵
@@ -75,7 +75,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: onScheduleItemTapped,
         onEditScheduleItem: coordinator.pager.onEditScheduleItem,
         onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
-        onCreatePromise: coordinator.pager.onCreatePromise,
+        onCreateSchedule: coordinator.pager.onCreateSchedule,
         onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
         onShareScheduleItem: coordinator.pager.onShareScheduleItem,
         currentUserId: coordinator.pager.currentUserId,
@@ -121,7 +121,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
-          onCreatePromise: onCreatePromise,
+          onCreateSchedule: onCreateSchedule,
           onDeleteScheduleItem: onDeleteScheduleItem,
           onShareScheduleItem: onShareScheduleItem,
           currentUserId: currentUserId,
@@ -149,7 +149,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onEditScheduleItem: coordinator.pager.onEditScheduleItem,
           onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
-          onCreatePromise: coordinator.pager.onCreatePromise,
+          onCreateSchedule: coordinator.pager.onCreateSchedule,
           onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
           onShareScheduleItem: coordinator.pager.onShareScheduleItem,
           currentUserId: coordinator.pager.currentUserId,
@@ -177,7 +177,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
 
     init(pager: DayTimelinePager) {
       self.pager = pager
-      self.lastSelectedDay = Calendar.promiseDisplay.startOfDay(for: pager.selectedDate)
+      self.lastSelectedDay = Calendar.scheduleDisplay.startOfDay(for: pager.selectedDate)
     }
 
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
@@ -195,7 +195,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: pager.onScheduleItemTapped,
         onEditScheduleItem: pager.onEditScheduleItem,
         onCreatePersonalEvent: pager.onCreatePersonalEvent,
-        onCreatePromise: pager.onCreatePromise,
+        onCreateSchedule: pager.onCreateSchedule,
         onDeleteScheduleItem: pager.onDeleteScheduleItem,
         onShareScheduleItem: pager.onShareScheduleItem,
         currentUserId: pager.currentUserId,
@@ -205,7 +205,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       vc.recenterToCurrentPage(animated: false)
       vc.forceLayout()
 
-      let calendar = Calendar.promiseDisplay
+      let calendar = Calendar.scheduleDisplay
       let selectedDay = calendar.startOfDay(for: pager.selectedDate)
       let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
       let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
@@ -226,7 +226,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
 
       if currentPage == 0 {
-        let calendar = Calendar.promiseDisplay
+        let calendar = Calendar.scheduleDisplay
         let dateKey = calendar.startOfDay(for: pager.selectedDate)
         // 떠나는 페이지(page 1)의 오프셋 캐시
         if let innerSV = pagerVC?.findInnerScrollView(at: 1) {
@@ -241,7 +241,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         needsRecenter = true
         pager.onPreviousDay()
       } else if currentPage == 2 {
-        let calendar = Calendar.promiseDisplay
+        let calendar = Calendar.scheduleDisplay
         let dateKey = calendar.startOfDay(for: pager.selectedDate)
         // 떠나는 페이지(page 1)의 오프셋 캐시
         if let innerSV = pagerVC?.findInnerScrollView(at: 1) {
@@ -312,7 +312,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreateSchedule: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -322,7 +322,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       scrollView.delegate = coordinator
 
       let pageWidthMultiplier = 1.0 / 3.0
-      let calendar = Calendar.promiseDisplay
+      let calendar = Calendar.scheduleDisplay
       let currentDay = calendar.startOfDay(for: selectedDate)
       let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
       let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
@@ -336,7 +336,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
-          onCreatePromise: onCreatePromise,
+          onCreateSchedule: onCreateSchedule,
           onDeleteScheduleItem: onDeleteScheduleItem,
           onShareScheduleItem: onShareScheduleItem,
           calendarMode: calendarMode,
@@ -379,14 +379,14 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreateSchedule: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
     ) {
-      let calendar = Calendar.promiseDisplay
+      let calendar = Calendar.scheduleDisplay
       let currentDay = calendar.startOfDay(for: selectedDate)
       let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
       let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
@@ -400,7 +400,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
-          onCreatePromise: onCreatePromise,
+          onCreateSchedule: onCreateSchedule,
           onDeleteScheduleItem: onDeleteScheduleItem,
           onShareScheduleItem: onShareScheduleItem,
           calendarMode: calendarMode,
@@ -426,7 +426,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreateSchedule: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -440,7 +440,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: onScheduleItemTapped,
         onEditScheduleItem: onEditScheduleItem,
         onCreatePersonalEvent: onCreatePersonalEvent,
-        onCreatePromise: onCreatePromise,
+        onCreateSchedule: onCreateSchedule,
         onDeleteScheduleItem: onDeleteScheduleItem,
         onShareScheduleItem: onShareScheduleItem,
         calendarMode: calendarMode,
@@ -492,7 +492,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     /// 현재 시간 기준 오프셋 계산 (hour - 1) * 52, 19시 이후는 16시 영역으로 cap
     func currentTimeOffset() -> CGFloat {
       let hourHeight: CGFloat = 52
-      let hour = Calendar.promiseDisplay.component(.hour, from: Date())
+      let hour = Calendar.scheduleDisplay.component(.hour, from: Date())
       let capped = max(0, min(hour, 16) - 1)
       return CGFloat(capped) * hourHeight
     }

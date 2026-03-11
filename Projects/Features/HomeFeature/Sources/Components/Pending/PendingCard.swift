@@ -5,9 +5,9 @@ import ResourceKit
 
 // MARK: - Pending Card
 
-/// 응답 필요 개별 카드 - 탭하면 해당 그룹 약속으로 이동
+/// 응답 필요 개별 카드 - 탭하면 해당 그룹 일정으로 이동
 struct PendingCard: View {
-  let promise: PromiseModel
+  let schedule: ScheduleModel
   let totalMembers: Int
   let onTap: () -> Void
 
@@ -19,10 +19,10 @@ struct PendingCard: View {
 
         // 중간: 이모지 + 제목
         HStack(spacing: 6) {
-          Text(promise.displayEmoji)
+          Text(schedule.displayEmoji)
             .font(.title3)
 
-          Text(promise.title)
+          Text(schedule.title)
             .font(.subheadline)
             .fontWeight(.semibold)
             .foregroundStyle(.primary)
@@ -72,7 +72,7 @@ struct PendingCard: View {
 
   @ViewBuilder
   private var groupInfoView: some View {
-    if let group = promise.group {
+    if let group = schedule.group {
       HStack(spacing: 4) {
         // 그룹 아이콘
         GroupThumbnailView(
@@ -92,9 +92,9 @@ struct PendingCard: View {
   // MARK: - Vote Progress View
 
   private var voteProgressView: some View {
-    let accepted = promise.votes.acceptedCount
-    let declined = promise.votes.declinedCount
-    let confirm = promise.minimumParticipants
+    let accepted = schedule.votes.acceptedCount
+    let declined = schedule.votes.declinedCount
+    let confirm = schedule.minimumParticipants
     let total = max(totalMembers, confirm)
     let isConfirmed = accepted >= confirm
 
@@ -147,7 +147,7 @@ struct PendingCard: View {
 
   private var dDayText: String {
     let now = Date()
-    let voteDate = promise.votes.until
+    let voteDate = schedule.votes.until
     let hoursRemaining = voteDate.timeIntervalSince(now) / 3600
 
     // 24시간 이내면 시간/분 단위로 표시
@@ -162,7 +162,7 @@ struct PendingCard: View {
     }
 
     // 그 외에는 D-day 표시
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
@@ -176,7 +176,7 @@ struct PendingCard: View {
 
   private var dDayColor: Color {
     let now = Date()
-    let voteDate = promise.votes.until
+    let voteDate = schedule.votes.until
     let hoursRemaining = voteDate.timeIntervalSince(now) / 3600
 
     // 24시간 이내면 빨강
@@ -184,7 +184,7 @@ struct PendingCard: View {
       return .red
     }
 
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
@@ -199,7 +199,7 @@ struct PendingCard: View {
   }
 
   private var dateTimeString: String {
-    LocalizedDateFormatters.shortDateTime.string(from: promise.startAt)
+    LocalizedDateFormatters.shortDateTime.string(from: schedule.startAt)
   }
 
 }
@@ -209,13 +209,13 @@ struct PendingCard: View {
 #Preview {
   HStack {
     PendingCard(
-      promise: PromiseModel.mock(id: "1", title: "저녁 모임"),
+      schedule: ScheduleModel.mock(id: "1", title: "저녁 모임"),
       totalMembers: 5,
       onTap: {}
     )
 
     PendingCard(
-      promise: PromiseModel.mock(id: "2", title: "주말 약속"),
+      schedule: ScheduleModel.mock(id: "2", title: "주말 일정"),
       totalMembers: 4,
       onTap: {}
     )

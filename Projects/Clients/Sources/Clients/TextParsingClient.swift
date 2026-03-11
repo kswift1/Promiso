@@ -4,14 +4,14 @@ import NaturalLanguage
 
 // MARK: - Client
 
-/// 텍스트에서 약속 정보를 추출하는 Client
+/// 텍스트에서 일정 정보를 추출하는 Client
 /// KoreanDateParser + NLTagger(장소명 NER) + 제목 추론 조합
 @DependencyClient
 public struct TextParsingClient: Sendable {
-  /// 텍스트에서 약속 정보 추출
+  /// 텍스트에서 일정 정보 추출
   /// - Parameter text: 입력 텍스트
-  /// - Returns: 추출된 약속 정보
-  public var parse: @Sendable (_ text: String) async throws -> PromiseExtractedInfo
+  /// - Returns: 추출된 일정 정보
+  public var parse: @Sendable (_ text: String) async throws -> ScheduleExtractedInfo
 }
 
 // MARK: - Test & Preview Values
@@ -21,7 +21,7 @@ extension TextParsingClient: TestDependencyKey {
 
   public static let previewValue = Self(
     parse: { text in
-      PromiseExtractedInfo(
+      ScheduleExtractedInfo(
         title: "주말 모임",
         date: Date().addingTimeInterval(86400),
         location: "강남역",
@@ -50,14 +50,14 @@ extension TextParsingClient: DependencyKey {
       parse: { text in
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-          return PromiseExtractedInfo(rawText: text, source: .text)
+          return ScheduleExtractedInfo(rawText: text, source: .text)
         }
 
         let date = KoreanDateParser.parse(trimmed)
         let location = extractLocation(from: trimmed)
         let title = extractTitle(from: trimmed)
 
-        return PromiseExtractedInfo(
+        return ScheduleExtractedInfo(
           title: title,
           date: date,
           location: location,

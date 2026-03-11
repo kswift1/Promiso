@@ -5,7 +5,7 @@ import ResourceKit
 
 // MARK: - Timeline Item View
 
-/// 오늘의 일정 타임라인 개별 아이템 (약속 + 개인 일정 + 반복 일정 통합)
+/// 오늘의 일정 타임라인 개별 아이템 (일정 + 개인 일정 + 반복 일정 통합)
 struct TimelineItemView: View {
   let item: HomeModels.ScheduleItem
   let isFirst: Bool
@@ -111,24 +111,24 @@ struct TimelineItemView: View {
 
       // Row 2: 타입별 메타 정보
       switch item {
-      case .promise(let promise):
-        promiseMetaRow(promise)
+      case .schedule(let schedule):
+        scheduleMetaRow(schedule)
       case .personalEvent(let event):
         personalEventMetaRow(event)
       case .recurringPersonalEvent(let event):
         recurringEventMetaRow(event)
       }
 
-      // Row 3: 장소 (promise만, 개인/반복은 Row 2에 포함)
-      if case .promise(let promise) = item, let location = promise.location {
+      // Row 3: 장소 (schedule만, 개인/반복은 Row 2에 포함)
+      if case .schedule(let schedule) = item, let location = schedule.location {
         locationRow(location)
       }
 
       // Row 4: 추가 정보 (타입별)
       switch item {
-      case .promise(let promise):
-        if let minutes = promise.trackingStartMinutesBefore {
-          liveActivityRow(promise: promise, minutes: minutes)
+      case .schedule(let schedule):
+        if let minutes = schedule.trackingStartMinutesBefore {
+          liveActivityRow(schedule: schedule, minutes: minutes)
         }
       case .personalEvent(let event):
         personalEventDetailRow(event)
@@ -144,8 +144,8 @@ struct TimelineItemView: View {
   @ViewBuilder
   private var typeBadge: some View {
     switch item {
-    case .promise(let promise):
-      if let group = promise.group {
+    case .schedule(let schedule):
+      if let group = schedule.group {
         HStack(spacing: 3) {
           GroupThumbnailView(
             imageUrl: group.imageUrl,
@@ -190,22 +190,22 @@ struct TimelineItemView: View {
 
   // MARK: - Type-Specific Meta Rows
 
-  private func promiseMetaRow(_ promise: PromiseModel) -> some View {
+  private func scheduleMetaRow(_ schedule: ScheduleModel) -> some View {
     HStack(spacing: 6) {
       // 확정/미확정 배지
       HStack(spacing: 3) {
-        Image(systemName: promise.isConfirmed ? "checkmark.circle.fill" : "clock.badge")
+        Image(systemName: schedule.isConfirmed ? "checkmark.circle.fill" : "clock.badge")
           .font(.system(size: 10))
-        Text(promise.isConfirmed ? "확정" : "미확정")
+        Text(schedule.isConfirmed ? "확정" : "미확정")
           .font(.system(size: 11, weight: .semibold))
       }
-      .foregroundStyle(promise.isConfirmed ? Color.green : Color.orange)
+      .foregroundStyle(schedule.isConfirmed ? Color.green : Color.orange)
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
-      .background((promise.isConfirmed ? Color.green : Color.orange).opacity(0.1))
+      .background((schedule.isConfirmed ? Color.green : Color.orange).opacity(0.1))
       .clipShape(Capsule())
 
-      Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
+      Text(LocalizedStrings.Home.participantsConfirmed(schedule.votes.accepted.count))
         .font(.pmCaption)
         .foregroundStyle(.secondary)
     }
@@ -259,12 +259,12 @@ struct TimelineItemView: View {
 
   // MARK: - Live Activity Row
 
-  private func liveActivityRow(promise: PromiseModel, minutes: Int) -> some View {
+  private func liveActivityRow(schedule: ScheduleModel, minutes: Int) -> some View {
     HStack(spacing: 4) {
       Image(systemName: "antenna.radiowaves.left.and.right")
         .font(.pmCaption2)
 
-      Text(liveStartTimeString(promise: promise, minutes: minutes))
+      Text(liveStartTimeString(schedule: schedule, minutes: minutes))
         .font(.pmCaption)
 
       Button {
@@ -275,10 +275,10 @@ struct TimelineItemView: View {
       }
       .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
         LiveActivityInfoPopover(
-          emoji: promise.displayEmoji,
-          title: promise.title,
-          location: promise.location?.name,
-          promiseTime: promise.startAt
+          emoji: schedule.displayEmoji,
+          title: schedule.title,
+          location: schedule.location?.name,
+          scheduleTime: schedule.startAt
         )
       }
     }
@@ -338,7 +338,7 @@ struct TimelineItemView: View {
       VStack(alignment: .leading, spacing: 6) {
         ProBadge()
 
-        // 날씨 (promise만)
+        // 날씨 (schedule만)
         if let forecast = weatherForecast {
           ProWeatherRow(
             forecast: forecast,
@@ -437,23 +437,23 @@ struct TimelineItemView: View {
   // MARK: - Weather Helpers
 
   private var weatherForecast: HourlyForecast? {
-    guard case .promise(let promise) = item else { return nil }
-    return weather?.forecast(for: promise.startAt)
+    guard case .schedule(let schedule) = item else { return nil }
+    return weather?.forecast(for: schedule.startAt)
   }
 
   private var weatherRangeForecasts: [HourlyForecast] {
-    guard case .promise(let promise) = item else { return [] }
-    return weather?.forecasts(from: promise.startAt, to: promise.endAt) ?? []
+    guard case .schedule(let schedule) = item else { return [] }
+    return weather?.forecasts(from: schedule.startAt, to: schedule.endAt) ?? []
   }
 
   private var weatherForecastSource: ForecastSource {
-    guard case .promise(let promise) = item else { return .shortTerm }
-    return weather?.forecastSource(for: promise.startAt) ?? .shortTerm
+    guard case .schedule(let schedule) = item else { return .shortTerm }
+    return weather?.forecastSource(for: schedule.startAt) ?? .shortTerm
   }
 
   private var weatherShouldShowSkeleton: Bool {
-    guard case .promise(let promise) = item else { return false }
-    return shouldShowWeatherSkeleton(promise)
+    guard case .schedule(let schedule) = item else { return false }
+    return shouldShowWeatherSkeleton(schedule)
   }
 
   // MARK: - Time Label
@@ -518,15 +518,15 @@ struct TimelineItemView: View {
   }
 
   /// 날씨 조회가 진행 중인 경우 스켈레톤 노출
-  private func shouldShowWeatherSkeleton(_ promise: PromiseModel) -> Bool {
+  private func shouldShowWeatherSkeleton(_ schedule: ScheduleModel) -> Bool {
     guard weather == nil else { return false }
-    guard let location = promise.location,
+    guard let location = schedule.location,
           location.latitude != nil,
           location.longitude != nil else { return false }
 
     let now = Date()
     let maxDate = now.addingTimeInterval(10 * 24 * 3600)
-    return promise.startAt >= now && promise.startAt < maxDate
+    return schedule.startAt >= now && schedule.startAt < maxDate
   }
 
   private var weatherLoadingPlaceholder: some View {
@@ -556,8 +556,8 @@ struct TimelineItemView: View {
   }
 
   /// 실시간 공유 시작 시간 문자열
-  private func liveStartTimeString(promise: PromiseModel, minutes: Int) -> String {
-    let liveStartTime = promise.startAt.addingTimeInterval(-Double(minutes * 60))
+  private func liveStartTimeString(schedule: ScheduleModel, minutes: Int) -> String {
+    let liveStartTime = schedule.startAt.addingTimeInterval(-Double(minutes * 60))
     return "\(liveStartTime.formattedTime) \(LocalizedStrings.Home.startLiveSharing)"
   }
 
@@ -586,10 +586,10 @@ struct TimelineItemView: View {
 
 // MARK: - Preview
 
-#Preview("약속") {
+#Preview("일정") {
   VStack(spacing: 0) {
     TimelineItemView(
-      item: .promise(PromiseModel.mock(
+      item: .schedule(ScheduleModel.mock(
         id: "1",
         title: "점심 모임",
         startAt: Date().addingTimeInterval(1800)
@@ -606,7 +606,7 @@ struct TimelineItemView: View {
     )
 
     TimelineItemView(
-      item: .promise(PromiseModel.mock(
+      item: .schedule(ScheduleModel.mock(
         id: "2",
         title: "카페 미팅",
         startAt: Date().addingTimeInterval(7200)

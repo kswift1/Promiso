@@ -289,8 +289,8 @@ struct CinematicHeroView: View {
 
   private var organizedCardsView: some View {
     VStack(spacing: 10) {
-      // 1. 전원 확정 약속
-      promiseCard(
+      // 1. 전원 확정 일정
+      scheduleCard(
         info: cardSet.confirmed.info,
         groupName: LocalizedStrings.Onboarding.introHeroGroupClassmates,
         participantCount: cardSet.confirmed.count,
@@ -298,8 +298,8 @@ struct CinematicHeroView: View {
       )
       .cascadeIn(visible: visibleCards >= 1)
 
-      // 2. 확정 대기 약속
-      promiseCard(
+      // 2. 확정 대기 일정
+      scheduleCard(
         info: CardInfo(
           emoji: "🍟",
           title: LocalizedStrings.Onboarding.introHeroFriesTitle,
@@ -312,8 +312,8 @@ struct CinematicHeroView: View {
       )
       .cascadeIn(visible: visibleCards >= 2)
 
-      // 3. 예정 약속
-      promiseCard(
+      // 3. 예정 일정
+      scheduleCard(
         info: cardSet.upcoming.info,
         groupName: nil,
         participantCount: nil,
@@ -336,7 +336,7 @@ struct CinematicHeroView: View {
     case time(String)
   }
 
-  private func promiseCard(
+  private func scheduleCard(
     info: CardInfo,
     groupName: String?,
     participantCount: String?,

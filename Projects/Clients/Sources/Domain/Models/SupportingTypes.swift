@@ -24,10 +24,10 @@ extension RangedEvent {
   }
 }
 
-// MARK: - Promise Votes Model
+// MARK: - Schedule Votes Model
 
 /// 투표 정보 (votes Map)
-public struct PromiseVotesModel: Hashable, Codable, Equatable, Sendable {
+public struct ScheduleVotesModel: Hashable, Codable, Equatable, Sendable {
   /// 참여 확정한 userId 목록
   public let accepted: [String]
   /// 참여 불가한 userId 목록
@@ -92,7 +92,7 @@ public struct Proposal: Hashable, Codable, Equatable {
   public let description: String?
   public let fromUserId: String
   public let toUserId: String
-  public let promiseId: String?
+  public let scheduleId: String?
   public let status: ProposalStatus
   public let createdAt: Date
   public let updatedAt: Date
@@ -103,7 +103,7 @@ public struct Proposal: Hashable, Codable, Equatable {
     description: String? = nil,
     fromUserId: String,
     toUserId: String,
-    promiseId: String? = nil,
+    scheduleId: String? = nil,
     status: ProposalStatus,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -113,7 +113,7 @@ public struct Proposal: Hashable, Codable, Equatable {
     self.description = description
     self.fromUserId = fromUserId
     self.toUserId = toUserId
-    self.promiseId = promiseId
+    self.scheduleId = scheduleId
     self.status = status
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -129,7 +129,7 @@ public enum ProposalStatus: String, CaseIterable, Codable {
 
 // MARK: - DTO -> Model 변환
 
-extension PromiseVotesModel {
+extension ScheduleVotesModel {
   /// DTO에서 Model 생성
   public init(dto: VotesDTO) {
     self.init(

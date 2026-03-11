@@ -17,12 +17,12 @@ private struct WidgetSnapshotMeta: Decodable {
 
 /// Firebase Functions getWidgetSnapshot 응답 모델
 ///
-/// 서버에서 그룹 약속과 개인 일정을 통합하여 today/upcoming에 반환.
-/// 각 항목의 `type` 필드로 약속/개인 일정을 구분.
+/// 서버에서 그룹 일정과 개인 일정을 통합하여 today/upcoming에 반환.
+/// 각 항목의 `type` 필드로 일정/개인 일정을 구분.
 private struct WidgetSnapshotResponse: Decodable {
-  let next: WidgetPromiseDTO?
-  let today: [WidgetPromiseDTO]
-  let upcoming: [WidgetPromiseDTO]
+  let next: WidgetScheduleDTO?
+  let today: [WidgetScheduleDTO]
+  let upcoming: [WidgetScheduleDTO]
   let meta: WidgetSnapshotMeta?
 
   // Legacy 호환
@@ -35,29 +35,29 @@ private struct WidgetVotesDTO: Decodable {
   let declined: [String]
 }
 
-/// 서버에서 받아오는 통합 일정 DTO (약속 + 개인 일정)
+/// 서버에서 받아오는 통합 일정 DTO (일정 + 개인 일정)
 ///
 /// `type` 필드로 구분:
-/// - "promise" (기본값): 그룹 약속 → groupId, votes 등 존재
+/// - "schedule" (기본값): 그룹 일정 → groupId, votes 등 존재
 /// - "personal": 개인 일정 → groupId/votes 등 없음
-private struct WidgetPromiseDTO: Decodable {
+private struct WidgetScheduleDTO: Decodable {
   let id: String
   let title: String
   let emoji: String
   let startAt: String  // ISO 8601
   let endAt: String?
   let location: String?
-  let type: String?  // "promise" | "personal" (nil이면 promise)
+  let type: String?  // "schedule" | "personal" (nil이면 schedule)
 
-  // 약속 전용 필드 (개인 일정은 nil)
+  // 일정 전용 필드 (개인 일정은 nil)
   let groupId: String?
   let groupName: String?
   let isConfirmed: Bool?
   let votes: WidgetVotesDTO?
   let myVoteStatus: String?  // "pending" | "voted" | "declined"
 
-  /// WidgetPromiseData로 변환
-  func toWidgetPromiseData() -> WidgetPromiseData? {
+  /// WidgetScheduleData로 변환
+  func toWidgetScheduleData() -> WidgetScheduleData? {
     let isoFormatter = ISO8601DateFormatter()
     isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -73,7 +73,7 @@ private struct WidgetPromiseDTO: Decodable {
     return createData(startDate: startDate, isoFormatter: isoFormatter)
   }
 
-  private func createData(startDate: Date, isoFormatter: ISO8601DateFormatter) -> WidgetPromiseData {
+  private func createData(startDate: Date, isoFormatter: ISO8601DateFormatter) -> WidgetScheduleData {
     let endDate: Date?
     if let endAtString = endAt {
       endDate = isoFormatter.date(from: endAtString)
@@ -81,7 +81,7 @@ private struct WidgetPromiseDTO: Decodable {
       endDate = nil
     }
 
-    let scheduleType: ScheduleType = (type == "personal") ? .personal : .promise
+    let scheduleType: ScheduleType = (type == "personal") ? .personal : .schedule
 
     // myVoteStatus 변환
     let voteStatus: MyVoteStatus
@@ -94,7 +94,7 @@ private struct WidgetPromiseDTO: Decodable {
       voteStatus = .pending
     }
 
-    return WidgetPromiseData(
+    return WidgetScheduleData(
       type: scheduleType,
       id: id,
       title: title,
@@ -114,25 +114,25 @@ private struct WidgetPromiseDTO: Decodable {
 /// Widget과 App 간 데이터 공유를 위한 매니저
 ///
 /// ## 아키텍처
-/// - **저장**: 2개의 캐시 키 (promises / personalEvents) 사용
+/// - **저장**: 2개의 캐시 키 (schedules / personalEvents) 사용
 ///   - App과 Widget Extension이 별도 프로세스이므로 독립적 쓰기 안전성 확보
-///   - App에서 promises/personalEvents를 각각 다른 시점에 저장
+///   - App에서 schedules/personalEvents를 각각 다른 시점에 저장
 /// - **로드**: `loadAllItems()`로 2개 키를 병합하여 startAt 정렬 반환
 /// - **서버 Fetch**: 서버에서 통합된 응답을 받아 type별로 분리 저장
 // MARK: - Widget Kind 상수
 
 /// 위젯 kind 식별자 상수
 public enum WidgetKind {
-  /// 홈 화면 위젯 (systemSmall) - 다음 약속 1개 표시
-  public static let systemSmall = "PromiseSystemSmall"
-  /// 홈 화면 위젯 (systemMedium) - 오늘 약속 2-3개 표시
-  public static let systemMedium = "PromiseSystemMedium"
-  /// 홈 화면 위젯 (systemLarge) - 오늘 + 다가오는 약속 표시
-  public static let systemLarge = "PromiseSystemLarge"
+  /// 홈 화면 위젯 (systemSmall) - 다음 일정 1개 표시
+  public static let systemSmall = "ScheduleSystemSmall"
+  /// 홈 화면 위젯 (systemMedium) - 오늘 일정 2-3개 표시
+  public static let systemMedium = "ScheduleSystemMedium"
+  /// 홈 화면 위젯 (systemLarge) - 오늘 + 다가오는 일정 표시
+  public static let systemLarge = "ScheduleSystemLarge"
   /// 잠금 화면 위젯 (accessoryCircular) - D-Day 표시
-  public static let accessoryCircular = "PromiseAccessoryCircular"
-  /// 잠금 화면 위젯 (accessoryRectangular) - 다음 약속 정보
-  public static let accessoryRectangular = "PromiseAccessoryRectangular"
+  public static let accessoryCircular = "ScheduleAccessoryCircular"
+  /// 잠금 화면 위젯 (accessoryRectangular) - 다음 일정 정보
+  public static let accessoryRectangular = "ScheduleAccessoryRectangular"
 
   /// 모든 위젯 kind 목록
   public static let all: [String] = [
@@ -146,13 +146,13 @@ public enum WidgetKind {
 public enum WidgetDataManager {
   // MARK: - Constants
 
-  /// 과거 약속 필터링 기준 (1시간 전까지 표시)
-  private static let pastPromiseThreshold: TimeInterval = -1 * 60 * 60
+  /// 과거 일정 필터링 기준 (1시간 전까지 표시)
+  private static let pastScheduleThreshold: TimeInterval = -1 * 60 * 60
 
   // MARK: - Keys
 
   private static let suiteName = LiveActivityIntentKey.suiteName
-  private static let promisesKey = "widget.promises"
+  private static let schedulesKey = "widget.schedules"
   private static let personalEventsKey = "widget.personalEvents"
   private static let userIdKey = "widget.userId"
   private static let lastUpdatedKey = "widget.lastUpdated"
@@ -172,16 +172,16 @@ public enum WidgetDataManager {
 
   // MARK: - App에서 호출 (저장)
 
-  /// 그룹 약속 목록 저장
-  public static func savePromises(_ promises: [WidgetPromiseData]) {
+  /// 그룹 일정 목록 저장
+  public static func saveSchedules(_ schedules: [WidgetScheduleData]) {
     guard let defaults = defaults,
-          let data = try? JSONEncoder().encode(promises) else { return }
-    defaults.set(data, forKey: promisesKey)
+          let data = try? JSONEncoder().encode(schedules) else { return }
+    defaults.set(data, forKey: schedulesKey)
     defaults.set(Date(), forKey: lastUpdatedKey)
   }
 
   /// 개인 일정 목록 저장
-  public static func savePersonalEvents(_ events: [WidgetPromiseData]) {
+  public static func savePersonalEvents(_ events: [WidgetScheduleData]) {
     guard let defaults = defaults,
           let data = try? JSONEncoder().encode(events) else { return }
     defaults.set(data, forKey: personalEventsKey)
@@ -232,32 +232,32 @@ public enum WidgetDataManager {
 
   // MARK: - Widget에서 호출 (읽기)
 
-  /// 그룹 약속만 로드
-  public static func loadPromises() -> [WidgetPromiseData] {
-    loadItems(forKey: promisesKey)
+  /// 그룹 일정만 로드
+  public static func loadSchedules() -> [WidgetScheduleData] {
+    loadItems(forKey: schedulesKey)
   }
 
   /// 개인 일정만 로드
-  public static func loadPersonalEvents() -> [WidgetPromiseData] {
+  public static func loadPersonalEvents() -> [WidgetScheduleData] {
     loadItems(forKey: personalEventsKey)
   }
 
-  /// 전체 통합 일정 로드 (그룹 약속 + 개인 일정, startAt 정렬)
-  public static func loadAllItems() -> [WidgetPromiseData] {
-    let promises = loadItems(forKey: promisesKey)
+  /// 전체 통합 일정 로드 (그룹 일정 + 개인 일정, startAt 정렬)
+  public static func loadAllItems() -> [WidgetScheduleData] {
+    let schedules = loadItems(forKey: schedulesKey)
     let personalEvents = loadItems(forKey: personalEventsKey)
-    return (promises + personalEvents).sorted { $0.startAt < $1.startAt }
+    return (schedules + personalEvents).sorted { $0.startAt < $1.startAt }
   }
 
   /// 특정 키에서 항목 로드 (과거 필터링 + 정렬)
-  private static func loadItems(forKey key: String) -> [WidgetPromiseData] {
+  private static func loadItems(forKey key: String) -> [WidgetScheduleData] {
     guard let defaults = defaults,
           let data = defaults.data(forKey: key),
-          let items = try? JSONDecoder().decode([WidgetPromiseData].self, from: data)
+          let items = try? JSONDecoder().decode([WidgetScheduleData].self, from: data)
     else { return [] }
 
     return items
-      .filter { $0.startAt > Date().addingTimeInterval(pastPromiseThreshold) }
+      .filter { $0.startAt > Date().addingTimeInterval(pastScheduleThreshold) }
       .sorted { $0.startAt < $1.startAt }
   }
 
@@ -276,7 +276,7 @@ public enum WidgetDataManager {
   /// 모든 데이터 삭제 (로그아웃 시)
   /// Note: 토큰 삭제는 AuthClient.clearWidgetAuthToken()에서 처리
   public static func clearAll() {
-    defaults?.removeObject(forKey: promisesKey)
+    defaults?.removeObject(forKey: schedulesKey)
     defaults?.removeObject(forKey: personalEventsKey)
     defaults?.removeObject(forKey: userIdKey)
     defaults?.removeObject(forKey: lastUpdatedKey)
@@ -328,10 +328,10 @@ public enum WidgetDataManager {
 
   /// 위젯 데이터 Fetch 결과
   public struct FetchResult {
-    public let items: [WidgetPromiseData]
+    public let items: [WidgetScheduleData]
     public let hadError: Bool
 
-    public init(items: [WidgetPromiseData], hadError: Bool) {
+    public init(items: [WidgetScheduleData], hadError: Bool) {
       self.items = items
       self.hadError = hadError
     }
@@ -340,7 +340,7 @@ public enum WidgetDataManager {
   /// 위젯에서 직접 API 호출하여 데이터 가져오기
   ///
   /// @architecture 서버 통합 방식
-  /// - 서버에서 그룹 약속 + 개인 일정을 통합하여 반환
+  /// - 서버에서 그룹 일정 + 개인 일정을 통합하여 반환
   /// - 클라이언트는 type 필드로 구분하여 캐시 저장
   ///
   /// - Returns: FetchResult (통합 일정 목록 + 에러 발생 여부)
@@ -478,19 +478,19 @@ public enum WidgetDataManager {
   // MARK: - Private Helpers
 
   /// 서버 응답을 통합 항목 배열로 변환
-  private static func convertSnapshotToItems(_ snapshot: WidgetSnapshotResponse) -> [WidgetPromiseData] {
-    var allItems: [WidgetPromiseData] = []
+  private static func convertSnapshotToItems(_ snapshot: WidgetSnapshotResponse) -> [WidgetScheduleData] {
+    var allItems: [WidgetScheduleData] = []
     var seenIds: Set<String> = []
 
     // next 추가
-    if let next = snapshot.next?.toWidgetPromiseData() {
+    if let next = snapshot.next?.toWidgetScheduleData() {
       allItems.append(next)
       seenIds.insert(next.id)
     }
 
     // today 추가 (중복 제거 - O(1) lookup)
     for dto in snapshot.today {
-      if let item = dto.toWidgetPromiseData(),
+      if let item = dto.toWidgetScheduleData(),
          !seenIds.contains(item.id) {
         allItems.append(item)
         seenIds.insert(item.id)
@@ -499,7 +499,7 @@ public enum WidgetDataManager {
 
     // upcoming 추가 (중복 제거 - O(1) lookup)
     for dto in snapshot.upcoming {
-      if let item = dto.toWidgetPromiseData(),
+      if let item = dto.toWidgetScheduleData(),
          !seenIds.contains(item.id) {
         allItems.append(item)
         seenIds.insert(item.id)
@@ -513,10 +513,10 @@ public enum WidgetDataManager {
   ///
   /// App과 Widget Extension이 별도 프로세스이므로,
   /// 2개의 캐시 키를 사용하여 독립적 쓰기 안전성을 확보합니다.
-  private static func saveItemsByType(_ items: [WidgetPromiseData]) {
-    let promises = items.filter { $0.type == .promise }
+  private static func saveItemsByType(_ items: [WidgetScheduleData]) {
+    let schedules = items.filter { $0.type == .schedule }
     let personalEvents = items.filter { $0.type == .personal }
-    savePromises(promises)
+    saveSchedules(schedules)
     savePersonalEvents(personalEvents)
   }
 }

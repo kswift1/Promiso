@@ -624,7 +624,7 @@ extension AppEntry {
       if store.splash != .hidden {
         SplashView(
           config: .init(forceHideLogo: false),
-          logo: { ResourceKitAsset.fingerPromise.swiftUIImage },
+          logo: { ResourceKitAsset.fingerSchedule.swiftUIImage },
           animateOut: store.splash == .animatingOut,
           isCompleted: {
             store.send(.view(.splashAnimationCompleted))
@@ -681,8 +681,8 @@ extension AppEntry.Feature {
   /// DeeplinkDestination을 RootTab으로 라우팅하는 Effect 생성
   private func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
     switch destination {
-    case .promise(let promiseId, let groupId):
-      let groupDeeplink = GroupMain.Deeplink.promise(promiseId: promiseId, groupId: groupId)
+    case .schedule(let scheduleId, let groupId):
+      let groupDeeplink = GroupMain.Deeplink.schedule(scheduleId: scheduleId, groupId: groupId)
       return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
 
     case .group(let groupId):
@@ -693,16 +693,16 @@ extension AppEntry.Feature {
       return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
 
     case .liveActivityETA:
-      // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+      // Widget "직접 입력" 버튼 → LiveScheduleExpandedView + ETA 시트 열기
       return .send(.destination(.presented(.main(.openLiveActivityETASheet))))
 
-    case .livePromise:
-      // LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
-      return .send(.destination(.presented(.main(.openLivePromiseDetail))))
+    case .liveSchedule:
+      // LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
 
     case .create:
-      // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
-      return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
+      // Widget "일정 만들기" 버튼 → 그룹 탭 이동 + 일정 생성 (그룹 있을 때만)
+      return .send(.destination(.presented(.main(.openCreateScheduleIfPossible))))
 
     case .personalEvent(let eventId):
       // Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기

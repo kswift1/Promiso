@@ -60,7 +60,7 @@ public struct ConflictWarningSection: View {
     if hasConfirmedConflict {
       return "겹치는 일정이 있어요"
     } else {
-      return "아직 확정되지 않은 약속이 있어요"
+      return "아직 확정되지 않은 일정이 있어요"
     }
   }
 
@@ -129,7 +129,7 @@ private struct ConflictItemRow: View {
 
   private var defaultEmoji: String {
     switch conflict.source {
-    case .promise: return "📌"
+    case .schedule: return "📌"
     case .personalEvent: return "📅"
     }
   }

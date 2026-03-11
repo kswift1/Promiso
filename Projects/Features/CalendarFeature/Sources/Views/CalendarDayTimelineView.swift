@@ -14,7 +14,7 @@ struct CalendarDayTimelineView: View {
   let onScheduleItemTapped: (CalendarFeature.ScheduleItem) -> Void
   let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date, Date) -> Void
-  let onCreatePromise: (Date, Date) -> Void
+  let onCreateSchedule: (Date, Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onPastTimeBlocked: (() -> Void)?
@@ -165,7 +165,7 @@ struct CalendarDayTimelineView: View {
     .onAppear {
       if isToday {
         let initialScrollOffset: CGFloat = 60
-        let components = Calendar.promiseDisplay.dateComponents([.hour, .minute], from: Date())
+        let components = Calendar.scheduleDisplay.dateComponents([.hour, .minute], from: Date())
         let hour = CGFloat(components.hour ?? 0)
         let minute = CGFloat(components.minute ?? 0)
         let targetY = max(0, (hour + minute / 60.0) * hourHeight - initialScrollOffset)
@@ -179,7 +179,7 @@ struct CalendarDayTimelineView: View {
       if let firstItem = scheduleItems.first {
         targetY = max(0, yOffset(for: clampedStartAt(for: firstItem)) - 20)
       } else {
-        let hour = Calendar.promiseDisplay.component(.hour, from: Date())
+        let hour = Calendar.scheduleDisplay.component(.hour, from: Date())
         targetY = max(0, CGFloat(hour) * hourHeight - 20)
       }
       scrollPosition.scrollTo(y: targetY)
@@ -416,7 +416,7 @@ struct CalendarDayTimelineView: View {
             guard let startSlot = creationStartSlot else { return }
             let startDate = dateForSlot(startSlot)
             let endDate = dateForSlot(creationEndSlot)
-            onCreatePromise(startDate, endDate)
+            onCreateSchedule(startDate, endDate)
           }
           Button(LocalizedStrings.Common.cancel, role: .cancel) {}
         }
@@ -485,7 +485,7 @@ struct CalendarDayTimelineView: View {
   // MARK: - Current Time Indicator
 
   private var isToday: Bool {
-    Calendar.promiseDisplay.isDateInToday(displayDate)
+    Calendar.scheduleDisplay.isDateInToday(displayDate)
   }
 
   private var currentTimeIndicator: some View {
@@ -616,7 +616,7 @@ struct CalendarDayTimelineView: View {
   /// 일정 아이템의 시작 시간을 10분 슬롯으로 변환
   private func slotForItem(_ item: CalendarFeature.ScheduleItem) -> Int {
     let start = clampedStartAt(for: item)
-    let cal = Calendar.promiseDisplay
+    let cal = Calendar.scheduleDisplay
     let hour = cal.component(.hour, from: start)
     let minute = cal.component(.minute, from: start)
     return hour * 6 + minute / 10
@@ -625,7 +625,7 @@ struct CalendarDayTimelineView: View {
   private func dateForSlot(_ slot: Int) -> Date {
     let hour = slot / 6
     let minute = (slot % 6) * 10
-    return Calendar.promiseDisplay.date(bySettingHour: hour, minute: minute, second: 0, of: displayDate) ?? displayDate
+    return Calendar.scheduleDisplay.date(bySettingHour: hour, minute: minute, second: 0, of: displayDate) ?? displayDate
   }
 
   // MARK: - Time Grid
@@ -725,7 +725,7 @@ struct CalendarDayTimelineView: View {
                     .lineLimit(1)
                 }
 
-                if case .promise(let p) = item,
+                if case .schedule(let p) = item,
                    p.responseStatus(currentUserId: currentUserId) == .needResponse {
                   Text("응답 필요")
                     .font(.system(size: 9, weight: .bold))
@@ -820,19 +820,19 @@ struct CalendarDayTimelineView: View {
     .clipShape(cardShape)
     .contextMenu {
       switch item {
-      case .promise(let promise):
-        // Host인 경우 수정/삭제 옵션 (PromiseCard 패턴)
-        if promise.isHost(userId: currentUserId) {
+      case .schedule(let schedule):
+        // Host인 경우 수정/삭제 옵션 (ScheduleCard 패턴)
+        if schedule.isHost(userId: currentUserId) {
           Button {
             onEditScheduleItem?(item)
           } label: {
-            Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
+            Label(LocalizedStrings.ScheduleCard.editSchedule, systemImage: "pencil")
           }
 
           Button(role: .destructive) {
             onDeleteScheduleItem?(item)
           } label: {
-            Label(LocalizedStrings.PromiseCard.deletePromise, systemImage: "trash")
+            Label(LocalizedStrings.ScheduleCard.deleteSchedule, systemImage: "trash")
           }
         }
 
@@ -840,13 +840,13 @@ struct CalendarDayTimelineView: View {
         Button {
           onScheduleItemTapped(item)
         } label: {
-          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+          Label(LocalizedStrings.ScheduleCard.viewDetail, systemImage: "info.circle")
         }
 
         Button {
           onShareScheduleItem?(item)
         } label: {
-          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
+          Label(LocalizedStrings.ScheduleCard.share, systemImage: "square.and.arrow.up")
         }
 
       case .personalEvent:
@@ -872,7 +872,7 @@ struct CalendarDayTimelineView: View {
         Button {
           onScheduleItemTapped(item)
         } label: {
-          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+          Label(LocalizedStrings.ScheduleCard.viewDetail, systemImage: "info.circle")
         }
 
       case .recurringPersonalEvent:
@@ -943,7 +943,7 @@ struct CalendarDayTimelineView: View {
 
   /// 시간 기반 y 좌표 계산
   private func yOffset(for date: Date) -> CGFloat {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let hour = calendar.component(.hour, from: date)
     let minute = calendar.component(.minute, from: date)
     return (CGFloat(hour) + CGFloat(minute) / 60.0) * hourHeight
@@ -951,11 +951,11 @@ struct CalendarDayTimelineView: View {
 
   /// 해당 날짜의 시작/종료 시각
   private var dayStart: Date {
-    Calendar.promiseDisplay.startOfDay(for: displayDate)
+    Calendar.scheduleDisplay.startOfDay(for: displayDate)
   }
 
   private var dayEnd: Date {
-    Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+    Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
   }
 
   /// multi-day 일정의 시작 시간을 해당 날짜로 클램핑
@@ -1024,7 +1024,7 @@ struct CalendarDayTimelineView: View {
 
   private func barColor(for item: CalendarFeature.ScheduleItem) -> Color {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return groupColorMap[p.groupId] ?? Color.pmindigo.n500
     case .personalEvent:
       return Color.pminfo.n500
@@ -1037,7 +1037,7 @@ struct CalendarDayTimelineView: View {
 
   private func groupName(for item: CalendarFeature.ScheduleItem) -> String? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.group?.name
     case .personalEvent:
       return nil
@@ -1051,7 +1051,7 @@ struct CalendarDayTimelineView: View {
   @ViewBuilder
   private func weatherBadge(for item: CalendarFeature.ScheduleItem) -> some View {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       if let weatherInfo = weatherCache[p.id],
          let forecast = weatherInfo.forecast(for: p.startAt) {
         WeatherBadge(
@@ -1088,13 +1088,13 @@ struct CalendarDayTimelineView: View {
     Formatters.dateTime.string(from: date)
   }
 
-  private func promiseResponseStatus(_ promise: PromiseModel) -> PromiseResponseStatus {
-    let memberCount = promise.group?.memberIds.count
+  private func scheduleResponseStatus(_ schedule: ScheduleModel) -> ScheduleResponseStatus {
+    let memberCount = schedule.group?.memberIds.count
     let totalMembers = (memberCount ?? 0) > 0 ? memberCount : nil
-    return promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+    return schedule.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
   }
 
-  private func statusColor(for status: PromiseResponseStatus) -> Color {
+  private func statusColor(for status: ScheduleResponseStatus) -> Color {
     switch status {
     case .needResponse: return Color.pmwarning.n500
     case .expired:      return Color.pmgray.n400
@@ -1104,7 +1104,7 @@ struct CalendarDayTimelineView: View {
     }
   }
 
-  private func statusText(for status: PromiseResponseStatus) -> String {
+  private func statusText(for status: ScheduleResponseStatus) -> String {
     switch status {
     case .needResponse: return "응답 필요"
     case .expired:      return "마감됨"
@@ -1116,7 +1116,7 @@ struct CalendarDayTimelineView: View {
 
   private func itemLocation(for item: CalendarFeature.ScheduleItem) -> String? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.location?.name
     case .personalEvent(let e):
       return e.location?.name
@@ -1129,7 +1129,7 @@ struct CalendarDayTimelineView: View {
 
   private func itemDescription(for item: CalendarFeature.ScheduleItem) -> String? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.description
     case .personalEvent(let e):
       return e.description
@@ -1142,7 +1142,7 @@ struct CalendarDayTimelineView: View {
 
   private func itemImageUrls(for item: CalendarFeature.ScheduleItem) -> [String] {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.imageUrls
     case .personalEvent(let e):
       return e.imageUrls
@@ -1155,7 +1155,7 @@ struct CalendarDayTimelineView: View {
 
   private func itemFirstImageUrl(for item: CalendarFeature.ScheduleItem) -> URL? {
     switch item {
-    case .promise(let p):
+    case .schedule(let p):
       return p.imageUrls.first.flatMap { URL(string: $0) }
     case .personalEvent(let e):
       return e.imageUrls.first.flatMap { URL(string: $0) }
@@ -1169,7 +1169,7 @@ struct CalendarDayTimelineView: View {
   // MARK: - Formatters
 
   private enum Formatters {
-    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+    static let displayTimeZone = Calendar.scheduleDisplay.timeZone
     static let time: DateFormatter = {
       let f = DateFormatter()
       f.locale = Locale(identifier: "en_US_POSIX")
@@ -1219,11 +1219,11 @@ struct ScheduleItemThumbnail: View {
 // MARK: - Preview
 
 #Preview("일정 있음") {
-  let calendar = Calendar.promiseDisplay
+  let calendar = Calendar.scheduleDisplay
   let today = Date()
 
   let items: [CalendarFeature.ScheduleItem] = [
-    .promise(PromiseModel.mock(
+    .schedule(ScheduleModel.mock(
       id: "1",
       title: "팀 미팅",
       emoji: "🤝",
@@ -1264,7 +1264,7 @@ struct ScheduleItemThumbnail: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _, _ in },
-    onCreatePromise: { _, _ in },
+    onCreateSchedule: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     onPastTimeBlocked: nil,
@@ -1283,7 +1283,7 @@ struct ScheduleItemThumbnail: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _, _ in },
-    onCreatePromise: { _, _ in },
+    onCreateSchedule: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     onPastTimeBlocked: nil,

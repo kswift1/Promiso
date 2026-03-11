@@ -30,7 +30,7 @@ struct CalendarOverlayView: View {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -70,7 +70,7 @@ struct CalendarOverlayView: View {
 
   /// 선택된 날짜가 포함된 행 인덱스
   private var selectedRowIndex: Int {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     return dayRows.firstIndex { row in
       row.contains { calendar.isDate($0.date, inSameDayAs: selectedDate) }
     } ?? 0
@@ -80,7 +80,7 @@ struct CalendarOverlayView: View {
 
   /// 이전 주 데이터 (selectedDate - 7일 기준)
   private var detailPrevWeekDays: [OverlayCalendarModels.DayItem] {
-    guard let prevDate = Calendar.promiseDisplay.date(byAdding: .day, value: -7, to: selectedDate) else {
+    guard let prevDate = Calendar.scheduleDisplay.date(byAdding: .day, value: -7, to: selectedDate) else {
       return []
     }
     return OverlayCalendarModels.generateWeekDays(
@@ -107,7 +107,7 @@ struct CalendarOverlayView: View {
 
   /// 다음 주 데이터 (selectedDate + 7일 기준)
   private var detailNextWeekDays: [OverlayCalendarModels.DayItem] {
-    guard let nextDate = Calendar.promiseDisplay.date(byAdding: .day, value: 7, to: selectedDate) else {
+    guard let nextDate = Calendar.scheduleDisplay.date(byAdding: .day, value: 7, to: selectedDate) else {
       return []
     }
     return OverlayCalendarModels.generateWeekDays(
@@ -216,7 +216,7 @@ struct CalendarOverlayView: View {
       nextDays: nextMonthDays,
       onDateSelected: onDateSelected,
       onCreatePersonalEvent: onCreatePersonalEvent,
-      onCreatePromise: onCreatePromise,
+      onCreateSchedule: onCreateSchedule,
       onPreviousMonth: onPreviousMonth,
       onNextMonth: onNextMonth,
       calendarMode: calendarMode,
@@ -235,12 +235,12 @@ struct CalendarOverlayView: View {
       nextWeekDays: detailNextWeekDays,
       onDateSelected: onDateSelected,
       onPreviousWeek: {
-        if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -7, to: selectedDate) {
+        if let prev = Calendar.scheduleDisplay.date(byAdding: .day, value: -7, to: selectedDate) {
           onDateSelected(prev)
         }
       },
       onNextWeek: {
-        if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 7, to: selectedDate) {
+        if let next = Calendar.scheduleDisplay.date(byAdding: .day, value: 7, to: selectedDate) {
           onDateSelected(next)
         }
       }
@@ -345,17 +345,17 @@ struct CalendarOverlayView: View {
       onScheduleItemTapped: onScheduleItemTapped,
       onEditScheduleItem: onEditScheduleItem,
       onPreviousDay: {
-        if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -1, to: selectedDate) {
+        if let prev = Calendar.scheduleDisplay.date(byAdding: .day, value: -1, to: selectedDate) {
           onDateSelected(prev)
         }
       },
       onNextDay: {
-        if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: selectedDate) {
+        if let next = Calendar.scheduleDisplay.date(byAdding: .day, value: 1, to: selectedDate) {
           onDateSelected(next)
         }
       },
       onCreatePersonalEvent: onCreatePersonalEvent,
-      onCreatePromise: onCreatePromise,
+      onCreateSchedule: onCreateSchedule,
       onDeleteScheduleItem: onDeleteScheduleItem,
       onShareScheduleItem: onShareScheduleItem,
       calendarMode: calendarMode,
@@ -726,7 +726,7 @@ struct CalendarOverlayView: View {
     }
 
     // hourlyForecasts를 날짜별로 그룹핑
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let grouped = Dictionary(grouping: info.hourlyForecasts) { forecast in
       calendar.startOfDay(for: forecast.dateTime)
     }
@@ -768,7 +768,7 @@ struct CalendarOverlayView: View {
   }
 
   private func todayTemperatureRange(from info: WeatherInfo) -> (min: Double, max: Double)? {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let today = Date()
 
     // 1. dailyForecasts에서 오늘 데이터 확인
@@ -786,7 +786,7 @@ struct CalendarOverlayView: View {
   }
 
   private func weatherDailySection(_ forecasts: [DailyForecast]) -> some View {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let today = Date()
 
     return VStack(alignment: .leading, spacing: 12) {
@@ -879,7 +879,7 @@ struct CalendarOverlayView: View {
   // MARK: - Formatters
 
   private enum Formatters {
-    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+    static let displayTimeZone = Calendar.scheduleDisplay.timeZone
 
     static let year: DateFormatter = {
       let f = DateFormatter(); f.timeZone = displayTimeZone; f.dateFormat = "yyyy"; return f
@@ -960,7 +960,7 @@ private extension String {
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onCreatePersonalEvent: { _ in }, onCreateSchedule: {},
     onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],
@@ -990,7 +990,7 @@ private extension String {
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onCreatePersonalEvent: { _ in }, onCreateSchedule: {},
     onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],

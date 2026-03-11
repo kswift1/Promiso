@@ -13,14 +13,14 @@ import PromisoShared
 // MARK: - Client
 
 /// 일정 충돌 감지 클라이언트
-/// PromiseClient + PersonalEventClient를 조합하여 충돌을 판정
+/// ScheduleClient + PersonalEventClient를 조합하여 충돌을 판정
 @DependencyClient
 public struct ScheduleConflictClient: Sendable {
   /// 일정 충돌 확인
   /// - Parameters:
   ///   - userId: 현재 사용자 ID
-  ///   - startAt: 새 약속/일정 시작 시간
-  ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt과 동일)
+  ///   - startAt: 새 일정/일정 시작 시간
+  ///   - endAt: 새 일정/일정 종료 시간 (nil이면 startAt과 동일)
   ///   - excludeIds: 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외)
   ///   - minGapMinutes: 충돌로 감지할 최소 여유 시간 (분). 0이면 겹치는 일정만 감지
   /// - Returns: 겹치는 일정 목록
@@ -108,7 +108,7 @@ extension ScheduleConflictClient: DependencyKey {
         let response = try JSONDecoder().decode(CheckConflictsResponse.self, from: data)
 
         let conflicts = response.conflicts.compactMap { item -> ScheduleConflict? in
-          let source: ScheduleConflict.Source = item.source == "promise" ? .promise : .personalEvent
+          let source: ScheduleConflict.Source = item.source == "schedule" ? .schedule : .personalEvent
           let severity: ScheduleConflict.Severity = item.severity == "confirmed" ? .confirmed : .pending
           guard let itemStartAt = iso8601Formatter.date(from: item.startAt) else {
             AppLogger.general.error("[ConflictCheck] 서버 응답 파싱 실패 - startAt: \(item.startAt)")

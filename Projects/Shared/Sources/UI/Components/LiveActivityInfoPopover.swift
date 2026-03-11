@@ -13,22 +13,22 @@ public struct LiveActivityInfoPopover: View {
   @Environment(\.colorScheme) private var colorScheme
   @State private var animationProgress: Double = 0
 
-  // 약속 정보 (nil이면 기본값 사용)
+  // 일정 정보 (nil이면 기본값 사용)
   private let emoji: String
   private let title: String
   private let location: String?
-  private let promiseTime: Date?
+  private let scheduleTime: Date?
 
   public init(
     emoji: String? = nil,
     title: String? = nil,
     location: String? = nil,
-    promiseTime: Date? = nil
+    scheduleTime: Date? = nil
   ) {
     self.emoji = emoji ?? "🍕"
-    self.title = title ?? "피자 약속"
+    self.title = title ?? "피자 일정"
     self.location = location
-    self.promiseTime = promiseTime
+    self.scheduleTime = scheduleTime
   }
 
   // 표시용 문자열
@@ -41,7 +41,7 @@ public struct LiveActivityInfoPopover: View {
   }
 
   private var displayTimeComponents: (ampm: String, time: String) {
-    guard let date = promiseTime else {
+    guard let date = scheduleTime else {
       return ("오후", "6:00")
     }
     let hour = Calendar.current.component(.hour, from: date)
@@ -80,7 +80,7 @@ public struct LiveActivityInfoPopover: View {
         Image(systemName: "sparkles")
           .font(.system(size: 12))
           .foregroundColor(.purple)
-        Text(LocalizedStrings.LivePromise.autoStartDescription)
+        Text(LocalizedStrings.LiveSchedule.autoStartDescription)
           .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
@@ -154,7 +154,7 @@ public struct LiveActivityInfoPopover: View {
       VStack(spacing: 8) {
         // 헤더 (실제 구현과 동일)
         HStack {
-          // 왼쪽: 약속 정보
+          // 왼쪽: 일정 정보
           VStack(alignment: .leading, spacing: 4) {
             Text(displayTitle)
               .font(.system(size: 13, weight: .bold))
@@ -172,9 +172,9 @@ public struct LiveActivityInfoPopover: View {
 
           Spacer()
 
-          // 오른쪽: 약속 시간
+          // 오른쪽: 일정 시간
           VStack(alignment: .trailing, spacing: 1) {
-            Text(LocalizedStrings.LivePromise.promiseTime)
+            Text(LocalizedStrings.LiveSchedule.scheduleTime)
               .font(.system(size: 9))
               .foregroundColor(.white.opacity(0.6))
 

@@ -66,9 +66,9 @@ public extension AnalyticsClient {
     public static let userLogin = "user_login"
     public static let groupCreated = "group_created"
     public static let groupJoined = "group_joined"
-    public static let promiseCreated = "promise_created"
-    public static let promiseResponseYes = "promise_response_yes"
-    public static let promiseResponseNo = "promise_response_no"
+    public static let scheduleCreated = "schedule_created"
+    public static let scheduleResponseYes = "schedule_response_yes"
+    public static let scheduleResponseNo = "schedule_response_no"
 
     // 📱 사용자 행동
     public static let profileSetupCompleted = "profile_setup_completed"
@@ -84,8 +84,8 @@ public extension AnalyticsClient {
   enum ParameterKey {
     public static let groupID = "group_id"
     public static let groupName = "group_name"
-    public static let promiseID = "promise_id"
-    public static let promiseTitle = "promise_title"
+    public static let scheduleID = "schedule_id"
+    public static let scheduleTitle = "schedule_title"
     public static let responseType = "response_type"
     public static let loginMethod = "login_method"
   }

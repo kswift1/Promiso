@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Weather Tooltip (Level 2)
 
 /// 플로팅 팝오버 - 날씨 요약 + 핵심 수치 + 자연어 제안
-/// rangeForecasts가 있으면 약속 시간 구간 min~max 범위 표시
+/// rangeForecasts가 있으면 일정 시간 구간 min~max 범위 표시
 public struct WeatherTooltip: View {
   private let forecast: HourlyForecast
   private let rangeForecasts: [HourlyForecast]
@@ -324,7 +324,7 @@ public struct WeatherTooltip: View {
   )
 }
 
-#Preview("약속 구간 타임라인") {
+#Preview("일정 구간 타임라인") {
   WeatherTooltip(
     forecast: HourlyForecast(
       dateTime: Date(),

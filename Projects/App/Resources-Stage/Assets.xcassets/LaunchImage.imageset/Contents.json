@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "finger_promise.png",
+      "filename" : "finger_schedule.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "finger_promise@2x.png",
+      "filename" : "finger_schedule@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "finger_promise@3x.png",
+      "filename" : "finger_schedule@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

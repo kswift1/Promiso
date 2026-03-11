@@ -35,17 +35,17 @@ struct DeeplinkRoutingTests {
     await store.receive(\.destination.presented.main.handleGroupDeeplink)
   }
 
-  @Test("promise 딥링크는 메인에서 handleGroupDeeplink로 전달")
-  func routePromise_sendsHandleGroupDeeplink() async {
-    let store = TestStore(initialState: makeMainState(key: "deeplink-promise-main")) {
+  @Test("schedule 딥링크는 메인에서 handleGroupDeeplink로 전달")
+  func routeSchedule_sendsHandleGroupDeeplink() async {
+    let store = TestStore(initialState: makeMainState(key: "deeplink-schedule-main")) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .promise(promiseId: "promise-1", groupId: "group-1") }
+      $0.deeplinkClient.parseURL = { _ in .schedule(scheduleId: "schedule-1", groupId: "group-1") }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/promise-1/group-1")!)))
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://schedule/schedule-1/group-1")!)))
     #expect(store.state.pendingDeeplink == nil)
     await store.receive(\.destination.presented.main.handleGroupDeeplink)
   }
@@ -55,31 +55,31 @@ struct DeeplinkRoutingTests {
     let store = TestStore(initialState: makeMainState(key: "deeplink-eta-main")) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .liveActivityETA(promiseId: "promise-eta") }
+      $0.deeplinkClient.parseURL = { _ in .liveActivityETA(scheduleId: "schedule-eta") }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/promise-eta/eta")!)))
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://schedule/schedule-eta/eta")!)))
     #expect(store.state.pendingDeeplink == nil)
     await store.receive(\.destination.presented.main.openLiveActivityETASheet)
   }
 
-  @Test("livePromise 딥링크는 상세 오픈 액션 전달")
-  func routeLivePromise_sendsOpenLivePromiseDetail() async {
+  @Test("liveSchedule 딥링크는 상세 오픈 액션 전달")
+  func routeLiveSchedule_sendsOpenLiveScheduleDetail() async {
     let store = TestStore(initialState: makeMainState(key: "deeplink-live-main")) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "promise-live") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "schedule-live") }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.handleDeeplink(URL(string: "promiso://live/promise-live")!)))
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://live/schedule-live")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
-  @Test("create 딥링크는 그룹 탭 약속 생성 액션 전달")
-  func routeCreate_sendsOpenCreatePromiseIfPossible() async {
+  @Test("create 딥링크는 그룹 탭 일정 생성 액션 전달")
+  func routeCreate_sendsOpenCreateScheduleIfPossible() async {
     let store = TestStore(initialState: makeMainState(key: "deeplink-create-main")) {
       AppEntry.Feature()
     } withDependencies: {
@@ -90,7 +90,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://create")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openCreatePromiseIfPossible)
+    await store.receive(\.destination.presented.main.openCreateScheduleIfPossible)
   }
 
   @Test("Auth 화면에서 joinGroup 딥링크는 pending으로 저장")
@@ -106,16 +106,16 @@ struct DeeplinkRoutingTests {
     }
   }
 
-  @Test("Auth 화면에서 promise 딥링크는 pending으로 저장")
-  func deeplinkWhileAuth_promise_storesPending() async {
+  @Test("Auth 화면에서 schedule 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_schedule_storesPending() async {
     let store = TestStore(initialState: makeAuthState()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .promise(promiseId: "p-auth", groupId: "g-auth") }
+      $0.deeplinkClient.parseURL = { _ in .schedule(scheduleId: "p-auth", groupId: "g-auth") }
     }
 
-    await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/p-auth/g-auth")!))) {
-      $0.pendingDeeplink = .promise(promiseId: "p-auth", groupId: "g-auth")
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://schedule/p-auth/g-auth")!))) {
+      $0.pendingDeeplink = .schedule(scheduleId: "p-auth", groupId: "g-auth")
     }
   }
 
@@ -140,10 +140,10 @@ struct DeeplinkRoutingTests {
     }
   }
 
-  @Test("pending promise 딥링크는 profileCheckResponse 이후 메인 진입 시 라우팅")
-  func pendingPromise_routesAfterProfileCheckResponse() async {
+  @Test("pending schedule 딥링크는 profileCheckResponse 이후 메인 진입 시 라우팅")
+  func pendingSchedule_routesAfterProfileCheckResponse() async {
     var state = makeAuthState()
-    state.pendingDeeplink = .promise(promiseId: "pending-promise", groupId: "pending-group")
+    state.pendingDeeplink = .schedule(scheduleId: "pending-schedule", groupId: "pending-group")
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -192,16 +192,16 @@ struct DeeplinkRoutingTests {
     }
   }
 
-  @Test("Auth 화면에서 livePromise 딥링크는 pending으로 저장")
-  func deeplinkWhileAuth_livePromise_storesPending() async {
+  @Test("Auth 화면에서 liveSchedule 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_liveSchedule_storesPending() async {
     let store = TestStore(initialState: makeAuthState()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "live-auth") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "live-auth") }
     }
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live/live-auth")!))) {
-      $0.pendingDeeplink = .livePromise(promiseId: "live-auth")
+      $0.pendingDeeplink = .liveSchedule(scheduleId: "live-auth")
     }
   }
 
@@ -238,11 +238,11 @@ struct DeeplinkRoutingTests {
     let store = TestStore(initialState: makeAuthState()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .liveActivityETA(promiseId: "eta-auth") }
+      $0.deeplinkClient.parseURL = { _ in .liveActivityETA(scheduleId: "eta-auth") }
     }
 
-    await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/eta-auth/eta")!))) {
-      $0.pendingDeeplink = .liveActivityETA(promiseId: "eta-auth")
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://schedule/eta-auth/eta")!))) {
+      $0.pendingDeeplink = .liveActivityETA(scheduleId: "eta-auth")
     }
   }
 }
@@ -250,16 +250,16 @@ struct DeeplinkRoutingTests {
 @Suite("푸시 알림 딥링크 테스트")
 @MainActor
 struct PushNotificationDeeplinkTests {
-  @Test("푸시 promise 탭은 handleGroupDeeplink로 라우팅")
-  func pushNotificationTap_promise_routes() async {
-    let store = TestStore(initialState: makeMainState(key: "push-promise-main")) {
+  @Test("푸시 schedule 탭은 handleGroupDeeplink로 라우팅")
+  func pushNotificationTap_schedule_routes() async {
+    let store = TestStore(initialState: makeMainState(key: "push-schedule-main")) {
       AppEntry.Feature()
     } withDependencies: {
       $0.groupClient.fetchGroupSummaries = { [] }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.internal(.pushNotificationTapped(.promise(promiseId: "p1", groupId: "g1"))))
+    await store.send(.internal(.pushNotificationTapped(.schedule(scheduleId: "p1", groupId: "g1"))))
     #expect(store.state.pendingDeeplink == nil)
     await store.receive(\.destination.presented.main.handleGroupDeeplink)
   }
@@ -285,31 +285,31 @@ struct PushNotificationDeeplinkTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.internal(.pushNotificationTapped(.liveActivityETA(promiseId: "p-eta"))))
+    await store.send(.internal(.pushNotificationTapped(.liveActivityETA(scheduleId: "p-eta"))))
     #expect(store.state.pendingDeeplink == nil)
     await store.receive(\.destination.presented.main.openLiveActivityETASheet)
   }
 
-  @Test("푸시 livePromise 탭은 상세 오픈으로 라우팅")
-  func pushNotificationTap_livePromise_routes() async {
+  @Test("푸시 liveSchedule 탭은 상세 오픈으로 라우팅")
+  func pushNotificationTap_liveSchedule_routes() async {
     let store = TestStore(initialState: makeMainState(key: "push-live-main")) {
       AppEntry.Feature()
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.internal(.pushNotificationTapped(.livePromise(promiseId: "p-live"))))
+    await store.send(.internal(.pushNotificationTapped(.liveSchedule(scheduleId: "p-live"))))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
-  @Test("Auth 화면에서 푸시 promise 탭은 pending 저장")
+  @Test("Auth 화면에서 푸시 schedule 탭은 pending 저장")
   func pushNotificationTap_whileAuth_storesPending() async {
     let store = TestStore(initialState: makeAuthState()) {
       AppEntry.Feature()
     }
 
-    await store.send(.internal(.pushNotificationTapped(.promise(promiseId: "pending-p", groupId: "pending-g")))) {
-      $0.pendingDeeplink = .promise(promiseId: "pending-p", groupId: "pending-g")
+    await store.send(.internal(.pushNotificationTapped(.schedule(scheduleId: "pending-p", groupId: "pending-g")))) {
+      $0.pendingDeeplink = .schedule(scheduleId: "pending-p", groupId: "pending-g")
     }
   }
 
@@ -319,8 +319,8 @@ struct PushNotificationDeeplinkTests {
       AppEntry.Feature()
     }
 
-    await store.send(.internal(.pushNotificationTapped(.promise(promiseId: "p-old", groupId: "g-old")))) {
-      $0.pendingDeeplink = .promise(promiseId: "p-old", groupId: "g-old")
+    await store.send(.internal(.pushNotificationTapped(.schedule(scheduleId: "p-old", groupId: "g-old")))) {
+      $0.pendingDeeplink = .schedule(scheduleId: "p-old", groupId: "g-old")
     }
     await store.send(.internal(.pushNotificationTapped(.group(groupId: "g-new")))) {
       $0.pendingDeeplink = .group(groupId: "g-new")

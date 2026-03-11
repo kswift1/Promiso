@@ -1,5 +1,5 @@
 // MARK: - OnboardingStartView.swift
-// 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 약속
+// 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 일정
 
 import ComposableArchitecture
 import Lottie
@@ -113,7 +113,7 @@ extension AppEntry.OnboardingStart {
             .transition(.opacity.combined(with: .offset(y: 12)))
           }
 
-          // Tertiary: 개인 약속
+          // Tertiary: 개인 일정
           if showTertiary {
             Button {
               store.send(.view(.personalScheduleTapped))

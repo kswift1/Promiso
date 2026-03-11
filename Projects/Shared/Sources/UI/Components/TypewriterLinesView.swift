@@ -165,7 +165,7 @@ public struct TypewriterText: View {
   TypewriterLinesView(
     animated: true,
     lines: [
-      .init(text: "약속을", font: .system(size: 32, weight: .bold), style: AnyShapeStyle(Color.primary)),
+      .init(text: "일정을", font: .system(size: 32, weight: .bold), style: AnyShapeStyle(Color.primary)),
       .init(text: "더 특별하게.", font: .system(size: 32, weight: .bold), style: AnyShapeStyle(Color.blue)),
       .init(text: "소중한 순간들을", font: .system(size: 16, weight: .medium), style: AnyShapeStyle(Color.secondary)),
       .init(text: "Promiso와 함께하세요.", font: .system(size: 16, weight: .medium), style: AnyShapeStyle(Color.secondary))

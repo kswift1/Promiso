@@ -16,10 +16,10 @@
 //  ## 지원하는 딥링크 URL 형식
 //  - `promiso://join/{inviteCode}` → 초대 코드로 그룹 참여
 //  - `promiso://group/{groupId}` → 그룹 상세 화면
-//  - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
-//  - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
-//  - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
-//  - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
+//  - `promiso://schedule/{scheduleId}/{groupId}` → 일정 상세 화면
+//  - `promiso://schedule/{scheduleId}/eta` → LiveActivity ETA 변경 시트
+//  - `promiso://live/{scheduleId}` → LiveSchedule 상세 화면 (ETA 시트 없이)
+//  - `promiso://create` → 일정 만들기 화면 (Widget용, 그룹 있을 때만)
 //
 //  ## 테스트 목적
 //  - 각 딥링크 URL 형식이 올바른 DeeplinkDestination으로 파싱되는지 검증
@@ -107,22 +107,22 @@ struct DeeplinkURLParserTests {
     #expect(DeeplinkURLParser.parse(url) == nil)
   }
 
-  // MARK: - promise 딥링크
+  // MARK: - schedule 딥링크
   //
-  // 약속 상세 화면으로 이동합니다.
-  // 푸시 알림 탭 시 사용됩니다 (약속 관련 알림).
-  // → PromiseDetailView 표시
+  // 일정 상세 화면으로 이동합니다.
+  // 푸시 알림 탭 시 사용됩니다 (일정 관련 알림).
+  // → ScheduleDetailView 표시
 
-  @Test("promiso://promise/{promiseId}/{groupId} 파싱")
-  func parse_promise_extractsIds() {
-    let url = URL(string: "promiso://promise/promise123/group456")!
+  @Test("promiso://schedule/{scheduleId}/{groupId} 파싱")
+  func parse_schedule_extractsIds() {
+    let url = URL(string: "promiso://schedule/schedule123/group456")!
     let result = DeeplinkURLParser.parse(url)
-    #expect(result == .promise(promiseId: "promise123", groupId: "group456"))
+    #expect(result == .schedule(scheduleId: "schedule123", groupId: "group456"))
   }
 
-  @Test("promise 경로에 groupId 없으면 nil")
-  func parse_promise_withoutGroupId_returnsNil() {
-    let url = URL(string: "promiso://promise/promise123")!
+  @Test("schedule 경로에 groupId 없으면 nil")
+  func parse_schedule_withoutGroupId_returnsNil() {
+    let url = URL(string: "promiso://schedule/schedule123")!
     #expect(DeeplinkURLParser.parse(url) == nil)
   }
 
@@ -130,39 +130,39 @@ struct DeeplinkURLParserTests {
   //
   // LiveActivity Widget의 "직접 입력" 버튼에서 사용됩니다.
   // 앱을 열고 ETA 변경 시트를 자동으로 표시합니다.
-  // → LivePromiseExpandedView + ETASheet 자동 표시
+  // → LiveScheduleExpandedView + ETASheet 자동 표시
 
-  @Test("promiso://promise/{promiseId}/eta 파싱")
-  func parse_liveActivityETA_extractsPromiseId() {
-    let url = URL(string: "promiso://promise/promise789/eta")!
+  @Test("promiso://schedule/{scheduleId}/eta 파싱")
+  func parse_liveActivityETA_extractsScheduleId() {
+    let url = URL(string: "promiso://schedule/schedule789/eta")!
     let result = DeeplinkURLParser.parse(url)
-    #expect(result == .liveActivityETA(promiseId: "promise789"))
+    #expect(result == .liveActivityETA(scheduleId: "schedule789"))
   }
 
-  // MARK: - livePromise 딥링크
+  // MARK: - liveSchedule 딥링크
   //
   // LiveActivity 배너 탭 시 사용됩니다.
-  // 앱을 열고 LivePromise 상세 화면을 표시합니다 (ETA 시트 없이).
-  // → LivePromiseExpandedView 표시
+  // 앱을 열고 LiveSchedule 상세 화면을 표시합니다 (ETA 시트 없이).
+  // → LiveScheduleExpandedView 표시
 
-  @Test("promiso://live/{promiseId} 파싱")
-  func parse_livePromise_extractsPromiseId() {
-    let url = URL(string: "promiso://live/promise999")!
+  @Test("promiso://live/{scheduleId} 파싱")
+  func parse_liveSchedule_extractsScheduleId() {
+    let url = URL(string: "promiso://live/schedule999")!
     let result = DeeplinkURLParser.parse(url)
-    #expect(result == .livePromise(promiseId: "promise999"))
+    #expect(result == .liveSchedule(scheduleId: "schedule999"))
   }
 
-  @Test("live 경로에 promiseId 없으면 nil")
-  func parse_livePromise_withoutId_returnsNil() {
+  @Test("live 경로에 scheduleId 없으면 nil")
+  func parse_liveSchedule_withoutId_returnsNil() {
     let url = URL(string: "promiso://live")!
     #expect(DeeplinkURLParser.parse(url) == nil)
   }
 
   // MARK: - create 딥링크
   //
-  // Widget의 "약속 만들기" 버튼에서 사용됩니다.
-  // 앱을 열고 약속 생성 화면을 표시합니다 (그룹이 있을 때만).
-  // → CreatePromise Sheet 표시 또는 그룹 탭 유지
+  // Widget의 "일정 만들기" 버튼에서 사용됩니다.
+  // 앱을 열고 일정 생성 화면을 표시합니다 (그룹이 있을 때만).
+  // → CreateSchedule Sheet 표시 또는 그룹 탭 유지
 
   @Test("promiso://create 파싱")
   func parse_create_returnsCreate() {

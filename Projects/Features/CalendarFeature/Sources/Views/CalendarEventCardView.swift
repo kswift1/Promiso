@@ -7,7 +7,7 @@ import PromisoShared
 
 // MARK: - Calendar Event Card View
 
-/// 시스템 캘린더 이벤트 카드 (약속 카드와 시각적으로 구분)
+/// 시스템 캘린더 이벤트 카드 (일정 카드와 시각적으로 구분)
 struct CalendarEventCardView: View {
   let event: CalendarEvent
   let onTap: () -> Void
@@ -71,7 +71,7 @@ struct CalendarEventCardView: View {
 
 // MARK: - Personal Event Card View
 
-/// 개인 일정 카드 (약속/시스템 캘린더와 시각적으로 구분)
+/// 개인 일정 카드 (일정/시스템 캘린더와 시각적으로 구분)
 struct PersonalEventCardView: View {
   let event: PersonalEventModel
   let weather: WeatherInfo?
@@ -294,7 +294,7 @@ struct CalendarPermissionBanner: View {
     CalendarEventCardView(
       event: CalendarEvent(
         id: "2",
-        title: "점심 약속",
+        title: "점심 일정",
         startDate: Date(),
         endDate: Date().addingTimeInterval(3600),
         location: nil,

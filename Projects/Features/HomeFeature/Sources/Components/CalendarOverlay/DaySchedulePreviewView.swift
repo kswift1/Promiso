@@ -84,7 +84,7 @@ struct DaySchedulePreviewView: View {
 
   /// 시간 포맷 — 오늘이 아닌 날짜는 월일 포함
   private func timeRangeString(_ indicator: OverlayCalendarModels.ScheduleIndicator) -> String {
-    let isToday = Calendar.promiseDisplay.isDateInToday(day.date)
+    let isToday = Calendar.scheduleDisplay.isDateInToday(day.date)
     let startStr = isToday
       ? Formatters.time.string(from: indicator.startAt)
       : Formatters.dateTime.string(from: indicator.startAt)
@@ -105,7 +105,7 @@ struct DaySchedulePreviewView: View {
   // MARK: - Formatters
 
   private enum Formatters {
-    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+    static let displayTimeZone = Calendar.scheduleDisplay.timeZone
 
     static let time: DateFormatter = {
       let f = DateFormatter()

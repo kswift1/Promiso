@@ -117,8 +117,8 @@ extension NotificationCenter {
 
       @CasePathable
       public enum Delegate: Sendable {
-        /// 약속 상세로 이동
-        case navigateToPromise(promiseId: String, groupId: String)
+        /// 일정 상세로 이동
+        case navigateToSchedule(scheduleId: String, groupId: String)
         /// 그룹 상세로 이동
         case navigateToGroup(groupId: String)
         /// 닫기
@@ -176,8 +176,8 @@ extension NotificationCenter {
             // 딥링크 이동
             let navigateEffect: Effect<Action>
             switch notification.deeplinkType {
-            case .promise(let promiseId, let groupId):
-              navigateEffect = .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+            case .schedule(let scheduleId, let groupId):
+              navigateEffect = .send(.delegate(.navigateToSchedule(scheduleId: scheduleId, groupId: groupId)))
             case .group(let groupId):
               navigateEffect = .send(.delegate(.navigateToGroup(groupId: groupId)))
             case .none:
@@ -325,7 +325,7 @@ extension NotificationCenter {
                 type: notifications[index].type,
                 title: notifications[index].title,
                 body: notifications[index].body,
-                promiseId: notifications[index].promiseId,
+                scheduleId: notifications[index].scheduleId,
                 groupId: notifications[index].groupId,
                 relatedUserId: notifications[index].relatedUserId,
                 isRead: true,
@@ -350,7 +350,7 @@ extension NotificationCenter {
                     type: notification.type,
                     title: notification.title,
                     body: notification.body,
-                    promiseId: notification.promiseId,
+                    scheduleId: notification.scheduleId,
                     groupId: notification.groupId,
                     relatedUserId: notification.relatedUserId,
                     isRead: true,

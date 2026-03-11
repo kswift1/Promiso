@@ -57,9 +57,9 @@ struct GroupNotificationDetailTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.preferenceToggled(.promiseInvitation, false))) {
+    await store.send(.view(.preferenceToggled(.scheduleInvitation, false))) {
       var updated = GroupNotificationSettings()
-      updated.setValue(false, for: .promiseInvitation)
+      updated.setValue(false, for: .scheduleInvitation)
       $0.group = $0.group.withNotifications(updated)
     }
     await store.receive(\.internal.updateSucceeded)

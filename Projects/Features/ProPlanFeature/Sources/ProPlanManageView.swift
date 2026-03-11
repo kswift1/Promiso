@@ -193,7 +193,7 @@ extension ProPlan {
           proFeatureRow(
             icon: "exclamationmark.triangle",
             title: "일정 충돌 감지",
-            description: "겹치는 약속을 자동으로 감지"
+            description: "겹치는 일정을 자동으로 감지"
           )
 
           Divider()
@@ -202,7 +202,7 @@ extension ProPlan {
           proFeatureRow(
             icon: "wand.and.stars",
             title: "AI 일정 추천",
-            description: "최적의 약속 시간을 추천 (예정)"
+            description: "최적의 일정 시간을 추천 (예정)"
           )
 
           Divider()
@@ -210,8 +210,8 @@ extension ProPlan {
 
           proFeatureRow(
             icon: "chart.bar",
-            title: "약속 통계",
-            description: "약속 이행률 및 패턴 분석 (예정)"
+            title: "일정 통계",
+            description: "일정 이행률 및 패턴 분석 (예정)"
           )
         }
         .adaptiveGlassCard()

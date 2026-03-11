@@ -64,11 +64,11 @@ struct CalendarEventDetailView: View {
 
   private var scheduleSection: some View {
     VStack(spacing: 0) {
-      PromiseDetailSectionHeader(title: LocalizedStrings.Common.schedule)
+      ScheduleDetailSectionHeader(title: LocalizedStrings.Common.schedule)
 
       VStack(spacing: 0) {
         // 날짜
-        PromiseDetailEmojiInfoRow(
+        ScheduleDetailEmojiInfoRow(
           emoji: "📅",
           title: LocalizedStrings.Common.date,
           value: formatFullDate(event.startDate)
@@ -77,7 +77,7 @@ struct CalendarEventDetailView: View {
         Divider().padding(.leading, 44)
 
         // 시간
-        PromiseDetailEmojiInfoRow(
+        ScheduleDetailEmojiInfoRow(
           emoji: "⏰",
           title: LocalizedStrings.Common.time,
           value: event.timeText
@@ -87,7 +87,7 @@ struct CalendarEventDetailView: View {
         if let location = event.location, !location.isEmpty {
           Divider().padding(.leading, 44)
 
-          PromiseDetailEmojiInfoRow(
+          ScheduleDetailEmojiInfoRow(
             emoji: "📍",
             title: LocalizedStrings.Common.location,
             value: location

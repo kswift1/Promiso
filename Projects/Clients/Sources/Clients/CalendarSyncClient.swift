@@ -48,17 +48,17 @@ public enum CalendarSyncError: Error, Equatable {
 
 @DependencyClient
 public struct CalendarSyncClient: Sendable {
-  /// 그룹 약속 전체 동기화 실행
+  /// 그룹 일정 전체 동기화 실행
   public var sync: @Sendable (_ enabledGroupIds: Set<String>) async throws -> CalendarSyncResult
 
-  /// 단일 약속 캘린더에 추가 (실시간 확정 시)
-  public var addPromise: @Sendable (
-    _ promise: CalendarSyncPromise,
+  /// 단일 일정 캘린더에 추가 (실시간 확정 시)
+  public var addSchedule: @Sendable (
+    _ schedule: CalendarSyncSchedule,
     _ groupCalendarSyncEnabled: Bool
   ) async throws -> Void
 
-  /// 단일 약속 캘린더에서 제거 (거절 시)
-  public var removePromise: @Sendable (_ promiseId: String) async throws -> Void
+  /// 단일 일정 캘린더에서 제거 (거절 시)
+  public var removeSchedule: @Sendable (_ scheduleId: String) async throws -> Void
 
   /// 개인 일정 전체 동기화 실행
   public var syncPersonalEvents: @Sendable (_ enabled: Bool) async throws -> CalendarSyncResult
@@ -85,8 +85,8 @@ public struct CalendarSyncClient: Sendable {
 // MARK: - Idempotency Guard
 
 private enum CalendarSyncWriteKey {
-  static func promiseEvent(_ id: String) -> String {
-    "promise:\(id)"
+  static func scheduleEvent(_ id: String) -> String {
+    "schedule:\(id)"
   }
 
   static func personalEvent(_ id: String) -> String {
@@ -115,7 +115,7 @@ private actor CalendarSyncWriteGuard {
 
     if !canReadEvents, let entry = knownHashes[key] {
       if entry.contentHash == contentHash {
-        // 활성 약속의 lastUsed 갱신 (eviction 방지, persist는 다음 complete 시 함께 수행)
+        // 활성 일정의 lastUsed 갱신 (eviction 방지, persist는 다음 complete 시 함께 수행)
         knownHashes[key] = HashEntry(contentHash: contentHash, lastUsed: Date().timeIntervalSince1970)
         return false
       }
@@ -183,8 +183,8 @@ private let calendarSyncWriteGuard = CalendarSyncWriteGuard()
 extension CalendarSyncClient: TestDependencyKey {
   public static let previewValue = Self(
     sync: { _ in CalendarSyncResult(added: 2, updated: 1, deleted: 0) },
-    addPromise: { _, _ in },
-    removePromise: { _ in },
+    addSchedule: { _, _ in },
+    removeSchedule: { _ in },
     syncPersonalEvents: { _ in CalendarSyncResult() },
     addPersonalEvent: { _, _ in },
     removePersonalEvent: { _ in },
@@ -194,8 +194,8 @@ extension CalendarSyncClient: TestDependencyKey {
 
   public static let testValue = Self(
     sync: unimplemented("\(Self.self).sync", placeholder: CalendarSyncResult()),
-    addPromise: unimplemented("\(Self.self).addPromise"),
-    removePromise: unimplemented("\(Self.self).removePromise"),
+    addSchedule: unimplemented("\(Self.self).addSchedule"),
+    removeSchedule: unimplemented("\(Self.self).removeSchedule"),
     syncPersonalEvents: unimplemented("\(Self.self).syncPersonalEvents", placeholder: CalendarSyncResult()),
     addPersonalEvent: unimplemented("\(Self.self).addPersonalEvent"),
     removePersonalEvent: unimplemented("\(Self.self).removePersonalEvent"),
@@ -210,7 +210,7 @@ extension CalendarSyncClient: DependencyKey {
   public static let liveValue = Self(
     sync: { enabledGroupIds in
       @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
+      @Dependency(\.scheduleClient) var scheduleClient
 
       AppLogger.calendar.debug("🔄 [Sync] 시작 - enabledGroupIds: \(enabledGroupIds)")
 
@@ -222,21 +222,21 @@ extension CalendarSyncClient: DependencyKey {
         throw CalendarSyncError.noWritePermission
       }
 
-      // 2. 서버에서 확정된 약속 조회
-      let serverPromises: [CalendarSyncPromise]
+      // 2. 서버에서 확정된 일정 조회
+      let serverSchedules: [CalendarSyncSchedule]
       do {
-        serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-        AppLogger.calendar.debug("🔄 [Sync] 서버 약속 조회: \(serverPromises.count)개")
+        serverSchedules = try await scheduleClient.getConfirmedSchedulesForCalendar()
+        AppLogger.calendar.debug("🔄 [Sync] 서버 일정 조회: \(serverSchedules.count)개")
       } catch {
-        AppLogger.calendar.error("🔄 [Sync] 서버 약속 조회 실패: \(error.localizedDescription)")
+        AppLogger.calendar.error("🔄 [Sync] 서버 일정 조회 실패: \(error.localizedDescription)")
         throw CalendarSyncError.fetchFailed(error.localizedDescription)
       }
 
-      // 3. calendarSync 활성화된 그룹의 약속만 필터
-      let filteredPromises = serverPromises.filter { enabledGroupIds.contains($0.groupId) }
-      AppLogger.calendar.debug("🔄 [Sync] 필터링 후: \(filteredPromises.count)개")
+      // 3. calendarSync 활성화된 그룹의 일정만 필터
+      let filteredSchedules = serverSchedules.filter { enabledGroupIds.contains($0.groupId) }
+      AppLogger.calendar.debug("🔄 [Sync] 필터링 후: \(filteredSchedules.count)개")
 
-      // 4. EventKit에서 기존 Promiso 이벤트 조회 (그룹 약속만)
+      // 4. EventKit에서 기존 Promiso 이벤트 조회 (그룹 일정만)
       // writeOnly 권한 시 읽기 불가 → 추가만 수행
       let existingEvents: [PromisoCalendarEvent]
       if status.canReadEvents {
@@ -245,7 +245,7 @@ extension CalendarSyncClient: DependencyKey {
             .filter { !$0.isPersonal }
           AppLogger.calendar.debug("🔄 [Sync] 기존 캘린더 이벤트: \(existingEvents.count)개")
           for event in existingEvents {
-            AppLogger.calendar.debug("  - \(event.promiseId): hash=\(event.contentHash)")
+            AppLogger.calendar.debug("  - \(event.scheduleId): hash=\(event.contentHash)")
           }
         } catch {
           AppLogger.calendar.error("🔄 [Sync] 기존 이벤트 조회 실패: \(error.localizedDescription)")
@@ -259,49 +259,49 @@ extension CalendarSyncClient: DependencyKey {
       // 5. 중복 이벤트 정리
       var seen: Set<String> = []
       for event in existingEvents {
-        if seen.contains(event.promiseId) {
+        if seen.contains(event.scheduleId) {
           try? await eventKitClient.deleteEvent(event.eventIdentifier)
-          AppLogger.calendar.warning("🔄 [Sync] 중복 이벤트 삭제: \(event.promiseId)")
+          AppLogger.calendar.warning("🔄 [Sync] 중복 이벤트 삭제: \(event.scheduleId)")
         } else {
-          seen.insert(event.promiseId)
+          seen.insert(event.scheduleId)
         }
       }
 
       // 6. 매핑 생성 (중복 키 안전 처리)
-      let serverPromiseMap = Dictionary(filteredPromises.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-      let existingEventMap = Dictionary(existingEvents.map { ($0.promiseId, $0) }, uniquingKeysWith: { first, _ in first })
+      let serverScheduleMap = Dictionary(filteredSchedules.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+      let existingEventMap = Dictionary(existingEvents.map { ($0.scheduleId, $0) }, uniquingKeysWith: { first, _ in first })
 
       var addedCount = 0
       var updatedCount = 0
       var deletedCount = 0
 
       // 7. 추가/업데이트 처리
-      for promise in filteredPromises {
+      for schedule in filteredSchedules {
         let url = PromisoCalendarTag.createURL(
-          promiseId: promise.id,
-          contentHash: promise.contentHash
+          scheduleId: schedule.id,
+          contentHash: schedule.contentHash
         )
 
         let newEvent = NewCalendarEvent(
-          promiseId: promise.id,
-          title: promise.calendarTitle,
-          startDate: promise.startAt,
-          endDate: promise.endAt,
-          location: promise.location,
+          scheduleId: schedule.id,
+          title: schedule.calendarTitle,
+          startDate: schedule.startAt,
+          endDate: schedule.endAt,
+          location: schedule.location,
           url: url
         )
 
-        if let existing = existingEventMap[promise.id] {
+        if let existing = existingEventMap[schedule.id] {
           // 이미 존재 → 해시 비교하여 업데이트 필요 여부 확인
-          if existing.contentHash != promise.contentHash {
-            let writeKey = CalendarSyncWriteKey.promiseEvent(promise.id)
+          if existing.contentHash != schedule.contentHash {
+            let writeKey = CalendarSyncWriteKey.scheduleEvent(schedule.id)
             let shouldUpdate = await calendarSyncWriteGuard.begin(
               writeKey,
-              contentHash: promise.contentHash,
+              contentHash: schedule.contentHash,
               canReadEvents: status.canReadEvents
             )
             guard shouldUpdate else {
-              AppLogger.calendar.debug("🔄 [Sync] 중복 업데이트 스킵 - promiseId: \(promise.id)")
+              AppLogger.calendar.debug("🔄 [Sync] 중복 업데이트 스킵 - scheduleId: \(schedule.id)")
               continue
             }
 
@@ -312,7 +312,7 @@ extension CalendarSyncClient: DependencyKey {
                 existing.userNotes
               )
               updatedCount += 1
-              await calendarSyncWriteGuard.complete(writeKey, contentHash: promise.contentHash)
+              await calendarSyncWriteGuard.complete(writeKey, contentHash: schedule.contentHash)
             } catch {
               // 개별 업데이트 실패는 무시하고 계속 진행
               AppLogger.calendar.error("Event update failed: \(error.localizedDescription)")
@@ -322,21 +322,21 @@ extension CalendarSyncClient: DependencyKey {
           // 해시 같으면 skip
         } else {
           // 존재하지 않음 → 추가
-          let writeKey = CalendarSyncWriteKey.promiseEvent(promise.id)
+          let writeKey = CalendarSyncWriteKey.scheduleEvent(schedule.id)
           let shouldAdd = await calendarSyncWriteGuard.begin(
             writeKey,
-            contentHash: promise.contentHash,
+            contentHash: schedule.contentHash,
             canReadEvents: status.canReadEvents
           )
           guard shouldAdd else {
-            AppLogger.calendar.debug("🔄 [Sync] 중복 추가 스킵 - promiseId: \(promise.id)")
+            AppLogger.calendar.debug("🔄 [Sync] 중복 추가 스킵 - scheduleId: \(schedule.id)")
             continue
           }
 
           do {
             _ = try await eventKitClient.addEvent(newEvent)
             addedCount += 1
-            await calendarSyncWriteGuard.complete(writeKey, contentHash: promise.contentHash)
+            await calendarSyncWriteGuard.complete(writeKey, contentHash: schedule.contentHash)
           } catch {
             AppLogger.calendar.error("Event add failed: \(error.localizedDescription)")
             await calendarSyncWriteGuard.fail(writeKey)
@@ -346,14 +346,14 @@ extension CalendarSyncClient: DependencyKey {
 
       // 8. 삭제 처리 (캘린더에 있지만 서버에 없는 것)
       for existingEvent in existingEvents {
-        if serverPromiseMap[existingEvent.promiseId] == nil {
+        if serverScheduleMap[existingEvent.scheduleId] == nil {
           do {
             try await eventKitClient.deleteEvent(existingEvent.eventIdentifier)
             deletedCount += 1
-            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
+            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.scheduleEvent(existingEvent.scheduleId))
           } catch {
             AppLogger.calendar.error("Event delete failed: \(error.localizedDescription)")
-            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
+            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.scheduleEvent(existingEvent.scheduleId))
           }
         }
       }
@@ -369,22 +369,22 @@ extension CalendarSyncClient: DependencyKey {
       return result
       },
 
-      addPromise: { promise, groupCalendarSyncEnabled in
+      addSchedule: { schedule, groupCalendarSyncEnabled in
         @Dependency(\.eventKitClient) var eventKitClient
 
-        AppLogger.calendar.debug("➕ [AddPromise] 시작 - promiseId: \(promise.id), groupSync: \(groupCalendarSyncEnabled)")
+        AppLogger.calendar.debug("➕ [AddSchedule] 시작 - scheduleId: \(schedule.id), groupSync: \(groupCalendarSyncEnabled)")
 
         // 그룹의 캘린더 동기화가 비활성화면 무시
         guard groupCalendarSyncEnabled else {
-          AppLogger.calendar.debug("➕ [AddPromise] 그룹 동기화 비활성화 - 스킵")
+          AppLogger.calendar.debug("➕ [AddSchedule] 그룹 동기화 비활성화 - 스킵")
           return
         }
 
         // 쓰기 권한 확인
         let status = eventKitClient.authorizationStatus()
-        AppLogger.calendar.debug("➕ [AddPromise] 권한 상태: \(String(describing: status))")
+        AppLogger.calendar.debug("➕ [AddSchedule] 권한 상태: \(String(describing: status))")
         guard status.canWriteEvents else {
-          AppLogger.calendar.debug("➕ [AddPromise] 쓰기 권한 없음 - 스킵")
+          AppLogger.calendar.debug("➕ [AddSchedule] 쓰기 권한 없음 - 스킵")
           return
         }
 
@@ -392,83 +392,83 @@ extension CalendarSyncClient: DependencyKey {
         // Note: writeOnly 권한 시에는 CalendarSyncWriteGuard가 중복 방지를 담당
         if status.canReadEvents {
           let existingEvents = try await eventKitClient.getPromisoEvents()
-          AppLogger.calendar.debug("➕ [AddPromise] 기존 이벤트 수: \(existingEvents.count)")
-          if existingEvents.contains(where: { $0.promiseId == promise.id && !$0.isPersonal }) {
-            AppLogger.calendar.debug("➕ [AddPromise] 이미 존재함 - 스킵")
+          AppLogger.calendar.debug("➕ [AddSchedule] 기존 이벤트 수: \(existingEvents.count)")
+          if existingEvents.contains(where: { $0.scheduleId == schedule.id && !$0.isPersonal }) {
+            AppLogger.calendar.debug("➕ [AddSchedule] 이미 존재함 - 스킵")
             return
           }
         }
 
         // 캘린더에 추가
         let url = PromisoCalendarTag.createURL(
-          promiseId: promise.id,
-          contentHash: promise.contentHash
+          scheduleId: schedule.id,
+          contentHash: schedule.contentHash
         )
-        AppLogger.calendar.debug("➕ [AddPromise] URL 생성: \(String(describing: url))")
+        AppLogger.calendar.debug("➕ [AddSchedule] URL 생성: \(String(describing: url))")
 
         let newEvent = NewCalendarEvent(
-          promiseId: promise.id,
-          title: promise.calendarTitle,
-          startDate: promise.startAt,
-          endDate: promise.endAt,
-          location: promise.location,
+          scheduleId: schedule.id,
+          title: schedule.calendarTitle,
+          startDate: schedule.startAt,
+          endDate: schedule.endAt,
+          location: schedule.location,
           url: url
         )
-        AppLogger.calendar.debug("➕ [AddPromise] 이벤트 생성 - promiseId: \(newEvent.promiseId)")
+        AppLogger.calendar.debug("➕ [AddSchedule] 이벤트 생성 - scheduleId: \(newEvent.scheduleId)")
 
-        let writeKey = CalendarSyncWriteKey.promiseEvent(promise.id)
+        let writeKey = CalendarSyncWriteKey.scheduleEvent(schedule.id)
         let shouldAdd = await calendarSyncWriteGuard.begin(
           writeKey,
-          contentHash: promise.contentHash,
+          contentHash: schedule.contentHash,
           canReadEvents: status.canReadEvents
         )
         guard shouldAdd else {
-          AppLogger.calendar.debug("➕ [AddPromise] 쓰기 가드 건너뜀 (중복) - promiseId: \(promise.id)")
+          AppLogger.calendar.debug("➕ [AddSchedule] 쓰기 가드 건너뜀 (중복) - scheduleId: \(schedule.id)")
           return
         }
 
         do {
           let eventId = try await eventKitClient.addEvent(newEvent)
-          await calendarSyncWriteGuard.complete(writeKey, contentHash: promise.contentHash)
-          AppLogger.calendar.info("➕ [AddPromise] 완료 - eventId: \(eventId)")
+          await calendarSyncWriteGuard.complete(writeKey, contentHash: schedule.contentHash)
+          AppLogger.calendar.info("➕ [AddSchedule] 완료 - eventId: \(eventId)")
         } catch {
           await calendarSyncWriteGuard.fail(writeKey)
           throw error
         }
       },
 
-      removePromise: { promiseId in
+      removeSchedule: { scheduleId in
         @Dependency(\.eventKitClient) var eventKitClient
 
-        AppLogger.calendar.debug("➖ [RemovePromise] 시작 - promiseId: \(promiseId)")
+        AppLogger.calendar.debug("➖ [RemoveSchedule] 시작 - scheduleId: \(scheduleId)")
 
         // 쓰기 권한 확인
         let status = eventKitClient.authorizationStatus()
-        AppLogger.calendar.debug("➖ [RemovePromise] 권한 상태: \(String(describing: status))")
+        AppLogger.calendar.debug("➖ [RemoveSchedule] 권한 상태: \(String(describing: status))")
         guard status.canWriteEvents else {
-          AppLogger.calendar.debug("➖ [RemovePromise] 쓰기 권한 없음 - 스킵")
+          AppLogger.calendar.debug("➖ [RemoveSchedule] 쓰기 권한 없음 - 스킵")
           return
         }
 
         // 읽기 권한 없으면 이벤트를 찾을 수 없으므로 스킵
         guard status.canReadEvents else {
-          AppLogger.calendar.debug("➖ [RemovePromise] 읽기 권한 없음 - 스킵")
+          AppLogger.calendar.debug("➖ [RemoveSchedule] 읽기 권한 없음 - 스킵")
           return
         }
 
-        // 해당 promiseId의 이벤트 찾기
+        // 해당 scheduleId의 이벤트 찾기
         let existingEvents = try await eventKitClient.getPromisoEvents()
-        AppLogger.calendar.debug("➖ [RemovePromise] 기존 이벤트 수: \(existingEvents.count)")
-        guard let event = existingEvents.first(where: { $0.promiseId == promiseId && !$0.isPersonal }) else {
-          AppLogger.calendar.debug("➖ [RemovePromise] 이벤트 없음 - 스킵")
+        AppLogger.calendar.debug("➖ [RemoveSchedule] 기존 이벤트 수: \(existingEvents.count)")
+        guard let event = existingEvents.first(where: { $0.scheduleId == scheduleId && !$0.isPersonal }) else {
+          AppLogger.calendar.debug("➖ [RemoveSchedule] 이벤트 없음 - 스킵")
           return
         }
 
         // 삭제
-        AppLogger.calendar.debug("➖ [RemovePromise] 삭제 중: \(event.eventIdentifier)")
+        AppLogger.calendar.debug("➖ [RemoveSchedule] 삭제 중: \(event.eventIdentifier)")
         try await eventKitClient.deleteEvent(event.eventIdentifier)
-        await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(promiseId))
-        AppLogger.calendar.info("➖ [RemovePromise] 완료 - promiseId: \(promiseId)")
+        await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.scheduleEvent(scheduleId))
+        AppLogger.calendar.info("➖ [RemoveSchedule] 완료 - scheduleId: \(scheduleId)")
       },
 
       // MARK: - Personal Event Sync
@@ -505,10 +505,10 @@ extension CalendarSyncClient: DependencyKey {
             do {
               try await eventKitClient.deleteEvent(event.eventIdentifier)
               deletedCount += 1
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(event.promiseId))
+              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(event.scheduleId))
             } catch {
               AppLogger.calendar.error("🔄 [PersonalSync] 삭제 실패: \(error.localizedDescription)")
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(event.promiseId))
+              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(event.scheduleId))
             }
           }
           let result = CalendarSyncResult(deleted: deletedCount)
@@ -529,17 +529,17 @@ extension CalendarSyncClient: DependencyKey {
         // 5. 중복 이벤트 정리
         var seen: Set<String> = []
         for event in existingEvents {
-          if seen.contains(event.promiseId) {
+          if seen.contains(event.scheduleId) {
             try? await eventKitClient.deleteEvent(event.eventIdentifier)
-            AppLogger.calendar.warning("🔄 [PersonalSync] 중복 이벤트 삭제: \(event.promiseId)")
+            AppLogger.calendar.warning("🔄 [PersonalSync] 중복 이벤트 삭제: \(event.scheduleId)")
           } else {
-            seen.insert(event.promiseId)
+            seen.insert(event.scheduleId)
           }
         }
 
         // 6. 매핑 생성 (중복 키 안전 처리)
         let serverEventMap = Dictionary(serverEvents.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-        let existingEventMap = Dictionary(existingEvents.map { ($0.promiseId, $0) }, uniquingKeysWith: { first, _ in first })
+        let existingEventMap = Dictionary(existingEvents.map { ($0.scheduleId, $0) }, uniquingKeysWith: { first, _ in first })
 
         var addedCount = 0
         var updatedCount = 0
@@ -553,7 +553,7 @@ extension CalendarSyncClient: DependencyKey {
           )
 
           let newEvent = NewCalendarEvent(
-            promiseId: personalEvent.id,
+            scheduleId: personalEvent.id,
             title: personalEvent.calendarTitle,
             startDate: personalEvent.startAt,
             endDate: personalEvent.endAt,
@@ -613,14 +613,14 @@ extension CalendarSyncClient: DependencyKey {
 
         // 8. 삭제 처리 (캘린더에 있지만 서버에 없는 것)
         for existingEvent in existingEvents {
-          if serverEventMap[existingEvent.promiseId] == nil {
+          if serverEventMap[existingEvent.scheduleId] == nil {
             do {
               try await eventKitClient.deleteEvent(existingEvent.eventIdentifier)
               deletedCount += 1
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(existingEvent.promiseId))
+              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(existingEvent.scheduleId))
             } catch {
               AppLogger.calendar.error("🔄 [PersonalSync] 삭제 실패: \(error.localizedDescription)")
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(existingEvent.promiseId))
+              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.personalEvent(existingEvent.scheduleId))
             }
           }
         }
@@ -653,7 +653,7 @@ extension CalendarSyncClient: DependencyKey {
         // 중복 확인 (읽기 권한 있을 때만)
         if status.canReadEvents {
           let existingEvents = try await eventKitClient.getPromisoEvents()
-          if existingEvents.contains(where: { $0.promiseId == event.id && $0.isPersonal }) {
+          if existingEvents.contains(where: { $0.scheduleId == event.id && $0.isPersonal }) {
             AppLogger.calendar.debug("➕ [AddPersonal] 이미 존재함 - 스킵")
             return
           }
@@ -665,7 +665,7 @@ extension CalendarSyncClient: DependencyKey {
         )
 
         let newEvent = NewCalendarEvent(
-          promiseId: event.id,
+          scheduleId: event.id,
           title: event.calendarTitle,
           startDate: event.startAt,
           endDate: event.endAt,
@@ -712,7 +712,7 @@ extension CalendarSyncClient: DependencyKey {
         }
 
         let existingEvents = try await eventKitClient.getPromisoEvents()
-        guard let event = existingEvents.first(where: { $0.promiseId == eventId && $0.isPersonal }) else {
+        guard let event = existingEvents.first(where: { $0.scheduleId == eventId && $0.isPersonal }) else {
           AppLogger.calendar.debug("➖ [RemovePersonal] 이벤트 없음 - 스킵")
           return
         }
@@ -744,7 +744,7 @@ extension CalendarSyncClient: DependencyKey {
         )
 
         let newEvent = NewCalendarEvent(
-          promiseId: event.id,
+          scheduleId: event.id,
           title: event.calendarTitle,
           startDate: event.startAt,
           endDate: event.endAt,
@@ -767,7 +767,7 @@ extension CalendarSyncClient: DependencyKey {
           // 읽기 권한 있으면 기존 이벤트 찾아 업데이트, 없으면 새로 추가
           if status.canReadEvents {
             let existingEvents = try await eventKitClient.getPromisoEvents()
-            if let existing = existingEvents.first(where: { $0.promiseId == event.id && $0.isPersonal }) {
+            if let existing = existingEvents.first(where: { $0.scheduleId == event.id && $0.isPersonal }) {
               try await eventKitClient.updateEvent(
                 existing.eventIdentifier,
                 newEvent,

@@ -1,5 +1,5 @@
 // MARK: - BenefitLiveView.swift
-// Screen 5: Benefit 3 - "지금 어디야?" 안 물어도 되는 약속
+// Screen 5: Benefit 3 - "지금 어디야?" 안 물어도 되는 일정
 
 import Lottie
 import PromisoShared

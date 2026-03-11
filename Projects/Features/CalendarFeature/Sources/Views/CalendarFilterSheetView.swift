@@ -30,7 +30,7 @@ struct CalendarFilterSheetView: View {
       // 헤더: "필터" + 초기화 버튼
       headerSection
 
-      // 그룹 섹션 (그룹 필터 + 약속 상태)
+      // 그룹 섹션 (그룹 필터 + 일정 상태)
       groupFilterSection
       statusFilterSection
 

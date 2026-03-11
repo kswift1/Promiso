@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Shared Error
 
 public enum DomainError: Error, LocalizedError {
-  case promiseNotFound
+  case scheduleNotFound
   case userNotFound
   case groupNotFound
   case insufficientParticipants
@@ -13,8 +13,8 @@ public enum DomainError: Error, LocalizedError {
   
   public var errorDescription: String? {
     switch self {
-    case .promiseNotFound:
-      return "약속을 찾을 수 없습니다."
+    case .scheduleNotFound:
+      return "일정을 찾을 수 없습니다."
     case .userNotFound:
       return "사용자를 찾을 수 없습니다."
     case .groupNotFound:

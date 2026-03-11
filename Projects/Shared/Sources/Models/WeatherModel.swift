@@ -138,7 +138,7 @@ public struct DailyForecast: Equatable, Hashable, Sendable, Codable {
     (minTemperature + maxTemperature) / 2
   }
 
-  /// 약속 시간 기준 오전/오후 날씨 조건 반환
+  /// 일정 시간 기준 오전/오후 날씨 조건 반환
   public func condition(for date: Date) -> WeatherCondition {
     let hour = Calendar.current.component(.hour, from: date)
     return hour < 12 ? amCondition : pmCondition
@@ -242,13 +242,13 @@ public struct WeatherInfo: Equatable, Hashable, Sendable, Codable {
     return .shortTerm
   }
 
-  /// 약속 구간 내 시간대별 예보 필터
+  /// 일정 구간 내 시간대별 예보 필터
   public func forecasts(from start: Date, to end: Date?) -> [HourlyForecast] {
     guard let end = end else { return [] }
     return hourlyForecasts.filter { $0.dateTime >= start && $0.dateTime <= end }
   }
 
-  /// 약속 구간(startAt~endAt) 내 worst-case 기반 예보 요약
+  /// 일정 구간(startAt~endAt) 내 worst-case 기반 예보 요약
   public func worstCaseForecast(from start: Date, to end: Date?) -> HourlyForecast? {
     guard let end = end else { return forecast(for: start) }
 

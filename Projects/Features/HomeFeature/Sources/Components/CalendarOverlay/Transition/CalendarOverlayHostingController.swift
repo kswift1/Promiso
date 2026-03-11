@@ -34,12 +34,12 @@ final class CalendarOverlayViewModel {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreateSchedule: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
-  /// promiseDetail/promiseCreate 모드에서 표시할 Feature 뷰
+  /// scheduleDetail/scheduleCreate 모드에서 표시할 Feature 뷰
   var overlayFeatureContent: AnyView?
-  /// promiseDetail/promiseCreate 모드에서 뒤로가기 클로저
+  /// scheduleDetail/scheduleCreate 모드에서 뒤로가기 클로저
   var onFeatureBack: (() -> Void)?
 
   init(
@@ -69,7 +69,7 @@ final class CalendarOverlayViewModel {
     onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
     onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
     onCreatePersonalEvent: @escaping (Date) -> Void,
-    onCreatePromise: @escaping () -> Void,
+    onCreateSchedule: @escaping () -> Void,
     onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
     onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   ) {
@@ -99,7 +99,7 @@ final class CalendarOverlayViewModel {
     self.onScheduleItemTapped = onScheduleItemTapped
     self.onEditScheduleItem = onEditScheduleItem
     self.onCreatePersonalEvent = onCreatePersonalEvent
-    self.onCreatePromise = onCreatePromise
+    self.onCreateSchedule = onCreateSchedule
     self.onDeleteScheduleItem = onDeleteScheduleItem
     self.onShareScheduleItem = onShareScheduleItem
   }
@@ -207,9 +207,9 @@ final class CalendarOverlayHostingController: UIHostingController<AnyView> {
 extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
   nonisolated func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
     MainActor.assumeIsolated {
-      // Feature 모드(약속 상세/생성)에서는 dismiss pan 비활성화
+      // Feature 모드(일정 상세/생성)에서는 dismiss pan 비활성화
       let mode = viewModel.calendarMode
-      if mode == .promiseDetail || mode == .promiseCreate {
+      if mode == .scheduleDetail || mode == .scheduleCreate {
         return false
       }
       guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
@@ -227,7 +227,7 @@ private struct CalendarOverlayContentView: View {
   @State private var animatedMode: CalendarMode = .monthly
 
   private var isFeatureMode: Bool {
-    animatedMode == .promiseDetail || animatedMode == .promiseCreate
+    animatedMode == .scheduleDetail || animatedMode == .scheduleCreate
   }
 
   var body: some View {
@@ -268,7 +268,7 @@ private struct CalendarOverlayContentView: View {
             onScheduleItemTapped: viewModel.onScheduleItemTapped,
             onEditScheduleItem: viewModel.onEditScheduleItem,
             onCreatePersonalEvent: viewModel.onCreatePersonalEvent,
-            onCreatePromise: viewModel.onCreatePromise,
+            onCreateSchedule: viewModel.onCreateSchedule,
             onDeleteScheduleItem: viewModel.onDeleteScheduleItem,
             onShareScheduleItem: viewModel.onShareScheduleItem,
             currentUserId: viewModel.currentUserId,
@@ -294,7 +294,7 @@ private struct CalendarOverlayContentView: View {
     }
   }
 
-  // MARK: - Feature View (약속 상세/생성)
+  // MARK: - Feature View (일정 상세/생성)
 
   private var overlayFeatureView: some View {
     VStack(spacing: 0) {

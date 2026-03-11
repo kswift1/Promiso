@@ -225,21 +225,21 @@ extension ProPlan {
                 icon: "bell.badge.waveform",
                 iconColor: Color.pmaurora.purple,
                 title: "스마트 알림 브리핑",
-                description: "약속 전 출발 시간, 날씨, 이동시간을 자동으로 알려드려요"
+                description: "일정 전 출발 시간, 날씨, 이동시간을 자동으로 알려드려요"
               )
 
               celebrationGuideRow(
                 icon: "widget.small",
                 iconColor: Color.pmindigo.n500,
                 title: "AI 위젯",
-                description: "홈 화면 위젯에서 다음 약속 정보를 한눈에 확인하세요"
+                description: "홈 화면 위젯에서 다음 일정 정보를 한눈에 확인하세요"
               )
 
               celebrationGuideRow(
                 icon: "calendar.badge.exclamationmark",
                 iconColor: Color.pmwarning.n500,
                 title: "일정 충돌 감지",
-                description: "약속을 잡을 때 겹치는 일정이 있으면 미리 알려드려요"
+                description: "일정을 잡을 때 겹치는 일정이 있으면 미리 알려드려요"
               )
             }
             .padding(16)
@@ -319,7 +319,7 @@ extension ProPlan {
           .font(.system(size: 32, weight: .bold))
           .foregroundStyle(Color.pmtext.primary)
 
-        Text("약속 하나도 놓치지 않는\n스마트한 일정 관리")
+        Text("일정 하나도 놓치지 않는\n스마트한 일정 관리")
           .font(.body)
           .foregroundStyle(Color.pmtext.secondary)
           .multilineTextAlignment(.center)
@@ -351,7 +351,7 @@ extension ProPlan {
           icon: "calendar.badge.exclamationmark",
           iconColor: Color.pmwarning.n500,
           title: "일정 충돌 감지",
-          description: "겹치는 약속을 자동으로 찾아 알려드려요",
+          description: "겹치는 일정을 자동으로 찾아 알려드려요",
           previewContent: AnyView(ConflictMockView())
         )
       }
@@ -372,8 +372,8 @@ extension ProPlan {
 
           Divider().padding(.vertical, 4)
 
-          comparisonRow("기본 약속 관리", free: true, pro: true)
-          comparisonRow("그룹 약속", free: true, pro: true)
+          comparisonRow("기본 일정 관리", free: true, pro: true)
+          comparisonRow("그룹 일정", free: true, pro: true)
           comparisonRow("Live Activity", free: true, pro: true)
 
           Divider().padding(.vertical, 4)
@@ -674,7 +674,7 @@ extension ProPlan {
     var body: some View {
       VStack(alignment: .leading, spacing: 6) {
         HStack {
-          Text("다음 약속")
+          Text("다음 일정")
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(Color.pmtext.secondary)
           Spacer()
@@ -730,7 +730,7 @@ extension ProPlan {
             .foregroundStyle(.tertiary)
 
           VStack(alignment: .leading, spacing: 2) {
-            Text("점심 약속")
+            Text("점심 일정")
               .font(.system(size: 11, weight: .medium))
               .foregroundStyle(Color.pmtext.primary)
             Text("1:30 - 3:00")
