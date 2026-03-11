@@ -716,13 +716,20 @@ struct CalendarDayTimelineView: View {
             }
 
             if !isCompact {
-              // Row 2: 그룹명
+              // Row 2: 그룹명 + 응답 상태
               HStack(spacing: 5) {
                 if let name = groupName(for: item) {
                   Text(name)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                }
+
+                if case .promise(let p) = item,
+                   p.responseStatus(currentUserId: currentUserId) == .needResponse {
+                  Text("응답 필요")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.pmwarning.n500)
                 }
               }
 
