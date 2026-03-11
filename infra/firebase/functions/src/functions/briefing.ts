@@ -845,8 +845,9 @@ export async function generateBriefingInternal(params: {
     const settingsData = settingsDoc.data() as
       UserSettingsDocument | undefined;
     const briefingSettings = settingsData?.proSettings?.briefing;
+    const rawTransports = briefingSettings?.availableTransports;
     const availableTransports: string[] =
-      briefingSettings?.availableTransports ??
+      (rawTransports && rawTransports.length > 0) ? rawTransports :
         (briefingSettings?.preferredTransport === "car" ? ["car"] :
           briefingSettings?.preferredTransport === "transit" ? ["transit"] :
             ["transit", "car"]);
