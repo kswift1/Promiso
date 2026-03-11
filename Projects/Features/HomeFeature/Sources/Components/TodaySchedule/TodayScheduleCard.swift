@@ -91,35 +91,22 @@ struct TodayScheduleCard: View {
           CurrentTimeMarkerView(nextPromiseStartAt: item.startAt)
         }
 
-        switch item {
-        case .promise(let promise):
-          TimelineItemView(
-            promise: promise,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            weather: weatherCache[promise.id],
-            departureAlert: departureAlerts[item.id],
-            isPro: isPro,
-            onTap: { onItemTap(item) },
-            onDepartureAlertTap: { onDepartureAlertTap(item) },
-            onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
-          )
+        let weather: WeatherInfo? = {
+          if case .promise(let p) = item { return weatherCache[p.id] }
+          return nil
+        }()
 
-        case .personalEvent(let event):
-          PersonalEventTimelineItemView(
-            event: event,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            departureAlert: departureAlerts[item.id],
-            isPro: isPro,
-            onTap: { onItemTap(item) },
-            onDepartureAlertTap: { onDepartureAlertTap(item) },
-            onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
-          )
-
-        case .recurringPersonalEvent:
-          EmptyView()
-        }
+        TimelineItemView(
+          item: item,
+          isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
+          isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+          weather: weather,
+          departureAlert: departureAlerts[item.id],
+          isPro: isPro,
+          onTap: { onItemTap(item) },
+          onDepartureAlertTap: { onDepartureAlertTap(item) },
+          onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
+        )
 
         // 모든 일정 종료 후 완료 메시지
         if index == sortedItems.count - 1 && currentTimePosition == .afterAll {
