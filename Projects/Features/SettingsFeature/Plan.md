@@ -66,9 +66,9 @@ ProfileFeature/
 
 | 기능 | 우선순위 | 설명 |
 |------|----------|------|
-| 약속 알림 | 중 | 새 약속 초대, 약속 변경 |
+| 일정 알림 | 중 | 새 일정 초대, 일정 변경 |
 | 그룹 알림 | 중 | 그룹 초대, 멤버 변경 |
-| 리마인더 알림 | 중 | 약속 시간 전 알림 |
+| 리마인더 알림 | 중 | 일정 시간 전 알림 |
 
 ### 3.4 앱 설정
 
@@ -112,7 +112,7 @@ ProfileFeature/
 
 ```swift
 // UserSettings (알림 설정 세분화 시)
-- promiseNotification: Bool
+- scheduleNotification: Bool
 - groupNotification: Bool
 - reminderNotification: Bool
 - reminderMinutesBefore: Int

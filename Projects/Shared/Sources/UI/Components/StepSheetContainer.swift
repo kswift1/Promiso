@@ -217,7 +217,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
 
 #Preview("1단계 — 기본") {
   StepSheetContainer(
-    title: "약속 만들기",
+    title: "일정 만들기",
     currentStep: 0,
     totalSteps: 3,
     onDismiss: {}
@@ -278,7 +278,7 @@ extension StepSheetContainer where FloatingContent == EmptyView {
 
 #Preview("마지막 단계 — 저장 버튼") {
   StepSheetContainer(
-    title: "약속 만들기",
+    title: "일정 만들기",
     currentStep: 2,
     totalSteps: 3,
     onDismiss: {}

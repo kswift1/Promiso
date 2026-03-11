@@ -23,8 +23,8 @@ extension LiveActivityTest {
       var isLiveActivityActive: Bool = false
       var activityId: String?
       var statusMessage: String = ""
-      var currentContentState: PromiseActivityAttributes.ContentState?
-      var currentAttributes: PromiseActivityAttributes?
+      var currentContentState: ScheduleActivityAttributes.ContentState?
+      var currentAttributes: ScheduleActivityAttributes?
 
       public init() {}
     }
@@ -49,10 +49,10 @@ extension LiveActivityTest {
       }
 
       public enum Internal: Sendable, Equatable {
-        case activityStarted(String, PromiseActivityAttributes, PromiseActivityAttributes.ContentState)
+        case activityStarted(String, ScheduleActivityAttributes, ScheduleActivityAttributes.ContentState)
         case activityEnded
         case activityFailed(String)
-        case activityUpdated(PromiseActivityAttributes.ContentState)
+        case activityUpdated(ScheduleActivityAttributes.ContentState)
       }
     }
 
@@ -74,7 +74,7 @@ extension LiveActivityTest {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            if let activity = Activity<PromiseActivityAttributes>.activities.first {
+            if let activity = Activity<ScheduleActivityAttributes>.activities.first {
               state.isLiveActivityActive = true
               state.activityId = activity.id
               state.currentAttributes = activity.attributes
@@ -92,8 +92,8 @@ extension LiveActivityTest {
             let cachedFiles = LiveActivityImageStore.listCachedFiles()
             AppLogger.liveActivity.debug("\(LocalizedStrings.SettingsStrings.cachedFiles)\(cachedFiles)")
 
-            let attributes = PromiseActivityAttributes(
-              promiseId: "mock-\(UUID().uuidString.prefix(8))",
+            let attributes = ScheduleActivityAttributes(
+              scheduleId: "mock-\(UUID().uuidString.prefix(8))",
               currentUserId: Self.mockUserId1,
               emoji: "🍜",
               title: LocalizedStrings.SettingsStrings.mockMeeting,
@@ -103,7 +103,7 @@ extension LiveActivityTest {
               scheduledTime: Date().addingTimeInterval(1800)
             )
 
-            let initialState = PromiseActivityAttributes.ContentState(
+            let initialState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: 30,
               participants: Self.mockParticipants
             )
@@ -123,7 +123,7 @@ extension LiveActivityTest {
 
           case .endLiveActivityTapped:
             return .run { send in
-              for activity in Activity<PromiseActivityAttributes>.activities {
+              for activity in Activity<ScheduleActivityAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
               }
               await send(.internal(.activityEnded))
@@ -139,7 +139,7 @@ extension LiveActivityTest {
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -170,7 +170,7 @@ extension LiveActivityTest {
               }
               participants[i] = participants[i].with(estimatedArrivalMinutes: eta)
             }
-            let updatedState = PromiseActivityAttributes.ContentState(
+            let updatedState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: currentState.trackingDurationMinutes,
               participants: participants
             )
@@ -178,7 +178,7 @@ extension LiveActivityTest {
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -199,7 +199,7 @@ extension LiveActivityTest {
               for (index, userId) in userIds.enumerated() {
                 try? await Task.sleep(for: .seconds(1.5))
 
-                if let activity = Activity<PromiseActivityAttributes>.activities
+                if let activity = Activity<ScheduleActivityAttributes>.activities
                   .first(where: { $0.id == activityId })
                 {
                   let currentState = activity.content.state
@@ -220,7 +220,7 @@ extension LiveActivityTest {
             for i in participants.indices {
               participants[i] = participants[i].with(estimatedArrivalMinutes: etas[i])
             }
-            let updatedState = PromiseActivityAttributes.ContentState(
+            let updatedState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: currentState.trackingDurationMinutes,
               participants: participants
             )
@@ -228,7 +228,7 @@ extension LiveActivityTest {
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -275,7 +275,7 @@ extension LiveActivityTest {
       for i in participants.indices {
         participants[i] = participants[i].with(estimatedArrivalMinutes: eta)
       }
-      let updatedState = PromiseActivityAttributes.ContentState(
+      let updatedState = ScheduleActivityAttributes.ContentState(
         trackingDurationMinutes: currentState.trackingDurationMinutes,
         participants: participants
       )
@@ -283,7 +283,7 @@ extension LiveActivityTest {
 
       return .run { send in
         try? await Task.sleep(for: .seconds(1))
-        if let activity = Activity<PromiseActivityAttributes>.activities
+        if let activity = Activity<ScheduleActivityAttributes>.activities
           .first(where: { $0.id == activityId })
         {
           await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -456,7 +456,7 @@ extension LiveActivityTest {
           debugRow(label: LocalizedStrings.SettingsStrings.activityId, value: store.activityId ?? "-")
           debugRow(
             label: LocalizedStrings.SettingsStrings.activeActivityCount,
-            value: "\(Activity<PromiseActivityAttributes>.activities.count)")
+            value: "\(Activity<ScheduleActivityAttributes>.activities.count)")
 
           if let attributes = store.currentAttributes {
             debugRow(label: LocalizedStrings.SettingsStrings.location, value: attributes.location ?? "-")

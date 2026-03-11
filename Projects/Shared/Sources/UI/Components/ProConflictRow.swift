@@ -117,7 +117,7 @@ public struct ProConflictRow: View {
   ProConflictRow(
     conflicts: [ConflictInfo(title: "팀 회의", overlapMinutes: 30)],
     isChecking: false,
-    eventTitle: "저녁 약속",
+    eventTitle: "저녁 일정",
     eventStartAt: Date()
   )
   .padding()

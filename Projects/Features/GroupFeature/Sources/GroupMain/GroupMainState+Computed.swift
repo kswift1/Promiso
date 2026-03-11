@@ -47,18 +47,18 @@ extension GroupMain.Feature.State {
     }
   }
 
-  /// 응답 필요 약속 목록 (마감 임박순)
-  var needResponsePromises: [PromiseModel] {
-    guard case .loaded(let promises) = promisesState else { return [] }
-    return promises
+  /// 응답 필요 일정 목록 (마감 임박순)
+  var needResponseSchedules: [ScheduleModel] {
+    guard case .loaded(let schedules) = schedulesState else { return [] }
+    return schedules
       .filter { $0.responseStatus(currentUserId: currentUser.userId, totalGroupMembers: currentGroupMembers?.count) == .needResponse }
       .sorted { $0.votes.until < $1.votes.until }  // 마감 임박순
   }
 
-  /// 확정된 약속 목록 (시작 시간순, 내가 응답한 것만)
-  var confirmedPromises: [PromiseModel] {
-    guard case .loaded(let promises) = promisesState else { return [] }
-    return promises
+  /// 확정된 일정 목록 (시작 시간순, 내가 응답한 것만)
+  var confirmedSchedules: [ScheduleModel] {
+    guard case .loaded(let schedules) = schedulesState else { return [] }
+    return schedules
       .filter {
         $0.isConfirmed && $0.startAt > Date()
         && $0.myVoteStatus(userId: currentUser.userId) != .pending
@@ -66,16 +66,16 @@ extension GroupMain.Feature.State {
       .sorted { $0.startAt < $1.startAt }
   }
 
-  /// 모든 약속 (시간순)
-  var allPromises: [PromiseModel] {
-    guard case .loaded(let promises) = promisesState else { return [] }
-    return promises.sorted { $0.startAt < $1.startAt }
+  /// 모든 일정 (시간순)
+  var allSchedules: [ScheduleModel] {
+    guard case .loaded(let schedules) = schedulesState else { return [] }
+    return schedules.sorted { $0.startAt < $1.startAt }
   }
 
-  /// 응답 완료 약속 목록 (시작 시간순)
-  var respondedPromises: [PromiseModel] {
-    guard case .loaded(let promises) = promisesState else { return [] }
-    return promises
+  /// 응답 완료 일정 목록 (시작 시간순)
+  var respondedSchedules: [ScheduleModel] {
+    guard case .loaded(let schedules) = schedulesState else { return [] }
+    return schedules
       .filter {
         let status = $0.responseStatus(
           currentUserId: currentUser.userId,
@@ -86,44 +86,44 @@ extension GroupMain.Feature.State {
       .sorted { $0.startAt < $1.startAt }
   }
 
-  /// 과거 약속 목록 (최신순, 별도 fetch된 데이터)
-  var pastPromises: [PromiseModel] {
-    guard case .loaded(let promises) = pastPromisesState else { return [] }
-    return promises.sorted { $0.startAt > $1.startAt }  // 최신순
+  /// 과거 일정 목록 (최신순, 별도 fetch된 데이터)
+  var pastSchedules: [ScheduleModel] {
+    guard case .loaded(let schedules) = pastSchedulesState else { return [] }
+    return schedules.sorted { $0.startAt > $1.startAt }  // 최신순
   }
 
-  /// 현재 필터에 따른 약속 목록
-  var filteredPromises: [PromiseModel] {
+  /// 현재 필터에 따른 일정 목록
+  var filteredSchedules: [ScheduleModel] {
     switch selectedFilter {
     case .needResponse:
-      return needResponsePromises
+      return needResponseSchedules
     case .responded:
-      return respondedPromises
+      return respondedSchedules
     case .confirmed:
-      return confirmedPromises
+      return confirmedSchedules
     case .all:
-      return allPromises
+      return allSchedules
     case .past:
-      return pastPromises
+      return pastSchedules
     }
   }
 
   /// 과거 필터 로딩 중 여부
   var isPastFilterLoading: Bool {
-    selectedFilter == .past && pastPromisesState == .loading
+    selectedFilter == .past && pastSchedulesState == .loading
   }
 
-  /// 날짜별로 그룹화된 필터된 약속 목록
-  var groupedFilteredPromises: [(day: Date, title: String, promises: [PromiseModel])] {
+  /// 날짜별로 그룹화된 필터된 일정 목록
+  var groupedFilteredSchedules: [(day: Date, title: String, schedules: [ScheduleModel])] {
     let calendar = Calendar.current
-    let grouped = Dictionary(grouping: filteredPromises) { promise in
-      calendar.startOfDay(for: promise.startAt)
+    let grouped = Dictionary(grouping: filteredSchedules) { schedule in
+      calendar.startOfDay(for: schedule.startAt)
     }
 
     let isDescending = selectedFilter == .past
     return grouped
       .sorted { isDescending ? $0.key > $1.key : $0.key < $1.key }
-      .map { day, promises in
+      .map { day, schedules in
         let title: String
         if calendar.isDateInToday(day) {
           title = LocalizedStrings.DateFormat.today
@@ -133,13 +133,13 @@ extension GroupMain.Feature.State {
           title = LocalizedDateFormatters.monthDayString(from: day)
         }
 
-        return (day: day, title: title, promises: promises)
+        return (day: day, title: title, schedules: schedules)
       }
   }
 
-  /// 필터별 약속 개수 (과거 필터 제외)
-  var filterCounts: [GroupMain.PromiseFilter: Int] {
-    guard case .loaded(let promises) = promisesState else {
+  /// 필터별 일정 개수 (과거 필터 제외)
+  var filterCounts: [GroupMain.ScheduleFilter: Int] {
+    guard case .loaded(let schedules) = schedulesState else {
       return [
         .needResponse: 0,
         .responded: 0,
@@ -156,21 +156,21 @@ extension GroupMain.Feature.State {
     var respondedCount = 0
     var confirmedCount = 0
 
-    for promise in promises {
-      let responseStatus = promise.responseStatus(
+    for schedule in schedules {
+      let responseStatus = schedule.responseStatus(
         currentUserId: currentUserId,
         totalGroupMembers: totalGroupMembers
       )
 
       if responseStatus == .needResponse {
         needResponseCount += 1
-      } else if responseStatus == .responded, !promise.isConfirmed {
+      } else if responseStatus == .responded, !schedule.isConfirmed {
         respondedCount += 1
       }
 
-      if promise.isConfirmed,
-         promise.startAt > now,
-         promise.myVoteStatus(userId: currentUserId) != .pending {
+      if schedule.isConfirmed,
+         schedule.startAt > now,
+         schedule.myVoteStatus(userId: currentUserId) != .pending {
         confirmedCount += 1
       }
     }
@@ -179,7 +179,7 @@ extension GroupMain.Feature.State {
       .needResponse: needResponseCount,
       .responded: respondedCount,
       .confirmed: confirmedCount,
-      .all: promises.count
+      .all: schedules.count
       // .past는 제외 (별도 fetch이므로)
     ]
   }

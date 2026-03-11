@@ -131,11 +131,11 @@ extension DeveloperSettings {
                   Image(systemName: "rectangle.bottomhalf.inset.filled")
                     .foregroundStyle(.blue)
                     .frame(width: 28)
-                  Text(LocalizedStrings.SettingsStrings.livePromiseSettings)
+                  Text(LocalizedStrings.SettingsStrings.liveScheduleSettings)
                   Spacer()
-                  Text(isLivePromiseEnabled ? LocalizedStrings.SettingsStrings.statusOn : LocalizedStrings.SettingsStrings.statusOff)
+                  Text(isLiveScheduleEnabled ? LocalizedStrings.SettingsStrings.statusOn : LocalizedStrings.SettingsStrings.statusOff)
                     .font(.caption)
-                    .foregroundStyle(isLivePromiseEnabled ? .green : .secondary)
+                    .foregroundStyle(isLiveScheduleEnabled ? .green : .secondary)
                   Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -226,8 +226,8 @@ extension DeveloperSettings {
       }
     }
 
-    private var isLivePromiseEnabled: Bool {
-      UserDefaults.standard.bool(forKey: "dev.livePromise.enabled")
+    private var isLiveScheduleEnabled: Bool {
+      UserDefaults.standard.bool(forKey: "dev.liveSchedule.enabled")
     }
   }
 }

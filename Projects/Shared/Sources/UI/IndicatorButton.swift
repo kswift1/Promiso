@@ -163,8 +163,8 @@ private extension View {
 // MARK: - Presets for Common Use Cases
 
 public extension IndicatorButton {
-  /// 약속 카드용 작은 버튼 (높이 24)
-  static func promiseAction(
+  /// 일정 카드용 작은 버튼 (높이 24)
+  static func scheduleAction(
     _ title: String,
     isLoading: Bool = false,
     isDisabled: Bool = false,
@@ -264,7 +264,7 @@ public extension IndicatorButton {
           .font(.headline)
         
         IndicatorButton.standard(
-          "약속 생성하기",
+          "일정 생성하기",
           isLoading: false,
           action: {}
         )
@@ -282,20 +282,20 @@ public extension IndicatorButton {
         )
       }
       
-      // Promise Action Buttons
+      // Schedule Action Buttons
       VStack(alignment: .leading, spacing: 16) {
-        Text("Promise Action Buttons")
+        Text("Schedule Action Buttons")
           .font(.headline)
         
         HStack(spacing: 12) {
-          IndicatorButton.promiseAction(
+          IndicatorButton.scheduleAction(
             "수락",
             isLoading: false,
             style: .primary,
             action: {}
           )
           
-          IndicatorButton.promiseAction(
+          IndicatorButton.scheduleAction(
             "거절",
             isLoading: false,
             style: .secondary,
@@ -305,14 +305,14 @@ public extension IndicatorButton {
         }
         
         HStack(spacing: 12) {
-          IndicatorButton.promiseAction(
+          IndicatorButton.scheduleAction(
             "수락",
             isLoading: true,
             style: .primary,
             action: {}
           )
           
-          IndicatorButton.promiseAction(
+          IndicatorButton.scheduleAction(
             "거절",
             isLoading: false,
             isDisabled: true,
@@ -373,8 +373,8 @@ public extension IndicatorButton {
           action: {}
         )
         
-        IndicatorButton.promiseAction(
-          "Promise Action",
+        IndicatorButton.scheduleAction(
+          "Schedule Action",
           isLoading: true,
           action: {}
         )

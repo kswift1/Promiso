@@ -641,17 +641,17 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var previewTitle: String {
     switch self {
     case .groupNotifications:
-      return LocalizedStrings.SettingsStrings.newPromiseArrived
+      return LocalizedStrings.SettingsStrings.newScheduleArrived
     case .preference(let key):
       switch key {
-      case .promiseInvitation:
-        return LocalizedStrings.SettingsStrings.newPromiseArrived
-      case .promiseConfirmed:
-        return LocalizedStrings.SettingsStrings.promiseConfirmedTitle
-      case .promiseCancelled:
-        return LocalizedStrings.SettingsStrings.promiseCancelledTitle
-      case .promiseUpdated:
-        return LocalizedStrings.SettingsStrings.promiseUpdatedTitle
+      case .scheduleInvitation:
+        return LocalizedStrings.SettingsStrings.newScheduleArrived
+      case .scheduleConfirmed:
+        return LocalizedStrings.SettingsStrings.scheduleConfirmedTitle
+      case .scheduleCancelled:
+        return LocalizedStrings.SettingsStrings.scheduleCancelledTitle
+      case .scheduleUpdated:
+        return LocalizedStrings.SettingsStrings.scheduleUpdatedTitle
       case .groupUpdate:
         return LocalizedStrings.SettingsStrings.newMemberJoinedTitle
       }
@@ -661,17 +661,17 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var previewBody: String {
     switch self {
     case .groupNotifications:
-      return LocalizedStrings.SettingsStrings.promiseInvitationBody
+      return LocalizedStrings.SettingsStrings.scheduleInvitationBody
     case .preference(let key):
       switch key {
-      case .promiseInvitation:
-        return LocalizedStrings.SettingsStrings.promiseInvitationBody
-      case .promiseConfirmed:
-        return LocalizedStrings.SettingsStrings.promiseConfirmedBody
-      case .promiseCancelled:
-        return LocalizedStrings.SettingsStrings.promiseCancelledBody
-      case .promiseUpdated:
-        return LocalizedStrings.SettingsStrings.promiseUpdatedBody
+      case .scheduleInvitation:
+        return LocalizedStrings.SettingsStrings.scheduleInvitationBody
+      case .scheduleConfirmed:
+        return LocalizedStrings.SettingsStrings.scheduleConfirmedBody
+      case .scheduleCancelled:
+        return LocalizedStrings.SettingsStrings.scheduleCancelledBody
+      case .scheduleUpdated:
+        return LocalizedStrings.SettingsStrings.scheduleUpdatedBody
       case .groupUpdate:
         return LocalizedStrings.SettingsStrings.newMemberJoinedBody
       }

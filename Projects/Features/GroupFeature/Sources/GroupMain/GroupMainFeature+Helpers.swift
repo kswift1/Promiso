@@ -9,9 +9,9 @@ func handleMoreNeedResponseTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
+  state.path.append(.groupScheduleList(.init(
     group: currentGroup,
-    promises: state.allPromises,
+    schedules: state.allSchedules,
     currentUserId: state.currentUser.userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .needResponse
@@ -23,9 +23,9 @@ func handleMoreConfirmedTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
+  state.path.append(.groupScheduleList(.init(
     group: currentGroup,
-    promises: state.allPromises,
+    schedules: state.allSchedules,
     currentUserId: state.currentUser.userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .confirmed
@@ -33,13 +33,13 @@ func handleMoreConfirmedTapped(
   return .none
 }
 
-func handleAllPromisesTapped(
+func handleAllSchedulesTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
+  state.path.append(.groupScheduleList(.init(
     group: currentGroup,
-    promises: state.allPromises,
+    schedules: state.allSchedules,
     currentUserId: state.currentUser.userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .all
@@ -52,14 +52,14 @@ func handleGroupSettingsTapped(
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
   let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
-  let upcomingPromises = state.allPromises.filter { $0.isUpcoming }
+  let upcomingSchedules = state.allSchedules.filter { $0.isUpcoming }
   state.path.append(.groupSettings(.init(
     group: currentGroup,
     summary: summary,
     currentUserId: state.currentUser.userId,
     isPro: state.isPro,
     preloadedMembers: state.currentGroupMembers,
-    upcomingPromises: upcomingPromises
+    upcomingSchedules: upcomingSchedules
   )))
   return .none
 }

@@ -1,6 +1,6 @@
 import Clients
 import ComposableArchitecture
-import CreatePromiseFeature
+import CreateScheduleFeature
 import PromisoShared
 import SharedFeature
 import SwiftUI

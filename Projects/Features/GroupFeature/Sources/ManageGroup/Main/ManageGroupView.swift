@@ -63,8 +63,8 @@ extension ManageGroup {
 
               statItem(
                 icon: "clock.fill",
-                label: LocalizedStrings.ManageGroup.activePromises,
-                value: "\(store.activePromiseCount)"
+                label: LocalizedStrings.ManageGroup.activeSchedules,
+                value: "\(store.activeScheduleCount)"
               )
             }
             .frame(maxWidth: .infinity)
@@ -93,12 +93,12 @@ extension ManageGroup {
           .padding(20)
           .adaptiveGlassCard(cornerRadius: 20)
 
-          // Past Promises Section
+          // Past Schedules Section
           Button {
-            store.send(.view(.pastPromisesTapped))
+            store.send(.view(.pastSchedulesTapped))
           } label: {
             HStack {
-              Label(LocalizedStrings.ManageGroup.pastPromises, systemImage: "clock.arrow.circlepath")
+              Label(LocalizedStrings.ManageGroup.pastSchedules, systemImage: "clock.arrow.circlepath")
                 .font(.headline)
                 .foregroundStyle(.primary)
 

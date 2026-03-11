@@ -139,23 +139,23 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
 
 /// 캘린더에 새로 추가할 이벤트 정보
 public struct NewCalendarEvent: Equatable, Sendable {
-  public let promiseId: String
+  public let scheduleId: String
   public let title: String
   public let startDate: Date
   public let endDate: Date?
   public let location: String?
-  /// Promiso 식별 URL (promiso://promise/{id}?hash={hash})
+  /// Promiso 식별 URL (promiso://schedule/{id}?hash={hash})
   public let url: URL?
 
   public init(
-    promiseId: String,
+    scheduleId: String,
     title: String,
     startDate: Date,
     endDate: Date? = nil,
     location: String? = nil,
     url: URL? = nil
   ) {
-    self.promiseId = promiseId
+    self.scheduleId = scheduleId
     self.title = title
     self.startDate = startDate
     self.endDate = endDate
@@ -191,7 +191,7 @@ public struct EventKitClient: Sendable {
     _ endDate: Date
   ) async throws -> [CalendarEvent]
 
-  /// 캘린더에 이벤트 추가 (약속 → 캘린더 동기화용)
+  /// 캘린더에 이벤트 추가 (일정 → 캘린더 동기화용)
   /// - Returns: 생성된 이벤트의 eventIdentifier
   public var addEvent: @Sendable (NewCalendarEvent) async throws -> String
 
@@ -240,7 +240,7 @@ extension EventKitClient: TestDependencyKey {
         ),
         CalendarEvent(
           id: "cal-2",
-          title: "점심 약속",
+          title: "점심 일정",
           startDate: calendar.date(bySettingHour: 12, minute: 30, second: 0, of: startDate) ?? startDate,
           endDate: calendar.date(bySettingHour: 13, minute: 30, second: 0, of: startDate) ?? startDate,
           location: nil,
@@ -251,7 +251,7 @@ extension EventKitClient: TestDependencyKey {
       ]
     },
     addEvent: { event in
-      return "preview-event-\(event.promiseId)"
+      return "preview-event-\(event.scheduleId)"
     },
     updateEvent: { _, _, _ in },
     deleteEvent: { _ in },
@@ -451,7 +451,7 @@ extension EventKitClient: DependencyKey {
 
           return PromisoCalendarEvent(
             eventIdentifier: eventId,
-            promiseId: parsed.id,
+            scheduleId: parsed.id,
             contentHash: parsed.contentHash,
             userNotes: event.notes,
             isPersonal: parsed.isPersonal
@@ -480,7 +480,7 @@ extension EventKitClient: DependencyKey {
         )
         let events = eventStore.events(matching: predicate)
 
-        // 3. Promiso URL이 있는 이벤트를 promiseId별로 그룹핑
+        // 3. Promiso URL이 있는 이벤트를 scheduleId별로 그룹핑
         var grouped: [String: [EKEvent]] = [:]
         for event in events {
           guard let parsed = PromisoCalendarTag.parse(from: event.url) else { continue }

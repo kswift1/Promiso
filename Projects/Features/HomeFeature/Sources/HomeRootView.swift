@@ -1,7 +1,7 @@
 import Clients
 import ComposableArchitecture
 import Foundation
-import CreatePromiseFeature
+import CreateScheduleFeature
 import NotificationCenterFeature
 import PromisoShared
 import SharedFeature
@@ -32,10 +32,10 @@ extension Home {
           set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
         )) {
           DepartureAlertSheet(
-            promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
-            promiseTitle: store.departureAlertItem?.title ?? "",
-            promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
-            promiseLocation: store.departureAlertItem?.location?.name,
+            scheduleEmoji: store.departureAlertItem?.displayEmoji ?? "",
+            scheduleTitle: store.departureAlertItem?.title ?? "",
+            scheduleStartAt: store.departureAlertItem?.startAt ?? Date(),
+            scheduleLocation: store.departureAlertItem?.location?.name,
             departureLocation: store.departureLocationName,
             transportData: store.departureTransportData.value,
             loadError: store.departureTransportData.error.map { error in
@@ -142,18 +142,18 @@ extension Home {
               onCreatePersonalEvent: { date in
                 store.send(.view(.overlayCreatePersonalEventTapped(date)))
               },
-              onCreatePromise: {
-                store.send(.view(.overlayCreatePromiseTapped))
+              onCreateSchedule: {
+                store.send(.view(.overlayCreateScheduleTapped))
               },
               onDeleteScheduleItem: nil,
               onShareScheduleItem: nil,
               overlayFeatureContent: overlayFeatureContent,
               onFeatureBack: {
                 switch store.overlayCalendarMode {
-                case .promiseDetail:
+                case .scheduleDetail:
                   store.send(.view(.overlayScheduleDetailBackTapped), animation: .easeInOut(duration: 0.3))
-                case .promiseCreate:
-                  store.send(.view(.overlayCreatePromiseBackTapped), animation: .easeInOut(duration: 0.3))
+                case .scheduleCreate:
+                  store.send(.view(.overlayCreateScheduleBackTapped), animation: .easeInOut(duration: 0.3))
                 default:
                   break
                 }
@@ -163,8 +163,8 @@ extension Home {
           )
       } destination: { store in
         switch store.case {
-        case .promiseDetail(let detailStore):
-          PromiseDetail.RootView(store: detailStore)
+        case .scheduleDetail(let detailStore):
+          ScheduleDetail.RootView(store: detailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
         case .recurringPersonalEventDetail(let detailStore):
@@ -184,9 +184,9 @@ extension Home {
         return AnyView(
           OverlayScheduleDetail.RootView(store: detailStore)
         )
-      } else if let createStore = store.scope(state: \.overlayCreatePromise, action: \.overlayCreatePromise) {
+      } else if let createStore = store.scope(state: \.overlayCreateSchedule, action: \.overlayCreateSchedule) {
         return AnyView(
-          CreatePromise.RootView(store: createStore)
+          CreateSchedule.RootView(store: createStore)
         )
       }
       return nil
@@ -228,7 +228,7 @@ extension Home {
 
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
-          } else if let error = store.promisesState.error {
+          } else if let error = store.schedulesState.error {
             errorView(error: error)
           } else {
             // 오늘의 브리핑
@@ -268,8 +268,8 @@ extension Home {
               isPro: store.isPro,
               onItemTap: { item in
                 switch item {
-                case .promise(let p):
-                  store.send(.view(.todayPromiseTapped(p)))
+                case .schedule(let p):
+                  store.send(.view(.todayScheduleTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
                 case .recurringPersonalEvent(let instance):
@@ -286,12 +286,12 @@ extension Home {
             .padding(.horizontal, 16)
 
             // 응답 필요 섹션 (있을 때만 표시)
-            if !snapshot.pendingPromises.isEmpty {
+            if !snapshot.pendingSchedules.isEmpty {
               PendingSection(
-                promises: snapshot.pendingPromises,
+                schedules: snapshot.pendingSchedules,
                 groupMembersCache: store.groupMembersCache,
-                onPromiseTap: { promise in
-                  store.send(.view(.pendingPromiseTapped(promise)))
+                onScheduleTap: { schedule in
+                  store.send(.view(.pendingScheduleTapped(schedule)))
                 }
               )
               .padding(.horizontal, 16)
@@ -304,8 +304,8 @@ extension Home {
               recurringSummaries: snapshot.upcomingRecurringSummaries,
               onItemTap: { item in
                 switch item {
-                case .promise(let p):
-                  store.send(.view(.upcomingPromiseTapped(p)))
+                case .schedule(let p):
+                  store.send(.view(.upcomingScheduleTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
                 case .recurringPersonalEvent(let instance):

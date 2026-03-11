@@ -176,7 +176,7 @@ public struct ProBonusFloatingView: View {
           .font(.system(size: 12))
           .foregroundStyle(.tertiary)
       } else {
-        Text("10일 이내 약속만 날씨를 확인할 수 있어요")
+        Text("10일 이내 일정만 날씨를 확인할 수 있어요")
           .font(.system(size: 12))
           .foregroundStyle(.tertiary)
       }
@@ -287,7 +287,7 @@ public struct ProBonusFloatingView: View {
     ProBonusFloatingView(
       conflicts: [
         ConflictInfo(title: "팀 회의", overlapMinutes: 30),
-        ConflictInfo(title: "점심 약속", overlapMinutes: 60)
+        ConflictInfo(title: "점심 일정", overlapMinutes: 60)
       ]
     )
     .padding(.horizontal, 16)

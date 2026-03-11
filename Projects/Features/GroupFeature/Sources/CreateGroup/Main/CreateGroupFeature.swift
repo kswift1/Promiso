@@ -152,7 +152,7 @@ extension CreateGroup {
       public enum Delegate: Sendable {
         case dismiss
         case groupCreated(id: String)
-        case groupCreatedAndCreatePromise(id: String)
+        case groupCreatedAndCreateSchedule(id: String)
       }
     }
 
@@ -234,7 +234,7 @@ extension CreateGroup {
                 AnalyticsClient.ParameterKey.groupName: result.name
               ]
             )
-            return .send(.delegate(.groupCreatedAndCreatePromise(id: result.id)))
+            return .send(.delegate(.groupCreatedAndCreateSchedule(id: result.id)))
 
           case .notificationToggled(let enabled):
             // OFF로 전환할 때는 권한 체크 불필요

@@ -2,7 +2,7 @@
 
 ## 개요
 
-약속 당일 실시간 도착 상황을 Dynamic Island와 잠금화면에서 공유하는 기능.
+일정 당일 실시간 도착 상황을 Dynamic Island와 잠금화면에서 공유하는 기능.
 **레이싱 트랙 UI**로 참가자들의 ETA(도착 예상 시간)를 시각화.
 
 ```
@@ -78,7 +78,7 @@ Projects/
 │       └── LiveActivityWidget/
 │           ├── Sources/
 │           │   ├── LiveActivityWidgetBundle.swift   # Widget 진입점
-│           │   ├── PromiseLiveActivity.swift        # Widget 정의 + Previews
+│           │   ├── ScheduleLiveActivity.swift        # Widget 정의 + Previews
 │           │   ├── UpdateETAIntent.swift            # ETA 버튼 Intent
 │           │   └── Views/
 │           │       ├── LockScreenView.swift         # 잠금화면 배너
@@ -89,7 +89,7 @@ Projects/
 ├── Shared/
 │   └── Sources/
 │       ├── LiveActivity/
-│       │   ├── PromiseActivityAttributes.swift     # 공유 모델
+│       │   ├── ScheduleActivityAttributes.swift     # 공유 모델
 │       │   └── LiveActivityImageStore.swift        # 프로필 이미지 캐싱
 │       └── Common/
 │           └── AppLogger.swift
@@ -104,18 +104,18 @@ Projects/
 
 ## 데이터 모델
 
-### PromiseActivityAttributes
+### ScheduleActivityAttributes
 
 ```swift
 /// 라이브액티비티 속성 (Activity 생성 시 고정)
-public struct PromiseActivityAttributes: ActivityAttributes {
+public struct ScheduleActivityAttributes: ActivityAttributes {
   public let trackingDurationMinutes: Int  // 추적 시간 (기본 30분)
-  public let promiseId: String
+  public let scheduleId: String
   public let currentUserId: String
-  public let emoji: String                 // 약속 이모지
-  public let title: String                 // 약속 제목
+  public let emoji: String                 // 일정 이모지
+  public let title: String                 // 일정 제목
   public let location: String?             // 장소명
-  public let scheduledTime: Date           // 약속 시간
+  public let scheduledTime: Date           // 일정 시간
   public let hostId: String                // 호스트 사용자 ID
   public let hostName: String?             // 호스트 표시 이름
 
@@ -179,7 +179,7 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 
 **헤더 섹션:**
 - 왼쪽: 이모지 + 제목, 장소 (📍)
-- 오른쪽: "약속 시간" 라벨 + AM/PM 시간
+- 오른쪽: "일정 시간" 라벨 + AM/PM 시간
 
 **레이싱 트랙:**
 - 줄무늬 배경 (세로 스트라이프)
@@ -226,7 +226,7 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 └─────┘
 ```
 
-- 약속 이모지만 표시
+- 일정 이모지만 표시
 
 ---
 
@@ -378,14 +378,14 @@ public enum LiveActivityImageStore {
 
 ```swift
 struct UpdateETAIntent: LiveActivityIntent {
-  @Parameter(title: "Promise ID") var promiseId: String
+  @Parameter(title: "Schedule ID") var scheduleId: String
   @Parameter(title: "User ID") var userId: String
   @Parameter(title: "ETA Minutes") var estimatedMinutes: Int
 
   func perform() async throws -> some IntentResult {
     // 1. App Group UserDefaults에 저장 (앱 동기화용)
     let update = ETAUpdate(
-      promiseId: promiseId,
+      scheduleId: scheduleId,
       userId: userId,
       estimatedMinutes: estimatedMinutes,
       timestamp: Date()
@@ -396,7 +396,7 @@ struct UpdateETAIntent: LiveActivityIntent {
 
     // 2. Live Activity UI 즉시 업데이트
     await updateActivityETA(
-      promiseId: promiseId,
+      scheduleId: scheduleId,
       participantId: userId,
       estimatedArrivalMinutes: estimatedMinutes
     )
@@ -418,7 +418,7 @@ struct UpdateETAIntent: LiveActivityIntent {
 ### 딥링크
 
 ```
-promiso://promise/{promiseId}/eta
+promiso://schedule/{scheduleId}/eta
 ```
 
 ---
@@ -447,12 +447,12 @@ Push to Start 토큰 등록 (iOS 17.2+)
 
 #### startLiveActivity
 
-약속 참가자 전원에게 Push to Start APNs 전송
+일정 참가자 전원에게 Push to Start APNs 전송
 
 ```typescript
 // Request
 {
-  promiseId: string;
+  scheduleId: string;
   env?: "stage" | "prod";
 }
 
@@ -473,7 +473,7 @@ ETA 업데이트 후 모든 참가자에게 브로드캐스트
 ```typescript
 // Request
 {
-  promiseId: string;
+  scheduleId: string;
   estimatedMinutes: number;  // 0=도착, N=N분 후
   env?: "stage" | "prod";
 }
@@ -495,7 +495,7 @@ LiveActivity 종료
 ```typescript
 // Request
 {
-  promiseId: string;
+  scheduleId: string;
   env?: "stage" | "prod";
 }
 
@@ -513,18 +513,18 @@ LiveActivity 종료
 
 ### 자동 예약 시작 (Cloud Tasks)
 
-약속 생성 시 `trackingStartMinutesBefore`를 설정하면, 약속이 확정될 때 자동으로 LiveActivity 시작이 예약됩니다.
+일정 생성 시 `trackingStartMinutesBefore`를 설정하면, 일정이 확정될 때 자동으로 LiveActivity 시작이 예약됩니다.
 
 #### 플로우
 
 ```
-1. 사용자가 약속 생성 시 "1시간 전부터" 선택
+1. 사용자가 일정 생성 시 "1시간 전부터" 선택
    → trackingStartMinutesBefore: 60
 
-2. 참가자들이 투표하여 약속 확정
+2. 참가자들이 투표하여 일정 확정
    → votes.accepted.length >= minimumParticipants
 
-3. Firestore Trigger 실행 (onPromiseConfirmedScheduleLiveActivity)
+3. Firestore Trigger 실행 (onScheduleConfirmedScheduleLiveActivity)
    → Cloud Task 예약: startAt - 60분
 
 4. 예약 시간 도달
@@ -545,7 +545,7 @@ LiveActivity 종료
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (약속 N분 전) |
+| `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (일정 N분 전) |
 | `liveActivitySchedule.scheduled` | Boolean | 예약 완료 여부 |
 | `liveActivitySchedule.started` | Boolean | Push to Start 전송 성공 후 시작 처리 여부 |
 | `liveActivitySchedule.scheduledAt` | Timestamp? | 예약된 실행 시각 |
@@ -581,10 +581,10 @@ firebase functions:secrets:set APNS_AUTH_KEY
   "aps": {
     "timestamp": 1704067200,
     "event": "start",
-    "attributes-type": "PromiseActivityAttributes",
+    "attributes-type": "ScheduleActivityAttributes",
     "attributes": {
       "trackingDurationMinutes": 30,
-      "promiseId": "promise-123",
+      "scheduleId": "schedule-123",
       "currentUserId": "{{USER_ID}}",
       "emoji": "🍜",
       "title": "점심 모임",
@@ -638,7 +638,7 @@ firebase functions:secrets:set APNS_AUTH_KEY
 
 ## 테스트
 
-### Mock 테스트 UI (PromiseDetailView)
+### Mock 테스트 UI (ScheduleDetailView)
 
 Debug 빌드에서 사용 가능한 테스트 패널:
 
@@ -656,7 +656,7 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 
 ### Preview 상태
 
-`PromiseLiveActivity.swift`에 정의된 프리뷰:
+`ScheduleLiveActivity.swift`에 정의된 프리뷰:
 
 | 프리뷰 | 설명 |
 |--------|------|
@@ -681,7 +681,7 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 ### iOS
 
 - [x] Widget Extension 설정
-- [x] PromiseActivityAttributes 모델
+- [x] ScheduleActivityAttributes 모델
 - [x] LiveActivityClient (TCA Dependency)
 - [x] LockScreenBannerView
 - [x] RacingTrackView
@@ -732,11 +732,11 @@ APNs 업데이트 시 **Dynamic Island 확장 애니메이션** + 알림으로 �
 
 | 케이스 | 기본 | 메시지 예시 |
 |--------|------|-------------|
-| LiveActivity 시작 | ON | "약속 추적이 시작되었어요" |
+| LiveActivity 시작 | ON | "일정 추적이 시작되었어요" |
 | 첫 번째 도착자 | ON | "민수님이 1등으로 도착!" |
 | 모두 도착 | ON | "모든 참가자가 도착했어요" |
 | 지각 예상 발생 | OFF | "민수님이 5분 늦을 것 같아요" |
-| 약속 시간 5분 전 | OFF | "약속 시간 5분 전이에요" |
+| 일정 시간 5분 전 | OFF | "일정 시간 5분 전이에요" |
 
 **구현 계획:**
 - [ ] Firebase Functions에서 alert 필드 조건부 추가
@@ -745,11 +745,11 @@ APNs 업데이트 시 **Dynamic Island 확장 애니메이션** + 알림으로 �
 
 #### 2. 지각 관련 UI
 
-약속 시간 초과 시 지각자 표시 UI
+일정 시간 초과 시 지각자 표시 UI
 
 **표시 케이스:**
-- ETA > 약속시간: 지각 예상
-- 약속시간 지남 + 미도착: 지각 중
+- ETA > 일정시간: 지각 예상
+- 일정시간 지남 + 미도착: 지각 중
 
 **UI 변경 사항:**
 - [ ] 마커 테두리 색상 변경 (Red/Warning)
@@ -777,14 +777,14 @@ LiveActivityWidget
 
 | 파일 | 설명 |
 |------|------|
-| `PromiseActivityAttributes.swift` | 공유 데이터 모델 |
+| `ScheduleActivityAttributes.swift` | 공유 데이터 모델 |
 | `LiveActivityImageStore.swift` | 프로필 이미지 캐싱 |
 | `RacingTrackView.swift` | 레이싱 트랙 + 마커 UI |
 | `LockScreenView.swift` | 잠금화면 배너 |
-| `PromiseLiveActivity.swift` | Widget 정의 + Dynamic Island |
+| `ScheduleLiveActivity.swift` | Widget 정의 + Dynamic Island |
 | `UpdateETAIntent.swift` | ETA 버튼 Intent |
 | `LiveActivityClient.swift` | TCA Dependency |
-| `PromiseDetailView.swift` | 테스트 UI (DEBUG) |
+| `ScheduleDetailView.swift` | 테스트 UI (DEBUG) |
 
 ---
 

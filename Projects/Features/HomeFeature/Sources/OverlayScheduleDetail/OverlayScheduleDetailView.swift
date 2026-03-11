@@ -25,8 +25,8 @@ extension OverlayScheduleDetail {
           VStack(spacing: 16) {
             timeContextCard
 
-            if let promise = store.promise {
-              promiseStatusCard(promise)
+            if let schedule = store.schedule {
+              scheduleStatusCard(schedule)
             }
 
             if store.personalEvent != nil {
@@ -67,7 +67,7 @@ extension OverlayScheduleDetail {
             .foregroundStyle(.primary)
             .lineLimit(1)
 
-          if let promise = store.promise, let group = promise.group {
+          if let schedule = store.schedule, let group = schedule.group {
             Text(group.name)
               .font(.system(size: 20, weight: .semibold))
               .foregroundStyle(.secondary)
@@ -131,8 +131,8 @@ extension OverlayScheduleDetail {
           }
 
         case .past:
-          if store.promise != nil {
-            PromiseDetailStatusBadgeView(status: store.responseStatus)
+          if store.schedule != nil {
+            ScheduleDetailStatusBadgeView(status: store.responseStatus)
           } else {
             Text(LocalizedStrings.OverlayScheduleDetail.pastEvent)
               .font(.system(size: 15, weight: .medium))
@@ -157,18 +157,18 @@ extension OverlayScheduleDetail {
       .adaptiveGlassCard()
     }
 
-    // MARK: - Promise Status Card (응답 + 참여 현황 통합)
+    // MARK: - Schedule Status Card (응답 + 참여 현황 통합)
 
     @ViewBuilder
-    private func promiseStatusCard(_ promise: PromiseModel) -> some View {
-      let total = max(store.totalMemberCount, promise.minimumParticipants)
+    private func scheduleStatusCard(_ schedule: ScheduleModel) -> some View {
+      let total = max(store.totalMemberCount, schedule.minimumParticipants)
       let accepted = store.acceptedCount
       let declined = store.declinedCount
-      let confirm = promise.minimumParticipants
+      let confirm = schedule.minimumParticipants
 
       VStack(spacing: 12) {
-        // 빠른 응답 (미래 약속만)
-        if !promise.isPast {
+        // 빠른 응답 (미래 일정만)
+        if !schedule.isPast {
           HStack(spacing: 10) {
             quickResponseButton(
               title: LocalizedStrings.OverlayScheduleDetail.accept,

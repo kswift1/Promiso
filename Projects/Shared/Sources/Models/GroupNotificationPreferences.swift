@@ -1,24 +1,24 @@
 import Foundation
 
 public enum GroupNotificationCategory: String, CaseIterable, Sendable {
-  case promise
+  case schedule
   case group
 }
 
 public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
-  case promiseInvitation
-  case promiseConfirmed
-  case promiseCancelled
-  case promiseUpdated
+  case scheduleInvitation
+  case scheduleConfirmed
+  case scheduleCancelled
+  case scheduleUpdated
   case groupUpdate
 
   public var category: GroupNotificationCategory {
     switch self {
-    case .promiseInvitation,
-         .promiseConfirmed,
-         .promiseCancelled,
-         .promiseUpdated:
-      return .promise
+    case .scheduleInvitation,
+         .scheduleConfirmed,
+         .scheduleCancelled,
+         .scheduleUpdated:
+      return .schedule
     case .groupUpdate:
       return .group
     }
@@ -26,24 +26,24 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
 
   public var storageKey: String {
     switch self {
-    case .promiseInvitation: return "invitation"
-    case .promiseConfirmed: return "confirmed"
-    case .promiseCancelled: return "cancelled"
-    case .promiseUpdated: return "updated"
+    case .scheduleInvitation: return "invitation"
+    case .scheduleConfirmed: return "confirmed"
+    case .scheduleCancelled: return "cancelled"
+    case .scheduleUpdated: return "updated"
     case .groupUpdate: return "update"
     }
   }
 
   public var title: String {
     switch self {
-    case .promiseInvitation:
-      return "약속 초대"
-    case .promiseConfirmed:
-      return "약속 확정"
-    case .promiseCancelled:
-      return "약속 취소"
-    case .promiseUpdated:
-      return "약속 변경"
+    case .scheduleInvitation:
+      return "일정 초대"
+    case .scheduleConfirmed:
+      return "일정 확정"
+    case .scheduleCancelled:
+      return "일정 취소"
+    case .scheduleUpdated:
+      return "일정 변경"
     case .groupUpdate:
       return "그룹 업데이트"
     }
@@ -61,20 +61,20 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
 
 public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable {
   public var enabled: Bool
-  public var promise: [String: Bool]
+  public var schedule: [String: Bool]
   public var group: [String: Bool]
   public var calendarSync: Bool
 
   public init(
     enabled: Bool = true,
-    promise: [String: Bool] = GroupNotificationPreferences.defaultPromise,
+    schedule: [String: Bool] = GroupNotificationPreferences.defaultSchedule,
     group: [String: Bool] = GroupNotificationPreferences.defaultGroup,
     calendarSync: Bool = true
   ) {
     self.enabled = enabled
-    self.promise = GroupNotificationPreferences.mergeDefaults(
-      source: promise,
-      defaults: GroupNotificationPreferences.defaultPromise
+    self.schedule = GroupNotificationPreferences.mergeDefaults(
+      source: schedule,
+      defaults: GroupNotificationPreferences.defaultSchedule
     )
     self.group = GroupNotificationPreferences.mergeDefaults(
       source: group,
@@ -85,8 +85,8 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
 
   public func value(for key: GroupNotificationPreferenceKey) -> Bool {
     switch key.category {
-    case .promise:
-      return promise[key.storageKey] ?? true
+    case .schedule:
+      return schedule[key.storageKey] ?? true
     case .group:
       return group[key.storageKey] ?? true
     }
@@ -94,8 +94,8 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
 
   public mutating func setValue(_ enabled: Bool, for key: GroupNotificationPreferenceKey) {
     switch key.category {
-    case .promise:
-      promise[key.storageKey] = enabled
+    case .schedule:
+      schedule[key.storageKey] = enabled
     case .group:
       group[key.storageKey] = enabled
     }
@@ -104,7 +104,7 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
   public var asDictionary: [String: Any] {
     [
       "enabled": enabled,
-      "promise": promise,
+      "schedule": schedule,
       "group": group,
       "calendarSync": calendarSync,
     ]
@@ -112,7 +112,7 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
 }
 
 public enum GroupNotificationPreferences {
-  public static let defaultPromise: [String: Bool] = [
+  public static let defaultSchedule: [String: Bool] = [
     "invitation": true,
     "reminder": true,
     "confirmed": true,
@@ -143,25 +143,25 @@ public enum GroupNotificationPreferences {
     enabled: Bool,
     preferences: [String: Bool]?
   ) -> GroupNotificationSettings {
-    let promise = mergeDefaults(
-      source: legacyPromise(from: preferences),
-      defaults: defaultPromise
+    let schedule = mergeDefaults(
+      source: legacySchedule(from: preferences),
+      defaults: defaultSchedule
     )
     let group = mergeDefaults(
       source: legacyGroup(from: preferences),
       defaults: defaultGroup
     )
-    return GroupNotificationSettings(enabled: enabled, promise: promise, group: group)
+    return GroupNotificationSettings(enabled: enabled, schedule: schedule, group: group)
   }
 
-  private static func legacyPromise(from preferences: [String: Bool]?) -> [String: Bool] {
+  private static func legacySchedule(from preferences: [String: Bool]?) -> [String: Bool] {
     guard let preferences else { return [:] }
     return [
-      "invitation": preferences["promiseInvitation"],
-      "reminder": preferences["promiseReminder"],
-      "confirmed": preferences["promiseConfirmed"],
-      "cancelled": preferences["promiseCancelled"],
-      "updated": preferences["promiseUpdated"],
+      "invitation": preferences["scheduleInvitation"],
+      "reminder": preferences["scheduleReminder"],
+      "confirmed": preferences["scheduleConfirmed"],
+      "cancelled": preferences["scheduleCancelled"],
+      "updated": preferences["scheduleUpdated"],
       "attendanceResponse": preferences["attendanceResponse"],
     ].compactMapValues { $0 }
   }

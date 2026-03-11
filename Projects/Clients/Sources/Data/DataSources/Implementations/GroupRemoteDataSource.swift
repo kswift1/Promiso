@@ -588,12 +588,12 @@ private func parseNotificationSettings(
 
   guard let map = value as? [String: Any] else { return nil }
   let enabled = map["enabled"] as? Bool ?? true
-  let promise = parseNotificationMap(map["promise"])
+  let schedule = parseNotificationMap(map["schedule"])
   let group = parseNotificationMap(map["group"])
   let calendarSync = map["calendarSync"] as? Bool ?? true
   return GroupNotificationSettings(
     enabled: enabled,
-    promise: promise,
+    schedule: schedule,
     group: group,
     calendarSync: calendarSync
   )

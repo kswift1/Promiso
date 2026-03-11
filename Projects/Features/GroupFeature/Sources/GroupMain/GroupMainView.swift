@@ -2,7 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import ResourceKit
-import CreatePromiseFeature
+import CreateScheduleFeature
 
 extension GroupMain {
   public struct RootView: View {
@@ -20,12 +20,12 @@ extension GroupMain {
           switch store.case {
           case .groupSettings(let groupSettingsStore):
             GroupSettings.View(store: groupSettingsStore)
-          case .groupPromiseList(let groupPromiseListStore):
-            GroupPromiseList.View(store: groupPromiseListStore)
-          case .promiseDetail(let promiseDetailStore):
-            PromiseDetail.RootView(store: promiseDetailStore)
-          case .pastPromises(let pastPromisesStore):
-            PastPromises.RootView(store: pastPromisesStore)
+          case .groupScheduleList(let groupScheduleListStore):
+            GroupScheduleList.View(store: groupScheduleListStore)
+          case .scheduleDetail(let scheduleDetailStore):
+            ScheduleDetail.RootView(store: scheduleDetailStore)
+          case .pastSchedules(let pastSchedulesStore):
+            PastSchedules.RootView(store: pastSchedulesStore)
           }
         }
     }
@@ -47,9 +47,9 @@ extension GroupMain {
       ))
       .onAppear { store.send(.view(.onAppear)) }
       .fullScreenCover(
-        store: store.scope(state: \.$createPromise, action: \.createPromise)
+        store: store.scope(state: \.$createSchedule, action: \.createSchedule)
       ) { childStore in
-        CreatePromise.RootView(store: childStore)
+        CreateSchedule.RootView(store: childStore)
       }
       .fullScreenCover(
         store: store.scope(state: \.$createGroup, action: \.createGroup)
@@ -66,17 +66,17 @@ extension GroupMain {
         }
       }
       .sheet(item: Binding(
-        get: { store.sharePromise },
-        set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
-      )) { promise in
-        PromiseShareSheet(
-          promise: promise,
-          isKakaoSharing: store.isKakaoPromiseSharing,
+        get: { store.shareSchedule },
+        set: { _ in store.send(.view(.dismissScheduleShareSheet)) }
+      )) { schedule in
+        ScheduleShareSheet(
+          schedule: schedule,
+          isKakaoSharing: store.isKakaoScheduleSharing,
           onKakaoShareTapped: {
-            store.send(.view(.kakaoPromiseShareTapped))
+            store.send(.view(.kakaoScheduleShareTapped))
           },
           onSystemShareTapped: {
-            store.send(.view(.systemPromiseShareTapped))
+            store.send(.view(.systemScheduleShareTapped))
           }
         )
         .presentationDetents([.height(340)])
@@ -89,9 +89,9 @@ extension GroupMain {
         ShareSheet(items: [item.text])
       }
       .sheet(
-        store: store.scope(state: \.$editPromise, action: \.editPromise)
+        store: store.scope(state: \.$editSchedule, action: \.editSchedule)
       ) { editStore in
-        EditPromise.RootView(store: editStore)
+        EditSchedule.RootView(store: editStore)
       }
       .sheet(
         isPresented: Binding(
@@ -171,8 +171,8 @@ extension GroupMain {
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
           },
-          onCreatePromise: { groupId in
-            store.send(.view(.contextCreatePromiseTapped(groupId)))
+          onCreateSchedule: { groupId in
+            store.send(.view(.contextCreateScheduleTapped(groupId)))
           }
         )
 
@@ -182,7 +182,7 @@ extension GroupMain {
         filterSegment
           .padding(.top, 8)
 
-        // 약속 리스트 (스와이프 지원)
+        // 일정 리스트 (스와이프 지원)
         if store.isOnboardingMode {
           ScrollView {
             onboardingCardsView
@@ -202,7 +202,7 @@ extension GroupMain {
           .refreshable {
             store.send(.view(.refreshTriggered))
           }
-        } else if store.filteredPromises.isEmpty {
+        } else if store.filteredSchedules.isEmpty {
           ScrollView {
             emptyFilteredView
           }
@@ -210,7 +210,7 @@ extension GroupMain {
             store.send(.view(.refreshTriggered))
           }
         } else {
-          promiseListView
+          scheduleListView
         }
       }
       .overlay(alignment: .bottomTrailing) {
@@ -220,14 +220,14 @@ extension GroupMain {
 
     // MARK: - Group Header
 
-    private var defaultMode: PromiseMode {
-      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+    private var defaultMode: ScheduleMode {
+      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultScheduleTabMode) ?? "group"
       return saved == "own" ? .personal : .group
     }
 
     @ViewBuilder
     private var groupHeaderSection: some View {
-      PromiseTabHeader(
+      ScheduleTabHeader(
         selectedMode: .group,
         defaultMode: defaultMode
       ) { mode in
@@ -244,7 +244,7 @@ extension GroupMain {
       if !store.isOnboardingMode {
         Menu {
           Button {
-            store.send(.view(.createNewPromise))
+            store.send(.view(.createNewSchedule))
           } label: {
             Label("그룹 일정 생성", systemImage: "calendar.badge.plus")
           }
@@ -275,7 +275,7 @@ extension GroupMain {
     private var loadingView: some View {
       LazyVStack(spacing: 12) {
         ForEach(0..<3, id: \.self) { _ in
-          PromiseCardSkeleton()
+          ScheduleCardSkeleton()
         }
       }
       .padding(.horizontal, 16)
@@ -342,19 +342,19 @@ extension GroupMain {
     }
 
     @ViewBuilder
-    private var promiseListView: some View {
-      let sections = store.groupedFilteredPromises
+    private var scheduleListView: some View {
+      let sections = store.groupedFilteredSchedules
       let animationKey = sections.flatMap { section in
-        [String(Int(section.day.timeIntervalSince1970))] + section.promises.map(\.id)
+        [String(Int(section.day.timeIntervalSince1970))] + section.schedules.map(\.id)
       }
 
       ScrollViewReader { proxy in
         List {
           ForEach(sections, id: \.day) { section in
             Section {
-              ForEach(section.promises, id: \.id) { promise in
-                promiseRowView(for: promise)
-                  .id(promise.id)
+              ForEach(section.schedules, id: \.id) { schedule in
+                scheduleRowView(for: schedule)
+                  .id(schedule.id)
               }
             } header: {
               dateSectionHeader(section.title)
@@ -374,10 +374,10 @@ extension GroupMain {
           store.send(.view(.refreshTriggered))
         }
         .animation(.snappy, value: animationKey)
-        .onChange(of: store.highlightedPromiseId) { _, newValue in
-          if let promiseId = newValue {
+        .onChange(of: store.highlightedScheduleId) { _, newValue in
+          if let scheduleId = newValue {
             withAnimation(.easeInOut(duration: 0.3)) {
-              proxy.scrollTo(promiseId, anchor: .center)
+              proxy.scrollTo(scheduleId, anchor: .center)
             }
           }
         }
@@ -401,19 +401,19 @@ extension GroupMain {
     }
 
     @ViewBuilder
-    private func promiseRowView(for promise: PromiseModel) -> some View {
-      let promiseId = promise.id
+    private func scheduleRowView(for schedule: ScheduleModel) -> some View {
+      let scheduleId = schedule.id
       let userId = store.currentUser.userId
-      let myVoteStatus = promise.myVoteStatus(userId: userId)
+      let myVoteStatus = schedule.myVoteStatus(userId: userId)
 
-      PromiseCard(
-        promise: promise,
+      ScheduleCard(
+        schedule: schedule,
         currentUserId: userId,
         groupMembers: store.currentGroupMembers,
-        respondingState: store.proposalResponding[promiseId] ?? .idle,
-        isLive: store.liveActivityPromiseId == promiseId,
-        weather: store.weatherByPromiseId[promiseId],
-        conflicts: (store.conflictsByPromiseId[promiseId] ?? []).map { conflict in
+        respondingState: store.proposalResponding[scheduleId] ?? .idle,
+        isLive: store.liveActivityScheduleId == scheduleId,
+        weather: store.weatherByScheduleId[scheduleId],
+        conflicts: (store.conflictsByScheduleId[scheduleId] ?? []).map { conflict in
           ConflictInfo(
             title: conflict.title,
             overlapMinutes: conflict.overlapMinutes,
@@ -424,41 +424,41 @@ extension GroupMain {
             severity: conflict.severity == .confirmed ? .confirmed : .pending
           )
         },
-        isCheckingConflicts: store.conflictCheckingIds.contains(promiseId),
+        isCheckingConflicts: store.conflictCheckingIds.contains(scheduleId),
         onTap: {
-          store.send(.view(.promiseTapped(promise)))
+          store.send(.view(.scheduleTapped(schedule)))
         },
         onAccept: {
-          store.send(.view(.proposalAccepted(promiseId)))
+          store.send(.view(.proposalAccepted(scheduleId)))
         },
         onReject: {
-          store.send(.view(.proposalRejected(promiseId)))
+          store.send(.view(.proposalRejected(scheduleId)))
         },
         onEdit: {
-          store.send(.view(.promiseEditTapped(promise)))
+          store.send(.view(.scheduleEditTapped(schedule)))
         },
         onDelete: {
-          store.send(.view(.promiseDeleteRequested(promiseId)))
+          store.send(.view(.scheduleDeleteRequested(scheduleId)))
         },
         onChangeResponse: { status in
-          store.send(.view(.responseChanged(promiseId, status)))
+          store.send(.view(.responseChanged(scheduleId, status)))
         },
-        onShare: promise.isPast ? nil : {
-          store.send(.view(.promiseShared(promiseId)))
+        onShare: schedule.isPast ? nil : {
+          store.send(.view(.scheduleShared(scheduleId)))
         },
         onDirections: {
-          store.send(.view(.directionsTapped(promiseId)))
+          store.send(.view(.directionsTapped(scheduleId)))
         }
       )
       .contentShape(Rectangle())
       .onTapGesture {
-        store.send(.view(.promiseTapped(promise)))
+        store.send(.view(.scheduleTapped(schedule)))
       }
       .modifier(ShakeEffect(
-        isShaking: store.highlightedPromiseId == promiseId || store.isNeedResponseShaking,
+        isShaking: store.highlightedScheduleId == scheduleId || store.isNeedResponseShaking,
         onComplete: {
-          if store.highlightedPromiseId == promiseId {
-            store.send(.view(.clearHighlightedPromise))
+          if store.highlightedScheduleId == scheduleId {
+            store.send(.view(.clearHighlightedSchedule))
           }
         }
       ))
@@ -466,18 +466,18 @@ extension GroupMain {
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
       .swipeActions(edge: .leading, allowsFullSwipe: true) {
-        // 수락 / 되돌리기 (과거 약속, 흔들기 애니메이션 중 제외)
-        if !promise.isPast && !store.isNeedResponseShaking {
+        // 수락 / 되돌리기 (과거 일정, 흔들기 애니메이션 중 제외)
+        if !schedule.isPast && !store.isNeedResponseShaking {
           if myVoteStatus == .accepted {
             Button {
-              store.send(.view(.responseChanged(promiseId, .pending)))
+              store.send(.view(.responseChanged(scheduleId, .pending)))
             } label: {
               Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
-              store.send(.view(.proposalAccepted(promiseId)))
+              store.send(.view(.proposalAccepted(scheduleId)))
             } label: {
               Label(LocalizedStrings.GroupMain.accept, systemImage: "checkmark.circle.fill")
             }
@@ -486,18 +486,18 @@ extension GroupMain {
         }
       }
       .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-        // 거절 / 되돌리기 (과거 약속, 흔들기 애니메이션 중 제외)
-        if !promise.isPast && !store.isNeedResponseShaking {
+        // 거절 / 되돌리기 (과거 일정, 흔들기 애니메이션 중 제외)
+        if !schedule.isPast && !store.isNeedResponseShaking {
           if myVoteStatus == .declined {
             Button {
-              store.send(.view(.responseChanged(promiseId, .pending)))
+              store.send(.view(.responseChanged(scheduleId, .pending)))
             } label: {
               Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
-              store.send(.view(.proposalRejected(promiseId)))
+              store.send(.view(.proposalRejected(scheduleId)))
             } label: {
               Label(LocalizedStrings.GroupMain.reject, systemImage: "xmark.circle.fill")
             }
@@ -559,17 +559,17 @@ extension GroupMain {
     /// 로딩 상태 (과거 필터는 별도 상태 사용)
     private var isLoadingState: Bool {
       if store.selectedFilter == .past {
-        return !store.pastPromisesState.isLoaded && store.pastPromisesState.error == nil
+        return !store.pastSchedulesState.isLoaded && store.pastSchedulesState.error == nil
       }
-      return !store.promisesState.isLoaded && store.promisesState.error == nil
+      return !store.schedulesState.isLoaded && store.schedulesState.error == nil
     }
 
     /// 현재 에러 (과거 필터는 별도 상태 사용)
     private var currentError: Error? {
       if store.selectedFilter == .past {
-        return store.pastPromisesState.error
+        return store.pastSchedulesState.error
       }
-      return store.promisesState.error
+      return store.schedulesState.error
     }
 
 
@@ -605,8 +605,8 @@ extension GroupMain {
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
           },
-          onCreatePromise: { groupId in
-            store.send(.view(.contextCreatePromiseTapped(groupId)))
+          onCreateSchedule: { groupId in
+            store.send(.view(.contextCreateScheduleTapped(groupId)))
           }
         )
 
@@ -661,9 +661,9 @@ private extension GroupMain.Feature.State {
     false  // 온보딩 모드에서 groupDetailView 재사용
   }
 
-  /// 특정 약속의 응답 상태 조회
-  func respondingState(for promiseId: String) -> GroupMain.RespondingState {
-    proposalResponding[promiseId] ?? .idle
+  /// 특정 일정의 응답 상태 조회
+  func respondingState(for scheduleId: String) -> GroupMain.RespondingState {
+    proposalResponding[scheduleId] ?? .idle
   }
 }
 
@@ -712,7 +712,7 @@ private struct OnboardingCardView: View {
   @ViewBuilder
   private var iconView: some View {
     if card == .createGroup {
-      ResourceKitAsset.fingerPromise.swiftUIImage
+      ResourceKitAsset.fingerSchedule.swiftUIImage
         .resizable()
         .scaledToFit()
     } else {

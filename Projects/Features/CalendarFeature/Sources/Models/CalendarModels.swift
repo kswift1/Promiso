@@ -9,10 +9,10 @@ import Clients
 import UIKit
 #endif
 
-// MARK: - Mock Promise Status
+// MARK: - Mock Schedule Status
 
-/// 약속 상태 (UI 표시용)
-public enum MockPromiseStatus: String, Equatable, Sendable, CaseIterable {
+/// 일정 상태 (UI 표시용)
+public enum MockScheduleStatus: String, Equatable, Sendable, CaseIterable {
   case proposed   // 내 응답 대기
   case pending    // 투표 진행중
   case confirmed  // 확정
@@ -46,10 +46,10 @@ public enum MockPromiseStatus: String, Equatable, Sendable, CaseIterable {
   }
 }
 
-// MARK: - Mock Promise
+// MARK: - Mock Schedule
 
-/// UI 확인용 목업 약속 모델
-public struct MockPromise: Identifiable, Equatable, Sendable {
+/// UI 확인용 목업 일정 모델
+public struct MockSchedule: Identifiable, Equatable, Sendable {
   public let id: String
   public let title: String
   public let emoji: String
@@ -57,7 +57,7 @@ public struct MockPromise: Identifiable, Equatable, Sendable {
   public let startTime: Date
   public let endTime: Date?
   public let location: String?
-  public let status: MockPromiseStatus
+  public let status: MockScheduleStatus
   public let participants: [MockParticipant]
   public let totalParticipants: Int
   public let acceptedCount: Int
@@ -72,7 +72,7 @@ public struct MockPromise: Identifiable, Equatable, Sendable {
     startTime: Date,
     endTime: Date? = nil,
     location: String? = nil,
-    status: MockPromiseStatus,
+    status: MockScheduleStatus,
     participants: [MockParticipant] = [],
     totalParticipants: Int = 4,
     acceptedCount: Int = 0,
@@ -133,7 +133,7 @@ public struct MockPromise: Identifiable, Equatable, Sendable {
     case .proposed:
       return "내 응답 대기중"
     case .rejected:
-      return "약속 무산"
+      return "일정 무산"
     }
   }
 }
@@ -170,7 +170,7 @@ extension CalendarFeature {
 
   /// 인디케이터 소스 타입 (탭 시 상세 화면 이동에 사용)
   public enum ScheduleSourceType: Equatable, Sendable {
-    case promise(id: String, groupId: String)
+    case schedule(id: String, groupId: String)
     case personalEvent(id: String)
     case recurringPersonalEvent(recurringEventId: String)
     case calendarEvent(id: String)
@@ -230,14 +230,14 @@ extension CalendarFeature {
 
   /// 24시간 타임라인에서 표시할 통합 일정 아이템
   public enum ScheduleItem: Identifiable, Equatable {
-    case promise(PromiseModel)
+    case schedule(ScheduleModel)
     case personalEvent(PersonalEventModel)
     case calendarEvent(CalendarEvent)
     case recurringPersonalEvent(ExpandedEventInstance)
 
     public var id: String {
       switch self {
-      case .promise(let p): return "promise-\(p.id)"
+      case .schedule(let p): return "schedule-\(p.id)"
       case .personalEvent(let e): return "personal-\(e.id)"
       case .calendarEvent(let e): return "calendar-\(e.id)"
       case .recurringPersonalEvent(let e): return "recurring-\(e.id)"
@@ -246,7 +246,7 @@ extension CalendarFeature {
 
     public var startAt: Date {
       switch self {
-      case .promise(let p): return p.startAt
+      case .schedule(let p): return p.startAt
       case .personalEvent(let e): return e.startAt
       case .calendarEvent(let e): return e.startDate
       case .recurringPersonalEvent(let e): return e.startAt
@@ -255,7 +255,7 @@ extension CalendarFeature {
 
     public var endAt: Date? {
       switch self {
-      case .promise(let p): return p.endAt
+      case .schedule(let p): return p.endAt
       case .personalEvent(let e): return e.endAt
       case .calendarEvent(let e): return e.endDate
       case .recurringPersonalEvent(let e): return e.endAt
@@ -268,7 +268,7 @@ extension CalendarFeature {
 
     public var displayEmoji: String {
       switch self {
-      case .promise(let p): return p.displayEmoji
+      case .schedule(let p): return p.displayEmoji
       case .personalEvent(let e): return e.displayEmoji
       case .calendarEvent(let e): return e.displayEmoji ?? ""
       case .recurringPersonalEvent(let e): return e.emoji ?? "🔄"
@@ -277,7 +277,7 @@ extension CalendarFeature {
 
     public var title: String {
       switch self {
-      case .promise(let p): return p.title
+      case .schedule(let p): return p.title
       case .personalEvent(let e): return e.title
       case .calendarEvent(let e): return e.displayTitle
       case .recurringPersonalEvent(let e): return e.title
@@ -286,7 +286,7 @@ extension CalendarFeature {
 
     public var location: LocationInfoModel? {
       switch self {
-      case .promise(let p): return p.location
+      case .schedule(let p): return p.location
       case .personalEvent(let e): return e.location
       case .calendarEvent: return nil
       case .recurringPersonalEvent(let e): return e.location
@@ -300,7 +300,7 @@ extension CalendarFeature {
 public enum MockDataGenerator {
 
   /// 목업 데이터 생성
-  public static func generateMockPromises() -> [MockPromise] {
+  public static func generateMockSchedules() -> [MockSchedule] {
     let calendar = Calendar.current
     let today = calendar.startOfDay(for: Date())
 
@@ -312,13 +312,13 @@ public enum MockDataGenerator {
       MockParticipant(name: "서연", profileEmoji: "👧")
     ]
 
-    var promises: [MockPromise] = []
+    var schedules: [MockSchedule] = []
 
-    // 오늘: 확정된 약속 1개
+    // 오늘: 확정된 일정 1개
     if let todayNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: today),
        let todayEnd = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: today) {
-      promises.append(MockPromise(
-        title: "점심 약속",
+      schedules.append(MockSchedule(
+        title: "점심 일정",
         emoji: "🍽️",
         date: today,
         startTime: todayNoon,
@@ -331,9 +331,9 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 오늘: 투표중인 약속 1개
+    // 오늘: 투표중인 일정 1개
     if let todayEvening = calendar.date(bySettingHour: 19, minute: 30, second: 0, of: today) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "저녁 회식",
         emoji: "🍻",
         date: today,
@@ -347,10 +347,10 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 내일: 내 응답 대기 약속 1개
+    // 내일: 내 응답 대기 일정 1개
     if let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
        let tomorrowAfternoon = calendar.date(bySettingHour: 15, minute: 0, second: 0, of: tomorrow) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "카페 데이트",
         emoji: "☕",
         date: tomorrow,
@@ -365,10 +365,10 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 모레: 확정된 약속 1개
+    // 모레: 확정된 일정 1개
     if let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: today),
        let morningTime = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: dayAfterTomorrow) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "운동 모임",
         emoji: "🏃",
         date: dayAfterTomorrow,
@@ -381,10 +381,10 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 4일 후: 투표중인 약속
+    // 4일 후: 투표중인 일정
     if let day4 = calendar.date(byAdding: .day, value: 4, to: today),
        let eveningTime = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: day4) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "영화 관람",
         emoji: "🎬",
         date: day4,
@@ -398,10 +398,10 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 5일 후: 확정된 약속
+    // 5일 후: 확정된 일정
     if let day5 = calendar.date(byAdding: .day, value: 5, to: today),
        let lunchTime = calendar.date(bySettingHour: 12, minute: 30, second: 0, of: day5) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "브런치",
         emoji: "🥞",
         date: day5,
@@ -414,10 +414,10 @@ public enum MockDataGenerator {
       ))
     }
 
-    // 다음 주: 내 응답 대기 약속
+    // 다음 주: 내 응답 대기 일정
     if let nextWeek = calendar.date(byAdding: .day, value: 8, to: today),
        let afternoonTime = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: nextWeek) {
-      promises.append(MockPromise(
+      schedules.append(MockSchedule(
         title: "스터디 모임",
         emoji: "📚",
         date: nextWeek,
@@ -432,6 +432,6 @@ public enum MockDataGenerator {
       ))
     }
 
-    return promises
+    return schedules
   }
 }

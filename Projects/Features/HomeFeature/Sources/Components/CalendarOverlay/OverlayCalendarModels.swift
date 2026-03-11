@@ -27,10 +27,10 @@ enum CalendarMode: Equatable, Sendable {
   case weekly
   /// 날씨 상세 (시간별 예보)
   case weatherDetail
-  /// 오버레이 내 일정 상세 (약속/개인 일정 공통)
-  case promiseDetail
-  /// 오버레이 내 약속 생성
-  case promiseCreate
+  /// 오버레이 내 일정 상세 (일정/개인 일정 공통)
+  case scheduleDetail
+  /// 오버레이 내 일정 생성
+  case scheduleCreate
 }
 
 // MARK: - Overlay Calendar Models
@@ -148,7 +148,7 @@ enum OverlayCalendarModels {
     from monthDays: [DayItem],
     selectedDate: Date
   ) -> [DayItem] {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     // 42셀 = 6행 × 7열, 선택된 날짜의 행(row) 찾기
     guard let index = monthDays.firstIndex(where: {
       calendar.isDate($0.date, inSameDayAs: selectedDate)
@@ -177,7 +177,7 @@ enum OverlayCalendarModels {
     holidayDates: Set<Date> = [],
     startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let today = Date()
 
     // 해당 주의 시작일 찾기
@@ -220,7 +220,7 @@ enum OverlayCalendarModels {
     holidayDates: Set<Date> = [],
     startOnMonday: Bool = AppConstants.isCalendarStartOnMonday
   ) -> [DayItem] {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     let today = Date()
 
     guard let monthInterval = calendar.dateInterval(of: .month, for: date),

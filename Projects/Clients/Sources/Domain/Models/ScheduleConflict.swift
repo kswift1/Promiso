@@ -4,11 +4,11 @@ import Foundation
 
 /// 일정 충돌 정보 모델
 public struct ScheduleConflict: Equatable, Sendable, Identifiable {
-  public var id: String  // promiseId 또는 eventId
+  public var id: String  // scheduleId 또는 eventId
 
   /// 충돌 소스 타입
   public enum Source: Equatable, Sendable {
-    case promise    // 그룹 약속
+    case schedule    // 그룹 일정
     case personalEvent  // 개인 일정
   }
 

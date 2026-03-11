@@ -20,7 +20,7 @@ let project = Project(
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "SharedFeature", path: "../SharedFeature"),
-        .project(target: "CreatePromiseFeature", path: "../CreatePromiseFeature"),
+        .project(target: "CreateScheduleFeature", path: "../CreateScheduleFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()

@@ -48,16 +48,16 @@ struct RoundedCorner: SwiftUI.Shape {
 
 import Clients
 
-/// 약속과 캘린더 이벤트를 통합하여 시간순 정렬하기 위한 타입
+/// 일정과 캘린더 이벤트를 통합하여 시간순 정렬하기 위한 타입
 enum CalendarListItem: Identifiable {
-  case promise(PromiseModel)
+  case schedule(ScheduleModel)
   case calendarEvent(CalendarEvent)
   case personalEvent(PersonalEventModel)
 
   var id: String {
     switch self {
-    case .promise(let promise):
-      return "promise_\(promise.id)"
+    case .schedule(let schedule):
+      return "schedule_\(schedule.id)"
     case .calendarEvent(let event):
       return "event_\(event.id)"
     case .personalEvent(let event):
@@ -67,8 +67,8 @@ enum CalendarListItem: Identifiable {
 
   var startTime: Date {
     switch self {
-    case .promise(let promise):
-      return promise.startAt
+    case .schedule(let schedule):
+      return schedule.startAt
     case .calendarEvent(let event):
       return event.startDate
     case .personalEvent(let event):

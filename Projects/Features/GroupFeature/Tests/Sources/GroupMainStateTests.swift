@@ -9,11 +9,11 @@
 //  - State의 computed properties (필터링, 정렬, 그룹화)
 //
 //  ## 사용처
-//  - **GroupMainView**: 약속 목록 표시, 필터 선택, 그룹 바
-//  - **GroupMain**: 약속 필터링 및 정렬 로직
+//  - **GroupMainView**: 일정 목록 표시, 필터 선택, 그룹 바
+//  - **GroupMain**: 일정 필터링 및 정렬 로직
 //
 //  ## 테스트 목적
-//  - 필터별 약속 필터링 로직 검증
+//  - 필터별 일정 필터링 로직 검증
 //  - 정렬 순서 검증 (시간순, 마감순)
 //  - 날짜별 그룹화 로직 검증
 //
@@ -58,23 +58,23 @@ struct GroupMainStateTests {
     )
   }
 
-  /// 테스트용 약속 생성
-  private func makePromise(
-    id: String = "promise-1",
+  /// 테스트용 일정 생성
+  private func makeSchedule(
+    id: String = "schedule-1",
     startAt: Date = Date().addingTimeInterval(3600),
     voteUntil: Date = Date().addingTimeInterval(1800),
     accepted: [String] = [],
     declined: [String] = [],
     minimumParticipants: Int = 2
-  ) -> PromiseModel {
-    let votes = PromiseVotesModel(
+  ) -> ScheduleModel {
+    let votes = ScheduleVotesModel(
       accepted: accepted,
       declined: declined,
       until: voteUntil
     )
-    return PromiseModel(
+    return ScheduleModel(
       id: id,
-      title: "테스트 약속 \(id)",
+      title: "테스트 일정 \(id)",
       hostId: "host-id",
       groupId: "group-1",
       minimumParticipants: minimumParticipants,
@@ -85,156 +85,156 @@ struct GroupMainStateTests {
 
   /// 테스트용 State 생성
   private func makeState(
-    promises: [PromiseModel] = [],
-    selectedFilter: GroupMain.PromiseFilter = .all,
+    schedules: [ScheduleModel] = [],
+    selectedFilter: GroupMain.ScheduleFilter = .all,
     currentGroup: GroupModel? = nil
   ) -> GroupMain.Feature.State {
     @Shared(.inMemory("test-current-user")) var currentUser = makeCurrentUser()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.promisesState = promises.isEmpty ? .idle : .loaded(promises)
+    state.schedulesState = schedules.isEmpty ? .idle : .loaded(schedules)
     state.selectedFilter = selectedFilter
     state.currentGroup = currentGroup ?? makeGroup()
     return state
   }
 
-  // MARK: - needResponsePromises 테스트
+  // MARK: - needResponseSchedules 테스트
 
-  @Test("응답 필요 약속만 필터링 (현재 사용자 미응답)")
-  func needResponsePromises_filtersUnrespondedPromises() {
-    // 현재 사용자가 응답하지 않은 약속
-    let needResponse = makePromise(id: "need", accepted: [], declined: [])
+  @Test("응답 필요 일정만 필터링 (현재 사용자 미응답)")
+  func needResponseSchedules_filtersUnrespondedSchedules() {
+    // 현재 사용자가 응답하지 않은 일정
+    let needResponse = makeSchedule(id: "need", accepted: [], declined: [])
 
-    // 현재 사용자가 이미 응답한 약속
-    let alreadyResponded = makePromise(id: "responded", accepted: ["current-user"], declined: [])
+    // 현재 사용자가 이미 응답한 일정
+    let alreadyResponded = makeSchedule(id: "responded", accepted: ["current-user"], declined: [])
 
-    let state = makeState(promises: [needResponse, alreadyResponded])
+    let state = makeState(schedules: [needResponse, alreadyResponded])
 
-    #expect(state.needResponsePromises.count == 1)
-    #expect(state.needResponsePromises.first?.id == "need")
+    #expect(state.needResponseSchedules.count == 1)
+    #expect(state.needResponseSchedules.first?.id == "need")
   }
 
-  @Test("응답 필요 약속 마감 임박순 정렬")
-  func needResponsePromises_sortsByVoteUntil() {
-    let laterDeadline = makePromise(
+  @Test("응답 필요 일정 마감 임박순 정렬")
+  func needResponseSchedules_sortsByVoteUntil() {
+    let laterDeadline = makeSchedule(
       id: "later",
       voteUntil: Date().addingTimeInterval(7200)
     )
-    let earlierDeadline = makePromise(
+    let earlierDeadline = makeSchedule(
       id: "earlier",
       voteUntil: Date().addingTimeInterval(3600)
     )
 
-    let state = makeState(promises: [laterDeadline, earlierDeadline])
+    let state = makeState(schedules: [laterDeadline, earlierDeadline])
 
-    #expect(state.needResponsePromises.count == 2)
-    #expect(state.needResponsePromises[0].id == "earlier") // 마감 임박순
-    #expect(state.needResponsePromises[1].id == "later")
+    #expect(state.needResponseSchedules.count == 2)
+    #expect(state.needResponseSchedules[0].id == "earlier") // 마감 임박순
+    #expect(state.needResponseSchedules[1].id == "later")
   }
 
-  // MARK: - confirmedPromises 테스트
+  // MARK: - confirmedSchedules 테스트
 
-  @Test("확정된 미래 약속만 필터링")
-  func confirmedPromises_filtersConfirmedFutureOnly() {
-    // 확정된 미래 약속
-    let confirmedFuture = makePromise(
+  @Test("확정된 미래 일정만 필터링")
+  func confirmedSchedules_filtersConfirmedFutureOnly() {
+    // 확정된 미래 일정
+    let confirmedFuture = makeSchedule(
       id: "confirmed-future",
       startAt: Date().addingTimeInterval(3600),
       accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
-    // 확정되지 않은 약속
-    let notConfirmed = makePromise(
+    // 확정되지 않은 일정
+    let notConfirmed = makeSchedule(
       id: "not-confirmed",
       startAt: Date().addingTimeInterval(3600),
       accepted: ["user1"],
       minimumParticipants: 2
     )
 
-    // 확정된 과거 약속
-    let confirmedPast = makePromise(
+    // 확정된 과거 일정
+    let confirmedPast = makeSchedule(
       id: "confirmed-past",
       startAt: Date().addingTimeInterval(-3600),
       accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
-    let state = makeState(promises: [confirmedFuture, notConfirmed, confirmedPast])
+    let state = makeState(schedules: [confirmedFuture, notConfirmed, confirmedPast])
 
-    #expect(state.confirmedPromises.count == 1)
-    #expect(state.confirmedPromises.first?.id == "confirmed-future")
+    #expect(state.confirmedSchedules.count == 1)
+    #expect(state.confirmedSchedules.first?.id == "confirmed-future")
   }
 
-  @Test("확정 약속 시작 시간순 정렬")
-  func confirmedPromises_sortsByStartTime() {
-    let laterStart = makePromise(
+  @Test("확정 일정 시작 시간순 정렬")
+  func confirmedSchedules_sortsByStartTime() {
+    let laterStart = makeSchedule(
       id: "later",
       startAt: Date().addingTimeInterval(7200),
       accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
-    let earlierStart = makePromise(
+    let earlierStart = makeSchedule(
       id: "earlier",
       startAt: Date().addingTimeInterval(3600),
       accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
-    let state = makeState(promises: [laterStart, earlierStart])
+    let state = makeState(schedules: [laterStart, earlierStart])
 
-    #expect(state.confirmedPromises.count == 2)
-    #expect(state.confirmedPromises[0].id == "earlier")
-    #expect(state.confirmedPromises[1].id == "later")
+    #expect(state.confirmedSchedules.count == 2)
+    #expect(state.confirmedSchedules[0].id == "earlier")
+    #expect(state.confirmedSchedules[1].id == "later")
   }
 
-  // MARK: - allPromises 테스트
+  // MARK: - allSchedules 테스트
 
-  @Test("모든 약속 시작 시간순 정렬")
-  func allPromises_sortsByStartTime() {
-    let promise3 = makePromise(id: "3", startAt: Date().addingTimeInterval(10800))
-    let promise1 = makePromise(id: "1", startAt: Date().addingTimeInterval(3600))
-    let promise2 = makePromise(id: "2", startAt: Date().addingTimeInterval(7200))
+  @Test("모든 일정 시작 시간순 정렬")
+  func allSchedules_sortsByStartTime() {
+    let schedule3 = makeSchedule(id: "3", startAt: Date().addingTimeInterval(10800))
+    let schedule1 = makeSchedule(id: "1", startAt: Date().addingTimeInterval(3600))
+    let schedule2 = makeSchedule(id: "2", startAt: Date().addingTimeInterval(7200))
 
-    let state = makeState(promises: [promise3, promise1, promise2])
+    let state = makeState(schedules: [schedule3, schedule1, schedule2])
 
-    #expect(state.allPromises.count == 3)
-    #expect(state.allPromises[0].id == "1")
-    #expect(state.allPromises[1].id == "2")
-    #expect(state.allPromises[2].id == "3")
+    #expect(state.allSchedules.count == 3)
+    #expect(state.allSchedules[0].id == "1")
+    #expect(state.allSchedules[1].id == "2")
+    #expect(state.allSchedules[2].id == "3")
   }
 
-  // MARK: - filteredPromises 테스트
+  // MARK: - filteredSchedules 테스트
 
   @Test("필터 변경 시 해당 필터 결과 반환")
-  func filteredPromises_returnsCorrectFilterResults() {
-    let confirmedPromise = makePromise(
+  func filteredSchedules_returnsCorrectFilterResults() {
+    let confirmedSchedule = makeSchedule(
       id: "confirmed",
       accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
-    let pendingPromise = makePromise(id: "pending", accepted: [])
+    let pendingSchedule = makeSchedule(id: "pending", accepted: [])
 
-    var state = makeState(promises: [confirmedPromise, pendingPromise])
+    var state = makeState(schedules: [confirmedSchedule, pendingSchedule])
 
     // 전체 필터
     state.selectedFilter = .all
-    #expect(state.filteredPromises.count == 2)
+    #expect(state.filteredSchedules.count == 2)
 
     // 확정 필터
     state.selectedFilter = .confirmed
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "confirmed")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "confirmed")
   }
 
   // MARK: - filterCounts 테스트
 
-  @Test("필터별 약속 개수 계산")
+  @Test("필터별 일정 개수 계산")
   func filterCounts_calculatesCorrectCounts() {
-    let confirmed1 = makePromise(id: "c1", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
-    let confirmed2 = makePromise(id: "c2", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
-    let pending = makePromise(id: "p1", accepted: [])
+    let confirmed1 = makeSchedule(id: "c1", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
+    let confirmed2 = makeSchedule(id: "c2", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
+    let pending = makeSchedule(id: "p1", accepted: [])
 
-    let state = makeState(promises: [confirmed1, confirmed2, pending])
+    let state = makeState(schedules: [confirmed1, confirmed2, pending])
 
     #expect(state.filterCounts[.all] == 3)
     #expect(state.filterCounts[.confirmed] == 2)
@@ -300,7 +300,7 @@ struct GroupMainStateTests {
     @Shared(.inMemory("test-past-loading")) var currentUser = makeCurrentUser()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .past
-    state.pastPromisesState = .loading
+    state.pastSchedulesState = .loading
 
     #expect(state.isPastFilterLoading == true)
   }
@@ -310,7 +310,7 @@ struct GroupMainStateTests {
     @Shared(.inMemory("test-past-loaded")) var currentUser = makeCurrentUser()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .past
-    state.pastPromisesState = .loaded([])
+    state.pastSchedulesState = .loaded([])
 
     #expect(state.isPastFilterLoading == false)
   }
@@ -320,22 +320,22 @@ struct GroupMainStateTests {
     @Shared(.inMemory("test-other-filter")) var currentUser = makeCurrentUser()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .all
-    state.pastPromisesState = .loading
+    state.pastSchedulesState = .loading
 
     #expect(state.isPastFilterLoading == false)
   }
 
-  // MARK: - filteredPromises 추가 테스트
+  // MARK: - filteredSchedules 추가 테스트
 
-  @Test("needResponse 필터 시 미응답 약속만 반환")
-  func filteredPromises_needResponse_returnsUnrespondedOnly() {
-    let responded = makePromise(id: "responded", accepted: ["current-user"])
-    let unresponded = makePromise(id: "unresponded", accepted: [])
+  @Test("needResponse 필터 시 미응답 일정만 반환")
+  func filteredSchedules_needResponse_returnsUnrespondedOnly() {
+    let responded = makeSchedule(id: "responded", accepted: ["current-user"])
+    let unresponded = makeSchedule(id: "unresponded", accepted: [])
 
-    var state = makeState(promises: [responded, unresponded])
+    var state = makeState(schedules: [responded, unresponded])
     state.selectedFilter = .needResponse
 
-    #expect(state.filteredPromises.count == 1)
-    #expect(state.filteredPromises.first?.id == "unresponded")
+    #expect(state.filteredSchedules.count == 1)
+    #expect(state.filteredSchedules.first?.id == "unresponded")
   }
 }

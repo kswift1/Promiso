@@ -110,7 +110,7 @@
         }
       }
     },
-    "10일 이내 약속만 날씨를 확인할 수 있어요" : {
+    "10일 이내 일정만 날씨를 확인할 수 있어요" : {
 
     },
     "appEntry.update.action" : {
@@ -419,20 +419,20 @@
         }
       }
     },
-    "auth.hero.promisesWord" : {
-      "comment" : "히어로 텍스트 - 약속을",
+    "auth.hero.schedulesWord" : {
+      "comment" : "히어로 텍스트 - 일정을",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promises,"
+            "value" : "Schedules,"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을"
+            "value" : "일정을"
           }
         }
       }
@@ -637,19 +637,19 @@
         }
       }
     },
-    "calendar.contextMenu.createPromise" : {
+    "calendar.contextMenu.createSchedule" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 만들기"
+            "value" : "일정 만들기"
           }
         }
       }
@@ -762,37 +762,37 @@
       }
     },
     "calendar.empty.subtitle" : {
-      "comment" : "캘린더 새 약속 안내",
+      "comment" : "캘린더 새 일정 안내",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create a new promise"
+            "value" : "Create a new schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속을 만들어보세요"
+            "value" : "새로운 일정을 만들어보세요"
           }
         }
       }
     },
     "calendar.empty.title" : {
-      "comment" : "캘린더 약속 없음",
+      "comment" : "캘린더 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises"
+            "value" : "No schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 없습니다"
+            "value" : "일정이 없습니다"
           }
         }
       }
@@ -956,19 +956,19 @@
       }
     },
     "calendar.loading" : {
-      "comment" : "약속 로딩 중",
+      "comment" : "일정 로딩 중",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Loading promises..."
+            "value" : "Loading schedules..."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 불러오는 중..."
+            "value" : "일정을 불러오는 중..."
           }
         }
       }
@@ -985,19 +985,19 @@
       }
     },
     "calendar.mode.month.description" : {
-      "comment" : "한 달 전체를 보면서 약속 목록을 확인할 때 좋아요",
+      "comment" : "한 달 전체를 보면서 일정 목록을 확인할 때 좋아요",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Great for browsing the full month with a promise list"
+            "value" : "Great for browsing the full month with a schedule list"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "한 달 전체를 보면서 약속 목록을 확인할 때 좋아요"
+            "value" : "한 달 전체를 보면서 일정 목록을 확인할 때 좋아요"
           }
         }
       }
@@ -1078,7 +1078,7 @@
         }
       }
     },
-    "calendar.promise.additionalItems" : {
+    "calendar.schedule.additionalItems" : {
       "comment" : "외 N건",
       "extractionState" : "manual",
       "localizations" : {
@@ -1096,7 +1096,7 @@
         }
       }
     },
-    "calendar.promise.respond" : {
+    "calendar.schedule.respond" : {
       "comment" : "응답하기",
       "extractionState" : "manual",
       "localizations" : {
@@ -1114,7 +1114,7 @@
         }
       }
     },
-    "calendar.promise.statusConfirmed" : {
+    "calendar.schedule.statusConfirmed" : {
       "comment" : "확정",
       "extractionState" : "manual",
       "localizations" : {
@@ -1132,7 +1132,7 @@
         }
       }
     },
-    "calendar.promise.statusFailed" : {
+    "calendar.schedule.statusFailed" : {
       "comment" : "미성사",
       "extractionState" : "manual",
       "localizations" : {
@@ -1150,7 +1150,7 @@
         }
       }
     },
-    "calendar.promise.statusVoting" : {
+    "calendar.schedule.statusVoting" : {
       "comment" : "투표중",
       "extractionState" : "manual",
       "localizations" : {
@@ -1168,7 +1168,7 @@
         }
       }
     },
-    "calendar.promise.statusWaiting" : {
+    "calendar.schedule.statusWaiting" : {
       "comment" : "응답 대기",
       "extractionState" : "manual",
       "localizations" : {
@@ -2287,7 +2287,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schedule"
+            "value" : "Schedules"
           }
         },
         "ko" : {
@@ -2492,19 +2492,19 @@
         }
       }
     },
-    "createGroup.createPromiseButton" : {
+    "createGroup.createScheduleButton" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create a Promise"
+            "value" : "Create a Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 생성하러 가기"
+            "value" : "일정 생성하러 가기"
           }
         }
       }
@@ -2788,13 +2788,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share the invite code with friends\nand start making promises together"
+            "value" : "Share the invite code with friends\nand start making schedules together"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "친구들에게 초대 코드를 공유해\n함께 약속을 만들어보세요"
+            "value" : "친구들에게 초대 코드를 공유해\n함께 일정을 만들어보세요"
           }
         }
       }
@@ -2850,41 +2850,41 @@
         }
       }
     },
-    "createPromise.activePromisesAtLimit" : {
+    "createSchedule.activeSchedulesAtLimit" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Active promises have reached %lld"
+            "value" : "Active schedules have reached %lld"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "활성 약속이 %lld개에 도달했습니다"
+            "value" : "활성 일정이 %lld개에 도달했습니다"
           }
         }
       }
     },
-    "createPromise.autoConfirmInfo" : {
+    "createSchedule.autoConfirmInfo" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The promise will be automatically confirmed when at least %lld members attend"
+            "value" : "The schedule will be automatically confirmed when at least %lld members attend"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "최소 %lld명이 참석하면 약속이 자동으로 확정됩니다"
+            "value" : "최소 %lld명이 참석하면 일정이 자동으로 확정됩니다"
           }
         }
       }
     },
-    "createPromise.createNewGroup" : {
+    "createSchedule.createNewGroup" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -2901,7 +2901,7 @@
         }
       }
     },
-    "createPromise.customInput" : {
+    "createSchedule.customInput" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -2918,24 +2918,24 @@
         }
       }
     },
-    "createPromise.descriptionPlaceholder" : {
+    "createSchedule.descriptionPlaceholder" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter additional info about the promise\ne.g. parking info, dress code, things to bring"
+            "value" : "Enter additional info about the schedule\ne.g. parking info, dress code, things to bring"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속에 대한 추가 정보를 입력하세요\n예: 주차 정보, 복장, 준비물 등"
+            "value" : "일정에 대한 추가 정보를 입력하세요\n예: 주차 정보, 복장, 준비물 등"
           }
         }
       }
     },
-    "createPromise.descriptionSection" : {
+    "createSchedule.descriptionSection" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -2952,7 +2952,7 @@
         }
       }
     },
-    "createPromise.endTime" : {
+    "createSchedule.endTime" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -2969,7 +2969,7 @@
         }
       }
     },
-    "createPromise.fixedParticipantsInfo" : {
+    "createSchedule.fixedParticipantsInfo" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -2986,7 +2986,7 @@
         }
       }
     },
-    "createPromise.groupSelection" : {
+    "createSchedule.groupSelection" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3003,7 +3003,7 @@
         }
       }
     },
-    "createPromise.hour1Before" : {
+    "createSchedule.hour1Before" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3020,7 +3020,7 @@
         }
       }
     },
-    "createPromise.liveSharing" : {
+    "createSchedule.liveSharing" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3037,24 +3037,24 @@
         }
       }
     },
-    "createPromise.liveSharingDescription" : {
+    "createSchedule.liveSharingDescription" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share arrival status of participants in real-time before the promise time"
+            "value" : "Share arrival status of participants in real-time before the schedule time"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간 전부터 참가자들의 도착 상황을 실시간으로 공유해요"
+            "value" : "일정 시간 전부터 참가자들의 도착 상황을 실시간으로 공유해요"
           }
         }
       }
     },
-    "createPromise.loadGroupsFailed" : {
+    "createSchedule.loadGroupsFailed" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3071,7 +3071,7 @@
         }
       }
     },
-    "createPromise.locationSection" : {
+    "createSchedule.locationSection" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3088,7 +3088,7 @@
         }
       }
     },
-    "createPromise.maxParticipants" : {
+    "createSchedule.maxParticipants" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3105,24 +3105,24 @@
         }
       }
     },
-    "createPromise.maxParticipantsWarning" : {
+    "createSchedule.maxParticipantsWarning" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Minimum participants equals the group's max members. The promise will be cancelled if even one person declines."
+            "value" : "Minimum participants equals the group's max members. The schedule will be cancelled if even one person declines."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "최소 참가 인원이 그룹 최대 인원과 같습니다. 한 명이라도 불참하면 약속이 취소됩니다."
+            "value" : "최소 참가 인원이 그룹 최대 인원과 같습니다. 한 명이라도 불참하면 일정이 취소됩니다."
           }
         }
       }
     },
-    "createPromise.memberCount" : {
+    "createSchedule.memberCount" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3139,7 +3139,7 @@
         }
       }
     },
-    "createPromise.minimumParticipants" : {
+    "createSchedule.minimumParticipants" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3156,7 +3156,7 @@
         }
       }
     },
-    "createPromise.minutes15Before" : {
+    "createSchedule.minutes15Before" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3173,7 +3173,7 @@
         }
       }
     },
-    "createPromise.minutes30Before" : {
+    "createSchedule.minutes30Before" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3190,7 +3190,7 @@
         }
       }
     },
-    "createPromise.minutesBefore" : {
+    "createSchedule.minutesBefore" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3207,25 +3207,25 @@
         }
       }
     },
-    "createPromise.navigationTitle" : {
-      "comment" : "약속 만들기 네비게이션 타이틀",
+    "createSchedule.navigationTitle" : {
+      "comment" : "일정 만들기 네비게이션 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 만들기"
+            "value" : "일정 만들기"
           }
         }
       }
     },
-    "createPromise.noGroupsSubtitle" : {
+    "createSchedule.noGroupsSubtitle" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3242,7 +3242,7 @@
         }
       }
     },
-    "createPromise.noGroupsTitle" : {
+    "createSchedule.noGroupsTitle" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3259,7 +3259,7 @@
         }
       }
     },
-    "createPromise.noMembersInGroup" : {
+    "createSchedule.noMembersInGroup" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3276,7 +3276,7 @@
         }
       }
     },
-    "createPromise.participantsCount" : {
+    "createSchedule.participantsCount" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3293,7 +3293,7 @@
         }
       }
     },
-    "createPromise.retryButton" : {
+    "createSchedule.retryButton" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3310,7 +3310,7 @@
         }
       }
     },
-    "createPromise.searchLocation" : {
+    "createSchedule.searchLocation" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3327,7 +3327,7 @@
         }
       }
     },
-    "createPromise.startTime" : {
+    "createSchedule.startTime" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3344,7 +3344,7 @@
         }
       }
     },
-    "createPromise.startTimeWarning" : {
+    "createSchedule.startTimeWarning" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3361,7 +3361,7 @@
         }
       }
     },
-    "createPromise.step1Subtitle" : {
+    "createSchedule.step1Subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3378,24 +3378,24 @@
         }
       }
     },
-    "createPromise.step1Title" : {
+    "createSchedule.step1Title" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What's the promise?"
+            "value" : "What's the schedule?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "어떤 약속인가요?"
+            "value" : "어떤 일정인가요?"
           }
         }
       }
     },
-    "createPromise.step2Subtitle" : {
+    "createSchedule.step2Subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3412,7 +3412,7 @@
         }
       }
     },
-    "createPromise.step2Title" : {
+    "createSchedule.step2Title" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3429,7 +3429,7 @@
         }
       }
     },
-    "createPromise.step3Subtitle" : {
+    "createSchedule.step3Subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3446,7 +3446,7 @@
         }
       }
     },
-    "createPromise.step3Title" : {
+    "createSchedule.step3Title" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3463,7 +3463,7 @@
         }
       }
     },
-    "createPromise.titlePlaceholder" : {
+    "createSchedule.titlePlaceholder" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3480,7 +3480,7 @@
         }
       }
     },
-    "createPromise.titleSection" : {
+    "createSchedule.titleSection" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3497,7 +3497,7 @@
         }
       }
     },
-    "createPromise.totalDurationPrefix" : {
+    "createSchedule.totalDurationPrefix" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3955,19 +3955,19 @@
       }
     },
     "error.calendar.fetchFailed" : {
-      "comment" : "약속 조회 실패",
+      "comment" : "일정 조회 실패",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to fetch promises"
+            "value" : "Failed to fetch schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 조회 실패"
+            "value" : "일정 조회 실패"
           }
         }
       }
@@ -4512,56 +4512,56 @@
         }
       }
     },
-    "error.promiseCreationFailed" : {
-      "comment" : "약속 생성 실패 에러",
+    "error.scheduleCreationFailed" : {
+      "comment" : "일정 생성 실패 에러",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to create promise"
+            "value" : "Failed to create schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 생성 실패"
+            "value" : "일정 생성 실패"
           }
         }
       }
     },
-    "error.promiseDeleteFailed" : {
-      "comment" : "약속 삭제 실패",
+    "error.scheduleDeleteFailed" : {
+      "comment" : "일정 삭제 실패",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to delete promise"
+            "value" : "Failed to delete schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 삭제에 실패했어요"
+            "value" : "일정 삭제에 실패했어요"
           }
         }
       }
     },
-    "error.promiseFetchFailed" : {
-      "comment" : "약속 조회 실패 에러",
+    "error.scheduleFetchFailed" : {
+      "comment" : "일정 조회 실패 에러",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to load promises"
+            "value" : "Failed to load schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 불러오지 못했습니다"
+            "value" : "일정을 불러오지 못했습니다"
           }
         }
       }
@@ -5215,73 +5215,73 @@
       }
     },
     "groupComponents.empty.all" : {
-      "comment" : "약속 없음 (전체)",
+      "comment" : "일정 없음 (전체)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises yet\nCreate a new promise"
+            "value" : "No schedules yet\nCreate a new schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 약속이 없어요\n새로운 약속을 만들어보세요"
+            "value" : "아직 일정이 없어요\n새로운 일정을 만들어보세요"
           }
         }
       }
     },
     "groupComponents.empty.confirmed" : {
-      "comment" : "확정된 약속 없음",
+      "comment" : "확정된 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No confirmed promises"
+            "value" : "No confirmed schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확정된 약속이 없어요"
+            "value" : "확정된 일정이 없어요"
           }
         }
       }
     },
     "groupComponents.empty.needResponse" : {
-      "comment" : "답변 필요한 약속 없음",
+      "comment" : "답변 필요한 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises need your response"
+            "value" : "No schedules need your response"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "답변이 필요한 약속이 없어요"
+            "value" : "답변이 필요한 일정이 없어요"
           }
         }
       }
     },
     "groupComponents.empty.responded" : {
-      "comment" : "응답한 약속 없음",
+      "comment" : "응답한 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No responded promises"
+            "value" : "No responded schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "응답한 약속이 없어요"
+            "value" : "응답한 일정이 없어요"
           }
         }
       }
@@ -5484,20 +5484,20 @@
         }
       }
     },
-    "groupHorizontalBar.createPromise" : {
-      "comment" : "약속 만들기 context menu",
+    "groupHorizontalBar.createSchedule" : {
+      "comment" : "일정 만들기 context menu",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 만들기"
+            "value" : "일정 만들기"
           }
         }
       }
@@ -5610,20 +5610,20 @@
         }
       }
     },
-    "groupMain.createPromise" : {
-      "comment" : "약속 생성",
+    "groupMain.createSchedule" : {
+      "comment" : "일정 생성",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 생성"
+            "value" : "일정 생성"
           }
         }
       }
@@ -5635,13 +5635,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You need to be a member of the group to view the promise"
+            "value" : "You need to be a member of the group to view the schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
+            "value" : "일정을 확인하려면 해당 그룹의 멤버여야 합니다"
           }
         }
       }
@@ -5664,38 +5664,38 @@
         }
       }
     },
-    "groupMain.deletePromise.confirm" : {
-      "comment" : "약속 삭제 확인 메시지 (예: '저녁 약속' 약속을 삭제하시겠습니까?)",
+    "groupMain.deleteSchedule.confirm" : {
+      "comment" : "일정 삭제 확인 메시지 (예: '저녁 일정' 일정을 삭제하시겠습니까?)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Are you sure you want to delete '%@'?\nDeleted promises cannot be recovered."
+            "value" : "Are you sure you want to delete '%@'?\nDeleted schedules cannot be recovered."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "'%@' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다."
+            "value" : "'%@' 일정을 삭제하시겠습니까?\n삭제된 일정은 복구할 수 없습니다."
           }
         }
       }
     },
-    "groupMain.deletePromise.title" : {
-      "comment" : "약속 삭제 알럿 타이틀",
+    "groupMain.deleteSchedule.title" : {
+      "comment" : "일정 삭제 알럿 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Promise"
+            "value" : "Delete Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 삭제"
+            "value" : "일정 삭제"
           }
         }
       }
@@ -5707,13 +5707,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No active or upcoming promises right now\nNew promises and invitations will appear here"
+            "value" : "No active or upcoming schedules right now\nNew schedules and invitations will appear here"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지금은 진행 중이거나 예정된 약속이 없어요\n새 약속이나 초대가 생기면 여기에 보여요"
+            "value" : "지금은 진행 중이거나 예정된 일정이 없어요\n새 일정이나 초대가 생기면 여기에 보여요"
           }
         }
       }
@@ -5725,13 +5725,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No confirmed promises yet\nTap + to create a new promise"
+            "value" : "No confirmed schedules yet\nTap + to create a new schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 확정된 약속이 없어요\n+ 버튼으로 새 약속을 만들어보세요"
+            "value" : "아직 확정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
           }
         }
       }
@@ -5743,13 +5743,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises need your response right now\nYou've responded to all promises 👍"
+            "value" : "No schedules need your response right now\nYou've responded to all schedules 👍"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지금은 응답이 필요한 약속이 없어요\n모든 약속에 응답한 상태예요 👍"
+            "value" : "지금은 응답이 필요한 일정이 없어요\n모든 일정에 응답한 상태예요 👍"
           }
         }
       }
@@ -5761,13 +5761,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No past promises yet\nCompleted promise records will be collected here"
+            "value" : "No past schedules yet\nCompleted schedule records will be collected here"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 지난 약속이 없어요\n완료된 약속 기록이 여기에 쌓여요"
+            "value" : "아직 지난 일정이 없어요\n완료된 일정 기록이 여기에 쌓여요"
           }
         }
       }
@@ -5779,13 +5779,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No responded promises yet\nConfirmed promises will automatically move to the Confirmed tab"
+            "value" : "No responded schedules yet\nConfirmed schedules will automatically move to the Confirmed tab"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 응답한 약속이 없어요\n확정되면 자동으로 확정 탭으로 옮겨져요"
+            "value" : "아직 응답한 일정이 없어요\n확정되면 자동으로 확정 탭으로 옮겨져요"
           }
         }
       }
@@ -6078,79 +6078,79 @@
         }
       }
     },
-    "groupPromiseList.empty.all" : {
-      "comment" : "약속 없음 (전체)",
+    "groupScheduleList.empty.all" : {
+      "comment" : "일정 없음 (전체)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises yet"
+            "value" : "No schedules yet"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 약속이 없어요"
+            "value" : "아직 일정이 없어요"
           }
         }
       }
     },
-    "groupPromiseList.empty.confirmed" : {
-      "comment" : "확정 약속 없음",
+    "groupScheduleList.empty.confirmed" : {
+      "comment" : "확정 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No confirmed promises"
+            "value" : "No confirmed schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확정된 약속이 없어요"
+            "value" : "확정된 일정이 없어요"
           }
         }
       }
     },
-    "groupPromiseList.empty.needResponse" : {
-      "comment" : "응답 필요 약속 없음",
+    "groupScheduleList.empty.needResponse" : {
+      "comment" : "응답 필요 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises requiring a response"
+            "value" : "No schedules requiring a response"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "응답이 필요한 약속이 없어요"
+            "value" : "응답이 필요한 일정이 없어요"
           }
         }
       }
     },
-    "groupPromiseList.empty.responded" : {
-      "comment" : "응답 완료 약속 없음",
+    "groupScheduleList.empty.responded" : {
+      "comment" : "응답 완료 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No responded promises"
+            "value" : "No responded schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "응답 완료된 약속이 없어요"
+            "value" : "응답 완료된 일정이 없어요"
           }
         }
       }
     },
-    "groupPromiseList.filter.all" : {
+    "groupScheduleList.filter.all" : {
       "comment" : "필터: 전체",
       "extractionState" : "manual",
       "localizations" : {
@@ -6168,7 +6168,7 @@
         }
       }
     },
-    "groupPromiseList.filter.confirmed" : {
+    "groupScheduleList.filter.confirmed" : {
       "comment" : "필터: 확정",
       "extractionState" : "manual",
       "localizations" : {
@@ -6186,7 +6186,7 @@
         }
       }
     },
-    "groupPromiseList.filter.needResponse" : {
+    "groupScheduleList.filter.needResponse" : {
       "comment" : "필터: 응답 필요",
       "extractionState" : "manual",
       "localizations" : {
@@ -6204,7 +6204,7 @@
         }
       }
     },
-    "groupPromiseList.filter.responded" : {
+    "groupScheduleList.filter.responded" : {
       "comment" : "필터: 응답 완료",
       "extractionState" : "manual",
       "localizations" : {
@@ -6222,20 +6222,20 @@
         }
       }
     },
-    "groupPromiseList.navigationTitle" : {
-      "comment" : "그룹 약속 목록 네비게이션 타이틀 (예: 지민과 나 약속)",
+    "groupScheduleList.navigationTitle" : {
+      "comment" : "그룹 일정 목록 네비게이션 타이틀 (예: 지민과 나 일정)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ Promises"
+            "value" : "%@ Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 약속"
+            "value" : "%@ 일정"
           }
         }
       }
@@ -6280,13 +6280,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatically add confirmed promises to your device calendar"
+            "value" : "Automatically add confirmed schedules to your device calendar"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확정된 약속을 기기 캘린더에 자동으로 추가해요"
+            "value" : "확정된 일정을 기기 캘린더에 자동으로 추가해요"
           }
         }
       }
@@ -6337,7 +6337,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확정된 약속을 기기 캘린더에 자동으로 추가해요"
+            "value" : "확정된 일정을 기기 캘린더에 자동으로 추가해요"
           }
         }
       }
@@ -6439,7 +6439,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캘린더와 약속 카드에서 이 색상으로 그룹을 구분해요"
+            "value" : "캘린더와 일정 카드에서 이 색상으로 그룹을 구분해요"
           }
         }
       }
@@ -6501,13 +6501,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Get notified about new promise invites, schedule changes, and reminders"
+            "value" : "Get notified about new schedule invites, schedule changes, and reminders"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속 초대, 일정 변경, 리마인더를 알려드려요"
+            "value" : "새로운 일정 초대, 일정 변경, 리마인더를 알려드려요"
           }
         }
       }
@@ -6524,7 +6524,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 알림과 캘린더 동기화를 설정해요"
+            "value" : "일정 알림과 캘린더 동기화를 설정해요"
           }
         }
       }
@@ -6756,19 +6756,19 @@
       }
     },
     "groupSettingsView.colorPreview.cardDescription" : {
-      "comment" : "약속 카드 색상 미리보기 설명",
+      "comment" : "일정 카드 색상 미리보기 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Color is shown on promise cards"
+            "value" : "Color is shown on schedule cards"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 카드에 색상이 표시됩니다"
+            "value" : "일정 카드에 색상이 표시됩니다"
           }
         }
       }
@@ -6804,7 +6804,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "🍽️ 점심 약속"
+            "value" : "🍽️ 점심 일정"
           }
         }
       }
@@ -6834,13 +6834,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Are you sure you want to delete '%@' group?\nAll promises and data will be deleted."
+            "value" : "Are you sure you want to delete '%@' group?\nAll schedules and data will be deleted."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "정말 '%@' 그룹을 삭제하시겠습니까?\n모든 약속과 데이터가 삭제됩니다."
+            "value" : "정말 '%@' 그룹을 삭제하시겠습니까?\n모든 일정과 데이터가 삭제됩니다."
           }
         }
       }
@@ -6942,13 +6942,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Are you sure you want to expel '%@' from the group?\nFuture promises created by this member will also be deleted."
+            "value" : "Are you sure you want to expel '%@' from the group?\nFuture schedules created by this member will also be deleted."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "정말 '%@'님을 그룹에서 추방하시겠습니까?\n추방된 멤버가 생성한 미래 약속도 삭제됩니다."
+            "value" : "정말 '%@'님을 그룹에서 추방하시겠습니까?\n추방된 멤버가 생성한 미래 일정도 삭제됩니다."
           }
         }
       }
@@ -7043,20 +7043,20 @@
         }
       }
     },
-    "groupSettingsView.groupColor.promiseCard" : {
-      "comment" : "약속 카드",
+    "groupSettingsView.groupColor.scheduleCard" : {
+      "comment" : "일정 카드",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Card"
+            "value" : "Schedule Card"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 카드"
+            "value" : "일정 카드"
           }
         }
       }
@@ -7457,20 +7457,20 @@
         }
       }
     },
-    "groupSettingsView.promiseSection" : {
-      "comment" : "약속 섹션",
+    "groupSettingsView.scheduleSection" : {
+      "comment" : "일정 섹션",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise"
+            "value" : "Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속"
+            "value" : "일정"
           }
         }
       }
@@ -7542,25 +7542,25 @@
       }
     },
     "groupSettingsView.tooltip.cancelled" : {
-      "comment" : "약속 무산 알림 프리뷰",
+      "comment" : "일정 무산 알림 프리뷰",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie promise failed 😢"
+            "value" : "Movie schedule failed 😢"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "영화 관람 약속 무산 😢"
+            "value" : "영화 관람 일정 무산 😢"
           }
         }
       }
     },
     "groupSettingsView.tooltip.cancelledBody" : {
-      "comment" : "약속 무산 알림 본문",
+      "comment" : "일정 무산 알림 본문",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -7578,25 +7578,25 @@
       }
     },
     "groupSettingsView.tooltip.confirmed" : {
-      "comment" : "약속 확정 알림 프리뷰",
+      "comment" : "일정 확정 알림 프리뷰",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie promise confirmed! 🎉"
+            "value" : "Movie schedule confirmed! 🎉"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "영화 관람 약속 확정! 🎉"
+            "value" : "영화 관람 일정 확정! 🎉"
           }
         }
       }
     },
     "groupSettingsView.tooltip.confirmedBody" : {
-      "comment" : "약속 확정 알림 본문",
+      "comment" : "일정 확정 알림 본문",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -7667,26 +7667,26 @@
         }
       }
     },
-    "groupSettingsView.tooltip.newPromise" : {
-      "comment" : "새 약속 도착 알림 프리뷰",
+    "groupSettingsView.tooltip.newSchedule" : {
+      "comment" : "새 일정 도착 알림 프리뷰",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New promise arrived 📩"
+            "value" : "New schedule arrived 📩"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 약속 도착 📩"
+            "value" : "새 일정 도착 📩"
           }
         }
       }
     },
-    "groupSettingsView.tooltip.newPromiseBody" : {
-      "comment" : "새 약속 알림 본문",
+    "groupSettingsView.tooltip.newScheduleBody" : {
+      "comment" : "새 일정 알림 본문",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -7722,13 +7722,13 @@
       }
     },
     "groupSettingsView.tooltip.updated" : {
-      "comment" : "약속 변경 알림 프리뷰",
+      "comment" : "일정 변경 알림 프리뷰",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie promise updated 📝"
+            "value" : "Movie schedule updated 📝"
           }
         },
         "ko" : {
@@ -7740,19 +7740,19 @@
       }
     },
     "groupSettingsView.tooltip.updatedBody" : {
-      "comment" : "약속 변경 알림 본문",
+      "comment" : "일정 변경 알림 본문",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise details have been updated. Please check!"
+            "value" : "Schedule details have been updated. Please check!"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 정보가 수정됐어요. 확인해주세요!"
+            "value" : "일정 정보가 수정됐어요. 확인해주세요!"
           }
         }
       }
@@ -7919,20 +7919,20 @@
         }
       }
     },
-    "home.banner.promisesToRespond" : {
-      "comment" : "응답할 약속 N개",
+    "home.banner.schedulesToRespond" : {
+      "comment" : "응답할 일정 N개",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld promises to respond"
+            "value" : "%lld schedules to respond"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "응답할 약속 %lld개"
+            "value" : "응답할 일정 %lld개"
           }
         }
       }
@@ -7989,20 +7989,20 @@
         }
       }
     },
-    "home.empty.createPromise" : {
-      "comment" : "새 약속 만들기 버튼",
+    "home.empty.createSchedule" : {
+      "comment" : "새 일정 만들기 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create New Promise"
+            "value" : "Create New Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 약속 만들기"
+            "value" : "새 일정 만들기"
           }
         }
       }
@@ -8050,13 +8050,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises match the selected filters\nTry changing the filters"
+            "value" : "No schedules match the selected filters\nTry changing the filters"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "선택한 조건에 맞는 약속이 없어요\n필터를 변경해보세요"
+            "value" : "선택한 조건에 맞는 일정이 없어요\n필터를 변경해보세요"
           }
         }
       }
@@ -8086,13 +8086,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join a group to create\npromises with friends"
+            "value" : "Join a group to create\nschedules with friends"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹에 참여하면 친구들과\n약속을 만들 수 있어요"
+            "value" : "그룹에 참여하면 친구들과\n일정을 만들 수 있어요"
           }
         }
       }
@@ -8115,38 +8115,38 @@
         }
       }
     },
-    "home.empty.noPromises.message" : {
-      "comment" : "약속 없음 메시지",
+    "home.empty.noSchedules.message" : {
+      "comment" : "일정 없음 메시지",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create your first promise with friends\nIt's more fun together"
+            "value" : "Create your first schedule with friends\nIt's more fun together"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "친구들과 첫 약속을 만들어보세요\n함께하면 더 즐거워요"
+            "value" : "친구들과 첫 일정을 만들어보세요\n함께하면 더 즐거워요"
           }
         }
       }
     },
-    "home.empty.noPromises.title" : {
-      "comment" : "약속 없음 타이틀",
+    "home.empty.noSchedules.title" : {
+      "comment" : "일정 없음 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises yet"
+            "value" : "No schedules yet"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아직 약속이 없어요"
+            "value" : "아직 일정이 없어요"
           }
         }
       }
@@ -8608,13 +8608,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All promises kept"
+            "value" : "All schedules kept"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "모든 약속을 잘 지켰어요"
+            "value" : "모든 일정을 잘 지켰어요"
           }
         }
       }
@@ -8680,13 +8680,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promises completed!"
+            "value" : "Schedules completed!"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 완료!"
+            "value" : "일정 완료!"
           }
         }
       }
@@ -9454,13 +9454,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create a new promise or event"
+            "value" : "Create a new schedule or event"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속이나 일정을 만들어보세요"
+            "value" : "새로운 일정이나 일정을 만들어보세요"
           }
         }
       }
@@ -9792,43 +9792,43 @@
         }
       }
     },
-    "kakaoShare.promiseShared" : {
-      "comment" : "약속 공유 성공 토스트",
+    "kakaoShare.scheduleShared" : {
+      "comment" : "일정 공유 성공 토스트",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise shared"
+            "value" : "Schedule shared"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 공유했어요"
+            "value" : "일정을 공유했어요"
           }
         }
       }
     },
-    "livePromise.autoStartDescription" : {
+    "liveSchedule.autoStartDescription" : {
       "comment" : "라이브 활동 자동 시작 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starts automatically before the promise time"
+            "value" : "Starts automatically before the schedule time"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간 전에 자동으로 시작돼요"
+            "value" : "일정 시간 전에 자동으로 시작돼요"
           }
         }
       }
     },
-    "livePromise.change" : {
+    "liveSchedule.change" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9845,7 +9845,7 @@
         }
       }
     },
-    "livePromise.directions" : {
+    "liveSchedule.directions" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9862,7 +9862,7 @@
         }
       }
     },
-    "livePromise.error.activityNotFound" : {
+    "liveSchedule.error.activityNotFound" : {
       "comment" : "라이브액티비티 활성 인스턴스 없음",
       "extractionState" : "manual",
       "localizations" : {
@@ -9880,7 +9880,7 @@
         }
       }
     },
-    "livePromise.error.notSupported" : {
+    "liveSchedule.error.notSupported" : {
       "comment" : "라이브액티비티 미지원 기기",
       "extractionState" : "manual",
       "localizations" : {
@@ -9898,7 +9898,7 @@
         }
       }
     },
-    "livePromise.error.startFailed" : {
+    "liveSchedule.error.startFailed" : {
       "comment" : "라이브액티비티 시작 실패",
       "extractionState" : "manual",
       "localizations" : {
@@ -9916,7 +9916,7 @@
         }
       }
     },
-    "livePromise.error.updateFailed" : {
+    "liveSchedule.error.updateFailed" : {
       "comment" : "라이브액티비티 업데이트 실패",
       "extractionState" : "manual",
       "localizations" : {
@@ -9934,7 +9934,7 @@
         }
       }
     },
-    "livePromise.eta.arrived" : {
+    "liveSchedule.eta.arrived" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9951,7 +9951,7 @@
         }
       }
     },
-    "livePromise.eta.confirm" : {
+    "liveSchedule.eta.confirm" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9968,7 +9968,7 @@
         }
       }
     },
-    "livePromise.eta.directInput" : {
+    "liveSchedule.eta.directInput" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -9985,7 +9985,7 @@
         }
       }
     },
-    "livePromise.eta.minutesUntilArrival" : {
+    "liveSchedule.eta.minutesUntilArrival" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10002,7 +10002,7 @@
         }
       }
     },
-    "livePromise.eta.minuteUnit" : {
+    "liveSchedule.eta.minuteUnit" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10019,7 +10019,7 @@
         }
       }
     },
-    "livePromise.eta.notice1" : {
+    "liveSchedule.eta.notice1" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10036,7 +10036,7 @@
         }
       }
     },
-    "livePromise.eta.notice2" : {
+    "liveSchedule.eta.notice2" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10053,7 +10053,7 @@
         }
       }
     },
-    "livePromise.groupFallback" : {
+    "liveSchedule.groupFallback" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10070,7 +10070,7 @@
         }
       }
     },
-    "livePromise.manualInput" : {
+    "liveSchedule.manualInput" : {
       "comment" : "직접 입력 라벨",
       "extractionState" : "manual",
       "localizations" : {
@@ -10088,7 +10088,7 @@
         }
       }
     },
-    "livePromise.me" : {
+    "liveSchedule.me" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10105,7 +10105,7 @@
         }
       }
     },
-    "livePromise.participantCount" : {
+    "liveSchedule.participantCount" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10122,7 +10122,7 @@
         }
       }
     },
-    "livePromise.participants.arrivedCount" : {
+    "liveSchedule.participants.arrivedCount" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10139,7 +10139,7 @@
         }
       }
     },
-    "livePromise.participants.status" : {
+    "liveSchedule.participants.status" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10156,25 +10156,25 @@
         }
       }
     },
-    "livePromise.promiseTime" : {
-      "comment" : "약속 시간 라벨",
+    "liveSchedule.scheduleTime" : {
+      "comment" : "일정 시간 라벨",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Time"
+            "value" : "Schedule Time"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간"
+            "value" : "일정 시간"
           }
         }
       }
     },
-    "livePromise.realtime" : {
+    "liveSchedule.realtime" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10191,7 +10191,7 @@
         }
       }
     },
-    "livePromise.status.arrived" : {
+    "liveSchedule.status.arrived" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10208,7 +10208,7 @@
         }
       }
     },
-    "livePromise.status.etaMinutes" : {
+    "liveSchedule.status.etaMinutes" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10225,7 +10225,7 @@
         }
       }
     },
-    "livePromise.status.late" : {
+    "liveSchedule.status.late" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10242,7 +10242,7 @@
         }
       }
     },
-    "livePromise.status.waiting" : {
+    "liveSchedule.status.waiting" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10259,7 +10259,7 @@
         }
       }
     },
-    "livePromise.tab.chat" : {
+    "liveSchedule.tab.chat" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10276,7 +10276,7 @@
         }
       }
     },
-    "livePromise.tab.map" : {
+    "liveSchedule.tab.map" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10293,7 +10293,7 @@
         }
       }
     },
-    "livePromise.tab.status" : {
+    "liveSchedule.tab.status" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10310,7 +10310,7 @@
         }
       }
     },
-    "livePromise.time.elapsed" : {
+    "liveSchedule.time.elapsed" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10327,7 +10327,7 @@
         }
       }
     },
-    "livePromise.time.hoursMinutes" : {
+    "liveSchedule.time.hoursMinutes" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10344,7 +10344,7 @@
         }
       }
     },
-    "livePromise.time.minutesOnly" : {
+    "liveSchedule.time.minutesOnly" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10361,8 +10361,8 @@
         }
       }
     },
-    "manageGroup.activePromises" : {
-      "comment" : "진행중 약속",
+    "manageGroup.activeSchedules" : {
+      "comment" : "진행중 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -10374,7 +10374,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "진행중 약속"
+            "value" : "진행중 일정"
           }
         }
       }
@@ -10595,20 +10595,20 @@
         }
       }
     },
-    "manageGroup.pastPromises" : {
-      "comment" : "지난 약속",
+    "manageGroup.pastSchedules" : {
+      "comment" : "지난 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Past Promises"
+            "value" : "Past Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지난 약속"
+            "value" : "지난 일정"
           }
         }
       }
@@ -10746,13 +10746,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "We'll notify you here when there are\nnew promises or group updates"
+            "value" : "We'll notify you here when there are\nnew schedules or group updates"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속이나 그룹 소식이 있으면\n여기서 알려드릴게요"
+            "value" : "새로운 일정이나 그룹 소식이 있으면\n여기서 알려드릴게요"
           }
         }
       }
@@ -11796,7 +11796,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "흩어진 약속,"
+            "value" : "흩어진 일정,"
           }
         }
       }
@@ -12174,7 +12174,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "점심 약속"
+            "value" : "점심 일정"
           }
         }
       }
@@ -12228,7 +12228,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "개인 약속, 그룹 약속, 응답할 것까지\nPromiso가 알아서 챙겨요"
+            "value" : "개인 일정, 그룹 일정, 응답할 것까지\nPromiso가 알아서 챙겨요"
           }
         }
       }
@@ -12282,7 +12282,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "점심 약속"
+            "value" : "점심 일정"
           }
         }
       }
@@ -12342,7 +12342,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow1.day" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 첫 번째 요일",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 첫 번째 요일",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12360,7 +12360,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow1.time" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 첫 번째 시간",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 첫 번째 시간",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12378,7 +12378,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow1.title" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 첫 번째 제목",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 첫 번째 제목",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12396,7 +12396,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow2.day" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 두 번째 요일",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 두 번째 요일",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12414,7 +12414,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow2.time" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 두 번째 시간",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 두 번째 시간",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12432,7 +12432,7 @@
       }
     },
     "onboarding.intro.home.upcomingRow2.title" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 두 번째 제목",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 두 번째 제목",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12450,7 +12450,7 @@
       }
     },
     "onboarding.intro.home.upcomingTitle" : {
-      "comment" : "온보딩 인트로 홈 다가오는 약속 타이틀",
+      "comment" : "온보딩 인트로 홈 다가오는 일정 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -12462,7 +12462,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다가오는 약속"
+            "value" : "다가오는 일정"
           }
         }
       }
@@ -12750,7 +12750,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간까지 15분 남았어요"
+            "value" : "일정 시간까지 15분 남았어요"
           }
         }
       }
@@ -12786,7 +12786,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속은 즐거워야 하는데"
+            "value" : "일정은 즐거워야 하는데"
           }
         }
       }
@@ -12822,7 +12822,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 하나 잡는 데 카톡 수 💬"
+            "value" : "일정 하나 잡는 데 카톡 수 💬"
           }
         }
       }
@@ -13002,7 +13002,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "🎓 대학 동기 모임 약속 확정! 🎉"
+            "value" : "🎓 대학 동기 모임 일정 확정! 🎉"
           }
         }
       }
@@ -13110,7 +13110,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그 약속, 그룹을 생성하고 한 번에 잡아보세요"
+            "value" : "그 일정, 그룹을 생성하고 한 번에 잡아보세요"
           }
         }
       }
@@ -13188,7 +13188,7 @@
       }
     },
     "overlayScheduleDetail.accept" : {
-      "comment" : "약속 수락 버튼",
+      "comment" : "일정 수락 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -13224,7 +13224,7 @@
       }
     },
     "overlayScheduleDetail.confirmed" : {
-      "comment" : "약속 확정 상태 텍스트",
+      "comment" : "일정 확정 상태 텍스트",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -13422,7 +13422,7 @@
       }
     },
     "overlayScheduleDetail.reject" : {
-      "comment" : "약속 거절 버튼",
+      "comment" : "일정 거절 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -13527,7 +13527,7 @@
         }
       }
     },
-    "pastPromises.emptyFilteredSubtitle" : {
+    "pastSchedules.emptyFilteredSubtitle" : {
       "comment" : "필터된 빈 상태 서브타이틀",
       "extractionState" : "manual",
       "localizations" : {
@@ -13545,61 +13545,61 @@
         }
       }
     },
-    "pastPromises.emptyFilteredTitle" : {
+    "pastSchedules.emptyFilteredTitle" : {
       "comment" : "필터된 빈 상태 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No past promises matching criteria"
+            "value" : "No past schedules matching criteria"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "조건에 맞는 지난 약속이 없습니다"
+            "value" : "조건에 맞는 지난 일정이 없습니다"
           }
         }
       }
     },
-    "pastPromises.emptySubtitle" : {
+    "pastSchedules.emptySubtitle" : {
       "comment" : "빈 상태 서브타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Completed promises will appear here"
+            "value" : "Completed schedules will appear here"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "완료된 약속이 여기에 표시됩니다"
+            "value" : "완료된 일정이 여기에 표시됩니다"
           }
         }
       }
     },
-    "pastPromises.emptyTitle" : {
+    "pastSchedules.emptyTitle" : {
       "comment" : "빈 상태 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No past promises"
+            "value" : "No past schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지난 약속이 없습니다"
+            "value" : "지난 일정이 없습니다"
           }
         }
       }
     },
-    "pastPromises.filter.all" : {
+    "pastSchedules.filter.all" : {
       "comment" : "전체 필터",
       "extractionState" : "manual",
       "localizations" : {
@@ -13617,7 +13617,7 @@
         }
       }
     },
-    "pastPromises.filter.confirmed" : {
+    "pastSchedules.filter.confirmed" : {
       "comment" : "완료 필터",
       "extractionState" : "manual",
       "localizations" : {
@@ -13635,7 +13635,7 @@
         }
       }
     },
-    "pastPromises.filter.failed" : {
+    "pastSchedules.filter.failed" : {
       "comment" : "미성사 필터",
       "extractionState" : "manual",
       "localizations" : {
@@ -13653,7 +13653,7 @@
         }
       }
     },
-    "pastPromises.loadFailed" : {
+    "pastSchedules.loadFailed" : {
       "comment" : "데이터 로드 실패",
       "extractionState" : "manual",
       "localizations" : {
@@ -13671,7 +13671,7 @@
         }
       }
     },
-    "pastPromises.searchPlaceholder" : {
+    "pastSchedules.searchPlaceholder" : {
       "comment" : "검색 플레이스홀더",
       "extractionState" : "manual",
       "localizations" : {
@@ -13689,7 +13689,7 @@
         }
       }
     },
-    "pastPromises.sort.newest" : {
+    "pastSchedules.sort.newest" : {
       "comment" : "최신순 정렬",
       "extractionState" : "manual",
       "localizations" : {
@@ -13707,7 +13707,7 @@
         }
       }
     },
-    "pastPromises.sort.oldest" : {
+    "pastSchedules.sort.oldest" : {
       "comment" : "오래된순 정렬",
       "extractionState" : "manual",
       "localizations" : {
@@ -13725,7 +13725,7 @@
         }
       }
     },
-    "pastPromises.sort.participants" : {
+    "pastSchedules.sort.participants" : {
       "comment" : "참여 인원순 정렬",
       "extractionState" : "manual",
       "localizations" : {
@@ -13743,20 +13743,20 @@
         }
       }
     },
-    "pastPromises.title" : {
-      "comment" : "지난 약속",
+    "pastSchedules.title" : {
+      "comment" : "지난 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Past Promises"
+            "value" : "Past Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지난 약속"
+            "value" : "지난 일정"
           }
         }
       }
@@ -14322,61 +14322,61 @@
         }
       }
     },
-    "promise.cancel" : {
-      "comment" : "약속 취소",
+    "schedule.cancel" : {
+      "comment" : "일정 취소",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancel Promise"
+            "value" : "Cancel Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 취소"
+            "value" : "일정 취소"
           }
         }
       }
     },
-    "promise.complete" : {
-      "comment" : "약속 완료",
+    "schedule.complete" : {
+      "comment" : "일정 완료",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Complete Promise"
+            "value" : "Complete Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 완료"
+            "value" : "일정 완료"
           }
         }
       }
     },
-    "promise.create" : {
-      "comment" : "약속 만들기",
+    "schedule.create" : {
+      "comment" : "일정 만들기",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 만들기"
+            "value" : "일정 만들기"
           }
         }
       }
     },
-    "promise.dateTime" : {
+    "schedule.dateTime" : {
       "comment" : "날짜 및 시간",
       "extractionState" : "manual",
       "localizations" : {
@@ -14394,25 +14394,25 @@
         }
       }
     },
-    "promise.delete" : {
-      "comment" : "약속 삭제",
+    "schedule.delete" : {
+      "comment" : "일정 삭제",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Promise"
+            "value" : "Delete Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 삭제"
+            "value" : "일정 삭제"
           }
         }
       }
     },
-    "promise.description" : {
+    "schedule.description" : {
       "comment" : "설명",
       "extractionState" : "manual",
       "localizations" : {
@@ -14430,115 +14430,115 @@
         }
       }
     },
-    "promise.edit" : {
-      "comment" : "약속 편집",
+    "schedule.edit" : {
+      "comment" : "일정 편집",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Promise"
+            "value" : "Edit Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 편집"
+            "value" : "일정 편집"
           }
         }
       }
     },
-    "promise.empty.action" : {
-      "comment" : "첫 번째 약속 만들기",
+    "schedule.empty.action" : {
+      "comment" : "첫 번째 일정 만들기",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create your first promise"
+            "value" : "Create your first schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "첫 번째 약속 만들기"
+            "value" : "첫 번째 일정 만들기"
           }
         }
       }
     },
-    "promise.empty.subtitle" : {
-      "comment" : "새로운 약속을 만들어보세요",
+    "schedule.empty.subtitle" : {
+      "comment" : "새로운 일정을 만들어보세요",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create a new promise"
+            "value" : "Create a new schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속을 만들어보세요"
+            "value" : "새로운 일정을 만들어보세요"
           }
         }
       }
     },
-    "promise.empty.title" : {
-      "comment" : "약속이 없습니다",
+    "schedule.empty.title" : {
+      "comment" : "일정이 없습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises"
+            "value" : "No schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 없습니다"
+            "value" : "일정이 없습니다"
           }
         }
       }
     },
-    "promise.join" : {
-      "comment" : "약속 참가",
+    "schedule.join" : {
+      "comment" : "일정 참가",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join Promise"
+            "value" : "Join Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 참가"
+            "value" : "일정 참가"
           }
         }
       }
     },
-    "promise.leave" : {
-      "comment" : "약속 나가기",
+    "schedule.leave" : {
+      "comment" : "일정 나가기",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leave Promise"
+            "value" : "Leave Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 나가기"
+            "value" : "일정 나가기"
           }
         }
       }
     },
-    "promise.location" : {
+    "schedule.location" : {
       "comment" : "장소",
       "extractionState" : "manual",
       "localizations" : {
@@ -14556,7 +14556,7 @@
         }
       }
     },
-    "promise.participants" : {
+    "schedule.participants" : {
       "comment" : "참가자",
       "extractionState" : "manual",
       "localizations" : {
@@ -14574,7 +14574,7 @@
         }
       }
     },
-    "promise.priority.high" : {
+    "schedule.priority.high" : {
       "comment" : "높음",
       "extractionState" : "manual",
       "localizations" : {
@@ -14592,7 +14592,7 @@
         }
       }
     },
-    "promise.priority.low" : {
+    "schedule.priority.low" : {
       "comment" : "낮음",
       "extractionState" : "manual",
       "localizations" : {
@@ -14610,7 +14610,7 @@
         }
       }
     },
-    "promise.priority.normal" : {
+    "schedule.priority.normal" : {
       "comment" : "보통",
       "extractionState" : "manual",
       "localizations" : {
@@ -14628,7 +14628,7 @@
         }
       }
     },
-    "promise.priority.urgent" : {
+    "schedule.priority.urgent" : {
       "comment" : "긴급",
       "extractionState" : "manual",
       "localizations" : {
@@ -14646,43 +14646,43 @@
         }
       }
     },
-    "promise.promise" : {
-      "comment" : "약속",
+    "schedule.schedule" : {
+      "comment" : "일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise"
+            "value" : "Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속"
+            "value" : "일정"
           }
         }
       }
     },
-    "promise.promises" : {
-      "comment" : "약속들",
+    "schedule.schedules" : {
+      "comment" : "일정들",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promises"
+            "value" : "Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속들"
+            "value" : "일정들"
           }
         }
       }
     },
-    "promise.status.cancelled" : {
+    "schedule.status.cancelled" : {
       "comment" : "취소됨",
       "extractionState" : "manual",
       "localizations" : {
@@ -14700,7 +14700,7 @@
         }
       }
     },
-    "promise.status.completed" : {
+    "schedule.status.completed" : {
       "comment" : "완료됨",
       "extractionState" : "manual",
       "localizations" : {
@@ -14718,7 +14718,7 @@
         }
       }
     },
-    "promise.status.missed" : {
+    "schedule.status.missed" : {
       "comment" : "놓침",
       "extractionState" : "manual",
       "localizations" : {
@@ -14736,7 +14736,7 @@
         }
       }
     },
-    "promise.status.ongoing" : {
+    "schedule.status.ongoing" : {
       "comment" : "진행 중",
       "extractionState" : "manual",
       "localizations" : {
@@ -14754,7 +14754,7 @@
         }
       }
     },
-    "promise.status.scheduled" : {
+    "schedule.status.scheduled" : {
       "comment" : "예정됨",
       "extractionState" : "manual",
       "localizations" : {
@@ -14772,115 +14772,115 @@
         }
       }
     },
-    "promise.success.complete" : {
-      "comment" : "약속을 완료했습니다",
+    "schedule.success.complete" : {
+      "comment" : "일정을 완료했습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise completed"
+            "value" : "Schedule completed"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 완료했습니다"
+            "value" : "일정을 완료했습니다"
           }
         }
       }
     },
-    "promise.success.create" : {
-      "comment" : "약속이 생성되었습니다",
+    "schedule.success.create" : {
+      "comment" : "일정이 생성되었습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise created"
+            "value" : "Schedule created"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 생성되었습니다"
+            "value" : "일정이 생성되었습니다"
           }
         }
       }
     },
-    "promise.success.delete" : {
-      "comment" : "약속이 삭제되었습니다",
+    "schedule.success.delete" : {
+      "comment" : "일정이 삭제되었습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise deleted"
+            "value" : "Schedule deleted"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 삭제되었습니다"
+            "value" : "일정이 삭제되었습니다"
           }
         }
       }
     },
-    "promise.success.join" : {
-      "comment" : "약속에 참가했습니다",
+    "schedule.success.join" : {
+      "comment" : "일정에 참가했습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Joined the promise"
+            "value" : "Joined the schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속에 참가했습니다"
+            "value" : "일정에 참가했습니다"
           }
         }
       }
     },
-    "promise.success.leave" : {
-      "comment" : "약속에서 나왔습니다",
+    "schedule.success.leave" : {
+      "comment" : "일정에서 나왔습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Left the promise"
+            "value" : "Left the schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속에서 나왔습니다"
+            "value" : "일정에서 나왔습니다"
           }
         }
       }
     },
-    "promise.success.update" : {
-      "comment" : "약속이 수정되었습니다",
+    "schedule.success.update" : {
+      "comment" : "일정이 수정되었습니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise updated"
+            "value" : "Schedule updated"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 수정되었습니다"
+            "value" : "일정이 수정되었습니다"
           }
         }
       }
     },
-    "promise.title" : {
+    "schedule.title" : {
       "comment" : "제목",
       "extractionState" : "manual",
       "localizations" : {
@@ -14898,7 +14898,7 @@
         }
       }
     },
-    "promiseCard.acceptAction" : {
+    "scheduleCard.acceptAction" : {
       "comment" : "수락 버튼",
       "extractionState" : "manual",
       "localizations" : {
@@ -14916,7 +14916,7 @@
         }
       }
     },
-    "promiseCard.acceptedCount" : {
+    "scheduleCard.acceptedCount" : {
       "comment" : "참여 인원 수",
       "extractionState" : "manual",
       "localizations" : {
@@ -14934,7 +14934,7 @@
         }
       }
     },
-    "promiseCard.accepting" : {
+    "scheduleCard.accepting" : {
       "comment" : "수락 중 (진행 상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -14952,7 +14952,7 @@
         }
       }
     },
-    "promiseCard.changeResponse" : {
+    "scheduleCard.changeResponse" : {
       "comment" : "응답 변경 섹션 헤더",
       "extractionState" : "manual",
       "localizations" : {
@@ -14970,8 +14970,8 @@
         }
       }
     },
-    "promiseCard.confirmationRemaining" : {
-      "comment" : "확정까지 남은 인원 (예: 약속 확정까지 3명 남았어요!)",
+    "scheduleCard.confirmationRemaining" : {
+      "comment" : "확정까지 남은 인원 (예: 일정 확정까지 3명 남았어요!)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -14983,12 +14983,12 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 확정까지 %lld명 남았어요!"
+            "value" : "일정 확정까지 %lld명 남았어요!"
           }
         }
       }
     },
-    "promiseCard.confirmedCount" : {
+    "scheduleCard.confirmedCount" : {
       "comment" : "확정 인원 수",
       "extractionState" : "manual",
       "localizations" : {
@@ -15006,7 +15006,7 @@
         }
       }
     },
-    "promiseCard.declinedCount" : {
+    "scheduleCard.declinedCount" : {
       "comment" : "불참 인원 수",
       "extractionState" : "manual",
       "localizations" : {
@@ -15024,44 +15024,44 @@
         }
       }
     },
-    "promiseCard.deletePromise" : {
-      "comment" : "약속 삭제",
+    "scheduleCard.deleteSchedule" : {
+      "comment" : "일정 삭제",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete promise"
+            "value" : "Delete schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 삭제"
+            "value" : "일정 삭제"
           }
         }
       }
     },
-    "promiseCard.editPromise" : {
-      "comment" : "약속 수정",
+    "scheduleCard.editSchedule" : {
+      "comment" : "일정 수정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit promise"
+            "value" : "Edit schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 수정"
+            "value" : "일정 수정"
           }
         }
       }
     },
-    "promiseCard.hostProposal" : {
-      "comment" : "호스트의 약속 제안 (예: 성원님의 약속 제안)",
+    "scheduleCard.hostProposal" : {
+      "comment" : "호스트의 일정 제안 (예: 성원님의 일정 제안)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15073,12 +15073,12 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@님의 약속 제안"
+            "value" : "%@님의 일정 제안"
           }
         }
       }
     },
-    "promiseCard.liveShareStart" : {
+    "scheduleCard.liveShareStart" : {
       "comment" : "실시간 공유 시작 시간 (예: 30분 전 실시간 공유 시작)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15096,8 +15096,8 @@
         }
       }
     },
-    "promiseCard.myProposal" : {
-      "comment" : "내 약속 제안",
+    "scheduleCard.myProposal" : {
+      "comment" : "내 일정 제안",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15109,12 +15109,12 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "내 약속 제안"
+            "value" : "내 일정 제안"
           }
         }
       }
     },
-    "promiseCard.myResponseLabel" : {
+    "scheduleCard.myResponseLabel" : {
       "comment" : "내 응답 레이블 (예: 내 응답: 수락함)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15132,7 +15132,7 @@
         }
       }
     },
-    "promiseCard.photoCount" : {
+    "scheduleCard.photoCount" : {
       "comment" : "사진 개수 (예: 사진 3장)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15150,8 +15150,8 @@
         }
       }
     },
-    "promiseCard.proposal" : {
-      "comment" : "약속 제안 (호스트 미상)",
+    "scheduleCard.proposal" : {
+      "comment" : "일정 제안 (호스트 미상)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15163,12 +15163,12 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 제안"
+            "value" : "일정 제안"
           }
         }
       }
     },
-    "promiseCard.rejectAction" : {
+    "scheduleCard.rejectAction" : {
       "comment" : "거절 버튼",
       "extractionState" : "manual",
       "localizations" : {
@@ -15186,7 +15186,7 @@
         }
       }
     },
-    "promiseCard.rejecting" : {
+    "scheduleCard.rejecting" : {
       "comment" : "거절 중 (진행 상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15204,7 +15204,7 @@
         }
       }
     },
-    "promiseCard.resetting" : {
+    "scheduleCard.resetting" : {
       "comment" : "되돌리는 중 (진행 상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15222,7 +15222,7 @@
         }
       }
     },
-    "promiseCard.resetToPending" : {
+    "scheduleCard.resetToPending" : {
       "comment" : "미정으로 되돌리기",
       "extractionState" : "manual",
       "localizations" : {
@@ -15240,7 +15240,7 @@
         }
       }
     },
-    "promiseCard.responseAccepted" : {
+    "scheduleCard.responseAccepted" : {
       "comment" : "수락함 (응답 배지)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15258,7 +15258,7 @@
         }
       }
     },
-    "promiseCard.responseDeclined" : {
+    "scheduleCard.responseDeclined" : {
       "comment" : "거절함 (응답 배지)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15276,7 +15276,7 @@
         }
       }
     },
-    "promiseCard.share" : {
+    "scheduleCard.share" : {
       "comment" : "공유하기",
       "extractionState" : "manual",
       "localizations" : {
@@ -15294,7 +15294,7 @@
         }
       }
     },
-    "promiseCard.status.confirmed" : {
+    "scheduleCard.status.confirmed" : {
       "comment" : "확정됨 (상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15312,7 +15312,7 @@
         }
       }
     },
-    "promiseCard.status.failed" : {
+    "scheduleCard.status.failed" : {
       "comment" : "미성사 (상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15330,7 +15330,7 @@
         }
       }
     },
-    "promiseCard.status.needResponse" : {
+    "scheduleCard.status.needResponse" : {
       "comment" : "응답 필요 (상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15348,7 +15348,7 @@
         }
       }
     },
-    "promiseCard.status.responded" : {
+    "scheduleCard.status.responded" : {
       "comment" : "확정 대기 (상태)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15366,7 +15366,7 @@
         }
       }
     },
-    "promiseCard.totalCount" : {
+    "scheduleCard.totalCount" : {
       "comment" : "전체 인원 수",
       "extractionState" : "manual",
       "localizations" : {
@@ -15384,7 +15384,7 @@
         }
       }
     },
-    "promiseCard.viewDetail" : {
+    "scheduleCard.viewDetail" : {
       "comment" : "상세 보기",
       "extractionState" : "manual",
       "localizations" : {
@@ -15402,7 +15402,7 @@
         }
       }
     },
-    "promiseCard.voteCount" : {
+    "scheduleCard.voteCount" : {
       "comment" : "투표 현황 (예: 3/5명 투표)",
       "extractionState" : "manual",
       "localizations" : {
@@ -15420,8 +15420,8 @@
         }
       }
     },
-    "promiseModeSegment.group" : {
-      "comment" : "약속 모드 세그먼트 - 그룹",
+    "scheduleModeSegment.group" : {
+      "comment" : "일정 모드 세그먼트 - 그룹",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15438,8 +15438,8 @@
         }
       }
     },
-    "promiseModeSegment.modePickerLabel" : {
-      "comment" : "약속 모드 세그먼트 - 모드 선택 레이블",
+    "scheduleModeSegment.modePickerLabel" : {
+      "comment" : "일정 모드 세그먼트 - 모드 선택 레이블",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15456,8 +15456,8 @@
         }
       }
     },
-    "promiseModeSegment.personal" : {
-      "comment" : "약속 모드 세그먼트 - 개인",
+    "scheduleModeSegment.personal" : {
+      "comment" : "일정 모드 세그먼트 - 개인",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -15474,25 +15474,25 @@
         }
       }
     },
-    "promiseModeSegment.promiseTitle" : {
-      "comment" : "약속 모드 세그먼트 - 약속 타이틀",
+    "scheduleModeSegment.scheduleTitle" : {
+      "comment" : "일정 모드 세그먼트 - 일정 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promises"
+            "value" : "Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속"
+            "value" : "일정"
           }
         }
       }
     },
-    "promiseShare.kakaoButton" : {
+    "scheduleShare.kakaoButton" : {
       "comment" : "카카오톡으로 공유 버튼",
       "extractionState" : "manual",
       "localizations" : {
@@ -15510,25 +15510,25 @@
         }
       }
     },
-    "promiseShare.subtitle" : {
-      "comment" : "약속 공유 시트 부제목",
+    "scheduleShare.subtitle" : {
+      "comment" : "일정 공유 시트 부제목",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share this promise with friends"
+            "value" : "Share this schedule with friends"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "친구들에게 약속을 공유해보세요"
+            "value" : "친구들에게 일정을 공유해보세요"
           }
         }
       }
     },
-    "promiseShare.systemButton" : {
+    "scheduleShare.systemButton" : {
       "comment" : "다른 앱으로 공유 버튼",
       "extractionState" : "manual",
       "localizations" : {
@@ -15546,20 +15546,20 @@
         }
       }
     },
-    "promiseShare.title" : {
-      "comment" : "약속 공유 시트 제목",
+    "scheduleShare.title" : {
+      "comment" : "일정 공유 시트 제목",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share Promise"
+            "value" : "Share Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 공유"
+            "value" : "일정 공유"
           }
         }
       }
@@ -15576,7 +15576,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹"
+            "value" : "그룹 일정"
           }
         }
       }
@@ -15593,7 +15593,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "개인"
+            "value" : "개인 일정"
           }
         }
       }
@@ -15743,37 +15743,37 @@
       }
     },
     "settings.bottomAccessory.description" : {
-      "comment" : "TabBar 하단에 실시간 약속 추적 바를 표시합니다.",
+      "comment" : "TabBar 하단에 실시간 일정 추적 바를 표시합니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Display real-time promise tracking bar below the TabBar."
+            "value" : "Display real-time schedule tracking bar below the TabBar."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "TabBar 하단에 실시간 약속 추적 바를 표시합니다."
+            "value" : "TabBar 하단에 실시간 일정 추적 바를 표시합니다."
           }
         }
       }
     },
-    "settings.bottomAccessory.livePromiseDisplay" : {
-      "comment" : "LivePromise 표시",
+    "settings.bottomAccessory.liveScheduleDisplay" : {
+      "comment" : "LiveSchedule 표시",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show LivePromise"
+            "value" : "Show LiveSchedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LivePromise 표시"
+            "value" : "LiveSchedule 표시"
           }
         }
       }
@@ -16039,19 +16039,19 @@
       }
     },
     "settings.calendarSettings.groupWriteHint" : {
-      "comment" : "그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다.",
+      "comment" : "그룹별로 확정된 일정을 달력 앱에 추가할지 설정합니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configure whether to add confirmed promises to Calendar app per group."
+            "value" : "Configure whether to add confirmed schedules to Calendar app per group."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다."
+            "value" : "그룹별로 확정된 일정을 달력 앱에 추가할지 설정합니다."
           }
         }
       }
@@ -16093,19 +16093,19 @@
       }
     },
     "settings.calendarSettings.permissionHint" : {
-      "comment" : "캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다.",
+      "comment" : "캘린더 권한을 허용하면 일정과 기존 일정을 함께 확인할 수 있습니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enable calendar permissions to view promises and existing events together."
+            "value" : "Enable calendar permissions to view schedules and existing events together."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다."
+            "value" : "캘린더 권한을 허용하면 일정과 기존 일정을 함께 확인할 수 있습니다."
           }
         }
       }
@@ -16183,19 +16183,19 @@
       }
     },
     "settings.calendarSettings.readDescription" : {
-      "comment" : "달력 앱의 일정을 불러와 약속과 함께 표시합니다.",
+      "comment" : "달력 앱의 일정을 불러와 일정과 함께 표시합니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fetch events from Calendar app and display with promises."
+            "value" : "Fetch events from Calendar app and display with schedules."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "달력 앱의 일정을 불러와 약속과 함께 표시합니다."
+            "value" : "달력 앱의 일정을 불러와 일정과 함께 표시합니다."
           }
         }
       }
@@ -16273,19 +16273,19 @@
       }
     },
     "settings.calendarSettings.writeDescription" : {
-      "comment" : "확정된 약속을 달력 앱에 추가합니다.",
+      "comment" : "확정된 일정을 달력 앱에 추가합니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add confirmed promises to Calendar app."
+            "value" : "Add confirmed schedules to Calendar app."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확정된 약속을 달력 앱에 추가합니다."
+            "value" : "확정된 일정을 달력 앱에 추가합니다."
           }
         }
       }
@@ -16441,13 +16441,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "We'll notify you when a new promise is closer than your set margin to an existing event."
+            "value" : "We'll notify you when a new schedule is closer than your set margin to an existing event."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 약속이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요."
+            "value" : "새 일정이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요."
           }
         }
       }
@@ -16543,19 +16543,19 @@
       }
     },
     "settings.conflictDetection.newEvent" : {
-      "comment" : "새로 만드는 약속 레이블 (설정 화면 예시)",
+      "comment" : "새로 만드는 일정 레이블 (설정 화면 예시)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New Promise"
+            "value" : "New Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로 만드는 약속"
+            "value" : "새로 만드는 일정"
           }
         }
       }
@@ -16603,13 +16603,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This is how we'll notify you when creating a promise. (Tap for details)"
+            "value" : "This is how we'll notify you when creating a schedule. (Tap for details)"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)"
+            "value" : "일정 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)"
           }
         }
       }
@@ -16627,7 +16627,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 사이 최소 %lld시간의 여유 시간을 두고 충돌을 판단해요."
+            "value" : "일정 사이 최소 %lld시간의 여유 시간을 두고 충돌을 판단해요."
           }
         }
       }
@@ -16645,7 +16645,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 사이 최소 %1$lld시간 %2$lld분의 여유 시간을 두고 충돌을 판단해요."
+            "value" : "일정 사이 최소 %1$lld시간 %2$lld분의 여유 시간을 두고 충돌을 판단해요."
           }
         }
       }
@@ -16663,7 +16663,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 사이 최소 %lld분의 여유 시간을 두고 충돌을 판단해요."
+            "value" : "일정 사이 최소 %lld분의 여유 시간을 두고 충돌을 판단해요."
           }
         }
       }
@@ -16956,20 +16956,20 @@
         }
       }
     },
-    "settings.developer.livePromiseSettings" : {
-      "comment" : "LivePromise 설정",
+    "settings.developer.liveScheduleSettings" : {
+      "comment" : "LiveSchedule 설정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LivePromise Settings"
+            "value" : "LiveSchedule Settings"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LivePromise 설정"
+            "value" : "LiveSchedule 설정"
           }
         }
       }
@@ -17924,7 +17924,7 @@
       }
     },
     "settings.liveActivityTest.mockDescription" : {
-      "comment" : "30분 후 약속, 4명 참가자 목 데이터로 시작",
+      "comment" : "30분 후 일정, 4명 참가자 목 데이터로 시작",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -17936,7 +17936,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "30분 후 약속, 4명 참가자 목 데이터로 시작"
+            "value" : "30분 후 일정, 4명 참가자 목 데이터로 시작"
           }
         }
       }
@@ -18536,19 +18536,19 @@
       }
     },
     "settings.notificationSettings.cancelled" : {
-      "comment" : "영화 관람 약속 무산 😢",
+      "comment" : "영화 관람 일정 무산 😢",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie Promise Cancelled 😢"
+            "value" : "Movie Schedule Cancelled 😢"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "영화 관람 약속 무산 😢"
+            "value" : "영화 관람 일정 무산 😢"
           }
         }
       }
@@ -18590,19 +18590,19 @@
       }
     },
     "settings.notificationSettings.confirmed" : {
-      "comment" : "영화 관람 약속 확정! 🎉",
+      "comment" : "영화 관람 일정 확정! 🎉",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie Promise Confirmed! 🎉"
+            "value" : "Movie Schedule Confirmed! 🎉"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "영화 관람 약속 확정! 🎉"
+            "value" : "영화 관람 일정 확정! 🎉"
           }
         }
       }
@@ -18751,20 +18751,20 @@
         }
       }
     },
-    "settings.notificationSettings.newPromise" : {
-      "comment" : "새 약속 도착 📩",
+    "settings.notificationSettings.newSchedule" : {
+      "comment" : "새 일정 도착 📩",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New Promise Arrived 📩"
+            "value" : "New Schedule Arrived 📩"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 약속 도착 📩"
+            "value" : "새 일정 도착 📩"
           }
         }
       }
@@ -18902,7 +18902,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie Promise Updated 📝"
+            "value" : "Movie Schedule Updated 📝"
           }
         },
         "ko" : {
@@ -18914,19 +18914,19 @@
       }
     },
     "settings.notificationSettings.updatedBody" : {
-      "comment" : "약속 정보가 수정됐어요. 확인해주세요!",
+      "comment" : "일정 정보가 수정됐어요. 확인해주세요!",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise details have been updated. Check it out!"
+            "value" : "Schedule details have been updated. Check it out!"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 정보가 수정됐어요. 확인해주세요!"
+            "value" : "일정 정보가 수정됐어요. 확인해주세요!"
           }
         }
       }
@@ -18986,19 +18986,19 @@
       }
     },
     "settings.previewHint" : {
-      "comment" : "실제 약속 카드는 위와 같이 표시됩니다.",
+      "comment" : "실제 일정 카드는 위와 같이 표시됩니다.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Actual promise cards will be displayed as shown above."
+            "value" : "Actual schedule cards will be displayed as shown above."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "실제 약속 카드는 위와 같이 표시됩니다."
+            "value" : "실제 일정 카드는 위와 같이 표시됩니다."
           }
         }
       }
@@ -19093,122 +19093,122 @@
         }
       }
     },
-    "settings.promiseTabDefaultMode" : {
-      "comment" : "약속 탭 기본 모드",
+    "settings.scheduleTabDefaultMode" : {
+      "comment" : "일정 탭 기본 모드",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default Promise Tab Mode"
+            "value" : "Default Schedule Tab Mode"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 탭 기본 모드"
+            "value" : "일정 탭 기본 모드"
           }
         }
       }
     },
-    "settings.promiseTabModeDefault" : {
-      "comment" : "기본 모드",
+    "settings.scheduleTabModeDefault" : {
+      "comment" : "일정 기본 모드",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default Mode"
+            "value" : "Schedule Default Mode"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기본 모드"
+            "value" : "일정 기본 모드"
           }
         }
       }
     },
-    "settings.promiseTabModeGroup" : {
-      "comment" : "그룹",
+    "settings.scheduleTabModeGroup" : {
+      "comment" : "그룹 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Group"
+            "value" : "Group Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹"
+            "value" : "그룹 일정"
           }
         }
       }
     },
-    "settings.promiseTabModeGroupDescription" : {
-      "comment" : "그룹 약속을 기본으로 표시",
+    "settings.scheduleTabModeGroupDescription" : {
+      "comment" : "그룹 일정을 기본으로 표시",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show group promises by default"
+            "value" : "Show group schedules by default"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 약속을 기본으로 표시"
+            "value" : "그룹 일정을 기본으로 표시"
           }
         }
       }
     },
-    "settings.promiseTabModeHint" : {
-      "comment" : "약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.",
+    "settings.scheduleTabModeHint" : {
+      "comment" : "앱 시작 시 일정 탭의 기본 모드를 설정합니다",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose the default mode to display when opening the promise tab."
+            "value" : "Set the default mode for the schedule tab when opening the app"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다."
+            "value" : "앱 시작 시 일정 탭의 기본 모드를 설정합니다"
           }
         }
       }
     },
-    "settings.promiseTabModeOwn" : {
-      "comment" : "개인",
+    "settings.scheduleTabModeOwn" : {
+      "comment" : "개인 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Personal"
+            "value" : "Personal Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "개인"
+            "value" : "개인 일정"
           }
         }
       }
     },
-    "settings.promiseTabModeOwnDescription" : {
+    "settings.scheduleTabModeOwnDescription" : {
       "comment" : "개인 일정을 기본으로 표시",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show personal schedule by default"
+            "value" : "Show personal schedules by default"
           }
         },
         "ko" : {
@@ -19219,7 +19219,7 @@
         }
       }
     },
-    "settings.promiseTabModePreviewHint" : {
+    "settings.scheduleTabModePreviewHint" : {
       "comment" : "실제 탭바는 위와 같이 표시됩니다.",
       "extractionState" : "manual",
       "localizations" : {
@@ -19436,7 +19436,7 @@
       }
     },
     "settings.tab.group" : {
-      "comment" : "그룹",
+      "comment" : "그룹 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -19448,7 +19448,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹"
+            "value" : "그룹 일정"
           }
         }
       }
@@ -19472,7 +19472,7 @@
       }
     },
     "settings.tab.own" : {
-      "comment" : "개인",
+      "comment" : "개인 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -19484,7 +19484,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "개인"
+            "value" : "개인 일정"
           }
         }
       }
@@ -20438,7 +20438,7 @@
         }
       }
     },
-    "shared.editPromise.addLocation" : {
+    "shared.editSchedule.addLocation" : {
       "comment" : "장소 추가",
       "extractionState" : "manual",
       "localizations" : {
@@ -20456,7 +20456,7 @@
         }
       }
     },
-    "shared.editPromise.failed" : {
+    "shared.editSchedule.failed" : {
       "comment" : "수정 실패",
       "extractionState" : "manual",
       "localizations" : {
@@ -20474,7 +20474,7 @@
         }
       }
     },
-    "shared.editPromise.liveSharing" : {
+    "shared.editSchedule.liveSharing" : {
       "comment" : "실시간 공유",
       "extractionState" : "manual",
       "localizations" : {
@@ -20492,25 +20492,25 @@
         }
       }
     },
-    "shared.editPromise.liveSharingDescription" : {
+    "shared.editSchedule.liveSharingDescription" : {
       "comment" : "실시간 공유 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Live sharing starts %lld min before the promise"
+            "value" : "Live sharing starts %lld min before the schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 %lld분 전부터 실시간 공유가 시작됩니다"
+            "value" : "일정 %lld분 전부터 실시간 공유가 시작됩니다"
           }
         }
       }
     },
-    "shared.editPromise.liveStartMinutes" : {
+    "shared.editSchedule.liveStartMinutes" : {
       "comment" : "N분 전 시작",
       "extractionState" : "manual",
       "localizations" : {
@@ -20528,7 +20528,7 @@
         }
       }
     },
-    "shared.editPromise.manualStart" : {
+    "shared.editSchedule.manualStart" : {
       "comment" : "직접 시작",
       "extractionState" : "manual",
       "localizations" : {
@@ -20546,7 +20546,7 @@
         }
       }
     },
-    "shared.editPromise.maxMembers" : {
+    "shared.editSchedule.maxMembers" : {
       "comment" : "최대 N명",
       "extractionState" : "manual",
       "localizations" : {
@@ -20564,7 +20564,7 @@
         }
       }
     },
-    "shared.editPromise.minimumParticipants" : {
+    "shared.editSchedule.minimumParticipants" : {
       "comment" : "최소 참가 인원",
       "extractionState" : "manual",
       "localizations" : {
@@ -20582,25 +20582,25 @@
         }
       }
     },
-    "shared.editPromise.minMembersDescription" : {
+    "shared.editSchedule.minMembersDescription" : {
       "comment" : "최소 인원 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise auto-confirms when at least %lld members accept"
+            "value" : "Schedule auto-confirms when at least %lld members accept"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "최소 %lld명이 참석하면 약속이 자동으로 확정됩니다"
+            "value" : "최소 %lld명이 참석하면 일정이 자동으로 확정됩니다"
           }
         }
       }
     },
-    "shared.editPromise.minutesBefore" : {
+    "shared.editSchedule.minutesBefore" : {
       "comment" : "N분 전",
       "extractionState" : "manual",
       "localizations" : {
@@ -20618,7 +20618,7 @@
         }
       }
     },
-    "shared.editPromise.minutesBeforeStartLabel" : {
+    "shared.editSchedule.minutesBeforeStartLabel" : {
       "comment" : "분 전 시작 라벨",
       "extractionState" : "manual",
       "localizations" : {
@@ -20636,7 +20636,7 @@
         }
       }
     },
-    "shared.editPromise.optional" : {
+    "shared.editSchedule.optional" : {
       "comment" : "선택사항",
       "extractionState" : "manual",
       "localizations" : {
@@ -20654,38 +20654,38 @@
         }
       }
     },
-    "shared.editPromise.title" : {
-      "comment" : "약속 수정 타이틀",
+    "shared.editSchedule.title" : {
+      "comment" : "일정 수정 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Promise"
+            "value" : "Edit Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 수정"
+            "value" : "일정 수정"
           }
         }
       }
     },
-    "shared.editPromise.titlePlaceholder" : {
-      "comment" : "약속 제목 플레이스홀더",
+    "shared.editSchedule.titlePlaceholder" : {
+      "comment" : "일정 제목 플레이스홀더",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Title"
+            "value" : "Schedule Title"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 제목"
+            "value" : "일정 제목"
           }
         }
       }
@@ -20901,7 +20901,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 변경"
+            "value" : "일정 변경"
           }
         }
       }
@@ -20937,7 +20937,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 초대"
+            "value" : "일정 초대"
           }
         }
       }
@@ -21003,13 +21003,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn on notifications\nto never miss a promise"
+            "value" : "Turn on notifications\nto never miss a schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속을 놓치지 않으려면\n알림을 켜주세요"
+            "value" : "일정을 놓치지 않으려면\n알림을 켜주세요"
           }
         }
       }
@@ -21027,7 +21027,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "점심 약속 확정! 1월 25일 오후 1시에 만나요"
+            "value" : "점심 일정 확정! 1월 25일 오후 1시에 만나요"
           }
         }
       }
@@ -21045,7 +21045,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 확정! 🎉"
+            "value" : "일정 확정! 🎉"
           }
         }
       }
@@ -21063,7 +21063,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새로운 약속 초대, 응답 현황, 약속 확정 알림을\n실시간으로 받아보세요."
+            "value" : "새로운 일정 초대, 응답 현황, 일정 확정 알림을\n실시간으로 받아보세요."
           }
         }
       }
@@ -21075,13 +21075,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn on notifications\nto never miss a promise"
+            "value" : "Turn on notifications\nto never miss a schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "알림을 켜고\n약속을 놓치지 마세요"
+            "value" : "알림을 켜고\n일정을 놓치지 마세요"
           }
         }
       }
@@ -21230,7 +21230,7 @@
         }
       }
     },
-    "shared.promiseDetail.accepted" : {
+    "shared.scheduleDetail.accepted" : {
       "comment" : "참여 응답",
       "extractionState" : "manual",
       "localizations" : {
@@ -21248,7 +21248,7 @@
         }
       }
     },
-    "shared.promiseDetail.declined" : {
+    "shared.scheduleDetail.declined" : {
       "comment" : "불참 응답",
       "extractionState" : "manual",
       "localizations" : {
@@ -21266,26 +21266,26 @@
         }
       }
     },
-    "shared.promiseDetail.delete" : {
-      "comment" : "약속 삭제",
+    "shared.scheduleDetail.delete" : {
+      "comment" : "일정 삭제",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Promise"
+            "value" : "Delete Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 삭제"
+            "value" : "일정 삭제"
           }
         }
       }
     },
-    "shared.promiseDetail.deleteConfirm" : {
-      "comment" : "약속 삭제 확인",
+    "shared.scheduleDetail.deleteConfirm" : {
+      "comment" : "일정 삭제 확인",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21297,30 +21297,30 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "'%@' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다."
+            "value" : "'%@' 일정을 삭제하시겠습니까?\n삭제된 일정은 복구할 수 없습니다."
           }
         }
       }
     },
-    "shared.promiseDetail.edit" : {
-      "comment" : "약속 수정",
+    "shared.scheduleDetail.edit" : {
+      "comment" : "일정 수정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Promise"
+            "value" : "Edit Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 수정"
+            "value" : "일정 수정"
           }
         }
       }
     },
-    "shared.promiseDetail.membersCount" : {
+    "shared.scheduleDetail.membersCount" : {
       "comment" : "N명",
       "extractionState" : "manual",
       "localizations" : {
@@ -21338,7 +21338,7 @@
         }
       }
     },
-    "shared.promiseDetail.minimumConfirm" : {
+    "shared.scheduleDetail.minimumConfirm" : {
       "comment" : "최소 확정 인원",
       "extractionState" : "manual",
       "localizations" : {
@@ -21356,7 +21356,7 @@
         }
       }
     },
-    "shared.promiseDetail.myResponse" : {
+    "shared.scheduleDetail.myResponse" : {
       "comment" : "내 응답",
       "extractionState" : "manual",
       "localizations" : {
@@ -21374,7 +21374,7 @@
         }
       }
     },
-    "shared.promiseDetail.noAnswer" : {
+    "shared.scheduleDetail.noAnswer" : {
       "comment" : "미응답",
       "extractionState" : "manual",
       "localizations" : {
@@ -21392,7 +21392,7 @@
         }
       }
     },
-    "shared.promiseDetail.participants" : {
+    "shared.scheduleDetail.participants" : {
       "comment" : "참여자 섹션",
       "extractionState" : "manual",
       "localizations" : {
@@ -21410,7 +21410,7 @@
         }
       }
     },
-    "shared.promiseDetail.participantsJoined" : {
+    "shared.scheduleDetail.participantsJoined" : {
       "comment" : "N/N명 참여",
       "extractionState" : "manual",
       "localizations" : {
@@ -21428,7 +21428,7 @@
         }
       }
     },
-    "shared.promiseDetail.status.confirmed" : {
+    "shared.scheduleDetail.status.confirmed" : {
       "comment" : "확정됨 상태",
       "extractionState" : "manual",
       "localizations" : {
@@ -21446,7 +21446,7 @@
         }
       }
     },
-    "shared.promiseDetail.status.failed" : {
+    "shared.scheduleDetail.status.failed" : {
       "comment" : "미성사 상태",
       "extractionState" : "manual",
       "localizations" : {
@@ -21464,7 +21464,7 @@
         }
       }
     },
-    "shared.promiseDetail.status.needResponse" : {
+    "shared.scheduleDetail.status.needResponse" : {
       "comment" : "응답 필요 상태",
       "extractionState" : "manual",
       "localizations" : {
@@ -21482,7 +21482,7 @@
         }
       }
     },
-    "shared.promiseDetail.status.waitingConfirm" : {
+    "shared.scheduleDetail.status.waitingConfirm" : {
       "comment" : "확정 대기 상태",
       "extractionState" : "manual",
       "localizations" : {
@@ -21500,7 +21500,7 @@
         }
       }
     },
-    "shared.promiseDetail.undetermined" : {
+    "shared.scheduleDetail.undetermined" : {
       "comment" : "미정",
       "extractionState" : "manual",
       "localizations" : {
@@ -21518,7 +21518,7 @@
         }
       }
     },
-    "shared.promiseDetail.voteDeadline" : {
+    "shared.scheduleDetail.voteDeadline" : {
       "comment" : "투표 마감",
       "extractionState" : "manual",
       "localizations" : {
@@ -21735,37 +21735,37 @@
       }
     },
     "shared.weather.checking" : {
-      "comment" : "약속시간대 날씨 확인중 (위치 없음)",
+      "comment" : "일정시간대 날씨 확인중 (위치 없음)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking weather for promise time..."
+            "value" : "Checking weather for schedule time..."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속시간대 날씨를 확인중이에요"
+            "value" : "일정시간대 날씨를 확인중이에요"
           }
         }
       }
     },
     "shared.weather.checkingWithLocation" : {
-      "comment" : "약속시간대 날씨 확인중 (위치 이름 포함)",
+      "comment" : "일정시간대 날씨 확인중 (위치 이름 포함)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking weather for %@ promise time..."
+            "value" : "Checking weather for %@ schedule time..."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@의 약속시간대 날씨를 확인중이에요"
+            "value" : "%@의 일정시간대 날씨를 확인중이에요"
           }
         }
       }
@@ -21777,7 +21777,7 @@
 
     },
     "tab.calendar" : {
-      "comment" : "달력",
+      "comment" : "캘린더",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -21789,7 +21789,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "달력"
+            "value" : "캘린더"
           }
         }
       }
@@ -21830,20 +21830,20 @@
         }
       }
     },
-    "tab.promise" : {
-      "comment" : "약속",
+    "tab.schedule" : {
+      "comment" : "일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise"
+            "value" : "Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속"
+            "value" : "일정"
           }
         }
       }
@@ -22339,20 +22339,20 @@
         }
       }
     },
-    "weather.promiseTime" : {
-      "comment" : "약속 시간 표시 (예: 약속 시간 (오후 3:00))",
+    "weather.scheduleTime" : {
+      "comment" : "일정 시간 표시 (예: 일정 시간 (오후 3:00))",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise time (%@)"
+            "value" : "Schedule time (%@)"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간 (%@)"
+            "value" : "일정 시간 (%@)"
           }
         }
       }
@@ -22976,38 +22976,38 @@
         }
       }
     },
-    "widget.common.noPromises" : {
-      "comment" : "위젯 공통 - 약속 없음",
+    "widget.common.noSchedules" : {
+      "comment" : "위젯 공통 - 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises"
+            "value" : "No schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 없음"
+            "value" : "일정 없음"
           }
         }
       }
     },
-    "widget.common.noScheduledPromises" : {
-      "comment" : "위젯 공통 - 예정된 약속 없음",
+    "widget.common.noScheduledSchedules" : {
+      "comment" : "위젯 공통 - 예정된 일정 없음",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No scheduled promises"
+            "value" : "No scheduled schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "예정된 약속 없음"
+            "value" : "예정된 일정 없음"
           }
         }
       }
@@ -23156,38 +23156,38 @@
         }
       }
     },
-    "widget.config.allPromises" : {
-      "comment" : "위젯 설정 - 약속 일정",
+    "widget.config.allSchedules" : {
+      "comment" : "위젯 설정 - 일정 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Schedule"
+            "value" : "Schedule Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 일정"
+            "value" : "일정 일정"
           }
         }
       }
     },
-    "widget.config.allPromisesDescription" : {
-      "comment" : "위젯 설정 - 약속 일정 설명",
+    "widget.config.allSchedulesDescription" : {
+      "comment" : "위젯 설정 - 일정 일정 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "View today's and upcoming promises at a glance"
+            "value" : "View today's and upcoming schedules at a glance"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "오늘과 다가오는 약속을 한눈에 확인하세요"
+            "value" : "오늘과 다가오는 일정을 한눈에 확인하세요"
           }
         }
       }
@@ -23199,103 +23199,103 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Days until next promise"
+            "value" : "Days until next schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다음 약속까지 남은 일수"
+            "value" : "다음 일정까지 남은 일수"
           }
         }
       }
     },
-    "widget.config.nextPromise" : {
-      "comment" : "위젯 설정 - 다음 약속",
+    "widget.config.nextSchedule" : {
+      "comment" : "위젯 설정 - 다음 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Next Promise"
+            "value" : "Next Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다음 약속"
+            "value" : "다음 일정"
           }
         }
       }
     },
-    "widget.config.nextPromiseDescription" : {
-      "comment" : "위젯 설정 - 다음 약속 설명",
+    "widget.config.nextScheduleDescription" : {
+      "comment" : "위젯 설정 - 다음 일정 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check your next promise"
+            "value" : "Check your next schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다음 약속을 확인하세요"
+            "value" : "다음 일정을 확인하세요"
           }
         }
       }
     },
-    "widget.config.promiseInfo" : {
-      "comment" : "위젯 설정 - 약속 정보",
+    "widget.config.scheduleInfo" : {
+      "comment" : "위젯 설정 - 일정 정보",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check next promise info"
+            "value" : "Check next schedule info"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다음 약속 정보를 확인하세요"
+            "value" : "다음 일정 정보를 확인하세요"
           }
         }
       }
     },
-    "widget.config.todayPromises" : {
-      "comment" : "위젯 설정 - 오늘의 약속",
+    "widget.config.todaySchedules" : {
+      "comment" : "위젯 설정 - 오늘의 일정",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Today's Promises"
+            "value" : "Today's Schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "오늘의 약속"
+            "value" : "오늘의 일정"
           }
         }
       }
     },
-    "widget.config.todayPromisesDescription" : {
-      "comment" : "위젯 설정 - 오늘의 약속 설명",
+    "widget.config.todaySchedulesDescription" : {
+      "comment" : "위젯 설정 - 오늘의 일정 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check today's scheduled promises"
+            "value" : "Check today's scheduled schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "오늘 예정된 약속을 확인하세요"
+            "value" : "오늘 예정된 일정을 확인하세요"
           }
         }
       }
@@ -23319,73 +23319,73 @@
       }
     },
     "widget.empty.createNewHint" : {
-      "comment" : "위젯 새 약속 만들기 힌트",
+      "comment" : "위젯 새 일정 만들기 힌트",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Try creating a new promise"
+            "value" : "Try creating a new schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 약속을 만들어보세요"
+            "value" : "새 일정을 만들어보세요"
           }
         }
       }
     },
-    "widget.empty.createPromiseButton" : {
-      "comment" : "위젯 약속 만들기 버튼",
+    "widget.empty.createScheduleButton" : {
+      "comment" : "위젯 일정 만들기 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Promise"
+            "value" : "Create Schedule"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 만들기"
+            "value" : "일정 만들기"
           }
         }
       }
     },
-    "widget.empty.noPromisesMessage" : {
-      "comment" : "위젯 약속 없음 메시지",
+    "widget.empty.noSchedulesMessage" : {
+      "comment" : "위젯 일정 없음 메시지",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No scheduled promises"
+            "value" : "No scheduled schedules"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "예정된 약속이 없어요"
+            "value" : "예정된 일정이 없어요"
           }
         }
       }
     },
-    "widget.empty.noTodayPromises" : {
-      "comment" : "위젯 오늘 약속 없음 메시지",
+    "widget.empty.noTodaySchedules" : {
+      "comment" : "위젯 오늘 일정 없음 메시지",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No promises scheduled today"
+            "value" : "No schedules scheduled today"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "오늘 예정된 약속이 없어요"
+            "value" : "오늘 예정된 일정이 없어요"
           }
         }
       }
@@ -23559,36 +23559,36 @@
         }
       }
     },
-    "약속 시간" : {
+    "일정 시간" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Time"
+            "value" : "Schedule Time"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간"
+            "value" : "일정 시간"
           }
         }
       }
     },
-    "약속 시간 전에 자동으로 시작돼요" : {
+    "일정 시간 전에 자동으로 시작돼요" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starts automatically before the promise time"
+            "value" : "Starts automatically before the schedule time"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속 시간 전에 자동으로 시작돼요"
+            "value" : "일정 시간 전에 자동으로 시작돼요"
           }
         }
       }

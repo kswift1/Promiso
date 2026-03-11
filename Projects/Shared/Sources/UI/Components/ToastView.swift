@@ -384,7 +384,7 @@ private struct ToastPreviewContainer: View {
             toast = ToastMessage(
               type: .warning,
               title: "주의",
-              subtitle: "약속 시간이 30분 남았습니다.",
+              subtitle: "일정 시간이 30분 남았습니다.",
               position: position
             )
           } label: {

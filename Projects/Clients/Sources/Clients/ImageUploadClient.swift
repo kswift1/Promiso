@@ -28,7 +28,7 @@ public struct ImageUploadClient: Sendable {
   /// 다중 이미지 업로드 (압축 + 병렬 업로드, 순서 보장)
   /// - Parameters:
   ///   - images: 업로드할 이미지 Data 배열
-  ///   - basePath: Storage 기본 경로 (e.g. "promise_images/{id}")
+  ///   - basePath: Storage 기본 경로 (e.g. "schedule_images/{id}")
   /// - Returns: 업로드된 이미지 download URL 배열 (순서 보장)
   public var uploadImages: @Sendable (
     _ images: [Data],

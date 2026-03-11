@@ -5,7 +5,7 @@ import ResourceKit
 
 // MARK: - Upcoming Section
 
-/// 다가오는 일정 섹션 - 확정된 미래 약속과 개인 일정
+/// 다가오는 일정 섹션 - 확정된 미래 일정과 개인 일정
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
@@ -185,7 +185,7 @@ struct UpcomingSection: View {
 
   /// 날짜별로 그룹화된 일정
   private var groupedByDate: [DateGroup] {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     var groups: [Date: [HomeModels.ScheduleItem]] = [:]
 
     for item in displayedItems {
@@ -211,7 +211,7 @@ private struct DateGroup {
 #Preview("일정 + 반복") {
   UpcomingSection(
     items: [
-      .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
+      .schedule(ScheduleModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
       .personalEvent(PersonalEventModel.mock(
         id: "pe-1",
         title: "치과 예약",

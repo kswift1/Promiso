@@ -159,7 +159,7 @@ extension PersonalEventModel {
 
   /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
-    let calendar = Calendar.promiseDisplay
+    let calendar = Calendar.scheduleDisplay
     if calendar.isDateInToday(startAt) {
       return LocalizedStrings.DateFormat.today
     }
@@ -223,7 +223,7 @@ extension PersonalEventModel {
 // MARK: - Calendar Sync Properties
 
 extension PersonalEventModel {
-  /// 캘린더 sync용 콘텐츠 해시 (CalendarSyncPromise 패턴과 동일)
+  /// 캘린더 sync용 콘텐츠 해시 (CalendarSyncSchedule 패턴과 동일)
   public var contentHash: String {
     let startTimestamp = Int(startAt.timeIntervalSince1970)
     let endTimestamp = endAt.map { Int($0.timeIntervalSince1970) } ?? 0
@@ -326,7 +326,7 @@ extension PersonalEventModel {
     // 5. 과거 일정
     PersonalEventModel(
       id: "event-past-1",
-      title: "점심 약속",
+      title: "점심 일정",
       emoji: "🍜",
       startAt: Date().addingTimeInterval(-7200),
       endAt: Date().addingTimeInterval(-3600),
