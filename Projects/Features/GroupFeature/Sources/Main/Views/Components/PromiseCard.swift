@@ -562,6 +562,8 @@ private struct StatusBadge: View {
       return Color.blue.opacity(0.1)
     case .confirmed:
       return Color.green.opacity(0.1)
+    case .expired:
+      return Color.clear
     case .failed:
       return Color.gray.opacity(0.1)
     }
@@ -575,6 +577,8 @@ private struct StatusBadge: View {
       return Color.blue
     case .confirmed:
       return Color.green
+    case .expired:
+      return Color.gray
     case .failed:
       return Color.gray
     }
@@ -589,6 +593,7 @@ extension PromiseResponseStatus {
     case .needResponse: return LocalizedStrings.PromiseCard.statusNeedResponse
     case .responded: return LocalizedStrings.PromiseCard.statusResponded
     case .confirmed: return LocalizedStrings.PromiseCard.statusConfirmed
+    case .expired: return "마감됨"
     case .failed: return LocalizedStrings.PromiseCard.statusFailed
     }
   }
@@ -598,6 +603,7 @@ extension PromiseResponseStatus {
     case .needResponse: return "exclamationmark.circle.fill"
     case .responded: return "clock.fill"
     case .confirmed: return "checkmark.circle.fill"
+    case .expired: return "clock.badge.xmark"
     case .failed: return "xmark.circle.fill"
     }
   }

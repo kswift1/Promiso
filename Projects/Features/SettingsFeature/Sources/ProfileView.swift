@@ -160,15 +160,15 @@ extension Settings {
                 .background(Color.white.opacity(0.12))
 
               Button {
-                store.send(.view(.promiseTabModeSettingsTapped))
+                store.send(.view(.tabSettingsTapped))
               } label: {
                 HStack(spacing: 16) {
-                  Image(systemName: "person.2.fill")
+                  Image(systemName: "square.grid.2x2.fill")
                     .font(.body)
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
+                  Text(LocalizedStrings.SettingsStrings.tabSettingsMenu)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 

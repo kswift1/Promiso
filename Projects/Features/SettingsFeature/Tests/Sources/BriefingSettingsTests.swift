@@ -1,3 +1,4 @@
+import Clients
 import Testing
 @testable import SettingsFeature
 
@@ -11,7 +12,7 @@ struct BriefingSettingsTests {
     let store = makeStore(isPro: false)
 
     await store.send(.view(.proFeatureTapped))
-    await store.receive(.delegate(.proPlanRequested))
+    await store.receive(\.delegate.proPlanRequested)
   }
 
   // MARK: - Pro 사용자 기능 테스트
@@ -26,13 +27,34 @@ struct BriefingSettingsTests {
     }
   }
 
-  @Test("Pro 사용자가 알림 토글을 켜면 시간이 설정된다")
-  func proNotificationToggleOn_setsHour() async {
-    let store = makeStore(isPro: true)
+  @Test("알림 권한이 있는 Pro 사용자가 알림 토글을 켜면 시간이 설정된다")
+  func proNotificationToggleOn_withPermission_setsHour() async {
+    var initialState = BriefingSettings.Feature.State(isPro: true)
+    initialState.notificationAuthStatus = .authorized
+    let store = TestStore(
+      initialState: initialState
+    ) {
+      BriefingSettings.Feature()
+    } withDependencies: {
+      $0.hapticFeedback.selection = {}
+      $0.authClient.currentUser = { nil }
+      $0.userSettingsClient.updateBriefingNotificationHour = { _, _ in }
+      $0.notificationClient.getAuthorizationStatus = { .authorized }
+    }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.notificationToggled(true))) {
       $0.notificationHour = 8
+    }
+  }
+
+  @Test("알림 권한이 없는 Pro 사용자가 알림 토글을 켜면 권한 요청 sheet이 표시된다")
+  func proNotificationToggleOn_withoutPermission_showsPermissionSheet() async {
+    let store = makeStore(isPro: true)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.notificationToggled(true))) {
+      $0.notificationPermission = .init(allowInteractiveDismiss: true)
     }
   }
 
@@ -48,6 +70,7 @@ struct BriefingSettingsTests {
       $0.hapticFeedback.selection = {}
       $0.authClient.currentUser = { nil }
       $0.userSettingsClient.updateBriefingNotificationHour = { _, _ in }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -105,6 +128,7 @@ struct BriefingSettingsTests {
       $0.authClient.currentUser = { nil }
       $0.userSettingsClient.updateBriefingStyle = { _, _ in }
       $0.userSettingsClient.updateBriefingNotificationHour = { _, _ in }
+      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
       configure(&$0)
     }
   }

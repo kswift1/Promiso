@@ -287,7 +287,7 @@ extension LivePromise {
               return .none
             }
             let coordinate = Coordinate(latitude: latitude, longitude: longitude)
-            mapClient.openDirections(coordinate, state.data.location)
+            mapClient.openDirections(nil, coordinate, state.data.location, .car)
             return .run { _ in
               await hapticFeedback.light()
             }

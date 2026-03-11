@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Xcode가 xcstrings 포맷을 자동 변경하는 문제 방지
+*.xcstrings linguist-generated -diff

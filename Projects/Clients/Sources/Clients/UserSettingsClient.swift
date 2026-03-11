@@ -22,8 +22,8 @@ public struct UserSettingsClient: Sendable {
   /// 브리핑 알림 시간 업데이트
   public var updateBriefingNotificationHour: @Sendable (_ userId: String, _ hour: Int?) async throws -> Void
 
-  /// 선호 교통수단 업데이트
-  public var updatePreferredTransport: @Sendable (_ userId: String, _ transport: PreferredTransport) async throws -> Void
+  /// 이용 가능 교통수단 업데이트
+  public var updateAvailableTransports: @Sendable (_ userId: String, _ transports: Set<AvailableTransport>) async throws -> Void
 
   /// Pro 가입 시 기본 설정값 초기화
   public var initializeProDefaults: @Sendable (_ userId: String) async throws -> Void
@@ -41,7 +41,7 @@ extension UserSettingsClient: TestDependencyKey {
     updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
     updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
     updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour"),
-    updatePreferredTransport: unimplemented("\(Self.self).updatePreferredTransport"),
+    updateAvailableTransports: unimplemented("\(Self.self).updateAvailableTransports"),
     initializeProDefaults: unimplemented("\(Self.self).initializeProDefaults")
   )
 
@@ -65,7 +65,7 @@ extension UserSettingsClient: TestDependencyKey {
     updateBriefingNotificationHour: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
-    updatePreferredTransport: { _, _ in
+    updateAvailableTransports: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
     initializeProDefaults: { _ in
@@ -105,8 +105,8 @@ extension UserSettingsClient: DependencyKey {
       updateBriefingNotificationHour: { userId, hour in
         try await dataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
       },
-      updatePreferredTransport: { userId, transport in
-        try await dataSource.updatePreferredTransport(userId: userId, transport: transport)
+      updateAvailableTransports: { userId, transports in
+        try await dataSource.updateAvailableTransports(userId: userId, transports: transports)
       },
       initializeProDefaults: { userId in
         try await dataSource.initializeProDefaults(userId: userId)

@@ -716,13 +716,20 @@ struct CalendarDayTimelineView: View {
             }
 
             if !isCompact {
-              // Row 2: 그룹명
+              // Row 2: 그룹명 + 응답 상태
               HStack(spacing: 5) {
                 if let name = groupName(for: item) {
                   Text(name)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                }
+
+                if case .promise(let p) = item,
+                   p.responseStatus(currentUserId: currentUserId) == .needResponse {
+                  Text("응답 필요")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.pmwarning.n500)
                 }
               }
 
@@ -866,6 +873,13 @@ struct CalendarDayTimelineView: View {
           onScheduleItemTapped(item)
         } label: {
           Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
+
+      case .recurringPersonalEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
         }
       }
     } preview: {
@@ -1016,6 +1030,8 @@ struct CalendarDayTimelineView: View {
       return Color.pminfo.n500
     case .calendarEvent(let e):
       return e.calendarColor
+    case .recurringPersonalEvent:
+      return Color.pminfo.n500
     }
   }
 
@@ -1027,6 +1043,8 @@ struct CalendarDayTimelineView: View {
       return nil
     case .calendarEvent(let e):
       return e.calendarName
+    case .recurringPersonalEvent:
+      return nil
     }
   }
 
@@ -1056,6 +1074,9 @@ struct CalendarDayTimelineView: View {
     case .calendarEvent:
       // CalendarEvent는 날씨 캐시 미지원
       EmptyView()
+    case .recurringPersonalEvent:
+      // 반복 일정은 날씨 캐시 미지원
+      EmptyView()
     }
   }
 
@@ -1076,6 +1097,7 @@ struct CalendarDayTimelineView: View {
   private func statusColor(for status: PromiseResponseStatus) -> Color {
     switch status {
     case .needResponse: return Color.pmwarning.n500
+    case .expired:      return Color.pmgray.n400
     case .responded:    return Color.pmwarning.n600
     case .confirmed:    return Color.pmsuccess.n500
     case .failed:       return Color.pmgray.n400
@@ -1085,6 +1107,7 @@ struct CalendarDayTimelineView: View {
   private func statusText(for status: PromiseResponseStatus) -> String {
     switch status {
     case .needResponse: return "응답 필요"
+    case .expired:      return "마감됨"
     case .responded:    return "투표 완료"
     case .confirmed:    return "확정"
     case .failed:       return "미확정"
@@ -1099,6 +1122,8 @@ struct CalendarDayTimelineView: View {
       return e.location?.name
     case .calendarEvent(let e):
       return e.location
+    case .recurringPersonalEvent(let e):
+      return e.location?.name
     }
   }
 
@@ -1109,6 +1134,8 @@ struct CalendarDayTimelineView: View {
     case .personalEvent(let e):
       return e.description
     case .calendarEvent:
+      return nil
+    case .recurringPersonalEvent:
       return nil
     }
   }
@@ -1121,6 +1148,8 @@ struct CalendarDayTimelineView: View {
       return e.imageUrls
     case .calendarEvent:
       return []
+    case .recurringPersonalEvent:
+      return []
     }
   }
 
@@ -1131,6 +1160,8 @@ struct CalendarDayTimelineView: View {
     case .personalEvent(let e):
       return e.imageUrls.first.flatMap { URL(string: $0) }
     case .calendarEvent:
+      return nil
+    case .recurringPersonalEvent:
       return nil
     }
   }

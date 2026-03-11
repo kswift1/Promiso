@@ -1,6 +1,7 @@
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import SharedFeature
 import SwiftUI
 
 // MARK: - DateTimeSettings Namespace
@@ -587,13 +588,13 @@ extension LanguageSettings {
   }
 }
 
-// MARK: - PromiseTabModeSettings Namespace
+// MARK: - TabSettings Namespace
 
-public enum PromiseTabModeSettings {}
+public enum TabSettings {}
 
-// MARK: - PromiseTabModeSettings Feature
+// MARK: - TabSettings Feature
 
-extension PromiseTabModeSettings {
+extension TabSettings {
 
   @Reducer
   public struct Feature {
@@ -604,6 +605,7 @@ extension PromiseTabModeSettings {
     @ObservableState
     public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultCalendarDisplayMode)) public var defaultCalendarDisplayMode: String = "month"
 
       public init() {}
     }
@@ -614,7 +616,8 @@ extension PromiseTabModeSettings {
 
     public enum View: Equatable, Sendable {
       case onAppear
-      case tabModeChanged(String)
+      case promiseTabModeChanged(String)
+      case calendarDisplayModeChanged(String)
     }
 
     public var body: some ReducerOf<Self> {
@@ -625,8 +628,14 @@ extension PromiseTabModeSettings {
           case .onAppear:
             return .none
 
-          case .tabModeChanged(let mode):
+          case .promiseTabModeChanged(let mode):
             state.$defaultPromiseTabMode.withLock { $0 = mode }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .calendarDisplayModeChanged(let mode):
+            state.$defaultCalendarDisplayMode.withLock { $0 = mode }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -647,8 +656,9 @@ extension PromiseTabModeSettings {
 
     public var body: some View {
       ScrollView {
-        VStack(spacing: 16) {
-          tabModeSection
+        VStack(spacing: 24) {
+          promiseTabModeSection
+          calendarDisplayModeSection
           tabBarPreviewSection
         }
         .padding(.horizontal, 16)
@@ -656,24 +666,26 @@ extension PromiseTabModeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
+      .navigationTitle(LocalizedStrings.SettingsStrings.tabSettingsMenu)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
     }
 
-    private var tabModeSection: some View {
+    // MARK: - Promise Tab Mode Section
+
+    private var promiseTabModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
         Text(LocalizedStrings.SettingsStrings.promiseTabModeDefault)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          tabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
+          promiseTabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
           Divider()
             .padding(.leading, 48)
-          tabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
+          promiseTabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
         }
         .adaptiveGlassCard()
 
@@ -684,9 +696,9 @@ extension PromiseTabModeSettings {
       }
     }
 
-    private func tabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
+    private func promiseTabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
       Button {
-        store.send(.view(.tabModeChanged(mode)))
+        store.send(.view(.promiseTabModeChanged(mode)))
       } label: {
         HStack(spacing: 12) {
           Image(systemName: icon)
@@ -719,14 +731,80 @@ extension PromiseTabModeSettings {
       .buttonStyle(.plain)
     }
 
+    // MARK: - Calendar Display Mode Section
+
+    private var calendarDisplayModeSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.calendarDisplayModeDefault)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(Array(CalendarDisplayMode.allCases.enumerated()), id: \.element) { index, mode in
+            if index > 0 {
+              Divider()
+                .padding(.leading, 48)
+            }
+            calendarDisplayModeRow(mode: mode)
+          }
+        }
+        .adaptiveGlassCard()
+
+        Text(LocalizedStrings.SettingsStrings.calendarDisplayModeHint)
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private func calendarDisplayModeRow(mode: CalendarDisplayMode) -> some View {
+      Button {
+        store.send(.view(.calendarDisplayModeChanged(mode.rawValue)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: mode.iconName)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(mode.label)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(mode.settingsDescription)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if store.defaultCalendarDisplayMode == mode.rawValue {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    // MARK: - Tab Bar Preview Section
+
     private var tabBarPreviewSection: some View {
       VStack(alignment: .leading, spacing: 10) {
         Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        TabBarPreview(selectedMode: store.defaultPromiseTabMode)
-          .adaptiveGlassCard()
+        TabBarPreview(
+          promiseMode: store.defaultPromiseTabMode,
+          calendarDisplayMode: store.defaultCalendarDisplayMode
+        )
+        .adaptiveGlassCard()
 
         Text(LocalizedStrings.SettingsStrings.promiseTabModePreviewHint)
           .font(.system(size: 12))
@@ -739,7 +817,12 @@ extension PromiseTabModeSettings {
   // MARK: - TabBarPreview
 
   private struct TabBarPreview: View {
-    let selectedMode: String
+    let promiseMode: String
+    let calendarDisplayMode: String
+
+    private var calendarIcon: String {
+      (CalendarDisplayMode(rawValue: calendarDisplayMode) ?? .month).iconName
+    }
 
     var body: some View {
       if #available(iOS 26.0, *) {
@@ -754,11 +837,11 @@ extension PromiseTabModeSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
+          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
         TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
@@ -773,11 +856,11 @@ extension PromiseTabModeSettings {
       HStack(spacing: 8) {
         TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
+          icon: promiseMode == "group" ? "person.3.fill" : "person.fill",
+          label: promiseMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: calendarIcon, label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: true)
         TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
@@ -1578,6 +1661,7 @@ extension BriefingSettings {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -1589,7 +1673,9 @@ extension BriefingSettings {
       var hasLoaded: Bool = false
       var isPro: Bool
       @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
-      var selectedTransport: PreferredTransport = .all
+      var selectedTransports: Set<AvailableTransport> = [.transit, .car]
+      var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
+      @Presents var notificationPermission: NotificationPermission.Feature.State?
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1599,30 +1685,35 @@ extension BriefingSettings {
     }
 
     @CasePathable
-    public enum Action: Equatable, Sendable {
+    public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
     }
 
     @CasePathable
     public enum View: Equatable, Sendable {
       case onAppear
       case styleSelected(BriefingStyle)
-      case transportSelected(PreferredTransport)
+      case transportToggled(AvailableTransport)
       case notificationToggled(Bool)
       case notificationHourChanged(Int)
+      case notificationPermissionBannerTapped
+      case onSceneActive
       case proFeatureTapped
     }
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
-      case settingsLoaded(BriefingStyle, Int?, PreferredTransport)
+      case settingsLoaded(BriefingStyle, Int?, Set<AvailableTransport>)
+      case notificationAuthStatusLoaded(NotificationAuthorizationStatus)
       case styleSaved
       case notificationHourSaved
       case saveFailed
     }
 
+    @CasePathable
     public enum Delegate: Equatable, Sendable {
       case proPlanRequested
     }
@@ -1632,6 +1723,20 @@ extension BriefingSettings {
     }
 
     public var body: some ReducerOf<Self> {
+      let saveNotificationHour = { [hapticFeedback, authClient, userSettingsClient] (hour: Int?) -> Effect<Action> in
+        .run { send in
+          await hapticFeedback.selection()
+          guard let userId = await authClient.currentUser()?.uid else { return }
+          do {
+            try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
+            await send(.internal(.notificationHourSaved))
+          } catch {
+            await send(.internal(.saveFailed))
+          }
+        }
+        .cancellable(id: CancelID.save, cancelInFlight: true)
+      }
+
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
@@ -1640,16 +1745,19 @@ extension BriefingSettings {
             guard !state.hasLoaded else { return .none }
             state.isLoading = true
             return .run { send in
+              async let authStatus = notificationClient.getAuthorizationStatus()
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.notificationAuthStatusLoaded(authStatus)))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
               }
+              await send(.internal(.notificationAuthStatusLoaded(authStatus)))
             }
 
           case .styleSelected(let style):
@@ -1667,13 +1775,20 @@ extension BriefingSettings {
             }
             .cancellable(id: CancelID.save, cancelInFlight: true)
 
-          case .transportSelected(let transport):
-            state.selectedTransport = transport
-            return .run { [transport] send in
+          case .transportToggled(let transport):
+            if state.selectedTransports.contains(transport) {
+              // 최소 1개는 유지
+              guard state.selectedTransports.count > 1 else { return .none }
+              state.selectedTransports.remove(transport)
+            } else {
+              state.selectedTransports.insert(transport)
+            }
+            let transports = state.selectedTransports
+            return .run { [transports] send in
               await hapticFeedback.selection()
               guard let userId = await authClient.currentUser()?.uid else { return }
               do {
-                try await userSettingsClient.updatePreferredTransport(userId, transport)
+                try await userSettingsClient.updateAvailableTransports(userId, transports)
               } catch {
                 await send(.internal(.saveFailed))
               }
@@ -1682,35 +1797,35 @@ extension BriefingSettings {
 
           case .notificationToggled(let enabled):
             if enabled {
+              guard state.notificationAuthStatus.isGranted else {
+                state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
+                return .none
+              }
               state.notificationHour = 8
             } else {
               state.notificationHour = nil
             }
-            let hour = state.notificationHour
-            return .run { [hour] send in
-              await hapticFeedback.selection()
-              guard let userId = await authClient.currentUser()?.uid else { return }
-              do {
-                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
-                await send(.internal(.notificationHourSaved))
-              } catch {
-                await send(.internal(.saveFailed))
-              }
-            }
-            .cancellable(id: CancelID.save, cancelInFlight: true)
+            return saveNotificationHour(state.notificationHour)
 
           case .notificationHourChanged(let hour):
             state.notificationHour = hour
-            return .run { [hour] send in
-              guard let userId = await authClient.currentUser()?.uid else { return }
-              do {
-                try await userSettingsClient.updateBriefingNotificationHour(userId, hour)
-                await send(.internal(.notificationHourSaved))
-              } catch {
-                await send(.internal(.saveFailed))
+            return saveNotificationHour(hour)
+
+          case .notificationPermissionBannerTapped:
+            if state.notificationAuthStatus == .denied {
+              return .run { [notificationClient] _ in
+                await notificationClient.openNotificationSettings()
               }
+            } else {
+              state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
+              return .none
             }
-            .cancellable(id: CancelID.save, cancelInFlight: true)
+
+          case .onSceneActive:
+            return .run { [notificationClient] send in
+              let status = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusLoaded(status)))
+            }
 
           case .proFeatureTapped:
             guard !state.isPro else { return .none }
@@ -1722,13 +1837,17 @@ extension BriefingSettings {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .settingsLoaded(let style, let hour, let transport):
+          case .settingsLoaded(let style, let hour, let transports):
             state.selectedStyle = style
             state.notificationHour = hour
-            state.selectedTransport = transport
+            state.selectedTransports = transports
             state.$briefingStyleRaw.withLock { $0 = style.rawValue }
             state.isLoading = false
             state.hasLoaded = true
+            return .none
+
+          case .notificationAuthStatusLoaded(let status):
+            state.notificationAuthStatus = status
             return .none
 
           case .styleSaved, .notificationHourSaved:
@@ -1739,21 +1858,45 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { [authClient, userSettingsClient] send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.preferredTransport)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, .all)))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
               }
             }
           }
 
         case .delegate:
           return .none
+
+        // MARK: - NotificationPermission
+
+        case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
+          if isGranted {
+            state.notificationAuthStatus = .authorized
+            state.notificationHour = 8
+            return saveNotificationHour(state.notificationHour)
+          } else {
+            return .run { [notificationClient] send in
+              let status = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusLoaded(status)))
+            }
+          }
+
+        case .notificationPermission(.presented(.delegate(.dismissed))):
+          state.notificationPermission = nil
+          return .none
+
+        case .notificationPermission:
+          return .none
         }
+      }
+      .ifLet(\.$notificationPermission, action: \.notificationPermission) {
+        NotificationPermission.Feature()
       }
     }
   }
@@ -1762,6 +1905,7 @@ extension BriefingSettings {
 
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -1799,6 +1943,20 @@ extension BriefingSettings {
       }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        if newPhase == .active {
+          store.send(.view(.onSceneActive))
+        }
+      }
+      .sheet(
+        item: $store.scope(
+          state: \.notificationPermission,
+          action: \.notificationPermission
+        )
+      ) { permissionStore in
+        NotificationPermission.View(store: permissionStore)
+          .presentationDetents([.large])
       }
     }
 
@@ -1898,37 +2056,31 @@ extension BriefingSettings {
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          ForEach(PreferredTransport.allCases, id: \.self) { transport in
+          ForEach(AvailableTransport.allCases, id: \.self) { transport in
             Button {
               if store.isPro {
-                store.send(.view(.transportSelected(transport)))
+                store.send(.view(.transportToggled(transport)))
               } else {
                 store.send(.view(.proFeatureTapped))
               }
             } label: {
               HStack(spacing: 12) {
                 Image(systemName: transport.iconName)
-                  .font(.system(size: 16, weight: .semibold))
-                  .foregroundStyle(store.isPro ? Color.pmindigo.n500 : Color.pmgray.n400)
-                  .frame(width: 20)
+                  .font(.system(size: 16))
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
                   Text(transport.displayName)
-                    .font(.body)
-                    .foregroundStyle(store.isPro ? Color.pmtext.primary : Color.pmtext.secondary)
-
-                  Text(transport.description)
-                    .font(.caption)
-                    .foregroundStyle(Color.pmtext.secondary)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.pmtext.primary)
                 }
 
                 Spacer()
 
-                if store.selectedTransport == transport {
-                  Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.pmindigo.n500)
-                }
+                Image(systemName: store.selectedTransports.contains(transport) ? "checkmark.circle.fill" : "circle")
+                  .font(.system(size: 20))
+                  .foregroundStyle(store.selectedTransports.contains(transport) ? Color.pmindigo.n500 : Color.pmtext.secondary)
               }
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
@@ -1937,7 +2089,7 @@ extension BriefingSettings {
             }
             .buttonStyle(.plain)
 
-            if transport != PreferredTransport.allCases.last {
+            if transport != AvailableTransport.allCases.last {
               Divider()
                 .padding(.leading, 48)
             }
@@ -2013,6 +2165,33 @@ extension BriefingSettings {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
+          }
+
+          if store.isNotificationEnabled && store.isPro && !store.notificationAuthStatus.isGranted {
+            Divider()
+              .padding(.leading, 16)
+
+            HStack(spacing: 8) {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.pmwarning.n500)
+
+              Text(LocalizedStrings.SettingsStrings.briefingNotificationPermissionRequired)
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
+
+              Spacer()
+
+              Button {
+                store.send(.view(.notificationPermissionBannerTapped))
+              } label: {
+                Text(LocalizedStrings.Shared.goToSettings)
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
           }
         }
         .adaptiveGlassCard()

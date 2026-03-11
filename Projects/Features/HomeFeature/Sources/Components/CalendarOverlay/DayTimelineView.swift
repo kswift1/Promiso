@@ -499,6 +499,13 @@ struct DayTimelineView: View {
         } label: {
           Label(LocalizedStrings.Shared.deleteEvent, systemImage: "trash")
         }
+
+      case .recurringPersonalEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
+        }
       }
     } preview: {
       contextMenuPreview(for: item)
@@ -617,6 +624,8 @@ struct DayTimelineView: View {
       return groupColorMap[p.groupId] ?? Color.pmindigo.n500
     case .personalEvent:
       return Color.pminfo.n500
+    case .recurringPersonalEvent:
+      return Color.pminfo.n500
     }
   }
 
@@ -625,6 +634,8 @@ struct DayTimelineView: View {
     case .promise(let p):
       return p.group?.name
     case .personalEvent:
+      return nil
+    case .recurringPersonalEvent:
       return nil
     }
   }
@@ -652,6 +663,9 @@ struct DayTimelineView: View {
           forecastSource: weatherInfo.forecastSource(for: e.startAt)
         )
       }
+    case .recurringPersonalEvent:
+      // 반복 일정은 날씨 캐시 미지원
+      EmptyView()
     }
   }
 
@@ -674,6 +688,7 @@ struct DayTimelineView: View {
     case .needResponse: return Color.pmwarning.n500
     case .responded:    return Color.pmwarning.n600
     case .confirmed:    return Color.pmsuccess.n500
+    case .expired:      return Color.pmgray.n400
     case .failed:       return Color.pmgray.n400
     }
   }
@@ -683,6 +698,7 @@ struct DayTimelineView: View {
     case .needResponse: return "응답 필요"
     case .responded:    return "투표 완료"
     case .confirmed:    return "확정"
+    case .expired:      return "마감됨"
     case .failed:       return "미확정"
     }
   }
@@ -692,6 +708,8 @@ struct DayTimelineView: View {
     case .promise(let p):
       return p.location?.name
     case .personalEvent(let e):
+      return e.location?.name
+    case .recurringPersonalEvent(let e):
       return e.location?.name
     }
   }

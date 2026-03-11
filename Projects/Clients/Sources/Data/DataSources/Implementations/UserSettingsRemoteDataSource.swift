@@ -37,7 +37,20 @@ public actor UserSettingsRemoteDataSource {
     let briefingMap = proSettings?["briefing"] as? [String: Any]
     let briefingStyle = BriefingStyle(rawValue: briefingMap?["style"] as? String ?? "") ?? .friendly
     let briefingNotificationHour = briefingMap?["notificationHour"] as? Int
-    let preferredTransport = PreferredTransport(rawValue: briefingMap?["preferredTransport"] as? String ?? "") ?? .all
+    let availableTransports: Set<AvailableTransport> = {
+      // 새 형식 우선
+      if let transportArray = briefingMap?["availableTransports"] as? [String] {
+        let transports = Set(transportArray.compactMap { AvailableTransport(rawValue: $0) })
+        return transports.isEmpty ? [.transit, .car] : transports
+      }
+      // 하위 호환: 기존 preferredTransport 문자열 마이그레이션
+      let legacy = briefingMap?["preferredTransport"] as? String ?? ""
+      switch legacy {
+      case "transit": return [.transit]
+      case "car": return [.car]
+      default: return [.transit, .car]
+      }
+    }()
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
@@ -45,7 +58,7 @@ public actor UserSettingsRemoteDataSource {
       conflictDetectionThreshold: conflictDetectionThreshold,
       briefingStyle: briefingStyle,
       briefingNotificationHour: briefingNotificationHour,
-      preferredTransport: preferredTransport
+      availableTransports: availableTransports
     )
   }
 
@@ -71,10 +84,10 @@ public actor UserSettingsRemoteDataSource {
     ])
   }
 
-  /// 선호 교통수단 업데이트
-  public func updatePreferredTransport(userId: String, transport: PreferredTransport) async throws {
+  /// 이용 가능 교통수단 업데이트
+  public func updateAvailableTransports(userId: String, transports: Set<AvailableTransport>) async throws {
     try await settingsRef(userId: userId).updateData([
-      "proSettings.briefing.preferredTransport": transport.rawValue,
+      "proSettings.briefing.availableTransports": transports.map(\.rawValue).sorted(),
     ])
   }
 
@@ -88,7 +101,7 @@ public actor UserSettingsRemoteDataSource {
           "notificationHour": 8,
           "timezone": TimeZone.current.identifier,
           "language": Locale.current.language.languageCode?.identifier ?? "ko",
-          "preferredTransport": PreferredTransport.all.rawValue,
+          "availableTransports": AvailableTransport.allCases.map(\.rawValue),
         ]
       ]
     ], merge: true)

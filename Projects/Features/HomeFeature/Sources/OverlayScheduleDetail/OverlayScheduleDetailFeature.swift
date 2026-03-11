@@ -146,8 +146,10 @@ extension OverlayScheduleDetail {
               let lng = location.longitude
             else { return .none }
             mapClient.openDirections(
+              nil,
               Coordinate(latitude: lat, longitude: lng),
-              location.name
+              location.name,
+              .car
             )
             return .none
 

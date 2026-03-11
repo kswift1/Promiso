@@ -155,7 +155,8 @@ extension PromiseModel {
 // MARK: - Promise Response Status
 
 public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {
-  case needResponse  // 내가 미응답
+  case needResponse  // 내가 미응답 (투표 진행중)
+  case expired       // 투표 마감 + 내가 미응답 (응답 기한 놓침)
   case responded     // 내가 응답함 (확정 대기)
   case confirmed     // 약속 확정됨
   case failed        // 약속 불발 (투표 마감 + 미확정)
@@ -318,11 +319,12 @@ extension PromiseModel {
       }
     }
 
-    // 3. 내가 미응답 (확정 여부와 무관하게 응답 필요)
+    // 3. 내가 미응답
     if let userId = currentUserId {
       let myStatus = votes.myStatus(userId: userId)
       if myStatus == .pending {
-        return .needResponse
+        // 투표 마감 전이면 응답 필요, 마감 후면 기한 만료
+        return isVotingClosed ? .expired : .needResponse
       }
     }
 

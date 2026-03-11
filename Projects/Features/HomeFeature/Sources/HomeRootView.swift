@@ -1,5 +1,6 @@
 import Clients
 import ComposableArchitecture
+import Foundation
 import CreatePromiseFeature
 import NotificationCenterFeature
 import PromisoShared
@@ -18,6 +19,56 @@ extension Home {
     }
 
     public var body: some View {
+      navigationStack
+        .sheet(
+          item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
+        ) { createEventStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: createEventStore)
+          }
+        }
+        .sheet(isPresented: Binding(
+          get: { store.departureAlertItem != nil },
+          set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
+        )) {
+          DepartureAlertSheet(
+            promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
+            promiseTitle: store.departureAlertItem?.title ?? "",
+            promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
+            promiseLocation: store.departureAlertItem?.location?.name,
+            departureLocation: store.departureLocationName,
+            transportData: store.departureTransportData.value,
+            loadError: store.departureTransportData.error.map { error in
+              error is LocationClientError
+                ? HomeModels.DepartureLoadError.locationPermission
+                : .general("경로를 불러오지 못했어요")
+            },
+            onSelect: { selection, bufferMinutes in
+              store.send(.view(.departureAlertConfirmed(selection, bufferMinutes)))
+            },
+            onDetailTapped: {
+              store.send(.view(.departureAlertDetailTapped))
+            },
+            onRetry: {
+              store.send(.view(.departureAlertRetryTapped))
+            },
+            onOpenSettings: {
+              store.send(.view(.departureAlertOpenSettingsTapped))
+            },
+            previousScheduleLocation: store.previousScheduleLocation,
+            onDepartureOriginChanged: { origin in
+              store.send(.view(.departureOriginChanged(origin)))
+            },
+            onDismiss: {
+              store.send(.view(.departureAlertSheetDismissed))
+            }
+          )
+        }
+    }
+
+    // MARK: - Navigation Stack
+
+    private var navigationStack: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
@@ -116,15 +167,12 @@ extension Home {
           PromiseDetail.RootView(store: detailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .recurringPersonalEventDetail(let detailStore):
+          RecurringPersonalEventDetail.RootView(store: detailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
-        }
-      }
-      .sheet(
-        item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
-      ) { createEventStore in
-        NavigationStack {
-          CreatePersonalEvent.RootView(store: createEventStore)
+        case .transportDetail(let detailStore):
+          TransportDetail.RootView(store: detailStore)
         }
       }
     }
@@ -190,6 +238,7 @@ extension Home {
               isLoading: store.briefingState.isLoading,
               isExpanded: store.isBriefingExpanded,
               isUpdated: store.isBriefingUpdated,
+              isPro: store.isPro,
               isNotificationDenied: store.isNotificationDenied,
               isLocationDenied: store.isLocationDenied,
               onTap: {
@@ -203,6 +252,9 @@ extension Home {
               },
               onReportError: {
                 store.send(.view(.reportBriefingErrorTapped))
+              },
+              onProUpgradeTapped: {
+                store.send(.view(.briefingProUpgradeTapped))
               }
             )
             .padding(.horizontal, 16)
@@ -211,13 +263,24 @@ extension Home {
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,
               weatherCache: store.weatherCache,
+              departureAlerts: store.departureAlerts,
+              groupColorMap: store.overlayGroupColorMap,
+              isPro: store.isPro,
               onItemTap: { item in
                 switch item {
                 case .promise(let p):
                   store.send(.view(.todayPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
+                case .recurringPersonalEvent(let instance):
+                  store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
+              },
+              onDepartureAlertTap: { item in
+                store.send(.view(.departureAlertTapped(item)))
+              },
+              onDepartureAlertCancel: { scheduleItemId in
+                store.send(.view(.departureAlertCancelTapped(scheduleItemId)))
               }
             )
             .padding(.horizontal, 16)
@@ -244,6 +307,8 @@ extension Home {
                   store.send(.view(.upcomingPromiseTapped(p)))
                 case .personalEvent(let e):
                   store.send(.view(.personalEventTapped(e)))
+                case .recurringPersonalEvent(let instance):
+                  store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
               },
               onSeeAllTap: {

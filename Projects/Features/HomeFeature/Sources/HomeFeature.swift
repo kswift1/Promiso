@@ -29,6 +29,11 @@ extension Home {
     @Dependency(\.openURL) var openURL
     @Dependency(\.holidayClient) var holidayClient
     @Dependency(\.briefingClient) var briefingClient
+    @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.transportationClient) var transportationClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
     public init() {}
 
     // MARK: - CancelID
@@ -38,6 +43,7 @@ extension Home {
       case overlayWeatherFetch
       case overlayScheduleFetch
       case briefingFetch
+      case transportationFetch
     }
 
     // MARK: - State
@@ -58,6 +64,9 @@ extension Home {
 
       /// 개인 일정 데이터
       var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
+
+      /// 반복 개인 일정 데이터
+      var recurringEventsState: LoadingState<[RecurringPersonalEventModel]> = .idle
 
       /// 날씨 캐시 (scheduleId → WeatherInfo)
       @Shared(.inMemory("weatherCache"))
@@ -148,6 +157,22 @@ extension Home {
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
 
+      // MARK: Departure Alert
+      /// 출발 알림 설정 시트 대상 일정 (약속 또는 개인 일정)
+      var departureAlertItem: HomeModels.ScheduleItem? = nil
+      /// 교통 데이터 로딩 상태
+      var departureTransportData: LoadingState<HomeModels.DepartureTransportData> = .idle
+      /// 출발 알림 설정된 일정 (ScheduleItem.id → 알림 정보)
+      var departureAlerts: [String: HomeModels.DepartureAlertInfo] = [:]
+      /// 역지오코딩된 출발지명
+      var departureLocationName: String? = nil
+      /// 직전 일정 장소 정보 (출발지 선택 제안용)
+      var previousScheduleLocation: HomeModels.PreviousScheduleLocation? = nil
+      /// 현재 선택된 출발지
+      var departureOrigin: HomeModels.DepartureOrigin = .currentLocation
+      /// 현재 위치 좌표 (출발지 변경 시 재사용)
+      var currentLocationCoordinate: Coordinate? = nil
+
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
       var path = StackState<Path.State>()
@@ -183,7 +208,9 @@ extension Home {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
+      case transportDetail(TransportDetail.Feature)
     }
 
     // MARK: - Action
@@ -225,6 +252,8 @@ extension Home {
         case refreshNotificationBadge
         /// 개인 일정 카드 탭
         case personalEventTapped(PersonalEventModel)
+        /// 반복 개인 일정 인스턴스 카드 탭
+        case recurringPersonalEventTapped(ExpandedEventInstance)
         /// 토스트 닫힘
         case toastDismissed
         /// 브리핑 카드 탭 (expand/collapse)
@@ -237,6 +266,8 @@ extension Home {
         case openLocationSettingsTapped
         /// 브리핑 오류 제보
         case reportBriefingErrorTapped
+        /// 브리핑 Pro 업그레이드 CTA 탭
+        case briefingProUpgradeTapped
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -261,6 +292,22 @@ extension Home {
         case overlayScheduleDetailBackTapped
         /// 오버레이 약속 생성에서 뒤로가기
         case overlayCreatePromiseBackTapped
+        /// 출발 알림 버튼 탭
+        case departureAlertTapped(HomeModels.ScheduleItem)
+        /// 출발 알림 시트 닫기
+        case departureAlertSheetDismissed
+        /// 교통수단 선택 확정 (알림 설정): selection + bufferMinutes
+        case departureAlertConfirmed(HomeModels.TransportSelection, Int)
+        /// 출발 알림 상세 화면 탭
+        case departureAlertDetailTapped
+        /// 출발 알림 취소
+        case departureAlertCancelTapped(String)
+        /// 출발 알림 재시도
+        case departureAlertRetryTapped
+        /// 출발지 변경 (현재 위치 ↔ 직전 약속 장소)
+        case departureOriginChanged(HomeModels.DepartureOrigin)
+        /// 출발 알림 시트에서 설정으로 이동
+        case departureAlertOpenSettingsTapped
       }
 
       @CasePathable
@@ -273,6 +320,10 @@ extension Home {
         case fetchPersonalEvents
         /// 개인 일정 응답
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        /// 반복 개인 일정 조회
+        case fetchRecurringEvents
+        /// 반복 개인 일정 응답
+        case recurringEventsResponse(Result<[RecurringPersonalEventModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
         /// 안 읽은 알림 개수 조회
@@ -313,6 +364,16 @@ extension Home {
         case checkPermissions
         /// 권한 상태 확인 결과
         case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
+        /// 교통 정보 응답
+        case transportationResponse(String, Result<TransportationResult, Error>, Set<AvailableTransport> = [.transit, .car])
+        /// 출발 알림 스케줄 완료
+        case departureAlertScheduled(HomeModels.DepartureAlertInfo)
+        /// 출발 알림 설정 실행 (TransportSelection → DepartureAlertInfo 변환 후 스케줄)
+        case scheduleAlertForSelection(HomeModels.TransportSelection, Int)
+        /// 출발지 역지오코딩 결과
+        case departureLocationResolved(String?)
+        /// 현재 위치 좌표 저장
+        case currentLocationStored(Coordinate)
       }
 
       @CasePathable
@@ -327,6 +388,8 @@ extension Home {
         case navigateToCreatePromise
         /// 빠른 약속 생성 요청 (추출 정보 → CreatePromise pre-fill)
         case createPromiseWithExtractedInfo(PromiseExtractedInfo)
+        /// Pro 플랜 업그레이드 요청
+        case proPlanRequested
       }
     }
 
@@ -341,6 +404,8 @@ extension Home {
             // 첫 로드 표시
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
+              // UserDefaultsClient에서 출발 알림 복원
+              state.departureAlerts = Self.loadDepartureAlerts(userDefaultsClient: userDefaultsClient)
             }
             state.refreshHomeContentSnapshot()
 
@@ -360,11 +425,12 @@ extension Home {
               }
             }
 
-            // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
+            // Firestore에서 직접 쿼리 (약속 + 개인 일정 + 반복 개인 일정 병렬)
             return .merge(
               weatherEffect,
               .send(.internal(.fetchPromises)),
               .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents)),
               .send(.internal(.checkPermissions))
             )
 
@@ -372,7 +438,8 @@ extension Home {
             // Pull-to-refresh도 동일하게 쿼리
             return .merge(
               .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents))
             )
 
           case .todayPromiseTapped(let promise):
@@ -432,6 +499,16 @@ extension Home {
             state.path.append(.personalEventDetail(.init(event: event)))
             return .none
 
+          case .recurringPersonalEventTapped(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
+            return .none
+
           case .toastDismissed:
             state.toastMessage = nil
             return .none
@@ -439,6 +516,9 @@ extension Home {
           case .briefingCardTapped:
             state.isBriefingExpanded.toggle()
             return .none
+
+          case .briefingProUpgradeTapped:
+            return .send(.delegate(.proPlanRequested))
 
           case .refreshBriefingTapped:
             state.briefingState = .loading
@@ -643,6 +723,14 @@ extension Home {
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
               state.overlayCalendarMode = .promiseDetail
               return .none
+            case .recurringPersonalEvent:
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .promiseDetail
+              return .none
             }
 
           case .overlayCreatePersonalEventTapped(let date):
@@ -691,6 +779,296 @@ extension Home {
             state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
             state.overlayCalendarModeBeforeFeature = nil
             return .none
+
+          case .departureAlertTapped(let item):
+            guard state.isPro else {
+              return .none
+            }
+            guard let location = item.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            state.departureAlertItem = item
+            state.departureTransportData = .loading
+
+            // 직전 일정 찾기 (같은 날, 대상보다 이른 것 중 가장 가까운 것)
+            let todayItems = state.homeContentSnapshot.todayScheduleItems
+            let previousItem = todayItems
+              .filter { $0.startAt < item.startAt && $0.id != item.id }
+              .last(where: { schedule in
+                guard let loc = schedule.location,
+                      loc.latitude != nil,
+                      loc.longitude != nil else { return false }
+                return true
+              })
+            if let prev = previousItem,
+               let prevLoc = prev.location,
+               let prevLat = prevLoc.latitude,
+               let prevLng = prevLoc.longitude {
+              let prevInfo = HomeModels.PreviousScheduleLocation(
+                name: prev.title,
+                locationName: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+              state.previousScheduleLocation = prevInfo
+              // 직전 일정이 있으면 디폴트 출발지로 설정
+              state.departureOrigin = .previousSchedule(
+                name: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+            } else {
+              state.previousScheduleLocation = nil
+              state.departureOrigin = .currentLocation
+            }
+
+            let scheduleItemId = item.id
+            let userId = state.currentUser.userId
+            let usePreviousOrigin = state.previousScheduleLocation
+            return .run { [locationClient, transportationClient, userSettingsClient] send in
+              // 현재 위치와 설정을 병렬로 조회
+              async let locationTask: Coordinate = {
+                do {
+                  // 권한 거부 시 liveUpdates() 스트림이 멈추므로 타임아웃 + 권한 재체크
+                  let location = try await withThrowingTaskGroup(of: Coordinate.self) { group in
+                    group.addTask {
+                      try await locationClient.getCurrentLocation()
+                    }
+                    group.addTask {
+                      // 권한 다이얼로그 대기 후 거부 감지 (최대 10초 타임아웃)
+                      try await Task.sleep(for: .seconds(1))
+                      for _ in 0..<18 { // 0.5초 * 18 = 9초
+                        let status = locationClient.authorizationStatus()
+                        if status == .denied {
+                          throw LocationClientError.denied
+                        }
+                        if status == .authorized {
+                          // getCurrentLocation 태스크가 위치를 반환할 때까지 대기
+                          try await Task.sleep(for: .seconds(10))
+                          throw LocationClientError.unavailable
+                        }
+                        try await Task.sleep(for: .milliseconds(500))
+                      }
+                      // 타임아웃
+                      throw LocationClientError.unavailable
+                    }
+                    guard let result = try await group.next() else {
+                      throw LocationClientError.unavailable
+                    }
+                    group.cancelAll()
+                    return result
+                  }
+                  return location
+                } catch {
+                  // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
+                  if usePreviousOrigin == nil {
+                    throw error
+                  }
+                  // 현재 위치 없이 진행
+                  return Coordinate(latitude: 0, longitude: 0)
+                }
+              }()
+
+              async let settingsTask: Set<AvailableTransport> = {
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(userId)
+                  return settings.availableTransports
+                } catch {
+                  return [.transit, .car]
+                }
+              }()
+
+              let currentLocation: Coordinate
+              do {
+                currentLocation = try await locationTask
+                AppLogger.home.debug("📍 [DepartureAlert] 위치 조회 성공 — (\(currentLocation.latitude), \(currentLocation.longitude))")
+              } catch {
+                AppLogger.home.debug("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
+                await send(.internal(.transportationResponse(
+                  scheduleItemId,
+                  .failure(LocationClientError.denied)
+                )))
+                return
+              }
+
+              let availableTransports = await settingsTask
+
+              // 현재 위치 저장 (0,0이 아닌 경우만)
+              if currentLocation.latitude != 0 || currentLocation.longitude != 0 {
+                let locationName = try? await locationClient.reverseGeocode(currentLocation)
+                await send(.internal(.departureLocationResolved(locationName)))
+                await send(.internal(.currentLocationStored(currentLocation)))
+              }
+
+              // 출발 좌표 결정: 직전 일정 있으면 그 좌표, 없으면 현재 위치
+              let fromLat: Double
+              let fromLng: Double
+              if let prev = usePreviousOrigin {
+                fromLat = prev.latitude
+                fromLng = prev.longitude
+              } else {
+                fromLat = currentLocation.latitude
+                fromLng = currentLocation.longitude
+              }
+
+              AppLogger.home.debug("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  fromLat, fromLng,
+                  lat, lng
+                )
+              }
+              switch result {
+              case .success(let data):
+                AppLogger.home.debug("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
+              case .failure(let error):
+                AppLogger.home.debug("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertRetryTapped:
+            guard let item = state.departureAlertItem else { return .none }
+            // 위치 권한 거부 상태에서 출발 좌표가 없으면 재시도 의미 없음 (설정 유도)
+            if state.isLocationDenied
+              && state.currentLocationCoordinate == nil
+              && state.previousScheduleLocation == nil {
+              return .none
+            }
+            if state.currentLocationCoordinate != nil {
+              // 좌표가 있으면 현재 origin 기준 재시도
+              return .send(.view(.departureOriginChanged(state.departureOrigin)))
+            } else {
+              // 좌표가 없으면 전체 재시도 (위치 권한 등)
+              return .send(.view(.departureAlertTapped(item)))
+            }
+
+          case .departureAlertSheetDismissed:
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            state.departureLocationName = nil
+            state.previousScheduleLocation = nil
+            state.departureOrigin = .currentLocation
+            state.currentLocationCoordinate = nil
+            return .cancel(id: CancelID.transportationFetch)
+
+          case .departureAlertConfirmed(let selection, let bufferMinutes):
+            return .send(.internal(.scheduleAlertForSelection(selection, bufferMinutes)))
+
+          case .departureAlertDetailTapped:
+            guard let item = state.departureAlertItem,
+                  let data = state.departureTransportData.value else {
+              return .none
+            }
+            // 시트 닫고 NavigationStack으로 push
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            // 출발지 좌표 결정
+            let originCoordinate: Coordinate? = switch state.departureOrigin {
+            case .currentLocation:
+              state.currentLocationCoordinate
+            case .previousSchedule:
+              state.previousScheduleLocation.map {
+                Coordinate(latitude: $0.latitude, longitude: $0.longitude)
+              }
+            }
+            let originName: String? = switch state.departureOrigin {
+            case .currentLocation:
+              state.departureLocationName
+            case .previousSchedule:
+              state.previousScheduleLocation?.locationName
+            }
+            // 도착지 좌표
+            guard let location = item.location,
+                  let destLat = location.latitude,
+                  let destLng = location.longitude else {
+              return .none
+            }
+            let destCoord = Coordinate(latitude: destLat, longitude: destLng)
+            let destName = location.name ?? item.title
+
+            state.path.append(.transportDetail(.init(
+              scheduleTitle: item.title,
+              scheduleEmoji: item.displayEmoji,
+              scheduleStartAt: item.startAt,
+              transportData: data,
+              originCoordinate: originCoordinate,
+              originName: originName,
+              destinationCoordinate: destCoord,
+              destinationName: destName
+            )))
+            return .cancel(id: CancelID.transportationFetch)
+
+          case .departureAlertCancelTapped(let scheduleItemId):
+            state.departureAlerts[scheduleItemId] = nil
+            let alertsAfterCancel = state.departureAlerts
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            return .run { [localNotificationClient, userDefaultsClient] _ in
+              Self.saveDepartureAlerts(alertsAfterCancel, userDefaultsClient: userDefaultsClient)
+              await localNotificationClient.cancel(notificationId)
+            }
+
+          case .departureOriginChanged(let origin):
+            guard let item = state.departureAlertItem,
+                  let location = item.location,
+                  let toLat = location.latitude,
+                  let toLng = location.longitude else {
+              return .none
+            }
+            state.departureOrigin = origin
+
+            let fromLat: Double
+            let fromLng: Double
+            let locationName: String?
+
+            switch origin {
+            case .currentLocation:
+              guard let coord = state.currentLocationCoordinate else {
+                // 위치 권한 없어서 좌표가 없으면 에러 표시
+                state.departureTransportData = .failed(LocationClientError.denied)
+                return .none
+              }
+              fromLat = coord.latitude
+              fromLng = coord.longitude
+              locationName = state.departureLocationName
+            case .previousSchedule(let name, let latitude, let longitude):
+              fromLat = latitude
+              fromLng = longitude
+              locationName = name
+            }
+
+            state.departureTransportData = .loading
+            let scheduleItemId = item.id
+            let userId = state.currentUser.userId
+
+            return .run { [transportationClient, userSettingsClient] send in
+              let availableTransports: Set<AvailableTransport>
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                availableTransports = settings.availableTransports
+              } catch {
+                availableTransports = [.transit, .car]
+              }
+
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  fromLat, fromLng,
+                  toLat, toLng
+                )
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertOpenSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
 
           }
 
@@ -789,6 +1167,30 @@ extension Home {
               // 개인 일정 실패 시 기존 데이터 유지 (이미 로드된 데이터가 있으면 보존)
               if !state.personalEventsState.isLoaded {
                 state.personalEventsState = .loaded([])
+              }
+              state.refreshHomeContentSnapshot()
+            }
+            return .none
+
+          case .fetchRecurringEvents:
+            return .run { [recurringPersonalEventClient] send in
+              do {
+                let events = try await recurringPersonalEventClient.getAllEvents()
+                await send(.internal(.recurringEventsResponse(.success(events))))
+              } catch {
+                await send(.internal(.recurringEventsResponse(.failure(error))))
+              }
+            }
+
+          case .recurringEventsResponse(let result):
+            switch result {
+            case .success(let events):
+              state.recurringEventsState = .loaded(events)
+              state.refreshHomeContentSnapshot()
+              return .none
+            case .failure:
+              if !state.recurringEventsState.isLoaded {
+                state.recurringEventsState = .loaded([])
               }
               state.refreshHomeContentSnapshot()
             }
@@ -1222,6 +1624,199 @@ extension Home {
             state.locationAuthStatus = locationStatus
             return .none
 
+          case .transportationResponse(let scheduleItemId, let result, let availableTransports):
+            guard let item = state.departureAlertItem,
+                  item.id == scheduleItemId else {
+              return .none
+            }
+            switch result {
+            case .success(let transportation):
+              let itemStartAt = item.startAt
+
+              // 자동차 (buffer=0 기준 출발시간)
+              let drivingOption: HomeModels.TransportOption?
+              if let driving = transportation.driving {
+                let departureTime = itemStartAt.addingTimeInterval(-Double(driving.duration * 60))
+                var info: String? = nil
+                if driving.toll > 0 {
+                  info = "통행료 \(driving.toll.formatted())원"
+                }
+                drivingOption = .init(
+                  type: .driving,
+                  durationMinutes: driving.duration,
+                  departureTime: departureTime,
+                  additionalInfo: info,
+                  distanceMeters: driving.distance
+                )
+              } else {
+                drivingOption = nil
+              }
+
+              // 대중교통 경로 배열 변환 (buffer=0 기준 출발시간)
+              let transitRoutes: [HomeModels.TransitRouteOption] = transportation.transitRoutes.enumerated().map { index, route in
+                let departureTime = itemStartAt.addingTimeInterval(-Double(route.totalTime * 60))
+                let subPaths = route.subPaths.map { subPath -> HomeModels.TransportSubPath in
+                  let laneName: String?
+                  if let firstLane = subPath.lanes.first {
+                    laneName = firstLane.name ?? firstLane.busNo
+                  } else {
+                    laneName = nil
+                  }
+                  return HomeModels.TransportSubPath(
+                    trafficType: subPath.trafficType,
+                    sectionTime: subPath.sectionTime,
+                    distance: subPath.distance,
+                    startName: subPath.startName,
+                    endName: subPath.endName,
+                    stationCount: subPath.stationCount,
+                    laneName: laneName
+                  )
+                }
+                return HomeModels.TransitRouteOption(
+                  id: index,
+                  totalTime: route.totalTime,
+                  payment: route.payment,
+                  busTransitCount: route.busTransitCount,
+                  subwayTransitCount: route.subwayTransitCount,
+                  pathType: route.pathType,
+                  departureTime: departureTime,
+                  subPaths: subPaths
+                )
+              }
+
+              // 도보 (buffer=0 기준 출발시간)
+              let walkDepartureTime = itemStartAt.addingTimeInterval(-Double(transportation.walkingMinutes * 60))
+              let walkingOption = HomeModels.TransportOption(
+                type: .walking,
+                durationMinutes: transportation.walkingMinutes,
+                departureTime: walkDepartureTime,
+                distanceMeters: transportation.walkingDistanceMeters
+              )
+
+              let transportData = HomeModels.DepartureTransportData(
+                driving: drivingOption,
+                transitRoutes: HomeModels.DepartureTransportData.categorizeTransitRoutes(transitRoutes),
+                walking: walkingOption,
+                availableTransports: availableTransports
+              )
+              state.departureTransportData = .loaded(transportData)
+
+            case .failure(let error):
+              state.departureTransportData = .failed(error)
+              // 시트가 열려 있으면 인라인 에러로 표시하므로 토스트 불필요
+              if state.departureAlertItem == nil {
+                if error is LocationClientError {
+                  state.toastMessage = ToastMessage(type: .error, title: "위치 권한이 필요합니다")
+                } else {
+                  state.toastMessage = ToastMessage(type: .error, title: "교통 정보를 불러올 수 없습니다")
+                }
+              }
+            }
+            return .none
+
+          case .scheduleAlertForSelection(let selection, let bufferMinutes):
+            guard let item = state.departureAlertItem,
+                  let data = state.departureTransportData.value else {
+              return .none
+            }
+            let scheduleItemId = item.id
+            let durationMinutes: Int
+            let rawDepartureTime: Date
+            let transportType: HomeModels.TransportType
+            switch selection {
+            case .driving:
+              guard let opt = data.driving else { return .none }
+              durationMinutes = opt.durationMinutes
+              rawDepartureTime = opt.departureTime
+              transportType = .driving
+            case .transit(let index):
+              guard let route = data.transitRoutes.first(where: { $0.id == index }) else { return .none }
+              durationMinutes = route.totalTime
+              rawDepartureTime = route.departureTime
+              transportType = .transit
+            case .walking:
+              durationMinutes = data.walking.durationMinutes
+              rawDepartureTime = data.walking.departureTime
+              transportType = .walking
+            }
+            // buffer 적용한 실제 알림 트리거 시간
+            let departureTime = rawDepartureTime.addingTimeInterval(-Double(bufferMinutes * 60))
+            let alertInfo = HomeModels.DepartureAlertInfo(
+              scheduleItemId: scheduleItemId,
+              selectedTransport: transportType,
+              durationMinutes: durationMinutes,
+              departureTime: departureTime
+            )
+            state.departureAlerts[scheduleItemId] = alertInfo
+            let alertsAfterSchedule = state.departureAlerts
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            let timeText = item.startAt.formattedTime
+            let transport = transportType.displayName
+
+            typealias NotificationTemplate = (
+              title: (String) -> String,
+              body: (String, String, Int, Int) -> String
+            )
+
+            let templates: [NotificationTemplate] = [
+              (
+                title: { "\($0), 슬슬 출발할 시간이에요" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 · \(buffer)분 여유를 두었어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분 걸려요"
+                }
+              ),
+              (
+                title: { "\($0), 이제 출발해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time) 약속 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
+                    : "\(time) 약속 · \(trans)로 약 \(duration)분 거리예요"
+                }
+              ),
+              (
+                title: { "\($0), 슬슬 준비해볼까요?" },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? "\(time)까지 \(trans)로 약 \(duration)분 거리예요 · 여유 \(buffer)분 챙겼어요"
+                    : "\(time)까지 \(trans)로 약 \(duration)분이면 도착해요"
+                }
+              ),
+            ]
+
+            // swiftlint:disable:next force_unwrapping
+            let template = templates.randomElement()!
+            let title = template.title(item.title)
+            let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
+            let triggerDate = departureTime
+            return .run { [localNotificationClient, userDefaultsClient] send in
+              Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
+              do {
+                try await localNotificationClient.schedule(
+                  notificationId, title, body, triggerDate,
+                  ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+                )
+              } catch {
+                // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+              }
+              await send(.internal(.departureAlertScheduled(alertInfo)))
+            }
+
+          case .departureAlertScheduled:
+            state.toastMessage = ToastMessage(type: .success, title: "출발 알림이 설정되었습니다")
+            return .none
+
+          case .departureLocationResolved(let name):
+            state.departureLocationName = name
+            return .none
+
+          case .currentLocationStored(let coordinate):
+            state.currentLocationCoordinate = coordinate
+            return .none
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -1264,6 +1859,14 @@ extension Home {
             )))
           case .personalEvent(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
+          case .recurringPersonalEvent(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
           }
           return .cancel(id: CancelID.overlayWeatherFetch)
 
@@ -1359,6 +1962,16 @@ extension Home {
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
           return .send(.internal(.fetchPersonalEvents))
 
+        // MARK: - RecurringPersonalEventDetail Path Actions
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
         // MARK: - NotificationCenter Path Actions
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.dismiss)))):
@@ -1376,6 +1989,11 @@ extension Home {
         case .path(.element(id: _, action: .notificationCenter(.delegate(.refreshBadgeCount)))):
           return .send(.internal(.fetchUnreadNotificationCount))
 
+        // MARK: - TransportDetail Path Actions
+
+        case .path(.element(id: _, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
+          return .send(.internal(.scheduleAlertForSelection(selection, bufferMinutes)))
+
         case .path:
           return .none
         }
@@ -1391,6 +2009,51 @@ extension Home {
         CreatePromise.Feature()
       }
 
+    }
+
+    // MARK: - Departure Alert Persistence
+
+    private static let departureAlertsKey = "departure_alerts_v1"
+
+    /// 출발 알림 만료 유지 시간 (초)
+    private static let departureAlertRetentionInterval: TimeInterval = 3600
+
+    private static func saveDepartureAlerts(
+      _ alerts: [String: HomeModels.DepartureAlertInfo],
+      userDefaultsClient: UserDefaultsClient
+    ) {
+      // 만료된 알림 제거 후 저장
+      let activeAlerts = alerts.filter {
+        $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+      }
+      do {
+        let data = try JSONEncoder().encode(activeAlerts)
+        userDefaultsClient.setString(
+          data.base64EncodedString(),
+          departureAlertsKey
+        )
+      } catch {
+        AppLogger.home.error("Failed to encode departure alerts for persistence: \(error)")
+      }
+    }
+
+    private static func loadDepartureAlerts(
+      userDefaultsClient: UserDefaultsClient
+    ) -> [String: HomeModels.DepartureAlertInfo] {
+      guard let base64 = userDefaultsClient.stringForKey(departureAlertsKey),
+            let data = Data(base64Encoded: base64) else {
+        return [:]
+      }
+      do {
+        let alerts = try JSONDecoder().decode([String: HomeModels.DepartureAlertInfo].self, from: data)
+        // 만료된 알림 제거
+        return alerts.filter {
+          $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+        }
+      } catch {
+        AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
+        return [:]
+      }
     }
 
     // MARK: - Briefing Helpers

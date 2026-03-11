@@ -576,9 +576,9 @@ extension ProPlan {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
 
-                ForEach(PreferredTransport.allCases, id: \.self) { transport in
+                ForEach(AvailableTransport.allCases, id: \.self) { transport in
                   Button {
-                    store.send(.view(.onboardingTransportChanged(transport)))
+                    store.send(.view(.onboardingTransportToggled(transport)))
                   } label: {
                     HStack(spacing: 12) {
                       Image(systemName: transport.iconName)
@@ -590,18 +590,13 @@ extension ProPlan {
                         Text(transport.displayName)
                           .font(.body)
                           .foregroundStyle(Color.pmtext.primary)
-                        Text(transport.description)
-                          .font(.caption)
-                          .foregroundStyle(Color.pmtext.secondary)
                       }
 
                       Spacer()
 
-                      if store.onboardingTransport == transport {
-                        Image(systemName: "checkmark")
-                          .font(.system(size: 14, weight: .semibold))
-                          .foregroundStyle(Color.pmindigo.n500)
-                      }
+                      Image(systemName: store.onboardingTransports.contains(transport) ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(store.onboardingTransports.contains(transport) ? Color.pmindigo.n500 : Color.pmtext.secondary)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -719,10 +714,10 @@ extension ProPlan {
             )
             Divider().padding(.leading, 48)
             summaryRow(
-              icon: store.onboardingTransport.iconName,
+              icon: "car.fill",
               iconColor: Color.pmindigo.n500,
-              title: "선호 교통수단",
-              value: store.onboardingTransport.displayName
+              title: "이용 교통수단",
+              value: store.onboardingTransports.sorted(by: { $0.rawValue < $1.rawValue }).map(\.displayName).joined(separator: ", ")
             )
           }
           .adaptiveGlassCard()

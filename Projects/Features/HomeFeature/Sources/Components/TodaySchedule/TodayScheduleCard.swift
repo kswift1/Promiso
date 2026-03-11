@@ -9,7 +9,12 @@ import ResourceKit
 struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
+  let departureAlerts: [String: HomeModels.DepartureAlertInfo]
+  let groupColorMap: [String: Color]
+  let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertCancel: (String) -> Void
 
   @State private var isExpanded: Bool = true
 
@@ -87,24 +92,28 @@ struct TodayScheduleCard: View {
           CurrentTimeMarkerView(nextPromiseStartAt: item.startAt)
         }
 
-        switch item {
-        case .promise(let promise):
-          TimelineItemView(
-            promise: promise,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            weather: weatherCache[promise.id],
-            onTap: { onItemTap(item) }
-          )
+        let weather: WeatherInfo? = {
+          if case .promise(let p) = item { return weatherCache[p.id] }
+          return nil
+        }()
 
-        case .personalEvent(let event):
-          PersonalEventTimelineItemView(
-            event: event,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            onTap: { onItemTap(item) }
-          )
-        }
+        let groupColor: Color? = {
+          if case .promise(let p) = item { return groupColorMap[p.groupId] }
+          return nil
+        }()
+
+        TimelineItemView(
+          item: item,
+          isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
+          isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+          weather: weather,
+          groupColor: groupColor,
+          departureAlert: departureAlerts[item.id],
+          isPro: isPro,
+          onTap: { onItemTap(item) },
+          onDepartureAlertTap: { onDepartureAlertTap(item) },
+          onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
+        )
 
         // 모든 일정 종료 후 완료 메시지
         if index == sortedItems.count - 1 && currentTimePosition == .afterAll {
@@ -185,7 +194,12 @@ struct TodayScheduleCard: View {
       ))
     ],
     weatherCache: [:],
-    onItemTap: { _ in }
+    departureAlerts: [:],
+    groupColorMap: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -195,7 +209,12 @@ struct TodayScheduleCard: View {
   TodayScheduleCard(
     items: [],
     weatherCache: [:],
-    onItemTap: { _ in }
+    departureAlerts: [:],
+    groupColorMap: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()

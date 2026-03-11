@@ -338,7 +338,8 @@ extension GroupMain {
             let maxMembers = state.currentGroupMembers?.count ?? promise.minimumParticipants
             state.editPromise = EditPromise.Feature.State(
               promise: promise,
-              maxMembers: maxMembers
+              maxMembers: maxMembers,
+              currentUserId: state.currentUser.userId
             )
             return .none
 
@@ -378,7 +379,7 @@ extension GroupMain {
               return .none
             }
             let coordinate = Coordinate(latitude: latitude, longitude: longitude)
-            mapClient.openDirections(coordinate, location.name)
+            mapClient.openDirections(nil, coordinate, location.name, .car)
             return .none
 
           case .createNewPromise:
