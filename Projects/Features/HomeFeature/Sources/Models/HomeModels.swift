@@ -67,6 +67,14 @@ extension HomeModels {
       case .recurringPersonalEvent(let e): return e.location
       }
     }
+
+    /// 확정 여부 (약속만 해당, 개인 일정은 항상 true)
+    public var isConfirmed: Bool {
+      switch self {
+      case .promise(let p): return p.isConfirmed
+      case .personalEvent, .recurringPersonalEvent: return true
+      }
+    }
   }
 }
 
@@ -181,7 +189,7 @@ extension HomeModels {
 
 extension HomeModels {
   /// 교통수단 타입
-  public enum TransportType: String, Equatable, CaseIterable, Sendable {
+  public enum TransportType: String, Equatable, CaseIterable, Sendable, Codable {
     case driving
     case transit
     case walking
@@ -380,7 +388,7 @@ extension HomeModels {
   }
 
   /// 출발 알림 설정 정보
-  public struct DepartureAlertInfo: Equatable, Sendable {
+  public struct DepartureAlertInfo: Equatable, Sendable, Codable {
     public let scheduleItemId: String  // ScheduleItem.id (promise-xxx 또는 personal-xxx)
     public let selectedTransport: TransportType
     public let durationMinutes: Int
@@ -415,5 +423,11 @@ extension HomeModels {
       self.latitude = latitude
       self.longitude = longitude
     }
+  }
+
+  /// 출발 알림 시트의 에러 타입
+  public enum DepartureLoadError: Equatable, Sendable {
+    case locationPermission
+    case general(String)
   }
 }

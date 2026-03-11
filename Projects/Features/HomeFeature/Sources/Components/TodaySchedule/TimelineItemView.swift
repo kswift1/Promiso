@@ -1,15 +1,17 @@
 import SwiftUI
+import Clients
 import PromisoShared
 import ResourceKit
 
 // MARK: - Timeline Item View
 
-/// 오늘의 일정 타임라인 개별 아이템
+/// 오늘의 일정 타임라인 개별 아이템 (약속 + 개인 일정 + 반복 일정 통합)
 struct TimelineItemView: View {
-  let promise: PromiseModel
+  let item: HomeModels.ScheduleItem
   let isFirst: Bool
   let isLast: Bool
   let weather: WeatherInfo?
+  let groupColor: Color?
   let departureAlert: HomeModels.DepartureAlertInfo?
   let isPro: Bool
   let onTap: () -> Void
@@ -31,29 +33,15 @@ struct TimelineItemView: View {
               .frame(width: 80, alignment: .center)
               .padding(.leading, 8)
 
-            promiseContent
+            itemContent
               .padding(.leading, 8)
 
             Spacer(minLength: 0)
           }
           .padding(.vertical, 8)
 
-          // 날씨
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            WeatherCardStrip(
-              forecast: forecast,
-              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime,
-              forecastSource: weather.forecastSource(for: promise.startAt)
-            )
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
-          } else if shouldShowWeatherSkeleton {
-            weatherLoadingPlaceholder
-              .padding(.horizontal, 8)
-              .padding(.bottom, 8)
-          }
+          // Pro 혜택 영역 (날씨 + 출발 알림)
+          proBenefitSection
 
           // Divider (마지막 아이템 제외)
           if !isLast {
@@ -65,6 +53,7 @@ struct TimelineItemView: View {
           }
         }
       }
+      .opacity(isPast ? 0.7 : 1.0)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -100,158 +89,387 @@ struct TimelineItemView: View {
     .frame(width: 16)
   }
 
-  // MARK: - Promise Content
+  // MARK: - Item Content
 
-  private var promiseContent: some View {
+  @ViewBuilder
+  private var itemContent: some View {
     VStack(alignment: .leading, spacing: 4) {
-      // 이모지 + 제목
+      // Row 1: 이모지 + 제목 + 타입 캡슐
       HStack(spacing: 6) {
-        Text(promise.displayEmoji)
+        Text(item.displayEmoji)
           .font(.pmTitle3)
 
-        Text(promise.title)
+        Text(item.title)
           .font(.pmBodySemibold)
           .foregroundStyle(.primary)
           .lineLimit(1)
+
+        Spacer(minLength: 4)
+
+        typeBadge
       }
-      
-      // 그룹 + 참여자 수 + 확정
-      HStack(spacing: 4) {
-        if let group = promise.group {
+
+      // Row 2: 타입별 메타 정보
+      switch item {
+      case .promise(let promise):
+        promiseMetaRow(promise)
+      case .personalEvent(let event):
+        personalEventMetaRow(event)
+      case .recurringPersonalEvent(let event):
+        recurringEventMetaRow(event)
+      }
+
+      // Row 3: 장소 (promise만, 개인/반복은 Row 2에 포함)
+      if case .promise(let promise) = item, let location = promise.location {
+        locationRow(location)
+      }
+
+      // Row 4: 추가 정보 (타입별)
+      switch item {
+      case .promise(let promise):
+        if let minutes = promise.trackingStartMinutesBefore {
+          liveActivityRow(promise: promise, minutes: minutes)
+        }
+      case .personalEvent(let event):
+        personalEventDetailRow(event)
+      case .recurringPersonalEvent(let event):
+        recurringEventDetailRow(event)
+      }
+
+    }
+  }
+
+  // MARK: - Type Badge
+
+  @ViewBuilder
+  private var typeBadge: some View {
+    switch item {
+    case .promise(let promise):
+      if let group = promise.group {
+        HStack(spacing: 3) {
           GroupThumbnailView(
             imageUrl: group.imageUrl,
             name: group.name,
-            size: 18
+            size: 14
           )
-
           Text(group.name)
-            .font(.pmCaption)
-            .lineLimit(1)
+            .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(groupColor ?? Color.pmindigo.n500)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background((groupColor ?? Color.pmindigo.n500).opacity(0.1))
+        .clipShape(Capsule())
+      }
+    case .personalEvent:
+      HStack(spacing: 3) {
+        Image(systemName: "person.fill")
+          .font(.system(size: 9))
+        Text(LocalizedStrings.Home.personalLabel)
+          .font(.system(size: 11, weight: .medium))
+      }
+      .foregroundStyle(Color.pmindigo.n500)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background(Color.pmindigo.n500.opacity(0.1))
+      .clipShape(Capsule())
+    case .recurringPersonalEvent:
+      HStack(spacing: 3) {
+        Image(systemName: "arrow.trianglehead.2.counterclockwise.rotate.90")
+          .font(.system(size: 9))
+        Text("반복")
+          .font(.system(size: 11, weight: .medium))
+      }
+      .foregroundStyle(Color.pmindigo.n500)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background(Color.pmindigo.n500.opacity(0.1))
+      .clipShape(Capsule())
+    }
+  }
 
-          Text("·")
-            .font(.pmCaption)
+  // MARK: - Type-Specific Meta Rows
+
+  private func promiseMetaRow(_ promise: PromiseModel) -> some View {
+    HStack(spacing: 6) {
+      // 확정/미확정 배지
+      HStack(spacing: 3) {
+        Image(systemName: promise.isConfirmed ? "checkmark.circle.fill" : "clock.badge")
+          .font(.system(size: 10))
+        Text(promise.isConfirmed ? "확정" : "미확정")
+          .font(.system(size: 11, weight: .semibold))
+      }
+      .foregroundStyle(promise.isConfirmed ? Color.green : Color.orange)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background((promise.isConfirmed ? Color.green : Color.orange).opacity(0.1))
+      .clipShape(Capsule())
+
+      Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
+        .font(.pmCaption)
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  @ViewBuilder
+  private func personalEventMetaRow(_ event: PersonalEventModel) -> some View {
+    if let location = event.location {
+      locationBadge(location)
+    }
+  }
+
+  @ViewBuilder
+  private func recurringEventMetaRow(_ event: ExpandedEventInstance) -> some View {
+    if let location = event.location {
+      locationBadge(location)
+    }
+  }
+
+  // MARK: - Location Helpers
+
+  private func locationRow(_ location: LocationInfoModel) -> some View {
+    HStack(spacing: 4) {
+      ResourceKitAsset.locationIcon.swiftUIImage
+        .renderingMode(.template)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 14, height: 14)
+
+      Text(location.name)
+        .font(.pmCaption)
+        .lineLimit(1)
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  private func locationBadge(_ location: LocationInfoModel) -> some View {
+    HStack(spacing: 3) {
+      ResourceKitAsset.locationIcon.swiftUIImage
+        .renderingMode(.template)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 12, height: 12)
+
+      Text(location.name)
+        .font(.pmCaption)
+        .lineLimit(1)
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  // MARK: - Live Activity Row
+
+  private func liveActivityRow(promise: PromiseModel, minutes: Int) -> some View {
+    HStack(spacing: 4) {
+      Image(systemName: "antenna.radiowaves.left.and.right")
+        .font(.pmCaption2)
+
+      Text(liveStartTimeString(promise: promise, minutes: minutes))
+        .font(.pmCaption)
+
+      Button {
+        showLiveActivityInfo = true
+      } label: {
+        Image(systemName: "info.circle")
+          .font(.pmCaption2)
+      }
+      .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
+        LiveActivityInfoPopover(
+          emoji: promise.displayEmoji,
+          title: promise.title,
+          location: promise.location?.name,
+          promiseTime: promise.startAt
+        )
+      }
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  // MARK: - Personal / Recurring Detail Rows
+
+  @ViewBuilder
+  private func personalEventDetailRow(_ event: PersonalEventModel) -> some View {
+    if event.reminderMinutesBefore != nil || hasDescription(event) {
+      HStack(spacing: 8) {
+        if let minutes = event.reminderMinutesBefore {
+          HStack(spacing: 3) {
+            Image(systemName: "bell.fill")
+              .font(.system(size: 10))
+
+            Text(reminderText(minutes: minutes))
+              .font(.pmCaption)
+          }
+          .foregroundStyle(.secondary)
         }
 
-        Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
+        if hasDescription(event) {
+          Text(event.description ?? "")
+            .font(.pmCaption)
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func recurringEventDetailRow(_ event: ExpandedEventInstance) -> some View {
+    if let minutes = event.reminderMinutesBefore {
+      HStack(spacing: 3) {
+        Image(systemName: "bell.fill")
+          .font(.system(size: 10))
+
+        Text(reminderText(minutes: minutes))
           .font(.pmCaption)
       }
       .foregroundStyle(.secondary)
+    }
+  }
 
-      // 장소 + 날씨
-      if let location = promise.location {
-        HStack(spacing: 4) {
-          ResourceKitAsset.locationIcon.swiftUIImage
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 14, height: 14)
+  // MARK: - Pro Benefit Section (날씨 + 출발 알림 통합)
 
-          Text(location.name)
-            .font(.pmCaption)
-            .lineLimit(1)
+  @ViewBuilder
+  private var proBenefitSection: some View {
+    let hasWeather = weatherForecast != nil || weatherShouldShowSkeleton
+    let hasDepartureAlert = departureAlert != nil
+    let hasDepartureCTA = !hasDepartureAlert && location != nil && isFuture
+
+    if hasWeather || hasDepartureAlert || hasDepartureCTA {
+      VStack(alignment: .leading, spacing: 6) {
+        ProBadge()
+
+        // 날씨 (promise만)
+        if let forecast = weatherForecast {
+          ProWeatherRow(
+            forecast: forecast,
+            rangeForecasts: weatherRangeForecasts,
+            forecastSource: weatherForecastSource,
+            referenceTimeText: item.startAt.formattedMonthDayTime
+          )
         }
-        .foregroundStyle(.secondary)
-      }
 
-      // 실시간 공유 시작 시간
-      if let minutes = promise.trackingStartMinutesBefore {
-        HStack(spacing: 4) {
-          Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.pmCaption2)
-
-          Text(liveStartTimeString(minutes: minutes))
-            .font(.pmCaption)
-
+        // 출발 알림 (설정됨)
+        if let departureAlert = departureAlert {
+          departureAlertRow(departureAlert)
+        }
+        // 출발 알림 CTA (미설정 + 장소 있음 + 미래)
+        else if location != nil && isFuture {
           Button {
-            showLiveActivityInfo = true
+            onDepartureAlertTap()
           } label: {
-            Image(systemName: "info.circle")
-              .font(.pmCaption2)
+            HStack(spacing: 6) {
+              Image(systemName: "figure.walk.departure")
+                .font(.system(size: 12))
+                .frame(width: 22, height: 22)
+                .background(
+                  Circle()
+                    .fill(Color.pmindigo.n500.opacity(0.12))
+                )
+
+              Text("언제 출발할지 알려드릴게요")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+
+              Spacer(minLength: 0)
+
+              Image(systemName: "chevron.right")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
           }
-          .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
-            LiveActivityInfoPopover(
-              emoji: promise.displayEmoji,
-              title: promise.title,
-              location: promise.location?.name,
-              promiseTime: promise.startAt
-            )
-          }
+          .buttonStyle(.plain)
         }
-        .foregroundStyle(.secondary)
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .proGlassCard(cornerRadius: 12)
+      .padding(.horizontal, 8)
+      .padding(.bottom, 8)
+    }
+  }
+
+  /// 출발 알림 행 (설정된 상태)
+  private func departureAlertRow(_ alert: HomeModels.DepartureAlertInfo) -> some View {
+    let isAlertPassed = alert.departureTime < Date()
+    let accentColor = isAlertPassed ? Color.pmgray.n400 : Color.pmindigo.n500
+
+    return HStack(spacing: 6) {
+      Image(systemName: alert.selectedTransport.iconName)
+        .font(.system(size: 12))
+        .frame(width: 22, height: 22)
+        .background(
+          Circle()
+            .fill(accentColor.opacity(0.12))
+        )
+
+      if isAlertPassed {
+        Text("\(alert.departureTime.formattedTime) 알림 완료")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+      } else {
+        Text("\(alert.departureTime.formattedTime) 출발 예정")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.primary)
       }
 
-      // 출발 알림
-      if let departureAlert = departureAlert {
-        VStack(alignment: .leading, spacing: 4) {
-          HStack {
-            ProBadge()
-            Spacer()
-            Button {
-              onDepartureAlertCancel()
-            } label: {
-              Image(systemName: "xmark.circle.fill")
-                .font(.pmCaption)
-                .foregroundStyle(Color.pmgray.n400)
-            }
-            .buttonStyle(.plain)
-          }
+      Spacer(minLength: 0)
 
-          HStack(spacing: 4) {
-            Image(systemName: departureAlert.selectedTransport.iconName)
-              .font(.pmCaption2)
-            Text("\(departureAlert.departureTime.formattedTime) 출발")
-              .font(.pmCaption)
-              .fontWeight(.semibold)
-            Image(systemName: "checkmark.circle.fill")
-              .font(.pmCaption2)
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-          .foregroundStyle(.primary)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .proGlassCard(cornerRadius: 12)
-      } else if promise.location != nil && isFuture {
+      if isAlertPassed {
+        Image(systemName: "checkmark.circle.fill")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmgray.n400)
+      } else {
         Button {
-          onDepartureAlertTap()
+          onDepartureAlertCancel()
         } label: {
-          VStack(alignment: .leading, spacing: 4) {
-            ProBadge()
-
-            HStack(spacing: 4) {
-              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                .font(.pmCaption2)
-              Text("추천 출발 시간 설정")
-                .font(.pmCaption)
-            }
-            .foregroundStyle(.primary)
-          }
-          .padding(.horizontal, 10)
-          .padding(.vertical, 6)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .proGlassCard(cornerRadius: 12)
-          .contentShape(Rectangle())
+          Image(systemName: "xmark.circle.fill")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmgray.n400)
         }
         .buttonStyle(.plain)
       }
     }
+    .opacity(isAlertPassed ? 0.7 : 1.0)
+  }
+
+  // MARK: - Weather Helpers
+
+  private var weatherForecast: HourlyForecast? {
+    guard case .promise(let promise) = item else { return nil }
+    return weather?.forecast(for: promise.startAt)
+  }
+
+  private var weatherRangeForecasts: [HourlyForecast] {
+    guard case .promise(let promise) = item else { return [] }
+    return weather?.forecasts(from: promise.startAt, to: promise.endAt) ?? []
+  }
+
+  private var weatherForecastSource: ForecastSource {
+    guard case .promise(let promise) = item else { return .shortTerm }
+    return weather?.forecastSource(for: promise.startAt) ?? .shortTerm
+  }
+
+  private var weatherShouldShowSkeleton: Bool {
+    guard case .promise(let promise) = item else { return false }
+    return shouldShowWeatherSkeleton(promise)
   }
 
   // MARK: - Time Label
 
   private var timeLabel: some View {
     VStack(alignment: .center, spacing: 2) {
-      Text(startTimeString)
+      Text(item.startAt.formattedTime)
         .font(.pmSubheadlineSemibold)
         .foregroundStyle(isNow ? Color.pmindigo.n500 : .primary)
 
-      if let endAt = promise.endAt {
+      if let endAt = item.endAt {
         VStack(alignment: .center, spacing: 0) {
           Text("~")
             .font(.pmCaption)
             .foregroundStyle(.secondary)
-          Text(endTimeString(endAt))
+          Text(LocalizedDateFormatters.endTimeString(from: endAt))
             .font(.pmCaption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -267,16 +485,40 @@ struct TimelineItemView: View {
 
   // MARK: - Computed Properties
 
-  private var startTimeString: String {
-    promise.startAt.formattedTime
+  private var startAt: Date { item.startAt }
+  private var endAt: Date? { item.endAt }
+  private var effectiveEndAt: Date { item.effectiveEndAt }
+  private var location: LocationInfoModel? { item.location }
+
+  /// 현재 진행 중인 일정인지
+  private var isNow: Bool {
+    let now = Date()
+    return now >= startAt && now <= effectiveEndAt
   }
 
-  private func endTimeString(_ endAt: Date) -> String {
-    LocalizedDateFormatters.endTimeString(from: endAt)
+  /// 이미 종료된 일정인지
+  var isPast: Bool {
+    Date() > effectiveEndAt
+  }
+
+  /// 아직 시작 전인 일정인지
+  var isFuture: Bool {
+    Date() < startAt
+  }
+
+  /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
+  private var dotColor: Color {
+    if isNow {
+      return Color.pmindigo.n500
+    } else if isPast {
+      return Color.pmgray.n400
+    } else {
+      return Color.pmindigo.n300
+    }
   }
 
   /// 날씨 조회가 진행 중인 경우 스켈레톤 노출
-  private var shouldShowWeatherSkeleton: Bool {
+  private func shouldShowWeatherSkeleton(_ promise: PromiseModel) -> Bool {
     guard weather == nil else { return false }
     guard let location = promise.location,
           location.latitude != nil,
@@ -314,53 +556,48 @@ struct TimelineItemView: View {
   }
 
   /// 실시간 공유 시작 시간 문자열
-  private func liveStartTimeString(minutes: Int) -> String {
+  private func liveStartTimeString(promise: PromiseModel, minutes: Int) -> String {
     let liveStartTime = promise.startAt.addingTimeInterval(-Double(minutes * 60))
     return "\(liveStartTime.formattedTime) \(LocalizedStrings.Home.startLiveSharing)"
   }
 
-  /// 현재 진행 중인 약속인지 (종료시간 없으면 단발성 = 시작 즉시 종료)
-  private var isNow: Bool {
-    let now = Date()
-    return now >= promise.startAt && now <= promise.effectiveEndAt
-  }
-
-  /// 이미 종료된 약속인지
-  var isPast: Bool {
-    Date() > promise.effectiveEndAt
-  }
-
-  /// 아직 시작 전인 약속인지
-  var isFuture: Bool {
-    let now = Date()
-    return now < promise.startAt
-  }
-
-  /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
-  private var dotColor: Color {
-    if isNow {
-      return Color.pmindigo.n500
-    } else if isPast {
-      return Color.pmgray.n400
-    } else {
-      return Color.pmindigo.n300
+  /// 리마인더 시간 텍스트
+  private func reminderText(minutes: Int) -> String {
+    if minutes == 0 { return "이벤트 시점" }
+    if minutes >= 10080 && minutes % (1440 * 7) == 0 {
+      let weeks = minutes / (1440 * 7)
+      return "\(weeks)주 전"
     }
+    if minutes >= 1440 {
+      let days = minutes / 1440
+      return "\(days)일 전"
+    }
+    if minutes >= 60 {
+      return LocalizedStrings.Home.reminderHoursBefore(minutes / 60)
+    }
+    return LocalizedStrings.Home.reminderMinutesBefore(minutes)
+  }
+
+  private func hasDescription(_ event: PersonalEventModel) -> Bool {
+    guard let description = event.description else { return false }
+    return !description.isEmpty
   }
 }
 
 // MARK: - Preview
 
-#Preview {
+#Preview("약속") {
   VStack(spacing: 0) {
     TimelineItemView(
-      promise: PromiseModel.mock(
+      item: .promise(PromiseModel.mock(
         id: "1",
         title: "점심 모임",
         startAt: Date().addingTimeInterval(1800)
-      ),
+      )),
       isFirst: true,
       isLast: false,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -369,14 +606,116 @@ struct TimelineItemView: View {
     )
 
     TimelineItemView(
-      promise: PromiseModel.mock(
+      item: .promise(PromiseModel.mock(
         id: "2",
         title: "카페 미팅",
         startAt: Date().addingTimeInterval(7200)
-      ),
+      )),
       isFirst: false,
       isLast: true,
       weather: nil,
+      groupColor: nil,
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
+    )
+  }
+  .padding()
+  .auroraBackground()
+}
+
+#Preview("개인 일정") {
+  VStack(spacing: 0) {
+    TimelineItemView(
+      item: .personalEvent(PersonalEventModel.mock(
+        id: "pe-1",
+        title: "아침 운동",
+        emoji: "🏃",
+        description: "한강 러닝 5km",
+        startAt: Date().addingTimeInterval(1800),
+        endAt: Date().addingTimeInterval(5400),
+        location: LocationInfoModel(name: "여의도 한강공원"),
+        reminderMinutesBefore: 30
+      )),
+      isFirst: true,
+      isLast: false,
+      weather: nil,
+      groupColor: nil,
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
+    )
+
+    TimelineItemView(
+      item: .personalEvent(PersonalEventModel.mock(
+        id: "pe-2",
+        title: "카페에서 공부",
+        emoji: "☕️",
+        startAt: Date().addingTimeInterval(7200)
+      )),
+      isFirst: false,
+      isLast: true,
+      weather: nil,
+      groupColor: nil,
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
+    )
+  }
+  .padding()
+  .auroraBackground()
+}
+
+#Preview("반복 일정") {
+  VStack(spacing: 0) {
+    TimelineItemView(
+      item: .recurringPersonalEvent(ExpandedEventInstance(
+        recurringEventId: "r-1",
+        dateKey: "2026-03-11",
+        startAt: Date().addingTimeInterval(3600),
+        endAt: Date().addingTimeInterval(7200),
+        title: "주간 팀 미팅",
+        emoji: "📅",
+        location: LocationInfoModel(name: "회의실 A"),
+        reminderMinutesBefore: 15,
+        isOverridden: false
+      )),
+      isFirst: true,
+      isLast: true,
+      weather: nil,
+      groupColor: nil,
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
+    )
+  }
+  .padding()
+  .auroraBackground()
+}
+
+#Preview("과거 일정") {
+  VStack(spacing: 0) {
+    TimelineItemView(
+      item: .personalEvent(PersonalEventModel.mock(
+        id: "pe-past",
+        title: "아침 운동",
+        emoji: "🏃",
+        startAt: Date().addingTimeInterval(-7200),
+        endAt: Date().addingTimeInterval(-3600),
+        location: LocationInfoModel(name: "여의도 한강공원")
+      )),
+      isFirst: true,
+      isLast: true,
+      weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},

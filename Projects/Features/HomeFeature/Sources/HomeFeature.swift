@@ -33,6 +33,7 @@ extension Home {
     @Dependency(\.transportationClient) var transportationClient
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
     public init() {}
 
     // MARK: - CancelID
@@ -305,6 +306,8 @@ extension Home {
         case departureAlertRetryTapped
         /// 출발지 변경 (현재 위치 ↔ 직전 약속 장소)
         case departureOriginChanged(HomeModels.DepartureOrigin)
+        /// 출발 알림 시트에서 설정으로 이동
+        case departureAlertOpenSettingsTapped
       }
 
       @CasePathable
@@ -401,6 +404,8 @@ extension Home {
             // 첫 로드 표시
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
+              // UserDefaultsClient에서 출발 알림 복원
+              state.departureAlerts = Self.loadDepartureAlerts(userDefaultsClient: userDefaultsClient)
             }
             state.refreshHomeContentSnapshot()
 
@@ -889,6 +894,12 @@ extension Home {
 
           case .departureAlertRetryTapped:
             guard let item = state.departureAlertItem else { return .none }
+            // 위치 권한 거부 상태에서 출발 좌표가 없으면 재시도 의미 없음 (설정 유도)
+            if state.isLocationDenied
+              && state.currentLocationCoordinate == nil
+              && state.previousScheduleLocation == nil {
+              return .none
+            }
             if state.currentLocationCoordinate != nil {
               // 좌표가 있으면 현재 origin 기준 재시도
               return .send(.view(.departureOriginChanged(state.departureOrigin)))
@@ -927,8 +938,10 @@ extension Home {
 
           case .departureAlertCancelTapped(let scheduleItemId):
             state.departureAlerts[scheduleItemId] = nil
+            let alertsAfterCancel = state.departureAlerts
             let notificationId = "departure_alert_\(scheduleItemId)"
-            return .run { [localNotificationClient] _ in
+            return .run { [localNotificationClient, userDefaultsClient] _ in
+              Self.saveDepartureAlerts(alertsAfterCancel, userDefaultsClient: userDefaultsClient)
               await localNotificationClient.cancel(notificationId)
             }
 
@@ -979,6 +992,13 @@ extension Home {
               await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
             }
             .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertOpenSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
 
           }
 
@@ -1613,10 +1633,13 @@ extension Home {
 
             case .failure(let error):
               state.departureTransportData = .failed(error)
-              if error is LocationClientError {
-                state.toastMessage = ToastMessage(type: .error, title: "위치 권한이 필요합니다")
-              } else {
-                state.toastMessage = ToastMessage(type: .error, title: "교통 정보를 불러올 수 없습니다")
+              // 시트가 열려 있으면 인라인 에러로 표시하므로 토스트 불필요
+              if state.departureAlertItem == nil {
+                if error is LocationClientError {
+                  state.toastMessage = ToastMessage(type: .error, title: "위치 권한이 필요합니다")
+                } else {
+                  state.toastMessage = ToastMessage(type: .error, title: "교통 정보를 불러올 수 없습니다")
+                }
               }
             }
             return .none
@@ -1655,13 +1678,15 @@ extension Home {
               departureTime: departureTime
             )
             state.departureAlerts[scheduleItemId] = alertInfo
+            let alertsAfterSchedule = state.departureAlerts
             state.departureAlertItem = nil
             state.departureTransportData = .idle
             let notificationId = "departure_alert_\(scheduleItemId)"
             let title = "지금 출발하세요!"
             let body = "\(item.title) · \(transportType.displayName) 약 \(durationMinutes)분 소요"
             let triggerDate = departureTime
-            return .run { [localNotificationClient] send in
+            return .run { [localNotificationClient, userDefaultsClient] send in
+              Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
               do {
                 try await localNotificationClient.schedule(
                   notificationId, title, body, triggerDate,
@@ -1877,6 +1902,51 @@ extension Home {
         CreatePromise.Feature()
       }
 
+    }
+
+    // MARK: - Departure Alert Persistence
+
+    private static let departureAlertsKey = "departure_alerts_v1"
+
+    /// 출발 알림 만료 유지 시간 (초)
+    private static let departureAlertRetentionInterval: TimeInterval = 3600
+
+    private static func saveDepartureAlerts(
+      _ alerts: [String: HomeModels.DepartureAlertInfo],
+      userDefaultsClient: UserDefaultsClient
+    ) {
+      // 만료된 알림 제거 후 저장
+      let activeAlerts = alerts.filter {
+        $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+      }
+      do {
+        let data = try JSONEncoder().encode(activeAlerts)
+        userDefaultsClient.setString(
+          data.base64EncodedString(),
+          departureAlertsKey
+        )
+      } catch {
+        AppLogger.home.error("Failed to encode departure alerts for persistence: \(error)")
+      }
+    }
+
+    private static func loadDepartureAlerts(
+      userDefaultsClient: UserDefaultsClient
+    ) -> [String: HomeModels.DepartureAlertInfo] {
+      guard let base64 = userDefaultsClient.stringForKey(departureAlertsKey),
+            let data = Data(base64Encoded: base64) else {
+        return [:]
+      }
+      do {
+        let alerts = try JSONDecoder().decode([String: HomeModels.DepartureAlertInfo].self, from: data)
+        // 만료된 알림 제거
+        return alerts.filter {
+          $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+        }
+      } catch {
+        AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
+        return [:]
+      }
     }
 
     // MARK: - Briefing Helpers

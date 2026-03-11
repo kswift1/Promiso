@@ -53,7 +53,8 @@ extension Home.Feature.State {
     var upcomingScheduleItems: [HomeModels.ScheduleItem] = []
 
     for promise in allPromises {
-      if promise.startAt < endOfDay, promise.effectiveEndAt >= startOfDay, promise.isConfirmed {
+      let isMyPromise = promise.hostId == userId || promise.myVoteStatus(userId: userId) == .accepted
+      if promise.startAt < endOfDay, promise.effectiveEndAt >= startOfDay, isMyPromise {
         todayPromises.append(promise)
         todayScheduleItems.append(.promise(promise))
       }

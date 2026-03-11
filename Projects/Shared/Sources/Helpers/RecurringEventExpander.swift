@@ -25,6 +25,28 @@ public struct ExpandedEventInstance: Identifiable, Equatable, Hashable, Sendable
   public let reminderMinutesBefore: Int?
   /// override 적용 여부
   public let isOverridden: Bool
+
+  public init(
+    recurringEventId: String,
+    dateKey: String,
+    startAt: Date,
+    endAt: Date?,
+    title: String,
+    emoji: String?,
+    location: LocationInfoModel?,
+    reminderMinutesBefore: Int?,
+    isOverridden: Bool
+  ) {
+    self.recurringEventId = recurringEventId
+    self.dateKey = dateKey
+    self.startAt = startAt
+    self.endAt = endAt
+    self.title = title
+    self.emoji = emoji
+    self.location = location
+    self.reminderMinutesBefore = reminderMinutesBefore
+    self.isOverridden = isOverridden
+  }
 }
 
 // MARK: - Recurring Event Expander
