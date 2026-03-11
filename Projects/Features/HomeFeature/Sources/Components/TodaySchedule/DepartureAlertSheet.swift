@@ -764,7 +764,7 @@ struct DepartureAlertSheet: View {
       label: HomeModels.TransportType.walking.displayName,
       detail: detailParts,
       departureTime: walking.departureTime,
-      isPast: true,
+      isPast: adjustedTime(walking.departureTime) < Date(),
       isSelected: false,
       isNotRecommended: true
     )

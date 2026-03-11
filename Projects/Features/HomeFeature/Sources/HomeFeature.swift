@@ -823,22 +823,41 @@ extension Home {
             let userId = state.currentUser.userId
             let usePreviousOrigin = state.previousScheduleLocation
             return .run { [locationClient, transportationClient, userSettingsClient] send in
-              // 현재 위치는 항상 가져옴 (나중에 출발지 변경 시 재사용)
+              // 현재 위치와 설정을 병렬로 조회
+              async let locationTask: Coordinate = {
+                do {
+                  return try await locationClient.getCurrentLocation()
+                } catch {
+                  // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
+                  if usePreviousOrigin == nil {
+                    throw error
+                  }
+                  // 현재 위치 없이 진행
+                  return Coordinate(latitude: 0, longitude: 0)
+                }
+              }()
+
+              async let settingsTask: PreferredTransport = {
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(userId)
+                  return settings.preferredTransport
+                } catch {
+                  return .all
+                }
+              }()
+
               let currentLocation: Coordinate
               do {
-                currentLocation = try await locationClient.getCurrentLocation()
+                currentLocation = try await locationTask
               } catch {
-                // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
-                if usePreviousOrigin == nil {
-                  await send(.internal(.transportationResponse(
-                    scheduleItemId,
-                    .failure(LocationClientError.denied)
-                  )))
-                  return
-                }
-                // 현재 위치 없이 진행
-                currentLocation = Coordinate(latitude: 0, longitude: 0)
+                await send(.internal(.transportationResponse(
+                  scheduleItemId,
+                  .failure(LocationClientError.denied)
+                )))
+                return
               }
+
+              let preferredTransport = await settingsTask
 
               // 현재 위치 저장 (0,0이 아닌 경우만)
               if currentLocation.latitude != 0 || currentLocation.longitude != 0 {
@@ -856,15 +875,6 @@ extension Home {
               } else {
                 fromLat = currentLocation.latitude
                 fromLng = currentLocation.longitude
-              }
-
-              // 설정 조회 (실패해도 기본값 사용)
-              let preferredTransport: PreferredTransport
-              do {
-                let settings = try await userSettingsClient.fetchSettings(userId)
-                preferredTransport = settings.preferredTransport
-              } catch {
-                preferredTransport = .all
               }
 
               let result = await Result {

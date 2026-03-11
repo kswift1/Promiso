@@ -11,16 +11,44 @@ public struct TransportationResult: Equatable, Sendable {
   /// 도보 예상 거리 (미터, 직선거리 × 1.3 보정)
   public let walkingDistanceMeters: Int
 
-  public struct TransitRouteInfo: Equatable, Sendable {
+  public init(
+    transitRoutes: [TransitRouteInfo],
+    driving: DrivingInfo?,
+    walkingMinutes: Int,
+    walkingDistanceMeters: Int
+  ) {
+    self.transitRoutes = transitRoutes
+    self.driving = driving
+    self.walkingMinutes = walkingMinutes
+    self.walkingDistanceMeters = walkingDistanceMeters
+  }
+
+  public struct TransitRouteInfo: Equatable, Sendable, Decodable {
     public let totalTime: Int
     public let payment: Int
     public let busTransitCount: Int
     public let subwayTransitCount: Int
     public let pathType: Int           // 1=지하철, 2=버스, 3=복합
     public let subPaths: [SubPathInfo]
+
+    public init(
+      totalTime: Int,
+      payment: Int,
+      busTransitCount: Int,
+      subwayTransitCount: Int,
+      pathType: Int,
+      subPaths: [SubPathInfo]
+    ) {
+      self.totalTime = totalTime
+      self.payment = payment
+      self.busTransitCount = busTransitCount
+      self.subwayTransitCount = subwayTransitCount
+      self.pathType = pathType
+      self.subPaths = subPaths
+    }
   }
 
-  public struct SubPathInfo: Equatable, Sendable {
+  public struct SubPathInfo: Equatable, Sendable, Decodable {
     public let trafficType: Int       // 1=지하철, 2=버스, 3=도보
     public let sectionTime: Int
     public let distance: Int          // 미터
@@ -28,18 +56,68 @@ public struct TransportationResult: Equatable, Sendable {
     public let endName: String?
     public let stationCount: Int?
     public let lanes: [LaneInfo]
+
+    public init(
+      trafficType: Int,
+      sectionTime: Int,
+      distance: Int,
+      startName: String?,
+      endName: String?,
+      stationCount: Int?,
+      lanes: [LaneInfo]
+    ) {
+      self.trafficType = trafficType
+      self.sectionTime = sectionTime
+      self.distance = distance
+      self.startName = startName
+      self.endName = endName
+      self.stationCount = stationCount
+      self.lanes = lanes
+    }
   }
 
-  public struct LaneInfo: Equatable, Sendable {
+  public struct LaneInfo: Equatable, Sendable, Decodable {
     public let name: String?          // 지하철 노선명
     public let busNo: String?         // 버스번호
     public let subwayCode: Int?       // 지하철 호선
+
+    public init(name: String?, busNo: String?, subwayCode: Int?) {
+      self.name = name
+      self.busNo = busNo
+      self.subwayCode = subwayCode
+    }
   }
 
-  public struct DrivingInfo: Equatable, Sendable {
+  public struct DrivingInfo: Equatable, Sendable, Decodable {
     public let distance: Int
     public let duration: Int
     public let toll: Int
+
+    public init(distance: Int, duration: Int, toll: Int) {
+      self.distance = distance
+      self.duration = duration
+      self.toll = toll
+    }
+  }
+}
+
+// MARK: - TransportationResult + Decodable
+
+extension TransportationResult: Decodable {
+  private enum CodingKeys: String, CodingKey {
+    case transitRoutes
+    case driving
+    case walkingMinutes
+    case walkingDistanceKm
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    transitRoutes = try container.decodeIfPresent([TransitRouteInfo].self, forKey: .transitRoutes) ?? []
+    driving = try container.decodeIfPresent(DrivingInfo.self, forKey: .driving)
+    walkingMinutes = try container.decodeIfPresent(Int.self, forKey: .walkingMinutes) ?? 0
+    let walkingDistanceKm = try container.decodeIfPresent(Double.self, forKey: .walkingDistanceKm) ?? 0
+    walkingDistanceMeters = Int(walkingDistanceKm * 1000)
   }
 }
 
@@ -81,64 +159,8 @@ extension TransportationClient: DependencyKey {
         guard let data = result.data as? [String: Any] else {
           throw TransportationClientError.invalidResponse
         }
-
-        // transitRoutes 배열 파싱
-        let transitRoutes: [TransportationResult.TransitRouteInfo]
-        if let routesData = data["transitRoutes"] as? [[String: Any]] {
-          transitRoutes = routesData.map { routeData in
-            let subPathsData = routeData["subPaths"] as? [[String: Any]] ?? []
-            let subPaths = subPathsData.map { subPathData -> TransportationResult.SubPathInfo in
-              let lanesData = subPathData["lanes"] as? [[String: Any]] ?? []
-              let lanes = lanesData.map { laneData in
-                TransportationResult.LaneInfo(
-                  name: laneData["name"] as? String,
-                  busNo: laneData["busNo"] as? String,
-                  subwayCode: laneData["subwayCode"] as? Int
-                )
-              }
-              return TransportationResult.SubPathInfo(
-                trafficType: subPathData["trafficType"] as? Int ?? 3,
-                sectionTime: subPathData["sectionTime"] as? Int ?? 0,
-                distance: subPathData["distance"] as? Int ?? 0,
-                startName: subPathData["startName"] as? String,
-                endName: subPathData["endName"] as? String,
-                stationCount: subPathData["stationCount"] as? Int,
-                lanes: lanes
-              )
-            }
-            return TransportationResult.TransitRouteInfo(
-              totalTime: routeData["totalTime"] as? Int ?? 0,
-              payment: routeData["payment"] as? Int ?? 0,
-              busTransitCount: routeData["busTransitCount"] as? Int ?? 0,
-              subwayTransitCount: routeData["subwayTransitCount"] as? Int ?? 0,
-              pathType: routeData["pathType"] as? Int ?? 3,
-              subPaths: subPaths
-            )
-          }
-        } else {
-          transitRoutes = []
-        }
-
-        let driving: TransportationResult.DrivingInfo?
-        if let drivingData = data["driving"] as? [String: Any] {
-          driving = TransportationResult.DrivingInfo(
-            distance: drivingData["distance"] as? Int ?? 0,
-            duration: drivingData["duration"] as? Int ?? 0,
-            toll: drivingData["toll"] as? Int ?? 0
-          )
-        } else {
-          driving = nil
-        }
-
-        let walkingMinutes = data["walkingMinutes"] as? Int ?? 0
-        let walkingDistanceMeters = Int((data["walkingDistanceKm"] as? Double ?? 0) * 1000)
-
-        return TransportationResult(
-          transitRoutes: transitRoutes,
-          driving: driving,
-          walkingMinutes: walkingMinutes,
-          walkingDistanceMeters: walkingDistanceMeters
-        )
+        let jsonData = try JSONSerialization.data(withJSONObject: data)
+        return try JSONDecoder().decode(TransportationResult.self, from: jsonData)
       }
     )
   }()
