@@ -62,12 +62,6 @@ extension CreateRecurringPersonalEvent {
               .id(Field.title)
             recurrenceSection
             timeSection
-            if store.isPro, store.isCheckingConflicts || !store.conflicts.isEmpty {
-              ConflictWarningSection(
-                conflicts: store.conflicts,
-                isChecking: store.isCheckingConflicts
-              )
-            }
             seriesDateSection
             locationSection
             reminderSection

@@ -17,9 +17,6 @@ extension CreateRecurringPersonalEvent {
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
-    @Dependency(\.authClient) var authClient
-    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
-    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -27,7 +24,6 @@ extension CreateRecurringPersonalEvent {
 
     private enum CancelID {
       case emojiDebounce
-      case conflictCheck
     }
 
     // MARK: - Mode
@@ -48,11 +44,6 @@ extension CreateRecurringPersonalEvent {
       var useEndTime: Bool = false
       var useSeriesEndDate: Bool = false
       var errorMessage: String?
-      var currentUserId: String = ""
-      var conflicts: [ScheduleConflict] = []
-      var isCheckingConflicts: Bool = false
-      var conflictDetectionThreshold: Int = 0
-      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -117,8 +108,6 @@ extension CreateRecurringPersonalEvent {
       case emojiGenerationFailed
       case saveSuccess(RecurringPersonalEventModel)
       case saveFailed(String)
-      case conflictsLoaded([ScheduleConflict])
-      case conflictSettingsLoaded(String, Int)
     }
 
     @CasePathable
@@ -139,16 +128,7 @@ extension CreateRecurringPersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .onAppear:
-            guard state.currentUserId.isEmpty else { return .none }
-            return .run { [authClient, userSettingsClient] send in
-              guard let user = await authClient.currentUser() else { return }
-              do {
-                let settings = try await userSettingsClient.fetchSettings(user.uid)
-                await send(.internal(.conflictSettingsLoaded(user.uid, settings.conflictDetectionThreshold)))
-              } catch {
-                await send(.internal(.conflictSettingsLoaded(user.uid, 0)))
-              }
-            }
+            return .none
 
           case .titleChanged(let title):
             let oldTitle = state.event.title
@@ -167,7 +147,7 @@ extension CreateRecurringPersonalEvent {
           case .frequencyChanged(let frequency):
             state.selectedFrequency = frequency
             rebuildRecurrence(state: &state)
-            return checkConflictsEffect(state: &state)
+            return .none
 
           case .weekdayToggled(let weekday):
             if state.selectedWeekdays.contains(weekday) {
@@ -178,15 +158,12 @@ extension CreateRecurringPersonalEvent {
               state.selectedWeekdays.insert(weekday)
             }
             rebuildRecurrence(state: &state)
-            return .merge(
-              .run { _ in await hapticFeedback.selection() },
-              checkConflictsEffect(state: &state)
-            )
+            return .run { _ in await hapticFeedback.selection() }
 
           case .dayOfMonthChanged(let day):
             state.selectedDayOfMonth = max(1, min(31, day))
             rebuildRecurrence(state: &state)
-            return checkConflictsEffect(state: &state)
+            return .none
 
           case .startTimeChanged(let date):
             let calendar = Calendar.current
@@ -194,7 +171,7 @@ extension CreateRecurringPersonalEvent {
               hour: calendar.component(.hour, from: date),
               minute: calendar.component(.minute, from: date)
             )
-            return checkConflictsEffect(state: &state)
+            return .none
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
@@ -217,7 +194,7 @@ extension CreateRecurringPersonalEvent {
               hour: calendar.component(.hour, from: date),
               minute: calendar.component(.minute, from: date)
             )
-            return checkConflictsEffect(state: &state)
+            return .none
 
           case .seriesStartDateChanged(let date):
             state.event.seriesStartDate = date
@@ -345,21 +322,6 @@ extension CreateRecurringPersonalEvent {
             state.isSaving = false
             state.errorMessage = message
             return .run { _ in await hapticFeedback.error() }
-
-          case .conflictsLoaded(let conflicts):
-            state.isCheckingConflicts = false
-            state.conflicts = conflicts
-            return .none
-
-          case .conflictSettingsLoaded(let userId, let threshold):
-            state.currentUserId = userId
-            state.conflictDetectionThreshold = threshold
-            guard state.isPro else {
-              state.isCheckingConflicts = false
-              state.conflicts = []
-              return .none
-            }
-            return checkConflictsEffect(state: &state)
           }
 
         // MARK: - LocationPicker
@@ -385,63 +347,6 @@ extension CreateRecurringPersonalEvent {
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
       }
-    }
-
-    // MARK: - Conflict Check Helper
-
-    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
-      guard state.isPro, !state.currentUserId.isEmpty else { return .none }
-      guard state.conflictDetectionThreshold >= 0 else {
-        state.isCheckingConflicts = false
-        state.conflicts = []
-        return .none
-      }
-
-      state.isCheckingConflicts = true
-
-      let now = Date()
-      let fourWeeksLater = Calendar.current.date(byAdding: .weekOfYear, value: 4, to: now)!
-      let instances = RecurringEventExpander.expand(event: state.event, from: now, to: fourWeeksLater)
-      let checkInstances = Array(instances.prefix(4))
-
-      guard !checkInstances.isEmpty else {
-        state.isCheckingConflicts = false
-        state.conflicts = []
-        return .none
-      }
-
-      let userId = state.currentUserId
-      let threshold = state.conflictDetectionThreshold
-      let excludeIds: Set<String> = state.mode == .edit ? [state.event.id] : []
-
-      return .run { [scheduleConflictClient, clock] send in
-        try await clock.sleep(for: .milliseconds(500))
-        var allConflicts: [ScheduleConflict] = []
-
-        try await withThrowingTaskGroup(of: [ScheduleConflict].self) { group in
-          for instance in checkInstances {
-            group.addTask {
-              try await scheduleConflictClient.checkConflicts(
-                userId,
-                instance.startAt,
-                instance.endAt ?? instance.startAt,
-                excludeIds,
-                threshold
-              )
-            }
-          }
-
-          for try await conflicts in group {
-            allConflicts.append(contentsOf: conflicts)
-          }
-        }
-
-        let unique = Dictionary(grouping: allConflicts, by: \.id).compactMap(\.value.first)
-        await send(.internal(.conflictsLoaded(Array(unique))))
-      } catch: { _, send in
-        await send(.internal(.conflictsLoaded([])))
-      }
-      .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
     }
 
     // MARK: - Recurrence Rebuild Helper
