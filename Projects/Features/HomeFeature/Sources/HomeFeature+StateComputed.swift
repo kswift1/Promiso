@@ -98,9 +98,8 @@ extension Home.Feature.State {
               recurrenceText: recurrenceTextMap[id] ?? "반복",
               nextDate: item.startAt
             )
-          } else {
-            let currentNext = upcomingRecurringGroups[id]!.nextDate
-            upcomingRecurringGroups[id]?.nextDate = min(currentNext, item.startAt)
+          } else if let existingGroup = upcomingRecurringGroups[id] {
+            upcomingRecurringGroups[id]?.nextDate = min(existingGroup.nextDate, item.startAt)
           }
         }
       }

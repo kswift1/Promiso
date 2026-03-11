@@ -319,6 +319,25 @@ extension CalendarFeature {
         return grouped
       }
 
+      /// 날짜별로 그룹화된 반복 일정 인스턴스
+      var recurringEventsByDate: [Date: [ExpandedEventInstance]] {
+        guard showPersonalEvents else { return [:] }
+        let calendar = Calendar.current
+        let monthStart = currentMonth.startOfMonth
+        guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { return [:] }
+
+        let instances = recurringEvents.flatMap {
+          RecurringEventExpander.expand(event: $0, from: monthStart, to: monthEnd)
+        }
+
+        var grouped: [Date: [ExpandedEventInstance]] = [:]
+        for instance in instances {
+          let day = calendar.startOfDay(for: instance.startAt)
+          grouped[day, default: []].append(instance)
+        }
+        return grouped
+      }
+
       /// 표시할 섹션 날짜들
       var sectionDates: [Date] {
         if displayMode == .week {

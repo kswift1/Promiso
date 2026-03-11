@@ -238,6 +238,7 @@ enum CompactDayRowItem: Identifiable, Equatable {
   case schedule(ScheduleModel)
   case personalEvent(PersonalEventModel)
   case calendarEvent(CalendarEvent)
+  case recurringPersonalEvent(ExpandedEventInstance)
 
   var id: String {
     switch self {
@@ -247,6 +248,8 @@ enum CompactDayRowItem: Identifiable, Equatable {
       return "personal_\(event.id)"
     case .calendarEvent(let event):
       return "calendar_\(event.id)"
+    case .recurringPersonalEvent(let event):
+      return "recurring_\(event.id)"
     }
   }
 
@@ -254,14 +257,16 @@ enum CompactDayRowItem: Identifiable, Equatable {
     for date: Date,
     schedules: [ScheduleModel],
     calendarEvents: [CalendarEvent],
-    personalEvents: [PersonalEventModel]
+    personalEvents: [PersonalEventModel],
+    recurringPersonalEvents: [ExpandedEventInstance] = []
   ) -> [CompactDayRowItem] {
     let dayStart = Calendar.current.startOfDay(for: date)
 
     return (
       schedules.map(CompactDayRowItem.schedule) +
       personalEvents.map(CompactDayRowItem.personalEvent) +
-      calendarEvents.map(CompactDayRowItem.calendarEvent)
+      calendarEvents.map(CompactDayRowItem.calendarEvent) +
+      recurringPersonalEvents.map(CompactDayRowItem.recurringPersonalEvent)
     )
     .sorted { lhs, rhs in
       let lhsDisplayStart = lhs.displayStartAt(on: dayStart)
@@ -288,6 +293,8 @@ enum CompactDayRowItem: Identifiable, Equatable {
       return event.startAt
     case .calendarEvent(let event):
       return event.startDate
+    case .recurringPersonalEvent(let event):
+      return event.startAt
     }
   }
 
@@ -296,6 +303,8 @@ enum CompactDayRowItem: Identifiable, Equatable {
     case .schedule:
       return 0
     case .personalEvent:
+      return 1
+    case .recurringPersonalEvent:
       return 1
     case .calendarEvent:
       return 2
@@ -312,6 +321,7 @@ struct CompactDayRow: View {
   let schedules: [ScheduleModel]
   let calendarEvents: [CalendarEvent]
   let personalEvents: [PersonalEventModel]
+  var recurringPersonalEvents: [ExpandedEventInstance] = []
   let isSelected: Bool
   let currentUserId: String
   var holidayName: String? = nil
@@ -320,6 +330,7 @@ struct CompactDayRow: View {
   var onScheduleTap: ((ScheduleModel) -> Void)? = nil
   var onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil
   var onCalendarEventTap: ((CalendarEvent) -> Void)? = nil
+  var onRecurringPersonalEventTap: ((ExpandedEventInstance) -> Void)? = nil
   var onCreatePersonalEvent: (() -> Void)? = nil
   var onCreateSchedule: (() -> Void)? = nil
 
@@ -328,6 +339,7 @@ struct CompactDayRow: View {
     schedules: [ScheduleModel],
     calendarEvents: [CalendarEvent],
     personalEvents: [PersonalEventModel] = [],
+    recurringPersonalEvents: [ExpandedEventInstance] = [],
     isSelected: Bool,
     currentUserId: String = "",
     holidayName: String? = nil,
@@ -336,6 +348,7 @@ struct CompactDayRow: View {
     onScheduleTap: ((ScheduleModel) -> Void)? = nil,
     onPersonalEventTap: ((PersonalEventModel) -> Void)? = nil,
     onCalendarEventTap: ((CalendarEvent) -> Void)? = nil,
+    onRecurringPersonalEventTap: ((ExpandedEventInstance) -> Void)? = nil,
     onCreatePersonalEvent: (() -> Void)? = nil,
     onCreateSchedule: (() -> Void)? = nil
   ) {
@@ -343,6 +356,7 @@ struct CompactDayRow: View {
     self.schedules = schedules
     self.calendarEvents = calendarEvents
     self.personalEvents = personalEvents
+    self.recurringPersonalEvents = recurringPersonalEvents
     self.isSelected = isSelected
     self.currentUserId = currentUserId
     self.holidayName = holidayName
@@ -351,6 +365,7 @@ struct CompactDayRow: View {
     self.onScheduleTap = onScheduleTap
     self.onPersonalEventTap = onPersonalEventTap
     self.onCalendarEventTap = onCalendarEventTap
+    self.onRecurringPersonalEventTap = onRecurringPersonalEventTap
     self.onCreatePersonalEvent = onCreatePersonalEvent
     self.onCreateSchedule = onCreateSchedule
   }
@@ -405,7 +420,8 @@ struct CompactDayRow: View {
         for: date,
         schedules: schedules,
         calendarEvents: calendarEvents,
-        personalEvents: personalEvents
+        personalEvents: personalEvents,
+        recurringPersonalEvents: recurringPersonalEvents
       )
       if !allItems.isEmpty {
         Divider()
@@ -474,6 +490,8 @@ struct CompactDayRow: View {
       personalEventRow(event)
     case .calendarEvent(let event):
       calendarEventRow(event)
+    case .recurringPersonalEvent(let event):
+      recurringPersonalEventRow(event)
     }
   }
 
@@ -643,6 +661,64 @@ struct CompactDayRow: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private func recurringPersonalEventRow(_ event: ExpandedEventInstance) -> some View {
+    Button {
+      onRecurringPersonalEventTap?(event)
+    } label: {
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 1)
+          .fill(Color.pmindigo.n500)
+          .frame(width: 3)
+
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 6) {
+            Text(event.emoji ?? "🔄")
+              .font(.system(size: 16))
+            Text(event.title)
+              .font(.system(size: 15, weight: .medium))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+            Spacer()
+            Text("반복")
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(Color.pmindigo.n500)
+          }
+          HStack(spacing: 4) {
+            Text(recurringEventTimeText(event))
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+            if let location = event.location {
+              Text("·")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary.opacity(0.5))
+              Text(location.name)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            }
+          }
+        }
+      }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(Color.clear)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+ private func recurringEventTimeRow(_ event: ExpandedEventInstance) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HH:mm"
+    let start = formatter.string(from: event.startAt)
+    if let endAt = event.endAt {
+      let end = formatter.string(from: endAt)
+      return "\(start) ~ \(end)"
+    }
+    return start
   }
 
 

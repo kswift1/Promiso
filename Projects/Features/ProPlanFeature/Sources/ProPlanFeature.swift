@@ -38,6 +38,8 @@ extension ProPlan {
 
     @Dependency(\.subscriptionClient) private var subscriptionClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
+    @Dependency(\.userSettingsClient) private var userSettingsClient
+    @Dependency(\.authClient) private var authClient
 
     /// Reducer를 위한 기본 initializer
     public init() {}
@@ -70,6 +72,20 @@ extension ProPlan {
       public var purchaseDate: Date? = nil
       /// 요금제 페이지 표시 여부
       public var showPricing: Bool = false
+      /// Pro 온보딩 설정 화면 표시 여부
+      public var showProOnboarding: Bool = false
+      /// Pro 기본값 설정 중 여부
+      public var isSettingUpDefaults: Bool = false
+      /// 온보딩 설정: 컨플릭트 여유값 (분)
+      public var onboardingConflictThreshold: Int = 0
+      /// 온보딩 설정: 브리핑 스타일
+      public var onboardingBriefingStyle: BriefingStyle = .friendly
+      /// 온보딩 설정: 브리핑 알림 시간
+      public var onboardingBriefingHour: Int = 8
+      /// 온보딩 설정: 이용 가능 교통수단
+      public var onboardingTransports: Set<AvailableTransport> = [.transit, .car]
+      /// 온보딩 현재 스텝 (0: 충돌감지, 1: 브리핑, 2: 완료)
+      public var onboardingStep: Int = 0
 
       /// State를 위한 기본 initializer
       public init(
@@ -123,6 +139,20 @@ extension ProPlan {
       case showPricingTapped
       /// 요금제에서 뒤로가기
       case backToBenefitsTapped
+      /// Pro 온보딩에서 설정 완료
+      case proOnboardingCompleted
+      /// 온보딩 컨플릭트 임계값 변경
+      case onboardingConflictChanged(Int)
+      /// 온보딩 브리핑 스타일 변경
+      case onboardingStyleChanged(BriefingStyle)
+      /// 온보딩 브리핑 시간 변경
+      case onboardingHourChanged(Int)
+      /// 온보딩 교통수단 변경
+      case onboardingTransportToggled(AvailableTransport)
+      /// 온보딩 다음 스텝
+      case onboardingNextStep
+      /// 온보딩 이전 스텝
+      case onboardingPreviousStep
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -140,6 +170,12 @@ extension ProPlan {
       case introOfferEligibilityResult(Bool)
       /// 최초 구매일 조회 결과
       case purchaseDateLoaded(Date?)
+      /// Pro 기본값 설정 완료 (신규)
+      case proDefaultsInitialized
+      /// Pro 기존 설정 로드 완료 (재구독자)
+      case proExistingSettingsLoaded(UserSettings)
+      /// Pro 기본값 설정 실패
+      case proDefaultsFailed
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -235,7 +271,28 @@ extension ProPlan {
           case .dismissCelebration:
             state.showCelebration = false
             if state.subscriptionStatus.isPro {
-              return .send(.delegate(.dismissRequested))
+              state.isSettingUpDefaults = true
+              return .run { [userSettingsClient, authClient] send in
+                do {
+                  guard let userId = await authClient.currentUser()?.uid else {
+                    await send(.internal(.proDefaultsFailed))
+                    return
+                  }
+                  // 기존 설정 확인 — 재구독자는 이미 proSettings가 있음
+                  let existingSettings = try await userSettingsClient.fetchSettings(userId)
+                  if existingSettings.briefingNotificationHour != nil {
+                    // 재구독자 — 기존 설정을 온보딩에 표시
+                    await send(.internal(.proExistingSettingsLoaded(existingSettings)))
+                  } else {
+                    // 신규 Pro 사용자 — 기본값 초기화 후 온보딩 표시
+                    try await userSettingsClient.initializeProDefaults(userId)
+                    await send(.internal(.proDefaultsInitialized))
+                  }
+                } catch {
+                  print("[ProPlan] Pro defaults initialization failed: \(error)")
+                  await send(.internal(.proDefaultsFailed))
+                }
+              }
             }
             return .none
 
@@ -246,6 +303,58 @@ extension ProPlan {
           case .backToBenefitsTapped:
             state.showPricing = false
             return .none
+
+          case .proOnboardingCompleted:
+            state.showProOnboarding = false
+            return .run { [state, userSettingsClient, authClient] send in
+              if let userId = await authClient.currentUser()?.uid {
+                do {
+                  async let t1: Void = userSettingsClient.updateConflictDetectionThreshold(userId, state.onboardingConflictThreshold)
+                  async let t2: Void = userSettingsClient.updateBriefingStyle(userId, state.onboardingBriefingStyle)
+                  async let t3: Void = userSettingsClient.updateBriefingNotificationHour(userId, state.onboardingBriefingHour)
+                  async let t4: Void = userSettingsClient.updateAvailableTransports(userId, state.onboardingTransports)
+                  _ = try await (t1, t2, t3, t4)
+                } catch {
+                  print("[ProPlan] Onboarding settings save failed: \(error)")
+                }
+              }
+              await send(.delegate(.dismissRequested))
+            }
+
+          case .onboardingConflictChanged(let threshold):
+            state.onboardingConflictThreshold = threshold
+            return .none
+
+          case .onboardingStyleChanged(let style):
+            state.onboardingBriefingStyle = style
+            return .none
+
+          case .onboardingHourChanged(let hour):
+            state.onboardingBriefingHour = hour
+            return .none
+
+          case .onboardingTransportToggled(let transport):
+            if state.onboardingTransports.contains(transport) {
+              // 최소 1개는 유지
+              if state.onboardingTransports.count > 1 {
+                state.onboardingTransports.remove(transport)
+              }
+            } else {
+              state.onboardingTransports.insert(transport)
+            }
+            return .none
+
+          case .onboardingNextStep:
+            if state.onboardingStep < 2 {
+              state.onboardingStep += 1
+            }
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .onboardingPreviousStep:
+            if state.onboardingStep > 0 {
+              state.onboardingStep -= 1
+            }
+            return .run { _ in await hapticFeedback.selection() }
           }
 
         // MARK: - Internal Actions
@@ -334,6 +443,25 @@ extension ProPlan {
           case .purchaseDateLoaded(let date):
             state.purchaseDate = date
             return .none
+
+          case .proDefaultsInitialized:
+            state.isSettingUpDefaults = false
+            state.showProOnboarding = true  // 기본값 설정 완료 후 온보딩 표시
+            return .none
+
+          case .proDefaultsFailed:
+            state.isSettingUpDefaults = false
+            state.showProOnboarding = true  // 실패해도 온보딩은 표시
+            return .none
+
+          case .proExistingSettingsLoaded(let settings):
+            state.isSettingUpDefaults = false
+            state.onboardingConflictThreshold = settings.conflictDetectionThreshold
+            state.onboardingBriefingStyle = settings.briefingStyle
+            state.onboardingBriefingHour = settings.briefingNotificationHour ?? 8
+            state.onboardingTransports = settings.availableTransports
+            state.showProOnboarding = true
+            return .none
           }
 
         // MARK: - Delegate Actions
@@ -389,6 +517,8 @@ extension ProPlan {
           ProCelebrationView {
             store.send(.view(.dismissCelebration))
           }
+        } else if store.showProOnboarding {
+          ProOnboardingSetupView(store: store)
         }
       }
     }
@@ -477,6 +607,12 @@ extension ProPlan.Feature.InternalAction {
     case (.introOfferEligibilityResult(let lhs), .introOfferEligibilityResult(let rhs)):
       return lhs == rhs
     case (.purchaseDateLoaded(let lhs), .purchaseDateLoaded(let rhs)):
+      return lhs == rhs
+    case (.proDefaultsInitialized, .proDefaultsInitialized):
+      return true
+    case (.proDefaultsFailed, .proDefaultsFailed):
+      return true
+    case (.proExistingSettingsLoaded(let lhs), .proExistingSettingsLoaded(let rhs)):
       return lhs == rhs
     default:
       return false
