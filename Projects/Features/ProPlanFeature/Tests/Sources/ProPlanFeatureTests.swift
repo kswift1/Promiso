@@ -311,16 +311,16 @@ private extension ProPlanFeatureTests {
       type: .monthly,
       displayName: "월간 프로",
       description: "매월 자동 갱신",
-      displayPrice: "₩2,900",
-      price: 2900
+      displayPrice: "₩3,900",
+      price: 3900
     ),
     SubscriptionProduct(
       id: "com.promiso.pro.yearly",
       type: .yearly,
       displayName: "연간 프로",
-      description: "매년 자동 갱신 (월 ₩2,075)",
-      displayPrice: "₩24,900",
-      price: 24900
+      description: "매년 자동 갱신 (월 ₩3,250)",
+      displayPrice: "₩39,000",
+      price: 39000
     ),
     SubscriptionProduct(
       id: "com.promiso.pro.lifetime",

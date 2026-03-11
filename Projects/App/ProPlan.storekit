@@ -62,7 +62,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "24900",
+          "displayPrice" : "39000",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "6759592175",
@@ -75,7 +75,7 @@
           },
           "localizations" : [
             {
-              "description" : "매년 자동 갱신 (월 ₩2,075)",
+              "description" : "매년 자동 갱신 (월 ₩3,250)",
               "displayName" : "연간 프로",
               "locale" : "ko"
             }
@@ -96,7 +96,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "2900",
+          "displayPrice" : "3900",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6759592056",
