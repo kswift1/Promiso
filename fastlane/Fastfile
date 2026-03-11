@@ -9,11 +9,12 @@ DEFAULT_CHANGELOG_PROD = "프로덕션 빌드 - 심사 제출 및 배포용 빌�
 MIN_CHANGELOG_LENGTH = 10
 
 def validated_changelog(text, default)
-  if text.nil? || text.strip.length < MIN_CHANGELOG_LENGTH
+  stripped_text = text.to_s.strip
+  if stripped_text.length < MIN_CHANGELOG_LENGTH
     UI.important("⚠️ Changelog 텍스트가 너무 짧아 기본값을 사용합니다: #{default}")
     default
   else
-    text.strip
+    stripped_text
   end
 end
 
