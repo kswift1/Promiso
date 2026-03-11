@@ -182,38 +182,55 @@ struct TimelineItemView: View {
 
       // 출발 알림
       if let departureAlert = departureAlert {
-        HStack(spacing: 4) {
-          Image(systemName: departureAlert.selectedTransport.iconName)
-            .font(.pmCaption2)
-          Text("\(departureAlert.departureTime.formattedTime) 출발 알림")
-            .font(.pmCaption)
-          Image(systemName: "checkmark.circle.fill")
-            .font(.pmCaption2)
-            .foregroundStyle(Color.pmindigo.n500)
-          Spacer(minLength: 0)
-          Button {
-            onDepartureAlertCancel()
-          } label: {
-            Text("취소")
-              .font(.pmCaption)
-              .foregroundStyle(Color.pmgray.n500)
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            ProBadge()
+            Spacer()
+            Button {
+              onDepartureAlertCancel()
+            } label: {
+              Image(systemName: "xmark.circle.fill")
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .buttonStyle(.plain)
           }
+
+          HStack(spacing: 4) {
+            Image(systemName: departureAlert.selectedTransport.iconName)
+              .font(.pmCaption2)
+            Text("\(departureAlert.departureTime.formattedTime) 출발")
+              .font(.pmCaption)
+              .fontWeight(.semibold)
+            Image(systemName: "checkmark.circle.fill")
+              .font(.pmCaption2)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+          .foregroundStyle(.primary)
         }
-        .foregroundStyle(Color.pmindigo.n500)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .proGlassCard(cornerRadius: 12)
       } else if promise.location != nil && isFuture {
         Button {
           onDepartureAlertTap()
         } label: {
-          HStack(spacing: 4) {
-            Image(systemName: "bell.badge")
-              .font(.pmCaption2)
-            Text("출발 알림 받기")
-              .font(.pmCaption)
-            if !isPro {
-              ProBadge()
+          VStack(alignment: .leading, spacing: 4) {
+            ProBadge()
+
+            HStack(spacing: 4) {
+              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.pmCaption2)
+              Text("추천 출발 시간 설정")
+                .font(.pmCaption)
             }
+            .foregroundStyle(.primary)
           }
-          .foregroundStyle(Color.pmindigo.n500)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .proGlassCard(cornerRadius: 12)
           .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
