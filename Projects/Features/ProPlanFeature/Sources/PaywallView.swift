@@ -41,6 +41,14 @@ extension ProPlan {
             )
           ) {
             pricingPage
+              .navigationDestination(
+                isPresented: Binding(
+                  get: { store.showProOnboarding },
+                  set: { _ in }
+                )
+              ) {
+                proOnboardingPage
+              }
           }
       }
       .presentationDetents([.large])
@@ -261,6 +269,13 @@ extension ProPlan {
           .padding(.vertical, 40)
         }
       }
+    }
+
+    // MARK: - Pro Onboarding Page
+
+    @ViewBuilder
+    private var proOnboardingPage: some View {
+      ProOnboardingSetupView(store: store)
     }
 
     private func celebrationGuideRow(
