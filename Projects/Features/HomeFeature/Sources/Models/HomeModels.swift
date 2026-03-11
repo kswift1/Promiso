@@ -67,6 +67,14 @@ extension HomeModels {
       case .recurringPersonalEvent(let e): return e.location
       }
     }
+
+    /// 확정 여부 (약속만 해당, 개인 일정은 항상 true)
+    public var isConfirmed: Bool {
+      switch self {
+      case .promise(let p): return p.isConfirmed
+      case .personalEvent, .recurringPersonalEvent: return true
+      }
+    }
   }
 }
 

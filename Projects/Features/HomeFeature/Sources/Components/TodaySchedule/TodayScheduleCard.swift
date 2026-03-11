@@ -10,6 +10,7 @@ struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
   let departureAlerts: [String: HomeModels.DepartureAlertInfo]
+  let groupColorMap: [String: Color]
   let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onDepartureAlertTap: (HomeModels.ScheduleItem) -> Void
@@ -96,11 +97,17 @@ struct TodayScheduleCard: View {
           return nil
         }()
 
+        let groupColor: Color? = {
+          if case .promise(let p) = item { return groupColorMap[p.groupId] }
+          return nil
+        }()
+
         TimelineItemView(
           item: item,
           isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
           isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
           weather: weather,
+          groupColor: groupColor,
           departureAlert: departureAlerts[item.id],
           isPro: isPro,
           onTap: { onItemTap(item) },
@@ -188,6 +195,7 @@ struct TodayScheduleCard: View {
     ],
     weatherCache: [:],
     departureAlerts: [:],
+    groupColorMap: [:],
     isPro: false,
     onItemTap: { _ in },
     onDepartureAlertTap: { _ in },
@@ -202,6 +210,7 @@ struct TodayScheduleCard: View {
     items: [],
     weatherCache: [:],
     departureAlerts: [:],
+    groupColorMap: [:],
     isPro: false,
     onItemTap: { _ in },
     onDepartureAlertTap: { _ in },

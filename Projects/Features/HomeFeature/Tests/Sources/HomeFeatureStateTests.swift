@@ -92,9 +92,9 @@ struct HomeFeatureStateTests {
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
-    // isConfirmed = true (accepted >= minimumParticipants)
+    // isMyPromise = true (current-user가 accepted에 포함)
     let confirmedVotes = PromiseVotesModel(
-      accepted: ["user1", "user2"],  // minimumParticipants(2) 이상
+      accepted: ["current-user", "user2"],  // minimumParticipants(2) 이상 + 현재 유저 포함
       declined: [],
       until: Date()
     )
@@ -262,7 +262,7 @@ struct HomeFeatureStateTests {
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
     let confirmedVotes = PromiseVotesModel(
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user2"],  // 현재 유저 포함
       declined: [],
       until: Date()
     )

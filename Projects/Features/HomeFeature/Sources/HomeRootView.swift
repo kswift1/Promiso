@@ -264,6 +264,7 @@ extension Home {
               items: snapshot.todayScheduleItems,
               weatherCache: store.weatherCache,
               departureAlerts: store.departureAlerts,
+              groupColorMap: store.overlayGroupColorMap,
               isPro: store.isPro,
               onItemTap: { item in
                 switch item {

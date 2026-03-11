@@ -11,6 +11,7 @@ struct TimelineItemView: View {
   let isFirst: Bool
   let isLast: Bool
   let weather: WeatherInfo?
+  let groupColor: Color?
   let departureAlert: HomeModels.DepartureAlertInfo?
   let isPro: Bool
   let onTap: () -> Void
@@ -39,8 +40,8 @@ struct TimelineItemView: View {
           }
           .padding(.vertical, 8)
 
-          // 날씨 (promise만)
-          weatherSection
+          // Pro 혜택 영역 (날씨 + 출발 알림)
+          proBenefitSection
 
           // Divider (마지막 아이템 제외)
           if !isLast {
@@ -93,7 +94,7 @@ struct TimelineItemView: View {
   @ViewBuilder
   private var itemContent: some View {
     VStack(alignment: .leading, spacing: 4) {
-      // Row 1: 이모지 + 제목 (공통, 취소선 없음)
+      // Row 1: 이모지 + 제목 + 타입 캡슐
       HStack(spacing: 6) {
         Text(item.displayEmoji)
           .font(.pmTitle3)
@@ -102,6 +103,10 @@ struct TimelineItemView: View {
           .font(.pmBodySemibold)
           .foregroundStyle(.primary)
           .lineLimit(1)
+
+        Spacer(minLength: 4)
+
+        typeBadge
       }
 
       // Row 2: 타입별 메타 정보
@@ -131,43 +136,35 @@ struct TimelineItemView: View {
         recurringEventDetailRow(event)
       }
 
-      // Row 5: 출발 알림 (공통)
-      departureAlertSection
     }
   }
 
-  // MARK: - Type-Specific Meta Rows
+  // MARK: - Type Badge
 
-  private func promiseMetaRow(_ promise: PromiseModel) -> some View {
-    HStack(spacing: 4) {
+  @ViewBuilder
+  private var typeBadge: some View {
+    switch item {
+    case .promise(let promise):
       if let group = promise.group {
-        GroupThumbnailView(
-          imageUrl: group.imageUrl,
-          name: group.name,
-          size: 18
-        )
-
-        Text(group.name)
-          .font(.pmCaption)
-          .lineLimit(1)
-
-        Text("·")
-          .font(.pmCaption)
+        HStack(spacing: 3) {
+          GroupThumbnailView(
+            imageUrl: group.imageUrl,
+            name: group.name,
+            size: 14
+          )
+          Text(group.name)
+            .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(groupColor ?? Color.pmindigo.n500)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background((groupColor ?? Color.pmindigo.n500).opacity(0.1))
+        .clipShape(Capsule())
       }
-
-      Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
-        .font(.pmCaption)
-    }
-    .foregroundStyle(.secondary)
-  }
-
-  private func personalEventMetaRow(_ event: PersonalEventModel) -> some View {
-    HStack(spacing: 6) {
-      // "개인" 캡슐 배지
+    case .personalEvent:
       HStack(spacing: 3) {
         Image(systemName: "person.fill")
           .font(.system(size: 9))
-
         Text(LocalizedStrings.Home.personalLabel)
           .font(.system(size: 11, weight: .medium))
       }
@@ -176,21 +173,10 @@ struct TimelineItemView: View {
       .padding(.vertical, 2)
       .background(Color.pmindigo.n500.opacity(0.1))
       .clipShape(Capsule())
-
-      // 장소
-      if let location = event.location {
-        locationBadge(location)
-      }
-    }
-  }
-
-  private func recurringEventMetaRow(_ event: ExpandedEventInstance) -> some View {
-    HStack(spacing: 6) {
-      // "반복" 캡슐 배지
+    case .recurringPersonalEvent:
       HStack(spacing: 3) {
         Image(systemName: "arrow.trianglehead.2.counterclockwise.rotate.90")
           .font(.system(size: 9))
-
         Text("반복")
           .font(.system(size: 11, weight: .medium))
       }
@@ -199,11 +185,30 @@ struct TimelineItemView: View {
       .padding(.vertical, 2)
       .background(Color.pmindigo.n500.opacity(0.1))
       .clipShape(Capsule())
+    }
+  }
 
-      // 장소
-      if let location = event.location {
-        locationBadge(location)
-      }
+  // MARK: - Type-Specific Meta Rows
+
+  private func promiseMetaRow(_ promise: PromiseModel) -> some View {
+    HStack(spacing: 4) {
+      Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
+        .font(.pmCaption)
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  @ViewBuilder
+  private func personalEventMetaRow(_ event: PersonalEventModel) -> some View {
+    if let location = event.location {
+      locationBadge(location)
+    }
+  }
+
+  @ViewBuilder
+  private func recurringEventMetaRow(_ event: ExpandedEventInstance) -> some View {
+    if let location = event.location {
+      locationBadge(location)
     }
   }
 
@@ -308,101 +313,122 @@ struct TimelineItemView: View {
     }
   }
 
-  // MARK: - Departure Alert Section
+  // MARK: - Pro Benefit Section (날씨 + 출발 알림 통합)
 
   @ViewBuilder
-  private var departureAlertSection: some View {
-    if let departureAlert = departureAlert {
-      let isAlertPassed = departureAlert.departureTime < Date()
+  private var proBenefitSection: some View {
+    let hasWeather = weatherForecast != nil || weatherShouldShowSkeleton
+    let hasDepartureAlert = departureAlert != nil
+    let hasDepartureCTA = !hasDepartureAlert && location != nil && isFuture
 
-      VStack(alignment: .leading, spacing: 4) {
-        HStack {
-          ProBadge()
-          Spacer()
-          if !isAlertPassed {
-            Button {
-              onDepartureAlertCancel()
-            } label: {
-              Image(systemName: "xmark.circle.fill")
+    if hasWeather || hasDepartureAlert || hasDepartureCTA {
+      VStack(alignment: .leading, spacing: 6) {
+        ProBadge()
+
+        // 날씨 (promise만)
+        if let forecast = weatherForecast {
+          WeatherCardStrip(
+            forecast: forecast,
+            rangeForecasts: weatherRangeForecasts,
+            referenceTimeText: item.startAt.formattedMonthDayTime,
+            forecastSource: weatherForecastSource
+          )
+        } else if weatherShouldShowSkeleton {
+          weatherLoadingPlaceholder
+        }
+
+        // 출발 알림 (설정됨)
+        if let departureAlert = departureAlert {
+          departureAlertRow(departureAlert)
+        }
+        // 출발 알림 CTA (미설정 + 장소 있음 + 미래)
+        else if location != nil && isFuture {
+          Button {
+            onDepartureAlertTap()
+          } label: {
+            HStack(spacing: 4) {
+              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.pmCaption2)
+              Text("추천 출발 시간 설정")
                 .font(.pmCaption)
-                .foregroundStyle(Color.pmgray.n400)
             }
-            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .contentShape(Rectangle())
           }
+          .buttonStyle(.plain)
         }
-
-        HStack(spacing: 4) {
-          Image(systemName: departureAlert.selectedTransport.iconName)
-            .font(.pmCaption2)
-          if isAlertPassed {
-            Text("\(departureAlert.departureTime.formattedTime) 알림 완료")
-              .font(.pmCaption)
-              .fontWeight(.semibold)
-            Image(systemName: "checkmark.circle.fill")
-              .font(.pmCaption2)
-              .foregroundStyle(Color.pmgray.n400)
-          } else {
-            Text("\(departureAlert.departureTime.formattedTime) 출발 예정")
-              .font(.pmCaption)
-              .fontWeight(.semibold)
-            Image(systemName: "checkmark.circle.fill")
-              .font(.pmCaption2)
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-        .foregroundStyle(isAlertPassed ? Color.pmtext.secondary : .primary)
       }
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
       .frame(maxWidth: .infinity, alignment: .leading)
       .proGlassCard(cornerRadius: 12)
-      .opacity(isAlertPassed ? 0.7 : 1.0)
-    } else if location != nil && isFuture {
-      Button {
-        onDepartureAlertTap()
-      } label: {
-        VStack(alignment: .leading, spacing: 4) {
-          ProBadge()
-
-          HStack(spacing: 4) {
-            Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-              .font(.pmCaption2)
-            Text("추천 출발 시간 설정")
-              .font(.pmCaption)
-          }
-          .foregroundStyle(.primary)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .proGlassCard(cornerRadius: 12)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
+      .padding(.horizontal, 8)
+      .padding(.bottom, 8)
     }
   }
 
-  // MARK: - Weather Section
+  /// 출발 알림 행 (설정된 상태)
+  private func departureAlertRow(_ alert: HomeModels.DepartureAlertInfo) -> some View {
+    let isAlertPassed = alert.departureTime < Date()
 
-  @ViewBuilder
-  private var weatherSection: some View {
-    if case .promise(let promise) = item {
-      if let weather = weather,
-         let forecast = weather.forecast(for: promise.startAt) {
-        WeatherCardStrip(
-          forecast: forecast,
-          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-          referenceTimeText: promise.startAt.formattedMonthDayTime,
-          forecastSource: weather.forecastSource(for: promise.startAt)
-        )
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
-      } else if shouldShowWeatherSkeleton(promise) {
-        weatherLoadingPlaceholder
-          .padding(.horizontal, 8)
-          .padding(.bottom, 8)
+    return HStack {
+      HStack(spacing: 4) {
+        Image(systemName: alert.selectedTransport.iconName)
+          .font(.pmCaption2)
+        if isAlertPassed {
+          Text("\(alert.departureTime.formattedTime) 알림 완료")
+            .font(.pmCaption)
+            .fontWeight(.semibold)
+          Image(systemName: "checkmark.circle.fill")
+            .font(.pmCaption2)
+            .foregroundStyle(Color.pmgray.n400)
+        } else {
+          Text("\(alert.departureTime.formattedTime) 출발 예정")
+            .font(.pmCaption)
+            .fontWeight(.semibold)
+          Image(systemName: "checkmark.circle.fill")
+            .font(.pmCaption2)
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+      }
+      .foregroundStyle(isAlertPassed ? Color.pmtext.secondary : .primary)
+      .opacity(isAlertPassed ? 0.7 : 1.0)
+
+      Spacer()
+
+      if !isAlertPassed {
+        Button {
+          onDepartureAlertCancel()
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmgray.n400)
+        }
+        .buttonStyle(.plain)
       }
     }
+  }
+
+  // MARK: - Weather Helpers
+
+  private var weatherForecast: HourlyForecast? {
+    guard case .promise(let promise) = item else { return nil }
+    return weather?.forecast(for: promise.startAt)
+  }
+
+  private var weatherRangeForecasts: [HourlyForecast] {
+    guard case .promise(let promise) = item else { return [] }
+    return weather?.forecasts(from: promise.startAt, to: promise.endAt) ?? []
+  }
+
+  private var weatherForecastSource: ForecastSource {
+    guard case .promise(let promise) = item else { return .shortTerm }
+    return weather?.forecastSource(for: promise.startAt) ?? .shortTerm
+  }
+
+  private var weatherShouldShowSkeleton: Bool {
+    guard case .promise(let promise) = item else { return false }
+    return shouldShowWeatherSkeleton(promise)
   }
 
   // MARK: - Time Label
@@ -546,6 +572,7 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: false,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -562,6 +589,7 @@ struct TimelineItemView: View {
       isFirst: false,
       isLast: true,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -589,6 +617,7 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: false,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -606,6 +635,7 @@ struct TimelineItemView: View {
       isFirst: false,
       isLast: true,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -634,6 +664,7 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: true,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
@@ -659,6 +690,7 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: true,
       weather: nil,
+      groupColor: nil,
       departureAlert: nil,
       isPro: false,
       onTap: {},
