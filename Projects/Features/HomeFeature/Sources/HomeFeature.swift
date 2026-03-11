@@ -1506,8 +1506,10 @@ extension Home {
             let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
             let needsForceRefresh = forceRefresh || styleChanged
 
-            // 서버에서 promptKey 기반 캐시 처리하므로 항상 서버 호출
-            state.briefingState = .loading
+            // 기존 브리핑이 없거나 강제 새로고침일 때만 로딩 표시 (탭 전환 시 깜빡임 방지)
+            if !state.briefingState.isLoaded || needsForceRefresh {
+              state.briefingState = .loading
+            }
             state.lastBriefingStyle = currentStyleRaw
 
             let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
