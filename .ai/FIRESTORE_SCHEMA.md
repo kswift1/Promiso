@@ -1105,7 +1105,7 @@ users/{userId}/recurringEvents/{eventId}
     "dayOfMonth": null,
     "seriesEndDate": null
   },
-  "seriesStartDate": "2026-03-01T00:00:00+09:00",
+  "seriesStartDate": "2026-03-01T00:00:00+09:00",  // Firestore Timestamp (서버에서 자동 변환)
   "excludedDates": ["2026-03-17"],
   "overrides": {
     "2026-03-24": {
@@ -1123,6 +1123,8 @@ users/{userId}/recurringEvents/{eventId}
 - **규칙 기반**: 인스턴스를 미리 생성하지 않고 규칙만 저장 → 문서 수 최소화 (만 명 기준 ~30,000개 vs 수백만 개)
 - **클라이언트 계산**: 캘린더/홈에서 날짜 범위 조회 시 클라이언트가 규칙 → 인스턴스 확장 (한 달 최대 31개 계산, 성능 부담 없음)
 - **예외 처리**: excludedDates/overrides로 "이 날만 취소/수정" 지원, 추가 문서 불필요
+  - `excludedDates`: 단순 취소 전용 (날짜 문자열 배열로 빠른 조회)
+  - `overrides.isCancelled`: 취소 + 수정 이력 보존 (시간/장소 변경 후 취소 등 복합 케이스)
 - **보안**: 기존 `users/{userId}/{subcollection}/{docId}` 와일드카드 규칙으로 자동 보호
 - **쿼리 효율성**: 문서 수가 적으므로 전체 조회(`getAllEvents`)로 충분
 
