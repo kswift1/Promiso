@@ -710,7 +710,7 @@ struct CompactDayRow: View {
     .buttonStyle(.plain)
   }
 
-  private func recurringEventTimeText(_ event: ExpandedEventInstance) -> String {
+ private func recurringEventTimeRow(_ event: ExpandedEventInstance) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "HH:mm"
     let start = formatter.string(from: event.startAt)
