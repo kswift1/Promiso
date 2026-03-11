@@ -221,6 +221,7 @@ struct CalendarFeatureTests {
     )
     state.cachedSchedulesByMonth[staleMonth] = [staleSchedule]
     state.loadedMonths.insert(staleMonth)
+    state.loadedPersonalEventMonths.insert(staleMonth)
 
     let loadedSchedule = makeSchedule(id: "loaded-1", groupId: "group-1", startAt: selectedDate)
     let store = makeStore(state: state) {
