@@ -74,7 +74,9 @@ public enum AppConfig {
       ],
       "LSApplicationQueriesSchemes": .array([
         .string("kakaolink"),
-        .string("kakaokompassauth")
+        .string("kakaokompassauth"),
+        .string("kakaomap"),
+        .string("nmap")
       ]),
       "GIDClientID": .string("$(GOOGLE_CLIENT_ID)"),
       // Location permissions
