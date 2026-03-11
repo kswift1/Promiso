@@ -221,24 +221,35 @@ public enum RecurringEventExpander {
     calendar: Calendar
   ) -> [Date] {
     var dates: [Date] = []
-    var components = calendar.dateComponents([.year, .month], from: start)
+    guard var currentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: start)) else {
+      return []
+    }
     let endDay = calendar.startOfDay(for: end)
 
     // 최대 24개월 반복 (안전장치)
     for _ in 0..<24 {
-      components.day = dayOfMonth
-      if let date = calendar.date(from: components) {
-        let startOfDate = calendar.startOfDay(for: date)
-        if startOfDate >= calendar.startOfDay(for: start) && startOfDate <= endDay {
-          dates.append(startOfDate)
+      let monthRange = calendar.range(of: .day, in: .month, for: currentMonth)
+      if monthRange?.contains(dayOfMonth) == true {
+        var components = calendar.dateComponents([.year, .month], from: currentMonth)
+        components.day = dayOfMonth
+
+        if let date = calendar.date(from: components) {
+          let startOfDate = calendar.startOfDay(for: date)
+          if startOfDate >= calendar.startOfDay(for: start) && startOfDate <= endDay {
+            dates.append(startOfDate)
+          }
+
+          if startOfDate > endDay {
+            break
+          }
         }
-        // 이미 범위를 넘었으면 종료
-        if startOfDate > endDay { break }
       }
-      // 다음 달로 이동
-      guard let nextMonth = calendar.date(from: components),
-            let advanced = calendar.date(byAdding: .month, value: 1, to: nextMonth) else { break }
-      components = calendar.dateComponents([.year, .month], from: advanced)
+
+      guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else { break }
+      if calendar.startOfDay(for: nextMonth) > endDay {
+        break
+      }
+      currentMonth = nextMonth
     }
     return dates
   }
