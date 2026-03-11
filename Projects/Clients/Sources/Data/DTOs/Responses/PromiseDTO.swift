@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import PromisoShared
 
 // MARK: - Promise DTO
 

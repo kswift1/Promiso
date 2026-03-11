@@ -172,6 +172,7 @@ extension CalendarFeature {
   public enum ScheduleSourceType: Equatable, Sendable {
     case promise(id: String, groupId: String)
     case personalEvent(id: String)
+    case recurringPersonalEvent(recurringEventId: String)
     case calendarEvent(id: String)
     case unknown
   }
@@ -232,12 +233,14 @@ extension CalendarFeature {
     case promise(PromiseModel)
     case personalEvent(PersonalEventModel)
     case calendarEvent(CalendarEvent)
+    case recurringPersonalEvent(ExpandedEventInstance)
 
     public var id: String {
       switch self {
       case .promise(let p): return "promise-\(p.id)"
       case .personalEvent(let e): return "personal-\(e.id)"
       case .calendarEvent(let e): return "calendar-\(e.id)"
+      case .recurringPersonalEvent(let e): return "recurring-\(e.id)"
       }
     }
 
@@ -246,6 +249,7 @@ extension CalendarFeature {
       case .promise(let p): return p.startAt
       case .personalEvent(let e): return e.startAt
       case .calendarEvent(let e): return e.startDate
+      case .recurringPersonalEvent(let e): return e.startAt
       }
     }
 
@@ -254,6 +258,7 @@ extension CalendarFeature {
       case .promise(let p): return p.endAt
       case .personalEvent(let e): return e.endAt
       case .calendarEvent(let e): return e.endDate
+      case .recurringPersonalEvent(let e): return e.endAt
       }
     }
 
@@ -266,6 +271,7 @@ extension CalendarFeature {
       case .promise(let p): return p.displayEmoji
       case .personalEvent(let e): return e.displayEmoji
       case .calendarEvent(let e): return e.displayEmoji ?? ""
+      case .recurringPersonalEvent(let e): return e.emoji ?? "🔄"
       }
     }
 
@@ -274,6 +280,7 @@ extension CalendarFeature {
       case .promise(let p): return p.title
       case .personalEvent(let e): return e.title
       case .calendarEvent(let e): return e.displayTitle
+      case .recurringPersonalEvent(let e): return e.title
       }
     }
 
@@ -282,6 +289,7 @@ extension CalendarFeature {
       case .promise(let p): return p.location
       case .personalEvent(let e): return e.location
       case .calendarEvent: return nil
+      case .recurringPersonalEvent(let e): return e.location
       }
     }
   }

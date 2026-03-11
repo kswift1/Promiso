@@ -34,6 +34,9 @@ struct UpcomingDateCard: View {
               weather: weatherCache[event.id],
               onTap: { onItemTap(item) }
             )
+
+          case .recurringPersonalEvent:
+            EmptyView()
           }
 
           // 마지막 아이템이 아니면 Divider

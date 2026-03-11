@@ -29,6 +29,7 @@ extension Home {
     @Dependency(\.openURL) var openURL
     @Dependency(\.holidayClient) var holidayClient
     @Dependency(\.briefingClient) var briefingClient
+    @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
     public init() {}
 
     // MARK: - CancelID
@@ -58,6 +59,9 @@ extension Home {
 
       /// 개인 일정 데이터
       var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
+
+      /// 반복 개인 일정 데이터
+      var recurringEventsState: LoadingState<[RecurringPersonalEventModel]> = .idle
 
       /// 날씨 캐시 (scheduleId → WeatherInfo)
       @Shared(.inMemory("weatherCache"))
@@ -183,6 +187,7 @@ extension Home {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
     }
 
@@ -225,6 +230,8 @@ extension Home {
         case refreshNotificationBadge
         /// 개인 일정 카드 탭
         case personalEventTapped(PersonalEventModel)
+        /// 반복 개인 일정 인스턴스 카드 탭
+        case recurringPersonalEventTapped(ExpandedEventInstance)
         /// 토스트 닫힘
         case toastDismissed
         /// 브리핑 카드 탭 (expand/collapse)
@@ -275,6 +282,10 @@ extension Home {
         case fetchPersonalEvents
         /// 개인 일정 응답
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        /// 반복 개인 일정 조회
+        case fetchRecurringEvents
+        /// 반복 개인 일정 응답
+        case recurringEventsResponse(Result<[RecurringPersonalEventModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
         /// 안 읽은 알림 개수 조회
@@ -364,11 +375,12 @@ extension Home {
               }
             }
 
-            // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
+            // Firestore에서 직접 쿼리 (약속 + 개인 일정 + 반복 개인 일정 병렬)
             return .merge(
               weatherEffect,
               .send(.internal(.fetchPromises)),
               .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents)),
               .send(.internal(.checkPermissions))
             )
 
@@ -376,7 +388,8 @@ extension Home {
             // Pull-to-refresh도 동일하게 쿼리
             return .merge(
               .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents))
             )
 
           case .todayPromiseTapped(let promise):
@@ -434,6 +447,16 @@ extension Home {
 
           case .personalEventTapped(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
+            return .none
+
+          case .recurringPersonalEventTapped(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
             return .none
 
           case .toastDismissed:
@@ -650,6 +673,14 @@ extension Home {
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
               state.overlayCalendarMode = .promiseDetail
               return .none
+            case .recurringPersonalEvent:
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .promiseDetail
+              return .none
             }
 
           case .overlayCreatePersonalEventTapped(let date):
@@ -796,6 +827,30 @@ extension Home {
               // 개인 일정 실패 시 기존 데이터 유지 (이미 로드된 데이터가 있으면 보존)
               if !state.personalEventsState.isLoaded {
                 state.personalEventsState = .loaded([])
+              }
+              state.refreshHomeContentSnapshot()
+            }
+            return .none
+
+          case .fetchRecurringEvents:
+            return .run { [recurringPersonalEventClient] send in
+              do {
+                let events = try await recurringPersonalEventClient.getAllEvents()
+                await send(.internal(.recurringEventsResponse(.success(events))))
+              } catch {
+                await send(.internal(.recurringEventsResponse(.failure(error))))
+              }
+            }
+
+          case .recurringEventsResponse(let result):
+            switch result {
+            case .success(let events):
+              state.recurringEventsState = .loaded(events)
+              state.refreshHomeContentSnapshot()
+              return .none
+            case .failure:
+              if !state.recurringEventsState.isLoaded {
+                state.recurringEventsState = .loaded([])
               }
               state.refreshHomeContentSnapshot()
             }
@@ -1271,6 +1326,14 @@ extension Home {
             )))
           case .personalEvent(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
+          case .recurringPersonalEvent(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
           }
           return .cancel(id: CancelID.overlayWeatherFetch)
 
@@ -1365,6 +1428,16 @@ extension Home {
 
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
           return .send(.internal(.fetchPersonalEvents))
+
+        // MARK: - RecurringPersonalEventDetail Path Actions
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
 
         // MARK: - NotificationCenter Path Actions
 

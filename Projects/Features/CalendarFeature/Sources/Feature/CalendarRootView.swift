@@ -54,6 +54,8 @@ extension CalendarFeature {
           PromiseDetail.RootView(store: promiseDetailStore)
         case .personalEventDetail(let personalEventDetailStore):
           PersonalEventDetail.RootView(store: personalEventDetailStore)
+        case .recurringPersonalEventDetail(let detailStore):
+          RecurringPersonalEventDetail.RootView(store: detailStore)
         case .calendarEventDetail(let calendarEventDetailStore):
           CalendarEventDetailView(event: calendarEventDetailStore.event)
         }
@@ -140,6 +142,10 @@ extension CalendarFeature {
             dismissButtonVisibility: .hiddenForCreateMode
           )
           .presentationDragIndicator(.visible)
+        }
+        .sheet(store: store.scope(state: \.$editRecurringPersonalEvent, action: \.editRecurringPersonalEvent)) { editStore in
+          CreateRecurringPersonalEvent.RootView(store: editStore)
+            .presentationDragIndicator(.visible)
         }
         .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
           CreatePromise.RootView(store: createStore)

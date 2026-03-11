@@ -32,6 +32,7 @@ struct CalendarFeatureTests {
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
     await store.receive(\.internal.fetchSettings)
+    await store.receive(\.internal.fetchRecurringEvents)
     await store.finish()
   }
 
@@ -631,6 +632,7 @@ private extension CalendarFeatureTests {
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
     deps.personalEventClient.getEventsByDateRange = { _, _ in [] }
+    deps.recurringPersonalEventClient.getAllEvents = { [] }
     deps.userSettingsClient.fetchSettings = { _ in
       UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     }

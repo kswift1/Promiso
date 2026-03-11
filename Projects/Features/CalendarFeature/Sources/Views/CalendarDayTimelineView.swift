@@ -867,6 +867,13 @@ struct CalendarDayTimelineView: View {
         } label: {
           Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
         }
+
+      case .recurringPersonalEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
+        }
       }
     } preview: {
       contextMenuPreview(for: item)
@@ -1016,6 +1023,8 @@ struct CalendarDayTimelineView: View {
       return Color.pminfo.n500
     case .calendarEvent(let e):
       return e.calendarColor
+    case .recurringPersonalEvent:
+      return Color.pminfo.n500
     }
   }
 
@@ -1027,6 +1036,8 @@ struct CalendarDayTimelineView: View {
       return nil
     case .calendarEvent(let e):
       return e.calendarName
+    case .recurringPersonalEvent:
+      return nil
     }
   }
 
@@ -1055,6 +1066,9 @@ struct CalendarDayTimelineView: View {
       }
     case .calendarEvent:
       // CalendarEvent는 날씨 캐시 미지원
+      EmptyView()
+    case .recurringPersonalEvent:
+      // 반복 일정은 날씨 캐시 미지원
       EmptyView()
     }
   }
@@ -1101,6 +1115,8 @@ struct CalendarDayTimelineView: View {
       return e.location?.name
     case .calendarEvent(let e):
       return e.location
+    case .recurringPersonalEvent(let e):
+      return e.location?.name
     }
   }
 
@@ -1111,6 +1127,8 @@ struct CalendarDayTimelineView: View {
     case .personalEvent(let e):
       return e.description
     case .calendarEvent:
+      return nil
+    case .recurringPersonalEvent:
       return nil
     }
   }
@@ -1123,6 +1141,8 @@ struct CalendarDayTimelineView: View {
       return e.imageUrls
     case .calendarEvent:
       return []
+    case .recurringPersonalEvent:
+      return []
     }
   }
 
@@ -1133,6 +1153,8 @@ struct CalendarDayTimelineView: View {
     case .personalEvent(let e):
       return e.imageUrls.first.flatMap { URL(string: $0) }
     case .calendarEvent:
+      return nil
+    case .recurringPersonalEvent:
       return nil
     }
   }

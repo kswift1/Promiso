@@ -2,6 +2,7 @@ import ComposableArchitecture
 import _PhotosUI_SwiftUI
 import Clients
 import PhotosUI
+import PromisoShared
 
 public enum EditPromise {}
 
@@ -12,9 +13,12 @@ extension EditPromise {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.emojiClient) var emojiClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
+      case conflictCheckDebounce
     }
 
     public init() {}
@@ -36,13 +40,24 @@ extension EditPromise {
       var removedImageUrls: [String] = []
       var isUploadingImages: Bool = false
 
+      // 충돌 감지
+      var currentUserId: String = ""
+      var conflicts: [ScheduleConflict] = []
+      var isCheckingConflicts: Bool = false
+      var hasCheckedConflicts: Bool = false
+      var conflictCheckTrigger: ConflictCheckTrigger = .initial
+      var conflictDetectionThreshold: Int = 0
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       public init(
         promise: PromiseModel,
-        maxMembers: Int
+        maxMembers: Int,
+        currentUserId: String = ""
       ) {
         self.originalPromise = promise
         self.editedPromise = promise
         self.maxMembers = maxMembers
+        self.currentUserId = currentUserId
       }
 
       /// 변경 사항 있는지 확인
@@ -88,6 +103,7 @@ extension EditPromise {
 
       @CasePathable
       public enum ViewAction: Sendable {
+        case onAppear
         case setTitle(String)
         case setEmoji(String)
         case setDescription(String)
@@ -115,6 +131,9 @@ extension EditPromise {
         case emojiGenerationResponse(Result<String, Error>)
         case photosLoaded([Data])
         case updatePromiseResponse(Result<PromiseModel, Clients.PromiseClientError>)
+        case conflictsLoaded([ScheduleConflict])
+        case settingsLoaded(UserSettings)
+        case refreshProFeatures(debounce: Bool)
       }
 
       @CasePathable
@@ -129,6 +148,14 @@ extension EditPromise {
         switch action {
         case .view(let viewAction):
           switch viewAction {
+          case .onAppear:
+            return .run { [userSettingsClient, state] send in
+              guard !state.currentUserId.isEmpty else { return }
+              if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
+                await send(.internal(.settingsLoaded(settings)))
+              }
+            }
+
           case .setTitle(let title):
             let sanitizedTitle = String(title.prefix(30))
             state.editedPromise.title = sanitizedTitle
@@ -155,11 +182,13 @@ extension EditPromise {
             if let end = state.editedPromise.endAt, end <= date {
               state.editedPromise.endAt = date.addingTimeInterval(7200)
             }
-            return .none
+            state.conflictCheckTrigger = .startTimeChanged
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .setEndDate(let date):
             state.editedPromise.endAt = date
-            return .none
+            state.conflictCheckTrigger = .endTimeChanged
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .toggleUseEndTime:
             if state.editedPromise.endAt == nil {
@@ -167,7 +196,8 @@ extension EditPromise {
             } else {
               state.editedPromise.endAt = nil
             }
-            return .none
+            state.conflictCheckTrigger = .endTimeChanged
+            return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
             let current = state.editedPromise.minimumParticipants
@@ -315,6 +345,25 @@ extension EditPromise {
             state.isUploadingImages = false
             state.updateError = error
             return .none
+
+          case .conflictsLoaded(let conflicts):
+            state.conflicts = conflicts
+            state.isCheckingConflicts = false
+            state.hasCheckedConflicts = true
+            return .none
+
+          case .settingsLoaded(let settings):
+            state.conflictDetectionThreshold = settings.conflictDetectionThreshold
+            return .send(.internal(.refreshProFeatures(debounce: false)))
+
+          case .refreshProFeatures(let debounce):
+            guard state.isPro else {
+              state.isCheckingConflicts = false
+              state.conflicts = []
+              state.hasCheckedConflicts = false
+              return .none
+            }
+            return checkConflictsEffect(state: &state)
           }
 
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
@@ -336,6 +385,34 @@ extension EditPromise {
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
       }
+    }
+
+    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
+      guard !state.currentUserId.isEmpty else { return .none }
+      guard state.conflictDetectionThreshold >= 0 else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
+
+      state.isCheckingConflicts = true
+
+      let userId = state.currentUserId
+      let startAt = state.editedPromise.startAt
+      let endAt = state.editedPromise.endAt
+      let excludeIds: Set<String> = [state.editedPromise.id]
+      let minGapMinutes = state.conflictDetectionThreshold
+
+      return .run { [scheduleConflictClient, clock] send in
+        try await clock.sleep(for: .milliseconds(500))
+        do {
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, excludeIds, minGapMinutes)
+          await send(.internal(.conflictsLoaded(conflicts)))
+        } catch {
+          await send(.internal(.conflictsLoaded([])))
+        }
+      }
+      .cancellable(id: CancelID.conflictCheckDebounce, cancelInFlight: true)
     }
   }
 }

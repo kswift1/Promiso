@@ -1680,6 +1680,9 @@ export interface CheckScheduleConflictsRequest {
   /** 새 일정 종료 시간 (ISO 8601, nullable → startAt + 2h) */
   endAt?: string | null;
 
+  /** 사용자 타임존 식별자 (반복 일정 로컬 날짜 계산용) */
+  timeZone?: string;
+
   /** 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외) */
   excludeIds?: string[];
 
@@ -1695,7 +1698,7 @@ export interface ScheduleConflictItem {
   id: string;
 
   /** 일정 종류 */
-  source: "promise" | "personalEvent";
+  source: "promise" | "personalEvent" | "recurringPersonalEvent";
 
   /** 확정 상태 */
   severity: "confirmed" | "pending";
@@ -1753,7 +1756,7 @@ export interface ScheduleSlotEntry {
   id: string;
 
   /** 일정 종류 */
-  type: "promise" | "personalEvent";
+  type: "promise" | "personalEvent" | "recurringPersonalEvent";
 
   /** 일정 제목 */
   title: string;

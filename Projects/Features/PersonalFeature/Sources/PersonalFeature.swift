@@ -15,6 +15,7 @@ extension PersonalMode {
     case all = "전체"
     case today = "오늘"
     case future = "미래"
+    case recurring = "반복"
     case past = "과거"
 
     public var title: String {
@@ -23,6 +24,7 @@ extension PersonalMode {
       case .future: return LocalizedStrings.Personal.filterFuture
       case .all: return LocalizedStrings.Personal.filterAll
       case .past: return LocalizedStrings.Personal.filterPast
+      case .recurring: return "반복"
       }
     }
 
@@ -32,6 +34,7 @@ extension PersonalMode {
       case .future: return "clock.fill"
       case .all: return "calendar"
       case .past: return "clock.arrow.circlepath"
+      case .recurring: return "repeat"
       }
     }
 
@@ -41,11 +44,12 @@ extension PersonalMode {
       case .future: return .blue
       case .all: return .pmindigo.n500
       case .past: return Color(UIColor.systemGray)
+      case .recurring: return .teal
       }
     }
 
     public var hasSeparatorBefore: Bool {
-      self == .past
+      self == .past || self == .recurring
     }
   }
 }
@@ -60,6 +64,7 @@ extension PersonalMode {
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
 
     public init() {}
 
@@ -67,6 +72,7 @@ extension PersonalMode {
     public struct State: Equatable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
+      var recurringEventsState: LoadingState<[RecurringPersonalEventModel]> = .idle
       var ongoingEvents: [PersonalEventModel] = []
       var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
@@ -79,7 +85,9 @@ extension PersonalMode {
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
+      @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
+      @Presents var recurringEventDetail: RecurringPersonalEventDetail.Feature.State?
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -117,6 +125,9 @@ extension PersonalMode {
         case .past:
           guard let events = pastEventsState.value else { return [] }
           return events.sorted { $0.startAt > $1.startAt }
+        case .recurring:
+          // 반복 일정은 별도 뷰에서 처리
+          return []
         }
       }
 
@@ -171,11 +182,16 @@ extension PersonalMode {
         let calendar = Calendar.current
         let todayCount = events.filter { calendar.isDateInToday($0.startAt) || $0.isOngoing }.count
         let futureCount = events.filter { !calendar.isDateInToday($0.startAt) && !$0.isOngoing }.count
-        return [
+        var counts: [EventFilter: Int] = [
           .today: todayCount,
           .future: futureCount,
           .all: events.count
         ]
+        // 반복 일정 카운트 (로드된 경우에만)
+        if let recurringEvents = recurringEventsState.value {
+          counts[.recurring] = recurringEvents.count
+        }
+        return counts
       }
     }
 
@@ -183,16 +199,23 @@ extension PersonalMode {
       case view(View)
       case `internal`(Internal)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
+      case recurringEventDetail(PresentationAction<RecurringPersonalEventDetail.Feature.Action>)
 
       public enum View: Sendable {
         case onAppear
         case refreshEvents
         case filterChanged(EventFilter)
         case createNewEventTapped
+        case createOneTimeEventTapped
+        case createRecurringEventTapped
         case eventTapped(PersonalEventModel)
         case editEvent(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
+        case recurringEventTapped(RecurringPersonalEventModel)
+        case editRecurringEvent(RecurringPersonalEventModel)
+        case deleteRecurringEvent(RecurringPersonalEventModel)
         case switchToGroupMode
         /// 위젯 딥링크로 개인 일정 상세 열기
         case openEventFromDeeplink(eventId: String)
@@ -218,6 +241,11 @@ extension PersonalMode {
         case conflictSettingsLoaded(Int)
         case fetchWeather([PersonalEventModel])
         case weatherBatchResponse([String: WeatherInfo])
+        case fetchRecurringEvents
+        case recurringEventsLoaded([RecurringPersonalEventModel])
+        case recurringEventsFailed(String)
+        case recurringEventDeleted(String)
+        case recurringEventDeleteFailed(String)
       }
     }
 
@@ -258,10 +286,21 @@ extension PersonalMode {
             if filter == .past && !state.pastEventsState.isLoaded {
               return .send(.internal(.fetchPastEvents))
             }
+            if filter == .recurring && state.recurringEventsState == .idle {
+              return .send(.internal(.fetchRecurringEvents))
+            }
             return .none
 
           case .createNewEventTapped:
             state.createEvent = CreatePersonalEvent.Feature.State()
+            return .none
+
+          case .createOneTimeEventTapped:
+            state.createEvent = CreatePersonalEvent.Feature.State()
+            return .none
+
+          case .createRecurringEventTapped:
+            state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State()
             return .none
 
           case .eventTapped(let event):
@@ -307,6 +346,38 @@ extension PersonalMode {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .recurringEventTapped(let event):
+            state.recurringEventDetail = RecurringPersonalEventDetail.Feature.State(
+              recurringEvent: event
+            )
+            return .none
+
+          case .editRecurringEvent(let event):
+            state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State(
+              event: event,
+              mode: .edit
+            )
+            return .none
+
+          case .deleteRecurringEvent(let event):
+            return .run { [localNotificationClient, recurringPersonalEventClient] send in
+              do {
+                try await recurringPersonalEventClient.deleteEvent(event.id)
+                // 반복 알림 취소
+                var notificationIds = [
+                  "recurring-\(event.id)-daily",
+                  "recurring-\(event.id)-monthly",
+                ]
+                for weekday in 1...7 {
+                  notificationIds.append("recurring-\(event.id)-weekly-\(weekday)")
+                }
+                await localNotificationClient.cancelAll(notificationIds)
+                await send(.internal(.recurringEventDeleted(event.id)))
+              } catch {
+                await send(.internal(.recurringEventDeleteFailed(LocalizedStrings.Error.unknownError)))
+              }
+            }
           }
 
         case let .internal(internalAction):
@@ -511,6 +582,42 @@ extension PersonalMode {
           case .ongoingEventsLoaded(let events):
             state.ongoingEvents = events
             return .none
+
+          case .fetchRecurringEvents:
+            state.recurringEventsState = .loading
+            return .run { [recurringPersonalEventClient] send in
+              do {
+                let events = try await recurringPersonalEventClient.getAllEvents()
+                await send(.internal(.recurringEventsLoaded(events)))
+              } catch {
+                await send(.internal(.recurringEventsFailed(LocalizedStrings.Error.unknownError)))
+              }
+            }
+
+          case .recurringEventsLoaded(let events):
+            state.recurringEventsState = .loaded(events)
+            return .none
+
+          case .recurringEventsFailed(let message):
+            state.recurringEventsState = .failed(AppError(message: message))
+            return .none
+
+          case .recurringEventDeleted(let eventId):
+            // 목록에서 삭제된 항목 제거
+            if var events = state.recurringEventsState.value {
+              events.removeAll { $0.id == eventId }
+              state.recurringEventsState = .loaded(events)
+            }
+            return .none
+
+          case .recurringEventDeleteFailed(let message):
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: LocalizedStrings.Error.eventDeleteFailed,
+              subtitle: message,
+              position: .top
+            )
+            return .none
           }
 
         // MARK: - CreateEvent Delegate
@@ -527,6 +634,24 @@ extension PersonalMode {
         case .createEvent:
           return .none
 
+        // MARK: - CreateRecurringEvent Delegate
+
+        case .createRecurringEvent(.presented(.delegate(.eventCreated))),
+             .createRecurringEvent(.presented(.delegate(.eventUpdated))):
+          state.createRecurringEvent = nil
+          // 반복 일정 목록이 이미 로드된 경우 재조회
+          if state.recurringEventsState.isLoaded {
+            return .send(.internal(.fetchRecurringEvents))
+          }
+          return .none
+
+        case .createRecurringEvent(.presented(.delegate(.dismiss))):
+          state.createRecurringEvent = nil
+          return .none
+
+        case .createRecurringEvent:
+          return .none
+
         // MARK: - EventDetail Delegate
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
@@ -538,13 +663,42 @@ extension PersonalMode {
 
         case .eventDetail:
           return .none
+
+        // MARK: - RecurringEventDetail Delegate
+
+        case .recurringEventDetail(.presented(.delegate(.eventDeleted(let id)))):
+          // 목록에서 삭제된 항목 제거
+          if var events = state.recurringEventsState.value {
+            events.removeAll { $0.id == id }
+            state.recurringEventsState = .loaded(events)
+          }
+          state.recurringEventDetail = nil
+          return .none
+
+        case .recurringEventDetail(.presented(.delegate(.eventUpdated(let updated)))):
+          // 목록에서 수정된 항목 업데이트
+          if var events = state.recurringEventsState.value,
+             let index = events.firstIndex(where: { $0.id == updated.id }) {
+            events[index] = updated
+            state.recurringEventsState = .loaded(events)
+          }
+          return .none
+
+        case .recurringEventDetail:
+          return .none
         }
       }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
       }
+      .ifLet(\.$createRecurringEvent, action: \.createRecurringEvent) {
+        CreateRecurringPersonalEvent.Feature()
+      }
       .ifLet(\.$eventDetail, action: \.eventDetail) {
         PersonalEventDetail.Feature()
+      }
+      .ifLet(\.$recurringEventDetail, action: \.recurringEventDetail) {
+        RecurringPersonalEventDetail.Feature()
       }
     }
   }

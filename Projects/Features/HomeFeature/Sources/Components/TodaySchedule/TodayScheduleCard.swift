@@ -104,6 +104,9 @@ struct TodayScheduleCard: View {
             isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
             onTap: { onItemTap(item) }
           )
+
+        case .recurringPersonalEvent:
+          EmptyView()
         }
 
         // 모든 일정 종료 후 완료 메시지

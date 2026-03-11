@@ -213,8 +213,8 @@ extension GroupMain {
           promiseListView
         }
       }
-      .overlay {
-        morphingFABMenu
+      .overlay(alignment: .bottomTrailing) {
+        fabButton
       }
     }
 
@@ -237,38 +237,37 @@ extension GroupMain {
       }
     }
 
-    // MARK: - Morphing FAB Menu
+    // MARK: - FAB
 
-    private var morphingFABMenu: some View {
-      MorphingFABMenu(
-        items: [
-          FABMenuItem(
-            title: LocalizedStrings.GroupMain.createPromise,
-            icon: "calendar.badge.plus",
-            tintColor: .pmindigo.n500
-          ) {
+    @ViewBuilder
+    private var fabButton: some View {
+      if !store.isOnboardingMode {
+        Menu {
+          Button {
             store.send(.view(.createNewPromise))
-          },
-          FABMenuItem(
-            title: LocalizedStrings.GroupMain.groupSettings,
-            icon: "gearshape",
-            tintColor: .pmindigo.n500
-          ) {
-            store.send(.view(.groupSettingsTapped))
+          } label: {
+            Label("그룹 일정 생성", systemImage: "calendar.badge.plus")
           }
-        ],
-        bottomPadding: fabBottomPadding,
-        isVisible: !store.isOnboardingMode
-      )
-    }
 
-    private var fabBottomPadding: CGFloat {
-      guard store.hasLiveActivity else { return 16 }
-      // iOS 26+: BottomAccessory가 얇음
-      if #available(iOS 26, *) {
-        return 20
-      } else {
-        return 85
+          Button {
+            store.send(.view(.groupSettingsTapped))
+          } label: {
+            Label("그룹 설정", systemImage: "gearshape")
+          }
+        } label: {
+          ZStack {
+            Circle()
+              .fill(Color.pmindigo.n500)
+              .frame(width: 56, height: 56)
+              .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+            Image(systemName: "plus")
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundStyle(.white)
+          }
+        }
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
       }
     }
 

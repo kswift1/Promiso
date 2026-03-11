@@ -122,6 +122,14 @@ extension CalendarFeature {
       /// 개인 일정 로딩 중인 월 목록
       var loadingPersonalEventMonths: Set<Date> = []
 
+      // MARK: - 반복 개인 일정 관련
+
+      /// 반복 개인 일정 규칙 목록 (한 번만 로드)
+      var recurringEvents: [RecurringPersonalEventModel] = []
+
+      /// 반복 일정 로드 완료 여부
+      var isRecurringEventsLoaded: Bool = false
+
       // MARK: - Filter
 
       /// 선택된 그룹 ID (빈 Set = 전체, 필터 해제)
@@ -181,6 +189,8 @@ extension CalendarFeature {
       @Presents var editPromise: EditPromise.Feature.State?
       /// 개인 일정 수정 시트
       @Presents var editPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 반복 개인 일정 수정 시트
+      @Presents var editRecurringPersonalEvent: CreateRecurringPersonalEvent.Feature.State?
       /// 약속 생성 시트
       @Presents var createPromise: CreatePromise.Feature.State?
       /// 약속 공유 시트용
@@ -320,14 +330,24 @@ extension CalendarFeature {
             return []
           }
 
-          var dates: [Date] = []
-          var day = monthStart
-          while day < monthEnd {
-            dates.append(day)
-            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = nextDay
+          var allDates = Set(promisesByDate.keys)
+          allDates.formUnion(calendarEventsByDate.keys)
+          allDates.formUnion(personalEventsByDate.keys)
+          allDates.formUnion(holidaysByDate.keys)
+          // 반복 일정 날짜 포함
+          if showPersonalEvents {
+            let cal = Calendar.current
+            let instances = recurringEvents.flatMap {
+              RecurringEventExpander.expand(event: $0, from: monthStart, to: monthEnd)
+            }
+            for instance in instances {
+              allDates.insert(cal.startOfDay(for: instance.startAt))
+            }
           }
-          return dates
+
+          return allDates
+            .filter { $0 >= monthStart && $0 < monthEnd }
+            .sorted()
         }
       }
 
@@ -476,6 +496,39 @@ extension CalendarFeature {
           }
         }
 
+        // 반복 개인 일정 (3페이지 범위로 확장)
+        if showPersonalEvents {
+          let indicatorRangeStart = prevMonthKey ?? currentMonthKey
+          let indicatorRangeEnd: Date = {
+            let base = nextMonthKey ?? currentMonthKey
+            return calendar.date(byAdding: .month, value: 1, to: base) ?? base
+          }()
+          for event in recurringEvents {
+            let instances = RecurringEventExpander.expand(
+              event: event,
+              from: indicatorRangeStart,
+              to: indicatorRangeEnd
+            )
+            for instance in instances {
+              let effectiveEnd = instance.endAt ?? instance.startAt
+              spreadIndicators(
+                startAt: instance.startAt, endAt: effectiveEnd, into: &indicators
+              ) { day, position in
+                .init(
+                  id: "recurring_\(instance.id)_\(day.timeIntervalSince1970)",
+                  color: CalendarFeature.ScheduleIndicator.personalColor,
+                  title: "\(instance.emoji.map { $0 + " " } ?? "")\(instance.title)",
+                  spanPosition: position,
+                  startAt: instance.startAt,
+                  endAt: instance.endAt,
+                  sourceType: .recurringPersonalEvent(recurringEventId: instance.recurringEventId),
+                  locationName: instance.location?.name
+                )
+              }
+            }
+          }
+        }
+
         // startAt 순 정렬
         for (key, value) in indicators {
           indicators[key] = value.sorted { $0.startAt < $1.startAt }
@@ -580,7 +633,12 @@ extension CalendarFeature {
               .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
           }()
           : []
-        return (promiseItems + personalItems + calendarItems).sorted { $0.startAt < $1.startAt }
+        let recurringItems: [CalendarFeature.ScheduleItem] = showPersonalEvents
+          ? recurringEvents.flatMap { event in
+            RecurringEventExpander.expand(event: event, from: start, to: end)
+          }.map { .recurringPersonalEvent($0) }
+          : []
+        return (promiseItems + personalItems + calendarItems + recurringItems).sorted { $0.startAt < $1.startAt }
       }
 
       /// Preview용 필터 미적용 인디케이터 (특정 날짜 하나만 계산)
@@ -684,6 +742,7 @@ extension CalendarFeature {
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case calendarEventDetail(CalendarEventDetailFeature)
     }
 
@@ -727,6 +786,7 @@ extension CalendarFeature {
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case editPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case editRecurringPersonalEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
 
       @CasePathable
@@ -806,6 +866,10 @@ extension CalendarFeature {
         // 설정
         case fetchSettings
         case settingsResponse(Result<UserSettings, Error>)
+        // 반복 개인 일정
+        case fetchRecurringEvents
+        case recurringEventsLoaded([RecurringPersonalEventModel])
+        case recurringEventsFailed
         // 공유
         case kakaoPromiseShareResult(KakaoShareResult)
       }
@@ -826,6 +890,7 @@ extension CalendarFeature {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.userSettingsClient) var userSettingsClient
@@ -871,6 +936,17 @@ extension CalendarFeature {
           state.loadedPersonalEventMonths.remove(eventMonth)
           state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
           return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted(let id))))):
+          _ = state.path.popLast()
+          _ = id
+          state.isRecurringEventsLoaded = false
+          return .send(.internal(.fetchRecurringEvents))
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated(let updated))))):
+          if let index = state.recurringEvents.firstIndex(where: { $0.id == updated.id }) {
+            state.recurringEvents[index] = updated
+          }
+          _ = state.path.popLast()
+          return .none
         case .path:
           return .none
 
@@ -913,6 +989,19 @@ extension CalendarFeature {
       case .editPersonalEvent:
         return .none
 
+      case .editRecurringPersonalEvent(.presented(.delegate(.eventCreated))),
+           .editRecurringPersonalEvent(.presented(.delegate(.eventUpdated))):
+        state.editRecurringPersonalEvent = nil
+        state.isRecurringEventsLoaded = false
+        return .send(.internal(.fetchRecurringEvents))
+
+      case .editRecurringPersonalEvent(.presented(.delegate(.dismiss))):
+        state.editRecurringPersonalEvent = nil
+        return .none
+
+      case .editRecurringPersonalEvent:
+        return .none
+
       case .createPromise(.presented(.delegate(.promiseCreated))):
         state.createPromise = nil
         let currentMonth = state.selectedDate.startOfMonth
@@ -948,6 +1037,8 @@ extension CalendarFeature {
             }
           case .calendarEvent:
             return .none
+          case .recurringPersonalEvent:
+            return .none
           }
 
         case .deleteAlert:
@@ -961,6 +1052,9 @@ extension CalendarFeature {
       }
       .ifLet(\.$editPersonalEvent, action: \.editPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$editRecurringPersonalEvent, action: \.editRecurringPersonalEvent) {
+        CreateRecurringPersonalEvent.Feature()
       }
       .ifLet(\.$createPromise, action: \.createPromise) {
         CreatePromise.Feature()
@@ -1002,7 +1096,8 @@ extension CalendarFeature {
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData)),
-          .send(.internal(.fetchSettings))
+          .send(.internal(.fetchSettings)),
+          .send(.internal(.fetchRecurringEvents))
         )
 
       case .toggleDisplayMode:
@@ -1297,6 +1392,13 @@ extension CalendarFeature {
           state.path.append(.personalEventDetail(.init(event: event)))
         case .calendarEvent(let event):
           state.path.append(.calendarEventDetail(.init(event: event)))
+        case .recurringPersonalEvent(let instance):
+          if let recurring = state.recurringEvents.first(where: { $0.id == instance.recurringEventId }) {
+            state.path.append(.recurringPersonalEventDetail(.init(
+              recurringEvent: recurring,
+              selectedInstance: instance
+            )))
+          }
         }
         return .none
 
@@ -1304,11 +1406,15 @@ extension CalendarFeature {
         switch item {
         case .promise(let promise):
           let maxMembers = state.groupMembersCache[promise.groupId]?.count ?? promise.minimumParticipants
-          state.editPromise = EditPromise.Feature.State(promise: promise, maxMembers: maxMembers)
+          state.editPromise = EditPromise.Feature.State(promise: promise, maxMembers: maxMembers, currentUserId: state.currentUserId)
         case .personalEvent(let event):
           state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: event, mode: .edit)
         case .calendarEvent:
           break
+        case .recurringPersonalEvent(let instance):
+          if let event = state.recurringEvents.first(where: { $0.id == instance.recurringEventId }) {
+            state.editRecurringPersonalEvent = CreateRecurringPersonalEvent.Feature.State(event: event, mode: .edit)
+          }
         }
         return .none
 
@@ -1359,6 +1465,8 @@ extension CalendarFeature {
           }
         case .calendarEvent:
           break
+        case .recurringPersonalEvent:
+          break
         }
         return .none
 
@@ -1366,7 +1474,7 @@ extension CalendarFeature {
         switch item {
         case .promise(let promise):
           state.sharePromise = promise
-        case .personalEvent, .calendarEvent:
+        case .personalEvent, .calendarEvent, .recurringPersonalEvent:
           break
         }
         return .none
@@ -1422,6 +1530,11 @@ extension CalendarFeature {
             return .none
           }
           state.path.append(.personalEventDetail(.init(event: event)))
+        case .recurringPersonalEvent(let recurringEventId):
+          guard let recurring = state.recurringEvents.first(where: { $0.id == recurringEventId }) else {
+            return .none
+          }
+          state.path.append(.recurringPersonalEventDetail(.init(recurringEvent: recurring)))
         case .calendarEvent(let eventId):
           guard let event = state.cachedCalendarEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) else {
             return .none
@@ -1805,6 +1918,26 @@ extension CalendarFeature {
           // 공휴일 로드 실패 시 로그 출력 (재시도 가능하도록 loadedHolidayYears에 추가 안 함)
           AppLogger.calendar.debugLog("❌ 공휴일 로드 실패 (year: \(year)): \(error.localizedDescription)", type: .error)
         }
+        return .none
+
+      case .fetchRecurringEvents:
+        guard !state.isRecurringEventsLoaded else { return .none }
+        return .run { [recurringPersonalEventClient] send in
+          do {
+            let events = try await recurringPersonalEventClient.getAllEvents()
+            await send(.internal(.recurringEventsLoaded(events)))
+          } catch {
+            await send(.internal(.recurringEventsFailed))
+          }
+        }
+
+      case .recurringEventsLoaded(let events):
+        state.recurringEvents = events
+        state.isRecurringEventsLoaded = true
+        return .none
+
+      case .recurringEventsFailed:
+        state.isRecurringEventsLoaded = true
         return .none
 
       case .kakaoPromiseShareResult(let result):
