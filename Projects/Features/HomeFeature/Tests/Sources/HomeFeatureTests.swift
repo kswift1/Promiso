@@ -73,6 +73,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
       configure(&$0)
     }
   }
@@ -103,6 +105,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
 
     await store.send(.view(.onAppear)) {
@@ -170,6 +174,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -231,6 +237,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -408,6 +416,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
 
     await store.send(.view(.onAppear)) {
@@ -631,6 +641,8 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

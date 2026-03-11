@@ -12,10 +12,11 @@ struct DepartureAlertSheet: View {
   let promiseLocation: String?
   let departureLocation: String?
   let transportData: HomeModels.DepartureTransportData?
-  let loadError: String?
+  let loadError: HomeModels.DepartureLoadError?
   let onSelect: (HomeModels.TransportSelection, Int) -> Void
   let onDetailTapped: () -> Void
   let onRetry: () -> Void
+  let onOpenSettings: () -> Void
   let previousScheduleLocation: HomeModels.PreviousScheduleLocation?
   let onDepartureOriginChanged: (HomeModels.DepartureOrigin) -> Void
   let onDismiss: () -> Void
@@ -369,7 +370,7 @@ struct DepartureAlertSheet: View {
   @ViewBuilder
   private var contentSection: some View {
     if let error = loadError {
-      errorView(message: error)
+      errorView(error: error)
     } else if let data = transportData {
       transportList(data: data)
     } else {
@@ -826,17 +827,46 @@ struct DepartureAlertSheet: View {
 
   // MARK: - Error View
 
-  private func errorView(message: String) -> some View {
-    VStack(spacing: 16) {
+  private func errorView(error: HomeModels.DepartureLoadError) -> some View {
+    let isLocationPermissionError: Bool
+    let errorMessage: String
+
+    switch error {
+    case .locationPermission:
+      isLocationPermissionError = true
+      errorMessage = "위치 권한이 필요합니다\n설정에서 위치 접근을 허용해 주세요"
+    case .general(let message):
+      isLocationPermissionError = false
+      errorMessage = message
+    }
+
+    return VStack(spacing: 16) {
       VStack(spacing: 8) {
-        Image(systemName: "exclamationmark.triangle")
+        Image(systemName: isLocationPermissionError ? "location.slash" : "exclamationmark.triangle")
           .font(.system(size: 28))
           .foregroundStyle(Color.pmgray.n400)
 
-        Text(message)
+        Text(errorMessage)
           .font(.pmCaption)
           .foregroundStyle(Color.pmtext.secondary)
           .multilineTextAlignment(.center)
+      }
+
+      if isLocationPermissionError {
+        Button {
+          onOpenSettings()
+        } label: {
+          Text("설정으로 이동")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+              Capsule()
+                .fill(Color.pmindigo.n500)
+            )
+        }
+        .buttonStyle(.plain)
       }
 
       Button {
@@ -918,6 +948,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -955,6 +986,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -976,6 +1008,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -993,10 +1026,11 @@ struct DepartureAlertSheet: View {
         promiseLocation: "홍대입구역",
         departureLocation: "서울 마포구",
         transportData: nil,
-        loadError: "경로를 불러오지 못했어요",
+        loadError: .general("경로를 불러오지 못했어요"),
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1053,6 +1087,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1091,6 +1126,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1141,6 +1177,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1191,6 +1228,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1263,6 +1301,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1313,6 +1352,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1337,6 +1377,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: nil,
         onDepartureOriginChanged: { _ in },
         onDismiss: {}
@@ -1387,6 +1428,7 @@ struct DepartureAlertSheet: View {
         onSelect: { _, _ in },
         onDetailTapped: {},
         onRetry: {},
+        onOpenSettings: {},
         previousScheduleLocation: HomeModels.PreviousScheduleLocation(
           name: "팀 미팅",
           locationName: "삼성역 위워크",

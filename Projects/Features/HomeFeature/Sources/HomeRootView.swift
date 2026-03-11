@@ -1,5 +1,6 @@
 import Clients
 import ComposableArchitecture
+import Foundation
 import CreatePromiseFeature
 import NotificationCenterFeature
 import PromisoShared
@@ -37,7 +38,11 @@ extension Home {
             promiseLocation: store.departureAlertItem?.location?.name,
             departureLocation: store.departureLocationName,
             transportData: store.departureTransportData.value,
-            loadError: store.departureTransportData.error.map { _ in "경로를 불러오지 못했어요" },
+            loadError: store.departureTransportData.error.map { error in
+              error is LocationClientError
+                ? HomeModels.DepartureLoadError.locationPermission
+                : .general("경로를 불러오지 못했어요")
+            },
             onSelect: { selection, bufferMinutes in
               store.send(.view(.departureAlertConfirmed(selection, bufferMinutes)))
             },
@@ -46,6 +51,9 @@ extension Home {
             },
             onRetry: {
               store.send(.view(.departureAlertRetryTapped))
+            },
+            onOpenSettings: {
+              store.send(.view(.departureAlertOpenSettingsTapped))
             },
             previousScheduleLocation: store.previousScheduleLocation,
             onDepartureOriginChanged: { origin in

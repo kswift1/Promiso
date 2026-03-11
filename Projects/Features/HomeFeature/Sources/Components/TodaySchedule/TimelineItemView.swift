@@ -182,36 +182,50 @@ struct TimelineItemView: View {
 
       // 출발 알림
       if let departureAlert = departureAlert {
+        let isAlertPassed = departureAlert.departureTime < Date()
+
         VStack(alignment: .leading, spacing: 4) {
           HStack {
             ProBadge()
             Spacer()
-            Button {
-              onDepartureAlertCancel()
-            } label: {
-              Image(systemName: "xmark.circle.fill")
-                .font(.pmCaption)
-                .foregroundStyle(Color.pmgray.n400)
+            if !isAlertPassed {
+              Button {
+                onDepartureAlertCancel()
+              } label: {
+                Image(systemName: "xmark.circle.fill")
+                  .font(.pmCaption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
           }
 
           HStack(spacing: 4) {
             Image(systemName: departureAlert.selectedTransport.iconName)
               .font(.pmCaption2)
-            Text("\(departureAlert.departureTime.formattedTime) 출발")
-              .font(.pmCaption)
-              .fontWeight(.semibold)
-            Image(systemName: "checkmark.circle.fill")
-              .font(.pmCaption2)
-              .foregroundStyle(Color.pmindigo.n500)
+            if isAlertPassed {
+              Text("\(departureAlert.departureTime.formattedTime) 알림 완료")
+                .font(.pmCaption)
+                .fontWeight(.semibold)
+              Image(systemName: "checkmark.circle.fill")
+                .font(.pmCaption2)
+                .foregroundStyle(Color.pmgray.n400)
+            } else {
+              Text("\(departureAlert.departureTime.formattedTime) 출발 예정")
+                .font(.pmCaption)
+                .fontWeight(.semibold)
+              Image(systemName: "checkmark.circle.fill")
+                .font(.pmCaption2)
+                .foregroundStyle(Color.pmindigo.n500)
+            }
           }
-          .foregroundStyle(.primary)
+          .foregroundStyle(isAlertPassed ? Color.pmtext.secondary : .primary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .proGlassCard(cornerRadius: 12)
+        .opacity(isAlertPassed ? 0.7 : 1.0)
       } else if promise.location != nil && isFuture {
         Button {
           onDepartureAlertTap()
