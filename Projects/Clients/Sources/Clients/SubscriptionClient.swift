@@ -58,9 +58,9 @@ extension SubscriptionClient: TestDependencyKey {
     fetchProducts: {
       try await Task.sleep(for: .seconds(0.5))
       return [
-        SubscriptionProduct(id: "com.promiso.pro.monthly", type: .monthly, displayName: "월간 프로", description: "매월 자동 갱신", displayPrice: "₩2,900", price: 2900),
-        SubscriptionProduct(id: "com.promiso.pro.yearly", type: .yearly, displayName: "연간 프로", description: "매년 자동 갱신 (월 ₩2,075)", displayPrice: "₩24,900", price: 24900),
-        SubscriptionProduct(id: "com.promiso.pro.lifetime", type: .lifetime, displayName: "평생 프로", description: "한 번 결제, 영구 사용", displayPrice: "₩54,000", price: 54000)
+        SubscriptionProduct(id: SubscriptionProductType.monthly.productId, type: .monthly, displayName: "월간 프로", description: "매월 자동 갱신", displayPrice: "₩3,900", price: 3900),
+        SubscriptionProduct(id: SubscriptionProductType.yearly.productId, type: .yearly, displayName: "연간 프로", description: "매년 자동 갱신 (월 ₩3,250)", displayPrice: "₩39,000", price: 39000),
+        SubscriptionProduct(id: SubscriptionProductType.lifetime.productId, type: .lifetime, displayName: "평생 프로", description: "한 번 결제, 영구 사용", displayPrice: "₩59,000", price: 59000)
       ]
     },
     purchase: { _ in
@@ -191,7 +191,7 @@ extension SubscriptionClient: DependencyKey {
     case "subscribed":
       let expirationString = statusData["expirationDate"] as? String
       let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-      let productType = SubscriptionProductType(rawValue: productId)
+      let productType = SubscriptionProductType(productId: productId)
       return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime

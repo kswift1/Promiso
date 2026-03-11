@@ -355,7 +355,14 @@ jobs:
             else
               echo "✅ 테스트 성공: $module"
             fi
-            tail -20 "/tmp/test-logs/${module}.log" || true
+            if echo "$FAILED" | grep -q "$module"; then
+              # 실패 시 에러 로그 전체 출력
+              grep -iE '(error:|fatal|crash|TEST EXECUTE FAILED|✘|unable to)' "/tmp/test-logs/${module}.log" || true
+              echo "--- 마지막 50줄 ---"
+              tail -50 "/tmp/test-logs/${module}.log" || true
+            else
+              tail -20 "/tmp/test-logs/${module}.log" || true
+            fi
           done
 
           if [ -n "$FAILED" ]; then

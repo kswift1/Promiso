@@ -52,7 +52,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.productsResponse.success) {
       $0.isLoadingProducts = false
       $0.products = Self.mockProducts
-      $0.selectedProductId = "com.promiso.pro.yearly"
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
     }
 
     await store.receive(\.internal.statusUpdated) {
@@ -92,8 +92,8 @@ struct ProPlanFeatureTests {
     let store = makeStore()
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.productSelected("com.promiso.pro.monthly"))) {
-      $0.selectedProductId = "com.promiso.pro.monthly"
+    await store.send(.view(.productSelected(SubscriptionProductType.monthly.productId))) {
+      $0.selectedProductId = SubscriptionProductType.monthly.productId
     }
   }
 
@@ -102,7 +102,7 @@ struct ProPlanFeatureTests {
   @Test("구매 성공 시 구독 상태 업데이트 및 delegate 전달")
   func purchaseTapped_success_updatesStatusAndSendsDelegate() async {
     var state = ProPlan.Feature.State()
-    state.selectedProductId = "com.promiso.pro.yearly"
+    state.selectedProductId = SubscriptionProductType.yearly.productId
 
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -126,7 +126,7 @@ struct ProPlanFeatureTests {
     }
 
     var state = ProPlan.Feature.State()
-    state.selectedProductId = "com.promiso.pro.yearly"
+    state.selectedProductId = SubscriptionProductType.yearly.productId
 
     let store = makeStore(state: state) {
       $0.subscriptionClient.purchaseWithReceipt = { _ in throw TestError.failed }
@@ -240,7 +240,7 @@ struct ProPlanFeatureTests {
     await store.send(.internal(.productsResponse(.success(Self.mockProducts)))) {
       $0.isLoadingProducts = false
       $0.products = Self.mockProducts
-      $0.selectedProductId = "com.promiso.pro.yearly"
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
     }
   }
 
@@ -307,23 +307,23 @@ struct ProPlanFeatureTests {
 private extension ProPlanFeatureTests {
   static let mockProducts: [SubscriptionProduct] = [
     SubscriptionProduct(
-      id: "com.promiso.pro.monthly",
+      id: SubscriptionProductType.monthly.productId,
       type: .monthly,
       displayName: "월간 프로",
       description: "매월 자동 갱신",
-      displayPrice: "₩2,900",
-      price: 2900
+      displayPrice: "₩3,900",
+      price: 3900
     ),
     SubscriptionProduct(
-      id: "com.promiso.pro.yearly",
+      id: SubscriptionProductType.yearly.productId,
       type: .yearly,
       displayName: "연간 프로",
-      description: "매년 자동 갱신 (월 ₩2,075)",
-      displayPrice: "₩24,900",
-      price: 24900
+      description: "매년 자동 갱신 (월 ₩3,250)",
+      displayPrice: "₩39,000",
+      price: 39000
     ),
     SubscriptionProduct(
-      id: "com.promiso.pro.lifetime",
+      id: SubscriptionProductType.lifetime.productId,
       type: .lifetime,
       displayName: "평생 프로",
       description: "한 번 결제, 영구 사용",

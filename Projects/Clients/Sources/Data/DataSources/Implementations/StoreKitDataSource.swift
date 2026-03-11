@@ -6,11 +6,9 @@ import StoreKit
 /// StoreKit 2 기반 구독/인앱 결제 데이터소스
 final class StoreKitDataSource: Sendable {
 
-  private static let productIds: Set<String> = [
-    SubscriptionProductType.monthly.rawValue,
-    SubscriptionProductType.yearly.rawValue,
-    SubscriptionProductType.lifetime.rawValue
-  ]
+  private static var productIds: Set<String> {
+    SubscriptionProductType.allProductIds
+  }
 
   // MARK: - Fetch Products
 
@@ -96,10 +94,10 @@ final class StoreKitDataSource: Sendable {
     for await result in StoreKit.Transaction.currentEntitlements {
       guard let transaction = try? checkVerified(result) else { continue }
 
-      if transaction.productID == SubscriptionProductType.lifetime.rawValue {
+      if transaction.productID == SubscriptionProductType.lifetime.productId {
         lifetimeTransaction = transaction
-      } else if transaction.productID == SubscriptionProductType.monthly.rawValue
-                || transaction.productID == SubscriptionProductType.yearly.rawValue {
+      } else if transaction.productID == SubscriptionProductType.monthly.productId
+                || transaction.productID == SubscriptionProductType.yearly.productId {
         latestSubscriptionTransaction = transaction
       }
     }
@@ -124,7 +122,7 @@ final class StoreKitDataSource: Sendable {
           if let gracePeriodExpiration = try? await detectGracePeriod(for: subscription) {
             return .gracePeriod(expirationDate: gracePeriodExpiration)
           }
-          let productType = SubscriptionProductType(rawValue: subscription.productID)
+          let productType = SubscriptionProductType(productId: subscription.productID)
           return .subscribed(productType: productType, expirationDate: expirationDate)
         } else {
           return .expired(expirationDate: expirationDate)
@@ -186,7 +184,7 @@ final class StoreKitDataSource: Sendable {
   }
 
   private func mapProduct(_ product: Product) -> SubscriptionProduct? {
-    guard let type = SubscriptionProductType(rawValue: product.id) else { return nil }
+    guard let type = SubscriptionProductType(productId: product.id) else { return nil }
 
     let introOffer: IntroductoryOffer? = product.subscription?.introductoryOffer.flatMap { offer in
       let periodDays: Int
@@ -228,8 +226,8 @@ final class StoreKitDataSource: Sendable {
   /// 무료 체험 대상 여부 확인
   func checkIntroOfferEligibility() async -> Bool {
     let subscriptionProductIds: Set<String> = [
-      SubscriptionProductType.monthly.rawValue,
-      SubscriptionProductType.yearly.rawValue
+      SubscriptionProductType.monthly.productId,
+      SubscriptionProductType.yearly.productId
     ]
     guard let products = try? await Product.products(for: subscriptionProductIds),
           let product = products.first,
@@ -318,7 +316,7 @@ final class SubscriptionRemoteDataSource: Sendable {
     switch statusString {
     case "subscribed":
       let productId = data["productId"] as? String
-      let productType = productId.flatMap { SubscriptionProductType(rawValue: $0) }
+      let productType = productId.flatMap { SubscriptionProductType(productId: $0) }
       return .subscribed(productType: productType, expirationDate: expirationDate)
     case "lifetime":
       return .lifetime
