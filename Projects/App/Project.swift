@@ -222,7 +222,7 @@ let scheduleWidgetDev = Target.target(
   name: "ScheduleWidgetExtension-Dev",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "com.promiso.dev.schedulewidget",
+  bundleId: "com.promiso.dev.promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
@@ -249,7 +249,7 @@ let scheduleWidgetStage = Target.target(
   name: "ScheduleWidgetExtension-Stage",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "com.promiso.stage.schedulewidget",
+  bundleId: "com.promiso.stage.promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
@@ -273,11 +273,11 @@ let scheduleWidgetStage = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.schedulewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.schedulewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
@@ -288,7 +288,7 @@ let scheduleWidgetProd = Target.target(
   name: "ScheduleWidgetExtension",
   destinations: .iOS,
   product: .appExtension,
-  bundleId: "\(AppConfig.bundleId).schedulewidget",
+  bundleId: "\(AppConfig.bundleId).promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
@@ -312,11 +312,11 @@ let scheduleWidgetProd = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.schedulewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.schedulewidget"),
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
