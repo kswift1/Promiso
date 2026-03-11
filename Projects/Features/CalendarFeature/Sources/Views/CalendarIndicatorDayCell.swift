@@ -423,6 +423,19 @@ private struct IndicatorPreviewView: View {
       .padding(.vertical, 2)
       .background(Color.pminfo.n500.opacity(0.08), in: Capsule())
 
+    case .recurringPersonalEvent:
+      HStack(spacing: 3) {
+        Image(systemName: "arrow.clockwise")
+          .font(.system(size: 8))
+          .foregroundStyle(Color.pminfo.n500)
+        Text(LocalizedStrings.Calendar.indicatorPersonal)
+          .font(.system(size: 10, weight: .medium))
+          .foregroundStyle(Color.pminfo.n500)
+      }
+      .padding(.horizontal, 5)
+      .padding(.vertical, 2)
+      .background(Color.pminfo.n500.opacity(0.08), in: Capsule())
+
     case .calendarEvent:
       HStack(spacing: 3) {
         Image(systemName: "calendar")
@@ -629,6 +642,19 @@ private struct ExpandedDayPreviewView: View {
     case .personalEvent:
       HStack(spacing: 3) {
         Image(systemName: "person.fill")
+          .font(.system(size: 8))
+          .foregroundStyle(Color.pminfo.n500)
+        Text(LocalizedStrings.Calendar.indicatorPersonal)
+          .font(.system(size: 10, weight: .medium))
+          .foregroundStyle(Color.pminfo.n500)
+      }
+      .padding(.horizontal, 5)
+      .padding(.vertical, 2)
+      .background(Color.pminfo.n500.opacity(0.08), in: Capsule())
+
+    case .recurringPersonalEvent:
+      HStack(spacing: 3) {
+        Image(systemName: "arrow.clockwise")
           .font(.system(size: 8))
           .foregroundStyle(Color.pminfo.n500)
         Text(LocalizedStrings.Calendar.indicatorPersonal)

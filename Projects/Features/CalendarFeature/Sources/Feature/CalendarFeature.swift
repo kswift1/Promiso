@@ -521,7 +521,7 @@ extension CalendarFeature {
                   spanPosition: position,
                   startAt: instance.startAt,
                   endAt: instance.endAt,
-                  sourceType: .personalEvent(id: instance.id),
+                  sourceType: .recurringPersonalEvent(recurringEventId: instance.recurringEventId),
                   locationName: instance.location?.name
                 )
               }
@@ -1530,6 +1530,11 @@ extension CalendarFeature {
             return .none
           }
           state.path.append(.personalEventDetail(.init(event: event)))
+        case .recurringPersonalEvent(let recurringEventId):
+          guard let recurring = state.recurringEvents.first(where: { $0.id == recurringEventId }) else {
+            return .none
+          }
+          state.path.append(.recurringPersonalEventDetail(.init(recurringEvent: recurring)))
         case .calendarEvent(let eventId):
           guard let event = state.cachedCalendarEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) else {
             return .none

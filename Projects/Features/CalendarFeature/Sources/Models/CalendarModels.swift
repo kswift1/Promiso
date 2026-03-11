@@ -172,6 +172,7 @@ extension CalendarFeature {
   public enum ScheduleSourceType: Equatable, Sendable {
     case promise(id: String, groupId: String)
     case personalEvent(id: String)
+    case recurringPersonalEvent(recurringEventId: String)
     case calendarEvent(id: String)
     case unknown
   }
