@@ -10,7 +10,11 @@ struct TimelineItemView: View {
   let isFirst: Bool
   let isLast: Bool
   let weather: WeatherInfo?
+  let departureAlert: HomeModels.DepartureAlertInfo?
+  let isPro: Bool
   let onTap: () -> Void
+  let onDepartureAlertTap: () -> Void
+  let onDepartureAlertCancel: () -> Void
 
   @State private var showLiveActivityInfo = false
 
@@ -175,6 +179,62 @@ struct TimelineItemView: View {
         }
         .foregroundStyle(.secondary)
       }
+
+      // 출발 알림
+      if let departureAlert = departureAlert {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            ProBadge()
+            Spacer()
+            Button {
+              onDepartureAlertCancel()
+            } label: {
+              Image(systemName: "xmark.circle.fill")
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .buttonStyle(.plain)
+          }
+
+          HStack(spacing: 4) {
+            Image(systemName: departureAlert.selectedTransport.iconName)
+              .font(.pmCaption2)
+            Text("\(departureAlert.departureTime.formattedTime) 출발")
+              .font(.pmCaption)
+              .fontWeight(.semibold)
+            Image(systemName: "checkmark.circle.fill")
+              .font(.pmCaption2)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+          .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .proGlassCard(cornerRadius: 12)
+      } else if promise.location != nil && isFuture {
+        Button {
+          onDepartureAlertTap()
+        } label: {
+          VStack(alignment: .leading, spacing: 4) {
+            ProBadge()
+
+            HStack(spacing: 4) {
+              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.pmCaption2)
+              Text("추천 출발 시간 설정")
+                .font(.pmCaption)
+            }
+            .foregroundStyle(.primary)
+          }
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .proGlassCard(cornerRadius: 12)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
     }
   }
 
@@ -301,7 +361,11 @@ struct TimelineItemView: View {
       isFirst: true,
       isLast: false,
       weather: nil,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
 
     TimelineItemView(
@@ -313,7 +377,11 @@ struct TimelineItemView: View {
       isFirst: false,
       isLast: true,
       weather: nil,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()

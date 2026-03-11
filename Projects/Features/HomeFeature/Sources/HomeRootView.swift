@@ -18,6 +18,49 @@ extension Home {
     }
 
     public var body: some View {
+      navigationStack
+        .sheet(
+          item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
+        ) { createEventStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: createEventStore)
+          }
+        }
+        .sheet(isPresented: Binding(
+          get: { store.departureAlertItem != nil },
+          set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
+        )) {
+          DepartureAlertSheet(
+            promiseEmoji: store.departureAlertItem?.displayEmoji ?? "",
+            promiseTitle: store.departureAlertItem?.title ?? "",
+            promiseStartAt: store.departureAlertItem?.startAt ?? Date(),
+            promiseLocation: store.departureAlertItem?.location?.name,
+            departureLocation: store.departureLocationName,
+            transportData: store.departureTransportData.value,
+            loadError: store.departureTransportData.error.map { _ in "경로를 불러오지 못했어요" },
+            onSelect: { selection, bufferMinutes in
+              store.send(.view(.departureAlertConfirmed(selection, bufferMinutes)))
+            },
+            onDetailTapped: {
+              store.send(.view(.departureAlertDetailTapped))
+            },
+            onRetry: {
+              store.send(.view(.departureAlertRetryTapped))
+            },
+            previousScheduleLocation: store.previousScheduleLocation,
+            onDepartureOriginChanged: { origin in
+              store.send(.view(.departureOriginChanged(origin)))
+            },
+            onDismiss: {
+              store.send(.view(.departureAlertSheetDismissed))
+            }
+          )
+        }
+    }
+
+    // MARK: - Navigation Stack
+
+    private var navigationStack: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
@@ -120,13 +163,8 @@ extension Home {
           RecurringPersonalEventDetail.RootView(store: detailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
-        }
-      }
-      .sheet(
-        item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
-      ) { createEventStore in
-        NavigationStack {
-          CreatePersonalEvent.RootView(store: createEventStore)
+        case .transportDetail(let detailStore):
+          TransportDetail.RootView(store: detailStore)
         }
       }
     }
@@ -217,6 +255,8 @@ extension Home {
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,
               weatherCache: store.weatherCache,
+              departureAlerts: store.departureAlerts,
+              isPro: store.isPro,
               onItemTap: { item in
                 switch item {
                 case .promise(let p):
@@ -226,6 +266,12 @@ extension Home {
                 case .recurringPersonalEvent(let instance):
                   store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
+              },
+              onDepartureAlertTap: { item in
+                store.send(.view(.departureAlertTapped(item)))
+              },
+              onDepartureAlertCancel: { scheduleItemId in
+                store.send(.view(.departureAlertCancelTapped(scheduleItemId)))
               }
             )
             .padding(.horizontal, 16)

@@ -702,11 +702,12 @@ function buildPrompt(
           parts.push(`자동차 약 ${t.driving.duration}분` +
             `${t.driving.toll > 0 ? ` (통행료 ${t.driving.toll.toLocaleString()}원)` : ""}`);
         }
-        if (t.transit) {
+        const bestTransit = t.transitRoutes?.[0];
+        if (bestTransit) {
           const transfers =
-            t.transit.busTransitCount + t.transit.subwayTransitCount;
-          parts.push(`대중교통 약 ${t.transit.totalTime}분` +
-            ` (환승 ${transfers}회, ${t.transit.payment.toLocaleString()}원)`);
+            bestTransit.busTransitCount + bestTransit.subwayTransitCount;
+          parts.push(`대중교통 약 ${bestTransit.totalTime}분` +
+            ` (환승 ${transfers}회, ${bestTransit.payment.toLocaleString()}원)`);
         }
         parts.push(`도보 약 ${t.walkingMinutes}분`);
 

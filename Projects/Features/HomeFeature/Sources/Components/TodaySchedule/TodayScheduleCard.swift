@@ -9,7 +9,11 @@ import ResourceKit
 struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
+  let departureAlerts: [String: HomeModels.DepartureAlertInfo]
+  let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertCancel: (String) -> Void
 
   @State private var isExpanded: Bool = true
 
@@ -94,7 +98,11 @@ struct TodayScheduleCard: View {
             isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
             isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
             weather: weatherCache[promise.id],
-            onTap: { onItemTap(item) }
+            departureAlert: departureAlerts[item.id],
+            isPro: isPro,
+            onTap: { onItemTap(item) },
+            onDepartureAlertTap: { onDepartureAlertTap(item) },
+            onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
           )
 
         case .personalEvent(let event):
@@ -102,7 +110,11 @@ struct TodayScheduleCard: View {
             event: event,
             isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
             isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            onTap: { onItemTap(item) }
+            departureAlert: departureAlerts[item.id],
+            isPro: isPro,
+            onTap: { onItemTap(item) },
+            onDepartureAlertTap: { onDepartureAlertTap(item) },
+            onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
           )
 
         case .recurringPersonalEvent:
@@ -188,7 +200,11 @@ struct TodayScheduleCard: View {
       ))
     ],
     weatherCache: [:],
-    onItemTap: { _ in }
+    departureAlerts: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -198,7 +214,11 @@ struct TodayScheduleCard: View {
   TodayScheduleCard(
     items: [],
     weatherCache: [:],
-    onItemTap: { _ in }
+    departureAlerts: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()

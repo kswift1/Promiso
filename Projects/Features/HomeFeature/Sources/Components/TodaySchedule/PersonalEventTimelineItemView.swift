@@ -13,7 +13,11 @@ struct PersonalEventTimelineItemView: View {
   let event: PersonalEventModel
   let isFirst: Bool
   let isLast: Bool
+  let departureAlert: HomeModels.DepartureAlertInfo?
+  let isPro: Bool
   let onTap: () -> Void
+  let onDepartureAlertTap: () -> Void
+  let onDepartureAlertCancel: () -> Void
 
   var body: some View {
     Button(action: onTap) {
@@ -152,6 +156,62 @@ struct PersonalEventTimelineItemView: View {
           }
         }
       }
+
+      // Row 4: 출발 알림
+      if let departureAlert = departureAlert {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            ProBadge()
+            Spacer()
+            Button {
+              onDepartureAlertCancel()
+            } label: {
+              Image(systemName: "xmark.circle.fill")
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .buttonStyle(.plain)
+          }
+
+          HStack(spacing: 4) {
+            Image(systemName: departureAlert.selectedTransport.iconName)
+              .font(.pmCaption2)
+            Text("\(departureAlert.departureTime.formattedTime) 출발")
+              .font(.pmCaption)
+              .fontWeight(.semibold)
+            Image(systemName: "checkmark.circle.fill")
+              .font(.pmCaption2)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+          .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .proGlassCard(cornerRadius: 12)
+      } else if event.location != nil && isFuture {
+        Button {
+          onDepartureAlertTap()
+        } label: {
+          VStack(alignment: .leading, spacing: 4) {
+            ProBadge()
+
+            HStack(spacing: 4) {
+              Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.pmCaption2)
+              Text("추천 출발 시간 설정")
+                .font(.pmCaption)
+            }
+            .foregroundStyle(.primary)
+          }
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .proGlassCard(cornerRadius: 12)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
     }
   }
 
@@ -224,6 +284,11 @@ struct PersonalEventTimelineItemView: View {
     Date() > event.effectiveEndAt
   }
 
+  /// 아직 시작 전인 일정인지
+  var isFuture: Bool {
+    Date() < event.startAt
+  }
+
   /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
   private var dotColor: Color {
     if isNow {
@@ -253,7 +318,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: true,
       isLast: false,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
 
     PersonalEventTimelineItemView(
@@ -265,7 +334,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: false,
       isLast: true,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()
@@ -285,7 +358,11 @@ struct PersonalEventTimelineItemView: View {
       ),
       isFirst: true,
       isLast: true,
-      onTap: {}
+      departureAlert: nil,
+      isPro: false,
+      onTap: {},
+      onDepartureAlertTap: {},
+      onDepartureAlertCancel: {}
     )
   }
   .padding()

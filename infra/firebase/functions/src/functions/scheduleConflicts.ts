@@ -104,6 +104,12 @@ function assertDateRangeWithinLimit(startAt: Date, endAt: Date): void {
   }
 }
 
+/**
+ * 날짜 포맷터를 캐시에서 가져오거나 새로 생성
+ *
+ * @param {string} timeZone IANA 타임존 문자열
+ * @return {Intl.DateTimeFormat} 날짜 포맷터
+ */
 function getDateFormatter(timeZone: string): Intl.DateTimeFormat {
   const cached = dateFormatterCache.get(timeZone);
   if (cached) return cached;
@@ -118,6 +124,12 @@ function getDateFormatter(timeZone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
+/**
+ * 날짜+시간 포맷터를 캐시에서 가져오거나 새로 생성
+ *
+ * @param {string} timeZone IANA 타임존 문자열
+ * @return {Intl.DateTimeFormat} 날짜+시간 포맷터
+ */
 function getDateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
   const cached = dateTimeFormatterCache.get(timeZone);
   if (cached) return cached;
@@ -136,6 +148,13 @@ function getDateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
+/**
+ * DateTimeFormat 파트를 파싱해 숫자 맵으로 반환
+ *
+ * @param {Intl.DateTimeFormat} formatter 포맷터 인스턴스
+ * @param {Date} date 변환할 날짜
+ * @return {Record<string, number>} 파트 타입 → 숫자 값 맵
+ */
 function parseFormatterParts(
   formatter: Intl.DateTimeFormat,
   date: Date,
@@ -150,6 +169,13 @@ function parseFormatterParts(
     }, {});
 }
 
+/**
+ * UTC Date를 지정 타임존의 로컬 날짜로 변환
+ *
+ * @param {Date} date 변환할 UTC 날짜
+ * @param {string} timeZone IANA 타임존 문자열
+ * @return {LocalDate} 로컬 날짜 (year/month/day)
+ */
 function getLocalDate(date: Date, timeZone: string): LocalDate {
   const parts = parseFormatterParts(getDateFormatter(timeZone), date);
   return {
@@ -159,6 +185,13 @@ function getLocalDate(date: Date, timeZone: string): LocalDate {
   };
 }
 
+/**
+ * UTC Date를 지정 타임존의 로컬 날짜+시간으로 변환
+ *
+ * @param {Date} date 변환할 UTC 날짜
+ * @param {string} timeZone IANA 타임존 문자열
+ * @return {LocalDateTime} 로컬 날짜+시간 (year/month/day/hour/minute/second)
+ */
 function getLocalDateTime(date: Date, timeZone: string): LocalDateTime {
   const parts = parseFormatterParts(getDateTimeFormatter(timeZone), date);
   return {
@@ -171,6 +204,12 @@ function getLocalDateTime(date: Date, timeZone: string): LocalDateTime {
   };
 }
 
+/**
+ * LocalDate를 YYYY-MM-DD 형식 문자열로 변환
+ *
+ * @param {LocalDate} date 로컬 날짜
+ * @return {string} YYYY-MM-DD 형식 날짜 키
+ */
 function localDateKey(date: LocalDate): string {
   return [
     String(date.year).padStart(4, "0"),
@@ -179,20 +218,48 @@ function localDateKey(date: LocalDate): string {
   ].join("-");
 }
 
+/**
+ * 두 LocalDate를 비교
+ *
+ * @param {LocalDate} a 첫 번째 날짜
+ * @param {LocalDate} b 두 번째 날짜
+ * @return {number} 음수(a < b), 0(같음), 양수(a > b)
+ */
 function compareLocalDates(a: LocalDate, b: LocalDate): number {
   if (a.year !== b.year) return a.year - b.year;
   if (a.month !== b.month) return a.month - b.month;
   return a.day - b.day;
 }
 
+/**
+ * 두 LocalDate 중 더 늦은 날짜 반환
+ *
+ * @param {LocalDate} a 첫 번째 날짜
+ * @param {LocalDate} b 두 번째 날짜
+ * @return {LocalDate} 더 늦은 날짜
+ */
 function maxLocalDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDates(a, b) >= 0 ? a : b;
 }
 
+/**
+ * 두 LocalDate 중 더 이른 날짜 반환
+ *
+ * @param {LocalDate} a 첫 번째 날짜
+ * @param {LocalDate} b 두 번째 날짜
+ * @return {LocalDate} 더 이른 날짜
+ */
 function minLocalDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDates(a, b) <= 0 ? a : b;
 }
 
+/**
+ * LocalDate에 일수를 더해 새 LocalDate 반환
+ *
+ * @param {LocalDate} date 기준 날짜
+ * @param {number} days 더할 일수 (음수 가능)
+ * @return {LocalDate} 계산된 날짜
+ */
 function addDays(date: LocalDate, days: number): LocalDate {
   const next = new Date(Date.UTC(date.year, date.month - 1, date.day));
   next.setUTCDate(next.getUTCDate() + days);
@@ -203,10 +270,23 @@ function addDays(date: LocalDate, days: number): LocalDate {
   };
 }
 
+/**
+ * 해당 연월의 마지막 날짜(일수) 반환
+ *
+ * @param {number} year 연도
+ * @param {number} month 월 (1~12)
+ * @return {number} 해당 월의 마지막 날 (28~31)
+ */
 function getDaysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+/**
+ * LocalDate의 요일을 반환 (iOS CalendarKit 기준: 월=2, 화=3, ..., 일=1)
+ *
+ * @param {LocalDate} date 로컬 날짜
+ * @return {number} 요일 번호 (일=1, 월=2, 화=3, 수=4, 목=5, 금=6, 토=7)
+ */
 function getWeekday(date: LocalDate): number {
   const jsWeekday = new Date(
     Date.UTC(date.year, date.month - 1, date.day, 12),
@@ -214,6 +294,12 @@ function getWeekday(date: LocalDate): number {
   return jsWeekday === 0 ? 1 : jsWeekday + 1;
 }
 
+/**
+ * LocalDateTime을 비교용 밀리초로 변환 (UTC 기준, 타임존 오프셋 무시)
+ *
+ * @param {LocalDateTime} date 로컬 날짜+시간
+ * @return {number} 비교용 밀리초 값
+ */
 function localDateTimeToComparableMs(date: LocalDateTime): number {
   return Date.UTC(
     date.year,
@@ -226,6 +312,14 @@ function localDateTimeToComparableMs(date: LocalDateTime): number {
   );
 }
 
+/**
+ * 지정 타임존에서 특정 날짜+시간을 UTC Date로 변환
+ *
+ * @param {LocalDate} date 로컬 날짜
+ * @param {TimeComponents} time 시간 구성요소 (hour, minute)
+ * @param {string} timeZone IANA 타임존 문자열
+ * @return {Date} UTC Date 객체
+ */
 function makeDateInTimeZone(
   date: LocalDate,
   time: TimeComponents,
@@ -264,11 +358,24 @@ function makeDateInTimeZone(
   return candidate;
 }
 
+/**
+ * 반복 일정 슬롯 ID에서 시리즈 ID 추출
+ *
+ * @param {string} slotId 슬롯 ID (예: recurring_{seriesId}_{YYYY-MM-DD})
+ * @return {string | null} 시리즈 ID, 파싱 실패 시 null
+ */
 function getRecurringSeriesId(slotId: string): string | null {
   const match = /^recurring_(.+)_\d{4}-\d{2}-\d{2}$/.exec(slotId);
   return match?.[1] ?? null;
 }
 
+/**
+ * 슬롯이 제외 목록에 포함되는지 확인 (반복 일정은 시리즈 ID도 검사)
+ *
+ * @param {ScheduleSlotEntry} slot 검사할 슬롯
+ * @param {Set<string>} excludeIds 제외할 ID 집합
+ * @return {boolean} 제외 대상이면 true
+ */
 function shouldExcludeSlot(
   slot: ScheduleSlotEntry,
   excludeIds: Set<string>,
@@ -322,6 +429,7 @@ function createSlotEntry(
  * @param {FirebaseFirestore.DocumentData} data - Firestore 문서 데이터
  * @param {Date} queryStartAt - 조회 범위 시작 (minGap 포함)
  * @param {Date} queryEndAt - 조회 범위 종료 (minGap 포함)
+ * @param {string} timeZone - 반복 일정 기준 IANA 타임존 문자열
  * @return {ScheduleSlotEntry[]} 확장된 슬롯 목록
  */
 function expandRecurringEvent(

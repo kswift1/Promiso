@@ -140,3 +140,8 @@ export {
   onPersonalEventDeletedSlot,
 } from "./functions/scheduleConflicts";
 
+// ============================================================================
+// Transportation Functions (교통 정보 조회)
+// ============================================================================
+export {getTransportation} from "./functions/transportation";
+
