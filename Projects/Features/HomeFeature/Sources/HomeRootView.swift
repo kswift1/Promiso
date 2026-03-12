@@ -241,6 +241,9 @@ extension Home {
               isPro: store.isPro,
               isNotificationDenied: store.isNotificationDenied,
               isLocationDenied: store.isLocationDenied,
+              briefingStyle: store.briefingState.value?.style,
+              availableTransports: store.briefingState.value?.availableTransports,
+              briefingNotificationHour: store.briefingState.value?.notificationHour,
               onTap: {
                 store.send(.view(.briefingCardTapped), animation: .spring(response: 0.35, dampingFraction: 0.8))
               },
@@ -255,6 +258,9 @@ extension Home {
               },
               onProUpgradeTapped: {
                 store.send(.view(.briefingProUpgradeTapped))
+              },
+              onSettingsChipTapped: {
+                store.send(.view(.briefingSettingsChipTapped))
               }
             )
             .padding(.horizontal, 16)

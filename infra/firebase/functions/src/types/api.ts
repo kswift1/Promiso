@@ -1475,6 +1475,12 @@ export interface GenerateBriefingResponse {
   detail: string;
   /** 기존 캐시가 있었지만 promptKey 변경으로 재생성됨 */
   isUpdated?: boolean;
+  /** 브리핑 생성에 사용된 스타일 */
+  style: string | null;
+  /** 이용 가능 교통수단 */
+  availableTransports: string[] | null;
+  /** 알림 시간 (0~23, null=비활성화) */
+  notificationHour: number | null;
 }
 
 /**

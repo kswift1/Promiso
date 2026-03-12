@@ -310,6 +310,8 @@ extension Home {
         case departureOriginChanged(HomeModels.DepartureOrigin)
         /// 출발 알림 시트에서 설정으로 이동
         case departureAlertOpenSettingsTapped
+        /// 브리핑 설정 칩 탭
+        case briefingSettingsChipTapped
       }
 
       @CasePathable
@@ -392,6 +394,8 @@ extension Home {
         case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
         /// Pro 플랜 업그레이드 요청
         case proPlanRequested
+        /// 브리핑 설정 화면으로 이동
+        case navigateToBriefingSettings
       }
     }
 
@@ -1077,6 +1081,9 @@ extension Home {
               }
             }
 
+          case .briefingSettingsChipTapped:
+            return .send(.delegate(.navigateToBriefingSettings))
+
           }
 
         case .internal(let internalAction):
@@ -1612,6 +1619,10 @@ extension Home {
               state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
               state.isBriefingUpdated = briefingResult.isUpdated
+              // 브리핑 스타일 AppStorage 동기화 (캐시 무효화용)
+              if let style = briefingResult.style {
+                state.$briefingStyleRaw.withLock { $0 = style.rawValue }
+              }
             case .failure(let error):
               state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
               state.isBriefingUpdated = false
