@@ -1188,9 +1188,9 @@ extension ConflictThresholdSettings {
     private var thresholdOptions: [(value: Int, label: String)] {
       [
         (0,  LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly),
-        (15, "15분"),
-        (30, "30분"),
-        (60, "1시간"),
+        (15, LocalizedStrings.DateFormat.durationMinutes(15)),
+        (30, LocalizedStrings.DateFormat.durationMinutes(30)),
+        (60, LocalizedStrings.DateFormat.durationHours(1)),
       ]
     }
 
@@ -1357,7 +1357,30 @@ extension ConflictThresholdSettings {
     private let myStart: CGFloat = 60   // 오후 2시
     private let myEnd: CGFloat = 180    // 오후 4시
     private let hourMinutes = [0, 60, 120, 180, 240, 300]
-    private let hourLabels = ["1시", "2시", "3시", "4시", "5시", "6시"]
+    private var hourLabels: [String] {
+      [13, 14, 15, 16, 17, 18].map(hourLabel(for:))
+    }
+
+    private func hourLabel(for hour: Int) -> String {
+      var components = DateComponents()
+      components.calendar = Calendar.current
+      components.year = 2000
+      components.month = 1
+      components.day = 1
+      components.hour = hour
+
+      guard let date = components.date else {
+        return String(hour)
+      }
+
+      let formatter = DateFormatter()
+      formatter.locale = LocaleManager.appLocale
+      let isKoreanLocale = LocaleManager.appLocale.language.languageCode?.identifier == "ko"
+      formatter.dateFormat = LocalizedDateFormatters.use24HourFormat
+        ? "H"
+        : (isKoreanLocale ? "a h시" : "h a")
+      return formatter.string(from: date)
+    }
 
     private struct Scenario {
       let title: String
@@ -1373,9 +1396,9 @@ extension ConflictThresholdSettings {
     // 팀 미팅: 4:10~5:00, 내 일정과 gap = 10분, 겹침 없음
     // 저녁 일정: 4:30~6:00, 내 일정과 gap = 30분, 겹침 없음
     private let scenarios: [Scenario] = [
-      .init(title: "점심 일정", emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
-      .init(title: "팀 미팅",  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0,  gapMinutes: 10),
-      .init(title: "저녁 일정", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
+      .init(title: LocalizedStrings.SettingsStrings.conflictPreviewLunchSchedule, emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
+      .init(title: LocalizedStrings.SettingsStrings.conflictPreviewTeamMeeting,  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0,  gapMinutes: 10),
+      .init(title: LocalizedStrings.SettingsStrings.conflictPreviewDinnerPlan, emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
     ]
 
     private func frac(_ m: CGFloat) -> CGFloat { m / totalMinutes }
@@ -2200,15 +2223,24 @@ extension BriefingSettings {
     }
 
     private func hourLabel(for hour: Int) -> String {
-      if hour == 0 {
-        return "오전 12시"
-      } else if hour < 12 {
-        return "오전 \(hour)시"
-      } else if hour == 12 {
-        return "오후 12시"
-      } else {
-        return "오후 \(hour - 12)시"
+      var components = DateComponents()
+      components.calendar = Calendar.current
+      components.year = 2000
+      components.month = 1
+      components.day = 1
+      components.hour = hour
+
+      guard let date = components.date else {
+        return String(hour)
       }
+
+      let formatter = DateFormatter()
+      formatter.locale = LocaleManager.appLocale
+      let isKoreanLocale = LocaleManager.appLocale.language.languageCode?.identifier == "ko"
+      formatter.dateFormat = LocalizedDateFormatters.use24HourFormat
+        ? "H"
+        : (isKoreanLocale ? "a h시" : "h a")
+      return formatter.string(from: date)
     }
   }
 }

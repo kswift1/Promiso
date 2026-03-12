@@ -369,7 +369,12 @@ extension ProPlan {
 
           case .productsResponse(.failure(let error)):
             state.isLoadingProducts = false
-            state.errorMessage = "상품 정보를 불러올 수 없습니다. 다시 시도해 주세요."
+            if let subscriptionError = error as? SubscriptionError,
+               subscriptionError == .productNotFound {
+              state.errorMessage = LocalizedStrings.Error.subscriptionProductNotFound
+            } else {
+              state.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
+            }
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -391,18 +396,19 @@ extension ProPlan {
 
           case .purchaseResponse(.failure(let error)):
             state.isPurchasing = false
-            // 사용자 취소는 에러가 아님
-            if let subscriptionError = error as? SubscriptionError,
-               subscriptionError == .purchaseCancelled {
-              return .none
+            if let subscriptionError = error as? SubscriptionError {
+              switch subscriptionError {
+              case .purchaseCancelled:
+                return .none
+              case .purchasePending:
+                state.errorMessage = LocalizedStrings.Error.subscriptionPurchasePending
+                return .none
+              case .productNotFound, .verificationFailed, .unknown:
+                state.errorMessage = subscriptionError.errorDescription ?? LocalizedStrings.ProPlan.purchaseFailed
+              }
+            } else {
+              state.errorMessage = LocalizedStrings.ProPlan.purchaseFailed
             }
-            // 가족 구매 승인 대기
-            if let subscriptionError = error as? SubscriptionError,
-               subscriptionError == .purchasePending {
-              state.errorMessage = "가족 구성원의 구매 승인이 필요합니다. 승인 후 자동으로 적용됩니다."
-              return .none
-            }
-            state.errorMessage = "구매에 실패했습니다. 다시 시도해 주세요."
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -417,13 +423,16 @@ extension ProPlan {
                 await send(.delegate(.subscriptionStatusChanged(status)))
               }
             }
-            // 구매 내역 없음
-            state.errorMessage = "이전에 구매한 내역이 없습니다."
+            state.errorMessage = LocalizedStrings.ProPlan.restoreNoPurchaseHistory
             return .none
 
           case .restoreResponse(.failure(let error)):
             state.isPurchasing = false
-            state.errorMessage = "복원에 실패했습니다. 이전에 구매한 내역이 없습니다."
+            if let subscriptionError = error as? SubscriptionError {
+              state.errorMessage = subscriptionError.errorDescription ?? LocalizedStrings.ProPlan.restoreFailed
+            } else {
+              state.errorMessage = LocalizedStrings.ProPlan.restoreFailed
+            }
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -496,13 +505,13 @@ extension ProPlan {
         store.send(.view(.onAppear))
       }
       .alert(
-        "오류",
+        LocalizedStrings.Common.error,
         isPresented: Binding(
           get: { store.errorMessage != nil },
           set: { if !$0 { store.send(.view(.dismissError)) } }
         ),
         actions: {
-          Button("확인", role: .cancel) {
+          Button(LocalizedStrings.Common.confirm, role: .cancel) {
             store.send(.view(.dismissError))
           }
         },
@@ -543,13 +552,13 @@ private struct ProCelebrationView: View {
           .playing(loopMode: .playOnce)
           .frame(width: 200, height: 200)
 
-        VStack(spacing: 8) {
-          Text("Pro 플랜 시작!")
+      VStack(spacing: 8) {
+          Text(LocalizedStrings.ProPlan.celebrationTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(.white)
 
-          Text("모든 프리미엄 기능을 이용할 수 있습니다")
+          Text(LocalizedStrings.ProPlan.celebrationSubtitle)
             .font(.body)
             .foregroundStyle(.white.opacity(0.8))
         }
@@ -557,7 +566,7 @@ private struct ProCelebrationView: View {
         Button {
           onDismiss()
         } label: {
-          Text("시작하기")
+          Text(LocalizedStrings.ProPlan.startButton)
             .font(.body)
             .fontWeight(.semibold)
             .foregroundStyle(.white)

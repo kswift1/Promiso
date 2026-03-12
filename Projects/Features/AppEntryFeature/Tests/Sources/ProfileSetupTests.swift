@@ -74,7 +74,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
     }
   }
 
@@ -84,7 +84,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "12자 이하로 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooLong(12)
     }
   }
 
@@ -235,7 +235,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged(""))) {
       $0.nickname = ""
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
       $0.isNicknameAvailable = nil
       $0.isCheckingNickname = false
     }
@@ -248,7 +248,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("a"))) {
       $0.nickname = "a"
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
     }
   }
 
@@ -259,7 +259,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("가나다라마바사아자차카타마"))) {
       $0.nickname = "가나다라마바사아자차카타마"
-      $0.nicknameError = "12자 이하로 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooLong(12)
     }
   }
 
@@ -270,7 +270,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("테 스터"))) {
       $0.nickname = "테 스터"
-      $0.nicknameError = "닉네임엔 공백을 넣을 수 없어요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameContainsWhitespace
     }
   }
 

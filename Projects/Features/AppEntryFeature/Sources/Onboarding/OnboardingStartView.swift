@@ -79,7 +79,7 @@ extension AppEntry.OnboardingStart {
           // Primary: 그룹 만들기
           if showPrimary {
             GlassActionButton(
-              title: "그룹 만들기",
+              title: LocalizedStrings.Group.createGroup,
               leadingSystemImage: "person.2.fill",
               isPrimary: true,
               action: { store.send(.view(.createGroupTapped)) }

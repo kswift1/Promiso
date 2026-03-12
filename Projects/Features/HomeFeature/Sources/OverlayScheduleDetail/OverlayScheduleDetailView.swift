@@ -108,7 +108,7 @@ extension OverlayScheduleDetail {
 
         case .inProgress:
           HStack(spacing: 8) {
-            Text("NOW")
+            Text(LocalizedStrings.OverlayScheduleDetail.now)
               .font(.system(size: 11, weight: .black))
               .padding(.horizontal, 8)
               .padding(.vertical, 4)

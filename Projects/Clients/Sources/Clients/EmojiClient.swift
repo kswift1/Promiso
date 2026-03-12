@@ -15,13 +15,13 @@ public enum EmojiClientError: Error, Equatable {
   public var localizedDescription: String {
     switch self {
     case .notAuthenticated:
-      return "로그인이 필요합니다"
+      return LocalizedStrings.Error.userAuthRequired
     case .networkError:
-      return "네트워크 연결을 확인해주세요"
+      return LocalizedStrings.Error.networkError
     case .invalidResponse:
-      return "응답을 처리할 수 없습니다"
+      return LocalizedStrings.Error.invalidResponse
     case .serverError(let message):
-      return "서버 오류: \(message)"
+      return LocalizedStrings.Error.serverErrorWithMessage(message)
     }
   }
 }

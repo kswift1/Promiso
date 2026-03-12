@@ -51,6 +51,7 @@ interface UserSettingsDocument {
     briefing?: {
       preferredTransport?: string; // 하위 호환
       availableTransports?: string[];
+      notificationHour?: number;
     };
   };
 }
@@ -851,6 +852,7 @@ export async function generateBriefingInternal(params: {
         (briefingSettings?.preferredTransport === "car" ? ["car"] :
           briefingSettings?.preferredTransport === "transit" ? ["transit"] :
             ["transit", "car"]);
+    const notificationHour = briefingSettings?.notificationHour ?? null;
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
@@ -939,6 +941,9 @@ export async function generateBriefingInternal(params: {
             summary: data.summary,
             detail: data.detail,
             isUpdated: false,
+            style,
+            availableTransports,
+            notificationHour,
           };
         }
         // promptKey 불일치 → 재생성 필요
@@ -1002,6 +1007,9 @@ export async function generateBriefingInternal(params: {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
         isUpdated: false,
+        style,
+        availableTransports,
+        notificationHour,
       };
     }
 
@@ -1027,6 +1035,9 @@ export async function generateBriefingInternal(params: {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
         isUpdated: false,
+        style,
+        availableTransports,
+        notificationHour,
       };
     }
 
@@ -1059,6 +1070,9 @@ export async function generateBriefingInternal(params: {
           summary: parsed.summary,
           detail: parsed.detail,
           isUpdated,
+          style,
+          availableTransports,
+          notificationHour,
         };
       }
     } catch (e) {
@@ -1073,6 +1087,9 @@ export async function generateBriefingInternal(params: {
       summary: firstSentence.substring(0, 30),
       detail: text,
       isUpdated: false,
+      style,
+      availableTransports,
+      notificationHour,
     };
   } catch (error) {
     console.error(`[Briefing] uid=${uid}, Error:`, error);
@@ -1080,6 +1097,9 @@ export async function generateBriefingInternal(params: {
       summary: DEFAULT_SUMMARY,
       detail: DEFAULT_DETAIL,
       isUpdated: false,
+      style: null,
+      availableTransports: null,
+      notificationHour: null,
     };
   }
 }

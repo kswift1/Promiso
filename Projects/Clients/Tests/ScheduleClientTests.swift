@@ -15,6 +15,7 @@
 //
 
 import Foundation
+import PromisoShared
 import Testing
 @testable import Clients
 
@@ -107,18 +108,18 @@ struct ScheduleClientErrorDescriptionTests {
 
   @Test("각 에러 케이스의 localizedDescription이 올바른 한국어 메시지 반환")
   func allCases_returnCorrectKoreanMessage() {
-    #expect(ScheduleClientError.networkError.localizedDescription == "네트워크 연결을 확인해주세요")
-    #expect(ScheduleClientError.unauthorized.localizedDescription == "로그인이 필요합니다")
-    #expect(ScheduleClientError.notFound.localizedDescription == "일정을 찾을 수 없습니다")
-    #expect(ScheduleClientError.serverError.localizedDescription == "서버 오류가 발생했습니다")
-    #expect(ScheduleClientError.groupNotFound.localizedDescription == "그룹을 찾을 수 없습니다")
-    #expect(ScheduleClientError.notGroupMember.localizedDescription == "그룹 멤버만 일정을 만들 수 있습니다")
+    #expect(ScheduleClientError.networkError.localizedDescription == LocalizedStrings.Error.networkError)
+    #expect(ScheduleClientError.unauthorized.localizedDescription == LocalizedStrings.Error.userAuthRequired)
+    #expect(ScheduleClientError.notFound.localizedDescription == LocalizedStrings.Error.notFoundError)
+    #expect(ScheduleClientError.serverError.localizedDescription == LocalizedStrings.Error.serverError)
+    #expect(ScheduleClientError.groupNotFound.localizedDescription == LocalizedStrings.Error.notFoundError)
+    #expect(ScheduleClientError.notGroupMember.localizedDescription == LocalizedStrings.Error.permissionError)
   }
 
   @Test("invalidData nil 메시지일 때 기본 메시지 반환")
   func invalidData_nilMessage_returnsDefaultMessage() {
     let error = ScheduleClientError.invalidData(nil)
-    #expect(error.localizedDescription == "잘못된 데이터입니다")
+    #expect(error.localizedDescription == LocalizedStrings.Error.validationError)
   }
 
   @Test("invalidData 커스텀 메시지 반환")
@@ -130,7 +131,7 @@ struct ScheduleClientErrorDescriptionTests {
   @Test("unknown nil 메시지일 때 기본 메시지 반환")
   func unknown_nilMessage_returnsDefaultMessage() {
     let error = ScheduleClientError.unknown(nil)
-    #expect(error.localizedDescription == "알 수 없는 오류가 발생했습니다")
+    #expect(error.localizedDescription == LocalizedStrings.Error.unknownError)
   }
 
   @Test("unknown 커스텀 메시지 반환")

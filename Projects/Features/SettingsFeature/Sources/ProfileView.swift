@@ -49,7 +49,7 @@ extension Settings {
               HStack(spacing: 12) {
                 ProBadge()
 
-                Text("프로 플랜")
+                Text(LocalizedStrings.ProPlan.manageTitle)
                   .font(.body)
                   .fontWeight(.medium)
                   .foregroundStyle(Color.pmtext.primary)
@@ -282,7 +282,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("데일리 브리핑 설정")
+                  Text(LocalizedStrings.SettingsStrings.briefingSettingsTitle)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -541,14 +541,14 @@ extension Settings {
               ProBadge()
 
               if let planName = store.subscriptionStatus.planDisplayName {
-                Text("\(planName) 플랜 이용 중")
+                Text(LocalizedStrings.ProPlan.activePlan(planName))
                   .font(.subheadline)
                   .foregroundStyle(Color.pmindigo.n500)
               }
 
               Spacer()
 
-              Text("관리")
+              Text(LocalizedStrings.ProPlan.manageAction)
                 .font(.caption)
                 .foregroundStyle(Color.pmgray.n400)
             }

@@ -260,7 +260,7 @@ public struct CompactParticipantMarker: View {
     if eta == 0 {
       return "✓"  // 도착
     }
-    return "\(eta)분"  // 이동 중
+    return LocalizedStrings.DateFormat.durationMinutes(eta)
   }
 
   /// 도착 여부
@@ -346,7 +346,7 @@ public struct CompactParticipantMarker: View {
   private var nameLabel: String {
     let name = String(participant.name.prefix(4))
     if groupCount > 0 {
-      return "\(name) 외\(groupCount)명"
+      return LocalizedStrings.LiveSchedule.groupedName(name, groupCount)
     }
     return name
   }

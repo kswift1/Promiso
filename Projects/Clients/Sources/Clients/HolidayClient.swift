@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import os.log
+import PromisoShared
 
 // MARK: - Public Holiday Model
 
@@ -150,7 +151,7 @@ private actor HolidayCache {
           !serviceKey.isEmpty,
           serviceKey != "YOUR_DATA_GO_KR_SERVICE_KEY"
     else {
-      logger.error("공휴일 API 서비스키 미설정")
+      logger.error("Holiday API service key missing")
       throw HolidayAPIError.serviceKeyNotFound
     }
 
@@ -166,7 +167,7 @@ private actor HolidayCache {
 
     // API 오류 코드 확인
     guard response.response.header.resultCode == "00" else {
-      logger.error("공휴일 API 오류 [\(response.response.header.resultCode)]: \(response.response.header.resultMsg)")
+      logger.error("Holiday API error [\(response.response.header.resultCode)]: \(response.response.header.resultMsg)")
       throw HolidayAPIError.apiError(
         code: response.response.header.resultCode,
         message: response.response.header.resultMsg
@@ -218,11 +219,11 @@ private enum HolidayAPIError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .serviceKeyNotFound:
-      return "공공데이터포털 서비스키가 설정되지 않았습니다."
+      return LocalizedStrings.Error.holidayServiceKeyNotFound
     case .apiError(let code, let message):
-      return "공공데이터포털 API 오류 [\(code)]: \(message)"
+      return LocalizedStrings.Error.holidayApiError(code, message)
     case .invalidURL:
-      return "잘못된 API URL입니다."
+      return LocalizedStrings.Error.holidayInvalidURL
     }
   }
 }

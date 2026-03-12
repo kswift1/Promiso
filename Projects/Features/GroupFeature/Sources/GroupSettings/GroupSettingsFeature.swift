@@ -727,7 +727,7 @@ extension GroupSettings {
               state.toastMessage = ToastMessage(
                 type: .warning,
                 title: LocalizedStrings.Error.notificationPermissionDenied,
-                subtitle: "설정에서 변경할 수 있어요.",
+                subtitle: LocalizedStrings.GroupSettingsView.notificationDeniedMessage,
                 position: .top
               )
             }
@@ -757,7 +757,7 @@ extension GroupSettings {
             state.notificationError = message
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "\(key.title) 설정 저장에 실패했어요",
+              title: LocalizedStrings.Error.settingSaveFailed,
               subtitle: message,
               position: .top
             )

@@ -268,7 +268,7 @@ public struct ScheduleDetailParticipantGroupRow: View {
           .font(.system(size: 14, weight: .medium))
           .foregroundStyle(.primary)
 
-        Text("\(count)명")
+        Text(LocalizedStrings.LiveSchedule.participantCount(count))
           .font(.system(size: 14))
           .foregroundStyle(.secondary)
 
@@ -378,7 +378,7 @@ public struct ScheduleDetailStatusBadgeView: View {
     case .confirmed:
       return LocalizedStrings.Shared.statusConfirmed
     case .expired:
-      return "마감됨"
+      return LocalizedStrings.Common.expired
     case .failed:
       return LocalizedStrings.Shared.statusFailed
     }
@@ -444,7 +444,7 @@ public struct ScheduleDetailMemberListSheet: View {
         }
         .padding(.vertical, 8)
       }
-      .navigationTitle("\(title) (\(members.count)명)")
+      .navigationTitle("\(title) (\(LocalizedStrings.LiveSchedule.participantCount(members.count)))")
       .navigationBarTitleDisplayMode(.inline)
     }
     .presentationDetents([.medium, .large])

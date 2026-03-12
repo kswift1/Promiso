@@ -57,11 +57,7 @@ public struct ConflictWarningSection: View {
   }
 
   private var headerText: String {
-    if hasConfirmedConflict {
-      return "겹치는 일정이 있어요"
-    } else {
-      return "아직 확정되지 않은 일정이 있어요"
-    }
+    LocalizedStrings.Shared.conflictOverlappingEvents
   }
 
   private var backgroundColorForSeverity: Color {
@@ -150,22 +146,22 @@ private struct ConflictItemRow: View {
           let hours = conflict.gapMinutes / 60
           let remaining = conflict.gapMinutes % 60
           if remaining > 0 {
-            return "여유 \(hours)시간 \(remaining)분"
+            return LocalizedStrings.Shared.conflictMarginHoursMinutes(hours, remaining)
           }
-          return "여유 \(hours)시간"
+          return LocalizedStrings.Shared.conflictMarginHours(hours)
         }
-        return "여유 \(conflict.gapMinutes)분"
+        return LocalizedStrings.Shared.conflictMarginMinutes(conflict.gapMinutes)
       }
-      return "일정 겹침"
+      return LocalizedStrings.Shared.conflictOverlap
     }
     if minutes >= 60 {
       let hours = minutes / 60
       let remainingMinutes = minutes % 60
       if remainingMinutes > 0 {
-        return "\(hours)시간 \(remainingMinutes)분 겹침"
+        return LocalizedStrings.Shared.conflictOverlapHoursMinutes(hours, remainingMinutes)
       }
-      return "\(hours)시간 겹침"
+      return LocalizedStrings.Shared.conflictOverlapHours(hours)
     }
-    return "\(minutes)분 겹침"
+    return LocalizedStrings.Shared.conflictOverlapMinutes(minutes)
   }
 }

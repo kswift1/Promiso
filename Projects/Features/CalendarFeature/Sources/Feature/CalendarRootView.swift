@@ -448,8 +448,13 @@ extension CalendarFeature {
     // MARK: - Month Mode Header
 
     private var monthModeHeader: some View {
-      HStack {
-        Text("\(Calendar.current.component(.month, from: store.currentMonth))월 일정")
+      let formatter = DateFormatter()
+      formatter.locale = LocaleManager.appLocale
+      formatter.setLocalizedDateFormatFromTemplate("MMMM")
+      let monthTitle = formatter.string(from: store.currentMonth)
+
+      return HStack {
+        Text("\(monthTitle) \(LocalizedStrings.Schedule.title)")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 

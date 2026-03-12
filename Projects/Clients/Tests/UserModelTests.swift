@@ -15,6 +15,7 @@
 //
 
 import Foundation
+import PromisoShared
 import Testing
 @testable import Clients
 
@@ -86,25 +87,25 @@ struct NicknameValidationErrorMessageTests {
   @Test("tooShort 에러 메시지 확인")
   func tooShort_message() {
     let error = UserPublicModel.NicknameValidationError.tooShort(minimum: 2)
-    #expect(error.message == "2자 이상 입력해주세요")
+    #expect(error.message == LocalizedStrings.Profile.nicknameTooShort(2))
   }
 
   @Test("tooLong 에러 메시지 확인")
   func tooLong_message() {
     let error = UserPublicModel.NicknameValidationError.tooLong(maximum: 12)
-    #expect(error.message == "12자 이하로 입력해주세요")
+    #expect(error.message == LocalizedStrings.Profile.nicknameTooLong(12))
   }
 
   @Test("containsWhitespace 에러 메시지 확인")
   func containsWhitespace_message() {
     let error = UserPublicModel.NicknameValidationError.containsWhitespace
-    #expect(error.message == "닉네임엔 공백을 넣을 수 없어요")
+    #expect(error.message == LocalizedStrings.Profile.nicknameContainsWhitespace)
   }
 
   @Test("hasLeadingOrTrailingWhitespace 에러 메시지 확인")
   func hasLeadingOrTrailingWhitespace_message() {
     let error = UserPublicModel.NicknameValidationError.hasLeadingOrTrailingWhitespace
-    #expect(error.message == "앞뒤 공백 없이 입력해주세요")
+    #expect(error.message == LocalizedStrings.Profile.nicknameTrimWhitespace)
   }
 }
 

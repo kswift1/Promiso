@@ -1,13 +1,14 @@
+import PromisoShared
 import SwiftUI
 
 struct StatusFilterView: View {
   @Binding var selectedFilter: StatusFilter
 
   var body: some View {
-    Picker("Status Filter", selection: $selectedFilter) {
+    Picker(LocalizedStrings.GroupScheduleList.statusFilterLabel, selection: $selectedFilter) {
       ForEach(StatusFilter.allCases, id: \.self) { filter in
         HStack(spacing: 4) {
-          Text(filter.rawValue)
+          Text(filter.displayTitle)
         }
         .tag(filter)
       }

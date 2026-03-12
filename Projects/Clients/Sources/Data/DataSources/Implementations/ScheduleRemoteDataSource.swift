@@ -105,7 +105,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     guard let data = result.data as? [String: Any],
           let scheduleId = data["promiseId"] as? String else {
       throw NSError(domain: "ScheduleRemoteDataSource", code: -1, userInfo: [
-        NSLocalizedDescriptionKey: "일정 생성 응답이 올바르지 않습니다"
+        NSLocalizedDescriptionKey: LocalizedStrings.Error.invalidResponse
       ])
     }
 
@@ -131,7 +131,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
           let isConfirmed = data["isConfirmed"] as? Bool else {
       AppLogger.calendar.error("🌐 [DataSource] respondSchedule 파싱 실패 - data: \(String(describing: result.data))")
       throw NSError(domain: "ScheduleRemoteDataSource", code: -1, userInfo: [
-        NSLocalizedDescriptionKey: "일정 응답 결과가 올바르지 않습니다"
+        NSLocalizedDescriptionKey: LocalizedStrings.Error.invalidResponse
       ])
     }
 

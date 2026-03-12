@@ -1,3 +1,4 @@
+import Clients
 import PromisoShared
 import ResourceKit
 import SwiftUI
@@ -17,11 +18,15 @@ struct DailyBriefingCard: View {
   let isPro: Bool
   let isNotificationDenied: Bool
   let isLocationDenied: Bool
+  let briefingStyle: BriefingStyle?
+  let availableTransports: Set<AvailableTransport>?
+  let briefingNotificationHour: Int?
   let onTap: () -> Void
   let onOpenNotificationSettings: (() -> Void)?
   let onOpenLocationSettings: (() -> Void)?
   let onReportError: (() -> Void)?
   let onProUpgradeTapped: (() -> Void)?
+  let onSettingsChipTapped: (() -> Void)?
 
   var body: some View {
     if isLoading || summary != nil {
@@ -110,6 +115,17 @@ struct DailyBriefingCard: View {
             .padding(.vertical, 12)
             .transition(.opacity.combined(with: .move(edge: .top)))
 
+            // 설정 칩 - Pro만, briefingStyle이 있을 때만
+            if isPro, let briefingStyle {
+              Divider()
+                .padding(.horizontal, 16)
+
+              settingsChips(briefingStyle: briefingStyle)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             // 권한 안내 배너 - Pro만
             if isPro, isNotificationDenied || isLocationDenied {
               Divider()
@@ -145,7 +161,7 @@ struct DailyBriefingCard: View {
       // Pro 뱃지
       proBadge
 
-      Text("데일리 브리핑")
+      Text(LocalizedStrings.Home.briefingTitle)
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
@@ -215,14 +231,14 @@ struct DailyBriefingCard: View {
       if isNotificationDenied {
         permissionRow(
           icon: "bell.slash",
-          message: "알림이 꺼져 있어 매일 브리핑을 받아볼 수 없어요",
+          message: LocalizedStrings.Home.briefingNotificationOffMessage,
           onTap: onOpenNotificationSettings
         )
       }
       if isLocationDenied {
         permissionRow(
           icon: "location.slash",
-          message: "현재 위치 권한이 꺼져 있어 날씨와 이동시간을 알려드리기 어려워요",
+          message: LocalizedStrings.Home.briefingLocationOffMessage,
           onTap: onOpenLocationSettings
         )
       }
@@ -238,7 +254,7 @@ struct DailyBriefingCard: View {
       HStack(spacing: 4) {
         Image(systemName: "exclamationmark.bubble")
           .font(.pmCaption)
-        Text("브리핑 내용이 이상한가요?")
+        Text(LocalizedStrings.Home.briefingReportIssue)
           .font(.pmCaption)
       }
       .foregroundStyle(Color.pmgray.n400)
@@ -246,6 +262,74 @@ struct DailyBriefingCard: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+
+  // MARK: - Settings Chips
+
+  private func settingsChips(briefingStyle: BriefingStyle) -> some View {
+    Button {
+      onSettingsChipTapped?()
+    } label: {
+      HStack(spacing: 8) {
+        // 톤 칩
+        settingsChip(icon: "face.smiling", label: briefingStyle.displayName)
+
+        // 이동수단 칩
+        if let transports = availableTransports {
+          transportChip(transports)
+        }
+
+        // 알림 시간 칩
+        if let hour = briefingNotificationHour {
+          settingsChip(icon: "bell.fill", label: notificationHourText(hour))
+        }
+
+        Spacer()
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func transportChip(_ transports: Set<AvailableTransport>) -> some View {
+    let (icon, label) = transportChipContent(transports)
+    return settingsChip(icon: icon, label: label)
+  }
+
+  private func settingsChip(icon: String, label: String) -> some View {
+    HStack(spacing: 4) {
+      Image(systemName: icon)
+        .font(.pmCaption)
+      Text(label)
+        .font(.pmCaption)
+    }
+    .foregroundStyle(Color.pmgray.n500)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(Color.pmgray.n100.opacity(0.55), in: Capsule())
+  }
+
+  private func transportChipContent(_ transports: Set<AvailableTransport>) -> (String, String) {
+    let hasCar = transports.contains(.car)
+    let hasTransit = transports.contains(.transit)
+    if hasCar && hasTransit {
+      return ("car.fill", "자동차 포함")
+    } else if hasCar {
+      return ("car.fill", "자동차")
+    } else {
+      return ("bus.fill", "대중교통")
+    }
+  }
+
+  private func notificationHourText(_ hour: Int) -> String {
+    let clampedHour = hour % 24
+    if clampedHour < 12 {
+      let displayHour = clampedHour == 0 ? 12 : clampedHour
+      return "매일 오전 \(displayHour)시"
+    } else {
+      let displayHour = clampedHour == 12 ? 12 : clampedHour - 12
+      return "매일 오후 \(displayHour)시"
+    }
   }
 
   private func permissionRow(icon: String, message: String, onTap: (() -> Void)?) -> some View {
@@ -263,7 +347,7 @@ struct DailyBriefingCard: View {
       Button {
         onTap?()
       } label: {
-        Text("변경")
+        Text(LocalizedStrings.Common.change)
           .font(.pmCaptionMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }

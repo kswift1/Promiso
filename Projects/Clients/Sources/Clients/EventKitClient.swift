@@ -121,7 +121,7 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
 
   public var timeText: String {
     if isAllDay {
-      return "종일"
+      return LocalizedStrings.Common.allDay
     }
 
     let calendar = Calendar.current
@@ -336,7 +336,7 @@ extension EventKitClient: DependencyKey {
 
         // 2. 기본 캘린더 확인
         guard let defaultCalendar = eventStore.defaultCalendarForNewEvents else {
-          throw EventKitClientError.saveFailed("기본 캘린더를 찾을 수 없습니다")
+          throw EventKitClientError.saveFailed(LocalizedStrings.Error.calendarSaveFailed)
         }
 
         // 3. EKEvent 생성
@@ -357,7 +357,7 @@ extension EventKitClient: DependencyKey {
 
         // 6. eventIdentifier 반환
         guard let eventIdentifier = event.eventIdentifier else {
-          throw EventKitClientError.saveFailed("이벤트 ID를 가져올 수 없습니다")
+          throw EventKitClientError.saveFailed(LocalizedStrings.Error.calendarSaveFailed)
         }
 
         return eventIdentifier
@@ -372,7 +372,7 @@ extension EventKitClient: DependencyKey {
 
         // 2. 기존 이벤트 조회
         guard let event = eventStore.event(withIdentifier: eventIdentifier) else {
-          throw EventKitClientError.eventStoreError("이벤트를 찾을 수 없습니다")
+          throw EventKitClientError.eventStoreError(LocalizedStrings.Error.calendarStoreError)
         }
 
         // 3. 쓰기 가능한 캘린더인지 확인
@@ -567,8 +567,8 @@ private extension EKAuthorizationStatus {
 // MARK: - Constants
 
 private enum EventKitConstants {
-  static let untitledEvent = "제목 없음"
-  static let defaultCalendarName = "캘린더"
+  static let untitledEvent = LocalizedStrings.Common.untitled
+  static let defaultCalendarName = LocalizedStrings.TabBar.calendar
   static let defaultColorHex = "#808080"
 }
 

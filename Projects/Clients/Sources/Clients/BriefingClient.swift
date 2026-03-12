@@ -15,13 +15,13 @@ public enum BriefingClientError: Error, Equatable {
   public var localizedDescription: String {
     switch self {
     case .notAuthenticated:
-      return "로그인이 필요합니다"
+      return LocalizedStrings.Error.userAuthRequired
     case .networkError:
-      return "네트워크 연결을 확인해주세요"
+      return LocalizedStrings.Error.networkError
     case .invalidResponse:
-      return "응답을 처리할 수 없습니다"
+      return LocalizedStrings.Error.invalidResponse
     case .serverError(let message):
-      return "서버 오류: \(message)"
+      return LocalizedStrings.Error.serverErrorWithMessage(message)
     }
   }
 }
@@ -69,11 +69,27 @@ public struct BriefingResult: Equatable, Sendable {
   public let detail: String
   /// 일정/날씨 변경으로 캐시가 재생성된 경우 true
   public let isUpdated: Bool
+  /// 브리핑 생성에 사용된 스타일
+  public let style: BriefingStyle?
+  /// 이용 가능 교통수단
+  public let availableTransports: Set<AvailableTransport>?
+  /// 알림 시간 (0~23, nil=비활성화)
+  public let notificationHour: Int?
 
-  public init(summary: String, detail: String, isUpdated: Bool = false) {
+  public init(
+    summary: String,
+    detail: String,
+    isUpdated: Bool = false,
+    style: BriefingStyle? = nil,
+    availableTransports: Set<AvailableTransport>? = nil,
+    notificationHour: Int? = nil
+  ) {
     self.summary = summary
     self.detail = detail
     self.isUpdated = isUpdated
+    self.style = style
+    self.availableTransports = availableTransports
+    self.notificationHour = notificationHour
   }
 }
 
@@ -154,10 +170,25 @@ extension BriefingClient: DependencyKey {
 
           let isUpdated = responseData["isUpdated"] as? Bool ?? false
 
+          let styleRaw = responseData["style"] as? String
+          let resultStyle = styleRaw.flatMap { BriefingStyle(rawValue: $0) }
+          let transportRaws = responseData["availableTransports"] as? [String]
+          let resultTransports: Set<AvailableTransport>? = transportRaws.map { raws in
+            Set(raws.compactMap { AvailableTransport(rawValue: $0) })
+          }
+          let resultNotificationHour = responseData["notificationHour"] as? Int
+
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.info("🎉 [BriefingClient] 브리핑 생성 완료 - 총 소요시간: \(String(format: "%.2f", totalTime))초")
 
-          return BriefingResult(summary: summary, detail: detail, isUpdated: isUpdated)
+          return BriefingResult(
+            summary: summary,
+            detail: detail,
+            isUpdated: isUpdated,
+            style: resultStyle,
+            availableTransports: resultTransports,
+            notificationHour: resultNotificationHour
+          )
         } catch let error as NSError {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.briefing.error("❌ [BriefingClient] Firebase Functions 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")

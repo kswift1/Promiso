@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 import StoreKit
 
 // MARK: - StoreKitDataSource
@@ -250,15 +251,15 @@ public enum SubscriptionError: Error, Equatable, LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .productNotFound:
-      return "상품을 찾을 수 없습니다."
+      return LocalizedStrings.Error.subscriptionProductNotFound
     case .purchaseCancelled:
-      return "구매가 취소되었습니다."
+      return LocalizedStrings.Error.subscriptionPurchaseCancelled
     case .purchasePending:
-      return "구매 승인 대기 중입니다."
+      return LocalizedStrings.Error.subscriptionPurchasePending
     case .verificationFailed:
-      return "구매 검증에 실패했습니다."
+      return LocalizedStrings.Error.subscriptionVerificationFailed
     case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
+      return LocalizedStrings.Error.unknownError
     }
   }
 }

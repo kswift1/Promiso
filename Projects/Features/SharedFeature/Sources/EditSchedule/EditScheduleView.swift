@@ -331,7 +331,10 @@ extension EditSchedule {
 
           HStack {
             if let endAt = store.editedSchedule.endAt {
-              Text(store.editedSchedule.startAt.durationText(to: endAt, prefix: "총 "))
+              Text(store.editedSchedule.startAt.durationText(
+                to: endAt,
+                prefix: LocalizedStrings.CreateSchedule.totalDurationPrefix
+              ))
                 .font(.system(size: 13))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -393,7 +396,7 @@ extension EditSchedule {
           .disabled(store.editedSchedule.minimumParticipants <= 2)
 
           VStack(spacing: 4) {
-            Text("\(store.editedSchedule.minimumParticipants)명")
+            Text(LocalizedStrings.LiveSchedule.participantCount(store.editedSchedule.minimumParticipants))
               .font(.system(size: 36, weight: .bold))
               .foregroundColor(.primary)
               .contentTransition(.numericText())

@@ -66,7 +66,7 @@ extension CreateRecurringPersonalEvent {
       }
 
       var navigationTitle: String {
-        mode == .create ? "새 반복 일정" : "반복 일정 수정"
+        mode == .create ? LocalizedStrings.Personal.addRecurringEvent : LocalizedStrings.Personal.recurringDetailTitle
       }
     }
 
@@ -262,7 +262,7 @@ extension CreateRecurringPersonalEvent {
                 }
                 await send(.internal(.saveSuccess(savedEvent)))
               } catch {
-                await send(.internal(.saveFailed("저장 중 오류가 발생했습니다")))
+                await send(.internal(.saveFailed(LocalizedStrings.Error.serverError)))
               }
             }
 
@@ -375,7 +375,9 @@ extension CreateRecurringPersonalEvent {
       let totalMinutes = baseHour * 60 + baseMinute - reminder
       let notifyHour = (totalMinutes / 60 % 24 + 24) % 24
       let notifyMinute = (totalMinutes % 60 + 60) % 60
-      let body = reminder == 0 ? "일정이 시작됩니다" : "\(reminder)분 후 일정이 시작됩니다"
+      let body = reminder == 0
+        ? LocalizedStrings.Personal.notificationStartsNow
+        : LocalizedStrings.Personal.notificationStartsInMinutes(reminder)
       let notificationTitle = "\(event.displayEmoji) \(event.title)"
 
       switch event.recurrence.frequency {

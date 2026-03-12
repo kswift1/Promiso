@@ -29,7 +29,7 @@ public struct ProfileAvatarView: View {
   }
 
   private var initials: String {
-    if isCurrentUser { return "나" }
+    if isCurrentUser { return LocalizedStrings.Common.me }
     guard !displayName.isEmpty else { return "?" }
     return String(displayName.prefix(1))
   }
