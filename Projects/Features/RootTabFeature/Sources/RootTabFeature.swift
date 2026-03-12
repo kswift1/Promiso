@@ -384,10 +384,6 @@ extension RootTab {
           state.selectedTab = .settings
           return .send(.settings(.view(.proPlanTapped)))
 
-        case .home(.delegate(.navigateToBriefingSettings)):
-          state.selectedTab = .settings
-          return .send(.settings(.view(.briefingSettingsTapped)))
-
         case .home:
           return .none
 

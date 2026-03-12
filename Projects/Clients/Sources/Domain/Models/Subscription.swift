@@ -50,6 +50,14 @@ extension SubscriptionProductType {
     case .lifetime: return String(localized: "proPlan.product.lifetime", bundle: LocalizedStrings.bundle)
     }
   }
+
+  public var paywallDescription: String {
+    switch self {
+    case .monthly: return LocalizedStrings.ProPlan.productMonthlyDescription
+    case .yearly: return LocalizedStrings.ProPlan.productYearlyDescription
+    case .lifetime: return LocalizedStrings.ProPlan.productLifetimeDescription
+    }
+  }
 }
 
 /// 구독 상품 정보
@@ -131,6 +139,19 @@ public struct PurchaseResult: Equatable, Sendable {
 
   public init(jwsString: String, localStatus: SubscriptionStatus) {
     self.jwsString = jwsString
+    self.localStatus = localStatus
+  }
+}
+
+/// 복원 결과 (JWS 토큰 포함, 서버 검증용)
+public struct RestoreResult: Equatable, Sendable {
+  public let jwsString: String?
+  public let productId: String?
+  public let localStatus: SubscriptionStatus
+
+  public init(jwsString: String?, productId: String?, localStatus: SubscriptionStatus) {
+    self.jwsString = jwsString
+    self.productId = productId
     self.localStatus = localStatus
   }
 }

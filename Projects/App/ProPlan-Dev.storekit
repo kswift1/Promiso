@@ -9,15 +9,15 @@
       }
     ]
   },
-  "identifier" : "3759C9A7",
+  "identifier" : "3759C9A8",
   "nonRenewingSubscriptions" : [
 
   ],
   "products" : [
     {
-      "displayPrice" : "59000",
+      "displayPrice" : "39000",
       "familyShareable" : false,
-      "internalID" : "6759592451",
+      "internalID" : "6759592452",
       "localizations" : [
         {
           "description" : "한 번 결제, 영구 사용",
@@ -25,8 +25,8 @@
           "locale" : "ko"
         }
       ],
-      "productID" : "com.promiso.stage.pro.lifetime",
-      "referenceName" : "Promiso Pro 평생 (Stage)",
+      "productID" : "com.promiso.dev.pro.lifetime",
+      "referenceName" : "Promiso Pro 평생 (Dev)",
       "type" : "NonConsumable"
     }
   ],
@@ -47,7 +47,7 @@
   },
   "subscriptionGroups" : [
     {
-      "id" : "21947113",
+      "id" : "21947114",
       "localizations" : [
 
       ],
@@ -60,10 +60,10 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "39000",
+          "displayPrice" : "29000",
           "familyShareable" : false,
           "groupNumber" : 2,
-          "internalID" : "6759592176",
+          "internalID" : "6759592177",
           "introductoryOffer" : {
             "displayPrice" : "0",
             "internalID" : "intro_yearly_3d",
@@ -73,15 +73,15 @@
           },
           "localizations" : [
             {
-              "description" : "매년 자동 갱신 (월 ₩3,250)",
+              "description" : "매년 자동 갱신 (월 ₩2,417)",
               "displayName" : "연간 프로",
               "locale" : "ko"
             }
           ],
-          "productID" : "com.promiso.stage.pro.yearly",
+          "productID" : "com.promiso.dev.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Promiso Pro 연간 (Stage)",
-          "subscriptionGroupID" : "21947113",
+          "referenceName" : "Promiso Pro 연간 (Dev)",
+          "subscriptionGroupID" : "21947114",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
 
@@ -97,7 +97,7 @@
           "displayPrice" : "3900",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "6759592057",
+          "internalID" : "6759592058",
           "introductoryOffer" : {
             "displayPrice" : "0",
             "internalID" : "intro_monthly_3d",
@@ -112,10 +112,10 @@
               "locale" : "ko"
             }
           ],
-          "productID" : "com.promiso.stage.pro.monthly",
+          "productID" : "com.promiso.dev.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Promiso Pro 월간 (Stage)",
-          "subscriptionGroupID" : "21947113",
+          "referenceName" : "Promiso Pro 월간 (Dev)",
+          "subscriptionGroupID" : "21947114",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
 

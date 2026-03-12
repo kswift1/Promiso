@@ -258,9 +258,6 @@ extension Home {
               },
               onProUpgradeTapped: {
                 store.send(.view(.briefingProUpgradeTapped))
-              },
-              onSettingsChipTapped: {
-                store.send(.view(.briefingSettingsChipTapped))
               }
             )
             .padding(.horizontal, 16)

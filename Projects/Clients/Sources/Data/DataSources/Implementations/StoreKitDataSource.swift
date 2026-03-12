@@ -85,6 +85,61 @@ final class StoreKitDataSource: Sendable {
     return try await fetchCurrentStatus()
   }
 
+  func restoreWithReceipt() async throws -> RestoreResult {
+    try await AppStore.sync()
+
+    var lifetimeReceipt: (jwsString: String, productId: String)?
+    var latestSubscriptionReceipt: (
+      jwsString: String,
+      productId: String,
+      expirationDate: Date?
+    )?
+
+    for await result in StoreKit.Transaction.currentEntitlements {
+      guard let transaction = try? checkVerified(result) else { continue }
+
+      if transaction.productID == SubscriptionProductType.lifetime.productId {
+        lifetimeReceipt = (
+          jwsString: result.jwsRepresentation,
+          productId: transaction.productID
+        )
+        continue
+      }
+
+      let isSubscription = transaction.productID == SubscriptionProductType.monthly.productId
+        || transaction.productID == SubscriptionProductType.yearly.productId
+      guard isSubscription else { continue }
+
+      let currentExpiration = latestSubscriptionReceipt?.expirationDate ?? .distantPast
+      let candidateExpiration = transaction.expirationDate ?? .distantPast
+
+      if latestSubscriptionReceipt == nil || candidateExpiration > currentExpiration {
+        latestSubscriptionReceipt = (
+          jwsString: result.jwsRepresentation,
+          productId: transaction.productID,
+          expirationDate: transaction.expirationDate
+        )
+      }
+    }
+
+    let status = try await fetchCurrentStatus()
+    if let lifetimeReceipt {
+      return RestoreResult(
+        jwsString: lifetimeReceipt.jwsString,
+        productId: lifetimeReceipt.productId,
+        localStatus: status
+      )
+    }
+    if let latestSubscriptionReceipt {
+      return RestoreResult(
+        jwsString: latestSubscriptionReceipt.jwsString,
+        productId: latestSubscriptionReceipt.productId,
+        localStatus: status
+      )
+    }
+    return RestoreResult(jwsString: nil, productId: nil, localStatus: status)
+  }
+
   // MARK: - Current Status
 
   func fetchCurrentStatus() async throws -> SubscriptionStatus {

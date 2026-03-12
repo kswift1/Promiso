@@ -62,6 +62,15 @@ public actor UserSettingsRemoteDataSource {
     )
   }
 
+  /// Pro 설정 존재 여부 확인
+  public func hasProSettings(userId: String) async throws -> Bool {
+    let document = try await settingsRef(userId: userId).getDocument()
+    guard document.exists, let data = document.data() else {
+      return false
+    }
+    return data["proSettings"] != nil
+  }
+
   /// 그룹 정렬 옵션 업데이트
   public func updateGroupSortOption(userId: String, option: GroupSortOption) async throws {
     try await settingsRef(userId: userId).setData(
