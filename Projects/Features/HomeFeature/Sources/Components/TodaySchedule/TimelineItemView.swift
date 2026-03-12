@@ -352,8 +352,8 @@ struct TimelineItemView: View {
         if let departureAlert = departureAlert {
           departureAlertRow(departureAlert)
         }
-        // 출발 알림 CTA (미설정 + 장소 있음 + 미래)
-        else if location != nil && isFuture {
+        // 출발 알림 CTA
+        else if hasDepartureCTA {
           Button {
             onDepartureAlertTap()
           } label: {
