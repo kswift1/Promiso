@@ -57,11 +57,28 @@ extension ProPlan {
 
     @ViewBuilder
     private var heroSection: some View {
-      VStack(spacing: 14) {
-        Text("월 커피 한 잔 가격으로\nAI 비서를 고용하세요")
-          .font(.system(size: 26, weight: .bold))
-          .multilineTextAlignment(.center)
-          .foregroundStyle(Color.pmtext.primary)
+      VStack(spacing: 16) {
+        // 커피 아이콘
+        Text("☕️")
+          .font(.system(size: 48))
+
+        VStack(spacing: 6) {
+          Text("월 커피 한 잔 가격으로")
+            .font(.system(size: 26, weight: .bold))
+            .foregroundStyle(Color.pmtext.primary)
+
+          // "AI 비서" 그라데이션 강조
+          Text("AI 비서를 고용하세요")
+            .font(.system(size: 26, weight: .bold))
+            .foregroundStyle(
+              LinearGradient(
+                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+        }
+        .multilineTextAlignment(.center)
 
         Text("이동시간, 겹치는 일정, 날씨까지\nPromiso Pro가 대신 챙겨드려요")
           .font(.subheadline)
