@@ -7,8 +7,8 @@ Product ID는 `Bundle.main.bundleIdentifier` 기반으로 환경별 자동 생�
 | 상품 | Dev | Stage | Prod | 가격 |
 |------|-----|-------|------|------|
 | 월간 | `com.promiso.dev.pro.monthly` | `com.promiso.stage.pro.monthly` | `com.promiso.pro.monthly` | ₩3,900/월 |
-| 연간 | `com.promiso.dev.pro.yearly` | `com.promiso.stage.pro.yearly` | `com.promiso.pro.yearly` | ₩39,000/년 |
-| 평생 | `com.promiso.dev.pro.lifetime` | `com.promiso.stage.pro.lifetime` | `com.promiso.pro.lifetime` | ₩59,000 |
+| 연간 | `com.promiso.dev.pro.yearly` | `com.promiso.stage.pro.yearly` | `com.promiso.pro.yearly` | ₩29,000/년 |
+| 평생 | `com.promiso.dev.pro.lifetime` | `com.promiso.stage.pro.lifetime` | `com.promiso.pro.lifetime` | ₩39,000 |
 
 코드에서 `SubscriptionProductType.monthly.productId` 로 접근 (하드코딩 금지).
 

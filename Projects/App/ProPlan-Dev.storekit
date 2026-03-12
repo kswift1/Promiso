@@ -15,7 +15,7 @@
   ],
   "products" : [
     {
-      "displayPrice" : "59000",
+      "displayPrice" : "39000",
       "familyShareable" : false,
       "internalID" : "6759592452",
       "localizations" : [
@@ -60,7 +60,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "39000",
+          "displayPrice" : "29000",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "6759592177",
@@ -73,7 +73,7 @@
           },
           "localizations" : [
             {
-              "description" : "매년 자동 갱신 (월 ₩3,250)",
+              "description" : "매년 자동 갱신 (월 ₩2,417)",
               "displayName" : "연간 프로",
               "locale" : "ko"
             }

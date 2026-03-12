@@ -7,7 +7,6 @@
 
 import Clients
 import ComposableArchitecture
-import Lottie
 import PromisoShared
 import ResourceKit
 import SharedFeature
@@ -17,7 +16,6 @@ import SwiftUI
 
 extension ProPlan {
 
-  /// Paywall 화면 - 2단계 시트 (베네핏 소개 → 요금제 선택)
   public struct PaywallView: View {
     @Bindable private var store: StoreOf<Feature>
 
@@ -26,381 +24,145 @@ extension ProPlan {
     }
 
     public var body: some View {
-      NavigationStack {
-        benefitsPage
-          .navigationDestination(
-            isPresented: Binding(
-              get: { store.showPricing },
-              set: { newValue in
-                if newValue {
-                  store.send(.view(.showPricingTapped))
-                } else {
-                  store.send(.view(.backToBenefitsTapped))
-                }
-              }
-            )
-          ) {
-            pricingPage
-              .navigationDestination(
-                isPresented: Binding(
-                  get: { store.showProOnboarding },
-                  set: { _ in }
-                )
-              ) {
-                proOnboardingPage
-              }
-          }
-      }
-      .presentationDetents([.large])
-      .presentationDragIndicator(.hidden)
-      .presentationCornerRadius(24)
-      .interactiveDismissDisabled(store.isPurchasing || store.showCelebration || store.showProOnboarding)
-    }
-
-    // MARK: - Page 1: Benefits
-
-    @ViewBuilder
-    private var benefitsPage: some View {
       ZStack {
         ScrollView {
-          VStack(spacing: 24) {
+          VStack(spacing: 32) {
             heroSection
-            benefitsSection
+            featureCardsSection
             comparisonSection
-          }
-          .padding(.horizontal, 20)
-          .padding(.top, 16)
-          .padding(.bottom, 120)
-        }
-        .auroraBackground()
-
-        // 하단 고정 CTA
-        VStack(spacing: 8) {
-          Button {
-            store.send(.view(.showPricingTapped))
-          } label: {
-            HStack {
-              Text("요금제 보기")
-                .font(.headline)
-                .foregroundStyle(.white)
-
-              Spacer()
-
-              Image(systemName: "arrow.right")
-                .font(.headline)
-                .foregroundStyle(.white)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .background(
-              LinearGradient(
-                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                startPoint: .leading,
-                endPoint: .trailing
-              ),
-              in: RoundedRectangle(cornerRadius: 16)
-            )
-            .contentShape(Rectangle())
-          }
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
-        .frame(maxHeight: .infinity, alignment: .bottom)
-        .background(
-          LinearGradient(
-            stops: [
-              .init(color: .clear, location: 0),
-              .init(color: Color(.systemBackground).opacity(0.8), location: 0.3),
-              .init(color: Color(.systemBackground), location: 1.0)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .frame(height: 140)
-          .frame(maxHeight: .infinity, alignment: .bottom)
-          .ignoresSafeArea()
-        )
-      }
-      .toolbar(.hidden, for: .navigationBar)
-    }
-
-    // MARK: - Page 2: Pricing
-
-    @ViewBuilder
-    private var pricingPage: some View {
-      ZStack {
-        ScrollView {
-          VStack(spacing: 24) {
-            if store.isLoadingProducts {
-              loadingSection
-            } else {
-              productsSection
-            }
-
-            trustSection
+            pricingSection
             legalSection
           }
           .padding(.horizontal, 20)
-          .padding(.top, 16)
-          .padding(.bottom, 120)
+          .padding(.top, 20)
+          .padding(.bottom, 180)
         }
+        .scrollIndicators(.hidden)
         .auroraBackground()
 
-        // 하단 고정 CTA
-        VStack(spacing: 8) {
-          HStack(spacing: 12) {
-            // 뒤로가기 원형 버튼
-            Button {
-              store.send(.view(.backToBenefitsTapped))
-            } label: {
-              Image(systemName: "chevron.left")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.pmtext.primary)
-                .frame(width: 52, height: 52)
-                .background(Color.pmgray.n700.opacity(0.3), in: Circle())
-                .contentShape(Circle())
-            }
-
-            purchaseButton
-          }
-          restoreButton
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
-        .frame(maxHeight: .infinity, alignment: .bottom)
-        .background(
-          LinearGradient(
-            stops: [
-              .init(color: .clear, location: 0),
-              .init(color: Color(.systemBackground).opacity(0.8), location: 0.3),
-              .init(color: Color(.systemBackground), location: 1.0)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .frame(height: 140)
+        ctaBottomBar
           .frame(maxHeight: .infinity, alignment: .bottom)
-          .ignoresSafeArea()
-        )
 
         if store.isPurchasing {
           loadingOverlay
         }
-
-        if store.showCelebration {
-          celebrationOverlay
-        }
       }
-      .toolbar(.hidden, for: .navigationBar)
+      .presentationDetents([.large])
+      .presentationDragIndicator(.hidden)
+      .presentationCornerRadius(24)
+      .interactiveDismissDisabled(store.isPurchasing)
     }
 
-    // MARK: - Celebration Overlay
-
-    @ViewBuilder
-    private var celebrationOverlay: some View {
-      ZStack {
-        Color.black.opacity(0.6)
-          .ignoresSafeArea()
-
-        ScrollView {
-          VStack(spacing: 24) {
-            LottieView(animation: LottieAsset.fanfare.animation)
-              .playing(loopMode: .playOnce)
-              .frame(width: 200, height: 200)
-
-            VStack(spacing: 8) {
-              Text("Pro 플랜 시작!")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-
-              Text("모든 프리미엄 기능을 이용할 수 있어요")
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.8))
-            }
-
-            // Pro 기능 가이드
-            VStack(spacing: 12) {
-              celebrationGuideRow(
-                icon: "bell.badge.waveform",
-                iconColor: Color.pmaurora.purple,
-                title: "스마트 알림 브리핑",
-                description: "일정 전 출발 시간, 날씨, 이동시간을 자동으로 알려드려요"
-              )
-
-              celebrationGuideRow(
-                icon: "widget.small",
-                iconColor: Color.pmindigo.n500,
-                title: "AI 위젯",
-                description: "홈 화면 위젯에서 다음 일정 정보를 한눈에 확인하세요"
-              )
-
-              celebrationGuideRow(
-                icon: "calendar.badge.exclamationmark",
-                iconColor: Color.pmwarning.n500,
-                title: "일정 충돌 감지",
-                description: "일정을 잡을 때 겹치는 일정이 있으면 미리 알려드려요"
-              )
-            }
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal, 20)
-
-            Button {
-              store.send(.view(.dismissCelebration))
-            } label: {
-              Text("시작하기")
-                .font(.body)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                  LinearGradient(
-                    colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                  )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .padding(.horizontal, 40)
-          }
-          .padding(.vertical, 40)
-        }
-      }
-    }
-
-    // MARK: - Pro Onboarding Page
-
-    @ViewBuilder
-    private var proOnboardingPage: some View {
-      ProOnboardingSetupView(store: store)
-    }
-
-    private func celebrationGuideRow(
-      icon: String,
-      iconColor: Color,
-      title: String,
-      description: String
-    ) -> some View {
-      HStack(spacing: 12) {
-        Image(systemName: icon)
-          .font(.system(size: 14, weight: .semibold))
-          .foregroundStyle(.white)
-          .frame(width: 32, height: 32)
-          .background(iconColor, in: Circle())
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text(title)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-          Text(description)
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.7))
-        }
-
-        Spacer(minLength: 0)
-      }
-    }
-
-    // MARK: - Hero Section
+    // MARK: - Hero
 
     @ViewBuilder
     private var heroSection: some View {
-      VStack(spacing: 16) {
-        ResourceKitAsset.paywallHero.swiftUIImage
-          .resizable()
-          .scaledToFit()
-          .frame(maxWidth: 200)
-
-        Text("Promiso Pro")
-          .font(.system(size: 32, weight: .bold))
+      VStack(spacing: 14) {
+        Text("약속 잡고 나서,\n또 계산하고 계신가요?")
+          .font(.system(size: 26, weight: .bold))
+          .multilineTextAlignment(.center)
           .foregroundStyle(Color.pmtext.primary)
 
-        Text("일정 하나도 놓치지 않는\n스마트한 일정 관리")
-          .font(.body)
+        Text("이동시간, 겹치는 일정, 날씨까지\nPromiso Pro가 대신 챙겨드려요")
+          .font(.subheadline)
           .foregroundStyle(Color.pmtext.secondary)
           .multilineTextAlignment(.center)
+          .lineSpacing(4)
       }
+      .padding(.top, 16)
     }
 
-    // MARK: - Benefits Section
+    // MARK: - Feature Cards
 
     @ViewBuilder
-    private var benefitsSection: some View {
+    private var featureCardsSection: some View {
       VStack(spacing: 12) {
-        BenefitCardView(
-          icon: "bell.badge.waveform",
-          iconColor: Color.pmaurora.purple,
-          title: "스마트 알림 브리핑",
-          description: "날씨, 이동시간 포함 출발 알림을 자동으로 받으세요",
-          previewContent: AnyView(NotificationMockView())
-        )
-
-        BenefitCardView(
-          icon: "widget.small",
+        FeatureCardView(
+          icon: "location.fill",
           iconColor: Color.pmindigo.n500,
-          title: "AI 위젯",
-          description: "홈 화면에서 날씨, 이동시간, 출발시간을 한눈에",
-          previewContent: AnyView(WidgetMockView())
+          problem: "약속 잡고 또 지도 검색하고 계산하고...",
+          solution: "자동차·대중교통·도보\n이동시간과 출발시간을 자동 계산",
+          previewContent: AnyView(DeparturePreviewView()),
+          index: 0
         )
 
-        BenefitCardView(
+        FeatureCardView(
           icon: "calendar.badge.exclamationmark",
-          iconColor: Color.pmwarning.n500,
-          title: "일정 충돌 감지",
-          description: "겹치는 일정을 자동으로 찾아 알려드려요",
-          previewContent: AnyView(ConflictMockView())
+          iconColor: Color.pmwarning.n600,
+          problem: "일정 잡고 나서야 겹친 걸 발견?",
+          solution: "일정 생성할 때 시간 충돌을\n자동으로 계산해서 미리 알려줘요",
+          previewContent: AnyView(ConflictPreviewView()),
+          index: 1
+        )
+
+        FeatureCardView(
+          icon: "sparkles",
+          iconColor: Color.pmpurple.n500,
+          problem: "오늘 일정 뭐였지? 또 앱 열어봐야 하나",
+          solution: "매일 설정한 시간에 알림으로,\n홈에서는 언제든 브리핑 확인",
+          previewContent: AnyView(BriefingPreviewView()),
+          index: 2
         )
       }
     }
 
-    // MARK: - Comparison Section
+    // MARK: - Free vs Pro Comparison Table
 
     @ViewBuilder
     private var comparisonSection: some View {
       VStack(spacing: 16) {
-        Text("Free vs Pro")
-          .font(.headline)
-          .foregroundStyle(Color.pmtext.primary)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 4) {
+          Text("꾸미기가 아니라, 진짜 쓸모")
+            .font(.headline)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text("실제로 일정 관리에 도움이 되는 기능만 담았어요")
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+        .frame(maxWidth: .infinity)
 
         VStack(spacing: 0) {
-          comparisonHeaderRow()
+          // 헤더
+          HStack {
+            Text("기능")
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmtext.secondary)
+              .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Free")
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmtext.secondary)
+              .frame(width: 48)
+            Text("Pro")
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmindigo.n500)
+              .frame(width: 48)
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 10)
 
-          Divider().padding(.vertical, 4)
+          Divider().padding(.horizontal, 16)
 
-          comparisonRow("기본 일정 관리", free: true, pro: true)
+          // 공통 기능
+          comparisonRow("일정 생성 · 관리", free: true, pro: true)
           comparisonRow("그룹 일정", free: true, pro: true)
+          comparisonRow("캘린더 (일·주·월)", free: true, pro: true)
+          comparisonRow("위젯", free: true, pro: true)
           comparisonRow("Live Activity", free: true, pro: true)
 
-          Divider().padding(.vertical, 4)
+          Divider().padding(.horizontal, 16).padding(.vertical, 2)
 
-          comparisonRow("스마트 알림 브리핑", free: false, pro: true)
-          comparisonRow("AI 위젯", free: false, pro: true)
+          // Pro 전용
+          comparisonRow("출발시간 자동 계산", free: false, pro: true)
           comparisonRow("일정 충돌 감지", free: false, pro: true)
+          comparisonRow("날씨 연동 안내", free: false, pro: true)
+          comparisonRow("AI 일정 브리핑", free: false, pro: true)
         }
-        .padding(16)
+        .padding(.vertical, 8)
         .adaptiveGlassCard()
-      }
-    }
-
-    private func comparisonHeaderRow() -> some View {
-      HStack {
-        Spacer()
-          .frame(maxWidth: .infinity, alignment: .leading)
-        Text("Free")
-          .font(.caption)
-          .fontWeight(.semibold)
-          .foregroundStyle(Color.pmtext.secondary)
-          .frame(width: 50)
-        Text("Pro")
-          .font(.caption)
-          .fontWeight(.semibold)
-          .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 50)
       }
     }
 
@@ -411,136 +173,54 @@ extension ProPlan {
           .foregroundStyle(Color.pmtext.primary)
           .frame(maxWidth: .infinity, alignment: .leading)
 
-        Image(systemName: free ? "checkmark.circle.fill" : "xmark.circle")
-          .font(.system(size: 16))
-          .foregroundStyle(free ? Color.pmsuccess.n500 : Color.pmgray.n400)
-          .frame(width: 50)
+        Group {
+          if free {
+            Image(systemName: "checkmark")
+              .foregroundStyle(Color.pmgray.n400)
+          } else {
+            Image(systemName: "minus")
+              .foregroundStyle(Color.pmgray.n300)
+          }
+        }
+        .font(.system(size: 13, weight: .medium))
+        .frame(width: 48)
 
-        Image(systemName: "checkmark.circle.fill")
-          .font(.system(size: 16))
+        Image(systemName: "checkmark")
+          .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 50)
+          .frame(width: 48)
       }
-      .padding(.vertical, 6)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 8)
     }
 
-    // MARK: - Loading Section
+    // MARK: - Pricing
 
     @ViewBuilder
-    private var loadingSection: some View {
-      VStack(spacing: 16) {
-        ForEach(0..<3) { _ in
-          RoundedRectangle(cornerRadius: 16)
-            .fill(Color.pmgray.n700.opacity(0.3))
-            .frame(height: 120)
-        }
-      }
-    }
-
-    // MARK: - Products Section
-
-    @ViewBuilder
-    private var productsSection: some View {
+    private var pricingSection: some View {
       VStack(spacing: 12) {
-        ForEach(store.products) { product in
-          ProductCardView(
-            product: product,
-            isSelected: store.selectedProductId == product.id,
-            isEligibleForIntroOffer: store.isEligibleForIntroOffer,
-            onTap: {
-              store.send(.view(.productSelected(product.id)))
-            }
-          )
+        if store.isLoadingProducts {
+          ForEach(0..<3, id: \.self) { _ in
+            RoundedRectangle(cornerRadius: 16)
+              .fill(Color.pmgray.n700.opacity(0.3))
+              .frame(height: 88)
+          }
+        } else {
+          ForEach(store.products) { product in
+            PricingCardView(
+              product: product,
+              isSelected: store.selectedProductId == product.id,
+              isEligibleForIntroOffer: store.isEligibleForIntroOffer,
+              onTap: {
+                store.send(.view(.productSelected(product.id)))
+              }
+            )
+          }
         }
       }
     }
 
-    // MARK: - Trust Section
-
-    @ViewBuilder
-    private var trustSection: some View {
-      HStack(spacing: 8) {
-        Image(systemName: "checkmark.shield.fill")
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmsuccess.n500)
-        Text("언제든 취소 가능 · 약정 없음")
-          .font(.subheadline)
-          .foregroundStyle(Color.pmtext.secondary)
-      }
-      .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Purchase Button
-
-    /// 선택된 상품이 무료 체험 대상인지
-    private var showFreeTrialText: Bool {
-      guard store.isEligibleForIntroOffer,
-            let selectedId = store.selectedProductId,
-            let product = store.products.first(where: { $0.id == selectedId }),
-            let intro = product.introductoryOffer,
-            intro.isFreeTrialOffer else {
-        return false
-      }
-      return true
-    }
-
-    /// 무료 체험 일수
-    private var freeTrialDays: Int {
-      guard let selectedId = store.selectedProductId,
-            let product = store.products.first(where: { $0.id == selectedId }) else {
-        return 0
-      }
-      return product.introductoryOffer?.periodDays ?? 0
-    }
-
-    @ViewBuilder
-    private var purchaseButton: some View {
-      Button {
-        store.send(.view(.purchaseTapped))
-      } label: {
-        HStack {
-          Text(showFreeTrialText ? "\(freeTrialDays)일 무료 체험 시작" : "지금 시작하기")
-            .font(.headline)
-            .foregroundStyle(.white)
-
-          Spacer()
-
-          Image(systemName: "arrow.right")
-            .font(.headline)
-            .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .background(
-          LinearGradient(
-            colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-            startPoint: .leading,
-            endPoint: .trailing
-          ),
-          in: RoundedRectangle(cornerRadius: 16)
-        )
-        .contentShape(Rectangle())
-      }
-      .disabled(store.selectedProductId == nil || store.isPurchasing)
-      .opacity((store.selectedProductId == nil || store.isPurchasing) ? 0.5 : 1.0)
-    }
-
-    // MARK: - Restore Button
-
-    @ViewBuilder
-    private var restoreButton: some View {
-      Button {
-        store.send(.view(.restoreTapped))
-      } label: {
-        Text("구매 내역 복원")
-          .font(.footnote)
-          .foregroundStyle(Color.pmtext.secondary)
-          .underline()
-      }
-      .disabled(store.isPurchasing)
-    }
-
-    // MARK: - Legal Section
+    // MARK: - Legal
 
     @ViewBuilder
     private var legalSection: some View {
@@ -564,7 +244,98 @@ extension ProPlan {
         .font(.caption2)
         .foregroundStyle(Color.pmindigo.n500)
       }
-      .padding(.top, 8)
+    }
+
+    // MARK: - CTA Bottom Bar
+
+    @ViewBuilder
+    private var ctaBottomBar: some View {
+      VStack(spacing: 6) {
+        Button {
+          store.send(.view(.purchaseTapped))
+        } label: {
+          Text(ctaButtonText)
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+              LinearGradient(
+                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                startPoint: .leading,
+                endPoint: .trailing
+              ),
+              in: RoundedRectangle(cornerRadius: 16)
+            )
+            .contentShape(Rectangle())
+        }
+        .disabled(store.selectedProductId == nil || store.isPurchasing)
+        .opacity((store.selectedProductId == nil || store.isPurchasing) ? 0.5 : 1.0)
+
+        Text("7일 이내 취소 시 무료 · 언제든 해지 가능")
+          .font(.caption2)
+          .foregroundStyle(Color.pmgray.n400)
+
+        Button {
+          store.send(.view(.restoreTapped))
+        } label: {
+          Text("구매 내역 복원")
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+            .underline()
+        }
+        .disabled(store.isPurchasing)
+      }
+      .padding(.horizontal, 20)
+      .padding(.top, 12)
+      .padding(.bottom, 8)
+      .background(
+        LinearGradient(
+          stops: [
+            .init(color: .clear, location: 0),
+            .init(color: Color(.systemBackground).opacity(0.95), location: 0.25),
+            .init(color: Color(.systemBackground), location: 1.0),
+          ],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .ignoresSafeArea()
+      )
+    }
+
+    // MARK: - CTA Text
+
+    private var ctaButtonText: String {
+      if let selectedId = store.selectedProductId,
+         let product = store.products.first(where: { $0.id == selectedId }),
+         product.type == .lifetime {
+        return "평생 이용권 구매하기"
+      }
+      if showFreeTrialText {
+        return "\(freeTrialDays)일 무료 체험 시작하기"
+      }
+      return "Pro 시작하기"
+    }
+
+    // MARK: - Computed Properties
+
+    private var showFreeTrialText: Bool {
+      guard store.isEligibleForIntroOffer,
+            let selectedId = store.selectedProductId,
+            let product = store.products.first(where: { $0.id == selectedId }),
+            let intro = product.introductoryOffer,
+            intro.isFreeTrialOffer else {
+        return false
+      }
+      return true
+    }
+
+    private var freeTrialDays: Int {
+      guard let selectedId = store.selectedProductId,
+            let product = store.products.first(where: { $0.id == selectedId }) else {
+        return 0
+      }
+      return product.introductoryOffer?.periodDays ?? 0
     }
 
     // MARK: - Loading Overlay
@@ -591,221 +362,351 @@ extension ProPlan {
   }
 }
 
-// MARK: - Benefit Card View
+// MARK: - Feature Card View
 
 extension ProPlan {
 
-  private struct BenefitCardView: View {
+  fileprivate struct FeatureCardView: View {
     let icon: String
     let iconColor: Color
-    let title: String
-    let description: String
+    let problem: String
+    let solution: String
     let previewContent: AnyView
+    let index: Int
+
+    @State private var isVisible = false
 
     var body: some View {
       VStack(alignment: .leading, spacing: 12) {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
           Image(systemName: icon)
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: 36, height: 36)
-            .background(
-              LinearGradient(
-                colors: [iconColor, iconColor.opacity(0.7)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              ),
-              in: Circle()
-            )
+            .frame(width: 32, height: 32)
+            .background(iconColor, in: RoundedRectangle(cornerRadius: 8))
 
-          VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-              .font(.headline)
-              .foregroundStyle(Color.pmtext.primary)
-            Text(description)
-              .font(.subheadline)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
+          Text(problem)
+            .font(.subheadline)
+            .foregroundStyle(Color.pmtext.secondary)
         }
+
+        Text(solution)
+          .font(.headline)
+          .foregroundStyle(Color.pmtext.primary)
 
         previewContent
           .allowsHitTesting(false)
           .padding(12)
           .frame(maxWidth: .infinity)
-          .background(Color.pmgray.n700.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+          .background(Color.pmgray.n700.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
       }
       .padding(16)
       .adaptiveGlassCard()
-    }
-  }
-
-  // MARK: - Notification Mock
-
-  private struct NotificationMockView: View {
-    var body: some View {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack(spacing: 8) {
-          Image(systemName: "car.fill")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmaurora.purple)
-          Text("출발 시간이에요!")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Color.pmtext.primary)
-        }
-        Text("강남역 카페까지 15분 걸려요")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-        HStack(spacing: 12) {
-          Label("비 예보", systemImage: "cloud.rain.fill")
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pminfo.n500)
-          Label("1:45 출발 추천", systemImage: "clock.fill")
-            .font(.system(size: 11))
-            .foregroundStyle(.tertiary)
+      .opacity(isVisible ? 1 : 0)
+      .offset(y: isVisible ? 0 : 20)
+      .onAppear {
+        withAnimation(.easeOut(duration: 0.5).delay(Double(index) * 0.1)) {
+          isVisible = true
         }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-  }
-
-  // MARK: - Widget Mock
-
-  private struct WidgetMockView: View {
-    var body: some View {
-      VStack(alignment: .leading, spacing: 6) {
-        HStack {
-          Text("다음 일정")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(Color.pmtext.secondary)
-          Spacer()
-          ProBadge()
-        }
-        Text("오후 2시 · 강남역 카페")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(Color.pmtext.primary)
-        Divider()
-        HStack(spacing: 12) {
-          Label("22°", systemImage: "sun.max.fill")
-            .font(.system(size: 11))
-            .symbolRenderingMode(.multicolor)
-          Label("15분", systemImage: "car.fill")
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmtext.secondary)
-          Label("1:30 출발", systemImage: "clock.fill")
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmaurora.purple)
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-  }
-
-  // MARK: - Conflict Mock
-
-  private struct ConflictMockView: View {
-    var body: some View {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmwarning.n500)
-          Text("'팀 회의'와 30분 겹쳐요")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmtext.primary)
-        }
-        HStack(spacing: 8) {
-          VStack(alignment: .leading, spacing: 2) {
-            Text("팀 회의")
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(Color.pmtext.primary)
-            Text("1:00 - 2:00")
-              .font(.system(size: 10))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .padding(8)
-          .background(Color.pmwarning.n500.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-
-          Image(systemName: "arrow.left.arrow.right")
-            .font(.system(size: 10))
-            .foregroundStyle(.tertiary)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text("점심 일정")
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(Color.pmtext.primary)
-            Text("1:30 - 3:00")
-              .font(.system(size: 10))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .padding(8)
-          .background(Color.pmindigo.n500.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }
 
-// MARK: - Product Card View
+// MARK: - Feature Preview Views
 
 extension ProPlan {
 
-  /// 상품 카드 - 월간/연간/평생 플랜 표시
-  private struct ProductCardView: View {
+  /// 출발 알림 미리보기 — DepartureAlertSheet 교통수단 카드 스타일
+  fileprivate struct DeparturePreviewView: View {
+    var body: some View {
+      VStack(spacing: 6) {
+        // 경로 헤더
+        HStack(spacing: 6) {
+          Circle().fill(Color.pmindigo.n500).frame(width: 5, height: 5)
+          Text("집")
+            .font(.system(size: 10))
+            .foregroundStyle(Color.pmtext.secondary)
+          Image(systemName: "arrow.right")
+            .font(.system(size: 8))
+            .foregroundStyle(Color.pmgray.n400)
+          Circle().fill(Color.pmpurple.n500).frame(width: 5, height: 5)
+          Text("강남역 카페")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(Color.pmtext.primary)
+          Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+          RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(Color.pmgray.n200.opacity(0.4), lineWidth: 1)
+        )
+
+        // 교통수단 3종 (자동차 선택 상태)
+        transportRow(icon: "car.fill", label: "자동차", time: "15분", departure: "1:35 출발", isSelected: true)
+        transportRow(icon: "bus.fill", label: "대중교통", time: "28분", departure: "1:22 출발", isSelected: false)
+        transportRow(icon: "figure.walk", label: "도보", time: "42분", departure: "1:08 출발", isSelected: false)
+      }
+    }
+
+    private func transportRow(icon: String, label: String, time: String, departure: String, isSelected: Bool) -> some View {
+      HStack(spacing: 8) {
+        Image(systemName: icon)
+          .font(.system(size: 10))
+          .foregroundStyle(isSelected ? .white : Color.pmindigo.n500)
+          .frame(width: 24, height: 24)
+          .background(
+            isSelected ? Color.pmindigo.n500 : Color.pmindigo.n500.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 5)
+          )
+
+        Text(label)
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(Color.pmtext.primary)
+
+        Text(time)
+          .font(.system(size: 10))
+          .foregroundStyle(Color.pmtext.secondary)
+
+        Spacer()
+
+        Text(departure)
+          .font(.system(size: 11, weight: .bold, design: .rounded))
+          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 8)
+      .background(
+        isSelected ? Color.pmindigo.n500.opacity(0.06) : Color.clear,
+        in: RoundedRectangle(cornerRadius: 8)
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: 8)
+          .strokeBorder(
+            isSelected ? Color.pmindigo.n500.opacity(0.35) : Color.pmgray.n200.opacity(0.3),
+            lineWidth: isSelected ? 1.5 : 1
+          )
+      )
+    }
+  }
+
+  /// 충돌 감지 미리보기 — ConflictWarningSection 스타일
+  fileprivate struct ConflictPreviewView: View {
+    var body: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        // 경고 헤더 (실제 앱의 ConflictWarningSection 헤더)
+        HStack(spacing: 6) {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmwarning.n600)
+          Text("겹치는 일정이 있어요")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Color.pmwarning.n600)
+        }
+
+        // 충돌 행 (실제 앱의 ConflictRow 패턴)
+        HStack(spacing: 10) {
+          // 아이콘
+          Image(systemName: "calendar")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmwarning.n600)
+            .frame(width: 28, height: 28)
+            .background(Color.pmwarning.n600.opacity(0.12), in: Circle())
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text("팀 회의")
+              .font(.system(size: 12, weight: .medium))
+              .foregroundStyle(Color.pmtext.primary)
+            Text("1:00 – 2:00")
+              .font(.system(size: 10))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          Text("30분 겹침")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color.pmwarning.n600)
+        }
+
+        HStack(spacing: 10) {
+          Image(systemName: "calendar")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmwarning.n600)
+            .frame(width: 28, height: 28)
+            .background(Color.pmwarning.n600.opacity(0.12), in: Circle())
+
+          VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+              Text("점심 약속")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.pmtext.primary)
+              Text("미확정")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(Color.pmwarning.n500)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(Color.pmwarning.n500.opacity(0.12), in: Capsule())
+            }
+            Text("1:30 – 3:00")
+              .font(.system(size: 10))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+        }
+      }
+      .padding(12)
+      .background(Color.pmwarning.n50, in: RoundedRectangle(cornerRadius: 10))
+    }
+  }
+
+  /// AI 브리핑 미리보기 — DailyBriefingCard 스타일
+  fileprivate struct BriefingPreviewView: View {
+    var body: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        // 헤더
+        HStack(spacing: 6) {
+          HStack(spacing: 2) {
+            Image(systemName: "sparkles")
+              .font(.system(size: 8, weight: .bold))
+            Text("PRO")
+              .font(.system(size: 8, weight: .heavy))
+          }
+          .foregroundStyle(.white)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 2)
+          .background(
+            LinearGradient(
+              colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+              startPoint: .leading,
+              endPoint: .trailing
+            ),
+            in: Capsule()
+          )
+
+          Text("데일리 브리핑")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
+
+          Spacer()
+
+          Text("오전 8시 알림")
+            .font(.system(size: 10))
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+
+        Divider()
+
+        // 브리핑 본문 (유머러스 톤 예시)
+        Text("오늘 3개 약속이 있어요 💪 첫 번째 강남 카페는 비 온다니까 우산 챙기고, 자동차로 1:35에 출발하면 딱이에요. 팀 회의랑 점심이 30분 겹치는데 — 회의 일찍 빠지든 점심 늦게 가든 선택은 당신의 몫! 저녁 홍대 약속은 대중교통 40분, 6:10 출발 추천이요 🚇")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.primary)
+          .lineSpacing(4)
+          .fixedSize(horizontal: false, vertical: true)
+
+        Divider()
+
+        // 커스텀 옵션 태그
+        HStack(spacing: 6) {
+          customTag(icon: "face.smiling", text: "유머러스")
+          customTag(icon: "car.fill", text: "자동차 포함")
+          customTag(icon: "clock", text: "오전 8시")
+        }
+      }
+    }
+
+    private func customTag(icon: String, text: String) -> some View {
+      HStack(spacing: 3) {
+        Image(systemName: icon)
+          .font(.system(size: 8))
+        Text(text)
+          .font(.system(size: 9, weight: .medium))
+      }
+      .foregroundStyle(Color.pmindigo.n500)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 3)
+      .background(Color.pmindigo.n500.opacity(0.08), in: Capsule())
+    }
+  }
+}
+
+// MARK: - Pricing Card View
+
+extension ProPlan {
+
+  fileprivate struct PricingCardView: View {
     let product: SubscriptionProduct
     let isSelected: Bool
     let isEligibleForIntroOffer: Bool
     let onTap: () -> Void
 
-    /// 무료 체험 표시 여부
     private var showFreeTrial: Bool {
       isEligibleForIntroOffer && product.introductoryOffer?.isFreeTrialOffer == true
     }
 
-    /// 무료 체험 일수
     private var freeTrialDays: Int {
       product.introductoryOffer?.periodDays ?? 0
     }
 
     var body: some View {
       Button(action: onTap) {
-        VStack(alignment: .leading, spacing: 12) {
-          HStack {
-            Text(product.displayName)
-              .font(.headline)
-              .foregroundStyle(Color.pmtext.primary)
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+              Text(product.displayName)
+                .font(.headline)
+                .foregroundStyle(Color.pmtext.primary)
 
-            Spacer()
+              if product.type == .yearly {
+                Text("BEST")
+                  .font(.system(size: 9, weight: .heavy))
+                  .foregroundStyle(.white)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(Color.pmindigo.n500, in: Capsule())
+              } else if product.type == .lifetime {
+                Text("LIMITED")
+                  .font(.system(size: 9, weight: .heavy))
+                  .foregroundStyle(.white)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(Color.pmwarning.n500, in: Capsule())
+              }
+            }
 
             if product.type == .yearly {
-              Badge(text: "2개월 무료", color: Color.pmaurora.purple)
+              Text("월 ₩2,416 · 38% 절약")
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
             } else if product.type == .lifetime {
-              Badge(text: "평생", color: Color.pmaurora.pink)
+              Text("지금만 제공되는 특가 · 조기 종료 예정")
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+
+            if showFreeTrial {
+              Text("\(freeTrialDays)일 무료 후 시작")
+                .font(.caption)
+                .foregroundStyle(Color.pmindigo.n500)
             }
           }
 
-          if showFreeTrial {
-            Text("\(freeTrialDays)일 무료 후 \(product.description)")
-              .font(.subheadline)
-              .foregroundStyle(Color.pmtext.secondary)
-          } else {
-            Text(product.description)
-              .font(.subheadline)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
+          Spacer()
 
-          HStack(alignment: .firstTextBaseline, spacing: 4) {
+          VStack(alignment: .trailing, spacing: 2) {
             Text(product.displayPrice)
-              .font(.system(size: 24, weight: .bold))
-              .foregroundStyle(Color.pmindigo.n500)
+              .font(.system(size: 20, weight: .bold))
+              .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.primary)
 
             if product.type == .monthly {
-              Text("/월")
-                .font(.subheadline)
+              Text("/ 월")
+                .font(.caption)
                 .foregroundStyle(Color.pmgray.n400)
             } else if product.type == .yearly {
-              Text("/년")
-                .font(.subheadline)
+              Text("/ 년")
+                .font(.caption)
                 .foregroundStyle(Color.pmgray.n400)
             }
           }
@@ -816,27 +717,13 @@ extension ProPlan {
       .buttonStyle(.plain)
       .adaptiveGlassCard()
       .overlay {
-        if isSelected {
-          RoundedRectangle(cornerRadius: 16)
-            .stroke(Color.pmindigo.n500, lineWidth: 2)
-        }
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(
+            isSelected ? Color.pmindigo.n500 : Color.clear,
+            lineWidth: 2
+          )
+          .animation(.spring(duration: 0.3), value: isSelected)
       }
-    }
-  }
-
-  /// 뱃지 컴포넌트
-  private struct Badge: View {
-    let text: String
-    let color: Color
-
-    var body: some View {
-      Text(text)
-        .font(.caption)
-        .fontWeight(.semibold)
-        .foregroundStyle(.white)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color, in: Capsule())
     }
   }
 }
@@ -875,18 +762,18 @@ extension ProPlan {
             id: SubscriptionProductType.yearly.productId,
             type: .yearly,
             displayName: "연간 프로",
-            description: "매년 자동 갱신 (월 ₩3,250)",
-            displayPrice: "₩39,000",
-            price: 39000
+            description: "매년 자동 갱신 (월 ₩2,416)",
+            displayPrice: "₩29,000",
+            price: 29000
           ),
           SubscriptionProduct(
             id: SubscriptionProductType.lifetime.productId,
             type: .lifetime,
             displayName: "평생 프로",
             description: "한 번 결제, 영구 사용",
-            displayPrice: "₩59,000",
-            price: 59000
-          )
+            displayPrice: "₩39,000",
+            price: 39000
+          ),
         ],
         selectedProductId: SubscriptionProductType.yearly.productId
       )
@@ -907,10 +794,10 @@ extension ProPlan {
             id: SubscriptionProductType.yearly.productId,
             type: .yearly,
             displayName: "연간 프로",
-            description: "매년 자동 갱신 (월 ₩3,250)",
-            displayPrice: "₩39,000",
-            price: 39000
-          )
+            description: "매년 자동 갱신 (월 ₩2,416)",
+            displayPrice: "₩29,000",
+            price: 29000
+          ),
         ],
         isPurchasing: true,
         selectedProductId: SubscriptionProductType.yearly.productId
