@@ -10,6 +10,7 @@ public struct FlowLayout: Layout {
   public struct CacheData {
     let sizes: [CGSize]
     var rows: [[Int]] = []
+    var rowHeights: [CGFloat] = []
   }
 
   public func makeCache(subviews: Subviews) -> CacheData {
@@ -36,12 +37,14 @@ public struct FlowLayout: Layout {
       currentWidth += size.width + spacing
     }
     cache.rows = rows
+    cache.rowHeights = rows.map { rowIndices in
+      rowIndices.map { cache.sizes[$0].height }.max() ?? 0
+    }
 
     var height: CGFloat = 0
-    for (index, rowIndices) in rows.enumerated() {
-      let rowHeight = rowIndices.map { cache.sizes[$0].height }.max() ?? 0
+    for (index, rowHeight) in cache.rowHeights.enumerated() {
       height += rowHeight
-      if index < rows.count - 1 {
+      if index < cache.rowHeights.count - 1 {
         height += spacing
       }
     }
@@ -55,8 +58,8 @@ public struct FlowLayout: Layout {
     cache: inout CacheData
   ) {
     var y = bounds.minY
-    for rowIndices in cache.rows {
-      let rowHeight = rowIndices.map { cache.sizes[$0].height }.max() ?? 0
+    for (rowIndex, rowIndices) in cache.rows.enumerated() {
+      let rowHeight = cache.rowHeights[rowIndex]
       var x = bounds.minX
       for index in rowIndices {
         let subview = subviews[index]
