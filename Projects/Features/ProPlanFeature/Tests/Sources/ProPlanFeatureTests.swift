@@ -154,17 +154,9 @@ struct ProPlanFeatureTests {
       $0.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
     }
 
-    await store.receive(\.internal.statusUpdated) {
-      $0.subscriptionStatus = .none
-    }
-
-    await store.receive(\.internal.introOfferEligibilityResult) {
-      $0.isEligibleForIntroOffer = false
-    }
-
-    await store.receive(\.internal.purchaseDateLoaded) {
-      $0.purchaseDate = nil
-    }
+    await store.receive(\.internal.statusUpdated)
+    await store.receive(\.internal.introOfferEligibilityResult)
+    await store.receive(\.internal.purchaseDateLoaded)
 
     await store.send(.view(.retryProductsLoadTapped)) {
       $0.isLoadingProducts = true
@@ -178,17 +170,9 @@ struct ProPlanFeatureTests {
       $0.selectedProductId = SubscriptionProductType.yearly.productId
     }
 
-    await store.receive(\.internal.statusUpdated) {
-      $0.subscriptionStatus = .none
-    }
-
-    await store.receive(\.internal.introOfferEligibilityResult) {
-      $0.isEligibleForIntroOffer = false
-    }
-
-    await store.receive(\.internal.purchaseDateLoaded) {
-      $0.purchaseDate = nil
-    }
+    await store.receive(\.internal.statusUpdated)
+    await store.receive(\.internal.introOfferEligibilityResult)
+    await store.receive(\.internal.purchaseDateLoaded)
   }
 
   // MARK: - 상품 선택
