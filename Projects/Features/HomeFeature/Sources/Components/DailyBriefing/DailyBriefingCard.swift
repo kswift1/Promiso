@@ -287,10 +287,14 @@ struct DailyBriefingCard: View {
       Text(label)
         .font(.pmCaption)
     }
-    .foregroundStyle(Color.pmgray.n500)
+    .foregroundStyle(Color.pmindigo.n500)
     .padding(.horizontal, 8)
     .padding(.vertical, 5)
-    .background(Color.pmgray.n100.opacity(0.55), in: Capsule())
+    .background(Color.pmindigo.n500.opacity(0.08), in: Capsule())
+    .overlay {
+      Capsule()
+        .strokeBorder(Color.pmindigo.n500.opacity(0.16), lineWidth: 0.8)
+    }
   }
 
   private func transportChipContent(_ transports: Set<AvailableTransport>) -> (String, String) {
