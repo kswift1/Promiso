@@ -332,7 +332,7 @@ struct TimelineItemView: View {
   private var proBenefitSection: some View {
     let hasWeather = weatherForecast != nil || weatherShouldShowSkeleton
     let hasDepartureAlert = departureAlert != nil
-    let hasDepartureCTA = !hasDepartureAlert && location != nil && isFuture
+    let hasDepartureCTA = isPro && !hasDepartureAlert && location != nil && isFuture
 
     if hasWeather || hasDepartureAlert || hasDepartureCTA {
       VStack(alignment: .leading, spacing: 6) {
@@ -352,8 +352,8 @@ struct TimelineItemView: View {
         if let departureAlert = departureAlert {
           departureAlertRow(departureAlert)
         }
-        // 출발 알림 CTA (미설정 + 장소 있음 + 미래)
-        else if location != nil && isFuture {
+        // 출발 알림 CTA
+        else if hasDepartureCTA {
           Button {
             onDepartureAlertTap()
           } label: {
