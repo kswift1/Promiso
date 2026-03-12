@@ -46,7 +46,10 @@ extension GroupMain {
         get: { store.toastMessage },
         set: { _ in store.send(.view(.toastDismissed)) }
       ))
-      .analyticsScreen(.groupMain)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.groupMain.rawValue,
+        class: "GroupMainView"
+      )
       .onAppear { store.send(.view(.onAppear)) }
       .fullScreenCover(
         store: store.scope(state: \.$createSchedule, action: \.createSchedule)

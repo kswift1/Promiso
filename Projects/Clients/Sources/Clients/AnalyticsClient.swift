@@ -19,7 +19,7 @@ public struct AnalyticsClient: Sendable {
 // MARK: - Typed Analytics
 
 public extension AnalyticsClient {
-  enum ParameterValue: Equatable, Sendable {
+  public enum ParameterValue: Equatable, Sendable {
     case string(String)
     case int(Int)
     case double(Double)
@@ -39,7 +39,7 @@ public extension AnalyticsClient {
     }
   }
 
-  struct Event: Equatable, Sendable {
+  public struct Event: Equatable, Sendable {
     public let name: String
     public let parameters: [String: ParameterValue]
 
@@ -49,7 +49,7 @@ public extension AnalyticsClient {
     }
   }
 
-  enum ScreenName: String, CaseIterable, Sendable {
+  public enum ScreenName: String, CaseIterable, Sendable {
     case notificationPermission = "notification_permission"
     case createGroup = "create_group"
     case joinGroup = "join_group"
@@ -81,12 +81,12 @@ public extension AnalyticsClient {
     }
   }
 
-  enum ShareMethod: String, Sendable {
+  public enum ShareMethod: String, Sendable {
     case kakao
     case system
   }
 
-  enum UserPropertyKey: String, Sendable {
+  public enum UserPropertyKey: String, Sendable {
     case nickname = "nickname"
     case authProvider = "auth_provider"
     case subscriptionTier = "subscription_tier"
@@ -154,7 +154,7 @@ public extension DependencyValues {
 
 public extension AnalyticsClient {
   /// Analytics 이벤트 이름 상수
-  enum EventName {
+  public enum EventName {
     // 🎯 핵심 비즈니스
     public static let userSignup = "user_signup"
     public static let userLogin = "user_login"
@@ -183,7 +183,7 @@ public extension AnalyticsClient {
   }
 
   /// Analytics 파라미터 키 상수
-  enum ParameterKey {
+  public enum ParameterKey {
     public static let screenName = AnalyticsParameterScreenName
     public static let screenClass = AnalyticsParameterScreenClass
     public static let groupID = "group_id"
@@ -202,7 +202,7 @@ public extension AnalyticsClient {
 // MARK: - Convenience API
 
 public extension AnalyticsClient {
-  func log(_ event: Event) {
+  public func log(_ event: Event) {
     let parameters = event.parameters.isEmpty
       ? nil
       : event.parameters.mapValues(\.rawValue)
@@ -210,7 +210,7 @@ public extension AnalyticsClient {
     logEvent(event.name, parameters)
   }
 
-  func logScreen(
+  public func logScreen(
     _ screen: ScreenName,
     additionalParameters: [String: ParameterValue] = [:]
   ) {
@@ -220,27 +220,27 @@ public extension AnalyticsClient {
     log(Event(name: AnalyticsEventScreenView, parameters: parameters))
   }
 
-  func setUserProperty(_ value: String?, _ key: UserPropertyKey) {
+  public func setUserProperty(_ value: String?, _ key: UserPropertyKey) {
     setUserProperty(value, key.rawValue)
   }
 
-  func setSubscriptionTier(_ status: SubscriptionStatus) {
+  public func setSubscriptionTier(_ status: SubscriptionStatus) {
     setUserProperty(UserPropertyValue.subscriptionTier(status), .subscriptionTier)
   }
 
-  func setNotificationPermissionStatus(_ status: NotificationAuthorizationStatus) {
+  public func setNotificationPermissionStatus(_ status: NotificationAuthorizationStatus) {
     setUserProperty(
       UserPropertyValue.notificationPermissionStatus(status),
       .notificationPermissionStatus
     )
   }
 
-  func setGroupMembershipProperties(_ groups: [UserGroupInfo]) {
+  public func setGroupMembershipProperties(_ groups: [UserGroupInfo]) {
     setUserProperty(UserPropertyValue.boolean(!groups.isEmpty), .hasGroup)
     setUserProperty(UserPropertyValue.groupCountBucket(groups.count), .groupCountBucket)
   }
 
-  func setCalendarSyncEnabled(personalEnabled: Bool, groups: [UserGroupInfo]) {
+  public func setCalendarSyncEnabled(personalEnabled: Bool, groups: [UserGroupInfo]) {
     setUserProperty(
       UserPropertyValue.boolean(
         UserPropertyValue.isAnyCalendarSyncEnabled(
@@ -254,29 +254,29 @@ public extension AnalyticsClient {
 }
 
 public extension AnalyticsClient.Event {
-  static func userSignup(loginMethod: String? = nil) -> Self {
+  public static func userSignup(loginMethod: String? = nil) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.userSignup,
       optionalParameters: [AnalyticsClient.ParameterKey.loginMethod: loginMethod]
     )
   }
 
-  static func userLogin(loginMethod: String? = nil) -> Self {
+  public static func userLogin(loginMethod: String? = nil) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.userLogin,
       optionalParameters: [AnalyticsClient.ParameterKey.loginMethod: loginMethod]
     )
   }
 
-  static let profileSetupCompleted = Self(name: AnalyticsClient.EventName.profileSetupCompleted)
-  static let settingsOpened = Self(name: AnalyticsClient.EventName.settingsOpened)
-  static let notificationPermissionRequested = Self(name: AnalyticsClient.EventName.notificationPermissionRequested)
-  static let notificationPermissionGranted = Self(name: AnalyticsClient.EventName.notificationPermissionGranted)
-  static let notificationPermissionDenied = Self(name: AnalyticsClient.EventName.notificationPermissionDenied)
-  static let paywallRestore = Self(name: AnalyticsClient.EventName.paywallRestore)
-  static let paywallClose = Self(name: AnalyticsClient.EventName.paywallClose)
+  public static let profileSetupCompleted = Self(name: AnalyticsClient.EventName.profileSetupCompleted)
+  public static let settingsOpened = Self(name: AnalyticsClient.EventName.settingsOpened)
+  public static let notificationPermissionRequested = Self(name: AnalyticsClient.EventName.notificationPermissionRequested)
+  public static let notificationPermissionGranted = Self(name: AnalyticsClient.EventName.notificationPermissionGranted)
+  public static let notificationPermissionDenied = Self(name: AnalyticsClient.EventName.notificationPermissionDenied)
+  public static let paywallRestore = Self(name: AnalyticsClient.EventName.paywallRestore)
+  public static let paywallClose = Self(name: AnalyticsClient.EventName.paywallClose)
 
-  static func groupCreated(groupID: String, groupName: String) -> Self {
+  public static func groupCreated(groupID: String, groupName: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.groupCreated,
       [
@@ -286,7 +286,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func groupJoined(groupID: String, groupName: String) -> Self {
+  public static func groupJoined(groupID: String, groupName: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.groupJoined,
       [
@@ -296,7 +296,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func groupInviteSheetOpened(groupID: String, groupName: String) -> Self {
+  public static func groupInviteSheetOpened(groupID: String, groupName: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.groupInviteShared,
       [
@@ -306,7 +306,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func groupInviteLinkShared(
+  public static func groupInviteLinkShared(
     groupID: String,
     groupName: String,
     shareMethod: AnalyticsClient.ShareMethod,
@@ -325,7 +325,7 @@ public extension AnalyticsClient.Event {
     return Self(name: AnalyticsClient.EventName.groupInviteLinkShared, parameters: parameters)
   }
 
-  static func scheduleCreated(scheduleID: String, scheduleTitle: String) -> Self {
+  public static func scheduleCreated(scheduleID: String, scheduleTitle: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.scheduleCreated,
       [
@@ -335,7 +335,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func scheduleResponseYes(scheduleID: String, scheduleTitle: String) -> Self {
+  public static func scheduleResponseYes(scheduleID: String, scheduleTitle: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.scheduleResponseYes,
       [
@@ -345,7 +345,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func scheduleResponseNo(scheduleID: String, scheduleTitle: String) -> Self {
+  public static func scheduleResponseNo(scheduleID: String, scheduleTitle: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.scheduleResponseNo,
       [
@@ -355,7 +355,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func scheduleShareSheetOpened(scheduleID: String, scheduleTitle: String) -> Self {
+  public static func scheduleShareSheetOpened(scheduleID: String, scheduleTitle: String) -> Self {
     analyticsEvent(
       AnalyticsClient.EventName.scheduleShareSheetOpened,
       [
@@ -365,7 +365,7 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func scheduleLinkShared(
+  public static func scheduleLinkShared(
     scheduleID: String,
     scheduleTitle: String,
     shareMethod: AnalyticsClient.ShareMethod
@@ -380,14 +380,14 @@ public extension AnalyticsClient.Event {
     )
   }
 
-  static func paywallOpen(hasIntroOffer: Bool) -> Self {
+  public static func paywallOpen(hasIntroOffer: Bool) -> Self {
     Self(
       name: AnalyticsClient.EventName.paywallOpen,
       parameters: [AnalyticsClient.ParameterKey.hasIntroOffer: .bool(hasIntroOffer)]
     )
   }
 
-  static func paywallPurchase(productID: String) -> Self {
+  public static func paywallPurchase(productID: String) -> Self {
     Self(
       name: AnalyticsClient.EventName.paywallPurchase,
       parameters: [AnalyticsClient.ParameterKey.productID: .string(productID)]

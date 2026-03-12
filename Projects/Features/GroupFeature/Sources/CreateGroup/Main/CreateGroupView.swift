@@ -77,7 +77,10 @@ extension CreateGroup {
           }
         }
       }
-      .analyticsScreen(.createGroup)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.createGroup.rawValue,
+        class: "CreateGroupView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }

@@ -34,9 +34,10 @@ extension GroupSettings {
           set: { _ in store.send(.view(.toastDismissed)) }
         ))
         .analyticsScreen(
-          .groupSettings,
-          additionalParameters: [
-            AnalyticsClient.ParameterKey.groupID: .string(store.group.id)
+          name: AnalyticsClient.ScreenName.groupSettings.rawValue,
+          class: "GroupSettingsView",
+          extraParameters: [
+            AnalyticsClient.ParameterKey.groupID: store.group.id
           ]
         )
         .sheet(

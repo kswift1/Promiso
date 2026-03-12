@@ -683,7 +683,10 @@ extension CreateSchedule {
       } bottomContent: {
         bottomBar
       }
-      .analyticsScreen(.createSchedule)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.createSchedule.rawValue,
+        class: "CreateScheduleView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }

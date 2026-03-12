@@ -46,9 +46,10 @@ extension ScheduleDetail {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
       .analyticsScreen(
-        .scheduleDetail,
-        additionalParameters: [
-          AnalyticsClient.ParameterKey.scheduleID: .string(store.schedule.id)
+        name: AnalyticsClient.ScreenName.scheduleDetail.rawValue,
+        class: "ScheduleDetailView",
+        extraParameters: [
+          AnalyticsClient.ParameterKey.scheduleID: store.schedule.id
         ]
       )
       .onAppear {

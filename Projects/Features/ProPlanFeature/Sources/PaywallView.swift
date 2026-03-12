@@ -81,7 +81,10 @@ extension ProPlan {
       .presentationDragIndicator(.hidden)
       .presentationCornerRadius(24)
       .interactiveDismissDisabled(store.isPurchasing)
-      .analyticsScreen(.paywall)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.paywall.rawValue,
+        class: "PaywallView"
+      )
       .onAppear {
         store.send(.view(.paywallAppeared))
       }
@@ -268,12 +271,18 @@ extension ProPlan {
     @ViewBuilder
     private var pricingSection: some View {
       VStack(spacing: 12) {
-        if store.isLoadingProducts {
+        if store.isLoadingProducts || (store.products.isEmpty && store.productsLoadErrorMessage == nil) {
           ForEach(0..<3, id: \.self) { _ in
             RoundedRectangle(cornerRadius: 16)
               .fill(Color.pmgray.n700.opacity(0.3))
               .frame(height: 88)
           }
+        } else if let productsLoadErrorMessage = store.productsLoadErrorMessage,
+                  store.products.isEmpty {
+          ProductsLoadErrorCardView(
+            message: productsLoadErrorMessage,
+            onRetry: { store.send(.view(.retryProductsLoadTapped)) }
+          )
         } else {
           ForEach(store.products) { product in
             PricingCardView(
@@ -477,6 +486,37 @@ extension ProPlan {
 // MARK: - Feature Card View
 
 extension ProPlan {
+
+  fileprivate struct ProductsLoadErrorCardView: View {
+    let message: String
+    let onRetry: () -> Void
+
+    var body: some View {
+      VStack(spacing: 12) {
+        Image(systemName: "wifi.exclamationmark")
+          .font(.system(size: 22, weight: .semibold))
+          .foregroundStyle(Color.pmwarning.n600)
+
+        Text(message)
+          .font(.subheadline)
+          .foregroundStyle(Color.pmtext.primary)
+          .multilineTextAlignment(.center)
+
+        Button(action: onRetry) {
+          Text(LocalizedStrings.Common.retry)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.pmindigo.n500, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(20)
+      .frame(maxWidth: .infinity)
+      .staticGlassBackground(cornerRadius: 16)
+    }
+  }
 
   fileprivate struct FeatureCardView: View {
     let icon: String

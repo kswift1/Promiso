@@ -23,7 +23,7 @@ private struct AnalyticsScreenModifier: ViewModifier {
 }
 
 public extension View {
-  func analyticsScreen(
+  public func analyticsScreen(
     _ screen: AnalyticsClient.ScreenName,
     additionalParameters: [String: AnalyticsClient.ParameterValue] = [:]
   ) -> some View {
