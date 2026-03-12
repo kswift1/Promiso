@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Clients
 import PromisoShared
 import ResourceKit
 import CreateScheduleFeature
@@ -45,6 +46,10 @@ extension GroupMain {
         get: { store.toastMessage },
         set: { _ in store.send(.view(.toastDismissed)) }
       ))
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.groupMain.rawValue,
+        class: "GroupMainView"
+      )
       .onAppear { store.send(.view(.onAppear)) }
       .fullScreenCover(
         store: store.scope(state: \.$createSchedule, action: \.createSchedule)
@@ -130,6 +135,9 @@ extension GroupMain {
             isKakaoSharing: store.isKakaoInviteSharing,
             onKakaoShareTapped: {
               store.send(.view(.kakaoInviteShareTapped))
+            },
+            onSystemShareTapped: {
+              store.send(.view(.systemInviteShareTapped))
             }
           )
           .presentationDetents([.height(340)])

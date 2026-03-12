@@ -1,4 +1,5 @@
 import Testing
+import PromisoShared
 @testable import RootTabFeature
 
 @Suite("RootTab.Feature 테스트")
@@ -169,6 +170,38 @@ struct RootTabFeatureTests {
 
     await store.send(.settings(.delegate(.didLogout)))
     await store.receive(\.delegate.logoutRequested)
+  }
+
+  // MARK: - 구독 상태 테스트
+
+  @Test("구독 상태 변경 시 shared isPro 값도 함께 동기화")
+  func subscriptionStatusChanged_updatesSharedIsPro() async {
+    @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = true
+    var state = makeState(key: "subscription-revoked")
+    state.subscriptionStatus = .lifetime
+
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.subscriptionStatusChanged(.revoked))) {
+      $0.subscriptionStatus = .revoked
+      $0.settings.subscriptionStatus = .revoked
+      $isPro.withLock { $0 = false }
+    }
+    #expect(isPro == false)
+
+    await store.send(.internal(.subscriptionStatusChanged(.lifetime))) {
+      $0.subscriptionStatus = .lifetime
+      $0.settings.subscriptionStatus = .lifetime
+      $isPro.withLock { $0 = true }
+    }
+    #expect(isPro == true)
+
+    await store.send(.internal(.subscriptionStatusChanged(.none))) {
+      $0.subscriptionStatus = .none
+      $0.settings.subscriptionStatus = .none
+      $isPro.withLock { $0 = false }
+    }
+    #expect(isPro == false)
   }
 
   // MARK: - 딥링크/네비게이션 테스트

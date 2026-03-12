@@ -208,6 +208,7 @@ extension GroupSettings {
         case toastDismissed
         // Kakao Share
         case kakaoShareTapped
+        case systemInviteShareTapped
         case systemShareSheetDismissed
         // Group Color
         case groupColorChanged(GroupColor?)
@@ -403,12 +404,11 @@ extension GroupSettings {
 
           case .inviteTapped:
             state.showInviteSheet = true
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupInviteShared,
-              [
-                AnalyticsClient.ParameterKey.groupID: state.group.id,
-                AnalyticsClient.ParameterKey.groupName: state.group.name
-              ]
+            analyticsClient.log(
+              .groupInviteSheetOpened(
+                groupID: state.group.id,
+                groupName: state.group.name
+              )
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.buttonTap()
@@ -597,6 +597,7 @@ extension GroupSettings {
 
           case .kakaoShareTapped:
             state.isKakaoSharing = true
+            let groupID = state.group.id
             let groupName = state.group.name
             let inviteCode = state.group.inviteCode
             let memberCount = state.group.memberIds.count
@@ -620,13 +621,13 @@ extension GroupSettings {
               }
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
               await hapticFeedback.buttonTap()
-              analyticsClient.logEvent(
-                "kakao_group_invite_shared",
-                [
-                  AnalyticsClient.ParameterKey.groupName: groupName,
-                  "share_method": "kakao",
-                  "schedule_count": "\(scheduleInfos.count)"
-                ]
+              analyticsClient.log(
+                .groupInviteLinkShared(
+                  groupID: groupID,
+                  groupName: groupName,
+                  shareMethod: .kakao,
+                  scheduleCount: scheduleInfos.count
+                )
               )
               let result = await kakaoShareClient.shareGroupInvite(
                 groupName,
@@ -639,6 +640,16 @@ extension GroupSettings {
               )
               await send(.internal(.kakaoShareResult(result)))
             }
+
+          case .systemInviteShareTapped:
+            analyticsClient.log(
+              .groupInviteLinkShared(
+                groupID: state.group.id,
+                groupName: state.group.name,
+                shareMethod: .system
+              )
+            )
+            return .none
 
           case .systemShareSheetDismissed:
             state.showSystemShareSheet = false

@@ -7,6 +7,7 @@
 
 import PhotosUI
 import _PhotosUI_SwiftUI
+import Clients
 import PromisoShared
 
 // TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
@@ -498,12 +499,11 @@ public enum CreateSchedule {
           case .createScheduleResponse(.success(let id)):
             state.isCreatingSchedule = false
             state.isUploadingImages = false
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.scheduleCreated,
-              [
-                AnalyticsClient.ParameterKey.scheduleID: id,
-                AnalyticsClient.ParameterKey.scheduleTitle: state.schedule.title
-              ]
+            analyticsClient.log(
+              .scheduleCreated(
+                scheduleID: id,
+                scheduleTitle: state.schedule.title
+              )
             )
             return .send(.delegate(.scheduleCreated(id: id)))
 
@@ -683,6 +683,10 @@ extension CreateSchedule {
       } bottomContent: {
         bottomBar
       }
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.createSchedule.rawValue,
+        class: "CreateScheduleView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }

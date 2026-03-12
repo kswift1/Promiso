@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import ResourceKit
@@ -88,6 +89,10 @@ extension NotificationPermission {
         .padding(.bottom, UIScreen.main.bounds.height < 700 ? 20 : 40)
       }
       .auroraBackground()
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.notificationPermission.rawValue,
+        class: "NotificationPermissionView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }

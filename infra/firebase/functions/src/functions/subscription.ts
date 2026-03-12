@@ -23,8 +23,9 @@ import {
  * 1. 인증 확인
  * 2. JWS 토큰 검증 (Apple 인증서 체인 검증)
  * 3. 트랜잭션 페이로드에서 구독 정보 추출
- * 4. Firestore subscriptions/{userId} 문서에 상태 저장
- * 5. 결과 반환
+ * 4. subscriptionOwners/{originalTransactionId}로 소유권 확인 (1:1 바인딩)
+ * 5. Firestore subscriptions/{userId} 문서에 상태 저장
+ * 6. 결과 반환
  *
  * @remarks
  * **인증 필수**
@@ -94,8 +95,35 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
       const db = admin.firestore();
       const subscriptionRef = db.collection("subscriptions").doc(userId);
 
-      // 7. Firestore 업데이트 (트랜잭션 사용)
+      // 7. Firestore 업데이트 (트랜잭션 — 소유권 확인 + 상태 저장)
+      const ownerRef = db.collection("subscriptionOwners")
+        .doc(originalTransactionId);
+
       await db.runTransaction(async (transaction) => {
+        // 소유권 확인
+        const ownerDoc = await transaction.get(ownerRef);
+
+        if (ownerDoc.exists) {
+          const existingOwner = ownerDoc.data()?.userId;
+          if (existingOwner && existingOwner !== userId) {
+            throw new HttpsError(
+              "already-exists",
+              "이 구독은 다른 계정에 연결되어 있습니다"
+            );
+          }
+        }
+
+        // 소유권 등록/갱신
+        transaction.set(ownerRef, {
+          userId: userId,
+          productId: productId,
+          createdAt: ownerDoc.exists ?
+            ownerDoc.data()?.createdAt :
+            FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+
+        // subscriptions/{userId} 문서 업데이트
         const subscriptionData: SubscriptionStatusData = {
           status: status,
           productId: productId,
@@ -106,12 +134,13 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
             FirebaseFirestore.Timestamp,
         };
 
-        // subscriptions/{userId} 문서 업데이트
         transaction.set(
           subscriptionRef, subscriptionData, {merge: true},
         );
 
-        console.log(`✅ [Subscription] Updated status: ${status}`);
+        console.log(
+          `✅ [Subscription] Updated status: ${status}, owner: ${userId}`
+        );
       });
 
       // 8. 응답 반환
@@ -196,25 +225,24 @@ export const appleServerNotification = onRequest(
         transactionPayload
       );
 
-      // 4. 사용자 매핑 (originalTransactionId로 조회)
+      // 4. 사용자 매핑 (subscriptionOwners에서 소유자 조회)
       const originalTransactionId =
         transactionPayload.originalTransactionId as string;
       const db = admin.firestore();
-      const subscriptionsSnapshot = await db.collection("subscriptions")
-        .where("originalTransactionId", "==", originalTransactionId)
-        .limit(1)
+      const ownerDoc = await db.collection("subscriptionOwners")
+        .doc(originalTransactionId)
         .get();
 
-      if (subscriptionsSnapshot.empty) {
+      if (!ownerDoc.exists) {
         console.warn(
-          `⚠️ [Subscription] No user found for txId: ${originalTransactionId}`
+          `⚠️ [Subscription] No owner found for txId: ${originalTransactionId}`
         );
-        res.status(200).json({success: false, error: "User not found"});
+        res.status(200).json({success: false, error: "Owner not found"});
         return;
       }
 
-      const userId = subscriptionsSnapshot.docs[0].id;
-      console.log(`✅ [Subscription] User found: ${userId}`);
+      const userId = ownerDoc.data()!.userId as string;
+      console.log(`✅ [Subscription] Owner found: ${userId}`);
 
       // 5. notificationType에 따라 상태 업데이트
       let status = "subscribed";

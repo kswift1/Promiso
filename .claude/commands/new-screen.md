@@ -7,6 +7,8 @@ description: 새로운 화면 생성 (Feature + UI 디자인 포함)
 
 새로운 화면을 생성합니다. Feature 생성과 함께 UI 디자인도 포함됩니다.
 
+> 먼저 `.ai/AI_WORKFLOW.md`를 읽고 따른다. 이 파일은 작업별 규칙만 정의한다.
+
 ## 실행 순서
 
 1. **implementer** 에이전트로 Feature + View 코드 생성

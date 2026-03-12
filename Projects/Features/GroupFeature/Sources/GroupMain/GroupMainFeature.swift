@@ -2,6 +2,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import CreateScheduleFeature
+import Foundation
 
 extension GroupMain {
   private enum CancelID: Hashable {
@@ -218,6 +219,7 @@ extension GroupMain {
         case contextCreateScheduleTapped(String)  // 일정 만들기 (groupId)
         case dismissGroupInviteSheet
         case kakaoInviteShareTapped
+        case systemInviteShareTapped
         case kakaoScheduleShareTapped
         case systemScheduleShareTapped
         case dismissScheduleShareSheet
@@ -369,6 +371,12 @@ extension GroupMain {
               return .none
             }
             state.shareSchedule = schedule
+            analyticsClient.log(
+              .scheduleShareSheetOpened(
+                scheduleID: schedule.id,
+                scheduleTitle: schedule.title
+              )
+            )
             return .none
 
           case .directionsTapped(let scheduleId):
@@ -608,6 +616,14 @@ extension GroupMain {
           case .groupInviteTapped(let groupId):
             if groupId == state.currentGroup?.id {
               state.showGroupInviteSheet = true
+              if let group = state.currentGroup {
+                analyticsClient.log(
+                  .groupInviteSheetOpened(
+                    groupID: group.id,
+                    groupName: group.name
+                  )
+                )
+              }
               return .none
             } else {
               state.pendingContextAction = .invite
@@ -637,6 +653,7 @@ extension GroupMain {
           case .kakaoInviteShareTapped:
             guard let group = state.currentGroup else { return .none }
             state.isKakaoInviteSharing = true
+            let groupID = group.id
             let groupName = group.name
             let inviteCode = group.inviteCode
             let memberCount = group.memberIds.count
@@ -660,13 +677,13 @@ extension GroupMain {
               }
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
               await hapticFeedback.buttonTap()
-              analyticsClient.logEvent(
-                "kakao_group_invite_shared",
-                [
-                  AnalyticsClient.ParameterKey.groupName: groupName,
-                  "share_method": "kakao",
-                  "schedule_count": "\(scheduleInfos.count)"
-                ]
+              analyticsClient.log(
+                .groupInviteLinkShared(
+                  groupID: groupID,
+                  groupName: groupName,
+                  shareMethod: .kakao,
+                  scheduleCount: scheduleInfos.count
+                )
               )
               let result = await kakaoShareClient.shareGroupInvite(
                 groupName,
@@ -680,17 +697,28 @@ extension GroupMain {
               await send(.internal(.kakaoInviteShareResult(result)))
             }
 
+          case .systemInviteShareTapped:
+            guard let group = state.currentGroup else { return .none }
+            analyticsClient.log(
+              .groupInviteLinkShared(
+                groupID: group.id,
+                groupName: group.name,
+                shareMethod: .system
+              )
+            )
+            return .none
+
           case .kakaoScheduleShareTapped:
             guard let schedule = state.shareSchedule else { return .none }
             state.isKakaoScheduleSharing = true
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
               await hapticFeedback.buttonTap()
-              analyticsClient.logEvent(
-                "kakao_schedule_shared",
-                [
-                  AnalyticsClient.ParameterKey.scheduleID: schedule.id,
-                  "share_method": "kakao"
-                ]
+              analyticsClient.log(
+                .scheduleLinkShared(
+                  scheduleID: schedule.id,
+                  scheduleTitle: schedule.title,
+                  shareMethod: .kakao
+                )
               )
               let result = await kakaoShareClient.shareSchedule(
                 schedule.title,
@@ -711,6 +739,13 @@ extension GroupMain {
             guard let schedule = state.shareSchedule else { return .none }
             state.systemShareText = schedule.shareText
             state.shareSchedule = nil
+            analyticsClient.log(
+              .scheduleLinkShared(
+                scheduleID: schedule.id,
+                scheduleTitle: schedule.title,
+                shareMethod: .system
+              )
+            )
             return .none
 
           case .dismissScheduleShareSheet:
@@ -766,6 +801,13 @@ extension GroupMain {
                 cache[group.id] = group.notifications?.calendarSync ?? true
               }
             }
+            analyticsClient.setGroupMembershipProperties(groupSummaries)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: UserDefaults.standard.bool(
+                forKey: AppConstants.UserDefaults.personalCalendarSync
+              ),
+              groups: groupSummaries
+            )
 
             // 딥링크로 열려는 그룹이 있으면 해당 그룹으로 이동
             if let deeplink = state.pendingDeeplink {
@@ -847,6 +889,12 @@ extension GroupMain {
               switch pendingAction {
               case .invite:
                 state.showGroupInviteSheet = true
+                analyticsClient.log(
+                  .groupInviteSheetOpened(
+                    groupID: group.id,
+                    groupName: group.name
+                  )
+                )
               case .settings:
                 effects.append(handleGroupSettingsTapped(&state))
               case .createSchedule:
@@ -1069,6 +1117,13 @@ extension GroupMain {
                 cache[group.id] = group.notifications?.calendarSync ?? true
               }
             }
+            analyticsClient.setGroupMembershipProperties(summaries)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: UserDefaults.standard.bool(
+                forKey: AppConstants.UserDefaults.personalCalendarSync
+              ),
+              groups: summaries
+            )
 
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
@@ -1086,6 +1141,13 @@ extension GroupMain {
                 cache[group.id] = group.notifications?.calendarSync ?? true
               }
             }
+            analyticsClient.setGroupMembershipProperties(summaries)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: UserDefaults.standard.bool(
+                forKey: AppConstants.UserDefaults.personalCalendarSync
+              ),
+              groups: summaries
+            )
 
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),

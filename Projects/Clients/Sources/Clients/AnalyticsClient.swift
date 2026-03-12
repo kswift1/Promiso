@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import FirebaseAnalytics
+import PromisoShared
 
 // MARK: - Client
 
@@ -15,6 +16,87 @@ public struct AnalyticsClient: Sendable {
   public var setUserProperty: @Sendable (String?, String) -> Void
 }
 
+// MARK: - Typed Analytics
+
+public extension AnalyticsClient {
+  public enum ParameterValue: Equatable, Sendable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+
+    var rawValue: Any {
+      switch self {
+      case .string(let value):
+        value
+      case .int(let value):
+        value
+      case .double(let value):
+        value
+      case .bool(let value):
+        value
+      }
+    }
+  }
+
+  public struct Event: Equatable, Sendable {
+    public let name: String
+    public let parameters: [String: ParameterValue]
+
+    public init(name: String, parameters: [String: ParameterValue] = [:]) {
+      self.name = name
+      self.parameters = parameters
+    }
+  }
+
+  public enum ScreenName: String, CaseIterable, Sendable {
+    case notificationPermission = "notification_permission"
+    case createGroup = "create_group"
+    case joinGroup = "join_group"
+    case groupMain = "group_main"
+    case groupSettings = "group_settings"
+    case createSchedule = "create_schedule"
+    case scheduleDetail = "schedule_detail"
+    case paywall = "paywall"
+
+    var screenClass: String {
+      switch self {
+      case .notificationPermission:
+        "NotificationPermissionView"
+      case .createGroup:
+        "CreateGroupView"
+      case .joinGroup:
+        "JoinGroupView"
+      case .groupMain:
+        "GroupMainView"
+      case .groupSettings:
+        "GroupSettingsView"
+      case .createSchedule:
+        "CreateScheduleView"
+      case .scheduleDetail:
+        "ScheduleDetailView"
+      case .paywall:
+        "PaywallView"
+      }
+    }
+  }
+
+  public enum ShareMethod: String, Sendable {
+    case kakao
+    case system
+  }
+
+  public enum UserPropertyKey: String, Sendable {
+    case nickname = "nickname"
+    case authProvider = "auth_provider"
+    case subscriptionTier = "subscription_tier"
+    case notificationPermissionStatus = "notification_permission_status"
+    case hasGroup = "has_group"
+    case groupCountBucket = "group_count_bucket"
+    case calendarSyncEnabled = "calendar_sync_enabled"
+  }
+}
+
 // MARK: - Test / Preview
 
 extension AnalyticsClient: TestDependencyKey {
@@ -27,7 +109,7 @@ extension AnalyticsClient: TestDependencyKey {
   public static let testValue = Self(
     logEvent: unimplemented("\(Self.self).logEvent"),
     setUserID: unimplemented("\(Self.self).setUserID"),
-    setUserProperty: unimplemented("\(Self.self).setUserProperty")
+    setUserProperty: { _, _ in }
   )
 }
 
@@ -36,13 +118,25 @@ extension AnalyticsClient: TestDependencyKey {
 extension AnalyticsClient: DependencyKey {
   public static let liveValue = Self(
     logEvent: { name, parameters in
-      Analytics.logEvent(name, parameters: parameters)
+      let sanitizedName = Self.sanitizeEventName(name)
+      let sanitizedParameters = Self.sanitizeParameters(parameters)
+
+      if AppLogger.isDebugEnabled {
+        AppLogger.general.debug(
+          "Analytics event: \(sanitizedName, privacy: .public)"
+        )
+      }
+
+      Analytics.logEvent(sanitizedName, parameters: sanitizedParameters)
     },
     setUserID: { userID in
-      Analytics.setUserID(userID)
+      Analytics.setUserID(Self.sanitizeUserID(userID))
     },
     setUserProperty: { value, name in
-      Analytics.setUserProperty(value, forName: name)
+      Analytics.setUserProperty(
+        Self.sanitizeUserPropertyValue(value),
+        forName: Self.sanitizeUserPropertyName(name)
+      )
     }
   )
 }
@@ -60,7 +154,7 @@ public extension DependencyValues {
 
 public extension AnalyticsClient {
   /// Analytics 이벤트 이름 상수
-  enum EventName {
+  public enum EventName {
     // 🎯 핵심 비즈니스
     public static let userSignup = "user_signup"
     public static let userLogin = "user_login"
@@ -73,7 +167,10 @@ public extension AnalyticsClient {
     // 📱 사용자 행동
     public static let profileSetupCompleted = "profile_setup_completed"
     public static let groupInviteShared = "group_invite_shared"
+    public static let groupInviteLinkShared = "group_invite_link_shared"
     public static let settingsOpened = "settings_opened"
+    public static let scheduleShareSheetOpened = "schedule_share_sheet_opened"
+    public static let scheduleLinkShared = "schedule_link_shared"
     public static let paywallOpen = "paywall_open"
     public static let paywallPurchase = "paywall_purchase"
     public static let paywallRestore = "paywall_restore"
@@ -82,15 +179,354 @@ public extension AnalyticsClient {
     // 🔔 알림
     public static let notificationPermissionRequested = "notification_permission_requested"
     public static let notificationPermissionGranted = "notification_permission_granted"
+    public static let notificationPermissionDenied = "notification_permission_denied"
   }
 
   /// Analytics 파라미터 키 상수
-  enum ParameterKey {
+  public enum ParameterKey {
+    public static let screenName = AnalyticsParameterScreenName
+    public static let screenClass = AnalyticsParameterScreenClass
     public static let groupID = "group_id"
     public static let groupName = "group_name"
     public static let scheduleID = "schedule_id"
     public static let scheduleTitle = "schedule_title"
     public static let responseType = "response_type"
     public static let loginMethod = "login_method"
+    public static let shareMethod = "share_method"
+    public static let scheduleCount = "schedule_count"
+    public static let productID = "product_id"
+    public static let hasIntroOffer = "has_intro_offer"
+  }
+}
+
+// MARK: - Convenience API
+
+public extension AnalyticsClient {
+  public func log(_ event: Event) {
+    let parameters = event.parameters.isEmpty
+      ? nil
+      : event.parameters.mapValues(\.rawValue)
+
+    logEvent(event.name, parameters)
+  }
+
+  public func logScreen(
+    _ screen: ScreenName,
+    additionalParameters: [String: ParameterValue] = [:]
+  ) {
+    var parameters = additionalParameters
+    parameters[ParameterKey.screenName] = .string(screen.rawValue)
+    parameters[ParameterKey.screenClass] = .string(screen.screenClass)
+    log(Event(name: AnalyticsEventScreenView, parameters: parameters))
+  }
+
+  public func setUserProperty(_ value: String?, _ key: UserPropertyKey) {
+    setUserProperty(value, key.rawValue)
+  }
+
+  public func setSubscriptionTier(_ status: SubscriptionStatus) {
+    setUserProperty(UserPropertyValue.subscriptionTier(status), .subscriptionTier)
+  }
+
+  public func setNotificationPermissionStatus(_ status: NotificationAuthorizationStatus) {
+    setUserProperty(
+      UserPropertyValue.notificationPermissionStatus(status),
+      .notificationPermissionStatus
+    )
+  }
+
+  public func setGroupMembershipProperties(_ groups: [UserGroupInfo]) {
+    setUserProperty(UserPropertyValue.boolean(!groups.isEmpty), .hasGroup)
+    setUserProperty(UserPropertyValue.groupCountBucket(groups.count), .groupCountBucket)
+  }
+
+  public func setCalendarSyncEnabled(personalEnabled: Bool, groups: [UserGroupInfo]) {
+    setUserProperty(
+      UserPropertyValue.boolean(
+        UserPropertyValue.isAnyCalendarSyncEnabled(
+          personalEnabled: personalEnabled,
+          groups: groups
+        )
+      ),
+      .calendarSyncEnabled
+    )
+  }
+}
+
+public extension AnalyticsClient.Event {
+  public static func userSignup(loginMethod: String? = nil) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.userSignup,
+      optionalParameters: [AnalyticsClient.ParameterKey.loginMethod: loginMethod]
+    )
+  }
+
+  public static func userLogin(loginMethod: String? = nil) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.userLogin,
+      optionalParameters: [AnalyticsClient.ParameterKey.loginMethod: loginMethod]
+    )
+  }
+
+  public static let profileSetupCompleted = Self(name: AnalyticsClient.EventName.profileSetupCompleted)
+  public static let settingsOpened = Self(name: AnalyticsClient.EventName.settingsOpened)
+  public static let notificationPermissionRequested = Self(name: AnalyticsClient.EventName.notificationPermissionRequested)
+  public static let notificationPermissionGranted = Self(name: AnalyticsClient.EventName.notificationPermissionGranted)
+  public static let notificationPermissionDenied = Self(name: AnalyticsClient.EventName.notificationPermissionDenied)
+  public static let paywallRestore = Self(name: AnalyticsClient.EventName.paywallRestore)
+  public static let paywallClose = Self(name: AnalyticsClient.EventName.paywallClose)
+
+  public static func groupCreated(groupID: String, groupName: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupCreated,
+      [
+        AnalyticsClient.ParameterKey.groupID: groupID,
+        AnalyticsClient.ParameterKey.groupName: groupName
+      ]
+    )
+  }
+
+  public static func groupJoined(groupID: String, groupName: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupJoined,
+      [
+        AnalyticsClient.ParameterKey.groupID: groupID,
+        AnalyticsClient.ParameterKey.groupName: groupName
+      ]
+    )
+  }
+
+  public static func groupInviteSheetOpened(groupID: String, groupName: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupInviteShared,
+      [
+        AnalyticsClient.ParameterKey.groupID: groupID,
+        AnalyticsClient.ParameterKey.groupName: groupName
+      ]
+    )
+  }
+
+  public static func groupInviteLinkShared(
+    groupID: String,
+    groupName: String,
+    shareMethod: AnalyticsClient.ShareMethod,
+    scheduleCount: Int? = nil
+  ) -> Self {
+    var parameters: [String: AnalyticsClient.ParameterValue] = [
+      AnalyticsClient.ParameterKey.groupID: .string(groupID),
+      AnalyticsClient.ParameterKey.groupName: .string(groupName),
+      AnalyticsClient.ParameterKey.shareMethod: .string(shareMethod.rawValue)
+    ]
+
+    if let scheduleCount {
+      parameters[AnalyticsClient.ParameterKey.scheduleCount] = .int(scheduleCount)
+    }
+
+    return Self(name: AnalyticsClient.EventName.groupInviteLinkShared, parameters: parameters)
+  }
+
+  public static func scheduleCreated(scheduleID: String, scheduleTitle: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.scheduleCreated,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle
+      ]
+    )
+  }
+
+  public static func scheduleResponseYes(scheduleID: String, scheduleTitle: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.scheduleResponseYes,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle
+      ]
+    )
+  }
+
+  public static func scheduleResponseNo(scheduleID: String, scheduleTitle: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.scheduleResponseNo,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle
+      ]
+    )
+  }
+
+  public static func scheduleShareSheetOpened(scheduleID: String, scheduleTitle: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.scheduleShareSheetOpened,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle
+      ]
+    )
+  }
+
+  public static func scheduleLinkShared(
+    scheduleID: String,
+    scheduleTitle: String,
+    shareMethod: AnalyticsClient.ShareMethod
+  ) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.scheduleLinkShared,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle,
+        AnalyticsClient.ParameterKey.shareMethod: shareMethod.rawValue
+      ]
+    )
+  }
+
+  public static func paywallOpen(hasIntroOffer: Bool) -> Self {
+    Self(
+      name: AnalyticsClient.EventName.paywallOpen,
+      parameters: [AnalyticsClient.ParameterKey.hasIntroOffer: .bool(hasIntroOffer)]
+    )
+  }
+
+  public static func paywallPurchase(productID: String) -> Self {
+    Self(
+      name: AnalyticsClient.EventName.paywallPurchase,
+      parameters: [AnalyticsClient.ParameterKey.productID: .string(productID)]
+    )
+  }
+
+  private static func analyticsEvent(_ name: String, _ parameters: [String: String]) -> Self {
+    Self(
+      name: name,
+      parameters: parameters.mapValues { .string($0) }
+    )
+  }
+
+  private static func analyticsEvent(
+    _ name: String,
+    optionalParameters: [String: String?]
+  ) -> Self {
+    Self(
+      name: name,
+      parameters: optionalParameters.compactMapValues { value in
+        guard let value else { return nil }
+        return .string(value)
+      }
+    )
+  }
+}
+
+// MARK: - Sanitization
+
+extension AnalyticsClient {
+  private enum UserPropertyValue {
+    static func boolean(_ value: Bool) -> String {
+      value ? "true" : "false"
+    }
+
+    static func subscriptionTier(_ status: SubscriptionStatus) -> String {
+      status.isPro ? "pro" : "free"
+    }
+
+    static func notificationPermissionStatus(_ status: NotificationAuthorizationStatus) -> String {
+      switch status {
+      case .notDetermined:
+        "not_determined"
+      case .denied:
+        "denied"
+      case .authorized:
+        "authorized"
+      case .provisional:
+        "provisional"
+      case .ephemeral:
+        "ephemeral"
+      }
+    }
+
+    static func groupCountBucket(_ count: Int) -> String {
+      switch count {
+      case ..<1:
+        "0"
+      case 1:
+        "1"
+      case 2...4:
+        "2_4"
+      default:
+        "5_plus"
+      }
+    }
+
+    static func isAnyCalendarSyncEnabled(
+      personalEnabled: Bool,
+      groups: [UserGroupInfo]
+    ) -> Bool {
+      personalEnabled || groups.contains { $0.notifications?.calendarSync ?? true }
+    }
+  }
+
+  private enum Limits {
+    static let eventName = 40
+    static let parameterKey = 40
+    static let parameterStringValue = 100
+    static let userPropertyName = 24
+    static let userPropertyValue = 36
+    static let userID = 256
+  }
+
+  static func sanitizeParameters(_ parameters: [String: Any]?) -> [String: Any]? {
+    guard let parameters else { return nil }
+
+    var sanitized: [String: Any] = [:]
+    sanitized.reserveCapacity(parameters.count)
+
+    for (rawKey, rawValue) in parameters {
+      let key = sanitizeKey(rawKey, maxLength: Limits.parameterKey)
+      guard !key.isEmpty, let value = sanitizeValue(rawValue) else { continue }
+      sanitized[key] = value
+    }
+
+    return sanitized.isEmpty ? nil : sanitized
+  }
+
+  private static func sanitizeEventName(_ name: String) -> String {
+    sanitizeKey(name, maxLength: Limits.eventName)
+  }
+
+  private static func sanitizeUserPropertyName(_ name: String) -> String {
+    sanitizeKey(name, maxLength: Limits.userPropertyName)
+  }
+
+  private static func sanitizeUserPropertyValue(_ value: String?) -> String? {
+    guard let value else { return nil }
+    return String(value.prefix(Limits.userPropertyValue))
+  }
+
+  private static func sanitizeUserID(_ userID: String?) -> String? {
+    guard let userID else { return nil }
+    return String(userID.prefix(Limits.userID))
+  }
+
+  private static func sanitizeKey(_ key: String, maxLength: Int) -> String {
+    String(key.prefix(maxLength))
+  }
+
+  private static func sanitizeValue(_ value: Any) -> Any? {
+    switch value {
+    case let value as String:
+      return String(value.prefix(Limits.parameterStringValue))
+    case let value as Int:
+      return value
+    case let value as Int64:
+      return Int(truncatingIfNeeded: value)
+    case let value as Double:
+      return value
+    case let value as Float:
+      return Double(value)
+    case let value as Bool:
+      return value
+    case let value as NSNumber:
+      return value
+    default:
+      return nil
+    }
   }
 }

@@ -435,6 +435,98 @@ struct ProPlanFeatureTests {
     }
   }
 
+  @Test("다른 계정 소유 구독 구매 시 소유권 충돌 에러 메시지 표시")
+  func purchaseTapped_alreadyOwnedByOther_showsOwnershipError() async {
+    var state = ProPlan.Feature.State()
+    state.selectedProductId = SubscriptionProductType.yearly.productId
+
+    let store = makeStore(state: state) {
+      $0.subscriptionClient.purchaseWithReceipt = { _ in
+        PurchaseResult(jwsString: "mock-jws", localStatus: .subscribed(productType: .yearly, expirationDate: Date().addingTimeInterval(365 * 24 * 3600)))
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in
+        throw SubscriptionError.alreadyOwnedByOther
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.purchaseTapped)) {
+      $0.isPurchasing = true
+      $0.errorMessage = nil
+    }
+
+    await store.receive(\.internal.purchaseResponse.failure) {
+      $0.isPurchasing = false
+      $0.errorMessage = SubscriptionError.alreadyOwnedByOther.errorDescription
+    }
+  }
+
+  @Test("onAppear 시 fetchStatus .none이면 기존 Pro 상태 해제")
+  func onAppear_fetchStatusNone_clearsExistingProStatus() async {
+    var state = ProPlan.Feature.State()
+    state.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+
+    let store = makeStore(state: state) {
+      $0.subscriptionClient.fetchStatus = { .none }
+      $0.subscriptionClient.unifiedStatusStream = { .finished }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .none
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+    await store.finish()
+  }
+
+  @Test("onAppear 후 unifiedStatusStream revoked 수신 시 상태 갱신")
+  func onAppear_unifiedStatusStreamRevoked_updatesStatus() async {
+    let store = makeStore {
+      $0.subscriptionClient.fetchStatus = { .lifetime }
+      $0.subscriptionClient.unifiedStatusStream = {
+        AsyncStream { continuation in
+          continuation.yield(.revoked)
+          continuation.finish()
+        }
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .lifetime
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .revoked
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+    await store.finish()
+  }
+
   // MARK: - UI 액션
 
   @Test("에러 메시지 닫기")
@@ -570,7 +662,6 @@ private extension ProPlanFeatureTests {
         RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
       }
       $0.subscriptionClient.fetchStatus = { .none }
-      $0.subscriptionClient.statusStream = { .finished }
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.subscriptionClient.fetchPurchaseDate = { nil }

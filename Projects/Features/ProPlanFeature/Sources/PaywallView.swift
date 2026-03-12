@@ -81,6 +81,10 @@ extension ProPlan {
       .presentationDragIndicator(.hidden)
       .presentationCornerRadius(24)
       .interactiveDismissDisabled(store.isPurchasing)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.paywall.rawValue,
+        class: "PaywallView"
+      )
       .onAppear {
         store.send(.view(.paywallAppeared))
       }
