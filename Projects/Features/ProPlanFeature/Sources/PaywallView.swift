@@ -19,6 +19,9 @@ extension ProPlan {
   public struct PaywallView: View {
     @Bindable private var store: StoreOf<Feature>
 
+    @State private var isPricingExpanded = false
+    @State private var hasAutoExpanded = false
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -30,12 +33,26 @@ extension ProPlan {
             heroSection
             featureCardsSection
             comparisonSection
-            pricingSection
             legalSection
+
+            // 스크롤 끝 감지용
+            GeometryReader { geo in
+              Color.clear
+                .onChange(of: geo.frame(in: .global).minY) { _, minY in
+                  let screenHeight = UIScreen.main.bounds.height
+                  if minY < screenHeight + 50, !isPricingExpanded, !hasAutoExpanded {
+                    hasAutoExpanded = true
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                      isPricingExpanded = true
+                    }
+                  }
+                }
+            }
+            .frame(height: 1)
           }
           .padding(.horizontal, 20)
           .padding(.top, 20)
-          .padding(.bottom, 180)
+          .padding(.bottom, isPricingExpanded ? 420 : 180)
         }
         .scrollIndicators(.hidden)
         .auroraBackground()
@@ -129,11 +146,11 @@ extension ProPlan {
     private var comparisonSection: some View {
       VStack(spacing: 16) {
         VStack(spacing: 4) {
-          Text("꾸미기가 아니라, 진짜 쓸모")
+          Text("Free도 충분해요. Pro는 한 발 더 나아가요.")
             .font(.headline)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text("실제로 일정 관리에 도움이 되는 기능만 담았어요")
+          Text("출발시간부터 날씨까지, 일정 그 이후를 챙겨드려요")
             .font(.caption)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -194,7 +211,7 @@ extension ProPlan {
           .padding(.vertical, 10)
         }
         .padding(.vertical, 8)
-        .adaptiveGlassCard()
+        .staticGlassBackground(cornerRadius: 16)
       }
     }
 
@@ -282,7 +299,31 @@ extension ProPlan {
 
     @ViewBuilder
     private var ctaBottomBar: some View {
-      VStack(spacing: 6) {
+      VStack(spacing: 8) {
+        // 접기/펼치기 토글
+        Button {
+          withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            isPricingExpanded.toggle()
+          }
+        } label: {
+          HStack(spacing: 4) {
+            Text(isPricingExpanded ? "요금제 접기" : "요금제 보기")
+              .font(.system(size: 13, weight: .semibold))
+            Image(systemName: "chevron.up")
+              .font(.system(size: 11, weight: .semibold))
+              .rotationEffect(.degrees(isPricingExpanded ? 180 : 0))
+          }
+          .foregroundStyle(Color.pmindigo.n500)
+          .contentShape(Rectangle())
+        }
+
+        // 가격표 (접혔다 펼쳐짐)
+        if isPricingExpanded {
+          pricingSection
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
+
+        // CTA 버튼
         Button {
           store.send(.view(.purchaseTapped))
         } label: {
@@ -325,7 +366,7 @@ extension ProPlan {
         LinearGradient(
           stops: [
             .init(color: .clear, location: 0),
-            .init(color: Color(.systemBackground).opacity(0.95), location: 0.25),
+            .init(color: Color(.systemBackground).opacity(0.95), location: 0.15),
             .init(color: Color(.systemBackground), location: 1.0),
           ],
           startPoint: .top,
@@ -433,7 +474,7 @@ extension ProPlan {
           .staticGlassBackground(cornerRadius: 12)
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassBackground(cornerRadius: 16)
       .opacity(isVisible ? 1 : 0)
       .offset(y: isVisible ? 0 : 20)
       .onAppear {
@@ -899,7 +940,7 @@ extension ProPlan {
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-      .adaptiveGlassCard()
+      .staticGlassBackground(cornerRadius: 16)
       .overlay {
         RoundedRectangle(cornerRadius: 16)
           .stroke(
