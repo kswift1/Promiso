@@ -324,11 +324,14 @@ struct DailyBriefingCard: View {
     let hasCar = transports.contains(.car)
     let hasTransit = transports.contains(.transit)
     if hasCar && hasTransit {
-      return ("car.2.fill", "자동차 포함")
+      return (
+        "car.2.fill",
+        "\(AvailableTransport.transit.displayName)·\(AvailableTransport.car.displayName)"
+      )
     } else if hasCar {
-      return ("car.fill", "자동차")
+      return ("car.fill", AvailableTransport.car.displayName)
     } else {
-      return ("bus.fill", "대중교통")
+      return ("bus.fill", AvailableTransport.transit.displayName)
     }
   }
 
