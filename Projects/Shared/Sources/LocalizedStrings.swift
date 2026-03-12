@@ -14,8 +14,9 @@ public enum LocalizedStrings {
   /// 선호 언어로 번들 설정
   /// - AppMain.init()에서 호출
   public static func configure() {
-    guard let lang = UserDefaults.standard.string(forKey: "promisoPreferredLanguage"),
-          let path = Bundle.module.path(forResource: lang, ofType: "lproj"),
+    let lang = AppLanguage.resolved.rawValue
+
+    guard let path = Bundle.module.path(forResource: lang, ofType: "lproj"),
           let bundle = Bundle(path: path) else {
       _bundle = Bundle.module  // 시스템 기본
       return
@@ -2856,23 +2857,74 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 
   /// 현재 설정된 언어 (UserDefaults 기반, nil이면 시스템 기본)
   public static var current: AppLanguage? {
-    guard let raw = UserDefaults.standard.string(forKey: "promisoPreferredLanguage") else {
+    current(userDefaults: .standard)
+  }
+
+  /// 현재 앱에서 해석된 언어 (저장값 우선, 없으면 시스템 선호 언어)
+  public static var resolved: AppLanguage {
+    resolveLanguage()
+  }
+
+  /// 저장된 언어가 없으면 시스템 선호 언어를 초기값으로 저장
+  public static func initializeIfNeeded() {
+    initializeIfNeeded(userDefaults: .standard)
+  }
+
+  static func initializeIfNeeded(
+    userDefaults: UserDefaults,
+    preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+    preferredLanguages: [String] = Locale.preferredLanguages
+  ) {
+    guard current(userDefaults: userDefaults) == nil else { return }
+
+    userDefaults.set(
+      resolveLanguage(
+        userDefaults: userDefaults,
+        preferredLocalizations: preferredLocalizations,
+        preferredLanguages: preferredLanguages
+      ).rawValue,
+      forKey: AppConstants.UserDefaults.preferredLanguage
+    )
+  }
+
+  static func resolveLanguage(
+    userDefaults: UserDefaults = .standard,
+    preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+    preferredLanguages: [String] = Locale.preferredLanguages
+  ) -> AppLanguage {
+    if let current = current(userDefaults: userDefaults) {
+      return current
+    }
+
+    for identifier in preferredLocalizations + preferredLanguages {
+      if let language = language(from: identifier) {
+        return language
+      }
+    }
+
+    return .korean
+  }
+
+  static func current(userDefaults: UserDefaults) -> AppLanguage? {
+    guard let raw = userDefaults.string(forKey: AppConstants.UserDefaults.preferredLanguage) else {
       return nil
     }
     return AppLanguage(rawValue: raw)
+  }
+
+  private static func language(from identifier: String) -> AppLanguage? {
+    let locale = Locale(identifier: identifier)
+    let code = locale.language.languageCode?.identifier ?? identifier
+    return AppLanguage(rawValue: code)
   }
 }
 
 // MARK: - Locale Manager
 
 public enum LocaleManager {
-  /// 앱에서 사용할 Locale (UserDefaults 기반)
+  /// 앱에서 사용할 Locale (저장값 우선, 없으면 시스템 선호 언어 기반)
   public static var appLocale: Locale {
-    if let language = AppLanguage.current {
-      return language.locale
-    }
-    // UserDefaults에 값이 없으면 시스템 기본
-    return Locale.current
+    AppLanguage.resolved.locale
   }
 }
 

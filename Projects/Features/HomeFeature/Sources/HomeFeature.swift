@@ -2078,7 +2078,7 @@ extension Home {
 
       let input = BriefingInput(
         timezone: TimeZone.current.identifier,
-        language: (AppLanguage.current ?? .korean).rawValue,
+        language: AppLanguage.resolved.rawValue,
         location: location,
         forceRefresh: forceRefresh
       )
