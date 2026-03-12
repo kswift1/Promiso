@@ -416,7 +416,7 @@ extension ProPlan {
     private var subscriptionPeriodText: String {
       switch selectedProduct?.type {
       case .monthly: return "월"
-      case .yearly: return "연"
+      case .yearly: return "년"
       case .lifetime, .none: return ""
       }
     }
