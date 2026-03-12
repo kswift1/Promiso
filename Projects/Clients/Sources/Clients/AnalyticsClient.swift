@@ -74,6 +74,10 @@ public extension AnalyticsClient {
     public static let profileSetupCompleted = "profile_setup_completed"
     public static let groupInviteShared = "group_invite_shared"
     public static let settingsOpened = "settings_opened"
+    public static let paywallOpen = "paywall_open"
+    public static let paywallPurchase = "paywall_purchase"
+    public static let paywallRestore = "paywall_restore"
+    public static let paywallClose = "paywall_close"
 
     // 🔔 알림
     public static let notificationPermissionRequested = "notification_permission_requested"

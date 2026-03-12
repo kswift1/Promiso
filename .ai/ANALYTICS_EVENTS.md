@@ -5,7 +5,7 @@
 Promiso 앱에서 수집하는 Firebase Analytics 이벤트 목록입니다.
 이 문서는 앱의 핵심 비즈니스 메트릭과 사용자 행동을 추적하기 위한 이벤트를 정의합니다.
 
-**최종 업데이트**: 2026-02-04
+**최종 업데이트**: 2026-03-12
 **Analytics SDK**: FirebaseAnalytics 12.3.0
 
 ---
@@ -37,6 +37,19 @@ Promiso 앱에서 수집하는 Firebase Analytics 이벤트 목록입니다.
 | `profile_setup_completed` | 프로필 설정 완료 | - | AppEntryFeature | AppEntryFeature.swift:349 |
 | `group_invite_shared` | 그룹 초대 코드 공유 (초대 시트 열림) | `group_id`, `group_name` | GroupSettingsFeature | GroupSettingsFeature.swift:359 |
 | `settings_opened` | 설정 화면 열림 (설정 탭 선택) | - | RootTabFeature | RootTabFeature.swift:219 |
+
+---
+
+### 💳 Pro Plan 이벤트 (4개)
+
+Paywall 진입과 주요 CTA 상호작용을 추적하는 이벤트입니다.
+
+| 이벤트 이름 | 설명 | 파라미터 | Feature | 코드 위치 |
+|------------|------|----------|---------|----------|
+| `paywall_open` | Paywall 화면 노출 | - | ProPlanFeature | PaywallView.swift |
+| `paywall_purchase` | Paywall 구매 CTA 탭 | - | ProPlanFeature | ProPlanFeature.swift |
+| `paywall_restore` | Paywall 복원 버튼 탭 | - | ProPlanFeature | ProPlanFeature.swift |
+| `paywall_close` | Paywall 화면 종료 | - | ProPlanFeature | PaywallView.swift |
 
 ---
 

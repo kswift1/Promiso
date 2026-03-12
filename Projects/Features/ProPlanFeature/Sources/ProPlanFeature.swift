@@ -40,6 +40,7 @@ extension ProPlan {
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.userSettingsClient) private var userSettingsClient
     @Dependency(\.authClient) private var authClient
+    @Dependency(\.analyticsClient) private var analyticsClient
 
     /// Reducer를 위한 기본 initializer
     public init() {}
@@ -125,6 +126,10 @@ extension ProPlan {
     public enum ViewAction: Equatable, Sendable {
       /// View가 처음 나타날 때 트리거
       case onAppear
+      /// Paywall이 화면에 표시됨
+      case paywallAppeared
+      /// Paywall이 화면에서 사라짐
+      case paywallDisappeared
       /// 상품 선택
       case productSelected(String)
       /// 구매 버튼 탭
@@ -251,6 +256,16 @@ extension ProPlan {
             }
             .cancellable(id: CancelID.statusStream, cancelInFlight: true)
 
+          case .paywallAppeared:
+            return .run { [analyticsClient] _ in
+              analyticsClient.logEvent(AnalyticsClient.EventName.paywallOpen, nil)
+            }
+
+          case .paywallDisappeared:
+            return .run { [analyticsClient] _ in
+              analyticsClient.logEvent(AnalyticsClient.EventName.paywallClose, nil)
+            }
+
           case .productSelected(let productId):
             state.selectedProductId = productId
             return .run { _ in
@@ -263,7 +278,8 @@ extension ProPlan {
             }
             state.isPurchasing = true
             state.errorMessage = nil
-            return .run { send in
+            return .run { [analyticsClient] send in
+              analyticsClient.logEvent(AnalyticsClient.EventName.paywallPurchase, nil)
               await hapticFeedback.medium()
               do {
                 // 1. StoreKit 구매 + JWS 토큰 획득
@@ -279,7 +295,8 @@ extension ProPlan {
           case .restoreTapped:
             state.isPurchasing = true
             state.errorMessage = nil
-            return .run { [subscriptionClient] send in
+            return .run { [subscriptionClient, analyticsClient] send in
+              analyticsClient.logEvent(AnalyticsClient.EventName.paywallRestore, nil)
               await hapticFeedback.medium()
               do {
                 // 1. StoreKit 복원 + JWS 토큰 추출

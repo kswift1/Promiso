@@ -71,10 +71,10 @@
 
 | 항목 | 상태 | 메모 |
 |------|------|------|
-| paywall_open | 미구현 | 이벤트 정의/로깅 없음 |
-| paywall_purchase | 미구현 | 이벤트 정의/로깅 없음 |
-| paywall_restore | 미구현 | 이벤트 정의/로깅 없음 |
-| paywall_close | 미구현 | 이벤트 정의/로깅 없음 |
+| paywall_open | 완료 | Paywall 노출 시 Firebase Analytics 로깅 |
+| paywall_purchase | 완료 | 구매 CTA 탭 시 Firebase Analytics 로깅 |
+| paywall_restore | 완료 | 복원 CTA 탭 시 Firebase Analytics 로깅 |
+| paywall_close | 완료 | Paywall 종료 시 Firebase Analytics 로깅 |
 
 ## 출시 전 최종 확인
 
@@ -87,8 +87,7 @@
 
 ## 남은 작업 우선순위
 
-1. `.ai/ANALYTICS_EVENTS.md`와 코드에 paywall analytics 이벤트 추가
-2. 날씨 / 출발시간 게이팅 UX를 체크리스트 기준으로 통일
-3. 설정 탭에서 Free 상태를 명시적으로 보여줄지 결정
-4. 상품 로딩 실패 시 retry 가능한 에러 UI 추가 여부 결정
-5. 앱 시작 시 `restore`가 정말 필요한지, 현재 `fetchStatus` 기반으로 충분한지 정책 결정
+1. 날씨 / 출발시간 게이팅 UX를 체크리스트 기준으로 통일
+2. 설정 탭에서 Free 상태를 명시적으로 보여줄지 결정
+3. 상품 로딩 실패 시 retry 가능한 에러 UI 추가 여부 결정
+4. 앱 시작 시 `restore`가 정말 필요한지, 현재 `fetchStatus` 기반으로 충분한지 정책 결정
