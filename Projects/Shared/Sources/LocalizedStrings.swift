@@ -1287,6 +1287,10 @@ public enum LocalizedStrings {
     public static var transportSubway: String { String(localized: "home.transport.subway", bundle: bundle) }
     public static var transportBus: String { String(localized: "home.transport.bus", bundle: bundle) }
     public static var transportWalkingNotRecommended: String { String(localized: "home.transport.walkingNotRecommended", bundle: bundle) }
+    public static func transportApproxMinutes(_ minutes: Int) -> String {
+      String(localized: "home.transport.approxMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
     public static var routeTagFastest: String { String(localized: "home.transport.routeTag.fastest", bundle: bundle) }
     public static var routeTagLeastTransfers: String { String(localized: "home.transport.routeTag.leastTransfers", bundle: bundle) }
     public static var routeTagCheapest: String { String(localized: "home.transport.routeTag.cheapest", bundle: bundle) }
@@ -1360,6 +1364,17 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%1$@", with: time)
         .replacingOccurrences(of: "%2$@", with: transport)
         .replacingOccurrences(of: "%3$lld", with: "\(duration)")
+    }
+    public static func departureSelectionNoBuffer(_ transport: String, _ time: String) -> String {
+      String(localized: "home.departure.selection.noBuffer", bundle: bundle)
+        .replacingOccurrences(of: "%1$@", with: transport)
+        .replacingOccurrences(of: "%2$@", with: time)
+    }
+    public static func departureSelectionWithBuffer(_ transport: String, _ time: String, _ buffer: Int) -> String {
+      String(localized: "home.departure.selection.withBuffer", bundle: bundle)
+        .replacingOccurrences(of: "%1$@", with: transport)
+        .replacingOccurrences(of: "%2$@", with: time)
+        .replacingOccurrences(of: "%3$lld", with: "\(buffer)")
     }
   }
 
@@ -1809,25 +1824,59 @@ public enum LocalizedStrings {
     public static var featureRecommendationDescription: String { String(localized: "proPlan.feature.recommendation.description", bundle: bundle) }
     public static var featureStatsTitle: String { String(localized: "proPlan.feature.stats.title", bundle: bundle) }
     public static var featureStatsDescription: String { String(localized: "proPlan.feature.stats.description", bundle: bundle) }
+    public static var heroTitleTop: String { String(localized: "proPlan.paywall.hero.title.top", bundle: bundle) }
+    public static var heroTitleBottom: String { String(localized: "proPlan.paywall.hero.title.bottom", bundle: bundle) }
     public static var viewPlans: String { String(localized: "proPlan.paywall.viewPlans", bundle: bundle) }
     public static var celebrationTitle: String { String(localized: "proPlan.paywall.celebration.title", bundle: bundle) }
     public static var celebrationSubtitle: String { String(localized: "proPlan.paywall.celebration.subtitle", bundle: bundle) }
     public static var startButton: String { String(localized: "proPlan.startButton", bundle: bundle) }
     public static var heroSubtitle: String { String(localized: "proPlan.paywall.hero.subtitle", bundle: bundle) }
+    public static var paywallDepartureProblem: String { String(localized: "proPlan.paywall.feature.departure.problem", bundle: bundle) }
+    public static var paywallDepartureSolution: String { String(localized: "proPlan.paywall.feature.departure.solution", bundle: bundle) }
+    public static var paywallConflictProblem: String { String(localized: "proPlan.paywall.feature.conflict.problem", bundle: bundle) }
+    public static var paywallConflictSolution: String { String(localized: "proPlan.paywall.feature.conflict.solution", bundle: bundle) }
+    public static var paywallBriefingProblem: String { String(localized: "proPlan.paywall.feature.briefing.problem", bundle: bundle) }
+    public static var paywallBriefingSolution: String { String(localized: "proPlan.paywall.feature.briefing.solution", bundle: bundle) }
     public static var featureSmartBriefingTitle: String { String(localized: "proPlan.feature.smartBriefing.title", bundle: bundle) }
     public static var featureSmartBriefingDescription: String { String(localized: "proPlan.feature.smartBriefing.description", bundle: bundle) }
     public static var featureWidgetTitle: String { String(localized: "proPlan.feature.widget.title", bundle: bundle) }
     public static var featureWidgetDescription: String { String(localized: "proPlan.feature.widget.description", bundle: bundle) }
     public static var comparisonTitle: String { String(localized: "proPlan.paywall.comparison.title", bundle: bundle) }
+    public static var comparisonSubtitle: String { String(localized: "proPlan.paywall.comparison.subtitle", bundle: bundle) }
+    public static var comparisonFeatureLabel: String { String(localized: "proPlan.paywall.comparison.featureLabel", bundle: bundle) }
     public static var comparisonFreeLabel: String { String(localized: "proPlan.paywall.comparison.freeLabel", bundle: bundle) }
     public static var comparisonProLabel: String { String(localized: "proPlan.paywall.comparison.proLabel", bundle: bundle) }
     public static var comparisonBasicSchedule: String { String(localized: "proPlan.paywall.comparison.basicSchedule", bundle: bundle) }
+    public static var comparisonCalendar: String { String(localized: "proPlan.paywall.comparison.calendar", bundle: bundle) }
+    public static var comparisonWidget: String { String(localized: "proPlan.paywall.comparison.widget", bundle: bundle) }
     public static var comparisonGroupSchedule: String { String(localized: "proPlan.paywall.comparison.groupSchedule", bundle: bundle) }
     public static var comparisonLiveActivity: String { String(localized: "proPlan.paywall.comparison.liveActivity", bundle: bundle) }
+    public static var comparisonDepartureAlert: String { String(localized: "proPlan.paywall.comparison.departureAlert", bundle: bundle) }
+    public static var comparisonConflictDetection: String { String(localized: "proPlan.paywall.comparison.conflictDetection", bundle: bundle) }
+    public static var comparisonWeather: String { String(localized: "proPlan.paywall.comparison.weather", bundle: bundle) }
+    public static var comparisonDailyBriefing: String { String(localized: "proPlan.paywall.comparison.dailyBriefing", bundle: bundle) }
+    public static var comparisonComingSoon: String { String(localized: "proPlan.paywall.comparison.comingSoon", bundle: bundle) }
     public static var trustText: String { String(localized: "proPlan.paywall.trustText", bundle: bundle) }
+    public static func freeTrialTrustText(_ days: Int) -> String {
+      String(localized: "proPlan.paywall.trust.freeTrial", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(days)")
+    }
     public static var restorePurchases: String { String(localized: "proPlan.paywall.restorePurchases", bundle: bundle) }
     public static var legalTrialDisclaimer: String { String(localized: "proPlan.paywall.legal.trialDisclaimer", bundle: bundle) }
     public static var legalSubscriptionDisclaimer: String { String(localized: "proPlan.paywall.legal.subscriptionDisclaimer", bundle: bundle) }
+    public static func legalTrialDynamic(_ days: Int, _ priceAndPeriod: String) -> String {
+      String(localized: "proPlan.paywall.legal.dynamic.trial", bundle: bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(days)")
+        .replacingOccurrences(of: "%2$@", with: priceAndPeriod)
+    }
+    public static func legalSubscriptionDynamic(_ priceAndPeriod: String) -> String {
+      String(localized: "proPlan.paywall.legal.dynamic.subscription", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: priceAndPeriod)
+    }
+    public static func legalLifetimeDynamic(_ price: String) -> String {
+      String(localized: "proPlan.paywall.legal.dynamic.lifetime", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: price)
+    }
     public static var legalTerms: String { String(localized: "proPlan.paywall.legal.terms", bundle: bundle) }
     public static var legalPrivacy: String { String(localized: "proPlan.paywall.legal.privacy", bundle: bundle) }
     public static var processing: String { String(localized: "proPlan.paywall.processing", bundle: bundle) }
@@ -1845,10 +1894,36 @@ public enum LocalizedStrings {
     public static var mockConflictExistingTime: String { String(localized: "proPlan.mock.conflict.existingTime", bundle: bundle) }
     public static var mockConflictNewTitle: String { String(localized: "proPlan.mock.conflict.newTitle", bundle: bundle) }
     public static var mockConflictNewTime: String { String(localized: "proPlan.mock.conflict.newTime", bundle: bundle) }
+    public static var previewOrigin: String { String(localized: "proPlan.paywall.preview.origin", bundle: bundle) }
+    public static var previewDestination: String { String(localized: "proPlan.paywall.preview.destination", bundle: bundle) }
+    public static func previewStartsAt(_ time: String) -> String {
+      String(localized: "proPlan.paywall.preview.startsAt", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: time)
+    }
+    public static var previewBriefingBody: String { String(localized: "proPlan.paywall.preview.briefingBody", bundle: bundle) }
+    public static func previewTransportIncluded(_ transport: String) -> String {
+      String(localized: "proPlan.paywall.preview.transportIncluded", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: transport)
+    }
     public static var badgeTwoMonthsFree: String { String(localized: "proPlan.paywall.badge.twoMonthsFree", bundle: bundle) }
     public static var badgeLifetime: String { String(localized: "proPlan.paywall.badge.lifetime", bundle: bundle) }
+    public static var badgeLimited: String { String(localized: "proPlan.paywall.badge.limited", bundle: bundle) }
     public static var perMonth: String { String(localized: "proPlan.paywall.price.perMonth", bundle: bundle) }
     public static var perYear: String { String(localized: "proPlan.paywall.price.perYear", bundle: bundle) }
+    public static func freeTrialStartsAfter(_ days: Int) -> String {
+      String(localized: "proPlan.paywall.freeTrialStartsAfter", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(days)")
+    }
+    public static var lifetimePurchaseButton: String { String(localized: "proPlan.paywall.cta.lifetimePurchase", bundle: bundle) }
+    public static var productMonthlyDescription: String {
+      String(localized: "proPlan.paywall.product.monthlyDescription", bundle: bundle)
+    }
+    public static var productYearlyDescription: String {
+      String(localized: "proPlan.paywall.product.yearlyDescription", bundle: bundle)
+    }
+    public static var productLifetimeDescription: String {
+      String(localized: "proPlan.paywall.product.lifetimeDescription", bundle: bundle)
+    }
     public static var productsLoadFailed: String { String(localized: "proPlan.error.productsLoadFailed", bundle: bundle) }
     public static var purchaseFailed: String { String(localized: "proPlan.error.purchaseFailed", bundle: bundle) }
     public static var restoreNoPurchaseHistory: String {

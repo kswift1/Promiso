@@ -18097,13 +18097,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lunch Plan"
+            "value" : "Lunch Meetup"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "점심 일정"
+            "value" : "점심 약속"
           }
         }
       }
@@ -18216,13 +18216,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rain expected"
+            "value" : "Chance of rain, bring an umbrella"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "비 예보"
+            "value" : "비 올 수 있어요, 우산 챙기세요"
           }
         }
       }
@@ -18641,13 +18641,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Basic scheduling"
+            "value" : "Schedule creation & management"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기본 일정 관리"
+            "value" : "일정 생성 · 관리"
           }
         }
       }
@@ -18726,13 +18726,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Free vs Pro"
+            "value" : "Free gets you started. Pro goes further."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "무료 vs Pro"
+            "value" : "Free도 충분해요. Pro는 한 발 더 나아가요."
           }
         }
       }
@@ -18777,13 +18777,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smart scheduling so you never miss a plan"
+            "value" : "Travel time, conflicts, and weather. Promiso Pro handles the details for you."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "일정 하나도 놓치지 않는\n스마트한 일정 관리"
+            "value" : "이동시간, 겹치는 일정, 날씨까지\nPromiso Pro가 대신 챙겨드려요"
           }
         }
       }
@@ -18954,6 +18954,550 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "요금제 보기"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.badge.limited" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limited"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한정"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar (day/week/month)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 (일·주·월)"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.comingSoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More helpful Pro features coming soon"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추후 생성될 유용한 Pro 기능들"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.conflictDetection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule conflict detection"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 충돌 감지"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.dailyBriefing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily AI schedule briefing"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "매일 AI 일정 브리핑"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.departureAlert" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic departure time calculation and alerts"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출발 시간 자동 계산 및 알림"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.featureLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feature"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기능"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From departure timing to weather, Pro helps you beyond the schedule itself"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출발시간부터 날씨까지, 일정 그 이후를 챙겨드려요"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.weather" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather for each schedule"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정별 날씨 확인"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.widget" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위젯"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.cta.lifetimePurchase" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy lifetime access"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "평생 이용권 구매하기"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.briefing.problem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What was on the schedule today? Need to open the app again?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 일정 뭐였지? 또 앱 열어봐야 하나"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.briefing.solution" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get a briefing by notification at your chosen time,\nand check it anytime on Home"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "매일 설정한 시간에 알림으로,\n홈에서는 언제든 브리핑 확인"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.conflict.problem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only notice conflicts after the plan is set?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 잡고 나서야 겹친 걸 발견?"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.conflict.solution" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview conflicts and weather on a\ntimeline while creating schedules"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 생성 시 충돌·날씨를\n타임라인으로 미리 확인"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.departure.problem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still opening maps and doing the math after every plan?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 잡고 또 지도 검색하고 계산하고..."
+          }
+        }
+      }
+    },
+    "proPlan.paywall.feature.departure.solution" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compare travel times by transport,\nset a buffer, and get departure alerts"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "교통수단별 이동시간 비교,\n여유시간 설정, 출발 알림까지"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.freeTrialStartsAfter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts after %lld-day free trial"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld일 무료 후 시작"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.hero.title.bottom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hire an AI assistant"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 비서를 고용하세요"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.hero.title.top" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For the price of a monthly coffee"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "월 커피 한 잔 가격으로"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.legal.dynamic.lifetime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Apple account will be charged %@ as a one-time purchase on confirmation. Lifetime access does not auto-renew."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인 시 %@이 Apple 계정으로 일회 청구됩니다. 평생 이용권은 자동 갱신되지 않습니다."
+          }
+        }
+      }
+    },
+    "proPlan.paywall.legal.dynamic.subscription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Apple account will be charged %@ on confirmation. Subscriptions renew automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Renewal fees are charged within 24 hours before the end of the current period. You can manage and cancel anytime in Settings > Apple Account > Subscriptions."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인 시 %@이 Apple 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신을 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 설정 > Apple 계정 > 구독에서 언제든 관리 및 취소할 수 있습니다."
+          }
+        }
+      }
+    },
+    "proPlan.paywall.legal.dynamic.trial" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After your %1$lld-day free trial ends, %2$@ will be automatically charged to your Apple account. Subscriptions renew automatically unless auto-renew is turned off at least 24 hours before the end of the current period. If you subscribe during the free trial, any remaining trial period is forfeited. You can manage and cancel anytime in Settings > Apple Account > Subscriptions."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld일 무료 체험 종료 후 %2$@이 Apple 계정으로 자동 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신을 해제하지 않으면 자동으로 갱신됩니다. 무료 체험 기간 중 유료 구독 시 남은 체험 기간은 소멸됩니다. 설정 > Apple 계정 > 구독에서 언제든 관리 및 취소할 수 있습니다."
+          }
+        }
+      }
+    },
+    "proPlan.paywall.preview.briefingBody" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have 3 plans today. Your first one at Gangnam Cafe may get rain, so bring an umbrella, and leaving by car at 1:35 is perfect. Your team meeting and lunch overlap by 30 minutes, so you can either leave the meeting early or push lunch back. For your Hongdae evening plan, transit takes 40 minutes, so I recommend leaving at 6:10."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 3개 약속이 있어요 💪 첫 번째 강남 카페는 비 온다니까 우산 챙기고, 자동차로 1:35에 출발하면 딱이에요. 팀 회의랑 점심이 30분 겹치는데 - 회의 일찍 빠지든 점심 늦게 가든 선택은 당신의 몫! 저녁 홍대 약속은 대중교통 40분, 6:10 출발 추천이요 🚇"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.preview.destination" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gangnam Station Cafe"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강남역 카페"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.preview.origin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "집"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.preview.startsAt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts at %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 시작"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.preview.transportIncluded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ included"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 포함"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.product.lifetimeDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-time payment, lifetime access"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번 결제, 영구 사용"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.product.monthlyDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renews every month"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "매월 자동 갱신"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.product.yearlyDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renews every year"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "매년 자동 갱신"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.trust.freeTrial" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free if canceled within %lld days · cancel anytime"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld일 이내 취소 시 무료 · 언제든 해지 가능"
           }
         }
       }
