@@ -243,11 +243,8 @@ struct CalendarFeatureTests {
     await store.receive(\.internal.prefetchAdjacentMonths)
     await store.receive(\.internal.fetchSchedulesForMonth)
     await store.receive(\.internal.fetchPersonalEventsForMonth)
-    // 비동기 응답 (순서 비결정적)
-    await store.receive(\.internal.personalEventsResponseForMonth, timeout: .seconds(2))
-    await store.receive(\.internal.schedulesResponseForMonth, timeout: .seconds(2))
-    await store.receive(\.internal.personalEventsResponseForMonth, timeout: .seconds(2))
-    await store.receive(\.internal.schedulesResponseForMonth, timeout: .seconds(2))
+    // 비동기 응답 순서는 비결정적이므로 응답을 모두 흘려보낸 뒤 최종 상태만 검증
+    await store.skipReceivedActions()
 
     let requests = await recorder.values()
     // 현재 월(2026-01) + 프리페치 다음 월(2026-02), staleMonth(2025-12)는 이미 로드됨
