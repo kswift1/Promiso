@@ -404,21 +404,70 @@ struct ProPlanFeatureTests {
     }
   }
 
-  @Test("서버 문서 없음 시 StoreKit entitlement 있어도 .none 유지 (SSOT 회귀 방지)")
-  func statusUpdated_serverNone_staysNoneRegardlessOfStoreKit() async {
+  @Test("onAppear 시 fetchStatus .none이면 기존 Pro 상태 해제")
+  func onAppear_fetchStatusNone_clearsExistingProStatus() async {
     var state = ProPlan.Feature.State()
-    // 이전에 Pro였던 상태에서 서버가 .none을 보냄
     state.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
 
-    let store = makeStore(state: state)
+    let store = makeStore(state: state) {
+      $0.subscriptionClient.fetchStatus = { .none }
+      $0.subscriptionClient.unifiedStatusStream = { .finished }
+    }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    // 서버에서 .none 상태 수신 → Pro 해제
-    await store.send(.internal(.statusUpdated(.none))) {
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    await store.receive(\.internal.statusUpdated) {
       $0.subscriptionStatus = .none
     }
 
     await store.receive(\.delegate.subscriptionStatusChanged)
+    await store.finish()
+  }
+
+  @Test("onAppear 후 unifiedStatusStream revoked 수신 시 상태 갱신")
+  func onAppear_unifiedStatusStreamRevoked_updatesStatus() async {
+    let store = makeStore {
+      $0.subscriptionClient.fetchStatus = { .lifetime }
+      $0.subscriptionClient.unifiedStatusStream = {
+        AsyncStream { continuation in
+          continuation.yield(.revoked)
+          continuation.finish()
+        }
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .lifetime
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .revoked
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+    await store.finish()
   }
 
   // MARK: - UI 액션
