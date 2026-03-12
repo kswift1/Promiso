@@ -18,6 +18,9 @@ public struct SubscriptionClient: Sendable {
   /// 구매 복원
   public var restore: @Sendable () async throws -> SubscriptionStatus
 
+  /// 구매 복원 후 JWS 토큰을 포함한 결과 반환 (서버 검증용)
+  public var restoreWithReceipt: @Sendable () async throws -> RestoreResult
+
   /// 현재 구독 상태 조회
   public var fetchStatus: @Sendable () async throws -> SubscriptionStatus
 
@@ -46,6 +49,7 @@ extension SubscriptionClient: TestDependencyKey {
     purchase: unimplemented("\(Self.self).purchase", placeholder: .none),
     purchaseWithReceipt: unimplemented("\(Self.self).purchaseWithReceipt", placeholder: PurchaseResult(jwsString: "", localStatus: .none)),
     restore: unimplemented("\(Self.self).restore", placeholder: .none),
+    restoreWithReceipt: unimplemented("\(Self.self).restoreWithReceipt", placeholder: RestoreResult(jwsString: nil, productId: nil, localStatus: .none)),
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
     statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
@@ -58,9 +62,30 @@ extension SubscriptionClient: TestDependencyKey {
     fetchProducts: {
       try await Task.sleep(for: .seconds(0.5))
       return [
-        SubscriptionProduct(id: SubscriptionProductType.monthly.productId, type: .monthly, displayName: "월간 프로", description: "매월 자동 갱신", displayPrice: "₩3,900", price: 3900),
-        SubscriptionProduct(id: SubscriptionProductType.yearly.productId, type: .yearly, displayName: "연간 프로", description: "매년 자동 갱신 (월 ₩3,250)", displayPrice: "₩39,000", price: 39000),
-        SubscriptionProduct(id: SubscriptionProductType.lifetime.productId, type: .lifetime, displayName: "평생 프로", description: "한 번 결제, 영구 사용", displayPrice: "₩59,000", price: 59000)
+        SubscriptionProduct(
+          id: SubscriptionProductType.monthly.productId,
+          type: .monthly,
+          displayName: SubscriptionProductType.monthly.displayName,
+          description: SubscriptionProductType.monthly.paywallDescription,
+          displayPrice: "₩3,900",
+          price: 3900
+        ),
+        SubscriptionProduct(
+          id: SubscriptionProductType.yearly.productId,
+          type: .yearly,
+          displayName: SubscriptionProductType.yearly.displayName,
+          description: SubscriptionProductType.yearly.paywallDescription,
+          displayPrice: "₩39,000",
+          price: 39000
+        ),
+        SubscriptionProduct(
+          id: SubscriptionProductType.lifetime.productId,
+          type: .lifetime,
+          displayName: SubscriptionProductType.lifetime.displayName,
+          description: SubscriptionProductType.lifetime.paywallDescription,
+          displayPrice: "₩59,000",
+          price: 59000
+        )
       ]
     },
     purchase: { _ in
@@ -74,6 +99,10 @@ extension SubscriptionClient: TestDependencyKey {
     restore: {
       try await Task.sleep(for: .seconds(0.5))
       return .none
+    },
+    restoreWithReceipt: {
+      try await Task.sleep(for: .seconds(0.5))
+      return RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
     },
     fetchStatus: {
       return .none
@@ -127,6 +156,9 @@ extension SubscriptionClient: DependencyKey {
       },
       restore: {
         try await dataSource.restore()
+      },
+      restoreWithReceipt: {
+        try await dataSource.restoreWithReceipt()
       },
       fetchStatus: {
         try await dataSource.fetchCurrentStatus()

@@ -257,11 +257,26 @@ extension ProPlan {
           case .restoreTapped:
             state.isPurchasing = true
             state.errorMessage = nil
-            return .run { send in
+            return .run { [subscriptionClient] send in
               await hapticFeedback.medium()
-              await send(.internal(.restoreResponse(
-                Result { try await subscriptionClient.restore() }
-              )))
+              do {
+                // 1. StoreKit 복원 + JWS 토큰 추출
+                let result = try await subscriptionClient.restoreWithReceipt()
+
+                if result.localStatus.isPro {
+                  guard let jwsString = result.jwsString, let productId = result.productId else {
+                    throw SubscriptionError.verificationFailed
+                  }
+
+                  // 2. 서버에 검증 요청 (Firestore 동기화)
+                  let verifiedStatus = try await subscriptionClient.verifyPurchase(jwsString, productId)
+                  await send(.internal(.restoreResponse(.success(verifiedStatus))))
+                } else {
+                  await send(.internal(.restoreResponse(.success(result.localStatus))))
+                }
+              } catch {
+                await send(.internal(.restoreResponse(.failure(error))))
+              }
             }
 
           case .dismissError:
@@ -418,13 +433,31 @@ extension ProPlan {
             state.subscriptionStatus = status
 
             if status.isPro {
-              return .run { send in
+              state.isSettingUpDefaults = true
+              return .run { [userSettingsClient, authClient] send in
                 await hapticFeedback.success()
                 await send(.delegate(.subscriptionStatusChanged(status)))
+                // Pro 설정 초기화 (구매 시 dismissCelebration과 동일 로직)
+                do {
+                  guard let userId = await authClient.currentUser()?.uid else {
+                    await send(.internal(.proDefaultsFailed))
+                    return
+                  }
+                  let existingSettings = try await userSettingsClient.fetchSettings(userId)
+                  if existingSettings.briefingNotificationHour != nil {
+                    await send(.internal(.proExistingSettingsLoaded(existingSettings)))
+                  } else {
+                    try await userSettingsClient.initializeProDefaults(userId)
+                    await send(.internal(.proDefaultsInitialized))
+                  }
+                } catch {
+                  await send(.internal(.proDefaultsFailed))
+                }
               }
+            } else {
+              state.errorMessage = LocalizedStrings.ProPlan.restoreNoPurchaseHistory
+              return .none
             }
-            state.errorMessage = LocalizedStrings.ProPlan.restoreNoPurchaseHistory
-            return .none
 
           case .restoreResponse(.failure(let error)):
             state.isPurchasing = false

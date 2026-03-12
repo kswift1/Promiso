@@ -160,7 +160,14 @@ struct ProPlanFeatureTests {
   @Test("복원 성공 시 구독 상태 업데이트")
   func restoreTapped_success_updatesStatus() async {
     let store = makeStore {
-      $0.subscriptionClient.restore = { .lifetime }
+      $0.subscriptionClient.restoreWithReceipt = {
+        RestoreResult(
+          jwsString: "mock-restore-jws-token",
+          productId: SubscriptionProductType.lifetime.productId,
+          localStatus: .lifetime
+        )
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in .lifetime }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -184,7 +191,7 @@ struct ProPlanFeatureTests {
     }
 
     let store = makeStore {
-      $0.subscriptionClient.restore = { throw TestError.failed }
+      $0.subscriptionClient.restoreWithReceipt = { throw TestError.failed }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -202,7 +209,9 @@ struct ProPlanFeatureTests {
   @Test("복원 성공 but 구독 없음 시 delegate 전달 안함")
   func restoreTapped_successButNone_doesNotSendDelegate() async {
     let store = makeStore {
-      $0.subscriptionClient.restore = { .none }
+      $0.subscriptionClient.restoreWithReceipt = {
+        RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
+      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -337,22 +346,31 @@ private extension ProPlanFeatureTests {
     state: ProPlan.Feature.State = .init(),
     configure: (inout DependencyValues) -> Void = { _ in }
   ) -> TestStoreOf<ProPlan.Feature> {
-    TestStore(initialState: state) {
+    let mockProducts = Self.mockProducts
+    return TestStore(initialState: state) {
       ProPlan.Feature()
     } withDependencies: {
       let expirationDate = Date().addingTimeInterval(365 * 24 * 3600)
-      $0.subscriptionClient.fetchProducts = { Self.mockProducts }
+      $0.subscriptionClient.fetchProducts = { mockProducts }
       $0.subscriptionClient.purchase = { _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
       $0.subscriptionClient.purchaseWithReceipt = { _ in
         PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(productType: .monthly, expirationDate: expirationDate))
       }
       $0.subscriptionClient.verifyPurchase = { _, _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
       $0.subscriptionClient.restore = { .none }
+      $0.subscriptionClient.restoreWithReceipt = {
+        RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
+      }
       $0.subscriptionClient.fetchStatus = { .none }
       $0.subscriptionClient.statusStream = { .finished }
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.subscriptionClient.fetchPurchaseDate = { nil }
+      $0.authClient.currentUser = {
+        FirebaseUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
+      }
+      $0.userSettingsClient.fetchSettings = { _ in .default }
+      $0.userSettingsClient.initializeProDefaults = { _ in }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }
