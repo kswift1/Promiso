@@ -283,7 +283,7 @@ struct DailyBriefingCard: View {
   // MARK: - Settings Chips
 
   private func settingsChips(briefingStyle: BriefingStyle) -> some View {
-    HStack(spacing: 6) {
+    FlowLayout(spacing: 6) {
       settingsChip(icon: briefingStyleIcon(briefingStyle), label: briefingStyle.displayName)
 
       if let transports = availableTransports {
@@ -293,8 +293,6 @@ struct DailyBriefingCard: View {
       if let hour = briefingNotificationHour {
         settingsChip(icon: notificationIcon(hour), label: notificationHourText(hour))
       }
-
-      Spacer(minLength: 0)
     }
   }
 
