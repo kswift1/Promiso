@@ -97,33 +97,33 @@ extension RecurringPersonalEventDetail {
           if state.selectedInstance != nil {
             // 인스턴스 선택된 상태면 옵션 제공
             state.deleteAlert = AlertState {
-              TextState("일정 삭제")
+              TextState(LocalizedStrings.Common.delete)
             } actions: {
               ButtonState(action: .confirmExcludeInstance) {
-                TextState("이 날만 취소")
+                TextState(LocalizedStrings.Personal.recurringDetailExcludeInstance)
               }
               ButtonState(role: .destructive, action: .confirmDeleteSeries) {
-                TextState("전체 시리즈 삭제")
+                TextState(LocalizedStrings.Personal.recurringDeleteSeries)
               }
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
             } message: {
-              TextState("어떻게 삭제할까요?")
+              TextState(LocalizedStrings.Personal.recurringDeleteOptionsMessage)
             }
           } else {
             // 시리즈 전체 보기면 바로 삭제 확인
             state.deleteAlert = AlertState {
-              TextState("반복 일정 삭제")
+              TextState(LocalizedStrings.Personal.recurringDetailTitle)
             } actions: {
               ButtonState(role: .destructive, action: .confirmDeleteSeries) {
-                TextState("삭제")
+                TextState(LocalizedStrings.Common.delete)
               }
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
             } message: {
-              TextState("이 반복 일정을 삭제할까요? 모든 인스턴스가 삭제됩니다.")
+              TextState(LocalizedStrings.Personal.recurringDeleteSeriesMessage)
             }
           }
           return .none

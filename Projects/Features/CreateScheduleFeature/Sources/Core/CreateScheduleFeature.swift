@@ -774,7 +774,7 @@ extension CreateSchedule {
         StepBottomBar(configuration: .navigation(
           showPrevious: true,
           previousAction: { store.send(.view(.previousStep), animation: .default) },
-          nextTitle: "일정 제안하기",
+          nextTitle: LocalizedStrings.Schedule.createSchedule,
           nextSystemImage: "checkmark.circle.fill",
           isNextDisabled: store.thirdButtonDisabled,
           isNextLoading: store.isCreatingSchedule,

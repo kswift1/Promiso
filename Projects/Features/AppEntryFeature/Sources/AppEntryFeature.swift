@@ -514,11 +514,11 @@ extension AppEntry {
       static let recommendUpdateTitle = LocalizedStrings.AppEntry.recommendUpdateTitle
 
       static func forceUpdateMessage(current: String, required: String) -> String {
-        "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+        LocalizedStrings.AppEntry.forceUpdateMessage(current, required)
       }
 
       static func recommendUpdateMessage(current: String, recommended: String) -> String {
-        "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
+        LocalizedStrings.AppEntry.recommendUpdateMessage(current, recommended)
       }
     }
 

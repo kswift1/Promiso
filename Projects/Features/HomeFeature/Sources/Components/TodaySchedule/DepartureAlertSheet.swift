@@ -41,13 +41,13 @@ struct DepartureAlertSheet: View {
 
     switch sel {
     case .driving:
-      transportName = "자동차"
+      transportName = HomeModels.TransportType.driving.displayName
       departureTime = data.driving?.departureTime
     case .transit(let index):
-      transportName = "대중교통"
+      transportName = HomeModels.TransportType.transit.displayName
       departureTime = data.transitRoutes.first(where: { $0.id == index })?.departureTime
     case .walking:
-      transportName = "도보"
+      transportName = HomeModels.TransportType.walking.displayName
       departureTime = data.walking.departureTime
     }
 
@@ -55,9 +55,14 @@ struct DepartureAlertSheet: View {
     let adjusted = adjustedTime(dep)
 
     if bufferMinutes > 0 {
-      return "\(transportName)으로 \(adjusted.formattedTime) — \(bufferMinutes)분 여유 포함해 알림을 드려요"
+      return String(localized: "home.departure.selection.withBuffer", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$@", with: transportName)
+        .replacingOccurrences(of: "%2$@", with: adjusted.formattedTime)
+        .replacingOccurrences(of: "%3$lld", with: "\(bufferMinutes)")
     } else {
-      return "\(transportName)으로 \(adjusted.formattedTime)에 출발 알림을 드려요"
+      return String(localized: "home.departure.selection.noBuffer", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$@", with: transportName)
+        .replacingOccurrences(of: "%2$@", with: adjusted.formattedTime)
     }
   }
 
@@ -176,8 +181,8 @@ struct DepartureAlertSheet: View {
   }
 
   private var exactTimeText: String {
-    // "3월 10일 오후 5:56 시작" (년도 제외)
-    "\(LocalizedDateFormatters.monthDayTime.string(from: scheduleStartAt)) 시작"
+    String(localized: "home.departure.exactStart", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%@", with: LocalizedDateFormatters.monthDayTime.string(from: scheduleStartAt))
   }
 
   // MARK: - Remaining Time
@@ -185,19 +190,23 @@ struct DepartureAlertSheet: View {
   private func computeRemainingTimeText() -> String {
     let diff = scheduleStartAt.timeIntervalSince(Date())
     if diff <= 0 {
-      return "일정 시간이 지났어요"
+      return String(localized: "home.departure.schedulePassed", bundle: LocalizedStrings.bundle)
     }
     let totalMinutes = Int(diff / 60)
     let hours = totalMinutes / 60
     let minutes = totalMinutes % 60
     if hours >= 1 {
       if minutes == 0 {
-        return "다음 일정까지 \(hours)시간 남았어요"
+        return String(localized: "home.departure.untilHours", bundle: LocalizedStrings.bundle)
+          .replacingOccurrences(of: "%lld", with: "\(hours)")
       } else {
-        return "다음 일정까지 \(hours)시간 \(minutes)분 남았어요"
+        return String(localized: "home.departure.untilHoursMinutes", bundle: LocalizedStrings.bundle)
+          .replacingOccurrences(of: "%1$lld", with: "\(hours)")
+          .replacingOccurrences(of: "%2$lld", with: "\(minutes)")
       }
     } else {
-      return "다음 일정까지 \(minutes)분 남았어요"
+      return String(localized: "home.departure.untilMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
   }
 
@@ -218,7 +227,7 @@ struct DepartureAlertSheet: View {
           onDetailTapped()
         } label: {
           HStack(spacing: 2) {
-            Text("상세")
+            Text(LocalizedStrings.Home.departureDetail)
               .font(.pmCaption)
               .foregroundStyle(Color.pmindigo.n500)
             Image(systemName: "chevron.right")
@@ -269,11 +278,11 @@ struct DepartureAlertSheet: View {
                 Circle()
                   .fill(Color.pmindigo.n400)
                   .frame(width: 6, height: 6)
-                Text("출발")
+                Text(LocalizedStrings.Home.departureStart)
                   .font(.pmCaption2Medium)
                   .foregroundStyle(Color.pmindigo.n400)
               }
-              Text(isUsingPreviousSchedule ? (previousScheduleLocation?.locationName ?? previousScheduleLocation?.name ?? "현재 위치") : (departureLocation ?? "현재 위치"))
+              Text(isUsingPreviousSchedule ? (previousScheduleLocation?.locationName ?? previousScheduleLocation?.name ?? LocalizedStrings.Home.transportCurrentLocation) : (departureLocation ?? LocalizedStrings.Home.transportCurrentLocation))
                 .font(.pmCaptionSemibold)
                 .foregroundStyle(Color.pmtext.primary)
                 .lineLimit(1)
@@ -292,7 +301,7 @@ struct DepartureAlertSheet: View {
                 Circle()
                   .fill(Color.pmerror.n500)
                   .frame(width: 6, height: 6)
-                Text("도착")
+                Text(LocalizedStrings.Home.departureArrival)
                   .font(.pmCaption2Medium)
                   .foregroundStyle(Color.pmerror.n500)
               }
@@ -321,9 +330,9 @@ struct DepartureAlertSheet: View {
               }
             } label: {
               if !isUsingPreviousSchedule {
-                Label("현재 위치", systemImage: "checkmark")
+                Label(LocalizedStrings.Home.transportCurrentLocation, systemImage: "checkmark")
               } else {
-                Text("현재 위치")
+                Text(LocalizedStrings.Home.transportCurrentLocation)
               }
             }
 
@@ -345,7 +354,7 @@ struct DepartureAlertSheet: View {
               }
             }
           } label: {
-            Text("출발지 변경하기")
+            Text(LocalizedStrings.Home.departureChangeOrigin)
               .font(.pmCaption2)
               .foregroundStyle(Color.pmindigo.n500)
           }
@@ -384,7 +393,7 @@ struct DepartureAlertSheet: View {
     VStack(spacing: 10) {
       // 이동 수단 섹션 라벨
       HStack {
-        Text("이동 수단")
+        Text(LocalizedStrings.Home.departureTransportSection)
           .font(.pmCaptionSemibold)
           .foregroundStyle(Color.pmtext.secondary)
         Spacer()
@@ -414,9 +423,9 @@ struct DepartureAlertSheet: View {
       let distanceText: String? = {
         guard let meters = driving.distanceMeters, meters > 0 else { return nil }
         let km = Double(meters) / 1000.0
-        return String(format: "약 %.0fkm", km)
+        return approximateDistance(format: "%.0f", kilometers: km)
       }()
-      let detail = ["약 \(driving.durationMinutes)분", distanceText]
+      let detail = [approximateMinutes(driving.durationMinutes), distanceText]
         .compactMap { $0 }
         .joined(separator: " · ")
 
@@ -457,7 +466,7 @@ struct DepartureAlertSheet: View {
     let walkingDistanceText: String? = {
       guard let meters = walking.distanceMeters, meters > 0 else { return nil }
       let km = Double(meters) / 1000.0
-      return String(format: "%.1fkm", km)
+      return distanceKilometers(format: "%.1f", kilometers: km)
     }()
 
     if walkingNotRecommended {
@@ -472,7 +481,7 @@ struct DepartureAlertSheet: View {
         transportCard(
           iconName: HomeModels.TransportType.walking.iconName,
           label: HomeModels.TransportType.walking.displayName,
-          detail: "약 \(walking.durationMinutes)분",
+          detail: approximateMinutes(walking.durationMinutes),
           departureTime: walkingTime,
           isPast: isPast,
           isSelected: isSelected,
@@ -519,7 +528,7 @@ struct DepartureAlertSheet: View {
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
         } else if isPast {
-          Text("출발 시간이 지났어요")
+          Text(LocalizedStrings.Home.departureTimePassed)
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
         } else {
@@ -532,7 +541,7 @@ struct DepartureAlertSheet: View {
       Spacer(minLength: 0)
 
       if isNotRecommended {
-        Text("비추천")
+        Text(LocalizedStrings.Home.departureNotRecommended)
           .font(.system(size: 11, weight: .medium))
           .foregroundStyle(Color.pmgray.n500)
           .padding(.horizontal, 8)
@@ -604,7 +613,7 @@ struct DepartureAlertSheet: View {
       VStack(alignment: .leading, spacing: 3) {
         // 대중교통 라벨 + 태그 뱃지
         HStack(spacing: 4) {
-          Text("대중교통")
+          Text(HomeModels.TransportType.transit.displayName)
             .font(.pmCaptionSemibold)
             .foregroundStyle(isPast ? Color.pmtext.secondary : Color.pmtext.primary)
           ForEach(route.tags, id: \.self) { tag in
@@ -620,12 +629,12 @@ struct DepartureAlertSheet: View {
         }
 
         if isPast {
-          Text("출발 시간이 지났어요")
+          Text(LocalizedStrings.Home.departureTimePassed)
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
         } else {
           HStack(spacing: 4) {
-            Text("약 \(route.totalTime)분")
+            Text(approximateMinutes(route.totalTime))
               .font(.system(size: 11))
               .foregroundStyle(Color.pmtext.secondary)
 
@@ -633,7 +642,7 @@ struct DepartureAlertSheet: View {
               Text("·")
                 .font(.system(size: 11))
                 .foregroundStyle(Color.pmtext.secondary)
-              Text("\(route.payment.formatted())원")
+              Text(wonAmount(route.payment))
                 .font(.system(size: 11))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -642,7 +651,7 @@ struct DepartureAlertSheet: View {
               Text("·")
                 .font(.system(size: 11))
                 .foregroundStyle(Color.pmtext.secondary)
-              Text("환승 \(route.transitCount)")
+              Text(transferCount(route.transitCount))
                 .font(.system(size: 11))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -689,7 +698,7 @@ struct DepartureAlertSheet: View {
         onDismiss()
       }
     } label: {
-      Text("알림 받기")
+      Text(LocalizedStrings.Home.departureAlertButton)
         .font(.pmBodySemibold)
         .foregroundStyle(selection != nil ? Color.white : Color.pmtext.secondary)
         .frame(maxWidth: .infinity)
@@ -710,7 +719,7 @@ struct DepartureAlertSheet: View {
 
   private var bufferSelector: some View {
     HStack {
-      Text("여유 시간")
+      Text(LocalizedStrings.Home.transportBufferTime)
         .font(.pmCaptionSemibold)
         .foregroundStyle(Color.pmtext.secondary)
 
@@ -723,17 +732,17 @@ struct DepartureAlertSheet: View {
           } label: {
             if bufferMinutes == minutes {
               Label(
-                minutes == 0 ? "없음" : "\(minutes)분",
+                bufferText(minutes),
                 systemImage: "checkmark"
               )
             } else {
-              Text(minutes == 0 ? "없음" : "\(minutes)분")
+              Text(bufferText(minutes))
             }
           }
         }
       } label: {
         HStack(spacing: 4) {
-          Text(bufferMinutes == 0 ? "없음" : "\(bufferMinutes)분")
+          Text(bufferText(bufferMinutes))
             .font(.pmCaptionSemibold)
             .foregroundStyle(Color.pmindigo.n500)
           Image(systemName: "chevron.up.chevron.down")
@@ -757,7 +766,7 @@ struct DepartureAlertSheet: View {
     walking: HomeModels.TransportOption,
     distanceText: String?
   ) -> some View {
-    let detailParts = ["약 \(walking.durationMinutes)분", distanceText]
+    let detailParts = [approximateMinutes(walking.durationMinutes), distanceText]
       .compactMap { $0 }
       .joined(separator: " · ")
     return transportCard(
@@ -834,7 +843,7 @@ struct DepartureAlertSheet: View {
     switch error {
     case .locationPermission:
       isLocationPermissionError = true
-      errorMessage = "위치 권한이 필요합니다\n설정에서 위치 접근을 허용해 주세요"
+      errorMessage = LocalizedStrings.Home.departureLocationPermissionMessage
     case .general(let message):
       isLocationPermissionError = false
       errorMessage = message
@@ -856,7 +865,7 @@ struct DepartureAlertSheet: View {
         Button {
           onOpenSettings()
         } label: {
-          Text("설정으로 이동")
+          Text(LocalizedStrings.Home.departureOpenSettings)
             .font(.pmCaptionSemibold)
             .foregroundStyle(Color.white)
             .padding(.horizontal, 20)
@@ -875,7 +884,7 @@ struct DepartureAlertSheet: View {
         HStack(spacing: 6) {
           Image(systemName: "arrow.clockwise")
             .font(.system(size: 12, weight: .medium))
-          Text("다시 시도")
+          Text(LocalizedStrings.Common.retry)
             .font(.pmCaptionSemibold)
         }
         .foregroundStyle(Color.pmindigo.n500)
@@ -890,6 +899,37 @@ struct DepartureAlertSheet: View {
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 40)
+  }
+
+  private func approximateMinutes(_ minutes: Int) -> String {
+    String(localized: "home.transport.approxMinutes", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%lld", with: "\(minutes)")
+  }
+
+  private func wonAmount(_ amount: Int) -> String {
+    String(localized: "home.transport.wonAmount", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%@", with: amount.formatted())
+  }
+
+  private func transferCount(_ count: Int) -> String {
+    String(localized: "home.transport.transferCount", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%lld", with: "\(count)")
+  }
+
+  private func bufferText(_ minutes: Int) -> String {
+    guard minutes > 0 else { return LocalizedStrings.Home.transportNoBuffer }
+    return String(localized: "home.transport.buffer.minutes", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%lld", with: "\(minutes)")
+  }
+
+  private func approximateDistance(format: String, kilometers: Double) -> String {
+    String(localized: "home.transport.approxDistance", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%@", with: String(format: format, kilometers))
+  }
+
+  private func distanceKilometers(format: String, kilometers: Double) -> String {
+    String(localized: "home.transport.distanceKilometers", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%@", with: String(format: format, kilometers))
   }
 }
 

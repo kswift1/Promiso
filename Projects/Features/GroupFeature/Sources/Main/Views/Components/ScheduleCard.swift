@@ -593,7 +593,7 @@ extension ScheduleResponseStatus {
     case .needResponse: return LocalizedStrings.ScheduleCard.statusNeedResponse
     case .responded: return LocalizedStrings.ScheduleCard.statusResponded
     case .confirmed: return LocalizedStrings.ScheduleCard.statusConfirmed
-    case .expired: return "마감됨"
+    case .expired: return LocalizedStrings.Common.expired
     case .failed: return LocalizedStrings.ScheduleCard.statusFailed
     }
   }

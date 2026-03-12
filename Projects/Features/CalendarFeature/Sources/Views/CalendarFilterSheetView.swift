@@ -134,7 +134,7 @@ struct CalendarFilterSheetView: View {
           }
         } label: {
           HStack(spacing: 4) {
-            Text("상태 설명")
+            Text(LocalizedStrings.Calendar.filterStatusDescription)
               .font(.system(size: 13))
             Image(systemName: showStatusLegend ? "chevron.up" : "chevron.down")
               .font(.system(size: 11))
@@ -263,7 +263,7 @@ struct CalendarFilterSheetView: View {
               UIApplication.shared.open(url)
             }
           } label: {
-            Text("설정으로 이동")
+            Text(LocalizedStrings.Home.departureOpenSettings)
               .font(.system(size: 13, weight: .medium))
               .foregroundColor(Color.pmbrand.primary)
           }

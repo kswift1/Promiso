@@ -19,7 +19,7 @@ public struct LiveBadge: View {
         .frame(width: 14, height: 10)
 
       if showText {
-        Text("실시간")
+        Text(LocalizedStrings.Common.live)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(textColor)
       }

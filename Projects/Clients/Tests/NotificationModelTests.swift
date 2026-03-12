@@ -246,8 +246,8 @@ struct NotificationFilterTests {
 
   @Test("NotificationFilter rawValue 확인")
   func rawValues() {
-    #expect(NotificationFilter.all.rawValue == "전체")
-    #expect(NotificationFilter.unread.rawValue == "안 읽음")
+    #expect(NotificationFilter.all.rawValue == "all")
+    #expect(NotificationFilter.unread.rawValue == "unread")
   }
 
   @Test("NotificationFilter allCases에 2개 포함")

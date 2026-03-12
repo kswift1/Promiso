@@ -26,7 +26,7 @@ public struct LiveActivityInfoPopover: View {
     scheduleTime: Date? = nil
   ) {
     self.emoji = emoji ?? "🍕"
-    self.title = title ?? "피자 일정"
+    self.title = title ?? LocalizedStrings.LiveSchedule.infoDefaultTitle
     self.location = location
     self.scheduleTime = scheduleTime
   }
@@ -37,30 +37,43 @@ public struct LiveActivityInfoPopover: View {
   }
 
   private var displayLocation: String {
-    location ?? "강남역 11번 출구"
+    location ?? LocalizedStrings.LiveSchedule.infoDefaultLocation
   }
 
   private var displayTimeComponents: (ampm: String, time: String) {
-    guard let date = scheduleTime else {
-      return ("오후", "6:00")
+    let date = scheduleTime ?? sampleScheduleTime
+    let use24HourFormat = LocalizedDateFormatters.use24HourFormat
+
+    let timeFormatter = DateFormatter()
+    timeFormatter.locale = LocaleManager.appLocale
+    timeFormatter.timeZone = .current
+    timeFormatter.dateFormat = use24HourFormat ? "HH:mm" : "h:mm"
+
+    guard !use24HourFormat else {
+      return ("", timeFormatter.string(from: date))
     }
-    let hour = Calendar.current.component(.hour, from: date)
-    let minute = Calendar.current.component(.minute, from: date)
-    let ampm = hour < 12 ? "오전" : "오후"
-    let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
-    let timeString = String(format: "%d:%02d", displayHour, minute)
-    return (ampm, timeString)
+
+    let meridiemFormatter = DateFormatter()
+    meridiemFormatter.locale = LocaleManager.appLocale
+    meridiemFormatter.timeZone = .current
+    meridiemFormatter.dateFormat = "a"
+
+    return (meridiemFormatter.string(from: date), timeFormatter.string(from: date))
+  }
+
+  private var sampleScheduleTime: Date {
+    Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date()
   }
 
   public var body: some View {
     VStack(spacing: 16) {
       // 헤더
       VStack(spacing: 4) {
-        Text("실시간 공유란?")
+        Text(LocalizedStrings.LiveSchedule.infoTitle)
           .font(.system(size: 17, weight: .bold))
           .foregroundColor(.primary)
 
-        Text("잠금화면과 다이나믹 아일랜드에서\n친구들의 도착 상황을 실시간으로 확인할 수 있어요")
+        Text(LocalizedStrings.LiveSchedule.infoSubtitle)
           .font(.system(size: 13))
           .foregroundColor(.secondary)
           .multilineTextAlignment(.center)
@@ -101,7 +114,7 @@ public struct LiveActivityInfoPopover: View {
 
   private var dynamicIslandCompactPreview: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("다이나믹 아일랜드")
+      Text(LocalizedStrings.LiveSchedule.infoDynamicIsland)
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(.secondary)
 
@@ -121,9 +134,11 @@ public struct LiveActivityInfoPopover: View {
 
         // Trailing: PM 시간
         HStack(spacing: 2) {
-          Text(displayTimeComponents.ampm)
-            .font(.system(size: 9, weight: .medium, design: .monospaced))
-            .foregroundColor(.white.opacity(0.6))
+          if !displayTimeComponents.ampm.isEmpty {
+            Text(displayTimeComponents.ampm)
+              .font(.system(size: 9, weight: .medium, design: .monospaced))
+              .foregroundColor(.white.opacity(0.6))
+          }
           Text(displayTimeComponents.time)
             .font(.system(size: 13, weight: .bold, design: .monospaced))
             .foregroundColor(.white)
@@ -136,7 +151,7 @@ public struct LiveActivityInfoPopover: View {
       HStack {
         Spacer()
 
-        Text("* iPhone 14 Pro 이상부터 가능해요")
+        Text(LocalizedStrings.LiveSchedule.infoSupportNote)
           .font(.system(size: 9, weight: .regular))
           .foregroundColor(.secondary)
       }
@@ -147,7 +162,7 @@ public struct LiveActivityInfoPopover: View {
 
   private var lockScreenPreview: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("잠금화면")
+      Text(LocalizedStrings.LiveSchedule.infoLockScreen)
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(.secondary)
 
@@ -179,9 +194,11 @@ public struct LiveActivityInfoPopover: View {
               .foregroundColor(.white.opacity(0.6))
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-              Text(displayTimeComponents.ampm)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.6))
+              if !displayTimeComponents.ampm.isEmpty {
+                Text(displayTimeComponents.ampm)
+                  .font(.system(size: 10, weight: .medium, design: .monospaced))
+                  .foregroundColor(.white.opacity(0.6))
+              }
 
               Text(displayTimeComponents.time)
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
@@ -260,9 +277,36 @@ public struct LiveActivityInfoPopover: View {
 
         // 참가자 마커들
         // 민수, 재윤은 고정 / "나"만 애니메이션
-        participantMarker(name: "민수", emoji: "🐻", progress: 0.35, color: .orange, width: width, padding: padding, centerY: geo.size.height / 2, eta: "15분")
-        participantMarker(name: "재윤", emoji: "🐰", progress: 0.85, color: .green, width: width, padding: padding, centerY: geo.size.height / 2, eta: nil)
-        participantMarker(name: "나", emoji: "😀", progress: myProgress, color: .indigo, width: width, padding: padding, centerY: geo.size.height / 2, eta: "5분")
+        participantMarker(
+          name: "A",
+          emoji: "🐻",
+          progress: 0.35,
+          color: .orange,
+          width: width,
+          padding: padding,
+          centerY: geo.size.height / 2,
+          eta: LocalizedStrings.LiveSchedule.etaMinutes(15)
+        )
+        participantMarker(
+          name: "B",
+          emoji: "🐰",
+          progress: 0.85,
+          color: .green,
+          width: width,
+          padding: padding,
+          centerY: geo.size.height / 2,
+          eta: nil
+        )
+        participantMarker(
+          name: LocalizedStrings.LiveSchedule.me,
+          emoji: "😀",
+          progress: myProgress,
+          color: .indigo,
+          width: width,
+          padding: padding,
+          centerY: geo.size.height / 2,
+          eta: LocalizedStrings.LiveSchedule.etaMinutes(5)
+        )
       }
     }
     .frame(height: 36)
@@ -326,7 +370,7 @@ public struct LiveActivityInfoPopover: View {
     HStack(spacing: 4) {
       // 라벨
       VStack(alignment: .leading, spacing: 1) {
-        Text("도착까지")
+        Text(LocalizedStrings.LiveSchedule.minutesUntilArrival)
           .font(.system(size: 8, weight: .medium))
           .foregroundColor(.white.opacity(0.4))
       }
@@ -334,10 +378,10 @@ public struct LiveActivityInfoPopover: View {
 
       // 버튼들
       HStack(spacing: 4) {
-        etaButton(title: "완료", isSelected: false)
-        etaButton(title: "5분", isSelected: true)
-        etaButton(title: "10분", isSelected: false)
-        etaButton(title: "직접", isSelected: false)
+        etaButton(title: LocalizedStrings.LiveSchedule.etaArrived, isSelected: false)
+        etaButton(title: LocalizedStrings.LiveSchedule.etaMinutes(5), isSelected: true)
+        etaButton(title: LocalizedStrings.LiveSchedule.etaMinutes(10), isSelected: false)
+        etaButton(title: LocalizedStrings.LiveSchedule.directInput, isSelected: false)
       }
       .padding(3)
       .background(Color.black.opacity(0.3))

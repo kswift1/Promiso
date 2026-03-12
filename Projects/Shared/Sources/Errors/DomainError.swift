@@ -14,19 +14,19 @@ public enum DomainError: Error, LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .scheduleNotFound:
-      return "일정을 찾을 수 없습니다."
+      return LocalizedStrings.Error.notFoundError
     case .userNotFound:
-      return "사용자를 찾을 수 없습니다."
+      return LocalizedStrings.Error.userNotFound
     case .groupNotFound:
-      return "그룹을 찾을 수 없습니다."
+      return LocalizedStrings.Error.notFoundError
     case .insufficientParticipants:
-      return "참가자 수가 부족합니다."
+      return LocalizedStrings.Error.validationError
     case .invalidOperation:
-      return "유효하지 않은 작업입니다."
+      return LocalizedStrings.Error.validationError
     case .networkError(let message):
-      return "네트워크 오류: \(message)"
+      return message.isEmpty ? LocalizedStrings.Error.networkError : "\(LocalizedStrings.Error.networkError): \(message)"
     case .unknown(let message):
-      return "알 수 없는 오류: \(message)"
+      return message.isEmpty ? LocalizedStrings.Error.unknownError : "\(LocalizedStrings.Error.unknownError): \(message)"
     }
   }
 }

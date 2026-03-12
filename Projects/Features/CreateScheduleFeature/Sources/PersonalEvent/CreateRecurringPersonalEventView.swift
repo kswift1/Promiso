@@ -147,7 +147,7 @@ extension CreateRecurringPersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("반복 주기")
+          Text(LocalizedStrings.Personal.recurrenceFrequency)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -157,13 +157,13 @@ extension CreateRecurringPersonalEvent {
         .padding(.vertical, 12)
 
         // Frequency Picker
-        Picker("반복 주기", selection: Binding(
+        Picker(LocalizedStrings.Personal.recurrenceFrequency, selection: Binding(
           get: { store.selectedFrequency },
           set: { store.send(.view(.frequencyChanged($0))) }
         )) {
-          Text("매일").tag(RecurrenceRule.Frequency.daily)
-          Text("매주").tag(RecurrenceRule.Frequency.weekly)
-          Text("매월").tag(RecurrenceRule.Frequency.monthly)
+          Text(LocalizedStrings.Personal.recurrenceDaily).tag(RecurrenceRule.Frequency.daily)
+          Text(LocalizedStrings.Personal.recurrenceWeekly).tag(RecurrenceRule.Frequency.weekly)
+          Text(LocalizedStrings.Personal.recurrenceMonthly).tag(RecurrenceRule.Frequency.monthly)
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
@@ -201,18 +201,18 @@ extension CreateRecurringPersonalEvent {
             .background(Color.white.opacity(0.12))
 
           HStack {
-            Text("매월")
+            Text(LocalizedStrings.Personal.recurrenceMonthly)
               .font(.body)
               .foregroundStyle(Color.pmtext.secondary)
 
             Spacer()
 
-            Picker("일자", selection: Binding(
+            Picker(LocalizedStrings.Personal.recurrenceDayOfMonth, selection: Binding(
               get: { store.selectedDayOfMonth },
               set: { store.send(.view(.dayOfMonthChanged($0))) }
             )) {
               ForEach(1...31, id: \.self) { day in
-                Text("\(day)일").tag(day)
+                Text(LocalizedStrings.Personal.recurrenceDayOfMonthValue(day)).tag(day)
               }
             }
             .pickerStyle(.menu)
@@ -239,7 +239,7 @@ extension CreateRecurringPersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("시작 시각")
+          Text(LocalizedStrings.CreateSchedule.startTime)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -275,7 +275,7 @@ extension CreateRecurringPersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("종료 시간")
+          Text(LocalizedStrings.CreateSchedule.endTime)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -309,7 +309,7 @@ extension CreateRecurringPersonalEvent {
           HStack {
             Spacer()
             DatePicker(
-              "종료 시간",
+              LocalizedStrings.CreateSchedule.endTime,
               selection: endTimeBinding,
               displayedComponents: [.hourAndMinute]
             )
@@ -338,7 +338,7 @@ extension CreateRecurringPersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("시작일")
+          Text(LocalizedStrings.Personal.recurringDetailStartDate)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -369,7 +369,7 @@ extension CreateRecurringPersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("종료일")
+          Text(LocalizedStrings.Personal.recurringDetailEndDate)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -596,13 +596,13 @@ extension CreateRecurringPersonalEvent {
 
     private func weekdayShortName(_ weekday: Int) -> String {
       switch weekday {
-      case 1: return "일"
-      case 2: return "월"
-      case 3: return "화"
-      case 4: return "수"
-      case 5: return "목"
-      case 6: return "금"
-      case 7: return "토"
+      case 1: return LocalizedStrings.Calendar.weekdaySun
+      case 2: return LocalizedStrings.Calendar.weekdayMon
+      case 3: return LocalizedStrings.Calendar.weekdayTue
+      case 4: return LocalizedStrings.Calendar.weekdayWed
+      case 5: return LocalizedStrings.Calendar.weekdayThu
+      case 6: return LocalizedStrings.Calendar.weekdayFri
+      case 7: return LocalizedStrings.Calendar.weekdaySat
       default: return ""
       }
     }

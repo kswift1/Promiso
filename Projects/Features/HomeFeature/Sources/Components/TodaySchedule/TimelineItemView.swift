@@ -177,7 +177,7 @@ struct TimelineItemView: View {
       HStack(spacing: 3) {
         Image(systemName: "arrow.trianglehead.2.counterclockwise.rotate.90")
           .font(.system(size: 9))
-        Text("반복")
+        Text(LocalizedStrings.Personal.filterRecurring)
           .font(.system(size: 11, weight: .medium))
       }
       .foregroundStyle(Color.pmindigo.n500)
@@ -196,7 +196,7 @@ struct TimelineItemView: View {
       HStack(spacing: 3) {
         Image(systemName: schedule.isConfirmed ? "checkmark.circle.fill" : "clock.badge")
           .font(.system(size: 10))
-        Text(schedule.isConfirmed ? "확정" : "미확정")
+        Text(schedule.isConfirmed ? LocalizedStrings.Calendar.statusConfirmed : LocalizedStrings.Calendar.statusFailed)
           .font(.system(size: 11, weight: .semibold))
       }
       .foregroundStyle(schedule.isConfirmed ? Color.green : Color.orange)
@@ -366,7 +366,7 @@ struct TimelineItemView: View {
                     .fill(Color.pmindigo.n500.opacity(0.12))
                 )
 
-              Text("언제 출발할지 알려드릴게요")
+              Text(LocalizedStrings.Home.departurePrompt)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.primary)
 
@@ -405,11 +405,11 @@ struct TimelineItemView: View {
         )
 
       if isAlertPassed {
-        Text("\(alert.departureTime.formattedTime) 알림 완료")
+        Text(LocalizedStrings.Home.departureAlertDone(alert.departureTime.formattedTime))
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
       } else {
-        Text("\(alert.departureTime.formattedTime) 출발 예정")
+        Text(LocalizedStrings.Home.departureAlertUpcoming(alert.departureTime.formattedTime))
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.primary)
       }
@@ -563,19 +563,19 @@ struct TimelineItemView: View {
 
   /// 리마인더 시간 텍스트
   private func reminderText(minutes: Int) -> String {
-    if minutes == 0 { return "이벤트 시점" }
+    if minutes == 0 { return LocalizedStrings.Personal.reminderAtEvent }
     if minutes >= 10080 && minutes % (1440 * 7) == 0 {
       let weeks = minutes / (1440 * 7)
-      return "\(weeks)주 전"
+      return LocalizedStrings.Personal.reminderWeeks(weeks)
     }
     if minutes >= 1440 {
       let days = minutes / 1440
-      return "\(days)일 전"
+      return LocalizedStrings.Personal.reminderDays(days)
     }
     if minutes >= 60 {
-      return LocalizedStrings.Home.reminderHoursBefore(minutes / 60)
+      return LocalizedStrings.Personal.reminderHours(minutes / 60)
     }
-    return LocalizedStrings.Home.reminderMinutesBefore(minutes)
+    return LocalizedStrings.Personal.reminderMinutes(minutes)
   }
 
   private func hasDescription(_ event: PersonalEventModel) -> Bool {

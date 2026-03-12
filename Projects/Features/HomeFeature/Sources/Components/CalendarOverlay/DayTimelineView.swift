@@ -491,7 +491,7 @@ struct DayTimelineView: View {
         Button {
           onEditScheduleItem?(item)
         } label: {
-          Label("수정", systemImage: "pencil")
+          Label(LocalizedStrings.Common.edit, systemImage: "pencil")
         }
 
         Button(role: .destructive) {
@@ -695,11 +695,11 @@ struct DayTimelineView: View {
 
   private func statusText(for status: ScheduleResponseStatus) -> String {
     switch status {
-    case .needResponse: return "응답 필요"
-    case .responded:    return "투표 완료"
-    case .confirmed:    return "확정"
-    case .expired:      return "마감됨"
-    case .failed:       return "미확정"
+    case .needResponse: return LocalizedStrings.ScheduleCard.statusNeedResponse
+    case .responded:    return LocalizedStrings.ScheduleCard.statusResponded
+    case .confirmed:    return LocalizedStrings.Calendar.statusConfirmed
+    case .expired:      return LocalizedStrings.Common.expired
+    case .failed:       return LocalizedStrings.Calendar.statusFailed
     }
   }
 

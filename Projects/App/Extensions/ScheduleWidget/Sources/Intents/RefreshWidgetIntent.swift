@@ -1,12 +1,23 @@
 import AppIntents
 import os.log
+import PromisoShared
 import WidgetKit
 
 /// 위젯 새로고침 Intent (iOS 17+)
 /// 3겹 방어: Throttle + In-flight Dedup + Timeline Reload
 struct RefreshWidgetIntent: AppIntent {
-  static var title: LocalizedStringResource = "위젯 새로고침"
-  static var description = IntentDescription("위젯 데이터를 새로고침합니다")
+  static var title = LocalizedStringResource(
+    "widget.refreshIntent.title",
+    defaultValue: "Refresh Widget",
+    bundle: LocalizedStrings.bundle
+  )
+  static var description = IntentDescription(
+    LocalizedStringResource(
+      "widget.refreshIntent.description",
+      defaultValue: "Refreshes widget data.",
+      bundle: LocalizedStrings.bundle
+    )
+  )
 
   private static let logger = Logger(subsystem: "com.promiso.widget", category: "Refresh")
 

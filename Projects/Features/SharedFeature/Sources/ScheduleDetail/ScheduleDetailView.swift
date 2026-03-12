@@ -263,7 +263,12 @@ extension ScheduleDetail {
       VStack(spacing: 0) {
         ScheduleDetailSectionHeader(
           title: LocalizedStrings.Shared.participantsSection,
-          trailing: store.isLoadingMembers ? nil : "\(store.schedule.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
+          trailing: store.isLoadingMembers
+            ? nil
+            : LocalizedStrings.Shared.participantsJoined(
+              store.schedule.votes.acceptedCount,
+              store.groupMembers?.count ?? 0
+            )
         )
 
         if store.isLoadingMembers {

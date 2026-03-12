@@ -87,27 +87,44 @@ public struct ProConflictRow: View {
   // MARK: - Helpers
 
   private var checkingText: String {
-    switch checkTrigger {
-    case .startTimeChanged:
-      return "시작 시간과 겹치는 일정을 확인중이에요"
-    case .endTimeChanged:
-      return "종료 시간과 겹치는 일정을 확인중이에요"
-    case .initial:
-      return "겹치는 일정이 있는지 확인중이에요"
-    }
+    LocalizedStrings.Shared.conflictCheckingEvents
   }
 
   private var conflictSummaryText: String {
     if conflicts.count == 1, let first = conflicts.first {
       if first.overlapMinutes > 0 {
-        return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
+        return "\(first.title) · \(formattedOverlapText(first.overlapMinutes))"
       } else if first.gapMinutes > 0 {
-        return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
+        return "\(first.title) · \(formattedMarginText(first.gapMinutes))"
       } else {
-        return "'\(first.title)'과(와) 일정이 겹쳐요"
+        return "\(first.title) · \(LocalizedStrings.Shared.conflictOverlap)"
       }
     }
-    return "\(conflicts.count)건의 일정이 겹쳐요"
+    return "\(LocalizedStrings.Shared.conflictCount(conflicts.count)) \(LocalizedStrings.Shared.conflictOverlap)"
+  }
+
+  private func formattedOverlapText(_ minutes: Int) -> String {
+    if minutes >= 60 {
+      let hours = minutes / 60
+      let remaining = minutes % 60
+      if remaining > 0 {
+        return LocalizedStrings.Shared.conflictOverlapHoursMinutes(hours, remaining)
+      }
+      return LocalizedStrings.Shared.conflictOverlapHours(hours)
+    }
+    return LocalizedStrings.Shared.conflictOverlapMinutes(minutes)
+  }
+
+  private func formattedMarginText(_ minutes: Int) -> String {
+    if minutes >= 60 {
+      let hours = minutes / 60
+      let remaining = minutes % 60
+      if remaining > 0 {
+        return LocalizedStrings.Shared.conflictMarginHoursMinutes(hours, remaining)
+      }
+      return LocalizedStrings.Shared.conflictMarginHours(hours)
+    }
+    return LocalizedStrings.Shared.conflictMarginMinutes(minutes)
   }
 }
 

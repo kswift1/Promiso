@@ -237,7 +237,7 @@ enum WeatherDataSourceError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .invalidResponse:
-      return "날씨 정보를 처리할 수 없습니다"
+      return LocalizedStrings.Error.weatherInvalidResponse
     }
   }
 }

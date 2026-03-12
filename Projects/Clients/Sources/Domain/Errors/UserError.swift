@@ -40,21 +40,21 @@ public enum BriefingStyle: String, CaseIterable, Equatable, Sendable {
 
   public var displayName: String {
     switch self {
-    case .friendly: return "상냥한"
-    case .humorous: return "유머러스"
-    case .concise: return "간결한"
-    case .motivational: return "응원하는"
-    case .calm: return "차분한"
+    case .friendly: return LocalizedStrings.SettingsStrings.briefingStyleFriendly
+    case .humorous: return LocalizedStrings.SettingsStrings.briefingStyleHumorous
+    case .concise: return LocalizedStrings.SettingsStrings.briefingStyleConcise
+    case .motivational: return LocalizedStrings.SettingsStrings.briefingStyleMotivational
+    case .calm: return LocalizedStrings.SettingsStrings.briefingStyleCalm
     }
   }
 
   public var description: String {
     switch self {
-    case .friendly: return "따뜻하고 친근한 말투"
-    case .humorous: return "위트 있는 말투, 가벼운 드립"
-    case .concise: return "핵심만 짧게, 이모지 최소"
-    case .motivational: return "긍정적 에너지와 격려"
-    case .calm: return "조용하고 편안한 톤"
+    case .friendly: return LocalizedStrings.SettingsStrings.briefingStyleFriendlyDescription
+    case .humorous: return LocalizedStrings.SettingsStrings.briefingStyleHumorousDescription
+    case .concise: return LocalizedStrings.SettingsStrings.briefingStyleConciseDescription
+    case .motivational: return LocalizedStrings.SettingsStrings.briefingStyleMotivationalDescription
+    case .calm: return LocalizedStrings.SettingsStrings.briefingStyleCalmDescription
     }
   }
 }
@@ -68,8 +68,8 @@ public enum AvailableTransport: String, CaseIterable, Equatable, Sendable {
 
   public var displayName: String {
     switch self {
-    case .transit: return "대중교통"
-    case .car: return "자차"
+    case .transit: return LocalizedStrings.SettingsStrings.briefingTransportTransit
+    case .car: return LocalizedStrings.SettingsStrings.briefingTransportCar
     }
   }
 

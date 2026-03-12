@@ -17,13 +17,6 @@ struct ConflictOption: Identifiable {
   let id: Int
   let label: String
   let description: String
-
-  static let allOptions: [ConflictOption] = [
-    .init(id: 0, label: "겹칠 때만", description: "시간이 겹치는 약속만 감지"),
-    .init(id: 15, label: "15분", description: "15분 이내 간격도 감지"),
-    .init(id: 30, label: "30분", description: "30분 이내 간격도 감지"),
-    .init(id: 60, label: "1시간", description: "1시간 이내 간격도 감지"),
-  ]
 }
 
 // MARK: - Pro Onboarding Setup View
@@ -58,6 +51,31 @@ struct ProOnboardingSetupView: View {
     .interactiveDismissDisabled()
   }
 
+  private var conflictOptions: [ConflictOption] {
+    [
+      .init(
+        id: 0,
+        label: LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly,
+        description: LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnlyHint
+      ),
+      .init(
+        id: 15,
+        label: conflictThresholdLabel(15),
+        description: LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionMinutes(15)
+      ),
+      .init(
+        id: 30,
+        label: conflictThresholdLabel(30),
+        description: LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionMinutes(30)
+      ),
+      .init(
+        id: 60,
+        label: conflictThresholdLabel(60),
+        description: LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionHours(1)
+      ),
+    ]
+  }
+
   // MARK: - Progress Bar
 
   @ViewBuilder
@@ -88,12 +106,12 @@ struct ProOnboardingSetupView: View {
             .font(.system(size: 44))
             .foregroundStyle(Color.pmwarning.n500)
 
-          Text("일정 충돌 감지")
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text("약속을 잡을 때 겹치는 일정이 있으면\n미리 알려드려요")
+          Text(LocalizedStrings.ProPlan.onboardingConflictSubtitle)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
             .multilineTextAlignment(.center)
@@ -106,16 +124,16 @@ struct ProOnboardingSetupView: View {
           conflictPreviewCard
 
           VStack(alignment: .leading, spacing: 10) {
-            Text("감지 기준 설정")
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdSection)
               .font(.system(size: 16, weight: .semibold))
               .foregroundStyle(Color.pmtext.primary)
 
-            Text("약속 사이 여유 시간이 설정값보다 짧으면 충돌로 감지해요")
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdHint)
               .font(.caption)
               .foregroundStyle(Color.pmtext.secondary)
 
             VStack(spacing: 0) {
-              ForEach(ConflictOption.allOptions) { option in
+              ForEach(conflictOptions) { option in
                 Button {
                   store.send(.view(.onboardingConflictChanged(option.id)))
                 } label: {
@@ -143,7 +161,7 @@ struct ProOnboardingSetupView: View {
                 }
                 .buttonStyle(.plain)
 
-                if option.id != ConflictOption.allOptions.last?.id {
+                if option.id != conflictOptions.last?.id {
                   Divider()
                     .padding(.leading, 16)
                 }
@@ -167,17 +185,17 @@ struct ProOnboardingSetupView: View {
         Image(systemName: "exclamationmark.triangle.fill")
           .font(.system(size: 14))
           .foregroundStyle(Color.pmwarning.n500)
-        Text("일정 충돌이 감지되었어요")
+        Text(LocalizedStrings.ProPlan.onboardingConflictDetected)
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
       }
 
       HStack(spacing: 12) {
         VStack(alignment: .leading, spacing: 4) {
-          Text("팀 회의")
+          Text(LocalizedStrings.ProPlan.onboardingConflictExistingTitle)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
-          Text("오후 1:00 - 2:00")
+          Text(LocalizedStrings.ProPlan.onboardingConflictExistingTime)
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -190,10 +208,10 @@ struct ProOnboardingSetupView: View {
           .foregroundStyle(Color.pmtext.secondary)
 
         VStack(alignment: .leading, spacing: 4) {
-          Text("점심 약속")
+          Text(LocalizedStrings.ProPlan.onboardingConflictNewTitle)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
-          Text("오후 1:30 - 3:00")
+          Text(LocalizedStrings.ProPlan.onboardingConflictNewTime)
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -205,7 +223,7 @@ struct ProOnboardingSetupView: View {
       HStack(spacing: 4) {
         Image(systemName: "clock.fill")
           .font(.system(size: 11))
-        Text("30분 겹침")
+        Text(LocalizedStrings.ProPlan.onboardingConflictOverlap)
           .font(.system(size: 12, weight: .medium))
       }
       .foregroundStyle(Color.pmwarning.n500)
@@ -225,12 +243,12 @@ struct ProOnboardingSetupView: View {
             .font(.system(size: 44))
             .foregroundStyle(Color.pmaurora.purple)
 
-          Text("스마트 브리핑")
+          Text(LocalizedStrings.ProPlan.featureSmartBriefingTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text("매일 아침, 오늘의 약속 정보를\n한눈에 브리핑해드려요")
+          Text(LocalizedStrings.ProPlan.onboardingBriefingSubtitle)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
             .multilineTextAlignment(.center)
@@ -240,7 +258,7 @@ struct ProOnboardingSetupView: View {
         briefingPreviewCard
 
         VStack(alignment: .leading, spacing: 10) {
-          Text("브리핑 스타일")
+          Text(LocalizedStrings.SettingsStrings.briefingStyle)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
 
@@ -288,7 +306,7 @@ struct ProOnboardingSetupView: View {
         }
 
         VStack(alignment: .leading, spacing: 10) {
-          Text("알림 및 이동수단")
+          Text(LocalizedStrings.ProPlan.onboardingAlertAndTransport)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
 
@@ -298,7 +316,7 @@ struct ProOnboardingSetupView: View {
                 Image(systemName: "bell.fill")
                   .font(.system(size: 14))
                   .foregroundStyle(Color.pmindigo.n500)
-                Text("브리핑 알림")
+                Text(LocalizedStrings.SettingsStrings.briefingNotification)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
               }
@@ -339,7 +357,7 @@ struct ProOnboardingSetupView: View {
                 Image(systemName: "car.fill")
                   .font(.system(size: 14))
                   .foregroundStyle(Color.pmindigo.n500)
-                Text("이용 교통수단")
+                Text(LocalizedStrings.SettingsStrings.briefingTransport)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
               }
@@ -394,11 +412,11 @@ struct ProOnboardingSetupView: View {
         Image(systemName: "sparkles")
           .font(.system(size: 12))
           .foregroundStyle(Color.pmaurora.purple)
-        Text("오늘의 브리핑")
+        Text(LocalizedStrings.ProPlan.onboardingTodayBriefing)
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
         Spacer()
-        Text("오전 8시")
+        Text(LocalizedStrings.ProPlan.onboardingTodayBriefingTime)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
       }
@@ -406,18 +424,18 @@ struct ProOnboardingSetupView: View {
       Divider()
 
       VStack(alignment: .leading, spacing: 6) {
-        Text("오후 2시에 강남역 카페에서 약속이 있어요")
+        Text(LocalizedStrings.ProPlan.onboardingTodayBriefingMessage)
           .font(.system(size: 13))
           .foregroundStyle(Color.pmtext.primary)
 
         HStack(spacing: 12) {
-          Label("22° 맑음", systemImage: "sun.max.fill")
+          Label(LocalizedStrings.ProPlan.onboardingTodayBriefingWeather, systemImage: "sun.max.fill")
             .font(.system(size: 11))
             .symbolRenderingMode(.multicolor)
-          Label("대중교통 35분", systemImage: "bus.fill")
+          Label(LocalizedStrings.ProPlan.onboardingTodayBriefingTransport, systemImage: "bus.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
-          Label("1:20 출발", systemImage: "clock.fill")
+          Label(LocalizedStrings.ProPlan.onboardingTodayBriefingDeparture, systemImage: "clock.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pmaurora.purple)
         }
@@ -444,12 +462,12 @@ struct ProOnboardingSetupView: View {
               )
             )
 
-          Text("설정이 완료되었어요!")
+          Text(LocalizedStrings.ProPlan.onboardingCompleteTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text("설정은 언제든 변경할 수 있어요")
+          Text(LocalizedStrings.ProPlan.onboardingCompleteSubtitle)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -459,28 +477,28 @@ struct ProOnboardingSetupView: View {
           summaryRow(
             icon: "calendar.badge.exclamationmark",
             iconColor: Color.pmwarning.n500,
-            title: "일정 충돌 감지",
-            value: store.onboardingConflictThreshold == 0 ? "겹칠 때만" : "\(store.onboardingConflictThreshold)분"
+            title: LocalizedStrings.SettingsStrings.conflictDetectionTitle,
+            value: conflictThresholdLabel(store.onboardingConflictThreshold)
           )
           Divider().padding(.leading, 48)
           summaryRow(
             icon: briefingStyleIcon(store.onboardingBriefingStyle),
             iconColor: Color.pmindigo.n500,
-            title: "브리핑 스타일",
+            title: LocalizedStrings.SettingsStrings.briefingStyle,
             value: store.onboardingBriefingStyle.displayName
           )
           Divider().padding(.leading, 48)
           summaryRow(
             icon: "bell.fill",
             iconColor: Color.pmaurora.purple,
-            title: "브리핑 알림",
+            title: LocalizedStrings.SettingsStrings.briefingNotification,
             value: hourLabel(store.onboardingBriefingHour)
           )
           Divider().padding(.leading, 48)
           summaryRow(
             icon: "car.fill",
             iconColor: Color.pmindigo.n500,
-            title: "이용 교통수단",
+            title: LocalizedStrings.SettingsStrings.briefingTransport,
             value: store.onboardingTransports.sorted(by: { $0.rawValue < $1.rawValue }).map(\.displayName).joined(separator: ", ")
           )
         }
@@ -517,7 +535,7 @@ struct ProOnboardingSetupView: View {
         }
       } label: {
         HStack {
-          Text(store.onboardingStep == 2 ? "시작하기" : "다음")
+          Text(store.onboardingStep == 2 ? LocalizedStrings.ProPlan.startButton : LocalizedStrings.Common.next)
             .font(.headline)
             .foregroundStyle(.white)
 
@@ -593,9 +611,22 @@ struct ProOnboardingSetupView: View {
     }
   }
 
+  private func conflictThresholdLabel(_ minutes: Int) -> String {
+    guard minutes > 0 else { return LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly }
+    if minutes % 60 == 0 {
+      return String(localized: "proPlan.duration.hours", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes / 60)")
+    }
+    return String(localized: "proPlan.duration.minutes", bundle: LocalizedStrings.bundle)
+      .replacingOccurrences(of: "%lld", with: "\(minutes)")
+  }
+
   private func hourLabel(_ hour: Int) -> String {
-    let period = hour < 12 ? "오전" : "오후"
-    let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
-    return "\(period) \(displayHour)시"
+    let date = Calendar.current.date(from: DateComponents(hour: hour)) ?? Date()
+    return date.formatted(
+      Date.FormatStyle()
+        .locale(LocaleManager.appLocale)
+        .hour(.defaultDigits(amPM: .wide))
+    )
   }
 }

@@ -59,7 +59,7 @@ struct CreatePersonalEventReminderTests {
     store.exhaustivity = .off
 
     await store.send(.view(.reminderOptionSelected(30))) {
-      $0.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+      $0.reminderWarning = LocalizedStrings.Personal.reminderTooSoonWarning
       $0.event.reminderMinutesBefore = nil
       $0.pendingReminderMinutes = nil
     }
@@ -70,7 +70,7 @@ struct CreatePersonalEventReminderTests {
     var event = makeEvent(startAt: Date().addingTimeInterval(300))
     event.reminderMinutesBefore = nil
     var state = CreatePersonalEvent.Feature.State(event: event)
-    state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+    state.reminderWarning = LocalizedStrings.Personal.reminderTooSoonWarning
 
     let store = TestStore(initialState: state) {
       CreatePersonalEvent.Feature()
@@ -104,7 +104,7 @@ struct CreatePersonalEventReminderTests {
     let newStartDate = Date().addingTimeInterval(600)
     await store.send(.view(.startDateChanged(newStartDate))) {
       $0.event.startAt = newStartDate
-      $0.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+      $0.reminderWarning = LocalizedStrings.Personal.reminderTooSoonWarning
       $0.event.reminderMinutesBefore = nil
     }
   }

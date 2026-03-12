@@ -262,7 +262,7 @@ struct ScheduleModelDisplayTests {
   @Test("위치가 nil이면 기본 텍스트 반환")
   func locationText_whenLocationNil_returnsDefault() {
     let schedule = TestFactories.makeSchedule(location: nil)
-    #expect(schedule.locationText == "장소 미정")
+    #expect(schedule.locationText == LocalizedStrings.Common.noLocation)
   }
 
   // MARK: - dateText 테스트
@@ -313,21 +313,21 @@ struct ScheduleModelDisplayTests {
   func deadlineText_whenDaysRemaining_returnsDaysText() {
     let votes = TestFactories.makeVotes(until: Date().addingTimeInterval(86400 + 3600))
     let schedule = TestFactories.makeSchedule(votes: votes)
-    #expect(schedule.deadlineText == "1일 후")
+    #expect(schedule.deadlineText == LocalizedStrings.DateFormat.daysLater(1))
   }
 
   @Test("투표 마감까지 시간 단위 남으면 'N시간 후' 반환")
   func deadlineText_whenHoursRemaining_returnsHoursText() {
     let votes = TestFactories.makeVotes(until: Date().addingTimeInterval(7200 + 60))
     let schedule = TestFactories.makeSchedule(votes: votes)
-    #expect(schedule.deadlineText == "2시간 후")
+    #expect(schedule.deadlineText == LocalizedStrings.DateFormat.hoursLater(2))
   }
 
   @Test("투표 마감까지 분 단위 남으면 'N분 후' 반환")
   func deadlineText_whenMinutesRemaining_returnsMinutesText() {
     let votes = TestFactories.makeVotes(until: Date().addingTimeInterval(1530))
     let schedule = TestFactories.makeSchedule(votes: votes)
-    #expect(schedule.deadlineText == "25분 후")
+    #expect(schedule.deadlineText == LocalizedStrings.DateFormat.minutesLater(25))
   }
 
   // MARK: - shareText 테스트

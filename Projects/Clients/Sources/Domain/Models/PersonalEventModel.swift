@@ -174,7 +174,7 @@ extension PersonalEventModel {
 
   /// 위치 텍스트 (없으면 기본값)
   public var locationText: String {
-    location?.name ?? "장소 미정"
+    location?.name ?? LocalizedStrings.Common.noLocation
   }
 }
 
@@ -265,15 +265,15 @@ extension PersonalEventModel {
     guard let minutes = reminderMinutesBefore else { return "" }
     switch minutes {
     case 0:
-      return "지금 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsNow
     case let m where m >= 10080 && m % (1440 * 7) == 0:
-      return "\(m / (1440 * 7))주 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInWeeks(m / (1440 * 7))
     case let m where m >= 1440:
-      return "\(m / 1440)일 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInDays(m / 1440)
     case let m where m >= 60:
-      return "\(m / 60)시간 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInHours(m / 60)
     default:
-      return "\(minutes)분 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInMinutes(minutes)
     }
   }
 }

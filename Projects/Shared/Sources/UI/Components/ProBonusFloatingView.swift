@@ -172,11 +172,11 @@ public struct ProBonusFloatingView: View {
         .frame(width: 22, height: 22)
 
       if weatherLocationName == nil {
-        Text("장소를 설정하면 날씨를 확인해드릴 수 있어요!")
+        Text(LocalizedStrings.ProPlan.weatherLocationRequiredHint)
           .font(.system(size: 12))
           .foregroundStyle(.tertiary)
       } else {
-        Text("10일 이내 일정만 날씨를 확인할 수 있어요")
+        Text(LocalizedStrings.ProPlan.weatherDateLimitHint)
           .font(.system(size: 12))
           .foregroundStyle(.tertiary)
       }
@@ -203,9 +203,9 @@ public struct ProBonusFloatingView: View {
 
   private var noConflictText: String {
     if conflictThresholdMinutes > 0 {
-      return "전후 \(conflictThresholdMinutes)분 내 겹치는 일정이 없어요"
+      return LocalizedStrings.ProPlan.noConflictWithinMinutes(conflictThresholdMinutes)
     }
-    return "겹치는 일정이 없어요"
+    return LocalizedStrings.ProPlan.noConflict
   }
 
   // MARK: - Weather Loading Row

@@ -62,13 +62,13 @@ extension TransportDetail {
           .padding(.top, 8)
       }
       .auroraBackground()
-      .navigationTitle("교통 수단 상세")
+      .navigationTitle(LocalizedStrings.Home.transportTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
       .confirmationDialog(
-        "지도 앱 선택",
+        LocalizedStrings.Home.transportMapAppDialog,
         isPresented: Binding(
           get: { store.isMapAppSheetPresented },
           set: { _ in store.send(.view(.mapAppSheetDismissed)) }
@@ -113,7 +113,7 @@ extension TransportDetail {
           Circle()
             .fill(Color.pmindigo.n500)
             .frame(width: 8, height: 8)
-          Text(store.originName ?? "현재 위치")
+          Text(store.originName ?? LocalizedStrings.Home.transportCurrentLocation)
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
           Spacer()
@@ -157,7 +157,7 @@ extension TransportDetail {
         return types
       }()
 
-      return Picker("교통수단", selection: Binding(
+      return Picker(LocalizedStrings.SettingsStrings.briefingTransport, selection: Binding(
         get: { store.selectedSegment },
         set: { store.send(.view(.segmentChanged($0))) }
       )) {
@@ -192,20 +192,20 @@ extension TransportDetail {
           VStack(spacing: 12) {
             infoRow(
               iconName: "clock",
-              label: "소요시간",
-              value: "약 \(driving.durationMinutes)분"
+              label: LocalizedStrings.Home.transportDuration,
+              value: approximateMinutes(driving.durationMinutes)
             )
             Divider()
             infoRow(
               iconName: "car.fill",
-              label: "예상 출발",
+              label: LocalizedStrings.Home.transportExpectedDeparture,
               value: adjustedTime(driving.departureTime).formattedTime
             )
             if let info = driving.additionalInfo {
               Divider()
               infoRow(
                 iconName: "wonsign.circle",
-                label: "통행료",
+                label: LocalizedStrings.Home.transportToll,
                 value: info
               )
             }
@@ -252,10 +252,10 @@ extension TransportDetail {
         store.send(.view(.transitRouteChanged(route.id)))
       } label: {
         VStack(spacing: 4) {
-          Text("경로 \(route.id + 1)")
+          Text(routeTitle(route.id + 1))
             .font(.pmCaptionSemibold)
             .foregroundStyle(labelColor)
-          Text("약 \(route.totalTime)분")
+          Text(approximateMinutes(route.totalTime))
             .font(.pmCaption)
             .foregroundStyle(subColor)
           if !route.tags.isEmpty {
@@ -283,7 +283,7 @@ extension TransportDetail {
         )
       }
       .buttonStyle(.plain)
-      .accessibilityLabel("\(isSelected ? "선택됨, " : "")경로 \(route.id + 1), 약 \(route.totalTime)분")
+      .accessibilityLabel(routeAccessibilityLabel(isSelected: isSelected, routeIndex: route.id + 1, minutes: route.totalTime))
     }
 
     private func transitRouteDetail(route: HomeModels.TransitRouteOption) -> some View {
@@ -291,16 +291,16 @@ extension TransportDetail {
         // 요약 카드
         infoCard {
           VStack(spacing: 12) {
-            infoRow(iconName: "clock", label: "총 소요시간", value: "약 \(route.totalTime)분")
+            infoRow(iconName: "clock", label: LocalizedStrings.Home.transportTotalDuration, value: approximateMinutes(route.totalTime))
             Divider()
-            infoRow(iconName: "tram.fill", label: "예상 출발", value: adjustedTime(route.departureTime).formattedTime)
+            infoRow(iconName: "tram.fill", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(route.departureTime).formattedTime)
             if route.payment > 0 {
               Divider()
-              infoRow(iconName: "wonsign.circle", label: "요금", value: "\(route.payment.formatted())원")
+              infoRow(iconName: "wonsign.circle", label: LocalizedStrings.Home.transportFare, value: wonAmount(route.payment))
             }
             if route.transitCount > 0 {
               Divider()
-              infoRow(iconName: "arrow.triangle.2.circlepath", label: "환승", value: "\(route.transitCount)회")
+              infoRow(iconName: "arrow.triangle.2.circlepath", label: LocalizedStrings.Home.transportTransfers, value: transferCount(route.transitCount))
             }
           }
         }
@@ -316,7 +316,7 @@ extension TransportDetail {
 
     private func subPathTimeline(subPaths: [HomeModels.TransportSubPath]) -> some View {
       VStack(alignment: .leading, spacing: 0) {
-        Text("상세 경로")
+        Text(LocalizedStrings.Home.transportRouteDetailTitle)
           .font(.pmCaptionSemibold)
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.bottom, 12)
@@ -398,8 +398,8 @@ extension TransportDetail {
     }
 
     private func subwayLabel(subPath: HomeModels.TransportSubPath) -> some View {
-      let laneName = subPath.laneName ?? "지하철"
-      let stationText = subPath.stationCount.map { "(\($0)개역)" } ?? ""
+      let laneName = subPath.laneName ?? LocalizedStrings.Home.transportSubway
+      let stationText = subPath.stationCount.map(stationCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
         Text("\(laneName) \(stationText)")
@@ -410,18 +410,18 @@ extension TransportDetail {
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
         }
-        Text("\(subPath.sectionTime)분")
+        Text(minutesOnly(subPath.sectionTime))
           .font(.pmCaption)
           .foregroundStyle(Color.pmtext.secondary)
       }
     }
 
     private func busLabel(subPath: HomeModels.TransportSubPath) -> some View {
-      let busNo = subPath.laneName ?? "버스"
-      let stopText = subPath.stationCount.map { "(\($0)정류장)" } ?? ""
+      let busNo = subPath.laneName ?? LocalizedStrings.Home.transportBus
+      let stopText = subPath.stationCount.map(stopCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
-        Text("\(busNo)번 \(stopText)")
+        Text("\(busNo) \(stopText)")
           .font(.pmCaptionSemibold)
           .foregroundStyle(Color.pmtext.primary)
         if !routeText.isEmpty {
@@ -429,14 +429,14 @@ extension TransportDetail {
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
         }
-        Text("\(subPath.sectionTime)분")
+        Text(minutesOnly(subPath.sectionTime))
           .font(.pmCaption)
           .foregroundStyle(Color.pmtext.secondary)
       }
     }
 
     private func walkLabel(sectionTime: Int) -> some View {
-      Text("도보 \(sectionTime)분")
+      Text(walkingTime(sectionTime))
         .font(.pmCaption)
         .foregroundStyle(Color.pmtext.secondary)
     }
@@ -448,14 +448,14 @@ extension TransportDetail {
       return VStack(spacing: 16) {
         infoCard {
           VStack(spacing: 12) {
-            infoRow(iconName: "clock", label: "소요시간", value: "약 \(walking.durationMinutes)분")
+            infoRow(iconName: "clock", label: LocalizedStrings.Home.transportDuration, value: approximateMinutes(walking.durationMinutes))
             Divider()
-            infoRow(iconName: "figure.walk", label: "예상 출발", value: adjustedTime(walking.departureTime).formattedTime)
+            infoRow(iconName: "figure.walk", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(walking.departureTime).formattedTime)
             if let meters = walking.distanceMeters, meters > 0 {
               Divider()
               infoRow(
                 iconName: "map",
-                label: "예상 거리",
+                label: LocalizedStrings.Home.transportDistance,
                 value: String(format: "%.1fkm", Double(meters) / 1000.0)
               )
             }
@@ -466,7 +466,7 @@ extension TransportDetail {
             Image(systemName: "exclamationmark.triangle")
               .font(.system(size: 13))
               .foregroundStyle(Color.pmwarning.n500)
-            Text("10km 이상으로 도보는 비추천이에요")
+            Text(LocalizedStrings.Home.transportWalkingNotRecommended)
               .font(.pmCaption)
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -514,7 +514,7 @@ extension TransportDetail {
           Image(systemName: "clock")
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
-          Text("여유 시간")
+          Text(LocalizedStrings.Home.transportBufferTime)
             .font(.pmCaption)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -534,7 +534,7 @@ extension TransportDetail {
       return Button {
         store.send(.view(.bufferChanged(minutes)))
       } label: {
-        Text(minutes == 0 ? "없음" : "\(minutes)분")
+        Text(bufferText(minutes))
           .font(.pmCaption)
           .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
           .padding(.horizontal, 12)
@@ -552,7 +552,7 @@ extension TransportDetail {
           )
       }
       .buttonStyle(.plain)
-      .accessibilityLabel(minutes == 0 ? "여유 시간 없음" : "여유 시간 \(minutes)분")
+      .accessibilityLabel(bufferAccessibilityLabel(minutes))
     }
 
     // MARK: - Open Map Button
@@ -564,7 +564,7 @@ extension TransportDetail {
         HStack(spacing: 6) {
           Image(systemName: "map")
             .font(.system(size: 14))
-          Text("지도에서 경로보기")
+          Text(LocalizedStrings.Home.transportOpenInMap)
             .font(.pmCaptionSemibold)
         }
         .foregroundStyle(Color.pmindigo.n500)
@@ -584,7 +584,7 @@ extension TransportDetail {
       Button {
         store.send(.view(.alertButtonTapped))
       } label: {
-        Text("이 수단으로 알림 받기")
+        Text(LocalizedStrings.Home.transportNotifyWithThis)
           .font(.pmBodySemibold)
           .foregroundStyle(Color.white)
           .frame(maxWidth: .infinity)
@@ -595,6 +595,65 @@ extension TransportDetail {
           )
       }
       .buttonStyle(.plain)
+    }
+
+    private func approximateMinutes(_ minutes: Int) -> String {
+      String(localized: "home.transport.approxMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    private func minutesOnly(_ minutes: Int) -> String {
+      String(localized: "home.transport.minutesOnly", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    private func wonAmount(_ amount: Int) -> String {
+      String(localized: "home.transport.wonAmount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%@", with: amount.formatted())
+    }
+
+    private func transferCount(_ count: Int) -> String {
+      String(localized: "home.transport.transferCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+
+    private func routeTitle(_ index: Int) -> String {
+      String(localized: "home.transport.route", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(index)")
+    }
+
+    private func routeAccessibilityLabel(isSelected: Bool, routeIndex: Int, minutes: Int) -> String {
+      let key = isSelected ? "home.transport.route.accessibility.selected" : "home.transport.route.accessibility"
+      return String(localized: String.LocalizationValue(key), bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(routeIndex)")
+        .replacingOccurrences(of: "%2$lld", with: "\(minutes)")
+    }
+
+    private func stationCountText(_ count: Int) -> String {
+      String(localized: "home.transport.stationCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+
+    private func stopCountText(_ count: Int) -> String {
+      String(localized: "home.transport.stopCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+
+    private func walkingTime(_ minutes: Int) -> String {
+      String(localized: "home.transport.walkingTime", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    private func bufferText(_ minutes: Int) -> String {
+      guard minutes > 0 else { return LocalizedStrings.Home.transportNoBuffer }
+      return String(localized: "home.transport.buffer.minutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    private func bufferAccessibilityLabel(_ minutes: Int) -> String {
+      guard minutes > 0 else { return LocalizedStrings.Home.transportNoBufferAccessibility }
+      return String(localized: "home.transport.buffer.minutes.accessibility", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
     }
   }
 }

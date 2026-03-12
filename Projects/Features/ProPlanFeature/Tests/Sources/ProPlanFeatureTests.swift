@@ -18,6 +18,7 @@
 
 import Testing
 import ComposableArchitecture
+import PromisoShared
 @testable import ProPlanFeature
 @testable import Clients
 
@@ -77,7 +78,7 @@ struct ProPlanFeatureTests {
 
     await store.receive(\.internal.productsResponse.failure) {
       $0.isLoadingProducts = false
-      $0.errorMessage = "상품 정보를 불러올 수 없습니다. 다시 시도해 주세요."
+      $0.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
     }
 
     await store.receive(\.internal.statusUpdated) {
@@ -140,7 +141,7 @@ struct ProPlanFeatureTests {
 
     await store.receive(\.internal.purchaseResponse.failure) {
       $0.isPurchasing = false
-      $0.errorMessage = "구매에 실패했습니다. 다시 시도해 주세요."
+      $0.errorMessage = LocalizedStrings.ProPlan.purchaseFailed
     }
   }
 
@@ -194,7 +195,7 @@ struct ProPlanFeatureTests {
 
     await store.receive(\.internal.restoreResponse.failure) {
       $0.isPurchasing = false
-      $0.errorMessage = "복원에 실패했습니다. 이전에 구매한 내역이 없습니다."
+      $0.errorMessage = LocalizedStrings.ProPlan.restoreFailed
     }
   }
 
@@ -213,7 +214,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.restoreResponse.success) {
       $0.isPurchasing = false
       $0.subscriptionStatus = .none
-      $0.errorMessage = "이전에 구매한 내역이 없습니다."
+      $0.errorMessage = LocalizedStrings.ProPlan.restoreNoPurchaseHistory
     }
   }
 

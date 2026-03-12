@@ -41,7 +41,7 @@ extension Home {
             loadError: store.departureTransportData.error.map { error in
               error is LocationClientError
                 ? HomeModels.DepartureLoadError.locationPermission
-                : .general("경로를 불러오지 못했어요")
+                : .general(LocalizedStrings.Home.departureLoadFailed)
             },
             onSelect: { selection, bufferMinutes in
               store.send(.view(.departureAlertConfirmed(selection, bufferMinutes)))

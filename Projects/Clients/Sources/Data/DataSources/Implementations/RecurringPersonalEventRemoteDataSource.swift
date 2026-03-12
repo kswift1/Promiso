@@ -24,7 +24,7 @@ public actor RecurringPersonalEventRemoteDataSource: RecurringPersonalEventRemot
   private func eventsCollection() throws -> CollectionReference {
     guard let currentUserId = Auth.auth().currentUser?.uid else {
       throw NSError(domain: "RecurringPersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
+        NSLocalizedDescriptionKey: LocalizedStrings.Error.userAuthRequired
       ])
     }
     return db.collection("users")

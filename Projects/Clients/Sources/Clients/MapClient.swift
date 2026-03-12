@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PromisoShared
 import SwiftUI
 import UIKit
 
@@ -20,8 +21,8 @@ public enum MapApp: String, CaseIterable, Sendable {
 
   public var displayName: String {
     switch self {
-    case .kakao: return "카카오맵"
-    case .naver: return "네이버 지도"
+    case .kakao: return LocalizedStrings.Home.transportMapAppKakao
+    case .naver: return LocalizedStrings.Home.transportMapAppNaver
     }
   }
 
@@ -141,7 +142,7 @@ extension MapClient: DependencyKey {
         queryItems.append(contentsOf: [
           URLQueryItem(name: "slat", value: "\(from.latitude)"),
           URLQueryItem(name: "slng", value: "\(from.longitude)"),
-          URLQueryItem(name: "sname", value: fromName ?? "출발지")
+          URLQueryItem(name: "sname", value: fromName ?? LocalizedStrings.Home.departureStart)
         ])
       }
       queryItems.append(contentsOf: [

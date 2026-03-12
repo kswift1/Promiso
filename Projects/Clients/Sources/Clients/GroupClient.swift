@@ -15,15 +15,15 @@ public enum GroupClientError: Error, Equatable {
   public var localizedDescription: String {
     switch self {
     case .networkError:
-      return "네트워크 연결을 확인해주세요"
+      return LocalizedStrings.Error.networkError
     case .unauthorized:
-      return "로그인이 필요합니다"
+      return LocalizedStrings.Error.userAuthRequired
     case .notFound:
-      return "그룹을 찾을 수 없습니다"
+      return LocalizedStrings.Error.groupNotFound
     case .serverError:
-      return "서버 오류가 발생했습니다"
+      return LocalizedStrings.Error.serverError
     case .unknown:
-      return "알 수 없는 오류가 발생했습니다"
+      return LocalizedStrings.Error.unknownError
     }
   }
 }

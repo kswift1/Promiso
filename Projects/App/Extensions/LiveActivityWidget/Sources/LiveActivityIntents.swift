@@ -12,22 +12,52 @@ private let logger = Logger(subsystem: "com.promiso.widget", category: "LiveActi
 
 /// 도착 예상 시간 업데이트 Intent
 struct UpdateETAIntent: LiveActivityIntent {
-  static var title: LocalizedStringResource = "도착 예상 시간 변경"
-  static var description = IntentDescription("도착 예상 시간을 변경합니다")
+  static var title = LocalizedStringResource(
+    "liveSchedule.intent.updateEta.title",
+    defaultValue: "Update ETA",
+    bundle: LocalizedStrings.bundle
+  )
+  static var description = IntentDescription(
+    LocalizedStringResource(
+      "liveSchedule.intent.updateEta.description",
+      defaultValue: "Updates the estimated arrival time.",
+      bundle: LocalizedStrings.bundle
+    )
+  )
 
-  @Parameter(title: "채널 ID")
+  @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.channelId",
+    defaultValue: "Channel ID",
+    bundle: LocalizedStrings.bundle
+  ))
   var channelId: String
 
-  @Parameter(title: "사용자 ID")
+  @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.userId",
+    defaultValue: "User ID",
+    bundle: LocalizedStrings.bundle
+  ))
   var userId: String
 
-  @Parameter(title: "도착 예상 시간 (분)")
+  @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.estimatedMinutes",
+    defaultValue: "Estimated Arrival (Minutes)",
+    bundle: LocalizedStrings.bundle
+  ))
   var estimatedMinutes: Int
 
-  @Parameter(title: "추적 시간 (분)")
+  @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.trackingDurationMinutes",
+    defaultValue: "Tracking Duration (Minutes)",
+    bundle: LocalizedStrings.bundle
+  ))
   var trackingDurationMinutes: Int
 
-  @Parameter(title: "참가자 JSON")
+  @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.participantsJson",
+    defaultValue: "Participants JSON",
+    bundle: LocalizedStrings.bundle
+  ))
   var participantsJSON: String
 
   init() {

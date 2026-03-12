@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - Subscription Models
 
@@ -44,9 +45,9 @@ public enum SubscriptionProductType: String, Sendable, CaseIterable {
 extension SubscriptionProductType {
   public var displayName: String {
     switch self {
-    case .monthly: return "월간"
-    case .yearly: return "연간"
-    case .lifetime: return "평생"
+    case .monthly: return String(localized: "proPlan.product.monthly", bundle: LocalizedStrings.bundle)
+    case .yearly: return String(localized: "proPlan.product.yearly", bundle: LocalizedStrings.bundle)
+    case .lifetime: return String(localized: "proPlan.product.lifetime", bundle: LocalizedStrings.bundle)
     }
   }
 }

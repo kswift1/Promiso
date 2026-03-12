@@ -108,12 +108,12 @@ struct CalendarIndicatorDayCell: View {
         Button {
           onDayCreatePersonalEvent?(date)
         } label: {
-          Label("개인 일정 추가", systemImage: "person.fill")
+          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "person.fill")
         }
         Button {
           onDayCreateSchedule?(date)
         } label: {
-          Label("그룹 일정 추가", systemImage: "person.3.fill")
+          Label(LocalizedStrings.Calendar.createSchedule, systemImage: "person.3.fill")
         }
       } preview: {
         ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
@@ -143,12 +143,12 @@ struct CalendarIndicatorDayCell: View {
             Button {
               onDayCreatePersonalEvent?(date)
             } label: {
-              Label("개인 일정 추가", systemImage: "person.fill")
+              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "person.fill")
             }
             Button {
               onDayCreateSchedule?(date)
             } label: {
-              Label("그룹 일정 추가", systemImage: "person.3.fill")
+              Label(LocalizedStrings.Calendar.createSchedule, systemImage: "person.3.fill")
             }
           } preview: {
             ExpandedDayPreviewView(date: date, indicators: previewIndicatorsProvider?(date) ?? scheduleIndicators, holidayName: holidayName)
@@ -686,10 +686,7 @@ private struct ExpandedDayPreviewView: View {
   // MARK: - Helpers
 
   private var dateHeaderString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "M월 d일 EEEE"
-    formatter.locale = Locale(identifier: "ko_KR")
-    return formatter.string(from: date)
+    LocalizedDateFormatters.monthDayWeekday.string(from: date)
   }
 
   private func timeString(for indicator: CalendarFeature.ScheduleIndicator) -> String {
