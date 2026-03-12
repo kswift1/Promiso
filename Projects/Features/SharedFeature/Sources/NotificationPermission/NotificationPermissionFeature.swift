@@ -124,7 +124,7 @@ extension NotificationPermission {
 
             default:
               // Analytics 이벤트 로깅
-              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionRequested, nil)
+              analyticsClient.log(.notificationPermissionRequested)
 
               // 바로 시스템 권한 요청 알럿 표시
               return .run { send in
@@ -146,6 +146,7 @@ extension NotificationPermission {
           case .authorizationStatusLoaded(let status):
             let previousStatus = state.authorizationStatus
             state.authorizationStatus = status
+            analyticsClient.setNotificationPermissionStatus(status)
             // 설정에서 돌아와 권한이 부여된 경우 자동으로 닫기
             if previousStatus == .denied && status.isGranted {
               return .merge(
@@ -157,11 +158,9 @@ extension NotificationPermission {
 
           case .permissionRequestCompleted(let granted):
             state.authorizationStatus = granted ? .authorized : .denied
+            analyticsClient.setNotificationPermissionStatus(state.authorizationStatus)
 
-            // Analytics 이벤트 로깅 (허용된 경우만)
-            if granted {
-              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionGranted, nil)
-            }
+            analyticsClient.log(granted ? .notificationPermissionGranted : .notificationPermissionDenied)
 
             // 권한 요청 완료 → 결과 전달 후 화면 닫기
             return .merge(

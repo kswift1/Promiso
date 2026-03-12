@@ -84,9 +84,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   // MARK: - Firebase Analytics
   private func configureAnalytics() {
     #if DEBUG
-    // Debug 빌드에서는 Analytics 비활성화 (선택사항)
-    Analytics.setAnalyticsCollectionEnabled(false)
-    AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    let processInfo = ProcessInfo.processInfo
+    let isDebugAnalyticsEnabled =
+      processInfo.arguments.contains("-FIRDebugEnabled")
+      || processInfo.environment["PROMISO_ANALYTICS_DEBUG"] == "1"
+
+    Analytics.setAnalyticsCollectionEnabled(isDebugAnalyticsEnabled)
+    if isDebugAnalyticsEnabled {
+      AppLogger.general.debug("Firebase Analytics enabled for DEBUG build")
+    } else {
+      AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    }
     #else
     // Release 빌드에서는 Analytics 활성화
     Analytics.setAnalyticsCollectionEnabled(true)

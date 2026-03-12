@@ -77,6 +77,7 @@ extension CreateGroup {
           }
         }
       }
+      .analyticsScreen(.createGroup)
       .onAppear {
         store.send(.view(.onAppear))
       }

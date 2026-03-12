@@ -341,7 +341,7 @@ extension RootTab {
             effects.append(.send(.calendar(.view(.refresh))))
           case .settings:
             // Analytics 이벤트 로깅
-            analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
+            analyticsClient.log(.settingsOpened)
           case .schedule:
             if state.scheduleMode == .group {
               effects.append(.send(.groupMain(.view(.tabReturned))))
@@ -412,6 +412,7 @@ extension RootTab {
         case .settings(.delegate(.subscriptionStatusChanged(let status))):
           state.subscriptionStatus = status
           state.settings.subscriptionStatus = status
+          analyticsClient.setSubscriptionTier(status)
           return .none
 
         case .settings:
@@ -698,6 +699,7 @@ extension RootTab {
             state.settings.subscriptionStatus = status
             @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
             $isPro.withLock { $0 = status.isPro }
+            analyticsClient.setSubscriptionTier(status)
             return .none
 
           case .refreshSubscriptionStatus:

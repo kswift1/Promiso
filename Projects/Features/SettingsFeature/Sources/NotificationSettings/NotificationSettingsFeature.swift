@@ -27,6 +27,7 @@ extension NotificationSettings {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.userProfileClient) var userProfileClient
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.analyticsClient) var analyticsClient
 
     // MARK: - State
 
@@ -127,6 +128,7 @@ extension NotificationSettings {
           switch internalAction {
           case .systemAuthStatusReceived(let status):
             state.systemAuthStatus = status
+            analyticsClient.setNotificationPermissionStatus(status)
             return .none
 
           case .groupsLoaded(let groups):

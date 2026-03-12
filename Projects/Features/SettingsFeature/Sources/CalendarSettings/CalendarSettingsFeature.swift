@@ -28,6 +28,7 @@ extension CalendarSettings {
     @Dependency(\.groupClient) private var groupClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.calendarSyncClient) private var calendarSyncClient
+    @Dependency(\.analyticsClient) private var analyticsClient
 
     public init() {}
 
@@ -133,6 +134,10 @@ extension CalendarSettings {
         case .view(.personalCalendarSyncToggled(let enabled)):
           state.personalCalendarSyncEnabled = enabled
           UserDefaults.standard.set(enabled, forKey: AppConstants.UserDefaults.personalCalendarSync)
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: enabled,
+            groups: state.groups
+          )
           return .run { [calendarSyncClient] send in
             await hapticFeedback.selection()
             if enabled {
@@ -164,6 +169,10 @@ extension CalendarSettings {
             imageUrl: updatedGroup.imageUrl
           )
           state.groups[groupIndex] = updatedGroup
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: state.groups
+          )
 
           return .run { send in
             await hapticFeedback.selection()
@@ -206,6 +215,10 @@ extension CalendarSettings {
 
         case .internal(.groupsUpdated(let groups)):
           state.groups = groups
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: groups
+          )
           return .none
 
         case .internal(.groupSettingsUpdateCompleted(let groupId, let success, let previousValue)):
@@ -228,6 +241,10 @@ extension CalendarSettings {
             )
             state.groups[groupIndex] = updatedGroup
           }
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: state.groups
+          )
           if !success {
             state.toastMessage = ToastMessage(
               type: .error,

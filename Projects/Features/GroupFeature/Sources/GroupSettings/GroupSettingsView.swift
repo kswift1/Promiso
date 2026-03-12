@@ -33,6 +33,12 @@ extension GroupSettings {
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
         ))
+        .analyticsScreen(
+          .groupSettings,
+          additionalParameters: [
+            AnalyticsClient.ParameterKey.groupID: .string(store.group.id)
+          ]
+        )
         .sheet(
           isPresented: Binding(
             get: { store.editGroup != nil },

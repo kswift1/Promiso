@@ -257,13 +257,14 @@ extension ProPlan {
             .cancellable(id: CancelID.statusStream, cancelInFlight: true)
 
           case .paywallAppeared:
-            return .run { [analyticsClient] _ in
-              analyticsClient.logEvent(AnalyticsClient.EventName.paywallOpen, nil)
+            let hasIntroOffer = state.isEligibleForIntroOffer
+            return .run { [analyticsClient, hasIntroOffer] _ in
+              analyticsClient.log(.paywallOpen(hasIntroOffer: hasIntroOffer))
             }
 
           case .paywallDisappeared:
             return .run { [analyticsClient] _ in
-              analyticsClient.logEvent(AnalyticsClient.EventName.paywallClose, nil)
+              analyticsClient.log(.paywallClose)
             }
 
           case .productSelected(let productId):
@@ -279,7 +280,7 @@ extension ProPlan {
             state.isPurchasing = true
             state.errorMessage = nil
             return .run { [analyticsClient] send in
-              analyticsClient.logEvent(AnalyticsClient.EventName.paywallPurchase, nil)
+              analyticsClient.log(.paywallPurchase(productID: productId))
               await hapticFeedback.medium()
               do {
                 // 1. StoreKit 구매 + JWS 토큰 획득
@@ -296,7 +297,7 @@ extension ProPlan {
             state.isPurchasing = true
             state.errorMessage = nil
             return .run { [subscriptionClient, analyticsClient] send in
-              analyticsClient.logEvent(AnalyticsClient.EventName.paywallRestore, nil)
+              analyticsClient.log(.paywallRestore)
               await hapticFeedback.medium()
               do {
                 // 1. StoreKit 복원 + JWS 토큰 추출
