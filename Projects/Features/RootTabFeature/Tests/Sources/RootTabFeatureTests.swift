@@ -171,6 +171,34 @@ struct RootTabFeatureTests {
     await store.receive(\.delegate.logoutRequested)
   }
 
+  // MARK: - 구독 상태 테스트
+
+  @Test("서버에서 revoked 상태 수신 시 즉시 isPro false 반영")
+  func subscriptionStatusChanged_revoked_setsIsProFalse() async {
+    var state = makeState(key: "subscription-revoked")
+    state.subscriptionStatus = .lifetime  // 이전에 Pro였던 상태
+
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.subscriptionStatusChanged(.revoked))) {
+      $0.subscriptionStatus = .revoked
+      $0.settings.subscriptionStatus = .revoked
+    }
+  }
+
+  @Test("서버에서 none 상태 수신 시 isPro false 반영 (Firestore 문서 삭제)")
+  func subscriptionStatusChanged_none_setsIsProFalse() async {
+    var state = makeState(key: "subscription-none")
+    state.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.subscriptionStatusChanged(.none))) {
+      $0.subscriptionStatus = .none
+      $0.settings.subscriptionStatus = .none
+    }
+  }
+
   // MARK: - 딥링크/네비게이션 테스트
 
   @Test("openJoinGroupWithCode 시 그룹 탭으로 전환")

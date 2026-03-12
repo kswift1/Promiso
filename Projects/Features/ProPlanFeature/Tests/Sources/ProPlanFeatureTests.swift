@@ -378,6 +378,49 @@ struct ProPlanFeatureTests {
     }
   }
 
+  @Test("다른 계정 소유 구독 구매 시 소유권 충돌 에러 메시지 표시")
+  func purchaseTapped_alreadyOwnedByOther_showsOwnershipError() async {
+    var state = ProPlan.Feature.State()
+    state.selectedProductId = SubscriptionProductType.yearly.productId
+
+    let store = makeStore(state: state) {
+      $0.subscriptionClient.purchaseWithReceipt = { _ in
+        PurchaseResult(jwsString: "mock-jws", localStatus: .subscribed(productType: .yearly, expirationDate: Date().addingTimeInterval(365 * 24 * 3600)))
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in
+        throw SubscriptionError.alreadyOwnedByOther
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.purchaseTapped)) {
+      $0.isPurchasing = true
+      $0.errorMessage = nil
+    }
+
+    await store.receive(\.internal.purchaseResponse.failure) {
+      $0.isPurchasing = false
+      $0.errorMessage = SubscriptionError.alreadyOwnedByOther.errorDescription
+    }
+  }
+
+  @Test("서버 문서 없음 시 StoreKit entitlement 있어도 .none 유지 (SSOT 회귀 방지)")
+  func statusUpdated_serverNone_staysNoneRegardlessOfStoreKit() async {
+    var state = ProPlan.Feature.State()
+    // 이전에 Pro였던 상태에서 서버가 .none을 보냄
+    state.subscriptionStatus = .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    // 서버에서 .none 상태 수신 → Pro 해제
+    await store.send(.internal(.statusUpdated(.none))) {
+      $0.subscriptionStatus = .none
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+  }
+
   // MARK: - UI 액션
 
   @Test("에러 메시지 닫기")
