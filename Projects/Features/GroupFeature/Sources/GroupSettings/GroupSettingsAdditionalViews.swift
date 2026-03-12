@@ -28,6 +28,9 @@ struct SheetsModifier: ViewModifier {
           isKakaoSharing: store.isKakaoSharing,
           onKakaoShareTapped: {
             store.send(.view(.kakaoShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemInviteShareTapped))
           }
         )
         .presentationDetents([.height(340)])
@@ -464,6 +467,7 @@ struct InviteSheet: View {
   let inviteCode: String
   let isKakaoSharing: Bool
   let onKakaoShareTapped: () -> Void
+  let onSystemShareTapped: () -> Void
 
   @State private var isCopied = false
 
@@ -552,6 +556,11 @@ struct InviteSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
       .buttonStyle(.scale)
+      .simultaneousGesture(
+        TapGesture().onEnded {
+          onSystemShareTapped()
+        }
+      )
 
       Spacer(minLength: 0)
     }

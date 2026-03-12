@@ -49,6 +49,7 @@ extension JoinGroup {
       .auroraBackground()
       .navigationTitle(navigationTitle)
       .navigationBarTitleDisplayMode(.inline)
+      .analyticsScreen(.joinGroup)
       .onAppear {
         store.send(.view(.onAppear))
       }

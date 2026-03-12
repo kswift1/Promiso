@@ -261,18 +261,24 @@ extension ScheduleDetail {
 
           case .shareTapped:
             state.showShareSheet = true
+            analyticsClient.log(
+              .scheduleShareSheetOpened(
+                scheduleID: state.schedule.id,
+                scheduleTitle: state.schedule.title
+              )
+            )
             return .none
 
           case .kakaoShareTapped:
             state.isKakaoSharing = true
             let schedule = state.schedule
             return .run { [kakaoShareClient, analyticsClient] send in
-              analyticsClient.logEvent(
-                "kakao_schedule_shared",
-                [
-                  AnalyticsClient.ParameterKey.scheduleID: schedule.id,
-                  "share_method": "kakao"
-                ]
+              analyticsClient.log(
+                .scheduleLinkShared(
+                  scheduleID: schedule.id,
+                  scheduleTitle: schedule.title,
+                  shareMethod: .kakao
+                )
               )
               let result = await kakaoShareClient.shareSchedule(
                 schedule.title,
@@ -293,6 +299,13 @@ extension ScheduleDetail {
             let shareText = state.schedule.shareText
             state.showShareSheet = false
             state.systemShareText = shareText
+            analyticsClient.log(
+              .scheduleLinkShared(
+                scheduleID: state.schedule.id,
+                scheduleTitle: state.schedule.title,
+                shareMethod: .system
+              )
+            )
             return .none
 
           case .shareSheetDismissed:
@@ -380,20 +393,18 @@ extension ScheduleDetail {
             // Analytics 이벤트 로깅
             switch status {
             case .accepted:
-              analyticsClient.logEvent(
-                AnalyticsClient.EventName.scheduleResponseYes,
-                [
-                  AnalyticsClient.ParameterKey.scheduleID: state.schedule.id,
-                  AnalyticsClient.ParameterKey.scheduleTitle: state.schedule.title
-                ]
+              analyticsClient.log(
+                .scheduleResponseYes(
+                  scheduleID: state.schedule.id,
+                  scheduleTitle: state.schedule.title
+                )
               )
             case .declined:
-              analyticsClient.logEvent(
-                AnalyticsClient.EventName.scheduleResponseNo,
-                [
-                  AnalyticsClient.ParameterKey.scheduleID: state.schedule.id,
-                  AnalyticsClient.ParameterKey.scheduleTitle: state.schedule.title
-                ]
+              analyticsClient.log(
+                .scheduleResponseNo(
+                  scheduleID: state.schedule.id,
+                  scheduleTitle: state.schedule.title
+                )
               )
             case .pending:
               break // 응답 취소는 이벤트 없음

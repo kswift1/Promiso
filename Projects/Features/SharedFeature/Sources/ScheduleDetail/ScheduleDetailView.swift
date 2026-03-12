@@ -45,6 +45,12 @@ extension ScheduleDetail {
       .auroraBackground()
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
+      .analyticsScreen(
+        .scheduleDetail,
+        additionalParameters: [
+          AnalyticsClient.ParameterKey.scheduleID: .string(store.schedule.id)
+        ]
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }

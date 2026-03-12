@@ -257,8 +257,9 @@ extension AppEntry {
             return .none
 
           case .checkNotificationPermission(let userModel):
-            return .run { send in
+            return .run { [analyticsClient] send in
               let status = await notificationClient.getAuthorizationStatus()
+              analyticsClient.setNotificationPermissionStatus(status)
               let isAuthorized = status == .authorized
               await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
             }
@@ -325,14 +326,23 @@ extension AppEntry {
           case .transitionToMain(let userModel, let isSignup):
             WidgetDataManager.saveUserId(userModel.id)
             clarityClient.setUser(userModel.id, userModel.nickname)
+            let providerIdentifier = userModel.provider.providerTypeIdentifier
+            let personalCalendarSyncEnabled = UserDefaults.standard.bool(
+              forKey: AppConstants.UserDefaults.personalCalendarSync
+            )
             analyticsClient.setUserID(userModel.id)
-            analyticsClient.setUserProperty(userModel.nickname, "nickname")
-
-            if isSignup {
-              analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
-            } else {
-              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
-            }
+            analyticsClient.setUserProperty(userModel.nickname, .nickname)
+            analyticsClient.setUserProperty(providerIdentifier, .authProvider)
+            analyticsClient.setGroupMembershipProperties(userModel.groups)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: personalCalendarSyncEnabled,
+              groups: userModel.groups
+            )
+            analyticsClient.log(
+              isSignup
+                ? .userSignup(loginMethod: providerIdentifier)
+                : .userLogin(loginMethod: providerIdentifier)
+            )
 
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
 
@@ -413,7 +423,7 @@ extension AppEntry {
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
-          analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
+          analyticsClient.log(.profileSetupCompleted)
           if state.isFullOnboarding {
             // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
             state.pendingUserForMain = userModel
@@ -455,6 +465,13 @@ extension AppEntry {
 
             // Analytics 유저 정보 제거
             analyticsClient.setUserID(nil)
+            analyticsClient.setUserProperty(nil, .nickname)
+            analyticsClient.setUserProperty(nil, .authProvider)
+            analyticsClient.setUserProperty(nil, .subscriptionTier)
+            analyticsClient.setUserProperty(nil, .notificationPermissionStatus)
+            analyticsClient.setUserProperty(nil, .hasGroup)
+            analyticsClient.setUserProperty(nil, .groupCountBucket)
+            analyticsClient.setUserProperty(nil, .calendarSyncEnabled)
 
             do {
               try await notificationClient.deleteFCMToken()

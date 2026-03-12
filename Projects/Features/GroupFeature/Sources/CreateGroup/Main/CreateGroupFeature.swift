@@ -207,12 +207,20 @@ extension CreateGroup {
           case .kakaoInviteShareTapped:
             guard case .success(let result) = state.step else { return .none }
             state.isKakaoSharing = true
+            let groupID = result.id
             let groupName = result.name
             let inviteCode = result.inviteCode
             let maxMembers = state.maxMembers.rawValue
             let inviterName = state.currentUser.nickname
-            return .run { [kakaoShareClient, hapticFeedback] send in
+            return .run { [analyticsClient, kakaoShareClient, hapticFeedback] send in
               await hapticFeedback.buttonTap()
+              analyticsClient.log(
+                .groupInviteLinkShared(
+                  groupID: groupID,
+                  groupName: groupName,
+                  shareMethod: .kakao
+                )
+              )
               let shareResult = await kakaoShareClient.shareGroupInvite(
                 groupName,
                 inviteCode,
@@ -227,12 +235,11 @@ extension CreateGroup {
 
           case .successAcknowledged:
             guard case .success(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
+            analyticsClient.log(
+              .groupCreated(
+                groupID: result.id,
+                groupName: result.name
+              )
             )
             return .send(.delegate(.groupCreatedAndCreateSchedule(id: result.id)))
 
