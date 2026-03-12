@@ -7,6 +7,7 @@ import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRou
 import {
   AppBar,
   Box,
+  Button,
   Drawer,
   List,
   ListItemButton,
@@ -17,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import {Outlet, useLocation, useNavigate} from "react-router-dom";
+import {useAuth} from "../auth/AuthProvider";
 
 const drawerWidth = 260;
 
@@ -40,6 +42,7 @@ const navItems = [
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const {adminSession, user, signOutUser} = useAuth();
 
   return (
     <Box sx={{display: "flex", minHeight: "100vh"}}>
@@ -62,9 +65,19 @@ export function AppShell() {
             </Typography>
             <Typography variant="h6">Admin Console</Typography>
           </Stack>
-          <Typography variant="body2" color="text.secondary">
-            release/v1.2.0
-          </Typography>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Stack spacing={0.5} sx={{textAlign: "right"}}>
+              <Typography variant="body2" color="text.secondary">
+                {user?.email ?? "Unknown admin"}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {adminSession?.role ?? "unknown"} · release/v1.2.0
+              </Typography>
+            </Stack>
+            <Button variant="outlined" onClick={() => void signOutUser()}>
+              Sign out
+            </Button>
+          </Stack>
         </Toolbar>
       </AppBar>
 
@@ -126,4 +139,3 @@ export function AppShell() {
     </Box>
   );
 }
-
