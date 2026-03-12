@@ -338,6 +338,8 @@ struct ScheduleDetailFeatureTests {
       )
     ) {
       ScheduleDetail.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.shareTapped)) {
@@ -357,6 +359,8 @@ struct ScheduleDetailFeatureTests {
 
     let store = TestStore(initialState: state) {
       ScheduleDetail.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.systemShareTapped)) {

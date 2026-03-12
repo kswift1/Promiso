@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import FirebaseAnalytics
+import PromisoShared
 import Testing
 @testable import Clients
 
