@@ -65,6 +65,8 @@ extension ProPlan {
       public var selectedProductId: String?
       /// 에러 메시지
       public var errorMessage: String?
+      /// 상품 로딩 실패 시 가격 영역에 유지할 에러 메시지
+      public var productsLoadErrorMessage: String?
       /// 무료 체험 대상 여부
       public var isEligibleForIntroOffer: Bool = false
       /// 구매 성공 축하 화면 표시 여부
@@ -96,6 +98,7 @@ extension ProPlan {
         isPurchasing: Bool = false,
         selectedProductId: String? = nil,
         errorMessage: String? = nil,
+        productsLoadErrorMessage: String? = nil,
         isEligibleForIntroOffer: Bool = false,
         purchaseDate: Date? = nil
       ) {
@@ -105,6 +108,7 @@ extension ProPlan {
         self.isPurchasing = isPurchasing
         self.selectedProductId = selectedProductId
         self.errorMessage = errorMessage
+        self.productsLoadErrorMessage = productsLoadErrorMessage
         self.isEligibleForIntroOffer = isEligibleForIntroOffer
         self.purchaseDate = purchaseDate
       }
@@ -138,6 +142,8 @@ extension ProPlan {
       case restoreTapped
       /// 에러 메시지 닫기
       case dismissError
+      /// 상품 로딩 재시도
+      case retryProductsLoadTapped
       /// 축하 화면 닫기
       case dismissCelebration
       /// 요금제 보기 탭
@@ -219,6 +225,29 @@ extension ProPlan {
         }
       }
 
+      let loadPaywallData = { [subscriptionClient] in
+        Effect<Action>.run { send in
+          async let productsResult = Result { try await subscriptionClient.fetchProducts() }
+          async let statusResult = Result { try await subscriptionClient.fetchStatus() }
+          async let eligibility = subscriptionClient.checkIntroOfferEligibility()
+          async let purchaseDate = subscriptionClient.fetchPurchaseDate()
+
+          await send(.internal(.productsResponse(await productsResult)))
+
+          if case .success(let status) = await statusResult {
+            await send(.internal(.statusUpdated(status)))
+          }
+
+          await send(.internal(.introOfferEligibilityResult(await eligibility)))
+          await send(.internal(.purchaseDateLoaded(await purchaseDate)))
+
+          for await status in subscriptionClient.statusStream() {
+            await send(.internal(.statusUpdated(status)))
+          }
+        }
+        .cancellable(id: CancelID.statusStream, cancelInFlight: true)
+      }
+
       Reduce { state, action in
         switch action {
 
@@ -226,35 +255,9 @@ extension ProPlan {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 상품 목록 조회 + 구독 상태 조회 + 무료 체험 대상 확인 (병렬)
             state.isLoadingProducts = true
-            return .run { [subscriptionClient] send in
-              // 병렬 조회
-              async let productsResult = Result { try await subscriptionClient.fetchProducts() }
-              async let statusResult = Result { try await subscriptionClient.fetchStatus() }
-              async let eligibility = subscriptionClient.checkIntroOfferEligibility()
-              async let purchaseDate = subscriptionClient.fetchPurchaseDate()
-
-              // 상품 목록 결과 전송
-              await send(.internal(.productsResponse(await productsResult)))
-
-              // 구독 상태 결과는 statusUpdated로 전송
-              if case .success(let status) = await statusResult {
-                await send(.internal(.statusUpdated(status)))
-              }
-
-              // 무료 체험 대상 여부 전송
-              await send(.internal(.introOfferEligibilityResult(await eligibility)))
-
-              // 최초 구매일 전송
-              await send(.internal(.purchaseDateLoaded(await purchaseDate)))
-
-              // 구독 상태 스트림 구독 시작
-              for await status in subscriptionClient.statusStream() {
-                await send(.internal(.statusUpdated(status)))
-              }
-            }
-            .cancellable(id: CancelID.statusStream, cancelInFlight: true)
+            state.productsLoadErrorMessage = nil
+            return loadPaywallData()
 
           case .paywallAppeared:
             return .run { [analyticsClient] _ in
@@ -321,6 +324,15 @@ extension ProPlan {
           case .dismissError:
             state.errorMessage = nil
             return .none
+
+          case .retryProductsLoadTapped:
+            state.isLoadingProducts = true
+            state.errorMessage = nil
+            state.productsLoadErrorMessage = nil
+            return .concatenate(
+              .run { _ in await hapticFeedback.selection() },
+              loadPaywallData()
+            )
 
           case .dismissCelebration:
             state.showCelebration = false
@@ -392,6 +404,7 @@ extension ProPlan {
           switch internalAction {
           case .productsResponse(.success(let products)):
             state.isLoadingProducts = false
+            state.productsLoadErrorMessage = nil
             state.products = products
             // 기본 선택: 연간 플랜
             state.selectedProductId = products.first { $0.type == .yearly }?.id
@@ -401,8 +414,10 @@ extension ProPlan {
             state.isLoadingProducts = false
             if let subscriptionError = error as? SubscriptionError,
                subscriptionError == .productNotFound {
+              state.productsLoadErrorMessage = LocalizedStrings.Error.subscriptionProductNotFound
               state.errorMessage = LocalizedStrings.Error.subscriptionProductNotFound
             } else {
+              state.productsLoadErrorMessage = LocalizedStrings.ProPlan.productsLoadFailed
               state.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
             }
             return .run { _ in

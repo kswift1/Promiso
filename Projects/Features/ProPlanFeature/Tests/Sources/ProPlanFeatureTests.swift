@@ -37,6 +37,7 @@ struct ProPlanFeatureTests {
     #expect(state.isPurchasing == false)
     #expect(state.selectedProductId == nil)
     #expect(state.errorMessage == nil)
+    #expect(state.productsLoadErrorMessage == nil)
   }
 
   // MARK: - 상품 로딩
@@ -110,11 +111,64 @@ struct ProPlanFeatureTests {
 
     await store.receive(\.internal.productsResponse.failure) {
       $0.isLoadingProducts = false
+      $0.productsLoadErrorMessage = LocalizedStrings.ProPlan.productsLoadFailed
       $0.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
     }
 
     await store.receive(\.internal.statusUpdated) {
       $0.subscriptionStatus = .none
+    }
+  }
+
+  @Test("상품 로딩 실패 후 retry 시 에러를 지우고 다시 로드")
+  func retryProductsLoadTapped_retriesLoading() async {
+    enum TestError: Error {
+      case failed
+    }
+
+    let fetchProductsCallCount = LockIsolated(0)
+    let mockProducts = Self.mockProducts
+
+    let store = makeStore {
+      $0.subscriptionClient.fetchProducts = {
+        let currentCallCount = fetchProductsCallCount.withValue {
+          $0 += 1
+          return $0
+        }
+
+        if currentCallCount == 1 {
+          throw TestError.failed
+        }
+        return mockProducts
+      }
+      $0.hapticFeedback.selection = {}
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.failure) {
+      $0.isLoadingProducts = false
+      $0.productsLoadErrorMessage = LocalizedStrings.ProPlan.productsLoadFailed
+      $0.errorMessage = LocalizedStrings.ProPlan.productsLoadFailed
+    }
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .none
+    }
+
+    await store.send(.view(.retryProductsLoadTapped)) {
+      $0.isLoadingProducts = true
+      $0.errorMessage = nil
+      $0.productsLoadErrorMessage = nil
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
     }
   }
 

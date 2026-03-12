@@ -716,8 +716,7 @@ extension Settings {
       .sheet(
         item: $store.scope(state: \.proPlan, action: \.proPlan)
       ) { proPlanStore in
-        ProPlan.PaywallView(store: proPlanStore)
-          .onAppear { proPlanStore.send(.view(.onAppear)) }
+        ProPlan.RootView(store: proPlanStore)
       }
       .toast(Binding(
         get: { store.toastMessage },
