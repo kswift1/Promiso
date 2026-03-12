@@ -513,7 +513,6 @@ private extension ProPlanFeatureTests {
         RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
       }
       $0.subscriptionClient.fetchStatus = { .none }
-      $0.subscriptionClient.statusStream = { .finished }
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.subscriptionClient.fetchPurchaseDate = { nil }
