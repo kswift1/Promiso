@@ -363,7 +363,7 @@ let schemes: [Scheme] = {
         runAction: .runAction(
           configuration: .debug,
           options: .options(
-            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan-Dev.storekit")
           )
         )
       )
@@ -375,10 +375,7 @@ let schemes: [Scheme] = {
         shared: true,
         buildAction: .buildAction(targets: [.target("PromisoStage")]),
         runAction: .runAction(
-          configuration: .debug,
-          options: .options(
-            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan-Stage.storekit")
-          )
+          configuration: .debug
         )
       )
     ]
@@ -389,10 +386,7 @@ let schemes: [Scheme] = {
         shared: true,
         buildAction: .buildAction(targets: [.target(AppConfig.name)]),
         runAction: .runAction(
-          configuration: .debug,
-          options: .options(
-            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
-          )
+          configuration: .debug
         )
       )
     ]

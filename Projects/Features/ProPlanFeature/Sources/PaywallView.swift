@@ -54,7 +54,7 @@ extension ProPlan {
       .presentationDetents([.large])
       .presentationDragIndicator(.hidden)
       .presentationCornerRadius(24)
-      .interactiveDismissDisabled(store.isPurchasing)
+      .interactiveDismissDisabled(store.isPurchasing || store.showCelebration || store.showProOnboarding)
     }
 
     // MARK: - Page 1: Benefits
