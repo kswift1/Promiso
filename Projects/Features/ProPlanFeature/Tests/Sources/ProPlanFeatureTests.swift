@@ -61,6 +61,38 @@ struct ProPlanFeatureTests {
     }
   }
 
+  @Test("Paywall 노출 시 analytics 이벤트 로깅")
+  func paywallAppeared_logsAnalyticsEvent() async {
+    let didLogPaywallOpen = LockIsolated(false)
+
+    let store = makeStore {
+      $0.analyticsClient.logEvent = { name, _ in
+        if name == AnalyticsClient.EventName.paywallOpen {
+          didLogPaywallOpen.setValue(true)
+        }
+      }
+    }
+
+    await store.send(.view(.paywallAppeared))
+    #expect(didLogPaywallOpen.value == true)
+  }
+
+  @Test("Paywall 종료 시 analytics 이벤트 로깅")
+  func paywallDisappeared_logsAnalyticsEvent() async {
+    let didLogPaywallClose = LockIsolated(false)
+
+    let store = makeStore {
+      $0.analyticsClient.logEvent = { name, _ in
+        if name == AnalyticsClient.EventName.paywallClose {
+          didLogPaywallClose.setValue(true)
+        }
+      }
+    }
+
+    await store.send(.view(.paywallDisappeared))
+    #expect(didLogPaywallClose.value == true)
+  }
+
   @Test("상품 로딩 실패 시 에러 메시지 설정")
   func onAppear_productsFailure_setsErrorMessage() async {
     enum TestError: Error {
@@ -102,10 +134,18 @@ struct ProPlanFeatureTests {
 
   @Test("구매 성공 시 구독 상태 업데이트 및 delegate 전달")
   func purchaseTapped_success_updatesStatusAndSendsDelegate() async {
+    let didLogPurchase = LockIsolated(false)
+
     var state = ProPlan.Feature.State()
     state.selectedProductId = SubscriptionProductType.yearly.productId
 
-    let store = makeStore(state: state)
+    let store = makeStore(state: state) {
+      $0.analyticsClient.logEvent = { name, _ in
+        if name == AnalyticsClient.EventName.paywallPurchase {
+          didLogPurchase.setValue(true)
+        }
+      }
+    }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.purchaseTapped)) {
@@ -116,6 +156,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.purchaseResponse.success)
     #expect(store.state.isPurchasing == false)
     #expect(store.state.subscriptionStatus.isPro == true)
+    #expect(didLogPurchase.value == true)
 
     await store.receive(\.delegate.subscriptionStatusChanged)
   }
@@ -206,6 +247,8 @@ struct ProPlanFeatureTests {
 
   @Test("복원 성공 시 구독 상태 업데이트")
   func restoreTapped_success_updatesStatus() async {
+    let didLogRestore = LockIsolated(false)
+
     let store = makeStore {
       $0.subscriptionClient.restoreWithReceipt = {
         RestoreResult(
@@ -215,6 +258,11 @@ struct ProPlanFeatureTests {
         )
       }
       $0.subscriptionClient.verifyPurchase = { _, _ in .lifetime }
+      $0.analyticsClient.logEvent = { name, _ in
+        if name == AnalyticsClient.EventName.paywallRestore {
+          didLogRestore.setValue(true)
+        }
+      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -227,6 +275,8 @@ struct ProPlanFeatureTests {
       $0.isPurchasing = false
       $0.subscriptionStatus = .lifetime
     }
+
+    #expect(didLogRestore.value == true)
 
     await store.receive(\.delegate.subscriptionStatusChanged)
   }
@@ -467,6 +517,7 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.subscriptionClient.fetchPurchaseDate = { nil }
+      $0.analyticsClient.logEvent = { _, _ in }
       $0.authClient.currentUser = {
         FirebaseUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
       }

@@ -81,6 +81,12 @@ extension ProPlan {
       .presentationDragIndicator(.hidden)
       .presentationCornerRadius(24)
       .interactiveDismissDisabled(store.isPurchasing)
+      .onAppear {
+        store.send(.view(.paywallAppeared))
+      }
+      .onDisappear {
+        store.send(.view(.paywallDisappeared))
+      }
     }
 
     // MARK: - Hero
