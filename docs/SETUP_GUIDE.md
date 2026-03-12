@@ -6,7 +6,7 @@
 
 - 목적: 신규/교체 장비에서 개발 시작까지의 온보딩 절차 제공
 - 대상 독자: 신규 팀원, 개발 환경 재설치 사용자
-- 최종 수정일: 2026-02-06
+- 최종 수정일: 2026-03-12
 - 관련 문서: [README.md](README.md) · [ENVIRONMENT.md](ENVIRONMENT.md) · [DEVELOPMENT.md](DEVELOPMENT.md)
 
 ## 범위 안내
@@ -24,6 +24,30 @@
 ---
 
 ## 1. 새 컴퓨터에서 설정하기
+
+### ✅ 권장 경로: `make setup`
+
+신규 clone 기준 표준 시작점은 아래 명령입니다.
+
+```bash
+git clone https://github.com/kswift1/promiso.git
+cd promiso
+
+# 실제 xcconfig까지 한 번에 받을 때
+export NOTION_API_KEY="YOUR_NOTION_API_KEY"
+
+make setup
+```
+
+`make setup`이 수행하는 작업:
+- `tuist install`
+- `Config/*.xcconfig` 준비 (`NOTION_API_KEY`가 있으면 동기화, 없으면 template 복사)
+- `infra/firebase/functions` 의존성 설치
+- `tuist generate`
+- Git hooks 설치
+
+부분 복구만 필요할 때는 `make setup`보다 `make ensure-config`를 사용합니다.
+특히 이미 준비된 `Config/*.xcconfig`를 유지하면서 누락 파일만 보완하고 싶을 때는 `make ensure-config`가 더 안전합니다.
 
 ### ⚡ 방법 1: Google Drive 사용 (가장 빠름)
 
@@ -213,8 +237,11 @@ GitHub Actions 시크릿 등록과 배포 워크플로우는 아래 문서를 �
 ### "xcconfig file not found" 에러
 
 ```bash
-# 해결: xcconfig 파일 생성
-./scripts/generate-xcconfig.sh
+# 깨끗한 clone 직후라면
+make setup
+
+# 기존 설정을 유지한 채 누락만 보완하려면
+make ensure-config
 ```
 
 ### "No such file or directory: GoogleService-Info.plist"
