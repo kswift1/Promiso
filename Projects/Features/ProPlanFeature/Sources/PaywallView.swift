@@ -274,10 +274,7 @@ extension ProPlan {
     @ViewBuilder
     private var legalSection: some View {
       VStack(spacing: 8) {
-        Text(showFreeTrialText
-          ? "무료 체험 기간이 끝나면 구독이 자동으로 시작되며, iTunes 계정으로 청구됩니다. 무료 체험 중 언제든 설정에서 취소할 수 있습니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다."
-          : "구독은 확인 시 iTunes 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 구독은 구매 후 계정 설정에서 관리 및 취소할 수 있습니다."
-        )
+        Text(legalDisclaimerText)
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)
@@ -345,7 +342,7 @@ extension ProPlan {
         .disabled(store.selectedProductId == nil || store.isPurchasing)
         .opacity((store.selectedProductId == nil || store.isPurchasing) ? 0.5 : 1.0)
 
-        Text("7일 이내 취소 시 무료 · 언제든 해지 가능")
+        Text(showFreeTrialText ? "\(freeTrialDays)일 이내 취소 시 무료 · 언제든 해지 가능" : "언제든 해지 가능")
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
 
@@ -409,6 +406,34 @@ extension ProPlan {
         return 0
       }
       return product.introductoryOffer?.periodDays ?? 0
+    }
+
+    private var selectedProduct: SubscriptionProduct? {
+      guard let selectedId = store.selectedProductId else { return nil }
+      return store.products.first(where: { $0.id == selectedId })
+    }
+
+    private var subscriptionPeriodText: String {
+      switch selectedProduct?.type {
+      case .monthly: return "월"
+      case .yearly: return "연"
+      case .lifetime, .none: return ""
+      }
+    }
+
+    private var legalDisclaimerText: String {
+      let price = selectedProduct?.displayPrice ?? ""
+      let period = subscriptionPeriodText
+
+      if showFreeTrialText {
+        return "\(freeTrialDays)일 무료 체험 종료 후 \(price)/\(period)이 Apple 계정으로 자동 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신을 해제하지 않으면 자동으로 갱신됩니다. 무료 체험 기간 중 유료 구독 시 남은 체험 기간은 소멸됩니다. 설정 > Apple 계정 > 구독에서 언제든 관리 및 취소할 수 있습니다."
+      }
+
+      if selectedProduct?.type == .lifetime {
+        return "확인 시 \(price)이 Apple 계정으로 일회 청구됩니다. 평생 이용권은 자동 갱신되지 않습니다."
+      }
+
+      return "확인 시 \(price)/\(period)이 Apple 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신을 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 설정 > Apple 계정 > 구독에서 언제든 관리 및 취소할 수 있습니다."
     }
 
     // MARK: - Loading Overlay
