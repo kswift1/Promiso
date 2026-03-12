@@ -18,9 +18,34 @@ extension Settings {
   /// .auroraBackground()와 Glass Effect 카드를 사용한 디자인
   public struct ProfileView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var currentBenefitIndex = 0
+    @State private var benefitTimer: Timer?
 
     public init(store: StoreOf<Feature>) {
       self.store = store
+    }
+
+    // MARK: - Pro Benefit Rotation
+
+    private let proBenefits: [(icon: String, text: String)] = [
+      ("🕐", "출발 시간 자동 계산"),
+      ("🌤️", "약속 날씨 미리 확인"),
+      ("⚠️", "겹치는 일정 미리 알림"),
+      ("📋", "오늘 일정 한 번에 정리")
+    ]
+
+    private func startBenefitRotation() {
+      guard benefitTimer == nil else { return }
+      benefitTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
+        withAnimation(.easeInOut(duration: 0.4)) {
+          currentBenefitIndex = (currentBenefitIndex + 1) % proBenefits.count
+        }
+      }
+    }
+
+    private func stopBenefitRotation() {
+      benefitTimer?.invalidate()
+      benefitTimer = nil
     }
 
     #if DEBUG
@@ -46,19 +71,34 @@ extension Settings {
             Button {
               store.send(.view(.proPlanTapped))
             } label: {
-              HStack(spacing: 12) {
-                ProBadge()
+              VStack(alignment: .leading, spacing: 8) {
+                // 1줄: ProBadge + 서브카피 + chevron
+                HStack(spacing: 8) {
+                  ProBadge()
+                  Text("일정 그 이후를 챙겨드려요")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                  Spacer()
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
 
-                Text(LocalizedStrings.ProPlan.manageTitle)
-                  .font(.body)
-                  .fontWeight(.medium)
-                  .foregroundStyle(Color.pmtext.primary)
+                // 2줄: 순환 혜택
+                HStack(spacing: 6) {
+                  Text(proBenefits[currentBenefitIndex].icon)
+                    .font(.system(size: 14))
 
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
+                  Text(proBenefits[currentBenefitIndex].text)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.pmtext.primary)
+                }
+                .id(currentBenefitIndex)
+                .transition(.asymmetric(
+                  insertion: .opacity.combined(with: .move(edge: .bottom)),
+                  removal: .opacity.combined(with: .move(edge: .top))
+                ))
+                .clipped()
               }
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
@@ -66,6 +106,8 @@ extension Settings {
             }
             .buttonStyle(.plain)
             .adaptiveGlassCard()
+            .onAppear { startBenefitRotation() }
+            .onDisappear { stopBenefitRotation() }
           }
 
           // MARK: - 앱 설정 섹션
