@@ -40,7 +40,7 @@ extension ProPlan {
               Color.clear
                 .onChange(of: geo.frame(in: .global).minY) { _, minY in
                   let screenHeight = UIScreen.main.bounds.height
-                  if minY < screenHeight + 50, !isPricingExpanded, !hasAutoExpanded {
+                  if minY < screenHeight - 100, !isPricingExpanded, !hasAutoExpanded {
                     hasAutoExpanded = true
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                       isPricingExpanded = true
