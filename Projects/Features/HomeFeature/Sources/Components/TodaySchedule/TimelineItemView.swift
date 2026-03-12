@@ -87,6 +87,7 @@ struct TimelineItemView: View {
         .frame(maxHeight: .infinity)
     }
     .frame(width: 16)
+    .frame(maxHeight: .infinity, alignment: .top)
   }
 
   // MARK: - Item Content
