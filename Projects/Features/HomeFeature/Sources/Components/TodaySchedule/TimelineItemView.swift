@@ -332,7 +332,7 @@ struct TimelineItemView: View {
   private var proBenefitSection: some View {
     let hasWeather = weatherForecast != nil || weatherShouldShowSkeleton
     let hasDepartureAlert = departureAlert != nil
-    let hasDepartureCTA = !hasDepartureAlert && location != nil && isFuture
+    let hasDepartureCTA = isPro && !hasDepartureAlert && location != nil && isFuture
 
     if hasWeather || hasDepartureAlert || hasDepartureCTA {
       VStack(alignment: .leading, spacing: 6) {
