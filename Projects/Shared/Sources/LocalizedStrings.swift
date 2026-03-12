@@ -1079,6 +1079,7 @@ public enum LocalizedStrings {
     // Briefing
     public static var briefingUpdatedBadge: String { String(localized: "home.briefing.updated.badge", bundle: bundle) }
     public static var briefingProUpgrade: String { String(localized: "home.briefing.pro.upgrade", bundle: bundle) }
+    public static var briefingUpdateInfoTooltip: String { String(localized: "home.briefing.updateInfoTooltip", bundle: bundle) }
 
     // Timeline
     public static var accepted: String { String(localized: "home.timeline.accepted", bundle: bundle) }

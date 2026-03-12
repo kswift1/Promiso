@@ -26,36 +26,35 @@ struct DailyBriefingCard: View {
   let onOpenLocationSettings: (() -> Void)?
   let onReportError: (() -> Void)?
   let onProUpgradeTapped: (() -> Void)?
+  @State private var showUpdateInfoTooltip = false
 
   var body: some View {
     if isLoading || summary != nil {
       VStack(alignment: .leading, spacing: 0) {
         // 헤더 + 요약 (탭 가능)
-        Button {
-          onTap()
-        } label: {
-          VStack(alignment: .leading, spacing: 0) {
-            cardHeader
-              .padding(.horizontal, 16)
-              .padding(.top, 16)
-              .padding(.bottom, summary != nil && !isLoading ? 8 : 12)
+        VStack(alignment: .leading, spacing: 0) {
+          cardHeader
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, summary != nil && !isLoading ? 8 : 12)
 
-            if isLoading {
-              loadingContent
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-            } else if let summary, !isExpanded {
-              Text(summary)
-                .font(.pmSubheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-            }
+          if isLoading {
+            loadingContent
+              .padding(.horizontal, 16)
+              .padding(.bottom, 12)
+          } else if let summary, !isExpanded {
+            Text(summary)
+              .font(.pmSubheadline)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+              .padding(.horizontal, 16)
+              .padding(.bottom, 12)
           }
-          .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .onTapGesture {
+          onTap()
+        }
 
         // 콘텐츠 (expanded일 때만)
         if isExpanded, !isLoading {
@@ -158,6 +157,19 @@ struct DailyBriefingCard: View {
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
+      Button {
+        showUpdateInfoTooltip = true
+      } label: {
+        Image(systemName: "questionmark.circle")
+          .font(.system(size: 13, weight: .medium))
+          .foregroundStyle(Color.pmgray.n400)
+      }
+      .buttonStyle(.plain)
+      .popover(isPresented: $showUpdateInfoTooltip, arrowEdge: .top) {
+        briefingUpdateInfoTooltip
+          .presentationCompactAdaptation(.popover)
+      }
+
       // 업데이트됨 뱃지
       if isUpdated {
         Text(LocalizedStrings.Home.briefingUpdatedBadge)
@@ -174,6 +186,17 @@ struct DailyBriefingCard: View {
         .foregroundStyle(Color.pmgray.n400)
         .rotationEffect(.degrees(isExpanded ? 90 : 0))
     }
+  }
+
+  private var briefingUpdateInfoTooltip: some View {
+    Text(LocalizedStrings.Home.briefingUpdateInfoTooltip)
+    .font(.system(size: 13))
+    .foregroundStyle(Color.pmtext.primary)
+    .lineSpacing(3)
+    .multilineTextAlignment(.leading)
+    .padding(14)
+    .frame(width: 220, alignment: .leading)
+    .fixedSize(horizontal: false, vertical: true)
   }
 
   // MARK: - Pro Badge
