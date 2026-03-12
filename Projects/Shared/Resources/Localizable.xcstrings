@@ -10827,6 +10827,132 @@
         }
       }
     },
+    "liveSchedule.intent.updateEta.channelId" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 채널 ID 파라미터",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Channel ID"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "채널 ID"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.description" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates the estimated arrival time."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도착 예상 시간을 변경합니다"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.estimatedMinutes" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 예상 도착 시간 파라미터",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estimated Arrival (Minutes)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도착 예상 시간 (분)"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.participantsJson" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 참가자 JSON 파라미터",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Participants JSON"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "참가자 JSON"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.title" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update ETA"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도착 예상 시간 변경"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.trackingDurationMinutes" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 추적 시간 파라미터",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracking Duration (Minutes)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추적 시간 (분)"
+          }
+        }
+      }
+    },
+    "liveSchedule.intent.updateEta.userId" : {
+      "comment" : "라이브 액티비티 ETA 업데이트 인텐트 사용자 ID 파라미터",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User ID"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용자 ID"
+          }
+        }
+      }
+    },
     "liveSchedule.me" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -23962,6 +24088,42 @@
         }
       }
     },
+    "widget.refreshIntent.description" : {
+      "comment" : "위젯 새로고침 인텐트 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refreshes widget data."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위젯 데이터를 새로고침합니다"
+          }
+        }
+      }
+    },
+    "widget.refreshIntent.title" : {
+      "comment" : "위젯 새로고침 인텐트 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh Widget"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위젯 새로고침"
+          }
+        }
+      }
+    },
     "widget.common.dataLoadFailed" : {
       "comment" : "위젯 공통 - 데이터 로드 실패",
       "extractionState" : "manual",
@@ -24899,6 +25061,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "지도 앱 선택"
+          }
+        }
+      }
+    },
+    "home.transport.mapApp.kakao" : {
+      "comment" : "카카오맵 앱 이름",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KakaoMap"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오맵"
+          }
+        }
+      }
+    },
+    "home.transport.mapApp.naver" : {
+      "comment" : "네이버 지도 앱 이름",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naver Map"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "네이버 지도"
           }
         }
       }

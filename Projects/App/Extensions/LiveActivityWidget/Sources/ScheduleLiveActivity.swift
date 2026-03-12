@@ -105,11 +105,11 @@ struct ScheduleLiveActivity: Widget {
 
 private extension Date {
   var amPmText: String {
-    Calendar.current.component(.hour, from: self) >= 12 ? "PM" : "AM"
+    LocalizedDateFormatters.amPm.string(from: self)
   }
 
   var timeOnlyText: String {
-    self.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
+    LocalizedDateFormatters.time12Hour.string(from: self)
   }
 }
 

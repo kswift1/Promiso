@@ -15,8 +15,8 @@ struct LockScreenBannerView: View {
   private var attrs: ScheduleActivityAttributes { context.attributes }
 
   private var trackingDuration: Int { state.trackingDurationMinutes }
-  private var amPm: String { Calendar.current.component(.hour, from: attrs.scheduledTime) >= 12 ? "PM" : "AM" }
-  private var timeText: String { attrs.scheduledTime.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()) }
+  private var amPm: String { LocalizedDateFormatters.amPm.string(from: attrs.scheduledTime) }
+  private var timeText: String { LocalizedDateFormatters.time12Hour.string(from: attrs.scheduledTime) }
 
   /// 현재 사용자의 ETA
   private var myETA: Int? {
@@ -76,9 +76,11 @@ struct LockScreenBannerView: View {
           .foregroundStyle(.white.opacity(0.6))
 
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-          Text(amPm)
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.6))
+          if !amPm.isEmpty {
+            Text(amPm)
+              .font(.system(size: 12, weight: .medium, design: .monospaced))
+              .foregroundStyle(.white.opacity(0.6))
+          }
 
           Text(timeText)
             .font(.system(size: 18, weight: .bold, design: .monospaced))
@@ -100,12 +102,12 @@ struct LockScreenBannerView: View {
     HStack(spacing: 8) {
       // 라벨 (고정 너비 - 가장 긴 케이스 "도착까지" 기준: )
       VStack(alignment: .leading, spacing: 2) {
-        Text(myETA == 0 ? "도착" : "도착까지")
+        Text(myETA == 0 ? LocalizedStrings.LiveSchedule.etaArrived : LocalizedStrings.LiveSchedule.minutesUntilArrival)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.white.opacity(0.4))
 
         if isCustomETA, let eta = myETA {
-          Text("\(eta)분")
+          Text(LocalizedStrings.LiveSchedule.etaMinutes(eta))
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(.white.opacity(0.8))
         }
@@ -141,9 +143,9 @@ struct ETASegmentedControl: View {
   }
 
   private let etaOptions: [(title: String, minutes: Int)] = [
-    ("완료", 0),
-    ("5분", 5),
-    ("10분", 10)
+    (LocalizedStrings.LiveSchedule.etaArrived, 0),
+    (LocalizedStrings.LiveSchedule.etaMinutes(5), 5),
+    (LocalizedStrings.LiveSchedule.etaMinutes(10), 10)
   ]
 
   var body: some View {

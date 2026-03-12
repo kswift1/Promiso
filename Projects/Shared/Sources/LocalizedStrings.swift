@@ -1264,6 +1264,8 @@ public enum LocalizedStrings {
     public static var transportDriving: String { String(localized: "home.transport.type.driving", bundle: bundle) }
     public static var transportTransit: String { String(localized: "home.transport.type.transit", bundle: bundle) }
     public static var transportWalking: String { String(localized: "home.transport.type.walking", bundle: bundle) }
+    public static var transportMapAppKakao: String { String(localized: "home.transport.mapApp.kakao", bundle: bundle) }
+    public static var transportMapAppNaver: String { String(localized: "home.transport.mapApp.naver", bundle: bundle) }
     public static var transportRouteDetailTitle: String { String(localized: "home.transport.routeDetail", bundle: bundle) }
     public static var transportDuration: String { String(localized: "home.transport.info.duration", bundle: bundle) }
     public static var transportTotalDuration: String { String(localized: "home.transport.info.totalDuration", bundle: bundle) }
