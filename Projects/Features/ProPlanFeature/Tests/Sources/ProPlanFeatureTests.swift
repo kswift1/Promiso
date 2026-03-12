@@ -143,7 +143,6 @@ struct ProPlanFeatureTests {
       }
       $0.hapticFeedback.selection = {}
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear)) {
       $0.isLoadingProducts = true
@@ -159,6 +158,14 @@ struct ProPlanFeatureTests {
       $0.subscriptionStatus = .none
     }
 
+    await store.receive(\.internal.introOfferEligibilityResult) {
+      $0.isEligibleForIntroOffer = false
+    }
+
+    await store.receive(\.internal.purchaseDateLoaded) {
+      $0.purchaseDate = nil
+    }
+
     await store.send(.view(.retryProductsLoadTapped)) {
       $0.isLoadingProducts = true
       $0.errorMessage = nil
@@ -167,8 +174,20 @@ struct ProPlanFeatureTests {
 
     await store.receive(\.internal.productsResponse.success) {
       $0.isLoadingProducts = false
-      $0.products = Self.mockProducts
+      $0.products = mockProducts
       $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = .none
+    }
+
+    await store.receive(\.internal.introOfferEligibilityResult) {
+      $0.isEligibleForIntroOffer = false
+    }
+
+    await store.receive(\.internal.purchaseDateLoaded) {
+      $0.purchaseDate = nil
     }
   }
 
