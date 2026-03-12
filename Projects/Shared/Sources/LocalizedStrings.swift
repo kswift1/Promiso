@@ -1914,6 +1914,10 @@ public enum LocalizedStrings {
       String(localized: "proPlan.paywall.preview.transportIncluded", bundle: bundle)
         .replacingOccurrences(of: "%@", with: transport)
     }
+    public static func badgeDiscountPercent(_ percent: Int) -> String {
+      String(localized: "proPlan.paywall.badge.discountPercent", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(percent)")
+    }
     public static var badgeTwoMonthsFree: String { String(localized: "proPlan.paywall.badge.twoMonthsFree", bundle: bundle) }
     public static var badgeLifetime: String { String(localized: "proPlan.paywall.badge.lifetime", bundle: bundle) }
     public static var badgeLimited: String { String(localized: "proPlan.paywall.badge.limited", bundle: bundle) }

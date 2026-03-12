@@ -18638,6 +18638,22 @@
         }
       }
     },
+    "proPlan.paywall.badge.discountPercent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% off"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% 할인"
+          }
+        }
+      }
+    },
     "proPlan.paywall.badge.twoMonthsFree" : {
       "extractionState" : "stale",
       "localizations" : {
