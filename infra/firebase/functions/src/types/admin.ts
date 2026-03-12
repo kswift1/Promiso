@@ -18,3 +18,22 @@ export interface GetAdminSessionResponse {
   enabled: boolean;
 }
 
+export interface GetAdminUserSummaryRequest {
+  query: string;
+}
+
+export interface AdminUserSummary {
+  userId: string;
+  name: string | null;
+  nickname: string | null;
+  email: string | null;
+  groupCount: number;
+  deviceCount: number;
+  subscriptionStatus: string | null;
+  overrideActive: boolean;
+}
+
+export interface GetAdminUserSummaryResponse {
+  success: true;
+  results: AdminUserSummary[];
+}

@@ -132,7 +132,10 @@ export {
 // ============================================================================
 // Admin Functions (운영 콘솔)
 // ============================================================================
-export {getAdminSession} from "./functions/admin";
+export {
+  getAdminSession,
+  getAdminUserSummary,
+} from "./functions/admin";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================
 export {
