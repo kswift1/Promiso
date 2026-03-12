@@ -95,7 +95,7 @@ extension Home.Feature.State {
             upcomingRecurringGroups[id] = (
               title: instance.title,
               emoji: instance.emoji ?? "🔄",
-              recurrenceText: recurrenceTextMap[id] ?? "반복",
+              recurrenceText: recurrenceTextMap[id] ?? LocalizedStrings.Personal.filterRecurring,
               nextDate: item.startAt
             )
           } else if let existingGroup = upcomingRecurringGroups[id] {

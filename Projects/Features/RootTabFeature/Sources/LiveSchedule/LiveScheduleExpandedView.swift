@@ -240,7 +240,7 @@ extension LiveSchedule {
 
     /// 장소가 미정인지
     private var isLocationUndecided: Bool {
-      schedule?.locationText == "장소 미정"
+      schedule?.location?.name == nil
     }
 
     // MARK: - Group Info Computed Properties
@@ -912,20 +912,20 @@ extension LiveSchedule {
 
     private func statusText(for participant: ParticipantState) -> String {
       guard let eta = participant.estimatedArrivalMinutes else {
-        return "아직 출발 전"
+        return LocalizedStrings.LiveSchedule.beforeStart
       }
-      if eta == 0 { return "도착 완료" }
+      if eta == 0 { return LocalizedStrings.LiveSchedule.arrived }
 
       guard let scheduledTime = store.data.scheduledTime else {
-        return "이동 중"
+        return LocalizedStrings.LiveSchedule.onTheWay
       }
 
       let remainingMinutes = scheduledTime.timeIntervalSinceNow / 60
 
-      if remainingMinutes <= 0 { return "지각" }
-      if Double(eta) > remainingMinutes { return "지각 예상" }
-      if eta <= 3 { return "거의 도착" }
-      return "이동 중"
+      if remainingMinutes <= 0 { return LocalizedStrings.LiveSchedule.late }
+      if Double(eta) > remainingMinutes { return LocalizedStrings.LiveSchedule.lateExpected }
+      if eta <= 3 { return LocalizedStrings.LiveSchedule.almostThere }
+      return LocalizedStrings.LiveSchedule.onTheWay
     }
 
     private static let defaultEmojis = ["😀", "😊", "🙂", "😎", "🤗", "😇", "🥳", "🤩", "😺", "🐻"]
@@ -936,4 +936,3 @@ extension LiveSchedule {
     }
   }
 }
-

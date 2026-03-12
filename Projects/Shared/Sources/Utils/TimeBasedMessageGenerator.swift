@@ -74,7 +74,7 @@ public enum TimeBasedMessageGenerator {
     // fallback
     return randomMessages.first ?? RandomMessage(
       emoji: "📅",
-      title: "일정이 없어요",
+      title: LocalizedStrings.Schedule.noSchedules,
       subtitle: ""
     )
   }

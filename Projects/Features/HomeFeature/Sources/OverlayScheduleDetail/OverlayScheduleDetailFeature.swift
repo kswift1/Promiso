@@ -306,8 +306,8 @@ extension OverlayScheduleDetail.Feature.State {
     guard interval > 0 else { return "" }
     let hours = Int(interval / 3600)
     let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
-    if hours > 0 { return "\(hours)시간 \(minutes)분" }
-    return "\(minutes)분"
+    if hours > 0 { return LocalizedStrings.Home.hoursMinutes(hours, minutes) }
+    return LocalizedStrings.Home.minutesOnly(minutes)
   }
 
   var myVoteStatus: ScheduleAttendanceStatus {

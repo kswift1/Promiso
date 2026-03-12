@@ -69,11 +69,11 @@ public struct PersonalEventCard: View {
       }
 
       Button(action: onEdit) {
-        Label("수정", systemImage: "pencil")
+        Label(LocalizedStrings.Common.edit, systemImage: "pencil")
       }
 
       Button(role: .destructive, action: onDelete) {
-        Label("삭제", systemImage: "trash")
+        Label(LocalizedStrings.Common.delete, systemImage: "trash")
       }
     }
   }

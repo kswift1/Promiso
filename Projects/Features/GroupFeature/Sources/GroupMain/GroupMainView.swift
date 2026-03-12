@@ -246,13 +246,13 @@ extension GroupMain {
           Button {
             store.send(.view(.createNewSchedule))
           } label: {
-            Label("그룹 일정 생성", systemImage: "calendar.badge.plus")
+            Label(LocalizedStrings.GroupMain.createSchedule, systemImage: "calendar.badge.plus")
           }
 
           Button {
             store.send(.view(.groupSettingsTapped))
           } label: {
-            Label("그룹 설정", systemImage: "gearshape")
+            Label(LocalizedStrings.GroupMain.groupSettings, systemImage: "gearshape")
           }
         } label: {
           ZStack {

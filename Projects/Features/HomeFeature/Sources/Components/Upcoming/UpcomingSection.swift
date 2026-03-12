@@ -88,7 +88,7 @@ struct UpcomingSection: View {
             .font(.pmCaption)
             .foregroundStyle(Color.pmindigo.n500)
 
-          Text("반복 일정 \(recurringSummaries.count)개")
+          Text(LocalizedStrings.Home.recurringCount(recurringSummaries.count))
             .font(.pmCaption)
             .foregroundStyle(.secondary)
 

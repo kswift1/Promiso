@@ -337,7 +337,7 @@ extension AppEntry {
               TextState(LocalizedStrings.Profile.saveFailed)
             } actions: {
               ButtonState(role: .cancel) {
-                TextState("확인")
+                TextState(LocalizedStrings.Common.confirm)
               }
             } message: {
               TextState((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)

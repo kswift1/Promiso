@@ -44,7 +44,7 @@ extension ProPlan {
         .padding(.vertical, 32)
       }
       .auroraBackground()
-      .navigationTitle("Pro 플랜")
+      .navigationTitle(LocalizedStrings.ProPlan.manageTitle)
       .navigationBarTitleDisplayMode(.large)
     }
 
@@ -53,7 +53,7 @@ extension ProPlan {
     @ViewBuilder
     private var currentPlanSection: some View {
       VStack(alignment: .leading, spacing: 16) {
-        Text("구독 정보")
+        Text(LocalizedStrings.ProPlan.subscriptionInfo)
           .font(.headline)
           .foregroundStyle(Color.pmtext.primary)
 
@@ -61,7 +61,7 @@ extension ProPlan {
           // 구독 상태
           HStack {
             Label {
-              Text("상태")
+              Text(LocalizedStrings.ProPlan.status)
                 .font(.body)
                 .foregroundStyle(Color.pmtext.secondary)
             } icon: {
@@ -85,7 +85,7 @@ extension ProPlan {
 
             HStack {
               Label {
-                Text("플랜")
+                Text(LocalizedStrings.ProPlan.plan)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.secondary)
               } icon: {
@@ -96,7 +96,7 @@ extension ProPlan {
 
               Spacer()
 
-              Text("\(planName) 플랜")
+              Text(LocalizedStrings.ProPlan.planValue(planName))
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
             }
@@ -109,7 +109,7 @@ extension ProPlan {
 
             HStack {
               Label {
-                Text("시작일")
+                Text(LocalizedStrings.ProPlan.startDate)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.secondary)
               } icon: {
@@ -134,7 +134,7 @@ extension ProPlan {
 
             HStack {
               Label {
-                Text("갱신일")
+                Text(LocalizedStrings.ProPlan.renewalDate)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.secondary)
               } icon: {
@@ -158,7 +158,7 @@ extension ProPlan {
 
             HStack {
               Label {
-                Text("유예 기간 만료")
+                Text(LocalizedStrings.ProPlan.gracePeriodEnds)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.secondary)
               } icon: {
@@ -185,15 +185,15 @@ extension ProPlan {
     @ViewBuilder
     private var proFeaturesSection: some View {
       VStack(alignment: .leading, spacing: 16) {
-        Text("Pro 전용 기능")
+        Text(LocalizedStrings.ProPlan.proFeatures)
           .font(.headline)
           .foregroundStyle(Color.pmtext.primary)
 
         VStack(spacing: 0) {
           proFeatureRow(
             icon: "exclamationmark.triangle",
-            title: "일정 충돌 감지",
-            description: "겹치는 일정을 자동으로 감지"
+            title: LocalizedStrings.ProPlan.featureConflictTitle,
+            description: LocalizedStrings.ProPlan.featureConflictDescription
           )
 
           Divider()
@@ -201,8 +201,8 @@ extension ProPlan {
 
           proFeatureRow(
             icon: "wand.and.stars",
-            title: "AI 일정 추천",
-            description: "최적의 일정 시간을 추천 (예정)"
+            title: LocalizedStrings.ProPlan.featureRecommendationTitle,
+            description: LocalizedStrings.ProPlan.featureRecommendationDescription
           )
 
           Divider()
@@ -210,8 +210,8 @@ extension ProPlan {
 
           proFeatureRow(
             icon: "chart.bar",
-            title: "일정 통계",
-            description: "일정 이행률 및 패턴 분석 (예정)"
+            title: LocalizedStrings.ProPlan.featureStatsTitle,
+            description: LocalizedStrings.ProPlan.featureStatsDescription
           )
         }
         .adaptiveGlassCard()
@@ -259,7 +259,7 @@ extension ProPlan {
               .font(.body)
               .foregroundStyle(Color.pmindigo.n500)
 
-            Text("Apple 구독 관리")
+            Text(LocalizedStrings.ProPlan.manageAppleSubscription)
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
 
@@ -280,7 +280,7 @@ extension ProPlan {
         )
 
         // 안내 텍스트
-        Text("구독 관리, 취소 및 환불은 Apple 설정에서 가능합니다.")
+        Text(LocalizedStrings.ProPlan.manageHelpText)
           .font(.footnote)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)
@@ -306,30 +306,26 @@ extension ProPlan {
     private var statusText: String {
       switch store.subscriptionStatus {
       case .subscribed:
-        return "활성"
+        return LocalizedStrings.ProPlan.statusActive
       case .lifetime:
-        return "평생 구독"
+        return LocalizedStrings.ProPlan.statusLifetime
       case .gracePeriod:
-        return "유예 기간"
+        return LocalizedStrings.ProPlan.statusGracePeriod
       case .expired:
-        return "만료됨"
+        return LocalizedStrings.ProPlan.statusExpired
       case .revoked:
-        return "환불됨"
+        return LocalizedStrings.ProPlan.statusRefunded
       case .none:
-        return "없음"
+        return LocalizedStrings.ProPlan.statusNone
       }
     }
 
-    private static let dateFormatter: DateFormatter = {
+    private func formattedDate(_ date: Date) -> String {
       let formatter = DateFormatter()
       formatter.dateStyle = .medium
       formatter.timeStyle = .none
-      formatter.locale = Locale(identifier: "ko_KR")
-      return formatter
-    }()
-
-    private func formattedDate(_ date: Date) -> String {
-      Self.dateFormatter.string(from: date)
+      formatter.locale = LocaleManager.appLocale
+      return formatter.string(from: date)
     }
   }
 }

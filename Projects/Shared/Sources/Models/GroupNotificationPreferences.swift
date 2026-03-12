@@ -37,22 +37,22 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
   public var title: String {
     switch self {
     case .scheduleInvitation:
-      return "일정 초대"
+      return LocalizedStrings.SettingsStrings.newScheduleArrived
     case .scheduleConfirmed:
-      return "일정 확정"
+      return LocalizedStrings.SettingsStrings.scheduleConfirmedTitle
     case .scheduleCancelled:
-      return "일정 취소"
+      return LocalizedStrings.SettingsStrings.scheduleCancelledTitle
     case .scheduleUpdated:
-      return "일정 변경"
+      return LocalizedStrings.SettingsStrings.scheduleUpdatedTitle
     case .groupUpdate:
-      return "그룹 업데이트"
+      return LocalizedStrings.SettingsStrings.groupUpdateTitle
     }
   }
 
   public var subtitle: String? {
     switch self {
     case .groupUpdate:
-      return "그룹 정보/멤버 변동 알림"
+      return LocalizedStrings.SettingsStrings.groupUpdateSubtitle
     default:
       return nil
     }

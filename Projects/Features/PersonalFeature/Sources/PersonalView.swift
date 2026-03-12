@@ -213,7 +213,7 @@ extension PersonalMode {
       case .past:
         return LocalizedStrings.Personal.emptyPast
       case .recurring:
-        return "반복 일정이 없습니다\n+ 버튼으로 추가해보세요"
+        return LocalizedStrings.Personal.emptyRecurring
       }
     }
 
@@ -233,7 +233,7 @@ extension PersonalMode {
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
 
-          Button("다시 시도") {
+          Button(LocalizedStrings.Common.retry) {
             store.send(.view(.refreshEvents))
           }
           .buttonStyle(.bordered)
@@ -284,14 +284,14 @@ extension PersonalMode {
                 Button(role: .destructive) {
                   store.send(.view(.deleteEvent(event)))
                 } label: {
-                  Label("삭제", systemImage: "trash")
+                  Label(LocalizedStrings.Common.delete, systemImage: "trash")
                 }
                 .tint(.red)
 
                 Button {
                   store.send(.view(.editEvent(event)))
                 } label: {
-                  Label("수정", systemImage: "pencil")
+                  Label(LocalizedStrings.Common.edit, systemImage: "pencil")
                 }
               }
               .listRowSeparator(.hidden)
@@ -330,31 +330,31 @@ extension PersonalMode {
             Button(role: .destructive) {
               store.send(.view(.deleteRecurringEvent(event)))
             } label: {
-              Label("삭제", systemImage: "trash")
+              Label(LocalizedStrings.Common.delete, systemImage: "trash")
             }
             .tint(.red)
 
             Button {
               store.send(.view(.editRecurringEvent(event)))
             } label: {
-              Label("수정", systemImage: "pencil")
+              Label(LocalizedStrings.Common.edit, systemImage: "pencil")
             }
           }
           .contextMenu {
             Button {
               store.send(.view(.recurringEventTapped(event)))
             } label: {
-              Label("상세 보기", systemImage: "info.circle")
+              Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
             }
             Button {
               store.send(.view(.editRecurringEvent(event)))
             } label: {
-              Label("수정", systemImage: "pencil")
+              Label(LocalizedStrings.Common.edit, systemImage: "pencil")
             }
             Button(role: .destructive) {
               store.send(.view(.deleteRecurringEvent(event)))
             } label: {
-              Label("삭제", systemImage: "trash")
+              Label(LocalizedStrings.Common.delete, systemImage: "trash")
             }
           }
           .listRowSeparator(.hidden)
@@ -394,13 +394,13 @@ extension PersonalMode {
         Button {
           store.send(.view(.createOneTimeEventTapped))
         } label: {
-          Label("개인 일정 추가", systemImage: "calendar.badge.plus")
+          Label(LocalizedStrings.Personal.addPersonalEvent, systemImage: "calendar.badge.plus")
         }
 
         Button {
           store.send(.view(.createRecurringEventTapped))
         } label: {
-          Label("반복 일정 추가", systemImage: "repeat")
+          Label(LocalizedStrings.Personal.addRecurringEvent, systemImage: "repeat")
         }
       } label: {
         ZStack {
@@ -478,7 +478,7 @@ private struct RecurringEventRuleCard: View {
               HStack(spacing: 4) {
                 Image(systemName: "bell.fill")
                   .font(.system(size: 12))
-                Text("알림 설정됨")
+                Text(LocalizedStrings.Personal.reminderConfigured)
                   .font(.system(size: 13, weight: .medium))
               }
               .foregroundStyle(.secondary)

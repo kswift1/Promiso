@@ -145,7 +145,7 @@ struct DailyBriefingCard: View {
       // Pro 뱃지
       proBadge
 
-      Text("데일리 브리핑")
+      Text(LocalizedStrings.Home.briefingTitle)
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
@@ -215,14 +215,14 @@ struct DailyBriefingCard: View {
       if isNotificationDenied {
         permissionRow(
           icon: "bell.slash",
-          message: "알림이 꺼져 있어 매일 브리핑을 받아볼 수 없어요",
+          message: LocalizedStrings.Home.briefingNotificationOffMessage,
           onTap: onOpenNotificationSettings
         )
       }
       if isLocationDenied {
         permissionRow(
           icon: "location.slash",
-          message: "현재 위치 권한이 꺼져 있어 날씨와 이동시간을 알려드리기 어려워요",
+          message: LocalizedStrings.Home.briefingLocationOffMessage,
           onTap: onOpenLocationSettings
         )
       }
@@ -238,7 +238,7 @@ struct DailyBriefingCard: View {
       HStack(spacing: 4) {
         Image(systemName: "exclamationmark.bubble")
           .font(.pmCaption)
-        Text("브리핑 내용이 이상한가요?")
+        Text(LocalizedStrings.Home.briefingReportIssue)
           .font(.pmCaption)
       }
       .foregroundStyle(Color.pmgray.n400)
@@ -263,7 +263,7 @@ struct DailyBriefingCard: View {
       Button {
         onTap?()
       } label: {
-        Text("변경")
+        Text(LocalizedStrings.Common.change)
           .font(.pmCaptionMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }

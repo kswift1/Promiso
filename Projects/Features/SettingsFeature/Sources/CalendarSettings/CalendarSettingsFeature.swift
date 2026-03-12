@@ -191,8 +191,8 @@ extension CalendarSettings {
           if !granted {
             state.toastMessage = ToastMessage(
               type: .warning,
-              title: "캘린더 접근 권한이 거부되었어요",
-              subtitle: "설정에서 권한을 변경할 수 있어요.",
+              title: LocalizedStrings.SettingsStrings.calendarAccess,
+              subtitle: LocalizedStrings.SettingsStrings.enableCalendarInSettings,
               position: .top
             )
           }

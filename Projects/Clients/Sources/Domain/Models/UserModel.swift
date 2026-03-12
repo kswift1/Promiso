@@ -249,13 +249,13 @@ extension UserPublicModel {
     public var message: String {
       switch self {
       case .tooShort(let min):
-        return "\(min)자 이상 입력해주세요"
+        return LocalizedStrings.Profile.nicknameTooShort(min)
       case .tooLong(let max):
-        return "\(max)자 이하로 입력해주세요"
+        return LocalizedStrings.Profile.nicknameTooLong(max)
       case .containsWhitespace:
-        return "닉네임엔 공백을 넣을 수 없어요"
+        return LocalizedStrings.Profile.nicknameContainsWhitespace
       case .hasLeadingOrTrailingWhitespace:
-        return "앞뒤 공백 없이 입력해주세요"
+        return LocalizedStrings.Profile.nicknameTrimWhitespace
       }
     }
   }

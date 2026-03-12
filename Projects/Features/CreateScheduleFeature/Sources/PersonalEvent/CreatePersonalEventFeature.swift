@@ -194,7 +194,7 @@ extension CreatePersonalEvent {
             if let minutes = state.event.reminderMinutesBefore {
               let reminderDate = date.addingTimeInterval(-Double(minutes) * 60)
               if reminderDate <= Date() {
-                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.reminderWarning = LocalizedStrings.Personal.reminderTooSoonWarning
                 state.event.reminderMinutesBefore = nil
               } else {
                 state.reminderWarning = nil
@@ -225,7 +225,7 @@ extension CreatePersonalEvent {
               // 알림 시간 성립 여부 검증
               let reminderDate = state.event.startAt.addingTimeInterval(-Double(minutes) * 60)
               if reminderDate <= Date() {
-                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.reminderWarning = LocalizedStrings.Personal.reminderTooSoonWarning
                 state.event.reminderMinutesBefore = nil
                 state.pendingReminderMinutes = nil
                 return .run { _ in await hapticFeedback.error() }
@@ -275,7 +275,11 @@ extension CreatePersonalEvent {
                   forKey: AppConstants.UserDefaults.personalCalendarSync
                 )
                 guard let userId = await authClient.currentUser()?.uid else {
-                  throw NSError(domain: "CreatePersonalEvent", code: -1, userInfo: [NSLocalizedDescriptionKey: "로그인 정보를 찾을 수 없습니다"])
+                  throw NSError(
+                    domain: "CreatePersonalEvent",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: LocalizedStrings.Error.userAuthRequired]
+                  )
                 }
 
                 switch mode {

@@ -136,10 +136,10 @@ extension HomeModels {
 
 extension HomeModels {
   public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
-    case all = "전체"
-    case needResponse = "응답 필요"
-    case confirmed = "확정됨"
-    case inProgress = "진행 중"
+    case all = "all"
+    case needResponse = "needResponse"
+    case confirmed = "confirmed"
+    case inProgress = "inProgress"
 
     public var displayTitle: String {
       switch self {
@@ -211,9 +211,9 @@ extension HomeModels {
 
     public var displayName: String {
       switch self {
-      case .driving: return "자동차"
-      case .transit: return "대중교통"
-      case .walking: return "도보"
+      case .driving: return LocalizedStrings.Home.transportDriving
+      case .transit: return LocalizedStrings.Home.transportTransit
+      case .walking: return LocalizedStrings.Home.transportWalking
       }
     }
 
@@ -266,9 +266,9 @@ extension HomeModels {
 
     public var displayName: String {
       switch self {
-      case .fastest: return "최단"
-      case .leastTransfers: return "최소환승"
-      case .cheapest: return "최저요금"
+      case .fastest: return LocalizedStrings.Home.routeTagFastest
+      case .leastTransfers: return LocalizedStrings.Home.routeTagLeastTransfers
+      case .cheapest: return LocalizedStrings.Home.routeTagCheapest
       }
     }
   }

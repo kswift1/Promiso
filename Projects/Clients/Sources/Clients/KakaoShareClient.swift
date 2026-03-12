@@ -121,13 +121,13 @@ extension KakaoShareClient: DependencyKey {
 
         templatable = FeedTemplate(
           content: Content(
-            title: "\(inviterName)님이 \(groupName) 그룹에 초대했어요 👋",
+            title: LocalizedStrings.KakaoShare.groupInviteTitle(inviterName, groupName),
             imageUrl: mainImageURL,
-            description: "참여하고 일정을 함께 관리해보세요",
+            description: LocalizedStrings.KakaoShare.groupInviteDescription,
             link: inviteLink
           ),
           itemContent: ItemContent(
-            profileText: "다가오는 일정",
+            profileText: LocalizedStrings.KakaoShare.upcomingSchedule,
             titleImageText: "\(firstSchedule.emoji) \(firstSchedule.title)",
             titleImageUrl: scheduleImageURL,
             titleImageCategory: "\(firstSchedule.dateText) \(firstSchedule.timeText)\(locationText)"
@@ -141,9 +141,9 @@ extension KakaoShareClient: DependencyKey {
       } else {
         templatable = FeedTemplate(
           content: Content(
-            title: "\(inviterName)님이 \(groupName) 그룹에 초대했어요 👋",
+            title: LocalizedStrings.KakaoShare.groupInviteTitle(inviterName, groupName),
             imageUrl: mainImageURL,
-            description: "참여하고 일정을 함께 관리해보세요",
+            description: LocalizedStrings.KakaoShare.groupInviteDescription,
             link: inviteLink
           ),
           buttons: [
@@ -181,7 +181,7 @@ extension KakaoShareClient: DependencyKey {
       }
 
       let buttons = [
-        Button(title: "일정 확인하기", link: scheduleLink)
+        Button(title: LocalizedStrings.KakaoShare.scheduleCheckButton, link: scheduleLink)
       ]
 
       // 위치 정보가 있으면 LocationTemplate, 없으면 FeedTemplate
@@ -190,7 +190,7 @@ extension KakaoShareClient: DependencyKey {
           address: address,
           addressTitle: locationName,
           content: Content(
-            title: "\(emoji) \(title) 일정을 확인해보세요 📩",
+            title: LocalizedStrings.KakaoShare.scheduleTitle(emoji, title),
             imageUrl: imageURL,
             description: descriptionText,
             link: scheduleLink
@@ -202,7 +202,7 @@ extension KakaoShareClient: DependencyKey {
       } else {
         let feedTemplate = FeedTemplate(
           content: Content(
-            title: "\(emoji) \(title) 일정을 확인해보세요 📩",
+            title: LocalizedStrings.KakaoShare.scheduleTitle(emoji, title),
             imageUrl: imageURL,
             description: descriptionText,
             link: scheduleLink

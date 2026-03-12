@@ -355,7 +355,7 @@ struct CreateGroupSettingsView: View {
 
         // 항상 공간 확보하여 줄 정렬 유지
         if let groupName = usedByGroupName {
-          Text("'\(groupName)' 사용중")
+          Text(LocalizedStrings.GroupSettings.groupColorUsedBy(groupName))
             .font(.system(size: 8))
             .foregroundStyle(.tertiary)
             .lineLimit(1)

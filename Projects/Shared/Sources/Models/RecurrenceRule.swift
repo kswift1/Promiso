@@ -62,29 +62,34 @@ extension RecurrenceRule {
 extension RecurrenceRule {
   /// 사용자에게 보여줄 반복 규칙 설명
   public var displayText: String {
+    let isKoreanLocale = LocaleManager.appLocale.language.languageCode?.identifier == "ko"
     switch frequency {
     case .daily:
-      return "매일"
+      return isKoreanLocale ? "매일" : "Every day"
     case .weekly:
-      guard let days = daysOfWeek, !days.isEmpty else { return "매주" }
+      guard let days = daysOfWeek, !days.isEmpty else { return isKoreanLocale ? "매주" : "Every week" }
       let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
-      return "매주 \(dayNames.joined(separator: ", "))"
+      let joined = dayNames.joined(separator: ", ")
+      return isKoreanLocale ? "매주 \(joined)" : "Every \(joined)"
     case .monthly:
-      guard let day = dayOfMonth else { return "매월" }
-      return "매월 \(day)일"
+      guard let day = dayOfMonth else { return isKoreanLocale ? "매월" : "Every month" }
+      return isKoreanLocale ? "매월 \(day)일" : "Every month on day \(day)"
     }
   }
 
   private static func weekdayName(for weekday: Int) -> String? {
-    switch weekday {
-    case 1: return "일"
-    case 2: return "월"
-    case 3: return "화"
-    case 4: return "수"
-    case 5: return "목"
-    case 6: return "금"
-    case 7: return "토"
-    default: return nil
+    guard (1...7).contains(weekday) else { return nil }
+
+    let isKoreanLocale = LocaleManager.appLocale.language.languageCode?.identifier == "ko"
+    if isKoreanLocale {
+      let symbols = ["일", "월", "화", "수", "목", "금", "토"]
+      return symbols[weekday - 1]
     }
+
+    let formatter = DateFormatter()
+    formatter.locale = LocaleManager.appLocale
+    let symbols = formatter.shortWeekdaySymbols ?? formatter.veryShortWeekdaySymbols ?? []
+    guard symbols.indices.contains(weekday - 1) else { return nil }
+    return symbols[weekday - 1]
   }
 }

@@ -31,9 +31,9 @@ extension ScheduleResponseStatus {
 
   var statusText: String {
     switch self {
-    case .needResponse: return LocalizedStrings.Calendar.statusWaiting
-    case .expired:      return "마감됨"
-    case .responded:    return LocalizedStrings.Calendar.statusVoting
+    case .needResponse: return LocalizedStrings.ScheduleCard.statusNeedResponse
+    case .expired:      return LocalizedStrings.Common.expired
+    case .responded:    return LocalizedStrings.ScheduleCard.statusResponded
     case .confirmed:    return LocalizedStrings.Calendar.statusConfirmed
     case .failed:       return LocalizedStrings.Calendar.statusFailed
     }
@@ -393,7 +393,7 @@ struct CompactDayRow: View {
           .frame(width: 36)
 
           if isToday {
-            Text("오늘")
+            Text(LocalizedStrings.Common.today)
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(Color.pmindigo.n500)
           }
@@ -448,18 +448,18 @@ struct CompactDayRow: View {
             Button {
               onCreatePersonalEvent?()
             } label: {
-              Label("개인 일정 추가", systemImage: "person.fill")
+              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "person.fill")
             }
             Button {
               onCreateSchedule?()
             } label: {
-              Label("그룹 일정 추가", systemImage: "person.3.fill")
+              Label(LocalizedStrings.Calendar.createSchedule, systemImage: "person.3.fill")
             }
           } label: {
             HStack(spacing: 4) {
               Image(systemName: "plus")
                 .font(.system(size: 11, weight: .semibold))
-              Text("일정 추가")
+              Text(LocalizedStrings.Calendar.addSchedule)
                 .font(.system(size: 13, weight: .medium))
             }
             .foregroundColor(Color.pmindigo.n500)
@@ -584,7 +584,7 @@ struct CompactDayRow: View {
               .foregroundColor(.primary)
               .lineLimit(1)
             Spacer()
-            Text("개인")
+            Text(LocalizedStrings.Home.personalLabel)
               .font(.system(size: 12, weight: .medium))
               .foregroundColor(Color.pmindigo.n500)
           }
@@ -636,7 +636,7 @@ struct CompactDayRow: View {
           }
           HStack(spacing: 4) {
             if event.isAllDay {
-              Text("종일")
+              Text(event.timeText)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
             } else {
@@ -682,7 +682,7 @@ struct CompactDayRow: View {
               .foregroundColor(.primary)
               .lineLimit(1)
             Spacer()
-            Text("반복")
+            Text(LocalizedStrings.Personal.filterRecurring)
               .font(.system(size: 12, weight: .medium))
               .foregroundColor(Color.pmindigo.n500)
           }
@@ -727,12 +727,12 @@ struct CompactDayRow: View {
   private func unifiedStatusText(for schedule: ScheduleModel) -> String {
     let status = schedule.responseStatus(currentUserId: currentUserId)
     switch status {
-    case .needResponse: return "응답 필요"
-    case .expired: return "마감됨"
-    case .responded: return "확정 대기"
+    case .needResponse: return LocalizedStrings.ScheduleCard.statusNeedResponse
+    case .expired: return LocalizedStrings.Common.expired
+    case .responded: return LocalizedStrings.ScheduleCard.statusResponded
     case .confirmed:
-      return schedule.isPast ? "완료" : "확정"
-    case .failed: return "불발"
+      return schedule.isPast ? LocalizedStrings.Schedule.completed : LocalizedStrings.Calendar.statusConfirmed
+    case .failed: return LocalizedStrings.Calendar.statusFailed
     }
   }
 

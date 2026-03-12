@@ -290,7 +290,7 @@ extension CreatePersonalEvent {
             .background(Color.white.opacity(0.12))
 
           HStack {
-            Text(store.event.startAt.durationText(to: endAt, prefix: "총 "))
+            Text(store.event.startAt.durationText(to: endAt, prefix: LocalizedStrings.CreateSchedule.totalDurationPrefix))
               .font(.system(size: 13))
               .foregroundStyle(Color.pmtext.secondary)
 

@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import FirebaseStorage
 import Foundation
+import PromisoShared
 
 // MARK: - Error
 
@@ -12,11 +13,11 @@ public enum ImageUploadError: Error, Equatable, Sendable {
   public var localizedDescription: String {
     switch self {
     case .compressionFailed:
-      return "이미지 압축에 실패했습니다"
+      return LocalizedStrings.Error.imageCompressionFailed
     case .uploadFailed(let message):
-      return "이미지 업로드 실패: \(message)"
+      return LocalizedStrings.Error.imageUploadFailed(message)
     case .allFailed:
-      return "모든 이미지 업로드에 실패했습니다"
+      return LocalizedStrings.Error.imageUploadAllFailed
     }
   }
 }

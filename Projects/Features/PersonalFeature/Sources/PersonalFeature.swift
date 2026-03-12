@@ -12,11 +12,11 @@ public enum PersonalMode {}
 extension PersonalMode {
   /// 개인 일정 필터
   public enum EventFilter: String, CaseIterable, Sendable, CategoryFilterItem {
-    case all = "전체"
-    case today = "오늘"
-    case future = "미래"
-    case recurring = "반복"
-    case past = "과거"
+    case all = "all"
+    case today = "today"
+    case future = "future"
+    case recurring = "recurring"
+    case past = "past"
 
     public var title: String {
       switch self {
@@ -24,7 +24,7 @@ extension PersonalMode {
       case .future: return LocalizedStrings.Personal.filterFuture
       case .all: return LocalizedStrings.Personal.filterAll
       case .past: return LocalizedStrings.Personal.filterPast
-      case .recurring: return "반복"
+      case .recurring: return LocalizedStrings.Personal.filterRecurring
       }
     }
 

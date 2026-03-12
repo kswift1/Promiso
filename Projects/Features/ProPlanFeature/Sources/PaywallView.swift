@@ -80,7 +80,7 @@ extension ProPlan {
             store.send(.view(.showPricingTapped))
           } label: {
             HStack {
-              Text("요금제 보기")
+              Text(LocalizedStrings.ProPlan.viewPlans)
                 .font(.headline)
                 .foregroundStyle(.white)
 
@@ -209,12 +209,12 @@ extension ProPlan {
               .frame(width: 200, height: 200)
 
             VStack(spacing: 8) {
-              Text("Pro 플랜 시작!")
+              Text(LocalizedStrings.ProPlan.celebrationTitle)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
 
-              Text("모든 프리미엄 기능을 이용할 수 있어요")
+              Text(LocalizedStrings.ProPlan.celebrationSubtitle)
                 .font(.body)
                 .foregroundStyle(.white.opacity(0.8))
             }
@@ -224,22 +224,22 @@ extension ProPlan {
               celebrationGuideRow(
                 icon: "bell.badge.waveform",
                 iconColor: Color.pmaurora.purple,
-                title: "스마트 알림 브리핑",
-                description: "일정 전 출발 시간, 날씨, 이동시간을 자동으로 알려드려요"
+                title: LocalizedStrings.ProPlan.featureSmartBriefingTitle,
+                description: LocalizedStrings.ProPlan.featureSmartBriefingDescription
               )
 
               celebrationGuideRow(
                 icon: "widget.small",
                 iconColor: Color.pmindigo.n500,
-                title: "AI 위젯",
-                description: "홈 화면 위젯에서 다음 일정 정보를 한눈에 확인하세요"
+                title: LocalizedStrings.ProPlan.featureWidgetTitle,
+                description: LocalizedStrings.ProPlan.featureWidgetDescription
               )
 
               celebrationGuideRow(
                 icon: "calendar.badge.exclamationmark",
                 iconColor: Color.pmwarning.n500,
-                title: "일정 충돌 감지",
-                description: "일정을 잡을 때 겹치는 일정이 있으면 미리 알려드려요"
+                title: LocalizedStrings.ProPlan.featureConflictTitle,
+                description: LocalizedStrings.ProPlan.featureConflictDescription
               )
             }
             .padding(16)
@@ -249,7 +249,7 @@ extension ProPlan {
             Button {
               store.send(.view(.dismissCelebration))
             } label: {
-              Text("시작하기")
+              Text(LocalizedStrings.ProPlan.startButton)
                 .font(.body)
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
@@ -319,7 +319,7 @@ extension ProPlan {
           .font(.system(size: 32, weight: .bold))
           .foregroundStyle(Color.pmtext.primary)
 
-        Text("일정 하나도 놓치지 않는\n스마트한 일정 관리")
+        Text(LocalizedStrings.ProPlan.heroSubtitle)
           .font(.body)
           .foregroundStyle(Color.pmtext.secondary)
           .multilineTextAlignment(.center)
@@ -334,24 +334,24 @@ extension ProPlan {
         BenefitCardView(
           icon: "bell.badge.waveform",
           iconColor: Color.pmaurora.purple,
-          title: "스마트 알림 브리핑",
-          description: "날씨, 이동시간 포함 출발 알림을 자동으로 받으세요",
+          title: LocalizedStrings.ProPlan.featureSmartBriefingTitle,
+          description: LocalizedStrings.ProPlan.featureSmartBriefingDescription,
           previewContent: AnyView(NotificationMockView())
         )
 
         BenefitCardView(
           icon: "widget.small",
           iconColor: Color.pmindigo.n500,
-          title: "AI 위젯",
-          description: "홈 화면에서 날씨, 이동시간, 출발시간을 한눈에",
+          title: LocalizedStrings.ProPlan.featureWidgetTitle,
+          description: LocalizedStrings.ProPlan.featureWidgetDescription,
           previewContent: AnyView(WidgetMockView())
         )
 
         BenefitCardView(
           icon: "calendar.badge.exclamationmark",
           iconColor: Color.pmwarning.n500,
-          title: "일정 충돌 감지",
-          description: "겹치는 일정을 자동으로 찾아 알려드려요",
+          title: LocalizedStrings.ProPlan.featureConflictTitle,
+          description: LocalizedStrings.ProPlan.featureConflictDescription,
           previewContent: AnyView(ConflictMockView())
         )
       }
@@ -362,7 +362,7 @@ extension ProPlan {
     @ViewBuilder
     private var comparisonSection: some View {
       VStack(spacing: 16) {
-        Text("Free vs Pro")
+        Text(LocalizedStrings.ProPlan.comparisonTitle)
           .font(.headline)
           .foregroundStyle(Color.pmtext.primary)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -372,15 +372,15 @@ extension ProPlan {
 
           Divider().padding(.vertical, 4)
 
-          comparisonRow("기본 일정 관리", free: true, pro: true)
-          comparisonRow("그룹 일정", free: true, pro: true)
-          comparisonRow("Live Activity", free: true, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.comparisonBasicSchedule, free: true, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.comparisonGroupSchedule, free: true, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.comparisonLiveActivity, free: true, pro: true)
 
           Divider().padding(.vertical, 4)
 
-          comparisonRow("스마트 알림 브리핑", free: false, pro: true)
-          comparisonRow("AI 위젯", free: false, pro: true)
-          comparisonRow("일정 충돌 감지", free: false, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.featureSmartBriefingTitle, free: false, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.featureWidgetTitle, free: false, pro: true)
+          comparisonRow(LocalizedStrings.ProPlan.featureConflictTitle, free: false, pro: true)
         }
         .padding(16)
         .adaptiveGlassCard()
@@ -463,7 +463,7 @@ extension ProPlan {
         Image(systemName: "checkmark.shield.fill")
           .font(.system(size: 14))
           .foregroundStyle(Color.pmsuccess.n500)
-        Text("언제든 취소 가능 · 약정 없음")
+        Text(LocalizedStrings.ProPlan.trustText)
           .font(.subheadline)
           .foregroundStyle(Color.pmtext.secondary)
       }
@@ -499,7 +499,7 @@ extension ProPlan {
         store.send(.view(.purchaseTapped))
       } label: {
         HStack {
-          Text(showFreeTrialText ? "\(freeTrialDays)일 무료 체험 시작" : "지금 시작하기")
+          Text(showFreeTrialText ? LocalizedStrings.ProPlan.freeTrialStart(freeTrialDays) : LocalizedStrings.ProPlan.startButton)
             .font(.headline)
             .foregroundStyle(.white)
 
@@ -532,7 +532,7 @@ extension ProPlan {
       Button {
         store.send(.view(.restoreTapped))
       } label: {
-        Text("구매 내역 복원")
+        Text(LocalizedStrings.ProPlan.restorePurchases)
           .font(.footnote)
           .foregroundStyle(Color.pmtext.secondary)
           .underline()
@@ -546,8 +546,8 @@ extension ProPlan {
     private var legalSection: some View {
       VStack(spacing: 8) {
         Text(showFreeTrialText
-          ? "무료 체험 기간이 끝나면 구독이 자동으로 시작되며, iTunes 계정으로 청구됩니다. 무료 체험 중 언제든 설정에서 취소할 수 있습니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다."
-          : "구독은 확인 시 iTunes 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 구독은 구매 후 계정 설정에서 관리 및 취소할 수 있습니다."
+          ? LocalizedStrings.ProPlan.legalTrialDisclaimer
+          : LocalizedStrings.ProPlan.legalSubscriptionDisclaimer
         )
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
@@ -555,10 +555,10 @@ extension ProPlan {
 
         HStack(spacing: 16) {
           if let termsURL = URL(string: "https://promiso.app/terms") {
-            Link("이용약관", destination: termsURL)
+            Link(LocalizedStrings.ProPlan.legalTerms, destination: termsURL)
           }
           if let privacyURL = URL(string: "https://promiso.app/privacy") {
-            Link("개인정보처리방침", destination: privacyURL)
+            Link(LocalizedStrings.ProPlan.legalPrivacy, destination: privacyURL)
           }
         }
         .font(.caption2)
@@ -580,7 +580,7 @@ extension ProPlan {
             .scaleEffect(1.2)
             .tint(.white)
 
-          Text("처리 중...")
+          Text(LocalizedStrings.ProPlan.processing)
             .font(.body)
             .foregroundStyle(.white)
         }
@@ -648,18 +648,18 @@ extension ProPlan {
           Image(systemName: "car.fill")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmaurora.purple)
-          Text("출발 시간이에요!")
+          Text(LocalizedStrings.ProPlan.mockDepartureNow)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
         }
-        Text("강남역 카페까지 15분 걸려요")
+        Text(LocalizedStrings.ProPlan.mockTravelTime)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
         HStack(spacing: 12) {
-          Label("비 예보", systemImage: "cloud.rain.fill")
+          Label(LocalizedStrings.ProPlan.mockRainAlert, systemImage: "cloud.rain.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pminfo.n500)
-          Label("1:45 출발 추천", systemImage: "clock.fill")
+          Label(LocalizedStrings.ProPlan.mockLeaveRecommendation, systemImage: "clock.fill")
             .font(.system(size: 11))
             .foregroundStyle(.tertiary)
         }
@@ -674,24 +674,24 @@ extension ProPlan {
     var body: some View {
       VStack(alignment: .leading, spacing: 6) {
         HStack {
-          Text("다음 일정")
+          Text(LocalizedStrings.ProPlan.mockNextSchedule)
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(Color.pmtext.secondary)
           Spacer()
           ProBadge()
         }
-        Text("오후 2시 · 강남역 카페")
+        Text(LocalizedStrings.ProPlan.mockNextScheduleSummary)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
         Divider()
         HStack(spacing: 12) {
-          Label("22°", systemImage: "sun.max.fill")
+          Label(LocalizedStrings.ProPlan.mockTemperature, systemImage: "sun.max.fill")
             .font(.system(size: 11))
             .symbolRenderingMode(.multicolor)
-          Label("15분", systemImage: "car.fill")
+          Label(LocalizedStrings.ProPlan.mockTravelDuration, systemImage: "car.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pmtext.secondary)
-          Label("1:30 출발", systemImage: "clock.fill")
+          Label(LocalizedStrings.ProPlan.mockDepartureTime, systemImage: "clock.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pmaurora.purple)
         }
@@ -709,16 +709,16 @@ extension ProPlan {
           Image(systemName: "exclamationmark.triangle.fill")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmwarning.n500)
-          Text("'팀 회의'와 30분 겹쳐요")
+          Text(LocalizedStrings.ProPlan.mockConflictTitle)
             .font(.system(size: 12))
             .foregroundStyle(Color.pmtext.primary)
         }
         HStack(spacing: 8) {
           VStack(alignment: .leading, spacing: 2) {
-            Text("팀 회의")
+            Text(LocalizedStrings.ProPlan.mockConflictExistingTitle)
               .font(.system(size: 11, weight: .medium))
               .foregroundStyle(Color.pmtext.primary)
-            Text("1:00 - 2:00")
+            Text(LocalizedStrings.ProPlan.mockConflictExistingTime)
               .font(.system(size: 10))
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -730,10 +730,10 @@ extension ProPlan {
             .foregroundStyle(.tertiary)
 
           VStack(alignment: .leading, spacing: 2) {
-            Text("점심 일정")
+            Text(LocalizedStrings.ProPlan.mockConflictNewTitle)
               .font(.system(size: 11, weight: .medium))
               .foregroundStyle(Color.pmtext.primary)
-            Text("1:30 - 3:00")
+            Text(LocalizedStrings.ProPlan.mockConflictNewTime)
               .font(.system(size: 10))
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -778,14 +778,14 @@ extension ProPlan {
             Spacer()
 
             if product.type == .yearly {
-              Badge(text: "2개월 무료", color: Color.pmaurora.purple)
+              Badge(text: LocalizedStrings.ProPlan.badgeTwoMonthsFree, color: Color.pmaurora.purple)
             } else if product.type == .lifetime {
-              Badge(text: "평생", color: Color.pmaurora.pink)
+              Badge(text: LocalizedStrings.ProPlan.badgeLifetime, color: Color.pmaurora.pink)
             }
           }
 
           if showFreeTrial {
-            Text("\(freeTrialDays)일 무료 후 \(product.description)")
+            Text(LocalizedStrings.ProPlan.freeTrialAfter(freeTrialDays, product.description))
               .font(.subheadline)
               .foregroundStyle(Color.pmtext.secondary)
           } else {
@@ -800,11 +800,11 @@ extension ProPlan {
               .foregroundStyle(Color.pmindigo.n500)
 
             if product.type == .monthly {
-              Text("/월")
+              Text(LocalizedStrings.ProPlan.perMonth)
                 .font(.subheadline)
                 .foregroundStyle(Color.pmgray.n400)
             } else if product.type == .yearly {
-              Text("/년")
+              Text(LocalizedStrings.ProPlan.perYear)
                 .font(.subheadline)
                 .foregroundStyle(Color.pmgray.n400)
             }

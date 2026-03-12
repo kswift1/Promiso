@@ -32,7 +32,7 @@ extension RecurringPersonalEventDetail {
         .padding(.vertical, 24)
       }
       .auroraBackground()
-      .navigationTitle("반복 일정")
+      .navigationTitle(LocalizedStrings.Personal.recurringDetailTitle)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
@@ -47,7 +47,7 @@ extension RecurringPersonalEventDetail {
               Button(role: .destructive) {
                 store.send(.view(.excludeInstanceTapped))
               } label: {
-                Label("이 날만 취소", systemImage: "calendar.badge.minus")
+                Label(LocalizedStrings.Personal.recurringDetailExcludeInstance, systemImage: "calendar.badge.minus")
               }
             }
 
@@ -104,12 +104,12 @@ extension RecurringPersonalEventDetail {
 
     private var recurrenceSection: some View {
       VStack(spacing: 0) {
-        ScheduleDetailSectionHeader(title: "반복 규칙")
+        ScheduleDetailSectionHeader(title: LocalizedStrings.Personal.recurringDetailRule)
 
         VStack(spacing: 0) {
           ScheduleDetailEmojiInfoRow(
             emoji: "🔄",
-            title: "반복",
+            title: LocalizedStrings.Personal.filterRecurring,
             value: store.recurringEvent.recurrence.displayText
           )
 
@@ -117,7 +117,7 @@ extension RecurringPersonalEventDetail {
 
           ScheduleDetailEmojiInfoRow(
             emoji: "📅",
-            title: "시작일",
+            title: LocalizedStrings.Personal.recurringDetailStartDate,
             value: formattedDate(store.recurringEvent.seriesStartDate)
           )
 
@@ -126,7 +126,7 @@ extension RecurringPersonalEventDetail {
 
             ScheduleDetailEmojiInfoRow(
               emoji: "🏁",
-              title: "종료일",
+              title: LocalizedStrings.Personal.recurringDetailEndDate,
               value: formattedDate(endDate)
             )
           }
@@ -153,7 +153,7 @@ extension RecurringPersonalEventDetail {
 
             ScheduleDetailEmojiInfoRow(
               emoji: "⏱️",
-              title: "종료 시간",
+              title: LocalizedStrings.Personal.recurringDetailEndTime,
               value: endText
             )
           }
@@ -189,7 +189,7 @@ extension RecurringPersonalEventDetail {
 
     private var descriptionSection: some View {
       VStack(spacing: 0) {
-        ScheduleDetailSectionHeader(title: "메모")
+        ScheduleDetailSectionHeader(title: LocalizedStrings.OverlayScheduleDetail.memo)
 
         Text(store.recurringEvent.description ?? "")
           .font(.system(size: 15))
@@ -208,19 +208,19 @@ extension RecurringPersonalEventDetail {
     }
 
     private func reminderText(_ minutes: Int) -> String {
-      if minutes == 0 { return "이벤트 시점" }
+      if minutes == 0 { return LocalizedStrings.Personal.reminderAtEvent }
       if minutes >= 10080 && minutes % (1440 * 7) == 0 {
         let weeks = minutes / (1440 * 7)
-        return "\(weeks)주 전"
+        return LocalizedStrings.Personal.reminderWeeks(weeks)
       }
       if minutes >= 1440 {
         let days = minutes / 1440
-        return "\(days)일 전"
+        return LocalizedStrings.Personal.reminderDays(days)
       }
       if minutes >= 60 {
-        return LocalizedStrings.Shared.reminderHours(minutes / 60)
+        return LocalizedStrings.Personal.reminderHours(minutes / 60)
       }
-      return LocalizedStrings.Shared.reminderMinutes(minutes)
+      return LocalizedStrings.Personal.reminderMinutes(minutes)
     }
   }
 }

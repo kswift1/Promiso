@@ -122,7 +122,7 @@ private struct PreviousStepButton: View {
       HStack(spacing: 4) {
         Image(systemName: "chevron.left")
           .font(.system(size: 13, weight: .semibold))
-        Text("이전")
+        Text(LocalizedStrings.Common.back)
           .font(.system(size: 15, weight: .semibold))
       }
       .foregroundStyle(Color(.label))

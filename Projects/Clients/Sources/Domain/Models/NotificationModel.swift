@@ -148,8 +148,8 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
 
 /// 알림 필터
 public enum NotificationFilter: String, CaseIterable, Equatable, Hashable, Sendable {
-  case all = "전체"
-  case unread = "안 읽음"
+  case all = "all"
+  case unread = "unread"
 }
 
 // MARK: - Computed Properties

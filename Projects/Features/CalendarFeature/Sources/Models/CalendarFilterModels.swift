@@ -9,12 +9,12 @@ import PromisoShared
 extension CalendarFeature.StatusFilter: CategoryFilterItem {
   public var title: String {
     switch self {
-    case .all: return "전체"
-    case .needResponse: return "응답 필요"
-    case .waitingConfirmation: return "확정 대기"
-    case .confirmed: return "확정"
-    case .completed: return "완료"
-    case .failed: return "불발"
+    case .all: return LocalizedStrings.Common.all
+    case .needResponse: return LocalizedStrings.ScheduleCard.statusNeedResponse
+    case .waitingConfirmation: return LocalizedStrings.Shared.statusWaitingConfirm
+    case .confirmed: return LocalizedStrings.Calendar.statusConfirmed
+    case .completed: return LocalizedStrings.Schedule.completed
+    case .failed: return LocalizedStrings.Calendar.statusFailed
     }
   }
 

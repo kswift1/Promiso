@@ -271,7 +271,7 @@ extension ScheduleModel {
 
   /// 위치 텍스트 (없으면 기본값)
   public var locationText: String {
-    location?.name ?? "장소 미정"
+    location?.name ?? LocalizedStrings.Common.noLocation
   }
 
   /// 투표 마감까지 남은 시간 텍스트
@@ -284,12 +284,12 @@ extension ScheduleModel {
     let days = hours / 24
 
     if days > 0 {
-      return "\(days)일 후"
+      return LocalizedStrings.DateFormat.daysLater(days)
     } else if hours > 0 {
-      return "\(hours)시간 후"
+      return LocalizedStrings.DateFormat.hoursLater(hours)
     } else {
       let minutes = Int(interval / 60)
-      return "\(minutes)분 후"
+      return LocalizedStrings.DateFormat.minutesLater(minutes)
     }
   }
 

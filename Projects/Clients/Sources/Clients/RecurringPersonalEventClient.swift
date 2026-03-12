@@ -24,19 +24,19 @@ public enum RecurringPersonalEventClientError: Error, Equatable {
   public var localizedDescription: String {
     switch self {
     case .networkError:
-      return "네트워크 연결을 확인해주세요"
+      return LocalizedStrings.Error.networkError
     case .unauthorized:
-      return "로그인이 필요합니다"
+      return LocalizedStrings.Error.userAuthRequired
     case .notFound:
-      return "반복 일정을 찾을 수 없습니다"
+      return LocalizedStrings.Error.notFoundError
     case .serverError:
-      return "서버 오류가 발생했습니다"
+      return LocalizedStrings.Error.serverError
     case .invalidData(let message):
-      return message ?? "잘못된 데이터입니다"
+      return message ?? LocalizedStrings.Error.validationError
     case .forbidden:
-      return "권한이 없습니다"
+      return LocalizedStrings.Error.permissionError
     case .unknown(let message):
-      return message ?? "알 수 없는 오류가 발생했습니다"
+      return message ?? LocalizedStrings.Error.unknownError
     }
   }
 
@@ -126,7 +126,7 @@ extension RecurringPersonalEventClient: DependencyKey {
     return RecurringPersonalEventClient(
       createEvent: { event in
         guard !event.title.isEmpty else {
-          throw RecurringPersonalEventClientError.invalidData("제목이 비어있습니다")
+          throw RecurringPersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
         do {
           return try await dataSource.createEvent(event)

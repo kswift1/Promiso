@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 /// 그룹별 개인 색상 설정
 /// Firestore에 hex 문자열로 저장됨
@@ -22,23 +23,24 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
 
   /// 사용자에게 표시할 이름
   public var displayName: String {
+    let isKoreanLocale = LocaleManager.appLocale.language.languageCode?.identifier == "ko"
     switch self {
-    case .red: return "레드"
-    case .coral: return "코랄"
-    case .orange: return "오렌지"
-    case .yellow: return "옐로"
-    case .lime: return "라임"
-    case .green: return "그린"
-    case .mint: return "민트"
-    case .blue: return "블루"
-    case .navy: return "네이비"
-    case .purple: return "퍼플"
-    case .lavender: return "라벤더"
-    case .magenta: return "마젠타"
-    case .pink: return "핑크"
-    case .wine: return "와인"
-    case .brown: return "브라운"
-    case .graphite: return "그래파이트"
+    case .red: return isKoreanLocale ? "레드" : "Red"
+    case .coral: return isKoreanLocale ? "코랄" : "Coral"
+    case .orange: return isKoreanLocale ? "오렌지" : "Orange"
+    case .yellow: return isKoreanLocale ? "옐로" : "Yellow"
+    case .lime: return isKoreanLocale ? "라임" : "Lime"
+    case .green: return isKoreanLocale ? "그린" : "Green"
+    case .mint: return isKoreanLocale ? "민트" : "Mint"
+    case .blue: return isKoreanLocale ? "블루" : "Blue"
+    case .navy: return isKoreanLocale ? "네이비" : "Navy"
+    case .purple: return isKoreanLocale ? "퍼플" : "Purple"
+    case .lavender: return isKoreanLocale ? "라벤더" : "Lavender"
+    case .magenta: return isKoreanLocale ? "마젠타" : "Magenta"
+    case .pink: return isKoreanLocale ? "핑크" : "Pink"
+    case .wine: return isKoreanLocale ? "와인" : "Wine"
+    case .brown: return isKoreanLocale ? "브라운" : "Brown"
+    case .graphite: return isKoreanLocale ? "그래파이트" : "Graphite"
     }
   }
 

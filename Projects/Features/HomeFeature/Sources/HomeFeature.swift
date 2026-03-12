@@ -557,19 +557,27 @@ extension Home {
 
             return .merge(
               .run { [openURL] _ in
-                let subject = "[Promiso] 브리핑 오류 제보"
-                var body = "제보해 주셔서 감사합니다! 더 나은 브리핑을 만드는 데 큰 도움이 됩니다 🙏\n\n"
-                body += "상세 내용이 있다면 입력해주세요:\n\n\n"
-                body += "── 자동 수집 정보 (확인용) ──\n"
-                body += "UID: \(userId)\n"
-                body += "생성 시각: \(generatedDate?.formatted(date: .abbreviated, time: .shortened) ?? "없음")\n"
-                body += "요약: \(briefing?.summary ?? "없음")\n"
-                body += "상세: \(briefing?.detail ?? "없음")\n"
-                body += "알림 권한: \(!notificationDenied)\n"
-                body += "위치 권한: \(!locationDenied)\n"
-                body += "Timezone: \(TimeZone.current.identifier)\n"
-                body += "Locale: \(Locale.current.identifier)\n"
-                body += "────────────────────\n"
+                let placeholder = "-"
+                let generatedAtText = generatedDate?.formatted(date: .abbreviated, time: .shortened) ?? placeholder
+                let summaryText = {
+                  guard let summary = briefing?.summary, !summary.isEmpty else { return placeholder }
+                  return summary
+                }()
+                let detailText = {
+                  guard let detail = briefing?.detail, !detail.isEmpty else { return placeholder }
+                  return detail
+                }()
+                let subject = LocalizedStrings.Home.briefingReportMailSubject
+                let body = LocalizedStrings.Home.briefingReportMailBody(
+                  userId,
+                  generatedAtText,
+                  summaryText,
+                  detailText,
+                  notificationDenied ? "false" : "true",
+                  locationDenied ? "false" : "true",
+                  TimeZone.current.identifier,
+                  LocaleManager.appLocale.identifier
+                )
 
                 let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                 let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
@@ -990,7 +998,7 @@ extension Home {
               return .none
             }
             let destCoord = Coordinate(latitude: destLat, longitude: destLng)
-            let destName = location.name ?? item.title
+            let destName = location.name
 
             state.path.append(.transportDetail(.init(
               scheduleTitle: item.title,
@@ -1024,7 +1032,6 @@ extension Home {
 
             let fromLat: Double
             let fromLng: Double
-            let locationName: String?
 
             switch origin {
             case .currentLocation:
@@ -1035,11 +1042,9 @@ extension Home {
               }
               fromLat = coord.latitude
               fromLng = coord.longitude
-              locationName = state.departureLocationName
-            case .previousSchedule(let name, let latitude, let longitude):
+            case .previousSchedule(_, let latitude, let longitude):
               fromLat = latitude
               fromLng = longitude
-              locationName = name
             }
 
             state.departureTransportData = .loading
@@ -1643,7 +1648,8 @@ extension Home {
                 let departureTime = itemStartAt.addingTimeInterval(-Double(driving.duration * 60))
                 var info: String? = nil
                 if driving.toll > 0 {
-                  info = "통행료 \(driving.toll.formatted())원"
+                  let tollAmount = Decimal(driving.toll).formatted(.currency(code: "KRW"))
+                  info = LocalizedStrings.Home.transportTollAmount(tollAmount)
                 }
                 drivingOption = .init(
                   type: .driving,
@@ -1710,9 +1716,9 @@ extension Home {
               // 시트가 열려 있으면 인라인 에러로 표시하므로 토스트 불필요
               if state.departureAlertItem == nil {
                 if error is LocationClientError {
-                  state.toastMessage = ToastMessage(type: .error, title: "위치 권한이 필요합니다")
+                  state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.Home.departureLocationPermissionRequired)
                 } else {
-                  state.toastMessage = ToastMessage(type: .error, title: "교통 정보를 불러올 수 없습니다")
+                  state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.Home.departureTransportLoadFailed)
                 }
               }
             }
@@ -1766,27 +1772,27 @@ extension Home {
 
             let templates: [NotificationTemplate] = [
               (
-                title: { "\($0), 슬슬 출발할 시간이에요" },
+                title: { LocalizedStrings.Home.departureNotificationTitleSoon($0) },
                 body: { time, trans, duration, buffer in
                   buffer > 0
-                    ? "\(time)까지 \(trans)로 약 \(duration)분 · \(buffer)분 여유를 두었어요"
-                    : "\(time)까지 \(trans)로 약 \(duration)분 걸려요"
+                    ? LocalizedStrings.Home.departureNotificationBodySoonWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodySoon(time, trans, duration)
                 }
               ),
               (
-                title: { "\($0), 이제 출발해볼까요?" },
+                title: { LocalizedStrings.Home.departureNotificationTitleNow($0) },
                 body: { time, trans, duration, buffer in
                   buffer > 0
-                    ? "\(time) 일정 · \(trans) 약 \(duration)분 · 여유 \(buffer)분 포함"
-                    : "\(time) 일정 · \(trans)로 약 \(duration)분 거리예요"
+                    ? LocalizedStrings.Home.departureNotificationBodyNowWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodyNow(time, trans, duration)
                 }
               ),
               (
-                title: { "\($0), 슬슬 준비해볼까요?" },
+                title: { LocalizedStrings.Home.departureNotificationTitleReady($0) },
                 body: { time, trans, duration, buffer in
                   buffer > 0
-                    ? "\(time)까지 \(trans)로 약 \(duration)분 거리예요 · 여유 \(buffer)분 챙겼어요"
-                    : "\(time)까지 \(trans)로 약 \(duration)분이면 도착해요"
+                    ? LocalizedStrings.Home.departureNotificationBodyReadyWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodyReady(time, trans, duration)
                 }
               ),
             ]
@@ -1810,7 +1816,7 @@ extension Home {
             }
 
           case .departureAlertScheduled:
-            state.toastMessage = ToastMessage(type: .success, title: "출발 알림이 설정되었습니다")
+            state.toastMessage = ToastMessage(type: .success, title: LocalizedStrings.Home.departureAlertScheduled)
             return .none
 
           case .departureLocationResolved(let name):
