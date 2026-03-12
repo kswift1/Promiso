@@ -58,7 +58,7 @@ extension ProPlan {
     @ViewBuilder
     private var heroSection: some View {
       VStack(spacing: 14) {
-        Text("약속 잡고 나서,\n또 계산하고 계신가요?")
+        Text("월 커피 한 잔 가격으로\nAI 비서를 고용하세요")
           .font(.system(size: 26, weight: .bold))
           .multilineTextAlignment(.center)
           .foregroundStyle(Color.pmtext.primary)
@@ -81,7 +81,7 @@ extension ProPlan {
           icon: "location.fill",
           iconColor: Color.pmindigo.n500,
           problem: "약속 잡고 또 지도 검색하고 계산하고...",
-          solution: "자동차·대중교통·도보\n이동시간과 출발시간을 자동 계산",
+          solution: "교통수단별 이동시간 비교,\n여유시간 설정, 출발 알림까지",
           previewContent: AnyView(DeparturePreviewView()),
           index: 0
         )
@@ -90,7 +90,7 @@ extension ProPlan {
           icon: "calendar.badge.exclamationmark",
           iconColor: Color.pmwarning.n600,
           problem: "일정 잡고 나서야 겹친 걸 발견?",
-          solution: "일정 생성할 때 시간 충돌을\n자동으로 계산해서 미리 알려줘요",
+          solution: "일정 생성 시 충돌·날씨를\n타임라인으로 미리 확인",
           previewContent: AnyView(ConflictPreviewView()),
           index: 1
         )
@@ -156,10 +156,25 @@ extension ProPlan {
           Divider().padding(.horizontal, 16).padding(.vertical, 2)
 
           // Pro 전용
-          comparisonRow("출발시간 자동 계산", free: false, pro: true)
+          comparisonRow("출발 시간 자동 계산 및 알림", free: false, pro: true)
           comparisonRow("일정 충돌 감지", free: false, pro: true)
-          comparisonRow("날씨 연동 안내", free: false, pro: true)
-          comparisonRow("AI 일정 브리핑", free: false, pro: true)
+          comparisonRow("일정별 날씨 확인", free: false, pro: true)
+          comparisonRow("매일 AI 일정 브리핑", free: false, pro: true)
+
+          Divider().padding(.horizontal, 16).padding(.vertical, 2)
+
+          // 추후 Pro 기능 안내
+          HStack(spacing: 6) {
+            Image(systemName: "plus.circle.fill")
+              .font(.system(size: 13))
+              .foregroundStyle(Color.pmindigo.n500)
+            Text("추후 생성될 유용한 Pro 기능들")
+              .font(.subheadline)
+              .foregroundStyle(Color.pmtext.secondary)
+            Spacer()
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 10)
         }
         .padding(.vertical, 8)
         .adaptiveGlassCard()
@@ -398,7 +413,7 @@ extension ProPlan {
           .allowsHitTesting(false)
           .padding(12)
           .frame(maxWidth: .infinity)
-          .background(Color.pmgray.n700.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+          .staticGlassBackground(cornerRadius: 12)
       }
       .padding(16)
       .adaptiveGlassCard()
@@ -417,148 +432,304 @@ extension ProPlan {
 
 extension ProPlan {
 
-  /// 출발 알림 미리보기 — DepartureAlertSheet 교통수단 카드 스타일
+  /// 출발 알림 미리보기 — 약속시간 → 교통수단 소요시간 → 여유시간 → 알림시간 흐름
   fileprivate struct DeparturePreviewView: View {
     var body: some View {
-      VStack(spacing: 6) {
-        // 경로 헤더
-        HStack(spacing: 6) {
-          Circle().fill(Color.pmindigo.n500).frame(width: 5, height: 5)
-          Text("집")
+      VStack(spacing: 10) {
+        // 경로 헤더 (실제 DepartureAlertSheet routeInfoCard 스타일)
+        VStack(spacing: 8) {
+          HStack(spacing: 0) {
+            // 출발
+            VStack(spacing: 2) {
+              HStack(spacing: 4) {
+                Circle().fill(Color.pmindigo.n400).frame(width: 5, height: 5)
+                Text("출발")
+                  .font(.system(size: 9, weight: .medium))
+                  .foregroundStyle(Color.pmindigo.n400)
+              }
+              Text("집")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.pmtext.primary)
+            }
+            .frame(maxWidth: .infinity)
+
+            Image(systemName: "arrow.right")
+              .font(.system(size: 9, weight: .semibold))
+              .foregroundStyle(Color.pmgray.n400)
+              .frame(width: 28)
+
+            // 도착
+            VStack(spacing: 2) {
+              HStack(spacing: 4) {
+                Circle().fill(Color.pmerror.n500).frame(width: 5, height: 5)
+                Text("도착")
+                  .font(.system(size: 9, weight: .medium))
+                  .foregroundStyle(Color.pmerror.n500)
+              }
+              Text("강남역 카페")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.pmtext.primary)
+            }
+            .frame(maxWidth: .infinity)
+          }
+
+          // 약속 시간
+          Text("🗓️ 오후 2:00 시작")
             .font(.system(size: 10))
             .foregroundStyle(Color.pmtext.secondary)
-          Image(systemName: "arrow.right")
-            .font(.system(size: 8))
-            .foregroundStyle(Color.pmgray.n400)
-          Circle().fill(Color.pmpurple.n500).frame(width: 5, height: 5)
-          Text("강남역 카페")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(Color.pmtext.primary)
-          Spacer()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
-          RoundedRectangle(cornerRadius: 8)
-            .strokeBorder(Color.pmgray.n200.opacity(0.4), lineWidth: 1)
+          RoundedRectangle(cornerRadius: 12)
+            .fill(Color(.systemBackground).opacity(0.5))
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
         )
 
-        // 교통수단 3종 (자동차 선택 상태)
-        transportRow(icon: "car.fill", label: "자동차", time: "15분", departure: "1:35 출발", isSelected: true)
-        transportRow(icon: "bus.fill", label: "대중교통", time: "28분", departure: "1:22 출발", isSelected: false)
-        transportRow(icon: "figure.walk", label: "도보", time: "42분", departure: "1:08 출발", isSelected: false)
+        // 교통수단 카드 (실제 transportCard 스타일)
+        transportCard(
+          icon: "car.fill", label: "자동차",
+          detail: "약 15분", departureTime: "오후 1:35",
+          isSelected: true
+        )
+        transportCard(
+          icon: "bus.fill", label: "대중교통",
+          detail: "약 28분", departureTime: "오후 1:22",
+          isSelected: false
+        )
+
+        // 여유시간 + 알림 결과
+        VStack(spacing: 6) {
+          HStack {
+            Text("여유 시간")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+            Spacer()
+            HStack(spacing: 3) {
+              Text("10분")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.pmtext.primary)
+              Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 8))
+                .foregroundStyle(Color.pmgray.n400)
+            }
+          }
+
+          // 확인 버튼 (실제 confirmButton 스타일)
+          HStack(spacing: 4) {
+            Image(systemName: "bell.fill")
+              .font(.system(size: 10))
+            Text("알림 받기")
+              .font(.system(size: 12, weight: .semibold))
+          }
+          .foregroundStyle(.white)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 8)
+          .background(Color.pmindigo.n500, in: RoundedRectangle(cornerRadius: 10))
+
+          // 설명 텍스트
+          Text("자동차로 오후 1:25 — 10분 여유 포함해 알림을 드려요")
+            .font(.system(size: 9))
+            .foregroundStyle(Color.pmtext.secondary)
+            .multilineTextAlignment(.center)
+        }
       }
     }
 
-    private func transportRow(icon: String, label: String, time: String, departure: String, isSelected: Bool) -> some View {
-      HStack(spacing: 8) {
+    private func transportCard(icon: String, label: String, detail: String, departureTime: String, isSelected: Bool) -> some View {
+      HStack(spacing: 10) {
         Image(systemName: icon)
-          .font(.system(size: 10))
+          .font(.system(size: 13, weight: .medium))
           .foregroundStyle(isSelected ? .white : Color.pmindigo.n500)
-          .frame(width: 24, height: 24)
+          .frame(width: 28, height: 28)
           .background(
-            isSelected ? Color.pmindigo.n500 : Color.pmindigo.n500.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: 5)
+            RoundedRectangle(cornerRadius: 7)
+              .fill(isSelected ? Color.pmindigo.n500 : Color.pmindigo.n500.opacity(0.08))
           )
 
-        Text(label)
-          .font(.system(size: 11, weight: .medium))
-          .foregroundStyle(Color.pmtext.primary)
+        VStack(alignment: .leading, spacing: 1) {
+          Text(label)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
+          Text(detail)
+            .font(.system(size: 10))
+            .foregroundStyle(Color.pmtext.secondary)
+        }
 
-        Text(time)
-          .font(.system(size: 10))
-          .foregroundStyle(Color.pmtext.secondary)
+        Spacer(minLength: 0)
 
-        Spacer()
-
-        Text(departure)
-          .font(.system(size: 11, weight: .bold, design: .rounded))
-          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+        Text(departureTime)
+          .font(.system(size: 12, weight: .bold, design: .rounded))
+          .foregroundStyle(isSelected ? .white : Color.pmindigo.n500)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 5)
+          .background(
+            RoundedRectangle(cornerRadius: 7)
+              .fill(isSelected ? Color.pmindigo.n500 : Color.pmindigo.n500.opacity(0.1))
+          )
       }
-      .padding(.horizontal, 10)
-      .padding(.vertical, 8)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
       .background(
-        isSelected ? Color.pmindigo.n500.opacity(0.06) : Color.clear,
-        in: RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: 12)
+          .fill(isSelected ? Color.pmindigo.n500.opacity(0.08) : Color(.systemBackground).opacity(0.4))
       )
       .overlay(
-        RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: 12)
           .strokeBorder(
-            isSelected ? Color.pmindigo.n500.opacity(0.35) : Color.pmgray.n200.opacity(0.3),
+            isSelected ? Color.pmindigo.n500.opacity(0.4) : Color.pmgray.n200.opacity(0.3),
             lineWidth: isSelected ? 1.5 : 1
           )
       )
     }
   }
 
-  /// 충돌 감지 미리보기 — ConflictWarningSection 스타일
+  /// 충돌 감지 미리보기 — 실제 ProBonusFloatingView + ProConflictRow 패턴
   fileprivate struct ConflictPreviewView: View {
     var body: some View {
       VStack(alignment: .leading, spacing: 10) {
-        // 경고 헤더 (실제 앱의 ConflictWarningSection 헤더)
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmwarning.n600)
-          Text("겹치는 일정이 있어요")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Color.pmwarning.n600)
-        }
+        // ProBonusFloatingView 스타일 카드
+        VStack(alignment: .leading, spacing: 6) {
+          // PRO 뱃지 (실제 ProBadge 패턴)
+          HStack(spacing: 2) {
+            Image(systemName: "sparkles")
+              .font(.system(size: 7, weight: .bold))
+            Text("PRO")
+              .font(.system(size: 7, weight: .heavy))
+          }
+          .foregroundStyle(.white)
+          .padding(.horizontal, 5)
+          .padding(.vertical, 2)
+          .background(
+            LinearGradient(
+              colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+              startPoint: .leading,
+              endPoint: .trailing
+            ),
+            in: Capsule()
+          )
 
-        // 충돌 행 (실제 앱의 ConflictRow 패턴)
-        HStack(spacing: 10) {
-          // 아이콘
-          Image(systemName: "calendar")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmwarning.n600)
-            .frame(width: 28, height: 28)
-            .background(Color.pmwarning.n600.opacity(0.12), in: Circle())
+          // 날씨 행 (실제 ProWeatherRow 패턴)
+          HStack(spacing: 6) {
+            Image(systemName: "cloud.rain.fill")
+              .symbolRenderingMode(.multicolor)
+              .font(.system(size: 11))
+              .frame(width: 20, height: 20)
+              .background(
+                Circle()
+                  .fill(Color.cyan.opacity(0.12))
+              )
 
-          VStack(alignment: .leading, spacing: 2) {
-            Text("팀 회의")
-              .font(.system(size: 12, weight: .medium))
+            Text("8°")
+              .font(.system(size: 12, weight: .semibold))
               .foregroundStyle(Color.pmtext.primary)
-            Text("1:00 – 2:00")
-              .font(.system(size: 10))
+
+            Text("비 올 수 있어요, 우산 챙기세요")
+              .font(.system(size: 11))
               .foregroundStyle(Color.pmtext.secondary)
+              .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "info.circle")
+              .font(.system(size: 10))
+              .foregroundStyle(Color.pmgray.n400)
           }
 
-          Spacer()
+          // 충돌 요약 행 (실제 ProConflictRow 패턴)
+          HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmwarning.n500)
 
-          Text("30분 겹침")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.pmwarning.n600)
+            Text("'팀 회의'과(와) 30분 겹쳐요")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.primary)
+              .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "info.circle")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmgray.n400)
+          }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .proGlassCard(cornerRadius: 10)
 
-        HStack(spacing: 10) {
-          Image(systemName: "calendar")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmwarning.n600)
-            .frame(width: 28, height: 28)
-            .background(Color.pmwarning.n600.opacity(0.12), in: Circle())
-
-          VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-              Text("점심 약속")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.pmtext.primary)
-              Text("미확정")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(Color.pmwarning.n500)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1)
-                .background(Color.pmwarning.n500.opacity(0.12), in: Capsule())
-            }
-            Text("1:30 – 3:00")
-              .font(.system(size: 10))
+        // 타임라인 시각화 (ConflictTooltip 스타일 — 2열 블록)
+        HStack(alignment: .top, spacing: 4) {
+          // 시간 라벨
+          VStack(alignment: .trailing, spacing: 0) {
+            Text("1:00")
+              .font(.system(size: 8, weight: .medium, design: .rounded))
+              .foregroundStyle(Color.pmtext.secondary)
+            Spacer()
+            Text("1:30")
+              .font(.system(size: 8, weight: .medium, design: .rounded))
+              .foregroundStyle(Color.pmwarning.n600)
+            Spacer()
+            Text("2:00")
+              .font(.system(size: 8, weight: .medium, design: .rounded))
+              .foregroundStyle(Color.pmtext.secondary)
+            Spacer()
+            Text("3:00")
+              .font(.system(size: 8, weight: .medium, design: .rounded))
               .foregroundStyle(Color.pmtext.secondary)
           }
+          .frame(width: 26, height: 64)
 
-          Spacer()
+          // 팀 회의 블록 (1:00-2:00, 높이 50%)
+          VStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 4)
+              .fill(Color.pmindigo.n500.opacity(0.15))
+              .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                  .strokeBorder(Color.pmindigo.n500.opacity(0.4), lineWidth: 1)
+              )
+              .overlay(
+                Text("📌 팀 회의")
+                  .font(.system(size: 9, weight: .medium))
+                  .foregroundStyle(Color.pmindigo.n500)
+              )
+              .frame(height: 32)
+            Spacer(minLength: 0)
+          }
+          .frame(height: 64)
+
+          // 점심 약속 블록 (1:30-3:00, offset y 16 = 1:30 시작)
+          VStack(spacing: 0) {
+            Spacer().frame(height: 16)
+            RoundedRectangle(cornerRadius: 4)
+              .fill(Color.pmwarning.n600.opacity(0.12))
+              .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                  .strokeBorder(Color.pmwarning.n600.opacity(0.4), lineWidth: 1)
+              )
+              .overlay(
+                Text("🍽️ 점심 약속")
+                  .font(.system(size: 9, weight: .medium))
+                  .foregroundStyle(Color.pmwarning.n600)
+              )
+              .frame(height: 48)
+          }
+          .frame(height: 64)
         }
+        .padding(8)
+        .background(
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemBackground).opacity(0.5))
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
+        )
       }
-      .padding(12)
-      .background(Color.pmwarning.n50, in: RoundedRectangle(cornerRadius: 10))
     }
   }
 
@@ -591,10 +762,6 @@ extension ProPlan {
             .foregroundStyle(Color.pmtext.primary)
 
           Spacer()
-
-          Text("오전 8시 알림")
-            .font(.system(size: 10))
-            .foregroundStyle(Color.pmindigo.n500)
         }
 
         Divider()
