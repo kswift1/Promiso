@@ -301,6 +301,7 @@ public enum SubscriptionError: Error, Equatable, LocalizedError {
   case purchaseCancelled
   case purchasePending
   case verificationFailed
+  case alreadyOwnedByOther
   case unknown
 
   public var errorDescription: String? {
@@ -313,6 +314,8 @@ public enum SubscriptionError: Error, Equatable, LocalizedError {
       return LocalizedStrings.Error.subscriptionPurchasePending
     case .verificationFailed:
       return LocalizedStrings.Error.subscriptionVerificationFailed
+    case .alreadyOwnedByOther:
+      return "이 구독은 다른 계정에 연결되어 있습니다"
     case .unknown:
       return LocalizedStrings.Error.unknownError
     }
@@ -331,6 +334,25 @@ final class SubscriptionRemoteDataSource: Sendable {
 
   init(db: Firestore = Firestore.firestore()) {
     self.db = db
+  }
+
+  /// subscriptions/{userId} 문서 단건 조회
+  /// - 문서 있음 → 서버 상태 반환
+  /// - 문서 없음 → .none 반환
+  /// - 조회 실패 → throw (caller가 기존 상태 유지)
+  func fetchRemoteStatus() async throws -> SubscriptionStatus {
+    guard let currentUserId = Auth.auth().currentUser?.uid else {
+      return .none
+    }
+
+    let docRef = db.collection("subscriptions").document(currentUserId)
+    let snapshot = try await docRef.getDocument()
+
+    guard let data = snapshot.data() else {
+      return .none
+    }
+
+    return Self.parseStatus(from: data)
   }
 
   /// subscriptions/{userId} 문서의 실시간 변경 스트림

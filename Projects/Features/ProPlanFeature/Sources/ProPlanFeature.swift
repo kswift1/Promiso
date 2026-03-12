@@ -249,8 +249,8 @@ extension ProPlan {
               // 최초 구매일 전송
               await send(.internal(.purchaseDateLoaded(await purchaseDate)))
 
-              // 구독 상태 스트림 구독 시작
-              for await status in subscriptionClient.statusStream() {
+              // 구독 상태 스트림 구독 시작 (Firestore 서버 우선)
+              for await status in subscriptionClient.unifiedStatusStream() {
                 await send(.internal(.statusUpdated(status)))
               }
             }
@@ -437,6 +437,9 @@ extension ProPlan {
                 return .none
               case .purchasePending:
                 state.errorMessage = LocalizedStrings.Error.subscriptionPurchasePending
+                return .none
+              case .alreadyOwnedByOther:
+                state.errorMessage = subscriptionError.errorDescription
                 return .none
               case .productNotFound, .verificationFailed, .unknown:
                 state.errorMessage = subscriptionError.errorDescription ?? LocalizedStrings.ProPlan.purchaseFailed

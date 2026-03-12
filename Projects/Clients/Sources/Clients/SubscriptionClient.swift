@@ -24,17 +24,14 @@ public struct SubscriptionClient: Sendable {
   /// 현재 구독 상태 조회
   public var fetchStatus: @Sendable () async throws -> SubscriptionStatus
 
-  /// 구독 상태 실시간 스트림
-  public var statusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
-
   /// 서버에 구매 검증 요청
   public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String) async throws -> SubscriptionStatus
 
   /// 무료 체험 대상 여부 확인
   public var checkIntroOfferEligibility: @Sendable () async -> Bool = { false }
 
-  /// 통합 구독 상태 스트림 (StoreKit Transaction.updates + Firestore subscriptions/{userId} 병합)
-  /// 앱 레벨에서 구독 상태 변경을 실시간 감지
+  /// 통합 구독 상태 스트림 (Firestore 서버 우선 + StoreKit Transaction.updates 보조)
+  /// Firestore가 SSOT — 서버가 부정 상태면 StoreKit 이벤트 무시
   public var unifiedStatusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
 
   /// 최초 구매일 조회
@@ -51,7 +48,6 @@ extension SubscriptionClient: TestDependencyKey {
     restore: unimplemented("\(Self.self).restore", placeholder: .none),
     restoreWithReceipt: unimplemented("\(Self.self).restoreWithReceipt", placeholder: RestoreResult(jwsString: nil, productId: nil, localStatus: .none)),
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
-    statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
     checkIntroOfferEligibility: unimplemented("\(Self.self).checkIntroOfferEligibility", placeholder: false),
     unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished),
@@ -107,12 +103,6 @@ extension SubscriptionClient: TestDependencyKey {
     fetchStatus: {
       return .none
     },
-    statusStream: {
-      AsyncStream { continuation in
-        continuation.yield(.none)
-        continuation.finish()
-      }
-    },
     verifyPurchase: { _, _ in
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
@@ -161,10 +151,7 @@ extension SubscriptionClient: DependencyKey {
         try await dataSource.restoreWithReceipt()
       },
       fetchStatus: {
-        try await dataSource.fetchCurrentStatus()
-      },
-      statusStream: {
-        dataSource.statusStream()
+        try await remoteDataSource.fetchRemoteStatus()
       },
       verifyPurchase: { jwsString, productId in
         try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId)
@@ -173,19 +160,44 @@ extension SubscriptionClient: DependencyKey {
         await dataSource.checkIntroOfferEligibility()
       },
       unifiedStatusStream: {
-        AsyncStream { continuation in
+        // Actor로 서버/StoreKit 상태 병합 시 공유 상태 보호
+        actor StatusMerger {
+          private var lastServerStatus: SubscriptionStatus?
+
+          func updateServer(_ status: SubscriptionStatus) -> SubscriptionStatus {
+            lastServerStatus = status
+            return status
+          }
+
+          func filterStoreKit(_ status: SubscriptionStatus) -> SubscriptionStatus? {
+            guard let server = lastServerStatus else { return nil }
+            switch server {
+            case .none, .expired, .revoked:
+              return nil
+            case .subscribed, .lifetime, .gracePeriod:
+              return status
+            }
+          }
+        }
+
+        let merger = StatusMerger()
+
+        return AsyncStream { continuation in
           let task = Task {
             await withTaskGroup(of: Void.self) { group in
-              // StoreKit Transaction.updates
-              group.addTask {
-                for await status in dataSource.statusStream() {
-                  continuation.yield(status)
-                }
-              }
-              // Firestore subscriptions/{userId} listener
+              // Firestore subscriptions/{userId} listener (서버 상태는 항상 반영)
               group.addTask {
                 for await status in remoteDataSource.subscribeToStatus() {
-                  continuation.yield(status)
+                  let merged = await merger.updateServer(status)
+                  continuation.yield(merged)
+                }
+              }
+              // StoreKit Transaction.updates (서버 상태 기준으로 필터링)
+              group.addTask {
+                for await status in dataSource.statusStream() {
+                  if let filtered = await merger.filterStoreKit(status) {
+                    continuation.yield(filtered)
+                  }
                 }
               }
               await group.waitForAll()
@@ -208,37 +220,45 @@ extension SubscriptionClient: DependencyKey {
   private static func verifyPurchaseOnServer(transactionJWS: String, productId: String) async throws -> SubscriptionStatus {
     let functions = DefaultFunctionsProvider().functions
 
-    let result = try await functions.httpsCallable("verifyPurchase").call([
-      "transactionJWS": transactionJWS,
-      "productId": productId,
-    ])
+    do {
+      let result = try await functions.httpsCallable("verifyPurchase").call([
+        "transactionJWS": transactionJWS,
+        "productId": productId,
+      ])
 
-    guard let data = result.data as? [String: Any],
-          let statusData = data["subscriptionStatus"] as? [String: Any],
-          let statusString = statusData["status"] as? String else {
-      throw SubscriptionError.verificationFailed
-    }
+      guard let data = result.data as? [String: Any],
+            let statusData = data["subscriptionStatus"] as? [String: Any],
+            let statusString = statusData["status"] as? String else {
+        throw SubscriptionError.verificationFailed
+      }
 
-    switch statusString {
-    case "subscribed":
-      let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-      let productType = SubscriptionProductType(productId: productId)
-      return .subscribed(productType: productType, expirationDate: expirationDate)
-    case "lifetime":
-      return .lifetime
-    case "expired":
-      let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-      return .expired(expirationDate: expirationDate ?? .distantPast)
-    case "gracePeriod":
-      let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
-      return .gracePeriod(expirationDate: expirationDate)
-    case "revoked":
-      return .revoked
-    default:
-      return .none
+      switch statusString {
+      case "subscribed":
+        let expirationString = statusData["expirationDate"] as? String
+        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
+        let productType = SubscriptionProductType(productId: productId)
+        return .subscribed(productType: productType, expirationDate: expirationDate)
+      case "lifetime":
+        return .lifetime
+      case "expired":
+        let expirationString = statusData["expirationDate"] as? String
+        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
+        return .expired(expirationDate: expirationDate ?? .distantPast)
+      case "gracePeriod":
+        let expirationString = statusData["expirationDate"] as? String
+        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
+        return .gracePeriod(expirationDate: expirationDate)
+      case "revoked":
+        return .revoked
+      default:
+        return .none
+      }
+    } catch let error as NSError where error.domain == FunctionsErrorDomain {
+      let code = FunctionsErrorCode(rawValue: error.code)
+      if code == .alreadyExists {
+        throw SubscriptionError.alreadyOwnedByOther
+      }
+      throw error
     }
   }
 }
