@@ -49,6 +49,7 @@ interface TravelSegment {
 interface UserSettingsDocument {
   proSettings?: {
     briefing?: {
+      style?: string;
       preferredTransport?: string; // 하위 호환
       availableTransports?: string[];
       notificationHour?: number;
@@ -806,7 +807,7 @@ function getCurrentDateTimeStr(timezone: string): string {
  * @param {string} params.language - 언어
  * @param {object | null} params.location - 위치 정보
  * @param {boolean} params.forceRefresh - 캐시 무시 여부
- * @param {string} params.style - 브리핑 스타일
+ * @param {string | undefined} params.style - 브리핑 스타일 fallback
  * @return {Promise<GenerateBriefingResponse>} 브리핑 응답
  */
 export async function generateBriefingInternal(params: {
@@ -815,7 +816,7 @@ export async function generateBriefingInternal(params: {
   language: string;
   location: { latitude: number; longitude: number; title?: string } | null;
   forceRefresh: boolean;
-  style: string;
+  style?: string;
 }): Promise<GenerateBriefingResponse> {
   const DEFAULT_SUMMARY = "좋은 하루 되세요!";
   const DEFAULT_DETAIL = "오늘도 화이팅!";
@@ -826,12 +827,6 @@ export async function generateBriefingInternal(params: {
 
   const todayKey = getTodayKey(timezone);
   const dateTimeStr = getCurrentDateTimeStr(timezone);
-
-  console.log(
-    `[Briefing] uid=${uid}, date=${todayKey}, ` +
-    `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
-    `forceRefresh=${forceRefresh}, style=${style}`
-  );
 
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
@@ -853,6 +848,13 @@ export async function generateBriefingInternal(params: {
           briefingSettings?.preferredTransport === "transit" ? ["transit"] :
             ["transit", "car"]);
     const notificationHour = briefingSettings?.notificationHour ?? null;
+    const effectiveStyle = briefingSettings?.style || style || "friendly";
+
+    console.log(
+      `[Briefing] uid=${uid}, date=${todayKey}, ` +
+      `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
+      `forceRefresh=${forceRefresh}, style=${effectiveStyle}`
+    );
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
@@ -918,7 +920,7 @@ export async function generateBriefingInternal(params: {
     const weatherMatches = enrichedSchedules.map((s) => s.weatherMatch);
     const promptKey = computePromptKey({
       slots: sortedSlots,
-      style,
+      style: effectiveStyle,
       availableTransports,
       weatherMatches,
     });
@@ -941,7 +943,7 @@ export async function generateBriefingInternal(params: {
             summary: data.summary,
             detail: data.detail,
             isUpdated: false,
-            style,
+            style: effectiveStyle,
             availableTransports,
             notificationHour,
           };
@@ -986,7 +988,7 @@ export async function generateBriefingInternal(params: {
       travelSegments,
       timezone,
       todayKey,
-      style,
+      effectiveStyle,
       availableTransports,
       upcoming,
     );
@@ -1007,7 +1009,7 @@ export async function generateBriefingInternal(params: {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
         isUpdated: false,
-        style,
+        style: effectiveStyle,
         availableTransports,
         notificationHour,
       };
@@ -1035,7 +1037,7 @@ export async function generateBriefingInternal(params: {
         summary: DEFAULT_SUMMARY,
         detail: DEFAULT_DETAIL,
         isUpdated: false,
-        style,
+        style: effectiveStyle,
         availableTransports,
         notificationHour,
       };
@@ -1070,7 +1072,7 @@ export async function generateBriefingInternal(params: {
           summary: parsed.summary,
           detail: parsed.detail,
           isUpdated,
-          style,
+          style: effectiveStyle,
           availableTransports,
           notificationHour,
         };
@@ -1087,7 +1089,7 @@ export async function generateBriefingInternal(params: {
       summary: firstSentence.substring(0, 30),
       detail: text,
       isUpdated: false,
-      style,
+      style: effectiveStyle,
       availableTransports,
       notificationHour,
     };
@@ -1139,7 +1141,7 @@ export const generateBriefing = onCall<GenerateBriefingRequest>(
       language,
       location: location ?? null,
       forceRefresh: forceRefresh ?? false,
-      style: style || "friendly",
+      style,
     });
   },
 );

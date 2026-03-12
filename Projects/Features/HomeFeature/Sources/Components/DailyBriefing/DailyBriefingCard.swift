@@ -26,7 +26,6 @@ struct DailyBriefingCard: View {
   let onOpenLocationSettings: (() -> Void)?
   let onReportError: (() -> Void)?
   let onProUpgradeTapped: (() -> Void)?
-  let onSettingsChipTapped: (() -> Void)?
 
   var body: some View {
     if isLoading || summary != nil {
@@ -110,21 +109,15 @@ struct DailyBriefingCard: View {
                   }
                 }
               }
+
+              if isPro, let briefingStyle {
+                settingsChips(briefingStyle: briefingStyle)
+                  .padding(.top, detail != nil ? 6 : 2)
+              }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .transition(.opacity.combined(with: .move(edge: .top)))
-
-            // 설정 칩 - Pro만, briefingStyle이 있을 때만
-            if isPro, let briefingStyle {
-              Divider()
-                .padding(.horizontal, 16)
-
-              settingsChips(briefingStyle: briefingStyle)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
 
             // 권한 안내 배너 - Pro만
             if isPro, isNotificationDenied || isLocationDenied {
@@ -267,28 +260,19 @@ struct DailyBriefingCard: View {
   // MARK: - Settings Chips
 
   private func settingsChips(briefingStyle: BriefingStyle) -> some View {
-    Button {
-      onSettingsChipTapped?()
-    } label: {
-      HStack(spacing: 8) {
-        // 톤 칩
-        settingsChip(icon: "face.smiling", label: briefingStyle.displayName)
+    HStack(spacing: 6) {
+      settingsChip(icon: briefingStyleIcon(briefingStyle), label: briefingStyle.displayName)
 
-        // 이동수단 칩
-        if let transports = availableTransports {
-          transportChip(transports)
-        }
-
-        // 알림 시간 칩
-        if let hour = briefingNotificationHour {
-          settingsChip(icon: "bell.fill", label: notificationHourText(hour))
-        }
-
-        Spacer()
+      if let transports = availableTransports {
+        transportChip(transports)
       }
-      .contentShape(Rectangle())
+
+      if let hour = briefingNotificationHour {
+        settingsChip(icon: notificationIcon(hour), label: notificationHourText(hour))
+      }
+
+      Spacer(minLength: 0)
     }
-    .buttonStyle(.plain)
   }
 
   private func transportChip(_ transports: Set<AvailableTransport>) -> some View {
@@ -297,15 +281,15 @@ struct DailyBriefingCard: View {
   }
 
   private func settingsChip(icon: String, label: String) -> some View {
-    HStack(spacing: 4) {
+    HStack(spacing: 3) {
       Image(systemName: icon)
-        .font(.pmCaption)
+        .font(.system(size: 10, weight: .semibold))
       Text(label)
         .font(.pmCaption)
     }
     .foregroundStyle(Color.pmgray.n500)
-    .padding(.horizontal, 10)
-    .padding(.vertical, 6)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 5)
     .background(Color.pmgray.n100.opacity(0.55), in: Capsule())
   }
 
@@ -313,12 +297,27 @@ struct DailyBriefingCard: View {
     let hasCar = transports.contains(.car)
     let hasTransit = transports.contains(.transit)
     if hasCar && hasTransit {
-      return ("car.fill", "자동차 포함")
+      return ("car.2.fill", "자동차 포함")
     } else if hasCar {
       return ("car.fill", "자동차")
     } else {
       return ("bus.fill", "대중교통")
     }
+  }
+
+  private func briefingStyleIcon(_ style: BriefingStyle) -> String {
+    switch style {
+    case .friendly: return "face.smiling"
+    case .humorous: return "theatermasks"
+    case .concise: return "text.alignleft"
+    case .motivational: return "flame"
+    case .calm: return "leaf"
+    }
+  }
+
+  private func notificationIcon(_ hour: Int) -> String {
+    let clampedHour = hour % 24
+    return (6..<18).contains(clampedHour) ? "sun.max.fill" : "moon.fill"
   }
 
   private func notificationHourText(_ hour: Int) -> String {

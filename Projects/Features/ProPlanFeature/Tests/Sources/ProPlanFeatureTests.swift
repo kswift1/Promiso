@@ -120,6 +120,53 @@ struct ProPlanFeatureTests {
     await store.receive(\.delegate.subscriptionStatusChanged)
   }
 
+  @Test("구매 성공 시 축하 화면과 별도로 Pro 기본값 초기화 시작")
+  func purchaseTapped_success_initializesProDefaultsBeforeCelebrationDismiss() async {
+    let initialized = LockIsolated(false)
+    let expirationDate = Date().addingTimeInterval(365 * 24 * 3600)
+
+    var state = ProPlan.Feature.State()
+    state.selectedProductId = SubscriptionProductType.yearly.productId
+
+    let store = makeStore(state: state) {
+      $0.subscriptionClient.purchaseWithReceipt = { _ in
+        PurchaseResult(
+          jwsString: "mock-jws-token",
+          localStatus: .subscribed(productType: .yearly, expirationDate: expirationDate)
+        )
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in
+        .subscribed(productType: .yearly, expirationDate: expirationDate)
+      }
+      $0.userSettingsClient.hasProSettings = { _ in false }
+      $0.userSettingsClient.initializeProDefaults = { _ in
+        initialized.setValue(true)
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.purchaseTapped)) {
+      $0.isPurchasing = true
+      $0.errorMessage = nil
+    }
+
+    await store.receive(\.internal.purchaseResponse.success) {
+      $0.isPurchasing = false
+      $0.subscriptionStatus = .subscribed(productType: .yearly, expirationDate: expirationDate)
+      $0.showCelebration = true
+      $0.isSettingUpDefaults = true
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+
+    await store.receive(\.internal.proDefaultsInitialized) {
+      $0.isSettingUpDefaults = false
+      $0.showProOnboarding = true
+    }
+
+    #expect(initialized.value == true)
+  }
+
   @Test("구매 실패 시 에러 메시지 설정")
   func purchaseTapped_failure_setsErrorMessage() async {
     enum TestError: Error {
@@ -182,6 +229,60 @@ struct ProPlanFeatureTests {
     }
 
     await store.receive(\.delegate.subscriptionStatusChanged)
+  }
+
+  @Test("기존 Pro 설정이 있으면 브리핑 알림 시간 nil이어도 기본값으로 덮어쓰지 않음")
+  func restoreTapped_existingProSettings_preservesExistingValues() async {
+    let initializeCalled = LockIsolated(false)
+    let existingSettings = UserSettings(
+      notificationEnabled: true,
+      groupSortOption: .joinedRecent,
+      conflictDetectionThreshold: 30,
+      briefingStyle: .calm,
+      briefingNotificationHour: nil,
+      availableTransports: [.car]
+    )
+
+    let store = makeStore {
+      $0.subscriptionClient.restoreWithReceipt = {
+        RestoreResult(
+          jwsString: "mock-restore-jws-token",
+          productId: SubscriptionProductType.lifetime.productId,
+          localStatus: .lifetime
+        )
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in .lifetime }
+      $0.userSettingsClient.hasProSettings = { _ in true }
+      $0.userSettingsClient.fetchSettings = { _ in existingSettings }
+      $0.userSettingsClient.initializeProDefaults = { _ in
+        initializeCalled.setValue(true)
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.restoreTapped)) {
+      $0.isPurchasing = true
+      $0.errorMessage = nil
+    }
+
+    await store.receive(\.internal.restoreResponse.success) {
+      $0.isPurchasing = false
+      $0.subscriptionStatus = .lifetime
+      $0.isSettingUpDefaults = true
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+
+    await store.receive(\.internal.proExistingSettingsLoaded) {
+      $0.isSettingUpDefaults = false
+      $0.onboardingConflictThreshold = 30
+      $0.onboardingBriefingStyle = .calm
+      $0.onboardingBriefingHour = 8
+      $0.onboardingTransports = [.car]
+      $0.showProOnboarding = true
+    }
+
+    #expect(initializeCalled.value == false)
   }
 
   @Test("복원 실패 시 에러 메시지 설정")
@@ -370,7 +471,12 @@ private extension ProPlanFeatureTests {
         FirebaseUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
       }
       $0.userSettingsClient.fetchSettings = { _ in .default }
+      $0.userSettingsClient.hasProSettings = { _ in false }
       $0.userSettingsClient.initializeProDefaults = { _ in }
+      $0.userSettingsClient.updateConflictDetectionThreshold = { _, _ in }
+      $0.userSettingsClient.updateBriefingStyle = { _, _ in }
+      $0.userSettingsClient.updateBriefingNotificationHour = { _, _ in }
+      $0.userSettingsClient.updateAvailableTransports = { _, _ in }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }

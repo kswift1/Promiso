@@ -10,6 +10,9 @@ public struct UserSettingsClient: Sendable {
   /// 사용자 설정 조회
   public var fetchSettings: @Sendable (_ userId: String) async throws -> UserSettings
 
+  /// Pro 설정 존재 여부 확인
+  public var hasProSettings: @Sendable (_ userId: String) async throws -> Bool
+
   /// 그룹 정렬 옵션 업데이트
   public var updateGroupSortOption: @Sendable (_ userId: String, _ option: GroupSortOption) async throws -> Void
 
@@ -37,6 +40,7 @@ extension UserSettingsClient: TestDependencyKey {
       "\(Self.self).fetchSettings",
       placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     ),
+    hasProSettings: unimplemented("\(Self.self).hasProSettings", placeholder: false),
     updateGroupSortOption: unimplemented("\(Self.self).updateGroupSortOption"),
     updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
     updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
@@ -52,6 +56,10 @@ extension UserSettingsClient: TestDependencyKey {
         notificationEnabled: true,
         groupSortOption: .joinedRecent
       )
+    },
+    hasProSettings: { _ in
+      try await Task.sleep(for: .seconds(0.1))
+      return false
     },
     updateGroupSortOption: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
@@ -92,6 +100,9 @@ extension UserSettingsClient: DependencyKey {
     return Self(
       fetchSettings: { userId in
         try await dataSource.fetchSettings(userId: userId)
+      },
+      hasProSettings: { userId in
+        try await dataSource.hasProSettings(userId: userId)
       },
       updateGroupSortOption: { userId, option in
         try await dataSource.updateGroupSortOption(userId: userId, option: option)

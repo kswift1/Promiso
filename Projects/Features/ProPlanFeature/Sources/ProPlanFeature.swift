@@ -192,6 +192,28 @@ extension ProPlan {
     /// business logic을 구현하는 Main reducer body
     /// 모든 action에 대한 state transition과 side effect를 처리
     public var body: some ReducerOf<Self> {
+      let prepareProOnboarding = { [authClient, userSettingsClient] in
+        Effect<Action>.run { send in
+          do {
+            guard let userId = await authClient.currentUser()?.uid else {
+              await send(.internal(.proDefaultsFailed))
+              return
+            }
+
+            if try await userSettingsClient.hasProSettings(userId) {
+              let existingSettings = try await userSettingsClient.fetchSettings(userId)
+              await send(.internal(.proExistingSettingsLoaded(existingSettings)))
+            } else {
+              try await userSettingsClient.initializeProDefaults(userId)
+              await send(.internal(.proDefaultsInitialized))
+            }
+          } catch {
+            print("[ProPlan] Pro defaults initialization failed: \(error)")
+            await send(.internal(.proDefaultsFailed))
+          }
+        }
+      }
+
       Reduce { state, action in
         switch action {
 
@@ -285,30 +307,6 @@ extension ProPlan {
 
           case .dismissCelebration:
             state.showCelebration = false
-            if state.subscriptionStatus.isPro {
-              state.isSettingUpDefaults = true
-              return .run { [userSettingsClient, authClient] send in
-                do {
-                  guard let userId = await authClient.currentUser()?.uid else {
-                    await send(.internal(.proDefaultsFailed))
-                    return
-                  }
-                  // 기존 설정 확인 — 재구독자는 이미 proSettings가 있음
-                  let existingSettings = try await userSettingsClient.fetchSettings(userId)
-                  if existingSettings.briefingNotificationHour != nil {
-                    // 재구독자 — 기존 설정을 온보딩에 표시
-                    await send(.internal(.proExistingSettingsLoaded(existingSettings)))
-                  } else {
-                    // 신규 Pro 사용자 — 기본값 초기화 후 온보딩 표시
-                    try await userSettingsClient.initializeProDefaults(userId)
-                    await send(.internal(.proDefaultsInitialized))
-                  }
-                } catch {
-                  print("[ProPlan] Pro defaults initialization failed: \(error)")
-                  await send(.internal(.proDefaultsFailed))
-                }
-              }
-            }
             return .none
 
           case .showPricingTapped:
@@ -400,10 +398,14 @@ extension ProPlan {
 
             if status.isPro {
               state.showCelebration = true
-              return .run { send in
-                await hapticFeedback.success()
-                await send(.delegate(.subscriptionStatusChanged(status)))
-              }
+              state.isSettingUpDefaults = true
+              return .concatenate(
+                .run { send in
+                  await hapticFeedback.success()
+                  await send(.delegate(.subscriptionStatusChanged(status)))
+                },
+                prepareProOnboarding()
+              )
             }
             return .run { _ in
               await hapticFeedback.success()
@@ -434,26 +436,13 @@ extension ProPlan {
 
             if status.isPro {
               state.isSettingUpDefaults = true
-              return .run { [userSettingsClient, authClient] send in
-                await hapticFeedback.success()
-                await send(.delegate(.subscriptionStatusChanged(status)))
-                // Pro 설정 초기화 (구매 시 dismissCelebration과 동일 로직)
-                do {
-                  guard let userId = await authClient.currentUser()?.uid else {
-                    await send(.internal(.proDefaultsFailed))
-                    return
-                  }
-                  let existingSettings = try await userSettingsClient.fetchSettings(userId)
-                  if existingSettings.briefingNotificationHour != nil {
-                    await send(.internal(.proExistingSettingsLoaded(existingSettings)))
-                  } else {
-                    try await userSettingsClient.initializeProDefaults(userId)
-                    await send(.internal(.proDefaultsInitialized))
-                  }
-                } catch {
-                  await send(.internal(.proDefaultsFailed))
-                }
-              }
+              return .concatenate(
+                .run { send in
+                  await hapticFeedback.success()
+                  await send(.delegate(.subscriptionStatusChanged(status)))
+                },
+                prepareProOnboarding()
+              )
             } else {
               state.errorMessage = LocalizedStrings.ProPlan.restoreNoPurchaseHistory
               return .none

@@ -86,10 +86,6 @@ extension Home {
       var isBriefingExpanded: Bool = false
       /// 브리핑이 업데이트된 상태인지 (promptKey 변경으로 재생성됨)
       var isBriefingUpdated: Bool = false
-      /// 마지막 브리핑 생성에 사용된 스타일 (캐시 무효화용)
-      var lastBriefingStyle: String?
-      /// 브리핑 스타일 (AppStorage로 앱 전체 공유)
-      @Shared(.appStorage(AppConstants.UserDefaults.briefingStyle)) var briefingStyleRaw: String = BriefingStyle.friendly.rawValue
 
       // MARK: Permission
       /// 알림 권한 상태
@@ -310,8 +306,6 @@ extension Home {
         case departureOriginChanged(HomeModels.DepartureOrigin)
         /// 출발 알림 시트에서 설정으로 이동
         case departureAlertOpenSettingsTapped
-        /// 브리핑 설정 칩 탭
-        case briefingSettingsChipTapped
       }
 
       @CasePathable
@@ -394,8 +388,6 @@ extension Home {
         case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
         /// Pro 플랜 업그레이드 요청
         case proPlanRequested
-        /// 브리핑 설정 화면으로 이동
-        case navigateToBriefingSettings
       }
     }
 
@@ -1081,9 +1073,6 @@ extension Home {
               }
             }
 
-          case .briefingSettingsChipTapped:
-            return .send(.delegate(.navigateToBriefingSettings))
-
           }
 
         case .internal(let internalAction):
@@ -1584,22 +1573,14 @@ extension Home {
             return .none
 
           case .fetchBriefing(let forceRefresh):
-            let currentStyleRaw = state.briefingStyleRaw
-            let styleChanged = state.lastBriefingStyle != nil && state.lastBriefingStyle != currentStyleRaw
-            let needsForceRefresh = forceRefresh || styleChanged
-
             // 기존 브리핑이 없거나 강제 새로고침일 때만 로딩 표시 (탭 전환 시 깜빡임 방지)
-            if !state.briefingState.isLoaded || needsForceRefresh {
+            if !state.briefingState.isLoaded || forceRefresh {
               state.briefingState = .loading
             }
-            state.lastBriefingStyle = currentStyleRaw
-
-            let briefingStyle = BriefingStyle(rawValue: currentStyleRaw) ?? .friendly
-            return .run { [locationClient, briefingClient, briefingStyle, needsForceRefresh] send in
+            return .run { [locationClient, briefingClient, forceRefresh] send in
               let input = await Self.buildBriefingInput(
                 locationClient: locationClient,
-                style: briefingStyle,
-                forceRefresh: needsForceRefresh
+                forceRefresh: forceRefresh
               )
 
               do {
@@ -1619,10 +1600,6 @@ extension Home {
               state.briefingState = .loaded(briefingResult)
               state.briefingGeneratedDate = Date()
               state.isBriefingUpdated = briefingResult.isUpdated
-              // 브리핑 스타일 AppStorage 동기화 (캐시 무효화용)
-              if let style = briefingResult.style {
-                state.$briefingStyleRaw.withLock { $0 = style.rawValue }
-              }
             case .failure(let error):
               state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
               state.isBriefingUpdated = false
@@ -2081,7 +2058,6 @@ extension Home {
 
     private static func buildBriefingInput(
       locationClient: LocationClient,
-      style: BriefingStyle,
       forceRefresh: Bool
     ) async -> BriefingInput {
       var location: BriefingInput.BriefingLocation?
@@ -2104,11 +2080,10 @@ extension Home {
         timezone: TimeZone.current.identifier,
         language: (AppLanguage.current ?? .korean).rawValue,
         location: location,
-        forceRefresh: forceRefresh,
-        style: style
+        forceRefresh: forceRefresh
       )
 
-      AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh), style=\(style.rawValue)")
+      AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
 
       return input
     }
