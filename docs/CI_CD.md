@@ -6,7 +6,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 
 - 목적: GitHub Actions 워크플로우 동작과 운영 기준 정의
 - 대상 독자: CI/CD 관리 담당자, 배포 자동화 작업자
-- 최종 수정일: 2026-02-06
+- 최종 수정일: 2026-03-13
 - 관련 문서: [README.md](README.md) · [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 범위 안내
@@ -22,6 +22,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 | 워크플로우 | 트리거 | 목적 | 환경 |
 |-----------|--------|------|------|
 | **PR Check** | PR → develop/staging/main | iOS 빌드 & 테스트 검증 | Dev |
+| **Admin Console Check** | PR + `apps/admin-console/**` 변경 | admin console 웹 앱 빌드 검증 | N/A |
 | **Deploy iOS** | 수동 (workflow_dispatch) | TestFlight 배포 | Stage / Prod |
 | **Deploy Firebase** | 수동 (workflow_dispatch) | Firebase 배포 (Functions/Rules) | Stage / Prod |
 | **Deploy Firebase Stage (Auto)** | `push` to `release/**` + Firebase 경로 변경 | Stage 자동 배포 | Stage |
@@ -136,6 +137,41 @@ tuist build PromisoDev -- \
 
 </details>
 ```
+
+---
+
+## 1.1 Admin Console Check 워크플로우
+
+### 목적
+`apps/admin-console` 변경이 들어온 PR에서 운영 콘솔 웹 앱이 최소한 빌드 가능한 상태인지 검증합니다.
+
+### 트리거
+```yaml
+on:
+  pull_request:
+    branches: [develop, staging, main, 'release/**']
+    paths:
+      - 'apps/admin-console/**'
+      - '.github/workflows/admin-console-check.yml'
+```
+
+### 실행 단계
+
+```text
+1. 체크아웃
+   ↓
+2. Node 설정
+   ↓
+3. npm ci
+   ↓
+4. npm run build
+```
+
+### 비고
+
+- iOS PR Check와 분리되어 실행됩니다.
+- `apps/admin-console` 변경이 없으면 실행되지 않습니다.
+- 아직 별도 배포 워크플로우는 정의하지 않았습니다.
 
 ---
 
