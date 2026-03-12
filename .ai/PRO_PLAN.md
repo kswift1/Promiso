@@ -14,26 +14,31 @@ Product ID는 `Bundle.main.bundleIdentifier` 기반으로 환경별 자동 생�
 
 ## Pro 기능
 
-### 1. 일정 충돌 감지 + 날씨 확인
-- 일정 생성/리스트 시 기존 일정과의 충돌 여부 자동 감지
-- 장소 기반 날씨 정보 표시
+### 1. 일정 충돌 감지
+- 일정 생성 / 개인 일정 생성 시 기존 일정과의 충돌 여부 자동 감지
 - 충돌 감지 임계값 커스텀 (0/15/30/60분)
-- **게이팅**: `CreatePromiseFeature.refreshProFeatures` — 무료 사용자는 빈 배열 반환
+- 설정 화면에서 충돌 감지 ON/OFF 및 임계값 변경 가능
+- **게이팅**: 무료 사용자는 설정 화면에서 토글/옵션 진입 시 Pro Plan 진입
 
-### 2. 매일 일정 브리핑
+### 2. 날씨 확인
+- 일정 생성 / 개인 일정 생성 / 홈 일정 카드에서 장소 기반 날씨 정보 표시
+- 홈에서는 Pro 사용자만 날씨 fetch 수행
+- **게이팅**: 무료 사용자는 날씨가 blur 되는 형태가 아니라, 날씨 정보 자체를 받지 않음
+
+### 3. 매일 일정 브리핑
 - 날씨, 교통, 출발 알림 등을 포함한 일일 브리핑
 - 브리핑 스타일 선택 (friendly / humorous / concise / motivational / calm)
 - 알림 시간 커스텀 설정
 - **게이팅**: `DailyBriefingCard` — 무료 사용자는 상세 텍스트 블러 처리
 
-### 3. 일정간 출발시간 안내
-- 교통수단 기반 이동시간 계산
-- 출발 시간 안내
-- 교통수단 모드 선택 (transit, car 등)
-- **게이팅**: 브리핑 시스템과 통합
+### 4. 일정간 출발시간 안내
+- 홈 오늘 일정 카드에서 교통수단 기반 이동시간 계산
+- 출발 시간 안내 / 알림 설정
+- 브리핑에서 사용 가능한 교통수단 설정 반영
+- **게이팅**: 홈 출발 알림 CTA는 Pro 사용자에게만 노출
 
 ### Pro가 아닌 기능
-- Live Activity / 출발 알림 (Pro 게이팅 없음)
+- Live Activity
 - 홈 위젯
 - 기본 약속 관리, 그룹 약속
 
@@ -59,6 +64,8 @@ Apple Server Notifications V2 → appleServerNotification (Cloud Function) ─�
 - **앱**: StoreKit 2로 구매 → JWS 토큰을 서버로 전송
 - **서버**: JWS 검증 후 Firestore 업데이트
 - **실시간**: StoreKit + Firestore 리스너 통합 스트림 (`unifiedStatusStream`)
+- **앱 시작 시 상태 동기화**: `RootTabFeature.observeSubscriptionStatus`에서 `fetchStatus()` 1회 호출 후 `unifiedStatusStream()` 구독
+- **수동 복원**: Paywall의 `restoreTapped`에서만 `AppStore.sync()` 실행
 
 ## 환경별 배포
 
@@ -98,3 +105,7 @@ users/{userId}/settings/main
         ├── language: Locale code
         └── availableTransports: ["transit", "car", ...]
 ```
+
+## 런치 체크리스트
+
+- 현재 구현 기준 체크리스트는 `.ai/PRO_PLAN_LAUNCH_CHECKLIST.md` 참조
