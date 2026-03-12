@@ -234,6 +234,24 @@
         }
       }
     },
+    "auth.continueWith" : {
+      "comment" : "소셜 로그인 섹션 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONTINUE WITH"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "간편 로그인"
+          }
+        }
+      }
+    },
     "auth.continueWithGoogle" : {
       "comment" : "Google 로그인 버튼",
       "extractionState" : "manual",
@@ -6663,6 +6681,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 일정"
+          }
+        }
+      }
+    },
+    "groupScheduleList.statusFilterLabel" : {
+      "comment" : "그룹 일정 상태 필터 피커 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status Filter"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상태 필터"
           }
         }
       }
@@ -14246,6 +14282,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "진행 중"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.now" : {
+      "comment" : "현재 진행 중 배지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NOW"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금"
           }
         }
       }
@@ -26978,7 +27032,39 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Free vs Pro"
+            "value" : "무료 vs Pro"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.freeLabel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "무료"
+          }
+        }
+      }
+    },
+    "proPlan.paywall.comparison.proLabel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro"
           }
         }
       }

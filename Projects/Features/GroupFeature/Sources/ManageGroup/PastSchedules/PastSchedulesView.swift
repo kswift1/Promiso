@@ -268,7 +268,7 @@ extension PastSchedules {
           HStack(spacing: 6) {
             Image(systemName: "arrow.up.arrow.down")
               .font(.system(size: 13, weight: .semibold))
-            Text(store.sortOption.rawValue)
+            Text(store.sortOption.displayTitle)
               .font(.system(size: 13, weight: .semibold))
           }
           .foregroundStyle(Color.pmindigo.n500)

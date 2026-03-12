@@ -352,8 +352,8 @@ extension Auth {
     let onGoogleLogin: () -> Void
     
     var body: some View {
-      VStack(spacing: 20) {
-        Text("CONTINUE WITH")
+        VStack(spacing: 20) {
+        Text(LocalizedStrings.Auth.continueWith)
           .font(.system(size: 14, weight: .medium))
           .tracking(2)
           .foregroundColor(.secondary)

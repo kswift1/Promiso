@@ -101,6 +101,7 @@ public enum LocalizedStrings {
     public static var heroWithPromiso: String { String(localized: "auth.hero.withPromiso", bundle: bundle) }
 
     // Social Login
+    public static var continueWith: String { String(localized: "auth.continueWith", bundle: bundle) }
     public static var continueWithApple: String { String(localized: "auth.continueWithApple", bundle: bundle) }
     public static var continueWithGoogle: String { String(localized: "auth.continueWithGoogle", bundle: bundle) }
   }
@@ -1818,6 +1819,8 @@ public enum LocalizedStrings {
     public static var featureWidgetTitle: String { String(localized: "proPlan.feature.widget.title", bundle: bundle) }
     public static var featureWidgetDescription: String { String(localized: "proPlan.feature.widget.description", bundle: bundle) }
     public static var comparisonTitle: String { String(localized: "proPlan.paywall.comparison.title", bundle: bundle) }
+    public static var comparisonFreeLabel: String { String(localized: "proPlan.paywall.comparison.freeLabel", bundle: bundle) }
+    public static var comparisonProLabel: String { String(localized: "proPlan.paywall.comparison.proLabel", bundle: bundle) }
     public static var comparisonBasicSchedule: String { String(localized: "proPlan.paywall.comparison.basicSchedule", bundle: bundle) }
     public static var comparisonGroupSchedule: String { String(localized: "proPlan.paywall.comparison.groupSchedule", bundle: bundle) }
     public static var comparisonLiveActivity: String { String(localized: "proPlan.paywall.comparison.liveActivity", bundle: bundle) }
@@ -2550,6 +2553,7 @@ public enum LocalizedStrings {
   // MARK: - OverlayScheduleDetail
   public enum OverlayScheduleDetail {
     public static var personalEvent: String { String(localized: "overlayScheduleDetail.personalEvent", bundle: bundle) }
+    public static var now: String { String(localized: "overlayScheduleDetail.now", bundle: bundle) }
     public static var startsAfter: String { String(localized: "overlayScheduleDetail.startsAfter", bundle: bundle) }
     public static var inProgress: String { String(localized: "overlayScheduleDetail.inProgress", bundle: bundle) }
     public static var pastEvent: String { String(localized: "overlayScheduleDetail.pastEvent", bundle: bundle) }
@@ -2599,6 +2603,7 @@ public enum LocalizedStrings {
     public static var filterResponded: String { String(localized: "groupScheduleList.filter.responded", bundle: bundle) }
     public static var filterConfirmed: String { String(localized: "groupScheduleList.filter.confirmed", bundle: bundle) }
     public static var filterAll: String { String(localized: "groupScheduleList.filter.all", bundle: bundle) }
+    public static var statusFilterLabel: String { String(localized: "groupScheduleList.statusFilterLabel", bundle: bundle) }
   }
 
   // MARK: - LiveSchedule
