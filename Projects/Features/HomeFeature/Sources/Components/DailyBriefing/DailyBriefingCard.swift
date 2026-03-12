@@ -354,10 +354,10 @@ struct DailyBriefingCard: View {
     let clampedHour = hour % 24
     if clampedHour < 12 {
       let displayHour = clampedHour == 0 ? 12 : clampedHour
-      return "매일 오전 \(displayHour)시"
+      return LocalizedStrings.Home.briefingNotificationChipAM(displayHour)
     } else {
       let displayHour = clampedHour == 12 ? 12 : clampedHour - 12
-      return "매일 오후 \(displayHour)시"
+      return LocalizedStrings.Home.briefingNotificationChipPM(displayHour)
     }
   }
 

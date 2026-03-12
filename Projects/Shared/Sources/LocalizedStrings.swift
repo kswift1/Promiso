@@ -1080,6 +1080,14 @@ public enum LocalizedStrings {
     public static var briefingUpdatedBadge: String { String(localized: "home.briefing.updated.badge", bundle: bundle) }
     public static var briefingProUpgrade: String { String(localized: "home.briefing.pro.upgrade", bundle: bundle) }
     public static var briefingUpdateInfoTooltip: String { String(localized: "home.briefing.updateInfoTooltip", bundle: bundle) }
+    public static func briefingNotificationChipAM(_ hour: Int) -> String {
+      String(localized: "home.briefing.notificationChip.am", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hour)")
+    }
+    public static func briefingNotificationChipPM(_ hour: Int) -> String {
+      String(localized: "home.briefing.notificationChip.pm", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hour)")
+    }
 
     // Timeline
     public static var accepted: String { String(localized: "home.timeline.accepted", bundle: bundle) }

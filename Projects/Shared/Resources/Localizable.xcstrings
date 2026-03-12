@@ -8684,6 +8684,42 @@
         }
       }
     },
+    "home.briefing.notificationChip.am" : {
+      "comment" : "브리핑 알림 시간 칩 오전 형식",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld AM alert"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오전 %lld시 알림"
+          }
+        }
+      }
+    },
+    "home.briefing.notificationChip.pm" : {
+      "comment" : "브리핑 알림 시간 칩 오후 형식",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld PM alert"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 %lld시 알림"
+          }
+        }
+      }
+    },
     "home.briefing.pro.upgrade" : {
       "extractionState" : "stale",
       "localizations" : {
