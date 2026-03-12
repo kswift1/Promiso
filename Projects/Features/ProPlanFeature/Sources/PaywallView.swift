@@ -280,12 +280,8 @@ extension ProPlan {
           .multilineTextAlignment(.center)
 
         HStack(spacing: 16) {
-          if let termsURL = URL(string: "https://promiso.app/terms") {
-            Link("이용약관", destination: termsURL)
-          }
-          if let privacyURL = URL(string: "https://promiso.app/privacy") {
-            Link("개인정보처리방침", destination: privacyURL)
-          }
+          Link("이용약관", destination: AppConstants.App.termsOfServiceURL)
+          Link("개인정보처리방침", destination: AppConstants.App.privacyPolicyURL)
         }
         .font(.caption2)
         .foregroundStyle(Color.pmindigo.n500)
