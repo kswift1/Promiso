@@ -23,7 +23,7 @@ extension CreateRecurringPersonalEvent {
         title: store.navigationTitle,
         currentStep: 0,
         totalSteps: 1,
-        showsDismissButton: true,
+        showsDismissButton: false,
         onDismiss: { store.send(.view(.dismissTapped)) }
       ) {
         mainContent
