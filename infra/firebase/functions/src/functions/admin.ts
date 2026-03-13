@@ -2,6 +2,7 @@ import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {
+  AdminPushAudience,
   AdminRole,
   AdminUserDocument,
   AdminUserSummary,
@@ -12,7 +13,11 @@ import {
   GetAdminUserSummaryResponse,
   RevokeEntitlementOverrideRequest,
   RevokeEntitlementOverrideResponse,
+  SendAdminPushRequest,
+  SendAdminPushResponse,
 } from "../types/admin";
+import {sendPushNotificationInternal} from "./notifications";
+import {NotificationType} from "../types/api";
 
 function isAdminRole(value: unknown): value is AdminRole {
   return value === "owner" || value === "support" || value === "marketer";
@@ -118,6 +123,67 @@ async function writeAuditLog(params: {
     after: after ?? null,
     createdAt: FieldValue.serverTimestamp(),
   });
+}
+
+function hasActiveSubscription(status: unknown): boolean {
+  return (
+    status === "subscribed" ||
+    status === "lifetime" ||
+    status === "gracePeriod"
+  );
+}
+
+async function isEffectivePro(userId: string): Promise<boolean> {
+  const db = admin.firestore();
+  const [subscriptionSnapshot, overrideSnapshot] = await Promise.all([
+    db.collection("subscriptions").doc(userId).get(),
+    db.collection("entitlementOverrides").doc(userId).get(),
+  ]);
+
+  const subscriptionStatus = subscriptionSnapshot.data()?.status;
+  const overrideActive = overrideSnapshot.exists &&
+    overrideSnapshot.data()?.isActive === true;
+
+  return hasActiveSubscription(subscriptionStatus) || overrideActive;
+}
+
+async function resolvePushAudience(params: {
+  audience: AdminPushAudience;
+  testUserId: string | null;
+}): Promise<string[]> {
+  const {audience, testUserId} = params;
+  const db = admin.firestore();
+
+  if (audience === "test_user") {
+    if (!testUserId) {
+      throw new HttpsError("invalid-argument", "testUserId는 필수입니다");
+    }
+
+    const userSnapshot = await db.collection("users").doc(testUserId).get();
+    if (!userSnapshot.exists) {
+      throw new HttpsError("not-found", "테스트 대상 사용자를 찾을 수 없습니다");
+    }
+
+    return [testUserId];
+  }
+
+  const usersSnapshot = await db.collection("users").get();
+  const allUserIds = usersSnapshot.docs.map((doc) => doc.id);
+
+  if (audience === "all") {
+    return allUserIds;
+  }
+
+  const effectiveProMap = await Promise.all(
+    allUserIds.map(async (userId) => ({
+      userId,
+      isPro: await isEffectivePro(userId),
+    }))
+  );
+
+  return effectiveProMap
+    .filter((item) => (audience === "pro" ? item.isPro : !item.isPro))
+    .map((item) => item.userId);
 }
 
 export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
@@ -293,5 +359,115 @@ export const revokeEntitlementOverride = onCall<RevokeEntitlementOverrideRequest
     });
 
     return {success: true};
+  }
+);
+
+export const sendAdminPush = onCall<SendAdminPushRequest>(
+  {region: REGION},
+  async (request): Promise<SendAdminPushResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    await getAdminUserDocument(actorId);
+
+    const title = request.data.title?.trim();
+    const body = request.data.body?.trim();
+    const audience = request.data.audience;
+    const dryRun = request.data.dryRun ?? false;
+    const testUserId = request.data.testUserId?.trim() ?? null;
+
+    if (!title || !body) {
+      throw new HttpsError("invalid-argument", "title과 body는 필수입니다");
+    }
+
+    if (!audience) {
+      throw new HttpsError("invalid-argument", "audience는 필수입니다");
+    }
+
+    const userIds = await resolvePushAudience({
+      audience,
+      testUserId,
+    });
+
+    const db = admin.firestore();
+    const jobRef = await db.collection("adminPushJobs").add({
+      status: dryRun ? "dry_run" : "completed",
+      audience,
+      title,
+      body,
+      dryRun,
+      targetCount: userIds.length,
+      createdBy: actorId,
+      testUserId,
+      result: dryRun ? {
+        successCount: 0,
+        failureCount: 0,
+      } : null,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    if (dryRun) {
+      await writeAuditLog({
+        actorId,
+        action: "dry_run_admin_push",
+        targetId: jobRef.id,
+        after: {
+          audience,
+          targetCount: userIds.length,
+        },
+      });
+
+      return {
+        success: true,
+        dryRun: true,
+        targetCount: userIds.length,
+        successCount: 0,
+        failureCount: 0,
+        jobId: jobRef.id,
+      };
+    }
+
+    const result = await sendPushNotificationInternal({
+      userIds,
+      type: NotificationType.System,
+      title,
+      body,
+      promiseId: null,
+      groupId: null,
+      relatedUserId: actorId,
+      data: null,
+    });
+
+    await jobRef.set({
+      status: "completed",
+      result: {
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+      },
+      completedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+    await writeAuditLog({
+      actorId,
+      action: "send_admin_push",
+      targetId: jobRef.id,
+      after: {
+        audience,
+        targetCount: userIds.length,
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+      },
+    });
+
+    return {
+      success: true,
+      dryRun: false,
+      targetCount: userIds.length,
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+      jobId: jobRef.id,
+    };
   }
 );

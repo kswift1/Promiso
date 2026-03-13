@@ -9,10 +9,17 @@ import {
   jest,
 } from "@jest/globals";
 
+const sendPushNotificationInternalMock = jest.fn();
+
 jest.mock("firebase-functions/params", () => ({
   defineSecret: jest.fn(() => ({
     value: () => "test-secret-value",
   })),
+}));
+
+jest.mock("../src/functions/notifications", () => ({
+  sendPushNotificationInternal: (...args: unknown[]) =>
+    sendPushNotificationInternalMock(...args),
 }));
 
 function createMockDocument(
@@ -32,21 +39,29 @@ describe("admin functions", () => {
   let getAdminUserSummary: any;
   let grantEntitlementOverride: any;
   let revokeEntitlementOverride: any;
+  let sendAdminPush: any;
 
   let adminUsersData: Map<string, Record<string, unknown>>;
   let usersData: Map<string, Record<string, unknown>>;
   let subscriptionData: Map<string, Record<string, unknown>>;
   let overrideData: Map<string, Record<string, unknown>>;
   let auditLogAdds: Record<string, unknown>[];
+  let adminPushJobDocs: Record<string, unknown>[];
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    sendPushNotificationInternalMock.mockResolvedValue({
+      success: true,
+      successCount: 1,
+      failureCount: 0,
+    });
 
     adminUsersData = new Map();
     usersData = new Map();
     subscriptionData = new Map();
     overrideData = new Map();
     auditLogAdds = [];
+    adminPushJobDocs = [];
 
     const mockFirestore = {
       collection: jest.fn((name: string) => {
@@ -76,6 +91,9 @@ describe("admin functions", () => {
                 }),
               })),
             })),
+            get: jest.fn().mockResolvedValue({
+              docs: [...usersData.keys()].map((id) => createMockDocument(id, usersData)),
+            }),
           };
         }
 
@@ -115,6 +133,24 @@ describe("admin functions", () => {
           };
         }
 
+        if (name === "adminPushJobs") {
+          return {
+            add: jest.fn(async (data: Record<string, unknown>) => {
+              adminPushJobDocs.push(data);
+              const jobId = `job-${adminPushJobDocs.length}`;
+              return {
+                id: jobId,
+                set: jest.fn(async (nextData: Record<string, unknown>) => {
+                  adminPushJobDocs[adminPushJobDocs.length - 1] = {
+                    ...adminPushJobDocs[adminPushJobDocs.length - 1],
+                    ...nextData,
+                  };
+                }),
+              };
+            }),
+          };
+        }
+
         return {};
       }),
     };
@@ -135,6 +171,7 @@ describe("admin functions", () => {
     getAdminUserSummary = functions.getAdminUserSummary;
     grantEntitlementOverride = functions.grantEntitlementOverride;
     revokeEntitlementOverride = functions.revokeEntitlementOverride;
+    sendAdminPush = functions.sendAdminPush;
   });
 
   afterEach(() => {
@@ -341,5 +378,85 @@ describe("admin functions", () => {
       action: "revoke_entitlement_override",
       targetId: "target-user",
     }));
+  });
+
+  it("dry-run admin push는 발송 없이 대상 수만 계산한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("user-a", {nickname: "a"});
+    usersData.set("user-b", {nickname: "b"});
+
+    const handler = (sendAdminPush as any).run;
+    const result = await handler({
+      data: {
+        title: "공지",
+        body: "테스트",
+        audience: "all",
+        dryRun: true,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      dryRun: true,
+      targetCount: 2,
+      successCount: 0,
+      failureCount: 0,
+      jobId: "job-1",
+    });
+    expect(sendPushNotificationInternalMock).not.toHaveBeenCalled();
+    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
+      audience: "all",
+      dryRun: true,
+      targetCount: 2,
+    }));
+  });
+
+  it("test user admin push는 시스템 푸시를 발송한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("target-user", {nickname: "kswift"});
+
+    const handler = (sendAdminPush as any).run;
+    const result = await handler({
+      data: {
+        title: "공지",
+        body: "원하는 메시지",
+        audience: "test_user",
+        testUserId: "target-user",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      dryRun: false,
+      targetCount: 1,
+      successCount: 1,
+      failureCount: 0,
+      jobId: "job-1",
+    });
+    expect(sendPushNotificationInternalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ["target-user"],
+        title: "공지",
+        body: "원하는 메시지",
+      })
+    );
   });
 });

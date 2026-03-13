@@ -40,6 +40,25 @@ type RevokeEntitlementOverrideResponse = {
   success: true;
 };
 
+export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
+
+type SendAdminPushRequest = {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  dryRun?: boolean;
+  testUserId?: string | null;
+};
+
+type SendAdminPushResponse = {
+  success: true;
+  dryRun: boolean;
+  targetCount: number;
+  successCount: number;
+  failureCount: number;
+  jobId: string;
+};
+
 export async function getAdminUserSummary(
   query: string
 ): Promise<AdminUserSummary[]> {
@@ -84,4 +103,23 @@ export async function revokeEntitlementOverride(params: {
     RevokeEntitlementOverrideResponse
   >(firebaseFunctions, "revokeEntitlementOverride");
   await callable(params);
+}
+
+export async function sendAdminPush(params: {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  dryRun?: boolean;
+  testUserId?: string | null;
+}): Promise<SendAdminPushResponse> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<SendAdminPushRequest, SendAdminPushResponse>(
+    firebaseFunctions,
+    "sendAdminPush"
+  );
+  const result = await callable(params);
+  return result.data;
 }

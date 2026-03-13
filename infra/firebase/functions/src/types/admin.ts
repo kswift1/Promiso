@@ -56,3 +56,22 @@ export interface RevokeEntitlementOverrideRequest {
 export interface RevokeEntitlementOverrideResponse {
   success: true;
 }
+
+export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
+
+export interface SendAdminPushRequest {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  dryRun?: boolean;
+  testUserId?: string | null;
+}
+
+export interface SendAdminPushResponse {
+  success: true;
+  dryRun: boolean;
+  targetCount: number;
+  successCount: number;
+  failureCount: number;
+  jobId: string;
+}
