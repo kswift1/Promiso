@@ -14,6 +14,7 @@ import {
   AdminDashboardSummary,
   AdminPushJob,
   AdminPushJobStatus,
+  AdminReleaseControlField,
   AdminReleaseControls,
   AdminPushAudience,
   AdminRole,
@@ -74,6 +75,80 @@ const ADMIN_ROLE_ORDER: Record<AdminRole, number> = {
 };
 
 type ReleaseControlKey = typeof RELEASE_CONTROL_KEYS[number];
+
+const RELEASE_CONTROL_FIELDS:
+Record<ReleaseControlKey, AdminReleaseControlField> = {
+  forceUpdateVersion: {
+    key: "forceUpdateVersion",
+    label: "Force Update Version",
+    description: "이 버전보다 낮은 앱은 강제 업데이트를 요구합니다.",
+    section: "version",
+    sectionLabel: "Version Control",
+    valueType: "version",
+    editableRoles: ["owner"],
+    warning: "잘못 올리면 구버전 사용자가 즉시 앱 사용을 막힐 수 있습니다.",
+  },
+  recommendedVersion: {
+    key: "recommendedVersion",
+    label: "Recommended Version",
+    description: "이 버전보다 낮은 앱에 업데이트 권장 배너를 노출합니다.",
+    section: "version",
+    sectionLabel: "Version Control",
+    valueType: "version",
+    editableRoles: ["owner"],
+    warning: "과도하게 올리면 정상 사용자에게 불필요한 업데이트 안내가 노출됩니다.",
+  },
+  appStoreURL: {
+    key: "appStoreURL",
+    label: "App Store URL",
+    description: "업데이트 버튼과 앱 다운로드 이동에 사용하는 링크입니다.",
+    section: "version",
+    sectionLabel: "Version Control",
+    valueType: "url",
+    editableRoles: ["owner", "marketer"],
+    warning: null,
+  },
+  privacyPolicyURL: {
+    key: "privacyPolicyURL",
+    label: "Privacy Policy URL",
+    description: "설정 화면과 결제 화면에서 노출하는 개인정보처리방침 링크입니다.",
+    section: "legal",
+    sectionLabel: "Legal & Policies",
+    valueType: "url",
+    editableRoles: ["owner", "marketer"],
+    warning: null,
+  },
+  termsOfServiceURL: {
+    key: "termsOfServiceURL",
+    label: "Terms of Service URL",
+    description: "설정 화면과 결제 화면에서 노출하는 이용약관 링크입니다.",
+    section: "legal",
+    sectionLabel: "Legal & Policies",
+    valueType: "url",
+    editableRoles: ["owner", "marketer"],
+    warning: null,
+  },
+  supportEmail: {
+    key: "supportEmail",
+    label: "Support Email",
+    description: "문의하기와 운영 지원 연결에 사용하는 대표 이메일입니다.",
+    section: "support",
+    sectionLabel: "Customer Support",
+    valueType: "email",
+    editableRoles: ["owner", "marketer"],
+    warning: null,
+  },
+  notionFAQDatabaseId: {
+    key: "notionFAQDatabaseId",
+    label: "Notion FAQ Database ID",
+    description: "도움말/FAQ 화면이 읽는 Notion 데이터베이스 ID입니다.",
+    section: "support",
+    sectionLabel: "Customer Support",
+    valueType: "string",
+    editableRoles: ["owner", "marketer"],
+    warning: null,
+  },
+};
 
 const RELEASE_CONTROL_GROUPS: Record<ReleaseControlKey, string> = {
   forceUpdateVersion: "version-control",
@@ -798,6 +873,46 @@ function setRemoteConfigValue(
 }
 
 /**
+ * Returns true when the given admin role can edit the selected release control.
+ * @param {AdminRole} role The current admin role.
+ * @param {ReleaseControlKey} key The release control key.
+ * @return {boolean} True when the field is editable.
+ */
+function canEditReleaseControlKey(
+  role: AdminRole,
+  key: ReleaseControlKey
+): boolean {
+  return RELEASE_CONTROL_FIELDS[key].editableRoles.includes(role);
+}
+
+/**
+ * Builds the field metadata for the Release Controls UI.
+ * @return {AdminReleaseControlField[]} The field descriptors.
+ */
+function buildReleaseControlFields(): AdminReleaseControlField[] {
+  return RELEASE_CONTROL_KEYS.map((key) => ({
+    ...RELEASE_CONTROL_FIELDS[key],
+    editableRoles: [...RELEASE_CONTROL_FIELDS[key].editableRoles],
+  }));
+}
+
+/**
+ * Extracts a key/value snapshot for the selected release control fields.
+ * @param {controls} controls The normalized release controls payload.
+ * @param {keys} keys The keys to extract.
+ * @return {Record<ReleaseControlKey, string>} The extracted snapshot.
+ */
+function pickReleaseControlValues(
+  controls: AdminReleaseControls,
+  keys: ReleaseControlKey[]
+): Partial<Record<ReleaseControlKey, string>> {
+  return keys.reduce((result, key) => ({
+    ...result,
+    [key]: controls[key],
+  }), {});
+}
+
+/**
  * Builds the admin release controls payload from a Remote Config template.
  * @param {RemoteConfigTemplate} template The Remote Config template.
  * @return {AdminReleaseControls} The normalized release control payload.
@@ -817,6 +932,7 @@ function buildReleaseControls(
       template,
       "notionFAQDatabaseId"
     ),
+    fields: buildReleaseControlFields(),
     versionNumber: version?.versionNumber != null ?
       String(version.versionNumber) :
       null,
@@ -977,6 +1093,28 @@ function requireString(value: string | undefined, fieldName: string): string {
     throw new HttpsError("invalid-argument", `${fieldName}는 필수입니다`);
   }
   return trimmed;
+}
+
+/**
+ * Ensures a version string follows x.y.z format.
+ * @param {string | undefined} value The candidate version string.
+ * @param {string} fieldName The field label for errors.
+ * @return {string} The validated version string.
+ */
+function requireVersionString(
+  value: string | undefined,
+  fieldName: string
+): string {
+  const version = requireString(value, fieldName);
+
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName}는 x.y.z 형식이어야 합니다`
+    );
+  }
+
+  return version;
 }
 
 /**
@@ -1418,11 +1556,11 @@ export const updateAdminReleaseControls =
       requireAdminRole(adminUser, ["owner", "marketer"]);
 
       const nextValues = {
-        forceUpdateVersion: requireString(
+        forceUpdateVersion: requireVersionString(
           request.data.forceUpdateVersion,
           "forceUpdateVersion"
         ),
-        recommendedVersion: requireString(
+        recommendedVersion: requireVersionString(
           request.data.recommendedVersion,
           "recommendedVersion"
         ),
@@ -1451,8 +1589,29 @@ export const updateAdminReleaseControls =
       const remoteConfig = admin.remoteConfig();
       const template = await remoteConfig.getTemplate();
       const before = buildReleaseControls(template);
+      const changedKeys = RELEASE_CONTROL_KEYS.filter((key) =>
+        before[key] !== nextValues[key]
+      );
 
-      RELEASE_CONTROL_KEYS.forEach((key) => {
+      const forbiddenKeys = changedKeys.filter((key) =>
+        !canEditReleaseControlKey(adminUser.role, key)
+      );
+
+      if (forbiddenKeys.length > 0) {
+        throw new HttpsError(
+          "permission-denied",
+          `${forbiddenKeys.join(", ")} 수정 권한이 없습니다`
+        );
+      }
+
+      if (changedKeys.length === 0) {
+        return {
+          success: true,
+          controls: before,
+        };
+      }
+
+      changedKeys.forEach((key) => {
         setRemoteConfigValue(template, key, nextValues[key]);
       });
 
@@ -1464,8 +1623,8 @@ export const updateAdminReleaseControls =
         action: "update_release_controls",
         targetType: "remote_config",
         targetId: "default",
-        before,
-        after,
+        before: pickReleaseControlValues(before, changedKeys),
+        after: pickReleaseControlValues(after, changedKeys),
       });
 
       return {

@@ -1188,7 +1188,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
-      controls: {
+      controls: expect.objectContaining({
         forceUpdateVersion: "1.0.0",
         recommendedVersion: "1.1.0",
         appStoreURL: "https://apps.apple.com/app/id1625074042",
@@ -1199,8 +1199,22 @@ describe("admin functions", () => {
         versionNumber: "12",
         updateTime: "2026-03-13T00:00:00.000Z",
         updateUserEmail: "admin@promiso.app",
-      },
+      }),
     });
+    expect(result.controls.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "forceUpdateVersion",
+        section: "version",
+        valueType: "version",
+        editableRoles: ["owner"],
+      }),
+      expect.objectContaining({
+        key: "supportEmail",
+        section: "support",
+        valueType: "email",
+        editableRoles: ["owner", "marketer"],
+      }),
+    ]));
   });
 
   it("support는 release controls를 조회할 수 없다", async () => {
@@ -1221,6 +1235,119 @@ describe("admin functions", () => {
       },
     })).rejects.toMatchObject({
       code: "permission-denied",
+    });
+  });
+
+  it("marketer는 고객 노출 release controls를 수정할 수 있다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+    const result = await handler({
+      data: {
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      controls: expect.objectContaining({
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+        versionNumber: "13",
+      }),
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "marketer-user",
+      action: "update_release_controls",
+      before: {
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      after: {
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+      },
+    }));
+  });
+
+  it("marketer는 version release controls를 수정할 수 없다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+
+    await expect(handler({
+      data: {
+        forceUpdateVersion: "1.2.0",
+        recommendedVersion: "1.1.0",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
+  it("release controls version은 x.y.z 형식이어야 한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+
+    await expect(handler({
+      data: {
+        forceUpdateVersion: "1.2",
+        recommendedVersion: "1.2.1",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "updated-faq-id",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "invalid-argument",
     });
   });
 
@@ -1251,7 +1378,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
-      controls: {
+      controls: expect.objectContaining({
         forceUpdateVersion: "1.2.0",
         recommendedVersion: "1.2.1",
         appStoreURL: "https://apps.apple.com/app/id1625074042",
@@ -1262,13 +1389,27 @@ describe("admin functions", () => {
         versionNumber: "13",
         updateTime: "2026-03-13T01:00:00.000Z",
         updateUserEmail: "admin@promiso.app",
-      },
+      }),
     });
     expect(auditLogAdds).toContainEqual(expect.objectContaining({
       actorId: "admin-user",
       action: "update_release_controls",
       targetType: "remote_config",
       targetId: "default",
+      before: {
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      after: {
+        forceUpdateVersion: "1.2.0",
+        recommendedVersion: "1.2.1",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        notionFAQDatabaseId: "updated-faq-id",
+      },
     }));
   });
 

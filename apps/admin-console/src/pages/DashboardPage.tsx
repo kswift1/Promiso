@@ -35,7 +35,7 @@ const featureStatuses = [
   {
     name: "Release Controls",
     status: "implemented",
-    note: "Remote Config 현재 키 조회/수정",
+    note: "섹션형 Remote Config 관리, 역할별 수정 제한, 저장 전 확인",
   },
   {
     name: "Audit Logs",
@@ -54,8 +54,8 @@ const featureStatuses = [
   },
   {
     name: "Remote Config Feature Flags",
-    status: "partial",
-    note: "현재 template에 있는 핵심 키만 연결",
+    status: "implemented",
+    note: "현재 앱이 쓰는 allowlisted Remote Config 키를 운영 가이드와 함께 관리",
   },
   {
     name: "Scheduled Push",

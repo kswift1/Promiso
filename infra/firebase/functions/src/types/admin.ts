@@ -224,6 +224,37 @@ export interface CancelAdminPushJobResponse {
   success: true;
 }
 
+export type AdminReleaseControlKey =
+  "forceUpdateVersion" |
+  "recommendedVersion" |
+  "appStoreURL" |
+  "privacyPolicyURL" |
+  "termsOfServiceURL" |
+  "supportEmail" |
+  "notionFAQDatabaseId";
+
+export type AdminReleaseControlSection =
+  "version" |
+  "legal" |
+  "support";
+
+export type AdminReleaseControlValueType =
+  "version" |
+  "url" |
+  "email" |
+  "string";
+
+export interface AdminReleaseControlField {
+  key: AdminReleaseControlKey;
+  label: string;
+  description: string;
+  section: AdminReleaseControlSection;
+  sectionLabel: string;
+  valueType: AdminReleaseControlValueType;
+  editableRoles: AdminRole[];
+  warning: string | null;
+}
+
 export interface AdminReleaseControls {
   forceUpdateVersion: string;
   recommendedVersion: string;
@@ -232,6 +263,7 @@ export interface AdminReleaseControls {
   termsOfServiceURL: string;
   supportEmail: string;
   notionFAQDatabaseId: string;
+  fields: AdminReleaseControlField[];
   versionNumber: string | null;
   updateTime: string | null;
   updateUserEmail: string | null;
