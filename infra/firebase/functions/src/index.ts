@@ -128,6 +128,21 @@ export {
   verifyPurchase,
   appleServerNotification,
 } from "./functions/subscription";
+
+// ============================================================================
+// Admin Functions (운영 콘솔)
+// ============================================================================
+export {
+  getAdminSession,
+  getAdminDashboardSummary,
+  getAdminAuditLogs,
+  getAdminUserSummary,
+  getAdminReleaseControls,
+  grantEntitlementOverride,
+  revokeEntitlementOverride,
+  sendAdminPush,
+  updateAdminReleaseControls,
+} from "./functions/admin";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================
 export {
@@ -144,4 +159,3 @@ export {
 // Transportation Functions (교통 정보 조회)
 // ============================================================================
 export {getTransportation} from "./functions/transportation";
-

@@ -15,6 +15,7 @@ Promiso 저장소의 공식 개발 문서를 빠르게 찾기 위한 인덱스�
 | 새 개발 환경 세팅 | [SETUP_GUIDE.md](SETUP_GUIDE.md) |
 | 로컬 환경값/xcconfig 구성 | [ENVIRONMENT.md](ENVIRONMENT.md) |
 | 아키텍처 이해 | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| 운영 콘솔 계획 확인 | [ADMIN_CONSOLE_PLAN.md](ADMIN_CONSOLE_PLAN.md) |
 | 기능 개발/테스트 규칙 | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | 테스트 의존성/Unimplemented/중복링킹 대응 | [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md) |
 | 브랜치 운영 규칙 | [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) |

@@ -1,0 +1,64 @@
+name: Admin Console Stage Deploy
+
+on:
+  push:
+    branches:
+      - "release/**"
+    paths:
+      - "apps/admin-console/**"
+      - "firebase.json"
+      - ".firebaserc"
+      - ".github/workflows/admin-console-stage-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: admin-console-stage-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://promiso-stage-admin.web.app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/admin-console/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: apps/admin-console
+        run: npm ci
+
+      - name: Write Stage Env
+        working-directory: apps/admin-console
+        run: |
+          cat <<EOF > .env.stage.local
+          VITE_FIREBASE_API_KEY=${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID=${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_APP_ID }}
+          EOF
+
+      - name: Build Admin Console
+        working-directory: apps/admin-console
+        run: npm run build -- --mode stage
+
+      - name: Deploy Hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npm install -g firebase-tools
+          firebase deploy \
+            --only hosting:admin-console \
+            --project promiso-stage \
+            --token "$FIREBASE_TOKEN" \
+            --non-interactive
