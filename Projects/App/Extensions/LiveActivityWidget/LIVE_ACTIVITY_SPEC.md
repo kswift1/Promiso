@@ -452,7 +452,7 @@ Push to Start 토큰 등록 (iOS 17.2+)
 ```typescript
 // Request
 {
-  scheduleId: string;
+  promiseId: string;
   env?: "stage" | "prod";
 }
 
@@ -473,7 +473,7 @@ ETA 업데이트 후 모든 참가자에게 브로드캐스트
 ```typescript
 // Request
 {
-  scheduleId: string;
+  promiseId: string;
   estimatedMinutes: number;  // 0=도착, N=N분 후
   env?: "stage" | "prod";
 }
@@ -488,26 +488,7 @@ ETA 업데이트 후 모든 참가자에게 브로드캐스트
 
 **권한**: 모든 참가자 호출 가능
 
-#### endLiveActivity
-
-LiveActivity 종료
-
-```typescript
-// Request
-{
-  scheduleId: string;
-  env?: "stage" | "prod";
-}
-
-// Response
-{
-  success: boolean;
-  successCount: number;
-  failureCount: number;
-}
-```
-
-**권한**: 호스트만 호출 가능
+종료는 공개 API가 아니라 내부 Cloud Tasks 함수(`executeLiveActivityEnd`)가 처리합니다.
 
 ---
 
@@ -697,7 +678,7 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - [x] Firebase Functions: registerPushToStartToken
 - [x] Firebase Functions: startLiveActivity
 - [x] Firebase Functions: updateETA
-- [x] Firebase Functions: endLiveActivity
+- [x] Firebase Functions: executeLiveActivityEnd
 - [ ] APNs 인증 설정 (P8 키 + Firebase Secret Manager)
 - [x] Firestore 스키마 업데이트 (liveActivities 컬렉션)
 
