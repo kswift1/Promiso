@@ -7,6 +7,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {admin, REGION} from "../config";
 import {
+  AdminAccount,
   AdminAuditLog,
   AdminOverrideFilter,
   AdminEntitlementOverrideSnapshot,
@@ -21,6 +22,8 @@ import {
   AdminUserDocument,
   AdminUserSearchField,
   AdminUserSummary,
+  CreateAdminUserRequest,
+  CreateAdminUserResponse,
   GrantEntitlementOverrideRequest,
   GrantEntitlementOverrideResponse,
   GetAdminAuditLogsRequest,
@@ -29,6 +32,7 @@ import {
   GetAdminPushJobsRequest,
   GetAdminPushJobsResponse,
   GetAdminSessionResponse,
+  GetAdminUsersResponse,
   GetAdminReleaseControlsResponse,
   GetAdminUserSummaryRequest,
   GetAdminUserSummaryResponse,
@@ -44,6 +48,8 @@ import {
   ScheduleAdminPushResponse,
   SendAdminPushRequest,
   SendAdminPushResponse,
+  UpdateAdminUserRequest,
+  UpdateAdminUserResponse,
   UpdateAdminReleaseControlsRequest,
   UpdateAdminReleaseControlsResponse,
 } from "../types/admin";
@@ -61,6 +67,11 @@ const RELEASE_CONTROL_KEYS = [
 ] as const;
 
 const MIN_SCHEDULE_LEAD_TIME_MS = 5 * 60 * 1000;
+const ADMIN_ROLE_ORDER: Record<AdminRole, number> = {
+  owner: 0,
+  support: 1,
+  marketer: 2,
+};
 
 type ReleaseControlKey = typeof RELEASE_CONTROL_KEYS[number];
 
@@ -169,6 +180,143 @@ function requireAdminRole(
   }
 }
 
+/**
+ * Builds a normalized admin account payload from Firestore.
+ * @param {string} userId The admin user id.
+ * @param {Record<string, unknown>} data The stored admin user document.
+ * @return {AdminAccount} The normalized admin account.
+ */
+function buildAdminAccount(
+  userId: string,
+  data: Record<string, unknown>
+): AdminAccount {
+  if (!isAdminRole(data.role)) {
+    throw new HttpsError(
+      "internal",
+      "adminUsers 데이터 형식이 올바르지 않습니다"
+    );
+  }
+
+  return {
+    userId,
+    email: typeof data.email === "string" ? data.email : null,
+    role: data.role,
+    enabled: data.enabled !== false,
+  };
+}
+
+/**
+ * Sorts admin accounts by enabled state, role, then email.
+ * @param {AdminAccount} left The first account.
+ * @param {AdminAccount} right The second account.
+ * @return {number} Sort comparator result.
+ */
+function compareAdminAccounts(left: AdminAccount, right: AdminAccount): number {
+  if (left.enabled !== right.enabled) {
+    return left.enabled ? -1 : 1;
+  }
+
+  if (left.role !== right.role) {
+    return ADMIN_ROLE_ORDER[left.role] - ADMIN_ROLE_ORDER[right.role];
+  }
+
+  return (left.email ?? left.userId).localeCompare(right.email ?? right.userId);
+}
+
+/**
+ * Loads all admin accounts sorted for console display.
+ * @return {Promise<AdminAccount[]>} The normalized admin accounts.
+ */
+async function listAdminAccounts(): Promise<AdminAccount[]> {
+  const snapshot = await admin.firestore()
+    .collection("adminUsers")
+    .get();
+
+  return snapshot.docs
+    .map((doc) =>
+      buildAdminAccount(doc.id, doc.data() as Record<string, unknown>)
+    )
+    .sort(compareAdminAccounts);
+}
+
+/**
+ * Counts enabled owner accounts.
+ * @return {Promise<number>} The number of enabled owners.
+ */
+async function getEnabledOwnerCount(): Promise<number> {
+  const accounts = await listAdminAccounts();
+  return accounts
+    .filter((account) => account.role === "owner" && account.enabled)
+    .length;
+}
+
+/**
+ * Resolves a Firebase Auth user by email for admin onboarding.
+ * @param {string} email The target email address.
+ * @return {Promise<object>} The auth user.
+ */
+async function getFirebaseAuthUserByEmail(email: string): Promise<{
+  uid: string;
+  email: string | null;
+}> {
+  try {
+    const user = await admin.auth().getUserByEmail(email);
+    return {
+      uid: user.uid,
+      email: user.email ?? email,
+    };
+  } catch (error) {
+    const authError = error as {code?: string};
+    if (authError.code === "auth/user-not-found") {
+      throw new HttpsError(
+        "not-found",
+        "해당 이메일의 Firebase Auth 사용자를 찾을 수 없습니다"
+      );
+    }
+
+    throw new HttpsError("internal", "Firebase Auth 사용자를 조회할 수 없습니다");
+  }
+}
+
+/**
+ * Ensures owner safety rules before mutating an admin account.
+ * @param {object} params The update context.
+ * @return {Promise<void>} Resolves when the update is allowed.
+ */
+async function ensureAdminAccountUpdateAllowed(params: {
+  actorId: string;
+  currentUser: AdminAccount;
+  nextRole: AdminRole;
+  nextEnabled: boolean;
+}): Promise<void> {
+  const {actorId, currentUser, nextRole, nextEnabled} = params;
+
+  if (
+    actorId === currentUser.userId &&
+    (!nextEnabled || nextRole !== "owner")
+  ) {
+    throw new HttpsError(
+      "permission-denied",
+      "자기 자신의 owner 권한을 해제하거나 비활성화할 수 없습니다"
+    );
+  }
+
+  if (
+    currentUser.role === "owner" &&
+    currentUser.enabled &&
+    (!nextEnabled || nextRole !== "owner")
+  ) {
+    const enabledOwnerCount = await getEnabledOwnerCount();
+
+    if (enabledOwnerCount <= 1) {
+      throw new HttpsError(
+        "failed-precondition",
+        "마지막 enabled owner는 권한을 변경하거나 비활성화할 수 없습니다"
+      );
+    }
+  }
+}
+
 export const getAdminSession = onCall<Record<string, never>>(
   {region: REGION},
   async (request): Promise<GetAdminSessionResponse> => {
@@ -185,6 +333,142 @@ export const getAdminSession = onCall<Record<string, never>>(
       email: adminUser.email ?? request.auth.token.email ?? null,
       role: adminUser.role,
       enabled: adminUser.enabled ?? true,
+    };
+  }
+);
+
+export const getAdminUsers = onCall<Record<string, never>>(
+  {region: REGION},
+  async (request): Promise<GetAdminUsersResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const adminUser = await getAdminUserDocument(request.auth.uid);
+    requireAdminRole(adminUser, ["owner"]);
+
+    return {
+      success: true,
+      users: await listAdminAccounts(),
+    };
+  }
+);
+
+export const createAdminUser = onCall<CreateAdminUserRequest>(
+  {region: REGION},
+  async (request): Promise<CreateAdminUserResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner"]);
+
+    const email = requireEmail(request.data.email, "email");
+    const role = requireAdminRoleValue(request.data.role, "role");
+    const enabled = request.data.enabled !== false;
+    const authUser = await getFirebaseAuthUserByEmail(email);
+    const docRef = admin.firestore().collection("adminUsers").doc(authUser.uid);
+    const snapshot = await docRef.get();
+
+    if (snapshot.exists) {
+      throw new HttpsError("already-exists", "이미 등록된 admin 사용자입니다");
+    }
+
+    const nextUser: AdminAccount = {
+      userId: authUser.uid,
+      email: authUser.email ?? email,
+      role,
+      enabled,
+    };
+
+    await docRef.set({
+      role,
+      email: nextUser.email,
+      enabled,
+    });
+
+    await writeAuditLog({
+      actorId,
+      action: "create_admin_user",
+      targetType: "admin_user",
+      targetId: authUser.uid,
+      before: null,
+      after: nextUser,
+    });
+
+    return {
+      success: true,
+      user: nextUser,
+    };
+  }
+);
+
+export const updateAdminUser = onCall<UpdateAdminUserRequest>(
+  {region: REGION},
+  async (request): Promise<UpdateAdminUserResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner"]);
+
+    const userId = requireString(request.data.userId, "userId");
+    const role = requireAdminRoleValue(request.data.role, "role");
+    const enabled = requireBoolean(request.data.enabled, "enabled");
+    const docRef = admin.firestore().collection("adminUsers").doc(userId);
+    const snapshot = await docRef.get();
+
+    if (!snapshot.exists) {
+      throw new HttpsError("not-found", "admin 사용자를 찾을 수 없습니다");
+    }
+
+    const currentUser = buildAdminAccount(
+      userId,
+      snapshot.data() as Record<string, unknown>
+    );
+
+    await ensureAdminAccountUpdateAllowed({
+      actorId,
+      currentUser,
+      nextRole: role,
+      nextEnabled: enabled,
+    });
+
+    if (currentUser.role === role && currentUser.enabled === enabled) {
+      return {
+        success: true,
+        user: currentUser,
+      };
+    }
+
+    const nextUser: AdminAccount = {
+      ...currentUser,
+      role,
+      enabled,
+    };
+
+    await docRef.set({
+      role,
+      email: currentUser.email,
+      enabled,
+    });
+
+    await writeAuditLog({
+      actorId,
+      action: "update_admin_user",
+      targetType: "admin_user",
+      targetId: userId,
+      before: currentUser,
+      after: nextUser,
+    });
+
+    return {
+      success: true,
+      user: nextUser,
     };
   }
 );
@@ -696,6 +980,50 @@ function requireString(value: string | undefined, fieldName: string): string {
 }
 
 /**
+ * Ensures a boolean field is explicitly provided.
+ * @param {unknown} value The candidate value.
+ * @param {string} fieldName The field label for errors.
+ * @return {boolean} The validated boolean value.
+ */
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new HttpsError("invalid-argument", `${fieldName} 형식이 올바르지 않습니다`);
+  }
+
+  return value;
+}
+
+/**
+ * Ensures an admin role field is valid.
+ * @param {unknown} value The candidate role.
+ * @param {string} fieldName The field label for errors.
+ * @return {AdminRole} The validated admin role.
+ */
+function requireAdminRoleValue(value: unknown, fieldName: string): AdminRole {
+  if (!isAdminRole(value)) {
+    throw new HttpsError("invalid-argument", `${fieldName} 형식이 올바르지 않습니다`);
+  }
+
+  return value;
+}
+
+/**
+ * Ensures an email field is valid.
+ * @param {string | undefined} value The candidate email.
+ * @param {string} fieldName The field label for errors.
+ * @return {string} The normalized email value.
+ */
+function requireEmail(value: string | undefined, fieldName: string): string {
+  const email = requireString(value, fieldName).toLowerCase();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new HttpsError("invalid-argument", `${fieldName} 형식이 올바르지 않습니다`);
+  }
+
+  return email;
+}
+
+/**
  * Ensures a value is a valid http(s) URL.
  * @param {string} value The candidate URL value.
  * @param {string} fieldName The field label for errors.
@@ -713,23 +1041,6 @@ function requireHttpUrl(value: string, fieldName: string): string {
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new HttpsError(
-      "invalid-argument",
-      `${fieldName} 형식이 올바르지 않습니다`
-    );
-  }
-
-  return value;
-}
-
-/**
- * Ensures a value is a valid email address.
- * @param {string} value The candidate email value.
- * @param {string} fieldName The field label for errors.
- * @return {string} The validated email address.
- */
-function requireEmail(value: string, fieldName: string): string {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
     throw new HttpsError(
       "invalid-argument",
       `${fieldName} 형식이 올바르지 않습니다`

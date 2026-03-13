@@ -21,6 +21,40 @@ export interface GetAdminSessionResponse {
   enabled: boolean;
 }
 
+export interface AdminAccount {
+  userId: string;
+  email: string | null;
+  role: AdminRole;
+  enabled: boolean;
+}
+
+export interface GetAdminUsersResponse {
+  success: true;
+  users: AdminAccount[];
+}
+
+export interface CreateAdminUserRequest {
+  email: string;
+  role: AdminRole;
+  enabled?: boolean;
+}
+
+export interface CreateAdminUserResponse {
+  success: true;
+  user: AdminAccount;
+}
+
+export interface UpdateAdminUserRequest {
+  userId: string;
+  role: AdminRole;
+  enabled: boolean;
+}
+
+export interface UpdateAdminUserResponse {
+  success: true;
+  user: AdminAccount;
+}
+
 export interface GetAdminUserSummaryRequest {
   query?: string;
   field?: AdminUserSearchField;

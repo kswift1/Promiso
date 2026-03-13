@@ -4,6 +4,14 @@ import {firebaseFunctions} from "../lib/firebase";
 export type AdminUserSearchField = "all" | "userId" | "email" | "nickname";
 export type AdminSubscriptionFilter = "all" | "subscribed" | "not_subscribed";
 export type AdminOverrideFilter = "all" | "active" | "inactive";
+export type AdminRole = "owner" | "support" | "marketer";
+
+export type AdminAccount = {
+  userId: string;
+  email: string | null;
+  role: AdminRole;
+  enabled: boolean;
+};
 
 export type AdminUserSummary = {
   userId: string;
@@ -43,6 +51,33 @@ type GetAdminUserSummaryRequest = {
   subscription?: AdminSubscriptionFilter;
   override?: AdminOverrideFilter;
   limit?: number;
+};
+
+type GetAdminUsersResponse = {
+  success: true;
+  users: AdminAccount[];
+};
+
+type CreateAdminUserRequest = {
+  email: string;
+  role: AdminRole;
+  enabled?: boolean;
+};
+
+type CreateAdminUserResponse = {
+  success: true;
+  user: AdminAccount;
+};
+
+type UpdateAdminUserRequest = {
+  userId: string;
+  role: AdminRole;
+  enabled: boolean;
+};
+
+type UpdateAdminUserResponse = {
+  success: true;
+  user: AdminAccount;
 };
 
 type GetAdminUserSummaryResponse = {
@@ -272,6 +307,53 @@ export async function getAdminUserSummary(params: {
   >(firebaseFunctions, "getAdminUserSummary");
   const result = await callable(params);
   return result.data.results;
+}
+
+export async function getAdminUsers(): Promise<AdminAccount[]> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<Record<string, never>, GetAdminUsersResponse>(
+    firebaseFunctions,
+    "getAdminUsers"
+  );
+  const result = await callable({});
+  return result.data.users;
+}
+
+export async function createAdminUser(params: {
+  email: string;
+  role: AdminRole;
+  enabled?: boolean;
+}): Promise<AdminAccount> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    CreateAdminUserRequest,
+    CreateAdminUserResponse
+  >(firebaseFunctions, "createAdminUser");
+  const result = await callable(params);
+  return result.data.user;
+}
+
+export async function updateAdminUser(params: {
+  userId: string;
+  role: AdminRole;
+  enabled: boolean;
+}): Promise<AdminAccount> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    UpdateAdminUserRequest,
+    UpdateAdminUserResponse
+  >(firebaseFunctions, "updateAdminUser");
+  const result = await callable(params);
+  return result.data.user;
 }
 
 export async function getAdminUserTimeline(params: {

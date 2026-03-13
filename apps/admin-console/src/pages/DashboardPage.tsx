@@ -49,8 +49,8 @@ const featureStatuses = [
   },
   {
     name: "Advanced Search / Filters",
-    status: "partial",
-    note: "정확 일치 검색만 지원, 조건 필터는 아직 없음",
+    status: "implemented",
+    note: "Users / Audit Logs 검색 필드와 상태 필터 지원",
   },
   {
     name: "Remote Config Feature Flags",
@@ -59,18 +59,18 @@ const featureStatuses = [
   },
   {
     name: "Scheduled Push",
-    status: "not_started",
-    note: "예약 발송과 작업 큐 UI는 아직 없음",
+    status: "implemented",
+    note: "예약 생성, 취소, 대상 preview, 안전장치 포함",
   },
   {
     name: "User Detail Timeline",
-    status: "not_started",
-    note: "사용자별 상세 운영 이력 화면은 아직 없음",
+    status: "implemented",
+    note: "subscription / override / audit log 상세 조회",
   },
   {
     name: "Admin User Management UI",
-    status: "not_started",
-    note: "adminUsers 등록/수정은 콘솔 UI가 아직 없음",
+    status: "implemented",
+    note: "owner 전용 admin 등록, role 변경, enabled 관리",
   },
 ];
 

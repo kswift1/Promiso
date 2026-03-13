@@ -1,3 +1,4 @@
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -30,6 +31,12 @@ const navItems = [
     label: "Dashboard",
     path: "/dashboard",
     icon: <HomeRoundedIcon />,
+  },
+  {
+    label: "Admin Users",
+    path: "/admin-users",
+    icon: <AdminPanelSettingsRoundedIcon />,
+    allowedRoles: ["owner"] as AdminRole[],
   },
   {
     label: "Users",

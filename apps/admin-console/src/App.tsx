@@ -4,6 +4,7 @@ import {Navigate, Route, Routes} from "react-router-dom";
 import {useAuth} from "./auth/AuthProvider";
 import {AdminRole, hasAdminRole} from "./auth/adminRoles";
 import {AppShell} from "./layout/AppShell";
+import {AdminUsersPage} from "./pages/AdminUsersPage";
 import {AuditLogsPage} from "./pages/AuditLogsPage";
 import {DashboardPage} from "./pages/DashboardPage";
 import {EntitlementsPage} from "./pages/EntitlementsPage";
@@ -76,6 +77,14 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route index element={<Navigate replace to="/dashboard" />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/admin-users"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner"]}>
+              <AdminUsersPage />
+            </RoleProtectedRoute>
+          }
+        />
         <Route
           path="/users/:userId/timeline"
           element={

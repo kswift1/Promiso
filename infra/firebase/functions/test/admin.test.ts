@@ -39,6 +39,9 @@ describe("admin functions", () => {
   let getAdminDashboardSummary: any;
   let getAdminAuditLogs: any;
   let getAdminPushJobs: any;
+  let getAdminUsers: any;
+  let createAdminUser: any;
+  let updateAdminUser: any;
   let previewAdminPushAudience: any;
   let getAdminUserSummary: any;
   let getAdminUserTimeline: any;
@@ -52,6 +55,7 @@ describe("admin functions", () => {
   let updateAdminReleaseControls: any;
 
   let adminUsersData: Map<string, Record<string, unknown>>;
+  let authUsersByEmail: Map<string, {uid: string; email: string | null}>;
   let usersData: Map<string, Record<string, unknown>>;
   let subscriptionData: Map<string, Record<string, unknown>>;
   let overrideData: Map<string, Record<string, unknown>>;
@@ -71,6 +75,7 @@ describe("admin functions", () => {
     });
 
     adminUsersData = new Map();
+    authUsersByEmail = new Map();
     usersData = new Map();
     subscriptionData = new Map();
     overrideData = new Map();
@@ -130,6 +135,13 @@ describe("admin functions", () => {
               get: jest.fn().mockResolvedValue(
                 createMockDocument(id, adminUsersData)
               ),
+              set: jest.fn(async (data: Record<string, unknown>) => {
+                const previous = adminUsersData.get(id) ?? {};
+                adminUsersData.set(id, {
+                  ...previous,
+                  ...data,
+                });
+              }),
             })),
             get: jest.fn().mockResolvedValue({
               docs: [...adminUsersData.keys()].map((id) =>
@@ -292,6 +304,19 @@ describe("admin functions", () => {
     const firestoreSpy = jest.spyOn(configAdmin, "firestore").mockReturnValue(
       mockFirestore as any
     );
+    jest.spyOn(configAdmin, "auth").mockReturnValue({
+      getUserByEmail: jest.fn(async (email: string) => {
+        const authUser = authUsersByEmail.get(email.toLowerCase());
+
+        if (!authUser) {
+          const error = new Error("User not found");
+          (error as any).code = "auth/user-not-found";
+          throw error;
+        }
+
+        return authUser;
+      }),
+    } as any);
     jest.spyOn(configAdmin, "remoteConfig").mockReturnValue({
       getTemplate: jest.fn(async () => structuredClone(remoteConfigTemplate)),
       publishTemplate: jest.fn(async (template: Record<string, any>) => {
@@ -320,6 +345,9 @@ describe("admin functions", () => {
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
     getAdminPushJobs = functions.getAdminPushJobs;
+    getAdminUsers = functions.getAdminUsers;
+    createAdminUser = functions.createAdminUser;
+    updateAdminUser = functions.updateAdminUser;
     previewAdminPushAudience = functions.previewAdminPushAudience;
     getAdminUserSummary = functions.getAdminUserSummary;
     getAdminUserTimeline = functions.getAdminUserTimeline;
@@ -382,6 +410,241 @@ describe("admin functions", () => {
         uid: "non-admin",
         token: {
           email: "user@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
+  it("owner는 admin 사용자 목록을 조회할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+      email: "support@promiso.app",
+    });
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: false,
+      email: "marketer@promiso.app",
+    });
+
+    const handler = (getAdminUsers as any).run;
+    const result = await handler({
+      data: {},
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      users: [
+        {
+          userId: "owner-user",
+          email: "owner@promiso.app",
+          role: "owner",
+          enabled: true,
+        },
+        {
+          userId: "support-user",
+          email: "support@promiso.app",
+          role: "support",
+          enabled: true,
+        },
+        {
+          userId: "marketer-user",
+          email: "marketer@promiso.app",
+          role: "marketer",
+          enabled: false,
+        },
+      ],
+    });
+  });
+
+  it("support는 admin 사용자 목록을 조회할 수 없다", async () => {
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+      email: "support@promiso.app",
+    });
+
+    const handler = (getAdminUsers as any).run;
+
+    await expect(handler({
+      data: {},
+      auth: {
+        uid: "support-user",
+        token: {
+          email: "support@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
+  it("owner는 이메일 기준으로 admin 사용자를 등록할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    authUsersByEmail.set("new-admin@promiso.app", {
+      uid: "new-admin-user",
+      email: "new-admin@promiso.app",
+    });
+
+    const handler = (createAdminUser as any).run;
+    const result = await handler({
+      data: {
+        email: "new-admin@promiso.app",
+        role: "support",
+        enabled: true,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      user: {
+        userId: "new-admin-user",
+        email: "new-admin@promiso.app",
+        role: "support",
+        enabled: true,
+      },
+    });
+    expect(adminUsersData.get("new-admin-user")).toEqual({
+      role: "support",
+      email: "new-admin@promiso.app",
+      enabled: true,
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "owner-user",
+      action: "create_admin_user",
+      targetType: "admin_user",
+      targetId: "new-admin-user",
+    }));
+  });
+
+  it("owner는 다른 admin 사용자의 role과 enabled를 수정할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("target-admin", {
+      role: "support",
+      enabled: true,
+      email: "target@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-admin",
+        role: "marketer",
+        enabled: false,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      user: {
+        userId: "target-admin",
+        email: "target@promiso.app",
+        role: "marketer",
+        enabled: false,
+      },
+    });
+    expect(adminUsersData.get("target-admin")).toEqual({
+      role: "marketer",
+      enabled: false,
+      email: "target@promiso.app",
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "owner-user",
+      action: "update_admin_user",
+      targetType: "admin_user",
+      targetId: "target-admin",
+    }));
+  });
+
+  it("owner도 자기 자신을 비활성화할 수 없다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("other-owner", {
+      role: "owner",
+      enabled: true,
+      email: "other@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "owner-user",
+        role: "owner",
+        enabled: false,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+      message: "자기 자신의 owner 권한을 해제하거나 비활성화할 수 없습니다",
+    });
+  });
+
+  it("owner도 자기 자신의 role을 owner 외로 바꿀 수 없다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("other-owner", {
+      role: "owner",
+      enabled: true,
+      email: "other@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "owner-user",
+        role: "support",
+        enabled: true,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
         },
       },
     })).rejects.toMatchObject({
