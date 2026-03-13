@@ -95,7 +95,23 @@ export async function verifyAppleTransactionJWS(
     return decodeJWSPayload<JWSTransactionDecodedPayload>(jwsToken);
   }
 
-  return getSignedDataVerifier().verifyAndDecodeTransaction(jwsToken);
+  if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
+    try {
+      return await getSignedDataVerifier().verifyAndDecodeTransaction(jwsToken);
+    } catch (error) {
+      console.warn(
+        "⚠️ [AppStore] Dev: Apple verify failed," +
+        " falling back to decode-only",
+        error,
+      );
+      return decodeJWSPayload<JWSTransactionDecodedPayload>(
+        jwsToken,
+      );
+    }
+  }
+
+  return getSignedDataVerifier()
+    .verifyAndDecodeTransaction(jwsToken);
 }
 
 /**
@@ -108,11 +124,32 @@ export async function verifyAppleRenewalInfoJWS(
   jwsToken: string,
 ): Promise<JWSRenewalInfoDecodedPayload> {
   if (process.env.FUNCTIONS_EMULATOR === "true") {
-    console.warn("⚠️ [AppStore] Emulator: Skipping renewal JWS verify");
-    return decodeJWSPayload<JWSRenewalInfoDecodedPayload>(jwsToken);
+    console.warn(
+      "⚠️ [AppStore] Emulator: Skipping renewal JWS verify",
+    );
+    return decodeJWSPayload<JWSRenewalInfoDecodedPayload>(
+      jwsToken,
+    );
   }
 
-  return getSignedDataVerifier().verifyAndDecodeRenewalInfo(jwsToken);
+  if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
+    try {
+      return await getSignedDataVerifier()
+        .verifyAndDecodeRenewalInfo(jwsToken);
+    } catch (error) {
+      console.warn(
+        "⚠️ [AppStore] Dev: Apple verify failed," +
+        " falling back to decode-only",
+        error,
+      );
+      return decodeJWSPayload<JWSRenewalInfoDecodedPayload>(
+        jwsToken,
+      );
+    }
+  }
+
+  return getSignedDataVerifier()
+    .verifyAndDecodeRenewalInfo(jwsToken);
 }
 
 /**
@@ -125,9 +162,30 @@ export async function verifyAppleNotificationPayload(
   signedPayload: string,
 ): Promise<ResponseBodyV2DecodedPayload> {
   if (process.env.FUNCTIONS_EMULATOR === "true") {
-    console.warn("⚠️ [AppStore] Emulator: Skipping notification JWS verify");
-    return decodeJWSPayload<ResponseBodyV2DecodedPayload>(signedPayload);
+    console.warn(
+      "⚠️ [AppStore] Emulator: Skipping notification verify",
+    );
+    return decodeJWSPayload<ResponseBodyV2DecodedPayload>(
+      signedPayload,
+    );
   }
 
-  return getSignedDataVerifier().verifyAndDecodeNotification(signedPayload);
+  if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
+    try {
+      return await getSignedDataVerifier()
+        .verifyAndDecodeNotification(signedPayload);
+    } catch (error) {
+      console.warn(
+        "⚠️ [AppStore] Dev: Apple verify failed," +
+        " falling back to decode-only",
+        error,
+      );
+      return decodeJWSPayload<ResponseBodyV2DecodedPayload>(
+        signedPayload,
+      );
+    }
+  }
+
+  return getSignedDataVerifier()
+    .verifyAndDecodeNotification(signedPayload);
 }
