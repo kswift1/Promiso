@@ -187,6 +187,32 @@ struct ProPlanFeatureTests {
     }
   }
 
+  @Test("연간 할인율은 Decimal 올림으로 계산")
+  func yearlyDiscountPercent_roundsUpWithDecimal() {
+    #expect(
+      ProPlan.yearlyDiscountPercent(
+        yearlyPrice: Decimal(string: "80.01")!,
+        monthlyPrice: Decimal(string: "10")!
+      ) == 34
+    )
+  }
+
+  @Test("연간 할인율은 유효하지 않은 가격이면 nil")
+  func yearlyDiscountPercent_invalidPricing_returnsNil() {
+    #expect(
+      ProPlan.yearlyDiscountPercent(
+        yearlyPrice: Decimal(string: "120")!,
+        monthlyPrice: Decimal(string: "10")!
+      ) == nil
+    )
+    #expect(
+      ProPlan.yearlyDiscountPercent(
+        yearlyPrice: Decimal(string: "39")!,
+        monthlyPrice: nil
+      ) == nil
+    )
+  }
+
   // MARK: - 구매
 
   @Test("구매 성공 시 구독 상태 업데이트 및 delegate 전달")

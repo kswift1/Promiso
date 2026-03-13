@@ -6,6 +6,7 @@ import PromisoShared
 /// 일정 사이 빈 시간에 현재 위치를 표시하는 마커
 struct CurrentTimeMarkerView: View {
   let nextScheduleStartAt: Date
+  let showsTopLine: Bool
 
   @State private var currentTime = Date()
 
@@ -47,7 +48,7 @@ struct CurrentTimeMarkerView: View {
     VStack(spacing: 0) {
       // 상단 라인 (TimelineItemView와 동일)
       Rectangle()
-        .fill(Color.pmindigo.n300.opacity(0.5))
+        .fill(showsTopLine ? Color.pmindigo.n300.opacity(0.5) : Color.clear)
         .frame(width: 2, height: 10)
 
       // 현재 위치 dot (강조)
@@ -67,6 +68,7 @@ struct CurrentTimeMarkerView: View {
         .frame(maxHeight: .infinity)
     }
     .frame(width: 16)
+    .frame(maxHeight: .infinity, alignment: .top)
   }
 
   // MARK: - Current Time Label
@@ -115,7 +117,8 @@ struct CurrentTimeMarkerView: View {
 #Preview {
   VStack(spacing: 0) {
     CurrentTimeMarkerView(
-      nextScheduleStartAt: Date().addingTimeInterval(4 * 3600)
+      nextScheduleStartAt: Date().addingTimeInterval(4 * 3600),
+      showsTopLine: false
     )
   }
   .padding()

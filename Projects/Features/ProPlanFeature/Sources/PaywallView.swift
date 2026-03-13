@@ -289,6 +289,7 @@ extension ProPlan {
               product: product,
               isSelected: store.selectedProductId == product.id,
               isEligibleForIntroOffer: store.isEligibleForIntroOffer,
+              monthlyPrice: store.products.first { $0.type == .monthly }?.price,
               onTap: {
                 store.send(.view(.productSelected(product.id)))
               }
@@ -950,11 +951,37 @@ extension ProPlan {
 
 extension ProPlan {
 
+  static func yearlyDiscountPercent(
+    yearlyPrice: Decimal,
+    monthlyPrice: Decimal?
+  ) -> Int? {
+    guard let monthlyPrice, monthlyPrice > 0 else { return nil }
+
+    let yearlyIfMonthly = monthlyPrice * 12
+    let saving = yearlyIfMonthly - yearlyPrice
+    guard saving > 0 else { return nil }
+
+    let percent = (saving * 100) / yearlyIfMonthly
+    var roundedPercent = Decimal()
+    var percentToRound = percent
+    NSDecimalRound(&roundedPercent, &percentToRound, 0, .up)
+    return NSDecimalNumber(decimal: roundedPercent).intValue
+  }
+
   fileprivate struct PricingCardView: View {
     let product: SubscriptionProduct
     let isSelected: Bool
     let isEligibleForIntroOffer: Bool
+    let monthlyPrice: Decimal?
     let onTap: () -> Void
+
+    private var yearlyDiscountPercent: Int? {
+      guard product.type == .yearly else { return nil }
+      return ProPlan.yearlyDiscountPercent(
+        yearlyPrice: product.price,
+        monthlyPrice: monthlyPrice
+      )
+    }
 
     private var showFreeTrial: Bool {
       isEligibleForIntroOffer && product.introductoryOffer?.isFreeTrialOffer == true
@@ -973,8 +1000,8 @@ extension ProPlan {
                 .font(.headline)
                 .foregroundStyle(Color.pmtext.primary)
 
-              if product.type == .yearly {
-                Text(LocalizedStrings.ProPlan.badgeTwoMonthsFree)
+              if let discount = yearlyDiscountPercent {
+                Text(LocalizedStrings.ProPlan.badgeDiscountPercent(discount))
                   .font(.system(size: 9, weight: .heavy))
                   .foregroundStyle(.white)
                   .padding(.horizontal, 6)

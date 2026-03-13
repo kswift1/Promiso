@@ -89,7 +89,10 @@ struct TodayScheduleCard: View {
       ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
         // 현재 시간 마커 삽입 (이 일정 전에 표시해야 하는 경우)
         if currentTimePosition == .beforeIndex(index) {
-          CurrentTimeMarkerView(nextScheduleStartAt: item.startAt)
+          CurrentTimeMarkerView(
+            nextScheduleStartAt: item.startAt,
+            showsTopLine: index != 0
+          )
         }
 
         let weather: WeatherInfo? = {
