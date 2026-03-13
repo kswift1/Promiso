@@ -75,3 +75,73 @@ export interface SendAdminPushResponse {
   failureCount: number;
   jobId: string;
 }
+
+export interface AdminReleaseControls {
+  forceUpdateVersion: string;
+  recommendedVersion: string;
+  appStoreURL: string;
+  privacyPolicyURL: string;
+  termsOfServiceURL: string;
+  supportEmail: string;
+  notionFAQDatabaseId: string;
+  versionNumber: string | null;
+  updateTime: string | null;
+  updateUserEmail: string | null;
+}
+
+export interface GetAdminReleaseControlsResponse {
+  success: true;
+  controls: AdminReleaseControls;
+}
+
+export interface UpdateAdminReleaseControlsRequest {
+  forceUpdateVersion: string;
+  recommendedVersion: string;
+  appStoreURL: string;
+  privacyPolicyURL: string;
+  termsOfServiceURL: string;
+  supportEmail: string;
+  notionFAQDatabaseId: string;
+}
+
+export interface UpdateAdminReleaseControlsResponse {
+  success: true;
+  controls: AdminReleaseControls;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorId: string | null;
+  action: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  before: unknown;
+  after: unknown;
+  createdAt: string | null;
+}
+
+export interface GetAdminAuditLogsRequest {
+  limit?: number;
+}
+
+export interface GetAdminAuditLogsResponse {
+  success: true;
+  logs: AdminAuditLog[];
+}
+
+export interface AdminDashboardSummary {
+  totalUsers: number;
+  proUsers: number;
+  freeUsers: number;
+  activeOverrides: number;
+  totalAdmins: number;
+  pushJobCount: number;
+  auditLogCount: number;
+  remoteConfigVersion: string | null;
+  remoteConfigUpdatedAt: string | null;
+}
+
+export interface GetAdminDashboardSummaryResponse {
+  success: true;
+  summary: AdminDashboardSummary;
+}

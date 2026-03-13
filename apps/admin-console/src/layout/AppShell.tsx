@@ -19,22 +19,39 @@ import {
 } from "@mui/material";
 import {Outlet, useLocation, useNavigate} from "react-router-dom";
 import {useAuth} from "../auth/AuthProvider";
+import {AdminRole, hasAdminRole} from "../auth/adminRoles";
 
 const drawerWidth = 260;
 
 const navItems = [
-  {label: "Dashboard", path: "/dashboard", icon: <HomeRoundedIcon />},
-  {label: "Users", path: "/users", icon: <PeopleRoundedIcon />},
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    icon: <HomeRoundedIcon />,
+  },
+  {
+    label: "Users",
+    path: "/users",
+    icon: <PeopleRoundedIcon />,
+    allowedRoles: ["owner", "support"] as AdminRole[],
+  },
   {
     label: "Entitlements",
     path: "/entitlements",
     icon: <WorkspacePremiumRoundedIcon />,
+    allowedRoles: ["owner", "support"] as AdminRole[],
   },
-  {label: "Push Jobs", path: "/push-jobs", icon: <CampaignRoundedIcon />},
+  {
+    label: "Push Jobs",
+    path: "/push-jobs",
+    icon: <CampaignRoundedIcon />,
+    allowedRoles: ["owner", "marketer"] as AdminRole[],
+  },
   {
     label: "Release Controls",
     path: "/release-controls",
     icon: <TuneRoundedIcon />,
+    allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {label: "Audit Logs", path: "/audit-logs", icon: <HistoryRoundedIcon />},
 ];
@@ -43,6 +60,9 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const {adminSession, user, signOutUser} = useAuth();
+  const visibleNavItems = navItems.filter((item) =>
+    hasAdminRole(adminSession?.role, item.allowedRoles)
+  );
 
   return (
     <Box sx={{display: "flex", minHeight: "100vh"}}>
@@ -105,7 +125,7 @@ export function AppShell() {
           </Stack>
         </Toolbar>
         <List sx={{px: 1}}>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const selected = location.pathname === item.path;
             return (
               <ListItemButton

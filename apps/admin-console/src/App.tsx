@@ -1,6 +1,8 @@
 import {Box, CircularProgress} from "@mui/material";
+import type {ReactElement} from "react";
 import {Navigate, Route, Routes} from "react-router-dom";
 import {useAuth} from "./auth/AuthProvider";
+import {AdminRole, hasAdminRole} from "./auth/adminRoles";
 import {AppShell} from "./layout/AppShell";
 import {AuditLogsPage} from "./pages/AuditLogsPage";
 import {DashboardPage} from "./pages/DashboardPage";
@@ -53,6 +55,19 @@ function PublicOnlyRoute() {
   return <LoginPage />;
 }
 
+function RoleProtectedRoute(props: {
+  allowedRoles?: AdminRole[];
+  children: ReactElement;
+}) {
+  const {adminSession} = useAuth();
+
+  if (!hasAdminRole(adminSession?.role, props.allowedRoles)) {
+    return <Navigate replace to="/dashboard" />;
+  }
+
+  return props.children;
+}
+
 export function App() {
   return (
     <Routes>
@@ -60,10 +75,38 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route index element={<Navigate replace to="/dashboard" />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/entitlements" element={<EntitlementsPage />} />
-        <Route path="/push-jobs" element={<PushJobsPage />} />
-        <Route path="/release-controls" element={<ReleaseControlsPage />} />
+        <Route
+          path="/users"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "support"]}>
+              <UsersPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/entitlements"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "support"]}>
+              <EntitlementsPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/push-jobs"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
+              <PushJobsPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/release-controls"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
+              <ReleaseControlsPage />
+            </RoleProtectedRoute>
+          }
+        />
         <Route path="/audit-logs" element={<AuditLogsPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="/dashboard" />} />

@@ -14,6 +14,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import type {AdminRole} from "./adminRoles";
 import {firebaseAuth, firebaseFunctions, isFirebaseConfigured} from "../lib/firebase";
 
 type AuthStatus =
@@ -22,8 +23,6 @@ type AuthStatus =
   | "signedOut"
   | "unconfigured"
   | "forbidden";
-
-type AdminRole = "owner" | "support" | "marketer";
 
 type AdminSession = {
   success: true;

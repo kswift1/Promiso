@@ -134,10 +134,14 @@ export {
 // ============================================================================
 export {
   getAdminSession,
+  getAdminDashboardSummary,
+  getAdminAuditLogs,
   getAdminUserSummary,
+  getAdminReleaseControls,
   grantEntitlementOverride,
   revokeEntitlementOverride,
   sendAdminPush,
+  updateAdminReleaseControls,
 } from "./functions/admin";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================
