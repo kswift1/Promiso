@@ -10,6 +10,7 @@ import {EntitlementsPage} from "./pages/EntitlementsPage";
 import {LoginPage} from "./pages/LoginPage";
 import {PushJobsPage} from "./pages/PushJobsPage";
 import {ReleaseControlsPage} from "./pages/ReleaseControlsPage";
+import {UserTimelinePage} from "./pages/UserTimelinePage";
 import {UsersPage} from "./pages/UsersPage";
 
 function LoadingScreen() {
@@ -75,6 +76,14 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route index element={<Navigate replace to="/dashboard" />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/users/:userId/timeline"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "support"]}>
+              <UserTimelinePage />
+            </RoleProtectedRoute>
+          }
+        />
         <Route
           path="/users"
           element={

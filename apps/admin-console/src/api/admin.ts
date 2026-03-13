@@ -16,6 +16,27 @@ export type AdminUserSummary = {
   overrideActive: boolean;
 };
 
+export type AdminSubscriptionSnapshot = {
+  status: string | null;
+  productId: string | null;
+  expirationDate: string | null;
+  purchaseDate: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminEntitlementOverrideSnapshot = {
+  isActive: boolean;
+  type: string | null;
+  reason: string | null;
+  expiresAt: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+  revokedAt: string | null;
+  updatedAt: string | null;
+};
+
 type GetAdminUserSummaryRequest = {
   query?: string;
   field?: AdminUserSearchField;
@@ -27,6 +48,26 @@ type GetAdminUserSummaryRequest = {
 type GetAdminUserSummaryResponse = {
   success: true;
   results: AdminUserSummary[];
+};
+
+type GetAdminUserTimelineRequest = {
+  userId: string;
+  limit?: number;
+};
+
+export type AdminUserTimeline = {
+  summary: AdminUserSummary;
+  subscription: AdminSubscriptionSnapshot;
+  override: AdminEntitlementOverrideSnapshot | null;
+  auditLogs: AdminAuditLog[];
+};
+
+type GetAdminUserTimelineResponse = {
+  success: true;
+  summary: AdminUserSummary;
+  subscription: AdminSubscriptionSnapshot;
+  override: AdminEntitlementOverrideSnapshot | null;
+  auditLogs: AdminAuditLog[];
 };
 
 type GrantEntitlementOverrideRequest = {
@@ -158,6 +199,27 @@ export async function getAdminUserSummary(params: {
   >(firebaseFunctions, "getAdminUserSummary");
   const result = await callable(params);
   return result.data.results;
+}
+
+export async function getAdminUserTimeline(params: {
+  userId: string;
+  limit?: number;
+}): Promise<AdminUserTimeline> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminUserTimelineRequest,
+    GetAdminUserTimelineResponse
+  >(firebaseFunctions, "getAdminUserTimeline");
+  const result = await callable(params);
+  return {
+    summary: result.data.summary,
+    subscription: result.data.subscription,
+    override: result.data.override,
+    auditLogs: result.data.auditLogs,
+  };
 }
 
 export async function grantEntitlementOverride(params: {

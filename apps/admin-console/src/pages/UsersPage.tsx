@@ -227,14 +227,24 @@ export function UsersPage() {
                       {user.email ?? "email unavailable"}
                     </Typography>
 
-                    <Button
-                      component={RouterLink}
-                      to={`/entitlements?userId=${user.userId}`}
-                      variant="text"
-                      sx={{alignSelf: "flex-start"}}
-                    >
-                      Manage entitlement
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        component={RouterLink}
+                        to={`/users/${user.userId}/timeline`}
+                        variant="contained"
+                        size="small"
+                      >
+                        View timeline
+                      </Button>
+                      <Button
+                        component={RouterLink}
+                        to={`/entitlements?userId=${user.userId}`}
+                        variant="text"
+                        size="small"
+                      >
+                        Manage entitlement
+                      </Button>
+                    </Stack>
                   </Stack>
                 </CardContent>
               </Card>

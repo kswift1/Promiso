@@ -39,6 +39,7 @@ describe("admin functions", () => {
   let getAdminDashboardSummary: any;
   let getAdminAuditLogs: any;
   let getAdminUserSummary: any;
+  let getAdminUserTimeline: any;
   let getAdminReleaseControls: any;
   let grantEntitlementOverride: any;
   let revokeEntitlementOverride: any;
@@ -277,6 +278,7 @@ describe("admin functions", () => {
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
     getAdminUserSummary = functions.getAdminUserSummary;
+    getAdminUserTimeline = functions.getAdminUserTimeline;
     getAdminReleaseControls = functions.getAdminReleaseControls;
     grantEntitlementOverride = functions.grantEntitlementOverride;
     revokeEntitlementOverride = functions.revokeEntitlementOverride;
@@ -481,6 +483,150 @@ describe("admin functions", () => {
         subscriptionStatus: "subscribed",
         overrideActive: true,
       }],
+    });
+  });
+
+  it("user timeline을 현재 상태와 audit log로 반환한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("target-user", {
+      name: "성원",
+      nickname: "kswift",
+      email: "kswen@promiso.app",
+      groups: {
+        g1: {role: "admin"},
+      },
+      devices: {
+        d1: {platform: "ios"},
+      },
+    });
+    subscriptionData.set("target-user", {
+      status: "subscribed",
+      productId: "promiso.pro.monthly",
+      expirationDate: "2026-04-13T00:00:00.000Z",
+      purchaseDate: "2026-03-13T00:00:00.000Z",
+      updatedAt: {
+        toDate: () => new Date("2026-03-13T03:00:00.000Z"),
+      },
+    });
+    overrideData.set("target-user", {
+      isActive: true,
+      type: "manual_pro_grant",
+      reason: "CS compensation",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+      createdBy: "admin-user",
+      createdAt: {
+        toDate: () => new Date("2026-03-13T04:00:00.000Z"),
+      },
+      updatedAt: {
+        toDate: () => new Date("2026-03-13T04:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "admin-user",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "target-user",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T05:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "admin-user",
+      action: "update_release_controls",
+      targetType: "remote_config",
+      targetId: "default",
+      before: null,
+      after: {recommendedVersion: "1.2.0"},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T06:00:00.000Z"),
+      },
+    });
+
+    const handler = (getAdminUserTimeline as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-user",
+        limit: 20,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      summary: {
+        userId: "target-user",
+        name: "성원",
+        nickname: "kswift",
+        email: "kswen@promiso.app",
+        groupCount: 1,
+        deviceCount: 1,
+        subscriptionStatus: "subscribed",
+        overrideActive: true,
+      },
+      subscription: {
+        status: "subscribed",
+        productId: "promiso.pro.monthly",
+        expirationDate: "2026-04-13T00:00:00.000Z",
+        purchaseDate: "2026-03-13T00:00:00.000Z",
+        updatedAt: "2026-03-13T03:00:00.000Z",
+      },
+      override: {
+        isActive: true,
+        type: "manual_pro_grant",
+        reason: "CS compensation",
+        expiresAt: "2026-04-30T00:00:00.000Z",
+        createdBy: "admin-user",
+        createdAt: "2026-03-13T04:00:00.000Z",
+        revokedBy: null,
+        revokedReason: null,
+        revokedAt: null,
+        updatedAt: "2026-03-13T04:00:00.000Z",
+      },
+      auditLogs: [
+        {
+          id: "log-1",
+          actorId: "admin-user",
+          action: "grant_entitlement_override",
+          targetType: "user",
+          targetId: "target-user",
+          before: null,
+          after: {isActive: true},
+          createdAt: "2026-03-13T05:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  it("marketer는 user timeline을 조회할 수 없다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (getAdminUserTimeline as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "target-user",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
     });
   });
 

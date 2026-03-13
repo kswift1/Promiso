@@ -45,6 +45,40 @@ export interface GetAdminUserSummaryResponse {
   results: AdminUserSummary[];
 }
 
+export interface AdminSubscriptionSnapshot {
+  status: string | null;
+  productId: string | null;
+  expirationDate: string | null;
+  purchaseDate: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminEntitlementOverrideSnapshot {
+  isActive: boolean;
+  type: string | null;
+  reason: string | null;
+  expiresAt: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+  revokedAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface GetAdminUserTimelineRequest {
+  userId: string;
+  limit?: number;
+}
+
+export interface GetAdminUserTimelineResponse {
+  success: true;
+  summary: AdminUserSummary;
+  subscription: AdminSubscriptionSnapshot;
+  override: AdminEntitlementOverrideSnapshot | null;
+  auditLogs: AdminAuditLog[];
+}
+
 export interface GrantEntitlementOverrideRequest {
   userId: string;
   reason: string;

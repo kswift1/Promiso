@@ -137,6 +137,7 @@ export {
   getAdminDashboardSummary,
   getAdminAuditLogs,
   getAdminUserSummary,
+  getAdminUserTimeline,
   getAdminReleaseControls,
   grantEntitlementOverride,
   revokeEntitlementOverride,

@@ -8,10 +8,12 @@ import {admin, REGION} from "../config";
 import {
   AdminAuditLog,
   AdminOverrideFilter,
+  AdminEntitlementOverrideSnapshot,
   AdminDashboardSummary,
   AdminReleaseControls,
   AdminPushAudience,
   AdminRole,
+  AdminSubscriptionSnapshot,
   AdminSubscriptionFilter,
   AdminUserDocument,
   AdminUserSearchField,
@@ -25,6 +27,8 @@ import {
   GetAdminReleaseControlsResponse,
   GetAdminUserSummaryRequest,
   GetAdminUserSummaryResponse,
+  GetAdminUserTimelineRequest,
+  GetAdminUserTimelineResponse,
   RevokeEntitlementOverrideRequest,
   RevokeEntitlementOverrideResponse,
   SendAdminPushRequest,
@@ -223,6 +227,20 @@ async function buildUserSummary(
     .doc(userId)
     .get();
 
+  return buildUserSummaryPayload(
+    userId,
+    userData,
+    subscriptionSnapshot.data() as Record<string, unknown> | undefined,
+    overrideSnapshot.data() as Record<string, unknown> | undefined
+  );
+}
+
+function buildUserSummaryPayload(
+  userId: string,
+  userData: Record<string, unknown>,
+  subscriptionData?: Record<string, unknown>,
+  overrideData?: Record<string, unknown>
+): AdminUserSummary {
   const groups = userData.groups && typeof userData.groups === "object" ?
     userData.groups as Record<string, unknown> :
     {};
@@ -238,11 +256,10 @@ async function buildUserSummary(
     groupCount: Object.keys(groups).length,
     deviceCount: Object.keys(devices).length,
     subscriptionStatus:
-      typeof subscriptionSnapshot.data()?.status === "string" ?
-        subscriptionSnapshot.data()?.status :
+      typeof subscriptionData?.status === "string" ?
+        subscriptionData.status :
         null,
-    overrideActive: overrideSnapshot.exists &&
-      overrideSnapshot.data()?.isActive === true,
+    overrideActive: overrideData?.isActive === true,
   };
 }
 
@@ -488,6 +505,38 @@ function buildAdminAuditLog(
   };
 }
 
+function buildAdminSubscriptionSnapshot(
+  data?: Record<string, unknown>
+): AdminSubscriptionSnapshot {
+  return {
+    status: typeof data?.status === "string" ? data.status : null,
+    productId: typeof data?.productId === "string" ? data.productId : null,
+    expirationDate:
+      typeof data?.expirationDate === "string" ? data.expirationDate : null,
+    purchaseDate:
+      typeof data?.purchaseDate === "string" ? data.purchaseDate : null,
+    updatedAt: toIsoString(data?.updatedAt),
+  };
+}
+
+function buildAdminEntitlementOverrideSnapshot(
+  data: Record<string, unknown>
+): AdminEntitlementOverrideSnapshot {
+  return {
+    isActive: data.isActive === true,
+    type: typeof data.type === "string" ? data.type : null,
+    reason: typeof data.reason === "string" ? data.reason : null,
+    expiresAt: typeof data.expiresAt === "string" ? data.expiresAt : null,
+    createdBy: typeof data.createdBy === "string" ? data.createdBy : null,
+    createdAt: toIsoString(data.createdAt),
+    revokedBy: typeof data.revokedBy === "string" ? data.revokedBy : null,
+    revokedReason:
+      typeof data.revokedReason === "string" ? data.revokedReason : null,
+    revokedAt: toIsoString(data.revokedAt),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
 /**
  * Ensures a required string field exists.
  * @param {string | undefined} value The candidate value.
@@ -718,6 +767,67 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
     return {
       success: true,
       results: filteredResults,
+    };
+  }
+);
+
+export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
+  {region: REGION},
+  async (request): Promise<GetAdminUserTimelineResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const adminUser = await getAdminUserDocument(request.auth.uid);
+    requireAdminRole(adminUser, ["owner", "support"]);
+
+    const userId = request.data.userId?.trim();
+    if (!userId) {
+      throw new HttpsError("invalid-argument", "userId는 필수입니다");
+    }
+
+    const requestedLimit = request.data.limit ?? 20;
+    const limit = Math.min(Math.max(requestedLimit, 1), 50);
+    const db = admin.firestore();
+    const [userSnapshot, subscriptionSnapshot, overrideSnapshot, auditSnapshot] =
+      await Promise.all([
+        db.collection("users").doc(userId).get(),
+        db.collection("subscriptions").doc(userId).get(),
+        db.collection("entitlementOverrides").doc(userId).get(),
+        db.collection("adminAuditLogs").orderBy("createdAt", "desc").get(),
+      ]);
+
+    const userData = userSnapshot.data();
+    if (!userSnapshot.exists || !userData) {
+      throw new HttpsError("not-found", "대상 사용자를 찾을 수 없습니다");
+    }
+
+    const summary = buildUserSummaryPayload(
+      userId,
+      userData as Record<string, unknown>,
+      subscriptionSnapshot.data() as Record<string, unknown> | undefined,
+      overrideSnapshot.data() as Record<string, unknown> | undefined
+    );
+    const auditLogs = auditSnapshot.docs
+      .map((doc) =>
+        buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
+      )
+      .filter((log) => log.targetId === userId)
+      .slice(0, limit);
+
+    return {
+      success: true,
+      summary,
+      subscription: buildAdminSubscriptionSnapshot(
+        subscriptionSnapshot.data() as Record<string, unknown> | undefined
+      ),
+      override:
+        overrideSnapshot.exists && overrideSnapshot.data() ?
+          buildAdminEntitlementOverrideSnapshot(
+            overrideSnapshot.data() as Record<string, unknown>
+          ) :
+          null,
+      auditLogs,
     };
   }
 );
