@@ -348,25 +348,18 @@ extension CalendarFeature {
           guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
             return []
           }
+          var dates: [Date] = []
+          var currentDate = monthStart
 
-          var allDates = Set(schedulesByDate.keys)
-          allDates.formUnion(calendarEventsByDate.keys)
-          allDates.formUnion(personalEventsByDate.keys)
-          allDates.formUnion(holidaysByDate.keys)
-          // 반복 일정 날짜 포함
-          if showPersonalEvents {
-            let cal = Calendar.current
-            let instances = recurringEvents.flatMap {
-              RecurringEventExpander.expand(event: $0, from: monthStart, to: monthEnd)
+          while currentDate < monthEnd {
+            dates.append(currentDate)
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
+              break
             }
-            for instance in instances {
-              allDates.insert(cal.startOfDay(for: instance.startAt))
-            }
+            currentDate = nextDate
           }
 
-          return allDates
-            .filter { $0 >= monthStart && $0 < monthEnd }
-            .sorted()
+          return dates
         }
       }
 
