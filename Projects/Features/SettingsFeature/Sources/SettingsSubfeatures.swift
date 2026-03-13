@@ -503,12 +503,7 @@ extension LanguageSettings {
     }
 
     private var currentLanguage: AppLanguage {
-      if store.preferredLanguage.isEmpty {
-        // 시스템 기본 - 현재 시스템 언어 감지
-        let systemLang = Locale.current.language.languageCode?.identifier ?? "ko"
-        return AppLanguage(rawValue: systemLang) ?? .korean
-      }
-      return AppLanguage(rawValue: store.preferredLanguage) ?? .korean
+      AppLanguage(rawValue: store.preferredLanguage) ?? AppLanguage.resolved
     }
 
     public var body: some View {

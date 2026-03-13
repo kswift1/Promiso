@@ -19,6 +19,8 @@ struct PromisoApp: App {
       UserDefaults.standard.set(AppConstants.ThemeMode.system.rawValue, forKey: AppConstants.UserDefaults.preferredThemeMode)
     }
 
+    AppLanguage.initializeIfNeeded()
+
     // 선호 언어 번들 설정
     LocalizedStrings.configure()
   }
