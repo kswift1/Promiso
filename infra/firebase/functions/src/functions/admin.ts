@@ -1485,17 +1485,10 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
     const overrideFilter = normalizeOverrideFilter(request.data.override);
     const requestedLimit = request.data.limit ?? 25;
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
-
-    if (
+    const isDefaultBrowseRequest =
       !query &&
       subscriptionFilter === "all" &&
-      overrideFilter === "all"
-    ) {
-      throw new HttpsError(
-        "invalid-argument",
-        "검색어 또는 상태 필터가 필요합니다"
-      );
-    }
+      overrideFilter === "all";
 
     const adminUser = await getAdminUserDocument(request.auth.uid);
     requireAdminRole(adminUser, ["owner", "support"]);
@@ -1541,7 +1534,9 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
         });
       }
     } else {
-      const usersSnapshot = await usersCollection.get();
+      const usersSnapshot = isDefaultBrowseRequest ?
+        await usersCollection.limit(limit).get() :
+        await usersCollection.get();
       usersSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         if (data) {

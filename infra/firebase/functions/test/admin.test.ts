@@ -204,6 +204,13 @@ describe("admin functions", () => {
                 createMockDocument(id, usersData)
               ),
             })),
+            limit: jest.fn((limitValue: number) => ({
+              get: jest.fn().mockResolvedValue({
+                docs: [...usersData.keys()]
+                  .slice(0, limitValue)
+                  .map((id) => createMockDocument(id, usersData)),
+              }),
+            })),
             where: jest.fn((field: string, _operator: string, value: string) => ({
               limit: jest.fn(() => ({
                 get: jest.fn().mockResolvedValue({
@@ -816,15 +823,22 @@ describe("admin functions", () => {
     });
   });
 
-  it("검색어가 비어 있으면 invalid-argument", async () => {
+  it("검색어와 필터가 비어 있으면 기본 사용자 요약을 반환한다", async () => {
     adminUsersData.set("admin-user", {
       role: "owner",
       enabled: true,
     });
+    usersData.set("user-b", {
+      nickname: "beta",
+      email: "beta@promiso.app",
+    });
+    usersData.set("user-a", {
+      nickname: "alpha",
+      email: "alpha@promiso.app",
+    });
 
     const handler = (getAdminUserSummary as any).run;
-
-    await expect(handler({
+    const result = await handler({
       data: {query: "   "},
       auth: {
         uid: "admin-user",
@@ -832,8 +846,32 @@ describe("admin functions", () => {
           email: "admin@promiso.app",
         },
       },
-    })).rejects.toMatchObject({
-      code: "invalid-argument",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      results: [
+        {
+          userId: "user-a",
+          name: null,
+          nickname: "alpha",
+          email: "alpha@promiso.app",
+          groupCount: 0,
+          deviceCount: 0,
+          subscriptionStatus: null,
+          overrideActive: false,
+        },
+        {
+          userId: "user-b",
+          name: null,
+          nickname: "beta",
+          email: "beta@promiso.app",
+          groupCount: 0,
+          deviceCount: 0,
+          subscriptionStatus: null,
+          overrideActive: false,
+        },
+      ],
     });
   });
 

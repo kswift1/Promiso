@@ -31,24 +31,19 @@ const defaultSearchFilters = {
 
 export function UsersPage() {
   const [filters, setFilters] = useState(defaultSearchFilters);
-  const [submittedFilters, setSubmittedFilters] = useState<
-    typeof defaultSearchFilters | null
-  >(null);
+  const [submittedFilters, setSubmittedFilters] = useState(
+    defaultSearchFilters
+  );
   const query = useQuery({
     queryKey: ["admin-user-summary", submittedFilters],
     queryFn: () => getAdminUserSummary({
       ...submittedFilters,
-      query: submittedFilters?.query || undefined,
+      query: submittedFilters.query || undefined,
     }),
-    enabled: submittedFilters != null,
   });
-  const canSubmit = filters.query.trim().length > 0 ||
-    filters.subscription !== "all" ||
-    filters.override !== "all";
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit) return;
 
     setSubmittedFilters({
       ...filters,
@@ -69,8 +64,8 @@ export function UsersPage() {
         <CardContent>
           <Stack component="form" spacing={2} onSubmit={handleSubmit}>
             <Alert severity="info">
-              검색어는 exact match 기준입니다. 검색어 없이 상태 필터만으로도
-              최대 25명까지 조회할 수 있습니다.
+              검색어는 exact match 기준입니다. 화면 진입 시 기본 25명을 먼저
+              보여주고, 검색/필터를 적용하면 결과를 다시 조회합니다.
             </Alert>
 
             <TextField
@@ -155,7 +150,7 @@ export function UsersPage() {
                 variant="text"
                 onClick={() => {
                   setFilters(defaultSearchFilters);
-                  setSubmittedFilters(null);
+                  setSubmittedFilters(defaultSearchFilters);
                 }}
               >
                 Reset
@@ -188,7 +183,7 @@ export function UsersPage() {
         </Alert>
       )}
 
-      {submittedFilters && query.data && query.data.length === 0 && (
+      {query.data && query.data.length === 0 && (
         <Alert severity="info">
           일치하는 사용자를 찾지 못했습니다.
         </Alert>
