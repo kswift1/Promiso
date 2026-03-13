@@ -440,6 +440,26 @@ effectivePro = active subscription OR active entitlement override
 - webhook failure visibility
 - push history
 - filtering 개선
+- operational analytics MVP
+  - GA4 recent events
+  - BigQuery historical funnel
+
+### Phase 3 TODO. Analytics External Setup
+- [x] 운영 콘솔 Dashboard에 analytics MVP UI 추가
+- [x] `getAdminAnalyticsSummary` callable 추가
+- [x] stage GA4 property ID 확인 (`528306317`)
+- [ ] `promiso-stage`에서 Google Analytics -> BigQuery export 활성화 완료
+- [ ] BigQuery dataset 생성 확인
+  - 예상 dataset: `analytics_528306317`
+  - 추천 location: `US`
+- [ ] stage 앱에서 실제 analytics 이벤트 유입 확인
+  - 참고: DEBUG 빌드는 기본적으로 analytics가 비활성화됨
+  - Xcode 실행 시 `-FIRDebugEnabled` 또는 `PROMISO_ANALYTICS_DEBUG=1` 필요
+- [ ] `getAdminAnalyticsSummary` 런타임 서비스 계정에 GA4 property 읽기 권한 부여
+- [ ] BigQuery dataset read 권한 + project `jobUser` 권한 부여
+- [ ] `infra/firebase/functions/.env.promiso-stage`에 analytics params 입력
+- [ ] `firebase deploy --only functions:getAdminAnalyticsSummary --project promiso-stage`
+- [ ] stage Dashboard에서 live analytics 숫자 확인
 
 ---
 
