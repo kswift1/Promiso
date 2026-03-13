@@ -135,6 +135,7 @@ export {
 export {
   getAdminSession,
   getAdminDashboardSummary,
+  getAdminAnalyticsSummary,
   getAdminAuditLogs,
   getAdminPushJobs,
   getAdminUsers,

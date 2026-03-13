@@ -10,16 +10,31 @@ import {
 } from "@jest/globals";
 
 const sendPushNotificationInternalMock = jest.fn();
+const getAdminAnalyticsSummaryDataMock = jest.fn();
+const stringParamValues: Record<string, string> = {
+  GA4_PROPERTY_ID: "test-ga4-property",
+  ANALYTICS_BIGQUERY_PROJECT_ID: "test-analytics-project",
+  ANALYTICS_BIGQUERY_DATASET_ID: "analytics_dataset",
+  ANALYTICS_BIGQUERY_LOCATION: "US",
+};
 
 jest.mock("firebase-functions/params", () => ({
   defineSecret: jest.fn(() => ({
     value: () => "test-secret-value",
+  })),
+  defineString: jest.fn((name: string, options?: {default?: string}) => ({
+    value: () => stringParamValues[name] ?? options?.default ?? "",
   })),
 }));
 
 jest.mock("../src/functions/notifications", () => ({
   sendPushNotificationInternal: (...args: unknown[]) =>
     sendPushNotificationInternalMock(...args),
+}));
+
+jest.mock("../src/utils/adminAnalytics", () => ({
+  getAdminAnalyticsSummaryData: (...args: unknown[]) =>
+    getAdminAnalyticsSummaryDataMock(...args),
 }));
 
 function createMockDocument(
@@ -37,6 +52,7 @@ function createMockDocument(
 describe("admin functions", () => {
   let getAdminSession: any;
   let getAdminDashboardSummary: any;
+  let getAdminAnalyticsSummary: any;
   let getAdminAuditLogs: any;
   let getAdminPushJobs: any;
   let getAdminUsers: any;
@@ -72,6 +88,24 @@ describe("admin functions", () => {
       success: true,
       successCount: 1,
       failureCount: 0,
+    });
+    getAdminAnalyticsSummaryDataMock.mockResolvedValue({
+      windowDays: 7,
+      ga4: {
+        available: true,
+        note: null,
+        signups: 10,
+        logins: 20,
+        paywallOpens: 7,
+        paywallPurchases: 3,
+      },
+      bigQuery: {
+        available: true,
+        note: null,
+        signups: 8,
+        paywallOpens: 6,
+        paywallPurchases: 2,
+      },
     });
 
     adminUsersData = new Map();
@@ -343,6 +377,7 @@ describe("admin functions", () => {
     const functions = await import("../src/functions/admin");
     getAdminSession = functions.getAdminSession;
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
+    getAdminAnalyticsSummary = functions.getAdminAnalyticsSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
     getAdminPushJobs = functions.getAdminPushJobs;
     getAdminUsers = functions.getAdminUsers;
@@ -991,6 +1026,105 @@ describe("admin functions", () => {
         remoteConfigUpdatedAt: "2026-03-13T00:00:00.000Z",
       },
     });
+  });
+
+  it("analytics summary를 조회한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    getAdminAnalyticsSummaryDataMock.mockResolvedValueOnce({
+      windowDays: 30,
+      ga4: {
+        available: true,
+        note: null,
+        signups: 42,
+        logins: 77,
+        paywallOpens: 15,
+        paywallPurchases: 5,
+      },
+      bigQuery: {
+        available: true,
+        note: null,
+        signups: 33,
+        paywallOpens: 12,
+        paywallPurchases: 4,
+      },
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    const result = await handler({
+      data: {windowDays: 30},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(30);
+    expect(result).toEqual({
+      success: true,
+      summary: {
+        windowDays: 30,
+        ga4: {
+          available: true,
+          note: null,
+          signups: 42,
+          logins: 77,
+          paywallOpens: 15,
+          paywallPurchases: 5,
+        },
+        bigQuery: {
+          available: true,
+          note: null,
+          signups: 33,
+          paywallOpens: 12,
+          paywallPurchases: 4,
+        },
+      },
+    });
+  });
+
+  it("analytics window가 없으면 기본값 7일을 사용한다", async () => {
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    await handler({
+      data: {},
+      auth: {
+        uid: "support-user",
+        token: {
+          email: "support@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(7);
+  });
+
+  it("analytics window는 1/7/30일 preset만 허용한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    await handler({
+      data: {windowDays: 99},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(7);
   });
 
   it("audit log를 최신순으로 조회한다", async () => {

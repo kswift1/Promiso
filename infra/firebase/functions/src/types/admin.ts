@@ -313,6 +313,40 @@ export interface GetAdminAuditLogsResponse {
   logs: AdminAuditLog[];
 }
 
+export type AdminAnalyticsWindowDays = 1 | 7 | 30;
+
+export interface AdminAnalyticsGa4Summary {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  logins: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+}
+
+export interface AdminAnalyticsBigQuerySummary {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+}
+
+export interface AdminAnalyticsSummary {
+  windowDays: AdminAnalyticsWindowDays;
+  ga4: AdminAnalyticsGa4Summary;
+  bigQuery: AdminAnalyticsBigQuerySummary;
+}
+
+export interface GetAdminAnalyticsSummaryRequest {
+  windowDays?: AdminAnalyticsWindowDays;
+}
+
+export interface GetAdminAnalyticsSummaryResponse {
+  success: true;
+  summary: AdminAnalyticsSummary;
+}
+
 export interface AdminDashboardSummary {
   totalUsers: number;
   proUsers: number;

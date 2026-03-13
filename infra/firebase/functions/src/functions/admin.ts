@@ -9,6 +9,7 @@ import {admin, REGION} from "../config";
 import {
   AdminAccount,
   AdminAuditLog,
+  AdminAnalyticsWindowDays,
   AdminOverrideFilter,
   AdminEntitlementOverrideSnapshot,
   AdminDashboardSummary,
@@ -29,6 +30,8 @@ import {
   GrantEntitlementOverrideResponse,
   GetAdminAuditLogsRequest,
   GetAdminAuditLogsResponse,
+  GetAdminAnalyticsSummaryRequest,
+  GetAdminAnalyticsSummaryResponse,
   GetAdminDashboardSummaryResponse,
   GetAdminPushJobsRequest,
   GetAdminPushJobsResponse,
@@ -54,6 +57,7 @@ import {
   UpdateAdminReleaseControlsRequest,
   UpdateAdminReleaseControlsResponse,
 } from "../types/admin";
+import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
 import {sendPushNotificationInternal} from "./notifications";
 import {NotificationType} from "../types/api";
 
@@ -563,6 +567,25 @@ export const getAdminDashboardSummary = onCall<Record<string, never>>(
     };
   }
 );
+
+export const getAdminAnalyticsSummary =
+  onCall<GetAdminAnalyticsSummaryRequest>(
+    {region: REGION},
+    async (request): Promise<GetAdminAnalyticsSummaryResponse> => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+      }
+
+      await getAdminUserDocument(request.auth.uid);
+
+      return {
+        success: true,
+        summary: await getAdminAnalyticsSummaryData(
+          normalizeAnalyticsWindowDays(request.data.windowDays)
+        ),
+      };
+    }
+  );
 
 /**
  * Builds a small live summary for the admin dashboard.
@@ -1079,6 +1102,17 @@ function normalizePushJobStatus(
   value: unknown
 ): AdminPushJobStatus | "all" {
   return isAdminPushJobStatus(value) ? value : "all";
+}
+
+/**
+ * Normalizes analytics window input to supported presets.
+ * @param {unknown} value The requested window value.
+ * @return {AdminAnalyticsWindowDays} The normalized window.
+ */
+function normalizeAnalyticsWindowDays(
+  value: unknown
+): AdminAnalyticsWindowDays {
+  return value === 1 || value === 7 || value === 30 ? value : 7;
 }
 
 /**

@@ -3,7 +3,7 @@
  */
 import * as admin from "firebase-admin";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {defineSecret} from "firebase-functions/params";
+import {defineSecret, defineString} from "firebase-functions/params";
 import {
   logEnvironmentInfo,
   getCurrentEnvironment,
@@ -43,6 +43,23 @@ export const ODSAY_API_KEY = defineSecret("ODSAY_API_KEY");
 
 // Kakao REST API 시크릿 (장소 검색 + Mobility)
 export const KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
+
+// Analytics 조회 설정
+export const GA4_PROPERTY_ID = defineString("GA4_PROPERTY_ID", {
+  default: "",
+});
+export const ANALYTICS_BIGQUERY_PROJECT_ID = defineString(
+  "ANALYTICS_BIGQUERY_PROJECT_ID",
+  {default: ""}
+);
+export const ANALYTICS_BIGQUERY_DATASET_ID = defineString(
+  "ANALYTICS_BIGQUERY_DATASET_ID",
+  {default: ""}
+);
+export const ANALYTICS_BIGQUERY_LOCATION = defineString(
+  "ANALYTICS_BIGQUERY_LOCATION",
+  {default: ""}
+);
 
 // APNs 호스트 설정
 export const APNS_HOST_PRODUCTION = "api.push.apple.com";

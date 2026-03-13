@@ -272,6 +272,31 @@ export type AdminAuditLog = {
   createdAt: string | null;
 };
 
+export type AdminAnalyticsWindowDays = 1 | 7 | 30;
+
+export type AdminAnalyticsGa4Summary = {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  logins: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+};
+
+export type AdminAnalyticsBigQuerySummary = {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+};
+
+export type AdminAnalyticsSummary = {
+  windowDays: AdminAnalyticsWindowDays;
+  ga4: AdminAnalyticsGa4Summary;
+  bigQuery: AdminAnalyticsBigQuerySummary;
+};
+
 export type AdminDashboardSummary = {
   totalUsers: number;
   proUsers: number;
@@ -320,6 +345,15 @@ type GetAdminAuditLogsResponse = {
 type GetAdminDashboardSummaryResponse = {
   success: true;
   summary: AdminDashboardSummary;
+};
+
+type GetAdminAnalyticsSummaryRequest = {
+  windowDays?: AdminAnalyticsWindowDays;
+};
+
+type GetAdminAnalyticsSummaryResponse = {
+  success: true;
+  summary: AdminAnalyticsSummary;
 };
 
 export async function getAdminUserSummary(params: {
@@ -584,5 +618,20 @@ Promise<AdminDashboardSummary> {
     GetAdminDashboardSummaryResponse
   >(firebaseFunctions, "getAdminDashboardSummary");
   const result = await callable({});
+  return result.data.summary;
+}
+
+export async function getAdminAnalyticsSummary(params?: {
+  windowDays?: AdminAnalyticsWindowDays;
+}): Promise<AdminAnalyticsSummary> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminAnalyticsSummaryRequest,
+    GetAdminAnalyticsSummaryResponse
+  >(firebaseFunctions, "getAdminAnalyticsSummary");
+  const result = await callable(params ?? {});
   return result.data.summary;
 }
