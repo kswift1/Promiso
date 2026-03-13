@@ -77,6 +77,22 @@ describe("briefing scheduling helpers", () => {
     expect(projection).not.toBeNull();
   });
 
+  it("dispatch 시각 계산이 불가능하면 projection 계산은 예외를 던진다", () => {
+    expect(() => buildBriefingSubscriptionProjection({
+      settingsData: {
+        proSettings: {
+          briefing: {
+            notificationHour: 8,
+            timezone: "Invalid/Timezone",
+          },
+        },
+      },
+      subscriptionStatus: "subscribed",
+      overrideActive: false,
+      now: dispatchTime,
+    })).toThrow("Failed to compute nextDispatchAt");
+  });
+
   it("현재 시간이 이미 지난 경우 다음날 dispatch 시각으로 계산한다", () => {
     const nextDispatchAt = computeNextDispatchAt({
       now: new Date("2026-03-13T23:05:00.000Z"),

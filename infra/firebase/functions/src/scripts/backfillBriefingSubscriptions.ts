@@ -44,38 +44,46 @@ async function main(): Promise<void> {
       db.collection("entitlementOverrides").doc(uid).get(),
     ]);
 
-    const projection = buildBriefingSubscriptionProjection({
-      settingsData: doc.data(),
-      subscriptionStatus: subscriptionDoc.data()?.status,
-      overrideActive: overrideDoc.exists &&
-        overrideDoc.data()?.isActive === true,
-      now: new Date(),
-    });
-
-    const projectionRef = db
-      .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
-      .doc(uid);
-    if (!projection) {
-      if (!dryRun) {
-        await projectionRef.delete();
-      }
-      deletes++;
-      continue;
-    }
-
-    if (!dryRun) {
-      await projectionRef.set({
-        notificationHour: projection.notificationHour,
-        timezone: projection.timezone,
-        language: projection.language,
-        style: projection.style,
-        nextDispatchAt: admin.firestore.Timestamp
-          .fromDate(projection.nextDispatchAt),
-        updatedAt: FieldValue.serverTimestamp(),
+    try {
+      const projection = buildBriefingSubscriptionProjection({
+        settingsData: doc.data(),
+        subscriptionStatus: subscriptionDoc.data()?.status,
+        overrideActive: overrideDoc.exists &&
+          overrideDoc.data()?.isActive === true,
+        now: new Date(),
       });
-    }
 
-    upserts++;
+      const projectionRef = db
+        .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
+        .doc(uid);
+      if (!projection) {
+        if (!dryRun) {
+          await projectionRef.delete();
+        }
+        deletes++;
+        continue;
+      }
+
+      if (!dryRun) {
+        await projectionRef.set({
+          notificationHour: projection.notificationHour,
+          timezone: projection.timezone,
+          language: projection.language,
+          style: projection.style,
+          nextDispatchAt: admin.firestore.Timestamp
+            .fromDate(projection.nextDispatchAt),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      upserts++;
+    } catch (error) {
+      skipped++;
+      console.error(
+        `[BackfillBriefingSubscriptions] Failed to backfill ${uid}`,
+        error,
+      );
+    }
   }
 
   console.log("[BackfillBriefingSubscriptions] Completed", {

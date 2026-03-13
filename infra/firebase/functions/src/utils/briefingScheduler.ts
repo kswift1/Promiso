@@ -141,6 +141,7 @@ export function computeNextDispatchAt(params: {
  * @param {boolean} params.overrideActive entitlement override 활성 여부.
  * @param {Date} params.now 기준 시각.
  * @return {BriefingSubscriptionProjection | null} 유효한 projection 문서.
+ * @throws {Error} dispatch 시각 계산에 실패하면 예외를 던진다.
  */
 export function buildBriefingSubscriptionProjection(params: {
   settingsData: unknown;
@@ -165,7 +166,10 @@ export function buildBriefingSubscriptionProjection(params: {
   });
 
   if (!nextDispatchAt) {
-    return null;
+    throw new Error(
+      "Failed to compute nextDispatchAt: " +
+      `timezone=${briefing.timezone}, hour=${briefing.notificationHour}`,
+    );
   }
 
   return {

@@ -19,47 +19,54 @@ import {
 export async function reconcileBriefingSubscription(
   uid: string,
 ): Promise<void> {
-  const db = admin.firestore();
-  const projectionRef = db
-    .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
-    .doc(uid);
+  try {
+    const db = admin.firestore();
+    const projectionRef = db
+      .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
+      .doc(uid);
 
-  const [settingsDoc, subscriptionDoc, overrideDoc] = await Promise.all([
-    db.collection("users").doc(uid)
-      .collection("settings").doc("main")
-      .get(),
-    db.collection("subscriptions").doc(uid).get(),
-    db.collection("entitlementOverrides").doc(uid).get(),
-  ]);
+    const [settingsDoc, subscriptionDoc, overrideDoc] = await Promise.all([
+      db.collection("users").doc(uid)
+        .collection("settings").doc("main")
+        .get(),
+      db.collection("subscriptions").doc(uid).get(),
+      db.collection("entitlementOverrides").doc(uid).get(),
+    ]);
 
-  const projection = buildBriefingSubscriptionProjection({
-    settingsData: settingsDoc.data() ?? null,
-    subscriptionStatus: subscriptionDoc.data()?.status,
-    overrideActive: overrideDoc.exists &&
-      overrideDoc.data()?.isActive === true,
-    now: new Date(),
-  });
+    const projection = buildBriefingSubscriptionProjection({
+      settingsData: settingsDoc.data() ?? null,
+      subscriptionStatus: subscriptionDoc.data()?.status,
+      overrideActive: overrideDoc.exists &&
+        overrideDoc.data()?.isActive === true,
+      now: new Date(),
+    });
 
-  if (!projection) {
-    await projectionRef.delete();
-    console.log(`🧹 [BriefingProjection] Deleted projection for ${uid}`);
-    return;
+    if (!projection) {
+      await projectionRef.delete();
+      console.log(`🧹 [BriefingProjection] Deleted projection for ${uid}`);
+      return;
+    }
+
+    await projectionRef.set({
+      notificationHour: projection.notificationHour,
+      timezone: projection.timezone,
+      language: projection.language,
+      style: projection.style,
+      nextDispatchAt: admin.firestore.Timestamp
+        .fromDate(projection.nextDispatchAt),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(
+      `✅ [BriefingProjection] Synced projection for ${uid} ` +
+      `at ${projection.nextDispatchAt.toISOString()}`
+    );
+  } catch (error) {
+    console.error(
+      `[BriefingProjection] Failed to reconcile projection for ${uid}`,
+      error,
+    );
   }
-
-  await projectionRef.set({
-    notificationHour: projection.notificationHour,
-    timezone: projection.timezone,
-    language: projection.language,
-    style: projection.style,
-    nextDispatchAt: admin.firestore.Timestamp
-      .fromDate(projection.nextDispatchAt),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-
-  console.log(
-    `✅ [BriefingProjection] Synced projection for ${uid} ` +
-    `at ${projection.nextDispatchAt.toISOString()}`
-  );
 }
 
 /**
