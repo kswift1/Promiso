@@ -706,13 +706,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create Schedule"
+            "value": "Add Group Schedule"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "일정 만들기"
+            "value": "그룹 일정 추가"
           }
         }
       }

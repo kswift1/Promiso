@@ -204,6 +204,19 @@ struct CalendarFeatureTests {
     ])
   }
 
+  @Test("월간 리스트는 일정이 없어도 해당 월의 모든 날짜를 노출한다")
+  func sectionDates_inMonthMode_includesEveryDayOfMonth() {
+    let selectedDate = makeDate(year: 2026, month: 2, day: 15)
+    let state = makeState(key: "month-section-dates", selectedDate: selectedDate)
+
+    let sectionDates = state.sectionDates
+    let calendar = Calendar.current
+
+    #expect(sectionDates.count == 28)
+    #expect(calendar.isDate(sectionDates.first ?? .distantPast, inSameDayAs: makeDate(year: 2026, month: 2, day: 1)))
+    #expect(calendar.isDate(sectionDates.last ?? .distantPast, inSameDayAs: makeDate(year: 2026, month: 2, day: 28)))
+  }
+
   // MARK: - 일정 데이터 로드 테스트
 
   @Test("loadInitialData 시 현재 월만 선택적 무효화 후 일정 로드")
