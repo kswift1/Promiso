@@ -427,6 +427,29 @@ describe("subscription functions", () => {
       });
     });
 
+    it("영구 오류면 200으로 응답해 Apple 재시도를 막는다", async () => {
+      verifyAppleNotificationPayloadMock.mockRejectedValue(
+        new Error("Invalid notification signature"),
+      );
+
+      const handler = resolveWebhookHandler();
+      const res = makeWebhookResponse();
+
+      await handler({
+        body: {
+          signedPayload: "signed-payload",
+        },
+      }, res);
+
+      expect(mockOwnerRef.get).not.toHaveBeenCalled();
+      expect(mockFirestore.runTransaction).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        error: "Invalid notification signature",
+      });
+    });
+
     it("signedRenewalInfo가 있으면 gracePeriod 만료일을 저장한다", async () => {
       verifyAppleNotificationPayloadMock.mockResolvedValue(
         createMockNotificationPayload({

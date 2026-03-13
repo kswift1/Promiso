@@ -563,9 +563,13 @@ export const appleServerNotification = onRequest(
     } catch (error) {
       console.error("❌ [Subscription] Apple notification error:", error);
 
+      if (error instanceof RetryableNotificationError) {
+        res.status(500).json({success: false, error: error.message});
+        return;
+      }
+
       const message = error instanceof Error ? error.message : String(error);
-      const statusCode = 500;
-      res.status(statusCode).json({success: false, error: message});
+      res.status(200).json({success: false, error: message});
     }
   },
 );
