@@ -36,6 +36,8 @@ import {
   GetAdminUserTimelineResponse,
   CancelAdminPushJobRequest,
   CancelAdminPushJobResponse,
+  PreviewAdminPushAudienceRequest,
+  PreviewAdminPushAudienceResponse,
   RevokeEntitlementOverrideRequest,
   RevokeEntitlementOverrideResponse,
   ScheduleAdminPushRequest,
@@ -57,6 +59,8 @@ const RELEASE_CONTROL_KEYS = [
   "supportEmail",
   "notionFAQDatabaseId",
 ] as const;
+
+const MIN_SCHEDULE_LEAD_TIME_MS = 5 * 60 * 1000;
 
 type ReleaseControlKey = typeof RELEASE_CONTROL_KEYS[number];
 
@@ -824,8 +828,11 @@ function requireFutureScheduledAt(value: string | undefined): string {
     throw new HttpsError("invalid-argument", "scheduledAt 형식이 올바르지 않습니다");
   }
 
-  if (parsed.getTime() <= Date.now()) {
-    throw new HttpsError("invalid-argument", "scheduledAt은 미래 시각이어야 합니다");
+  if (parsed.getTime() - Date.now() < MIN_SCHEDULE_LEAD_TIME_MS) {
+    throw new HttpsError(
+      "invalid-argument",
+      "scheduledAt은 최소 5분 이후 시각이어야 합니다"
+    );
   }
 
   return parsed.toISOString();
@@ -869,6 +876,39 @@ async function deliverAdminPush(params: {
     successCount: result.successCount,
     failureCount: result.failureCount,
   };
+}
+
+/**
+ * Returns true when an equivalent scheduled push job already exists.
+ * @param {object} params The scheduled push identity fields.
+ * @return {Promise<boolean>} True when a duplicate scheduled job exists.
+ */
+async function hasDuplicateScheduledPushJob(params: {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId: string | null;
+}): Promise<boolean> {
+  const {title, body, audience, scheduledAt, testUserId} = params;
+  const snapshot = await admin.firestore()
+    .collection("adminPushJobs")
+    .get();
+
+  return snapshot.docs.some((doc) => {
+    const job = buildAdminPushJob(
+      doc.id,
+      doc.data() as Record<string, unknown>
+    );
+    return (
+      job.status === "scheduled" &&
+      job.title === title &&
+      job.body === body &&
+      job.audience === audience &&
+      job.scheduledAt === scheduledAt &&
+      job.testUserId === testUserId
+    );
+  });
 }
 
 export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
@@ -1331,6 +1371,35 @@ export const getAdminPushJobs = onCall<GetAdminPushJobsRequest>(
   }
 );
 
+export const previewAdminPushAudience = onCall<PreviewAdminPushAudienceRequest>(
+  {region: REGION},
+  async (request): Promise<PreviewAdminPushAudienceResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const adminUser = await getAdminUserDocument(request.auth.uid);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const audience = request.data.audience;
+    const testUserId = request.data.testUserId?.trim() ?? null;
+
+    if (!isAdminPushAudience(audience)) {
+      throw new HttpsError("invalid-argument", "audience는 필수입니다");
+    }
+
+    const userIds = await resolvePushAudience({
+      audience,
+      testUserId,
+    });
+
+    return {
+      success: true,
+      targetCount: userIds.length,
+    };
+  }
+);
+
 export const scheduleAdminPush = onCall<ScheduleAdminPushRequest>(
   {region: REGION},
   async (request): Promise<ScheduleAdminPushResponse> => {
@@ -1357,6 +1426,19 @@ export const scheduleAdminPush = onCall<ScheduleAdminPushRequest>(
         audience,
         testUserId,
       });
+    }
+
+    if (await hasDuplicateScheduledPushJob({
+      title,
+      body,
+      audience,
+      scheduledAt,
+      testUserId,
+    })) {
+      throw new HttpsError(
+        "already-exists",
+        "같은 내용과 대상의 예약 push job이 이미 존재합니다"
+      );
     }
 
     const jobRef = await admin.firestore().collection("adminPushJobs").add({

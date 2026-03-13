@@ -39,6 +39,7 @@ describe("admin functions", () => {
   let getAdminDashboardSummary: any;
   let getAdminAuditLogs: any;
   let getAdminPushJobs: any;
+  let previewAdminPushAudience: any;
   let getAdminUserSummary: any;
   let getAdminUserTimeline: any;
   let getAdminReleaseControls: any;
@@ -60,6 +61,9 @@ describe("admin functions", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.spyOn(Date, "now").mockReturnValue(
+      new Date("2026-03-13T00:00:00.000Z").getTime()
+    );
     sendPushNotificationInternalMock.mockResolvedValue({
       success: true,
       successCount: 1,
@@ -316,6 +320,7 @@ describe("admin functions", () => {
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
     getAdminPushJobs = functions.getAdminPushJobs;
+    previewAdminPushAudience = functions.previewAdminPushAudience;
     getAdminUserSummary = functions.getAdminUserSummary;
     getAdminUserTimeline = functions.getAdminUserTimeline;
     getAdminReleaseControls = functions.getAdminReleaseControls;
@@ -1082,6 +1087,107 @@ describe("admin functions", () => {
       action: "schedule_admin_push",
       targetId: "job-1",
     }));
+  });
+
+  it("push audience preview는 대상 수를 반환한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "marketer",
+      enabled: true,
+    });
+    usersData.set("user-pro", {nickname: "pro"});
+    usersData.set("user-free", {nickname: "free"});
+    subscriptionData.set("user-pro", {
+      status: "subscribed",
+    });
+
+    const handler = (previewAdminPushAudience as any).run;
+    const result = await handler({
+      data: {
+        audience: "pro",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      targetCount: 1,
+    });
+  });
+
+  it("예약 push는 최소 5분 이후 시각만 허용한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (scheduleAdminPush as any).run;
+
+    await expect(handler({
+      data: {
+        title: "예약 공지",
+        body: "곧 발송",
+        audience: "all",
+        scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "invalid-argument",
+      message: "scheduledAt은 최소 5분 이후 시각이어야 합니다",
+    });
+  });
+
+  it("같은 내용과 대상의 예약 push 중복 생성을 막는다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    adminPushJobDocs.push({
+      status: "scheduled",
+      audience: "all",
+      title: "예약 공지",
+      body: "내일 배포 안내",
+      dryRun: false,
+      targetCount: null,
+      createdBy: "admin-user",
+      testUserId: null,
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+      createdAt: {
+        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
+      },
+      result: null,
+    });
+
+    const handler = (scheduleAdminPush as any).run;
+
+    await expect(handler({
+      data: {
+        title: "예약 공지",
+        body: "내일 배포 안내",
+        audience: "all",
+        scheduledAt: "2026-03-14T00:00:00.000Z",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "already-exists",
+      message: "같은 내용과 대상의 예약 push job이 이미 존재합니다",
+    });
+    expect(adminPushJobDocs).toHaveLength(1);
+    expect(auditLogAdds).toHaveLength(0);
   });
 
   it("예약 push job 목록을 최신순으로 조회한다", async () => {

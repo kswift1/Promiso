@@ -138,6 +138,16 @@ type SendAdminPushResponse = {
   jobId: string;
 };
 
+type PreviewAdminPushAudienceRequest = {
+  audience: AdminPushAudience;
+  testUserId?: string | null;
+};
+
+type PreviewAdminPushAudienceResponse = {
+  success: true;
+  targetCount: number;
+};
+
 type ScheduleAdminPushRequest = {
   title: string;
   body: string;
@@ -333,6 +343,22 @@ export async function sendAdminPush(params: {
   );
   const result = await callable(params);
   return result.data;
+}
+
+export async function previewAdminPushAudience(params: {
+  audience: AdminPushAudience;
+  testUserId?: string | null;
+}): Promise<number> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    PreviewAdminPushAudienceRequest,
+    PreviewAdminPushAudienceResponse
+  >(firebaseFunctions, "previewAdminPushAudience");
+  const result = await callable(params);
+  return result.data.targetCount;
 }
 
 export async function scheduleAdminPush(params: {

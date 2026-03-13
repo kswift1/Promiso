@@ -147,6 +147,16 @@ export interface SendAdminPushResponse {
   jobId: string;
 }
 
+export interface PreviewAdminPushAudienceRequest {
+  audience: AdminPushAudience;
+  testUserId?: string | null;
+}
+
+export interface PreviewAdminPushAudienceResponse {
+  success: true;
+  targetCount: number;
+}
+
 export interface ScheduleAdminPushRequest {
   title: string;
   body: string;
