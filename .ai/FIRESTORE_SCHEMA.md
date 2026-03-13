@@ -18,6 +18,8 @@
    - [5. liveActivities](#5-liveactivities-컬렉션)
    - [6. personalEvents](#6-personalevents-서브컬렉션)
    - [7. recurringEvents](#7-recurringevents-서브컬렉션)
+   - [8. subscriptions](#8-subscriptions-컬렉션)
+   - [9. subscriptionOwners](#9-subscriptionowners-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -74,8 +76,14 @@ Firestore Root
 │  └─ {promiseId}/                  # 약속별 LiveActivity 상태
 │     └─ participants (Array)       # 참가자별 ETA 상태
 │
-└─ personalEvents/                  # 개인 일정 정보
-   └─ {eventId}/                    # 개인 일정 문서
+├─ personalEvents/                  # 개인 일정 정보
+│  └─ {eventId}/                    # 개인 일정 문서
+│
+├─ subscriptions/                   # 사용자별 현재 구독 상태 SSOT (서버 관리)
+│  └─ {userId}/                     # 사용자 구독 상태 문서
+│
+└─ subscriptionOwners/              # App Store 원본 트랜잭션 소유권 인덱스
+   └─ {originalTransactionId}/      # 구매 소유자 문서
 ```
 
 ---
@@ -1130,6 +1138,111 @@ users/{userId}/recurringEvents/{eventId}
 
 ---
 
+### 8. subscriptions (컬렉션)
+
+사용자별 현재 구독 상태를 저장합니다. App Store 검증 결과의 SSOT이며,
+클라이언트는 본인 문서를 읽기만 하고 쓰기는 Cloud Functions에서만 수행합니다.
+
+#### 📍 문서 경로
+
+```
+subscriptions/{userId}
+```
+
+#### 🔑 문서 ID
+
+- `{userId}` = Firebase Auth UID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `status` | String | ✅ | 현재 구독 상태 (`none` \| `subscribed` \| `lifetime` \| `expired` \| `gracePeriod` \| `revoked`) |
+| `productId` | String \| null | ✅ | 현재 상태를 만든 App Store 상품 ID |
+| `originalTransactionId` | String \| null | ✅ | App Store 원본 트랜잭션 ID |
+| `expirationDate` | String \| null | ✅ | 만료 시각 (ISO 8601, lifetime은 null) |
+| `purchaseDate` | String \| null | ✅ | 구매 시각 (ISO 8601) |
+| `latestAppStoreSignedDate` | Number \| null | ❌ | 마지막으로 반영한 App Store `signedDate` (millisecond timestamp, stale replay 차단용) |
+| `latestTransactionId` | String \| null | ❌ | 마지막으로 반영한 App Store transaction ID |
+| `lastNotificationType` | String \| null | ❌ | 마지막으로 반영한 App Store Server Notification 타입 |
+| `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "status": "subscribed",
+  "productId": "com.promiso.pro.yearly",
+  "originalTransactionId": "1000002500001234",
+  "expirationDate": "2026-04-12T03:15:24.000Z",
+  "purchaseDate": "2025-04-12T03:15:24.000Z",
+  "latestAppStoreSignedDate": 1773218124000,
+  "latestTransactionId": "1000002500005678",
+  "lastNotificationType": "DID_RENEW",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 🔄 갱신 흐름
+
+| 갱신 주체 | 설명 |
+|-----------|------|
+| `verifyPurchase` | 구매 직후 signed transaction을 검증하고 초기 상태를 저장 |
+| `appleServerNotification` | 갱신 / 만료 / 환불 / grace period 상태를 반영 |
+
+#### 💡 설계 의도
+
+- **SSOT**: 구독 현재 상태는 항상 `subscriptions/{userId}` 한 문서로 조회
+- **정합성**: `signedRenewalInfo`를 활용해 `gracePeriod` / billing retry를 반영
+- **재전송 방어**: `latestAppStoreSignedDate`보다 오래된 이벤트는 무시
+- **클라이언트 단순화**: iOS는 문서 읽기/리스닝만 수행하고 서버가 상태를 계산
+
+---
+
+### 9. subscriptionOwners (컬렉션)
+
+App Store `originalTransactionId`와 Firebase 사용자 간 1:1 소유권을 저장하는
+서버 전용 인덱스입니다. 같은 결제를 다른 Firebase 계정에 재연결하는 것을 막고,
+Apple 웹훅이 어떤 사용자 문서를 갱신해야 하는지 찾는 데 사용합니다.
+
+#### 📍 문서 경로
+
+```
+subscriptionOwners/{originalTransactionId}
+```
+
+#### 🔑 문서 ID
+
+- `{originalTransactionId}` = App Store 원본 트랜잭션 ID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `userId` | String | ✅ | 구매를 소유한 Firebase Auth UID |
+| `productId` | String | ✅ | 마지막으로 검증된 상품 ID |
+| `createdAt` | Timestamp | ✅ | 최초 소유권 바인딩 시각 |
+| `updatedAt` | Timestamp | ✅ | 마지막 검증 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "userId": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
+  "productId": "com.promiso.pro.yearly",
+  "createdAt": "<Timestamp>",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 💡 설계 의도
+
+- **소유권 고정**: 같은 `originalTransactionId`는 하나의 Firebase 사용자에게만 연결
+- **웹훅 라우팅**: Apple Notification에서 사용자 문서를 찾는 인덱스로 사용
+- **보안**: Firestore Rules에서 클라이언트 read/write를 모두 차단
+
+---
+
 ## 쿼리 패턴
 
 ### 1. 사용자 관련 쿼리
@@ -1486,6 +1599,11 @@ service cloud.firestore {
 |  |  | - endTime이 startTime보다 이전이면 다음 날로 해석 (자정 넘기는 일정 지원) |  |
 |  |  | - 예외 처리: excludedDates(취소), overrides(개별 수정) |  |
 |  |  | - 인스턴스는 클라이언트에서 계산 (RecurringEventExpander) |  |
+| 2.2 | 2026-03-13 | 구독 서버 스키마 문서화 | Codex |
+|  |  | - `subscriptions/{userId}` 컬렉션 추가 |  |
+|  |  | - `subscriptionOwners/{originalTransactionId}` 컬렉션 추가 |  |
+|  |  | - stale replay 방지 필드 (`latestAppStoreSignedDate`) 문서화 |  |
+|  |  | - App Store Notification 추적 필드 (`latestTransactionId`, `lastNotificationType`) 문서화 |  |
 
 ---
 
@@ -1499,5 +1617,5 @@ service cloud.firestore {
 
 ---
 
-*마지막 업데이트: 2026-03-10*
-- `location.placeId` 필드 추가 (Kakao Place ID)
+*마지막 업데이트: 2026-03-13*
+- 구독 서버 스키마 (`subscriptions`, `subscriptionOwners`) 문서화

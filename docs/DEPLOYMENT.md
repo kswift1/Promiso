@@ -510,6 +510,13 @@ cd infra/firebase
 
 #### Functions 배포
 
+> 주의
+> `infra/firebase/functions/certs/AppleRootCA-G2.der`, `AppleRootCA-G3.der`는
+> App Store Server JWS 검증에 필요하므로 git tracked 상태로 유지되어야 하며,
+> Functions 배포 산출물에 반드시 포함되어야 합니다.
+> 원격 Dev / Stage 환경은 Apple Sandbox 서명 데이터만 검증합니다.
+> Xcode StoreKit 로컬 토큰 검증은 Firebase Emulator에서만 지원합니다.
+
 **Dev 환경**:
 ```bash
 cd infra/firebase
