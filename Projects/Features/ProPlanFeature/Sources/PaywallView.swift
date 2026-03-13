@@ -951,6 +951,23 @@ extension ProPlan {
 
 extension ProPlan {
 
+  static func yearlyDiscountPercent(
+    yearlyPrice: Decimal,
+    monthlyPrice: Decimal?
+  ) -> Int? {
+    guard let monthlyPrice, monthlyPrice > 0 else { return nil }
+
+    let yearlyIfMonthly = monthlyPrice * 12
+    let saving = yearlyIfMonthly - yearlyPrice
+    guard saving > 0 else { return nil }
+
+    let percent = (saving * 100) / yearlyIfMonthly
+    var roundedPercent = Decimal()
+    var percentToRound = percent
+    NSDecimalRound(&roundedPercent, &percentToRound, 0, .up)
+    return NSDecimalNumber(decimal: roundedPercent).intValue
+  }
+
   fileprivate struct PricingCardView: View {
     let product: SubscriptionProduct
     let isSelected: Bool
@@ -959,14 +976,11 @@ extension ProPlan {
     let onTap: () -> Void
 
     private var yearlyDiscountPercent: Int? {
-      guard product.type == .yearly,
-            let monthlyPrice,
-            monthlyPrice > 0 else { return nil }
-      let yearlyIfMonthly = monthlyPrice * 12
-      let saving = yearlyIfMonthly - product.price
-      guard saving > 0 else { return nil }
-      let percent = (saving * 100) / yearlyIfMonthly
-      return Int(ceil(NSDecimalNumber(decimal: percent).doubleValue))
+      guard product.type == .yearly else { return nil }
+      return ProPlan.yearlyDiscountPercent(
+        yearlyPrice: product.price,
+        monthlyPrice: monthlyPrice
+      )
     }
 
     private var showFreeTrial: Bool {
