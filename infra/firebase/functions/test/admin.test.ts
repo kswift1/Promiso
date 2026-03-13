@@ -925,6 +925,57 @@ describe("admin functions", () => {
     });
   });
 
+  it("만료된 override는 사용자 요약에서 비활성으로 본다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("user-a", {
+      nickname: "alpha",
+      email: "alpha@promiso.app",
+    });
+    usersData.set("user-b", {
+      nickname: "beta",
+      email: "beta@promiso.app",
+    });
+    overrideData.set("user-a", {
+      isActive: true,
+      expiresAt: "2026-03-12T23:59:59.000Z",
+    });
+    overrideData.set("user-b", {
+      isActive: true,
+      expiresAt: "2026-03-14T00:00:00.000Z",
+    });
+
+    const handler = (getAdminUserSummary as any).run;
+    const result = await handler({
+      data: {
+        override: "active",
+        limit: 25,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      results: [{
+        userId: "user-b",
+        name: null,
+        nickname: "beta",
+        email: "beta@promiso.app",
+        groupCount: 0,
+        deviceCount: 0,
+        subscriptionStatus: null,
+        overrideActive: true,
+      }],
+    });
+  });
+
   it("marketer는 사용자 검색을 할 수 없다", async () => {
     adminUsersData.set("marketer-user", {
       role: "marketer",
@@ -1122,6 +1173,54 @@ describe("admin functions", () => {
       operator: "==",
       value: "target-user",
     });
+  });
+
+  it("만료된 override는 timeline과 실효 Pro 판정에서 비활성으로 본다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("target-user", {
+      nickname: "kswift",
+      email: "kswen@promiso.app",
+    });
+    overrideData.set("target-user", {
+      isActive: true,
+      type: "manual_pro_grant",
+      reason: "CS compensation",
+      expiresAt: "2026-03-12T23:59:59.000Z",
+      createdBy: "admin-user",
+    });
+
+    const timelineHandler = (getAdminUserTimeline as any).run;
+    const timeline = await timelineHandler({
+      data: {
+        userId: "target-user",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(timeline.summary.overrideActive).toBe(false);
+    expect(timeline.override?.isActive).toBe(false);
+
+    const dashboardHandler = (getAdminDashboardSummary as any).run;
+    const dashboard = await dashboardHandler({
+      data: {},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(dashboard.summary.proUsers).toBe(0);
+    expect(dashboard.summary.activeOverrides).toBe(0);
   });
 
   it("marketer는 user timeline을 조회할 수 없다", async () => {

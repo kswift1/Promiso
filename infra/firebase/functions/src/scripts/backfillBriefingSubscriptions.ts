@@ -11,6 +11,7 @@ import {
   BRIEFING_SUBSCRIPTIONS_COLLECTION,
   buildBriefingSubscriptionProjection,
 } from "../utils/briefingScheduler";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -48,8 +49,7 @@ async function main(): Promise<void> {
       const projection = buildBriefingSubscriptionProjection({
         settingsData: doc.data(),
         subscriptionStatus: subscriptionDoc.data()?.status,
-        overrideActive: overrideDoc.exists &&
-          overrideDoc.data()?.isActive === true,
+        overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
         now: new Date(),
       });
 

@@ -10,6 +10,7 @@ import {
   BRIEFING_SUBSCRIPTIONS_COLLECTION,
   buildBriefingSubscriptionProjection,
 } from "../utils/briefingScheduler";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 
 /**
  * 사용자의 현재 settings/subscription/override 상태를 projection으로 동기화한다.
@@ -36,8 +37,7 @@ export async function reconcileBriefingSubscription(
     const projection = buildBriefingSubscriptionProjection({
       settingsData: settingsDoc.data() ?? null,
       subscriptionStatus: subscriptionDoc.data()?.status,
-      overrideActive: overrideDoc.exists &&
-        overrideDoc.data()?.isActive === true,
+      overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
       now: new Date(),
     });
 

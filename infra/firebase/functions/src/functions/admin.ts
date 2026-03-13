@@ -58,6 +58,7 @@ import {
   UpdateAdminReleaseControlsResponse,
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 import {sendPushNotificationInternal} from "./notifications";
 import {NotificationType} from "../types/api";
 
@@ -616,7 +617,7 @@ async function buildAdminDashboardSummary(): Promise<AdminDashboardSummary> {
   );
   const proUsers = proStates.filter(Boolean).length;
   const activeOverrides = overridesSnapshot.docs.filter((doc) =>
-    doc.data()?.isActive === true
+    isEntitlementOverrideActive(doc.data())
   ).length;
 
   return {
@@ -696,7 +697,7 @@ function buildUserSummaryPayload(
       typeof subscriptionData?.status === "string" ?
         subscriptionData.status :
         null,
-    overrideActive: overrideData?.isActive === true,
+    overrideActive: isEntitlementOverrideActive(overrideData),
   };
 }
 
@@ -1021,7 +1022,10 @@ function pickAdminAuditLogPrimaryFilter(params: {
   actorId?: string;
   targetType?: string;
   targetId?: string;
-}): {field: "action" | "actorId" | "targetType" | "targetId"; value: string} | null {
+}): {
+  field: "action" | "actorId" | "targetType" | "targetId";
+  value: string;
+} | null {
   if (params.targetId) {
     return {
       field: "targetId",
@@ -1113,7 +1117,7 @@ function buildAdminEntitlementOverrideSnapshot(
   data: Record<string, unknown>
 ): AdminEntitlementOverrideSnapshot {
   return {
-    isActive: data.isActive === true,
+    isActive: isEntitlementOverrideActive(data),
     type: typeof data.type === "string" ? data.type : null,
     reason: typeof data.reason === "string" ? data.reason : null,
     expiresAt: typeof data.expiresAt === "string" ? data.expiresAt : null,
@@ -1324,8 +1328,7 @@ async function isEffectivePro(userId: string): Promise<boolean> {
   ]);
 
   const subscriptionStatus = subscriptionSnapshot.data()?.status;
-  const overrideActive = overrideSnapshot.exists &&
-    overrideSnapshot.data()?.isActive === true;
+  const overrideActive = isEntitlementOverrideActive(overrideSnapshot.data());
 
   return hasActiveSubscription(subscriptionStatus) || overrideActive;
 }
