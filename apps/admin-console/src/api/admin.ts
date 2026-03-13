@@ -1,6 +1,10 @@
 import {httpsCallable} from "firebase/functions";
 import {firebaseFunctions} from "../lib/firebase";
 
+export type AdminUserSearchField = "all" | "userId" | "email" | "nickname";
+export type AdminSubscriptionFilter = "all" | "subscribed" | "not_subscribed";
+export type AdminOverrideFilter = "all" | "active" | "inactive";
+
 export type AdminUserSummary = {
   userId: string;
   name: string | null;
@@ -13,7 +17,11 @@ export type AdminUserSummary = {
 };
 
 type GetAdminUserSummaryRequest = {
-  query: string;
+  query?: string;
+  field?: AdminUserSearchField;
+  subscription?: AdminSubscriptionFilter;
+  override?: AdminOverrideFilter;
+  limit?: number;
 };
 
 type GetAdminUserSummaryResponse = {
@@ -117,6 +125,10 @@ type UpdateAdminReleaseControlsResponse = {
 
 type GetAdminAuditLogsRequest = {
   limit?: number;
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
 };
 
 type GetAdminAuditLogsResponse = {
@@ -129,9 +141,13 @@ type GetAdminDashboardSummaryResponse = {
   summary: AdminDashboardSummary;
 };
 
-export async function getAdminUserSummary(
-  query: string
-): Promise<AdminUserSummary[]> {
+export async function getAdminUserSummary(params: {
+  query?: string;
+  field?: AdminUserSearchField;
+  subscription?: AdminSubscriptionFilter;
+  override?: AdminOverrideFilter;
+  limit?: number;
+}): Promise<AdminUserSummary[]> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");
   }
@@ -140,7 +156,7 @@ export async function getAdminUserSummary(
     GetAdminUserSummaryRequest,
     GetAdminUserSummaryResponse
   >(firebaseFunctions, "getAdminUserSummary");
-  const result = await callable({query});
+  const result = await callable(params);
   return result.data.results;
 }
 
@@ -223,9 +239,13 @@ export async function updateAdminReleaseControls(
   return result.data.controls;
 }
 
-export async function getAdminAuditLogs(
-  limit = 50
-): Promise<AdminAuditLog[]> {
+export async function getAdminAuditLogs(params?: {
+  limit?: number;
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+}): Promise<AdminAuditLog[]> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");
   }
@@ -234,7 +254,7 @@ export async function getAdminAuditLogs(
     GetAdminAuditLogsRequest,
     GetAdminAuditLogsResponse
   >(firebaseFunctions, "getAdminAuditLogs");
-  const result = await callable({limit});
+  const result = await callable(params ?? {});
   return result.data.logs;
 }
 

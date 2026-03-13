@@ -185,6 +185,14 @@ describe("admin functions", () => {
         }
 
         if (name === "adminAuditLogs") {
+          const buildAuditLogDocs = () =>
+            auditLogAdds
+              .map((data, index) => ({
+                id: `log-${index + 1}`,
+                data: () => data,
+              }))
+              .reverse();
+
           return {
             add: jest.fn(async (data: Record<string, unknown>) => {
               auditLogAdds.push(data);
@@ -197,15 +205,12 @@ describe("admin functions", () => {
               })),
             }),
             orderBy: jest.fn(() => ({
+              get: jest.fn().mockResolvedValue({
+                docs: buildAuditLogDocs(),
+              }),
               limit: jest.fn((limit: number) => ({
                 get: jest.fn().mockResolvedValue({
-                  docs: auditLogAdds
-                    .map((data, index) => ({
-                      id: `log-${index + 1}`,
-                      data: () => data,
-                    }))
-                    .reverse()
-                    .slice(0, limit),
+                  docs: buildAuditLogDocs().slice(0, limit),
                 }),
               })),
             })),
@@ -353,6 +358,56 @@ describe("admin functions", () => {
       },
     })).rejects.toMatchObject({
       code: "invalid-argument",
+    });
+  });
+
+  it("상태 필터만으로도 사용자 요약을 조회할 수 있다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("user-a", {
+      nickname: "alpha",
+      email: "alpha@promiso.app",
+    });
+    usersData.set("user-b", {
+      nickname: "beta",
+      email: "beta@promiso.app",
+    });
+    subscriptionData.set("user-a", {
+      status: "subscribed",
+    });
+    overrideData.set("user-a", {
+      isActive: true,
+    });
+
+    const handler = (getAdminUserSummary as any).run;
+    const result = await handler({
+      data: {
+        override: "active",
+        subscription: "subscribed",
+        limit: 25,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      results: [{
+        userId: "user-a",
+        name: null,
+        nickname: "alpha",
+        email: "alpha@promiso.app",
+        groupCount: 0,
+        deviceCount: 0,
+        subscriptionStatus: "subscribed",
+        overrideActive: true,
+      }],
     });
   });
 
@@ -543,6 +598,77 @@ describe("admin functions", () => {
           before: null,
           after: {isActive: true},
           createdAt: "2026-03-13T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  it("audit log를 action과 actorId로 필터링한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    auditLogAdds.push({
+      actorId: "owner-1",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "user-a",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "owner-2",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "user-b",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T01:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "owner-2",
+      action: "update_release_controls",
+      targetType: "remote_config",
+      targetId: "default",
+      before: {recommendedVersion: "1.0.0"},
+      after: {recommendedVersion: "1.1.0"},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T02:00:00.000Z"),
+      },
+    });
+
+    const handler = (getAdminAuditLogs as any).run;
+    const result = await handler({
+      data: {
+        action: "grant_entitlement_override",
+        actorId: "owner-2",
+        limit: 10,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      logs: [
+        {
+          id: "log-2",
+          actorId: "owner-2",
+          action: "grant_entitlement_override",
+          targetType: "user",
+          targetId: "user-b",
+          before: null,
+          after: {isActive: true},
+          createdAt: "2026-03-13T01:00:00.000Z",
         },
       ],
     });

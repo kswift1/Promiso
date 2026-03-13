@@ -3,6 +3,9 @@
  */
 
 export type AdminRole = "owner" | "support" | "marketer";
+export type AdminUserSearchField = "all" | "userId" | "email" | "nickname";
+export type AdminSubscriptionFilter = "all" | "subscribed" | "not_subscribed";
+export type AdminOverrideFilter = "all" | "active" | "inactive";
 
 export interface AdminUserDocument {
   role: AdminRole;
@@ -19,7 +22,11 @@ export interface GetAdminSessionResponse {
 }
 
 export interface GetAdminUserSummaryRequest {
-  query: string;
+  query?: string;
+  field?: AdminUserSearchField;
+  subscription?: AdminSubscriptionFilter;
+  override?: AdminOverrideFilter;
+  limit?: number;
 }
 
 export interface AdminUserSummary {
@@ -122,6 +129,10 @@ export interface AdminAuditLog {
 
 export interface GetAdminAuditLogsRequest {
   limit?: number;
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
 }
 
 export interface GetAdminAuditLogsResponse {

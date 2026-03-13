@@ -7,11 +7,14 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {
   AdminAuditLog,
+  AdminOverrideFilter,
   AdminDashboardSummary,
   AdminReleaseControls,
   AdminPushAudience,
   AdminRole,
+  AdminSubscriptionFilter,
   AdminUserDocument,
+  AdminUserSearchField,
   AdminUserSummary,
   GrantEntitlementOverrideRequest,
   GrantEntitlementOverrideResponse,
@@ -241,6 +244,57 @@ async function buildUserSummary(
     overrideActive: overrideSnapshot.exists &&
       overrideSnapshot.data()?.isActive === true,
   };
+}
+
+function normalizeUserSearchField(value: unknown): AdminUserSearchField {
+  if (
+    value === "userId" ||
+    value === "email" ||
+    value === "nickname"
+  ) {
+    return value;
+  }
+
+  return "all";
+}
+
+function normalizeSubscriptionFilter(value: unknown): AdminSubscriptionFilter {
+  if (value === "subscribed" || value === "not_subscribed") {
+    return value;
+  }
+
+  return "all";
+}
+
+function normalizeOverrideFilter(value: unknown): AdminOverrideFilter {
+  if (value === "active" || value === "inactive") {
+    return value;
+  }
+
+  return "all";
+}
+
+function matchesSubscriptionFilter(
+  summary: AdminUserSummary,
+  filter: AdminSubscriptionFilter
+): boolean {
+  if (filter === "all") {
+    return true;
+  }
+
+  const isSubscribed = Boolean(summary.subscriptionStatus);
+  return filter === "subscribed" ? isSubscribed : !isSubscribed;
+}
+
+function matchesOverrideFilter(
+  summary: AdminUserSummary,
+  filter: AdminOverrideFilter
+): boolean {
+  if (filter === "all") {
+    return true;
+  }
+
+  return filter === "active" ? summary.overrideActive : !summary.overrideActive;
 }
 
 /**
@@ -575,9 +629,24 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다");
     }
 
-    const query = request.data.query?.trim();
-    if (!query) {
-      throw new HttpsError("invalid-argument", "검색어가 필요합니다");
+    const query = request.data.query?.trim() ?? "";
+    const field = normalizeUserSearchField(request.data.field);
+    const subscriptionFilter = normalizeSubscriptionFilter(
+      request.data.subscription
+    );
+    const overrideFilter = normalizeOverrideFilter(request.data.override);
+    const requestedLimit = request.data.limit ?? 25;
+    const limit = Math.min(Math.max(requestedLimit, 1), 50);
+
+    if (
+      !query &&
+      subscriptionFilter === "all" &&
+      overrideFilter === "all"
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "검색어 또는 상태 필터가 필요합니다"
+      );
     }
 
     const adminUser = await getAdminUserDocument(request.auth.uid);
@@ -587,45 +656,68 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
     const usersCollection = db.collection("users");
     const matches = new Map<string, Record<string, unknown>>();
 
-    const userIdSnapshot = await usersCollection.doc(query).get();
-    if (userIdSnapshot.exists) {
-      const data = userIdSnapshot.data();
-      if (data) {
-        matches.set(userIdSnapshot.id, data as Record<string, unknown>);
+    if (query) {
+      if (field === "all" || field === "userId") {
+        const userIdSnapshot = await usersCollection.doc(query).get();
+        if (userIdSnapshot.exists) {
+          const data = userIdSnapshot.data();
+          if (data) {
+            matches.set(userIdSnapshot.id, data as Record<string, unknown>);
+          }
+        }
       }
+
+      if (field === "all" || field === "email") {
+        const emailSnapshot = await usersCollection
+          .where("email", "==", query)
+          .limit(limit)
+          .get();
+        emailSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data) {
+            matches.set(doc.id, data as Record<string, unknown>);
+          }
+        });
+      }
+
+      if (field === "all" || field === "nickname") {
+        const nicknameSnapshot = await usersCollection
+          .where("nickname", "==", query)
+          .limit(limit)
+          .get();
+        nicknameSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data) {
+            matches.set(doc.id, data as Record<string, unknown>);
+          }
+        });
+      }
+    } else {
+      const usersSnapshot = await usersCollection.get();
+      usersSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data) {
+          matches.set(doc.id, data as Record<string, unknown>);
+        }
+      });
     }
-
-    const emailSnapshot = await usersCollection
-      .where("email", "==", query)
-      .limit(10)
-      .get();
-    emailSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      if (data) {
-        matches.set(doc.id, data as Record<string, unknown>);
-      }
-    });
-
-    const nicknameSnapshot = await usersCollection
-      .where("nickname", "==", query)
-      .limit(10)
-      .get();
-    nicknameSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      if (data) {
-        matches.set(doc.id, data as Record<string, unknown>);
-      }
-    });
 
     const results = await Promise.all(
       [...matches.entries()].map(([userId, userData]) =>
         buildUserSummary(userId, userData)
       )
     );
+    const filteredResults = results
+      .filter((summary) =>
+        matchesSubscriptionFilter(summary, subscriptionFilter) &&
+        matchesOverrideFilter(summary, overrideFilter)
+      )
+      .sort((lhs, rhs) => lhs.userId.localeCompare(rhs.userId))
+      .slice(0, limit);
 
     return {
       success: true,
-      results,
+      results: filteredResults,
     };
   }
 );
@@ -729,17 +821,42 @@ export const getAdminAuditLogs = onCall<GetAdminAuditLogsRequest>(
 
     const requestedLimit = request.data.limit ?? 50;
     const limit = Math.min(Math.max(requestedLimit, 1), 100);
+    const action = request.data.action?.trim();
+    const actorId = request.data.actorId?.trim();
+    const targetType = request.data.targetType?.trim();
+    const targetId = request.data.targetId?.trim();
     const snapshot = await admin.firestore()
       .collection("adminAuditLogs")
       .orderBy("createdAt", "desc")
-      .limit(limit)
       .get();
+    const logs = snapshot.docs
+      .map((doc) =>
+        buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
+      )
+      .filter((log) => {
+        if (action && log.action !== action) {
+          return false;
+        }
+
+        if (actorId && log.actorId !== actorId) {
+          return false;
+        }
+
+        if (targetType && log.targetType !== targetType) {
+          return false;
+        }
+
+        if (targetId && log.targetId !== targetId) {
+          return false;
+        }
+
+        return true;
+      })
+      .slice(0, limit);
 
     return {
       success: true,
-      logs: snapshot.docs.map((doc) =>
-        buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
-      ),
+      logs,
     };
   }
 );
