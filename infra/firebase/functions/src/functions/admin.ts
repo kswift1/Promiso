@@ -1,12 +1,17 @@
+import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {
   AdminRole,
   AdminUserDocument,
   AdminUserSummary,
+  GrantEntitlementOverrideRequest,
+  GrantEntitlementOverrideResponse,
   GetAdminSessionResponse,
   GetAdminUserSummaryRequest,
   GetAdminUserSummaryResponse,
+  RevokeEntitlementOverrideRequest,
+  RevokeEntitlementOverrideResponse,
 } from "../types/admin";
 
 function isAdminRole(value: unknown): value is AdminRole {
@@ -96,6 +101,25 @@ async function buildUserSummary(
   };
 }
 
+async function writeAuditLog(params: {
+  actorId: string;
+  action: string;
+  targetId: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+}) {
+  const {actorId, action, targetId, before, after} = params;
+  await admin.firestore().collection("adminAuditLogs").add({
+    actorId,
+    action,
+    targetType: "user",
+    targetId,
+    before: before ?? null,
+    after: after ?? null,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
 export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
   {region: REGION},
   async (request): Promise<GetAdminUserSummaryResponse> => {
@@ -154,5 +178,120 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
       success: true,
       results,
     };
+  }
+);
+
+export const grantEntitlementOverride = onCall<GrantEntitlementOverrideRequest>(
+  {region: REGION},
+  async (request): Promise<GrantEntitlementOverrideResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    await getAdminUserDocument(actorId);
+
+    const userId = request.data.userId?.trim();
+    const reason = request.data.reason?.trim();
+
+    if (!userId) {
+      throw new HttpsError("invalid-argument", "userId는 필수입니다");
+    }
+
+    if (!reason) {
+      throw new HttpsError("invalid-argument", "reason은 필수입니다");
+    }
+
+    const userSnapshot = await admin.firestore().collection("users").doc(userId).get();
+    if (!userSnapshot.exists) {
+      throw new HttpsError("not-found", "대상 사용자를 찾을 수 없습니다");
+    }
+
+    let expiresAt: string | null = null;
+    if (request.data.expiresAt) {
+      const parsed = new Date(request.data.expiresAt);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new HttpsError("invalid-argument", "expiresAt 형식이 올바르지 않습니다");
+      }
+      expiresAt = parsed.toISOString();
+    }
+
+    const overrideRef = admin.firestore().collection("entitlementOverrides").doc(userId);
+    const before = (await overrideRef.get()).data() ?? null;
+
+    await overrideRef.set({
+      isActive: true,
+      type: "manual_pro_grant",
+      reason,
+      expiresAt,
+      createdBy: actorId,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      revokedAt: null,
+      revokedBy: null,
+      revokedReason: null,
+    }, {merge: true});
+
+    await writeAuditLog({
+      actorId,
+      action: "grant_entitlement_override",
+      targetId: userId,
+      before,
+      after: {
+        isActive: true,
+        reason,
+        expiresAt,
+      },
+    });
+
+    return {success: true};
+  }
+);
+
+export const revokeEntitlementOverride = onCall<RevokeEntitlementOverrideRequest>(
+  {region: REGION},
+  async (request): Promise<RevokeEntitlementOverrideResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    await getAdminUserDocument(actorId);
+
+    const userId = request.data.userId?.trim();
+    const reason = request.data.reason?.trim() ?? null;
+
+    if (!userId) {
+      throw new HttpsError("invalid-argument", "userId는 필수입니다");
+    }
+
+    const overrideRef = admin.firestore().collection("entitlementOverrides").doc(userId);
+    const existing = await overrideRef.get();
+    if (!existing.exists) {
+      throw new HttpsError("not-found", "활성 override를 찾을 수 없습니다");
+    }
+
+    const before = existing.data() ?? null;
+
+    await overrideRef.set({
+      isActive: false,
+      updatedAt: FieldValue.serverTimestamp(),
+      revokedAt: FieldValue.serverTimestamp(),
+      revokedBy: actorId,
+      revokedReason: reason,
+    }, {merge: true});
+
+    await writeAuditLog({
+      actorId,
+      action: "revoke_entitlement_override",
+      targetId: userId,
+      before,
+      after: {
+        isActive: false,
+        revokedReason: reason,
+      },
+    });
+
+    return {success: true};
   }
 );

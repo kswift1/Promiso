@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import {useQuery} from "@tanstack/react-query";
 import {FormEvent, useState} from "react";
+import {Link as RouterLink} from "react-router-dom";
 import {getAdminUserSummary} from "../api/admin";
 
 export function UsersPage() {
@@ -112,6 +113,15 @@ export function UsersPage() {
                     <Typography variant="body2" color="text.secondary">
                       {user.email ?? "email unavailable"}
                     </Typography>
+
+                    <Button
+                      component={RouterLink}
+                      to={`/entitlements?userId=${user.userId}`}
+                      variant="text"
+                      sx={{alignSelf: "flex-start"}}
+                    >
+                      Manage entitlement
+                    </Button>
                   </Stack>
                 </CardContent>
               </Card>

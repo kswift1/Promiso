@@ -135,6 +135,8 @@ export {
 export {
   getAdminSession,
   getAdminUserSummary,
+  grantEntitlementOverride,
+  revokeEntitlementOverride,
 } from "./functions/admin";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================

@@ -16,23 +16,28 @@ jest.mock("firebase-functions/params", () => ({
 }));
 
 function createMockDocument(
-  exists: boolean,
-  data?: Record<string, unknown>
+  id: string,
+  dataMap: Map<string, Record<string, unknown>>,
 ): any {
+  const data = dataMap.get(id);
   return {
-    exists,
+    id,
+    exists: Boolean(data),
     data: () => data,
   };
 }
 
-describe("getAdminSession", () => {
+describe("admin functions", () => {
   let getAdminSession: any;
   let getAdminUserSummary: any;
-  let mockFirestore: any;
+  let grantEntitlementOverride: any;
+  let revokeEntitlementOverride: any;
+
   let adminUsersData: Map<string, Record<string, unknown>>;
   let usersData: Map<string, Record<string, unknown>>;
   let subscriptionData: Map<string, Record<string, unknown>>;
   let overrideData: Map<string, Record<string, unknown>>;
+  let auditLogAdds: Record<string, unknown>[];
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -41,26 +46,25 @@ describe("getAdminSession", () => {
     usersData = new Map();
     subscriptionData = new Map();
     overrideData = new Map();
+    auditLogAdds = [];
 
-    mockFirestore = {
+    const mockFirestore = {
       collection: jest.fn((name: string) => {
         if (name === "adminUsers") {
           return {
             doc: jest.fn((id: string) => ({
               get: jest.fn().mockResolvedValue(
-                createMockDocument(adminUsersData.has(id), adminUsersData.get(id))
+                createMockDocument(id, adminUsersData)
               ),
             })),
           };
         }
+
         if (name === "users") {
           return {
             doc: jest.fn((id: string) => ({
               get: jest.fn().mockResolvedValue(
-                {
-                  id,
-                  ...createMockDocument(usersData.has(id), usersData.get(id)),
-                }
+                createMockDocument(id, usersData)
               ),
             })),
             where: jest.fn((field: string, _operator: string, value: string) => ({
@@ -68,46 +72,69 @@ describe("getAdminSession", () => {
                 get: jest.fn().mockResolvedValue({
                   docs: [...usersData.entries()]
                     .filter(([, data]) => data[field] === value)
-                    .map(([id, data]) => ({
-                      id,
-                      data: () => data,
-                    })),
+                    .map(([id]) => createMockDocument(id, usersData)),
                 }),
               })),
             })),
           };
         }
+
         if (name === "subscriptions") {
           return {
             doc: jest.fn((id: string) => ({
               get: jest.fn().mockResolvedValue(
-                createMockDocument(
-                  subscriptionData.has(id),
-                  subscriptionData.get(id)
-                )
+                createMockDocument(id, subscriptionData)
               ),
             })),
           };
         }
+
         if (name === "entitlementOverrides") {
           return {
             doc: jest.fn((id: string) => ({
               get: jest.fn().mockResolvedValue(
-                createMockDocument(overrideData.has(id), overrideData.get(id))
+                createMockDocument(id, overrideData)
               ),
+              set: jest.fn(async (data: Record<string, unknown>) => {
+                const previous = overrideData.get(id) ?? {};
+                overrideData.set(id, {
+                  ...previous,
+                  ...data,
+                });
+              }),
             })),
           };
         }
+
+        if (name === "adminAuditLogs") {
+          return {
+            add: jest.fn(async (data: Record<string, unknown>) => {
+              auditLogAdds.push(data);
+              return {id: `log-${auditLogAdds.length}`};
+            }),
+          };
+        }
+
         return {};
       }),
     };
 
     const {admin: configAdmin} = await import("../src/config");
-    jest.spyOn(configAdmin, "firestore").mockReturnValue(mockFirestore as any);
+    const firestoreSpy = jest.spyOn(configAdmin, "firestore").mockReturnValue(
+      mockFirestore as any
+    );
+    (firestoreSpy as any).FieldValue = {
+      serverTimestamp: jest.fn(() => "__server_timestamp__"),
+    };
+    (configAdmin.firestore as any).FieldValue = {
+      serverTimestamp: jest.fn(() => "__server_timestamp__"),
+    };
 
     const functions = await import("../src/functions/admin");
     getAdminSession = functions.getAdminSession;
     getAdminUserSummary = functions.getAdminUserSummary;
+    grantEntitlementOverride = functions.grantEntitlementOverride;
+    revokeEntitlementOverride = functions.revokeEntitlementOverride;
   });
 
   afterEach(() => {
@@ -237,5 +264,82 @@ describe("getAdminSession", () => {
         overrideActive: true,
       }],
     });
+  });
+
+  it("override를 부여하고 audit log를 남긴다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("target-user", {
+      nickname: "kswift",
+    });
+
+    const handler = (grantEntitlementOverride as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-user",
+        reason: "CS compensation",
+        expiresAt: "2026-04-30T00:00:00.000Z",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({success: true});
+    expect(overrideData.get("target-user")).toEqual(expect.objectContaining({
+      isActive: true,
+      reason: "CS compensation",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+      createdBy: "admin-user",
+    }));
+    expect(auditLogAdds).toHaveLength(1);
+    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
+      actorId: "admin-user",
+      action: "grant_entitlement_override",
+      targetId: "target-user",
+    }));
+  });
+
+  it("override를 회수하고 audit log를 남긴다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    overrideData.set("target-user", {
+      isActive: true,
+      reason: "CS compensation",
+    });
+
+    const handler = (revokeEntitlementOverride as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-user",
+        reason: "benefit ended",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({success: true});
+    expect(overrideData.get("target-user")).toEqual(expect.objectContaining({
+      isActive: false,
+      revokedBy: "admin-user",
+      revokedReason: "benefit ended",
+    }));
+    expect(auditLogAdds).toHaveLength(1);
+    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
+      actorId: "admin-user",
+      action: "revoke_entitlement_override",
+      targetId: "target-user",
+    }));
   });
 });

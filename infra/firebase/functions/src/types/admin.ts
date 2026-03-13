@@ -37,3 +37,22 @@ export interface GetAdminUserSummaryResponse {
   success: true;
   results: AdminUserSummary[];
 }
+
+export interface GrantEntitlementOverrideRequest {
+  userId: string;
+  reason: string;
+  expiresAt?: string | null;
+}
+
+export interface GrantEntitlementOverrideResponse {
+  success: true;
+}
+
+export interface RevokeEntitlementOverrideRequest {
+  userId: string;
+  reason?: string | null;
+}
+
+export interface RevokeEntitlementOverrideResponse {
+  success: true;
+}

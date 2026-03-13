@@ -21,6 +21,25 @@ type GetAdminUserSummaryResponse = {
   results: AdminUserSummary[];
 };
 
+type GrantEntitlementOverrideRequest = {
+  userId: string;
+  reason: string;
+  expiresAt?: string | null;
+};
+
+type GrantEntitlementOverrideResponse = {
+  success: true;
+};
+
+type RevokeEntitlementOverrideRequest = {
+  userId: string;
+  reason?: string | null;
+};
+
+type RevokeEntitlementOverrideResponse = {
+  success: true;
+};
+
 export async function getAdminUserSummary(
   query: string
 ): Promise<AdminUserSummary[]> {
@@ -34,4 +53,35 @@ export async function getAdminUserSummary(
   >(firebaseFunctions, "getAdminUserSummary");
   const result = await callable({query});
   return result.data.results;
+}
+
+export async function grantEntitlementOverride(params: {
+  userId: string;
+  reason: string;
+  expiresAt?: string | null;
+}): Promise<void> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GrantEntitlementOverrideRequest,
+    GrantEntitlementOverrideResponse
+  >(firebaseFunctions, "grantEntitlementOverride");
+  await callable(params);
+}
+
+export async function revokeEntitlementOverride(params: {
+  userId: string;
+  reason?: string | null;
+}): Promise<void> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    RevokeEntitlementOverrideRequest,
+    RevokeEntitlementOverrideResponse
+  >(firebaseFunctions, "revokeEntitlementOverride");
+  await callable(params);
 }
