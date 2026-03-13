@@ -67,6 +67,7 @@ public enum NotificationType: String, Codable, CaseIterable {
   case groupInvitation = "group_invitation"
   case groupUpdate = "group_update"
   case attendanceResponse = "attendance_response"
+  case locationSharingReminder = "location_sharing_reminder"
   case system = "system"
 
   public static func fromWireValue(_ rawValue: String) -> Self? {
@@ -87,6 +88,8 @@ public enum NotificationType: String, Codable, CaseIterable {
       return .groupUpdate
     case "attendance_response":
       return .attendanceResponse
+    case "location_sharing_reminder":
+      return .locationSharingReminder
     case "system":
       return .system
     default:
@@ -112,6 +115,8 @@ public enum NotificationType: String, Codable, CaseIterable {
       return "group_update"
     case .attendanceResponse:
       return "attendance_response"
+    case .locationSharingReminder:
+      return "location_sharing_reminder"
     case .system:
       return "system"
     }
@@ -131,7 +136,7 @@ public enum NotificationType: String, Codable, CaseIterable {
   public var deeplinkGuide: DeeplinkGuide {
     switch self {
     case .scheduleInvitation, .scheduleReminder, .scheduleConfirmed, .scheduleCancelled,
-         .scheduleUpdated, .attendanceResponse:
+         .scheduleUpdated, .attendanceResponse, .locationSharingReminder:
       return .scheduleAndGroup
     case .groupInvitation, .groupUpdate:
       return .groupOnly

@@ -85,6 +85,7 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
   case groupInvitation = "group_invitation"
   case groupUpdate = "group_update"
   case attendanceResponse = "attendance_response"
+  case locationSharingReminder = "location_sharing_reminder"
   case system = "system"
 
   /// 아이콘 이름 (SF Symbol)
@@ -98,6 +99,7 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
     case .groupInvitation: return "person.badge.plus.fill"
     case .groupUpdate: return "person.3.fill"
     case .attendanceResponse: return "hand.raised.fill"
+    case .locationSharingReminder: return "location.circle.fill"
     case .system: return "info.circle.fill"
     }
   }
@@ -113,6 +115,7 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
     case .groupInvitation: return "pmpurple"
     case .groupUpdate: return "pmteal"
     case .attendanceResponse: return "pmyellow"
+    case .locationSharingReminder: return "pmblue"
     case .system: return "pmgray"
     }
   }
@@ -128,7 +131,8 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
   public func deeplink(scheduleId: String?, groupId: String?) -> DeeplinkType {
     switch self {
     case .scheduleInvitation, .scheduleReminder, .scheduleConfirmed,
-         .scheduleCancelled, .scheduleUpdated, .attendanceResponse:
+         .scheduleCancelled, .scheduleUpdated, .attendanceResponse,
+         .locationSharingReminder:
       guard let scheduleId = scheduleId, let groupId = groupId else {
         return .none
       }

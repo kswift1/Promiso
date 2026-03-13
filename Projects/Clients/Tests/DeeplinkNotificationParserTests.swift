@@ -29,6 +29,7 @@ struct DeeplinkNotificationParserTests {
       "schedule_cancelled",
       "schedule_updated",
       "attendance_response",
+      "location_sharing_reminder",
     ]
 
     for type in types {

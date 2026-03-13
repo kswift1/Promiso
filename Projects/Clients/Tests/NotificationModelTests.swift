@@ -64,6 +64,11 @@ struct NotificationCategoryIconTests {
     #expect(NotificationCategory.attendanceResponse.iconName == "hand.raised.fill")
   }
 
+  @Test("locationSharingReminder 아이콘은 location.circle.fill")
+  func locationSharingReminder_iconName() {
+    #expect(NotificationCategory.locationSharingReminder.iconName == "location.circle.fill")
+  }
+
   @Test("system 아이콘은 info.circle.fill")
   func system_iconName() {
     #expect(NotificationCategory.system.iconName == "info.circle.fill")
@@ -85,6 +90,7 @@ struct NotificationCategoryColorTests {
     #expect(NotificationCategory.groupInvitation.iconColorName == "pmpurple")
     #expect(NotificationCategory.groupUpdate.iconColorName == "pmteal")
     #expect(NotificationCategory.attendanceResponse.iconColorName == "pmyellow")
+    #expect(NotificationCategory.locationSharingReminder.iconColorName == "pmblue")
     #expect(NotificationCategory.system.iconColorName == "pmgray")
   }
 }
@@ -98,7 +104,8 @@ struct NotificationCategoryDeeplinkTests {
   func scheduleCategories_returnScheduleDeeplink() {
     let scheduleCategories: [NotificationCategory] = [
       .scheduleInvitation, .scheduleReminder, .scheduleConfirmed,
-      .scheduleCancelled, .scheduleUpdated, .attendanceResponse
+      .scheduleCancelled, .scheduleUpdated, .attendanceResponse,
+      .locationSharingReminder
     ]
 
     for category in scheduleCategories {
@@ -235,6 +242,7 @@ struct NotificationCategoryRawValueTests {
     #expect(NotificationCategory.groupInvitation.rawValue == "group_invitation")
     #expect(NotificationCategory.groupUpdate.rawValue == "group_update")
     #expect(NotificationCategory.attendanceResponse.rawValue == "attendance_response")
+    #expect(NotificationCategory.locationSharingReminder.rawValue == "location_sharing_reminder")
     #expect(NotificationCategory.system.rawValue == "system")
   }
 }

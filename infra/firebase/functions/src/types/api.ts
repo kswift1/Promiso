@@ -1513,8 +1513,8 @@ export type MyVoteStatus = "pending" | "voted" | "declined";
  *
  * @remarks
  * - 그룹 약속(type: "promise")과 개인 일정(type: "personal")을 통합
- * - Firestore `users/{uid}/cache/widgetSnapshot` 문서에 저장
- * - 서버에서 우선순위 정렬 완료 후 저장
+ * - `getWidgetSnapshot`, `getWidgetSnapshotWithToken` 응답에 사용
+ * - 서버에서 우선순위 정렬 후 직접 반환
  * - type이 "personal"이면 groupId/votes/myVoteStatus 등은 기본값
  */
 export interface SnapshotPromise {
@@ -1579,10 +1579,10 @@ export type WidgetPromise = SnapshotPromise;
  * Widget Snapshot 메타데이터
  */
 export interface WidgetSnapshotMeta {
-  /** 오늘 약속 총 개수 (표시되는 것보다 많을 수 있음) */
+  /** 오늘 약속 반환 개수 (최대 6) */
   todayCount: number;
 
-  /** 다가오는 약속 총 개수 */
+  /** 다가오는 약속 반환 개수 (최대 9) */
   upcomingCount: number;
 
   /** 스냅샷 마지막 업데이트 시간 (ISO 8601) */
@@ -1593,13 +1593,11 @@ export interface WidgetSnapshotMeta {
 }
 
 /**
- * Widget Snapshot 문서 (Firestore)
- *
- * @path users/{uid}/widgetSnapshot
+ * Widget Snapshot 응답 (Direct Query)
  *
  * @remarks
- * - Cloud Functions Trigger가 약속/투표 변경 시 자동 업데이트
- * - Widget은 이 문서만 읽으면 됨 (쿼리 불필요)
+ * - Cloud Functions가 Firestore를 직접 조회해 반환
+ * - Widget은 이 응답만 읽으면 됨
  *
  * @sorting 정렬 우선순위 (서버에서 적용)
  * 1. 내 투표 상태: pending(미응답) 우선
@@ -1618,7 +1616,7 @@ export interface WidgetSnapshotDocument {
   /**
    * 오늘 약속 목록 (Medium 위젯용)
    *
-   * @max 5개
+   * @max 6개
    * @sorting pending 우선 → 미확정 우선 → 시간순
    */
   today: WidgetPromise[];
@@ -1627,7 +1625,7 @@ export interface WidgetSnapshotDocument {
    * 다가오는 일정 목록 (Large 위젯용, 내일부터)
    * 그룹 약속 + 개인 일정 통합, type 필드로 구분
    *
-   * @max 7개
+   * @max 9개
    * @sorting 시간순 (확정 여부 무관)
    */
   upcoming: WidgetPromise[];

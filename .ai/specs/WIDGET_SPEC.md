@@ -1,6 +1,6 @@
 # Promiso Widget 기술 스펙
 
-> **상태**: ✅ 구현 완료 (v2.1 Snapshot 기반)
+> **상태**: ✅ 구현 완료 (Direct Query 기반)
 > **iOS 지원**: iOS 18.0+
 > **마지막 업데이트**: 2025.02.01
 
@@ -13,67 +13,55 @@ Promiso 홈 화면 위젯은 사용자가 앱을 열지 않아도 약속 정보�
 | 위젯 | 크기 | 표시 내용 |
 |------|------|----------|
 | Small | 2x2 | 다음 약속 1개 (우선순위 기반) |
-| Medium | 4x2 | 오늘 약속 최대 5개 |
-| Large | 4x4 | 오늘 + 다가오는 약속 최대 7개 |
+| Medium | 4x2 | 오늘 약속 최대 6개 |
+| Large | 4x4 | 오늘/다가오는 약속 조합 표시 |
 
 ---
 
-## 아키텍처 (v2 Snapshot 기반)
+## 아키텍처 (Direct Query 기반)
 
 ### 핵심 변경점 (v1 → v2)
 
-| 항목 | v1 (API 호출) | v2 (Snapshot) |
-|------|--------------|---------------|
-| 데이터 갱신 | Widget에서 API 호출 | Firestore Trigger로 자동 갱신 |
-| API 역할 | 매번 계산 | 캐시된 스냅샷 읽기만 |
-| Race Condition | 있음 (복잡한 Lock 필요) | 없음 (같은 문서 읽기) |
-| 비용 | 높음 (N+1 쿼리) | 낮음 (1 read) |
+| 항목 | 기존 Snapshot 구상 | 현재 구현 |
+|------|-------------------|-----------|
+| 데이터 갱신 | Trigger가 캐시 문서 갱신 | Widget 요청 시 Functions가 직접 조회 |
+| API 역할 | 캐시 읽기만 | 직접 조회 + 정렬 + 제한 |
+| 저장 위치 | `users/{uid}/cache/widgetSnapshot` | 영구 캐시 없음 |
+| 비용 특성 | 캐시 유지 비용 필요 | 요청 시점 조회 비용 발생 |
 
 ### Widget Snapshot 경로
 
 | 스냅샷 | Firestore 경로 | 용도 |
 |--------|---------------|------|
-| Widget | `users/{uid}/cache/widgetSnapshot` | 홈 화면 위젯 |
+| Widget | `getWidgetSnapshot`, `getWidgetSnapshotWithToken` | 홈 화면 위젯 응답 |
 
 `SnapshotPromise` 필드:
 - `id`, `title`, `emoji`, `startAt`, `endAt`, `location`
 - `groupId`, `groupName`, `groupImageUrl`
-- `isConfirmed`, `minimumParticipants`, `participantCount`
+- `isConfirmed`, `minimumParticipants`, `votes`
 - `myVoteStatus`, `votingDeadline`
 
 ### 데이터 흐름 (v2)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        Firestore Triggers                            │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │ onPromiseWrite: 약속 생성/수정/삭제 → 관련 사용자 스냅샷 갱신    │ │
-│  │ scheduledRefresh: 매일 자정 (KST) → 전체 사용자 스냅샷 갱신      │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-│         │                                                            │
-│         ▼                                                            │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │ users/{uid}/cache/widgetSnapshot                                 │ │
-│  │ ├─ next: WidgetPromise | null     (Small 위젯용)                │ │
-│  │ ├─ today: WidgetPromise[]         (Medium 위젯용, 최대 5개)     │ │
-│  │ ├─ upcoming: WidgetPromise[]      (Large 위젯용, 최대 7개)      │ │
-│  │ └─ meta: { todayCount, upcomingCount, updatedAt, version }      │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-          │
-          │  (Firestore Read Only)
-          ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       Widget Extension                               │
 │  ┌──────────────────┐    ┌───────────────────────────────────────┐  │
 │  │TimelineProvider  │───▶│ getWidgetSnapshotWithToken (Functions)│  │
-│  │                  │    │ → 캐시된 스냅샷 읽기만 (계산 없음)    │  │
+│  │                  │    │ → Firestore 직접 조회 + 정렬 + 제한   │  │
 │  └──────────────────┘    └───────────────────────────────────────┘  │
 │         │                                                            │
 │         ▼                                                            │
 │  ┌─────────────────┐                                                │
 │  │   Widget UI     │                                                │
 │  └─────────────────┘                                                │
+└─────────────────────────────────────────────────────────────────────┘
+          ▲
+          │
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Firebase Functions / Firestore                  │
+│   그룹 약속 + 개인 일정을 요청 시점에 직접 조회하고 응답 생성       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -403,7 +391,12 @@ export const getWidgetSnapshotWithToken = onRequest({
       next: WidgetPromise | null,
       today: WidgetPromise[],
       upcoming: WidgetPromise[],
-      updatedAt: string  // ISO 8601
+      meta: {
+        todayCount: number,
+        upcomingCount: number,
+        updatedAt: string,
+        version: number
+      }
     }
   });
 });
@@ -423,7 +416,12 @@ export const getWidgetSnapshot = onCall({
     next: WidgetPromise | null,
     today: WidgetPromise[],
     upcoming: WidgetPromise[],
-    updatedAt: string
+    meta: {
+      todayCount: number,
+      upcomingCount: number,
+      updatedAt: string,
+      version: number
+    }
   };
 });
 ```

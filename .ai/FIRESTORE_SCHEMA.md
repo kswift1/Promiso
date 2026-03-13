@@ -304,26 +304,28 @@ Firestore를 직접 쿼리하여 반환합니다.
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
 | `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 |
-| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 3개) |
-| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 4개) |
+| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 6개) |
+| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 9개) |
 | `meta` | SnapshotMeta | ✅ | 메타데이터 |
 
 #### 📦 WidgetPromise 구조 (SnapshotPromise 공용)
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
+| `type` | String | ❌ | 일정 타입 (`promise` \| `personal`, 생략 시 `promise`) |
 | `id` | String | ✅ | 약속 ID |
 | `title` | String | ✅ | 약속 제목 |
 | `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
 | `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
 | `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
 | `location` | String \| null | ❌ | 장소명 |
-| `groupId` | String | ✅ | 그룹 ID |
-| `groupName` | String \| null | ❌ | 그룹 이름 |
+| `groupId` | String | ✅ | 그룹 ID (개인 일정은 빈 문자열) |
+| `groupName` | String \| null | ❌ | 그룹 이름 (개인 일정은 null) |
 | `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
 | `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
 | `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
-| `participantCount` | Number | ✅ | 참여 확정 인원 |
+| `votes.accepted` | Array<String> | ✅ | 참여 확정 사용자 ID 목록 |
+| `votes.declined` | Array<String> | ✅ | 불참 사용자 ID 목록 |
 | `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
 | `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
 
@@ -353,6 +355,7 @@ Firestore를 직접 쿼리하여 반환합니다.
 ```json
 {
   "next": {
+    "type": "promise",
     "id": "promise123",
     "title": "점심 약속",
     "emoji": "🍜",
@@ -362,7 +365,10 @@ Firestore를 직접 쿼리하여 반환합니다.
     "groupId": "group456",
     "groupName": "대학 동기",
     "isConfirmed": false,
-    "participantCount": 2,
+    "votes": {
+      "accepted": ["user_kim123", "user_lee456"],
+      "declined": []
+    },
     "myVoteStatus": "pending"
   },
   "today": [
@@ -870,6 +876,7 @@ notifications/{notificationId}
 | `group_invitation` | 그룹 초대 | 새 그룹에 초대됨 |
 | `group_update` | 그룹 업데이트 | 그룹 정보 변경 (새 멤버 참여 등) |
 | `attendance_response` | 응답 변경 | 다른 멤버의 참석 응답 |
+| `location_sharing_reminder` | 실시간 공유 넛지 | ETA 공유 유도 알림 |
 | `system` | 시스템 | 시스템 알림 |
 
 #### 📝 예시 데이터
