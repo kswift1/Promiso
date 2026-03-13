@@ -68,6 +68,24 @@ export function PushJobsPage() {
       <Card elevation={0}>
         <CardContent>
           <Stack spacing={2}>
+            <Alert severity="info">
+              <Stack spacing={0.5}>
+                <Typography variant="body2">
+                  <strong>Tip.</strong> `dry-run`이 켜져 있으면 실제 푸시는
+                  발송되지 않고, 대상 수와 타겟 매칭만 확인합니다.
+                </Typography>
+                <Typography variant="body2">
+                  가장 안전한 순서는 `test_user`로 내 계정을 넣고,
+                  `dry-run`으로 먼저 확인한 뒤, 문제가 없으면 `dry-run`을
+                  끄고 실제 1건을 보내 보는 것입니다.
+                </Typography>
+                <Typography variant="body2">
+                  그 다음에만 `all`, `pro`, `free` 같은 큰 대상 발송으로
+                  넘어가는 편이 안전합니다.
+                </Typography>
+              </Stack>
+            </Alert>
+
             <TextField
               label="Title"
               placeholder="공지사항"

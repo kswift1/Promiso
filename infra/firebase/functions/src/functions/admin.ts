@@ -44,6 +44,16 @@ const RELEASE_CONTROL_KEYS = [
 
 type ReleaseControlKey = typeof RELEASE_CONTROL_KEYS[number];
 
+const RELEASE_CONTROL_GROUPS: Record<ReleaseControlKey, string> = {
+  forceUpdateVersion: "version-control",
+  recommendedVersion: "version-control",
+  appStoreURL: "version-control",
+  privacyPolicyURL: "leagal-policies",
+  termsOfServiceURL: "leagal-policies",
+  supportEmail: "customer-support",
+  notionFAQDatabaseId: "customer-support",
+};
+
 /**
  * Returns true when the stored role matches a supported admin role.
  * @param {unknown} value The stored Firestore role value.
@@ -271,11 +281,34 @@ async function writeAuditLog(params: {
  * @param {ReleaseControlKey} key The Remote Config key.
  * @return {string} The current default value.
  */
+function getRemoteConfigParameter(
+  template: RemoteConfigTemplate,
+  key: ReleaseControlKey
+) {
+  if (template.parameters[key]) {
+    return template.parameters[key];
+  }
+
+  for (const group of Object.values(template.parameterGroups ?? {})) {
+    if (group.parameters[key]) {
+      return group.parameters[key];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Reads a Remote Config string parameter value.
+ * @param {RemoteConfigTemplate} template The Remote Config template.
+ * @param {ReleaseControlKey} key The Remote Config key.
+ * @return {string} The current default value.
+ */
 function getRemoteConfigValue(
   template: RemoteConfigTemplate,
   key: ReleaseControlKey
 ): string {
-  const defaultValue = template.parameters[key]?.defaultValue;
+  const defaultValue = getRemoteConfigParameter(template, key)?.defaultValue;
   if (
     defaultValue &&
     "value" in defaultValue &&
@@ -286,6 +319,47 @@ function getRemoteConfigValue(
   }
 
   return "";
+}
+
+/**
+ * Updates a Remote Config value while preserving parameter grouping.
+ * @param {RemoteConfigTemplate} template The mutable template.
+ * @param {ReleaseControlKey} key The parameter key.
+ * @param {string} value The next default value.
+ * @return {void}
+ */
+function setRemoteConfigValue(
+  template: RemoteConfigTemplate,
+  key: ReleaseControlKey,
+  value: string
+): void {
+  const currentParameter = getRemoteConfigParameter(template, key);
+  const nextParameter = {
+    ...(currentParameter ?? {}),
+    defaultValue: {value},
+  };
+
+  if (template.parameters[key]) {
+    template.parameters[key] = nextParameter;
+    return;
+  }
+
+  for (const group of Object.values(template.parameterGroups ?? {})) {
+    if (group.parameters[key]) {
+      group.parameters[key] = nextParameter;
+      return;
+    }
+  }
+
+  const targetGroupKey = RELEASE_CONTROL_GROUPS[key];
+  if (!template.parameterGroups[targetGroupKey]) {
+    template.parameterGroups[targetGroupKey] = {
+      description: "",
+      parameters: {},
+    };
+  }
+
+  template.parameterGroups[targetGroupKey].parameters[key] = nextParameter;
 }
 
 /**
@@ -622,11 +696,7 @@ export const updateAdminReleaseControls =
       const before = buildReleaseControls(template);
 
       RELEASE_CONTROL_KEYS.forEach((key) => {
-        const parameter = template.parameters[key] ?? {};
-        template.parameters[key] = {
-          ...parameter,
-          defaultValue: {value: nextValues[key]},
-        };
+        setRemoteConfigValue(template, key, nextValues[key]);
       });
 
       const publishedTemplate = await remoteConfig.publishTemplate(template);

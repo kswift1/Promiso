@@ -68,27 +68,40 @@ describe("admin functions", () => {
     auditLogAdds = [];
     adminPushJobDocs = [];
     remoteConfigTemplate = {
-      parameters: {
-        forceUpdateVersion: {
-          defaultValue: {value: "1.0.0"},
+      parameters: {},
+      parameterGroups: {
+        "version-control": {
+          parameters: {
+            forceUpdateVersion: {
+              defaultValue: {value: "1.0.0"},
+            },
+            recommendedVersion: {
+              defaultValue: {value: "1.1.0"},
+            },
+            appStoreURL: {
+              defaultValue: {value: "https://apps.apple.com/app/id1625074042"},
+            },
+          },
         },
-        recommendedVersion: {
-          defaultValue: {value: "1.1.0"},
+        "leagal-policies": {
+          parameters: {
+            privacyPolicyURL: {
+              defaultValue: {value: "https://example.com/privacy"},
+            },
+            termsOfServiceURL: {
+              defaultValue: {value: "https://example.com/terms"},
+            },
+          },
         },
-        appStoreURL: {
-          defaultValue: {value: "https://apps.apple.com/app/id1625074042"},
-        },
-        privacyPolicyURL: {
-          defaultValue: {value: "https://example.com/privacy"},
-        },
-        termsOfServiceURL: {
-          defaultValue: {value: "https://example.com/terms"},
-        },
-        supportEmail: {
-          defaultValue: {value: "support@promiso.app"},
-        },
-        notionFAQDatabaseId: {
-          defaultValue: {value: "faq-database-id"},
+        "customer-support": {
+          parameters: {
+            supportEmail: {
+              defaultValue: {value: "support@promiso.app"},
+            },
+            notionFAQDatabaseId: {
+              defaultValue: {value: "faq-database-id"},
+            },
+          },
         },
       },
       version: {
