@@ -76,7 +76,17 @@ describe("admin functions", () => {
   let subscriptionData: Map<string, Record<string, unknown>>;
   let overrideData: Map<string, Record<string, unknown>>;
   let auditLogAdds: Record<string, unknown>[];
+  let adminAuditLogQueryCalls: Array<{
+    field: string;
+    operator: string;
+    value: unknown;
+  }>;
   let adminPushJobDocs: Record<string, unknown>[];
+  let adminPushJobQueryCalls: Array<{
+    field: string;
+    operator: string;
+    value: unknown;
+  }>;
   let remoteConfigTemplate: Record<string, any>;
 
   beforeEach(async () => {
@@ -114,7 +124,9 @@ describe("admin functions", () => {
     subscriptionData = new Map();
     overrideData = new Map();
     auditLogAdds = [];
+    adminAuditLogQueryCalls = [];
     adminPushJobDocs = [];
+    adminPushJobQueryCalls = [];
     remoteConfigTemplate = {
       parameters: {},
       parameterGroups: {
@@ -240,13 +252,54 @@ describe("admin functions", () => {
         }
 
         if (name === "adminAuditLogs") {
-          const buildAuditLogDocs = () =>
-            auditLogAdds
+          const buildAuditLogDocs = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            limit?: number,
+          ) => {
+            let docs = auditLogAdds
               .map((data, index) => ({
                 id: `log-${index + 1}`,
                 data: () => data,
               }))
-              .reverse();
+              .reverse()
+              .filter((doc) =>
+                filters.every(({field, operator, value}) => {
+                  const data = doc.data();
+
+                  if (operator === "==") {
+                    return data[field] === value;
+                  }
+
+                  return false;
+                })
+              );
+
+            if (typeof limit === "number") {
+              docs = docs.slice(0, limit);
+            }
+
+            return docs;
+          };
+
+          const createAuditLogQuery = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            limit?: number,
+          ) => ({
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminAuditLogQueryCalls.push({field, operator, value});
+              return createAuditLogQuery(
+                [...filters, {field, operator, value}],
+                limit
+              );
+            }),
+            orderBy: jest.fn(() => createAuditLogQuery(filters, limit)),
+            limit: jest.fn((nextLimit: number) =>
+              createAuditLogQuery(filters, nextLimit)
+            ),
+            get: jest.fn().mockResolvedValue({
+              docs: buildAuditLogDocs(filters, limit),
+            }),
+          });
 
           return {
             add: jest.fn(async (data: Record<string, unknown>) => {
@@ -259,33 +312,107 @@ describe("admin functions", () => {
                 data: () => data,
               })),
             }),
-            orderBy: jest.fn(() => ({
-              get: jest.fn().mockResolvedValue({
-                docs: buildAuditLogDocs(),
-              }),
-              limit: jest.fn((limit: number) => ({
-                get: jest.fn().mockResolvedValue({
-                  docs: buildAuditLogDocs().slice(0, limit),
-                }),
-              })),
-            })),
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminAuditLogQueryCalls.push({field, operator, value});
+              return createAuditLogQuery([{field, operator, value}]);
+            }),
+            orderBy: jest.fn(() => createAuditLogQuery()),
           };
         }
 
         if (name === "adminPushJobs") {
-          const buildAdminPushJobDocs = () =>
-            adminPushJobDocs.map((data, index) => ({
-              id: `job-${index + 1}`,
-              ref: {
-                set: jest.fn(async (nextData: Record<string, unknown>) => {
-                  adminPushJobDocs[index] = {
-                    ...adminPushJobDocs[index],
-                    ...nextData,
-                  };
-                }),
-              },
-              data: () => data,
-            }));
+          const toComparableValue = (value: unknown) => {
+            if (
+              value &&
+              typeof value === "object" &&
+              "toDate" in value &&
+              typeof (value as {toDate?: () => Date}).toDate === "function"
+            ) {
+              return (value as {toDate: () => Date}).toDate().toISOString();
+            }
+
+            return value;
+          };
+
+          const buildAdminPushJobDocs = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            orderField?: string,
+            orderDirection: "asc" | "desc" = "asc",
+          ) => {
+            let docs = adminPushJobDocs
+              .map((data, index) => ({
+                id: `job-${index + 1}`,
+                ref: {
+                  set: jest.fn(async (nextData: Record<string, unknown>) => {
+                    adminPushJobDocs[index] = {
+                      ...adminPushJobDocs[index],
+                      ...nextData,
+                    };
+                  }),
+                },
+                data: () => data,
+              }))
+              .filter((doc) =>
+                filters.every(({field, operator, value}) => {
+                  const data = doc.data();
+                  const fieldValue = data[field];
+
+                  if (operator === "==") {
+                    return fieldValue === value;
+                  }
+
+                  if (operator === "<=") {
+                    return (
+                      typeof fieldValue === "string" &&
+                      typeof value === "string" &&
+                      fieldValue <= value
+                    );
+                  }
+
+                  return false;
+                })
+              );
+
+            if (orderField) {
+              docs = [...docs].sort((left, right) => {
+                const leftValue = toComparableValue(left.data()[orderField]);
+                const rightValue = toComparableValue(right.data()[orderField]);
+
+                if (leftValue === rightValue) {
+                  return 0;
+                }
+
+                if (orderDirection === "desc") {
+                  return leftValue > rightValue ? -1 : 1;
+                }
+
+                return leftValue < rightValue ? -1 : 1;
+              });
+            }
+
+            return docs;
+          };
+
+          const createAdminPushJobQuery = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            orderField?: string,
+            orderDirection: "asc" | "desc" = "asc",
+          ) => ({
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminPushJobQueryCalls.push({field, operator, value});
+              return createAdminPushJobQuery(
+                [...filters, {field, operator, value}],
+                orderField,
+                orderDirection
+              );
+            }),
+            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+              createAdminPushJobQuery(filters, field, direction)
+            ),
+            get: jest.fn().mockResolvedValue({
+              docs: buildAdminPushJobDocs(filters, orderField, orderDirection),
+            }),
+          });
 
           return {
             doc: jest.fn((id: string) => {
@@ -322,11 +449,13 @@ describe("admin functions", () => {
             get: jest.fn().mockResolvedValue({
               docs: buildAdminPushJobDocs(),
             }),
-            orderBy: jest.fn(() => ({
-              get: jest.fn().mockResolvedValue({
-                docs: buildAdminPushJobDocs().reverse(),
-              }),
-            })),
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminPushJobQueryCalls.push({field, operator, value});
+              return createAdminPushJobQuery([{field, operator, value}]);
+            }),
+            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+              createAdminPushJobQuery([], field, direction)
+            ),
           };
         }
 
@@ -950,6 +1079,11 @@ describe("admin functions", () => {
         },
       ],
     });
+    expect(adminAuditLogQueryCalls).toContainEqual({
+      field: "targetId",
+      operator: "==",
+      value: "target-user",
+    });
   });
 
   it("marketer는 user timeline을 조회할 수 없다", async () => {
@@ -1261,6 +1395,11 @@ describe("admin functions", () => {
           createdAt: "2026-03-13T01:00:00.000Z",
         },
       ],
+    });
+    expect(adminAuditLogQueryCalls).toContainEqual({
+      field: "actorId",
+      operator: "==",
+      value: "owner-2",
     });
   });
 
@@ -1884,6 +2023,18 @@ describe("admin functions", () => {
       action: "send_scheduled_admin_push",
       targetId: "job-1",
     }));
+    expect(adminPushJobQueryCalls).toEqual(expect.arrayContaining([
+      {
+        field: "status",
+        operator: "==",
+        value: "scheduled",
+      },
+      {
+        field: "scheduledAt",
+        operator: "<=",
+        value: "2026-03-13T00:00:00.000Z",
+      },
+    ]));
   });
 
   it("dry-run admin push는 발송 없이 대상 수만 계산한다", async () => {

@@ -72,6 +72,8 @@ const RELEASE_CONTROL_KEYS = [
 ] as const;
 
 const MIN_SCHEDULE_LEAD_TIME_MS = 5 * 60 * 1000;
+const ADMIN_AUDIT_LOG_QUERY_SCAN_FACTOR = 10;
+const ADMIN_AUDIT_LOG_QUERY_MAX_SCAN = 500;
 const ADMIN_ROLE_ORDER: Record<AdminRole, number> = {
   owner: 0,
   support: 1,
@@ -1009,6 +1011,80 @@ function buildAdminAuditLog(
 }
 
 /**
+ * Chooses the most selective audit log filter that can safely run in Firestore.
+ * Secondary filters remain in-memory to keep the required index set small.
+ * @param {object} params Optional audit log filters.
+ * @return {object | null} The primary Firestore filter, if any.
+ */
+function pickAdminAuditLogPrimaryFilter(params: {
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+}): {field: "action" | "actorId" | "targetType" | "targetId"; value: string} | null {
+  if (params.targetId) {
+    return {
+      field: "targetId",
+      value: params.targetId,
+    };
+  }
+
+  if (params.actorId) {
+    return {
+      field: "actorId",
+      value: params.actorId,
+    };
+  }
+
+  if (params.action) {
+    return {
+      field: "action",
+      value: params.action,
+    };
+  }
+
+  if (params.targetType) {
+    return {
+      field: "targetType",
+      value: params.targetType,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Returns true when an audit log matches the requested filters.
+ * @param {AdminAuditLog} log The normalized audit log.
+ * @param {object} filters The optional filter set.
+ * @return {boolean} True when the log matches all filters.
+ */
+function matchesAdminAuditLogFilters(log: AdminAuditLog, filters: {
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+}): boolean {
+  if (filters.action && log.action !== filters.action) {
+    return false;
+  }
+
+  if (filters.actorId && log.actorId !== filters.actorId) {
+    return false;
+  }
+
+  if (filters.targetType && log.targetType !== filters.targetType) {
+    return false;
+  }
+
+  if (filters.targetId && log.targetId !== filters.targetId) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Builds a normalized subscription snapshot for the timeline UI.
  * @param {Record<string, unknown> | undefined} data The stored subscription
  * document, if any.
@@ -1521,7 +1597,11 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
       db.collection("users").doc(userId).get(),
       db.collection("subscriptions").doc(userId).get(),
       db.collection("entitlementOverrides").doc(userId).get(),
-      db.collection("adminAuditLogs").orderBy("createdAt", "desc").get(),
+      db.collection("adminAuditLogs")
+        .where("targetId", "==", userId)
+        .orderBy("createdAt", "desc")
+        .limit(limit)
+        .get(),
     ]);
 
     const userData = userSnapshot.data();
@@ -1535,12 +1615,9 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
       subscriptionSnapshot.data() as Record<string, unknown> | undefined,
       overrideSnapshot.data() as Record<string, unknown> | undefined
     );
-    const auditLogs = auditSnapshot.docs
-      .map((doc) =>
-        buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
-      )
-      .filter((log) => log.targetId === userId)
-      .slice(0, limit);
+    const auditLogs = auditSnapshot.docs.map((doc) =>
+      buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
+    );
 
     return {
       success: true,
@@ -1683,33 +1760,41 @@ export const getAdminAuditLogs = onCall<GetAdminAuditLogsRequest>(
     const actorId = request.data.actorId?.trim();
     const targetType = request.data.targetType?.trim();
     const targetId = request.data.targetId?.trim();
-    const snapshot = await admin.firestore()
-      .collection("adminAuditLogs")
+    const filters = {
+      action,
+      actorId,
+      targetType,
+      targetId,
+    };
+    const primaryFilter = pickAdminAuditLogPrimaryFilter(filters);
+    const hasSecondaryFilters = Boolean(
+      action && primaryFilter?.field !== "action" ||
+      actorId && primaryFilter?.field !== "actorId" ||
+      targetType && primaryFilter?.field !== "targetType" ||
+      targetId && primaryFilter?.field !== "targetId"
+    );
+    const queryLimit = hasSecondaryFilters ?
+      Math.min(
+        limit * ADMIN_AUDIT_LOG_QUERY_SCAN_FACTOR,
+        ADMIN_AUDIT_LOG_QUERY_MAX_SCAN
+      ) :
+      limit;
+    let query: FirebaseFirestore.Query = admin.firestore()
+      .collection("adminAuditLogs");
+
+    if (primaryFilter) {
+      query = query.where(primaryFilter.field, "==", primaryFilter.value);
+    }
+
+    const snapshot = await query
       .orderBy("createdAt", "desc")
+      .limit(queryLimit)
       .get();
     const logs = snapshot.docs
       .map((doc) =>
         buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)
       )
-      .filter((log) => {
-        if (action && log.action !== action) {
-          return false;
-        }
-
-        if (actorId && log.actorId !== actorId) {
-          return false;
-        }
-
-        if (targetType && log.targetType !== targetType) {
-          return false;
-        }
-
-        if (targetId && log.targetId !== targetId) {
-          return false;
-        }
-
-        return true;
-      })
+      .filter((log) => matchesAdminAuditLogFilters(log, filters))
       .slice(0, limit);
 
     return {
@@ -2171,24 +2256,24 @@ export const dispatchScheduledAdminPushes = onSchedule(
     timeZone: "UTC",
   },
   async () => {
-    const now = new Date();
+    const now = new Date(Date.now());
     const snapshot = await admin.firestore()
       .collection("adminPushJobs")
+      .where("status", "==", "scheduled")
+      .where("scheduledAt", "<=", now.toISOString())
+      .orderBy("scheduledAt", "asc")
       .get();
 
     for (const doc of snapshot.docs) {
       const data = doc.data() as Record<string, unknown>;
       const job = buildAdminPushJob(doc.id, data);
 
-      if (job.status !== "scheduled" || !job.scheduledAt) {
+      if (!job.scheduledAt) {
         continue;
       }
 
       const scheduledTime = new Date(job.scheduledAt);
-      if (
-        Number.isNaN(scheduledTime.getTime()) ||
-        scheduledTime.getTime() > now.getTime()
-      ) {
+      if (Number.isNaN(scheduledTime.getTime())) {
         continue;
       }
 
