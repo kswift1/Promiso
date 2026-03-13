@@ -35,6 +35,22 @@ function formatValue(value: string | null, fallback = "-"): string {
   return value && value.length > 0 ? value : fallback;
 }
 
+function formatDateTime(value: string | null, fallback = "-"): string {
+  if (!value) {
+    return fallback;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.length > 0 ?
     error.message :
@@ -115,7 +131,7 @@ export function PushJobsPage() {
       void queryClient.invalidateQueries({queryKey: ["admin-push-jobs"]});
       setMessage({
         type: "success",
-        text: `예약 완료: ${result.scheduledAt}`,
+        text: `예약 완료: ${formatDateTime(result.scheduledAt)}`,
       });
     },
     onError: (error) => {
@@ -191,6 +207,52 @@ export function PushJobsPage() {
       <Card elevation={0}>
         <CardContent>
           <Stack spacing={2}>
+            <Typography variant="h6">운영 가이드</Typography>
+            <Stack spacing={1.5}>
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Chip label="1" size="small" />
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2">
+                    먼저 `test_user` + `dry-run`
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    내 계정이나 QA 계정 1개로 문구, 링크, 대상 매칭이 맞는지
+                    먼저 확인합니다.
+                  </Typography>
+                </Stack>
+              </Stack>
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Chip label="2" size="small" />
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2">
+                    실제 발송 전 preview 확인
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    `all / pro / free`는 preview 대상 수를 먼저 보고, 예상과
+                    다르면 audience를 다시 고릅니다.
+                  </Typography>
+                </Stack>
+              </Stack>
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Chip label="3" size="small" />
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2">
+                    예약 후 Recent Jobs 확인
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    예약은 최소 5분 이후만 가능합니다. 방금 만든 예약은 아래
+                    목록에서 확인하고 필요하면 바로 취소합니다.
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card elevation={0}>
+        <CardContent>
+          <Stack spacing={2}>
             <Alert severity="info">
               <Stack spacing={0.5}>
                 <Typography variant="body2">
@@ -238,6 +300,26 @@ export function PushJobsPage() {
               <MenuItem value="free">Free users</MenuItem>
               <MenuItem value="test_user">Single test user</MenuItem>
             </TextField>
+
+            <Alert severity="info">
+              <Stack spacing={0.5}>
+                <Typography variant="body2">
+                  <strong>Audience 기준</strong>
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  `all`: 전체 사용자
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  `pro`: 활성 구독자 + override 활성 사용자
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  `free`: 현재 pro가 아닌 사용자
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  `test_user`: 지정한 사용자 1명만 대상
+                </Typography>
+              </Stack>
+            </Alert>
 
             {audience === "test_user" && (
               <TextField
@@ -423,13 +505,13 @@ export function PushJobsPage() {
 
                     <Stack spacing={0.5}>
                       <Typography color="text.secondary" variant="body2">
-                        Scheduled {formatValue(job.scheduledAt)}
+                        Scheduled {formatDateTime(job.scheduledAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Created {formatValue(job.createdAt)}
+                        Created {formatDateTime(job.createdAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Completed {formatValue(job.completedAt)}
+                        Completed {formatDateTime(job.completedAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
                         Target Count {job.targetCount ?? "-"}
@@ -517,7 +599,7 @@ export function PushJobsPage() {
               </Typography>
               {pendingAction === "schedule" && (
                 <Typography variant="body2">
-                  Scheduled At {scheduledAt || "-"}
+                  Scheduled At {formatDateTime(scheduledAt)}
                 </Typography>
               )}
             </Stack>
