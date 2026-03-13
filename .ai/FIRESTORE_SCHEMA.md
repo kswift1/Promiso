@@ -20,6 +20,7 @@
    - [7. recurringEvents](#7-recurringevents-서브컬렉션)
    - [8. subscriptions](#8-subscriptions-컬렉션)
    - [9. subscriptionOwners](#9-subscriptionowners-컬렉션)
+   - [10. briefingSubscriptions](#10-briefingsubscriptions-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -82,8 +83,11 @@ Firestore Root
 ├─ subscriptions/                   # 사용자별 현재 구독 상태 SSOT (서버 관리)
 │  └─ {userId}/                     # 사용자 구독 상태 문서
 │
-└─ subscriptionOwners/              # App Store 원본 트랜잭션 소유권 인덱스
-   └─ {originalTransactionId}/      # 구매 소유자 문서
+├─ subscriptionOwners/              # App Store 원본 트랜잭션 소유권 인덱스
+│  └─ {originalTransactionId}/      # 구매 소유자 문서
+│
+└─ briefingSubscriptions/           # 브리핑 알림 발송 projection (서버 관리)
+   └─ {userId}/                     # 다음 dispatch 시각과 브리핑 설정
 ```
 
 ---
@@ -1247,6 +1251,64 @@ subscriptionOwners/{originalTransactionId}
 - **소유권 고정**: 같은 `originalTransactionId`는 하나의 Firebase 사용자에게만 연결
 - **웹훅 라우팅**: Apple Notification에서 사용자 문서를 찾는 인덱스로 사용
 - **보안**: Firestore Rules에서 클라이언트 read/write를 모두 차단
+
+---
+
+### 10. briefingSubscriptions (컬렉션)
+
+브리핑 알림 발송 대상을 위한 서버 전용 projection 컬렉션입니다.
+`users/{userId}/settings/main`의 브리핑 설정과
+`subscriptions/{userId}` / `entitlementOverrides/{userId}` 상태를 합쳐,
+현재 발송 가능한 사용자와 다음 dispatch 시각만 비정규화합니다.
+
+#### 📍 문서 경로
+
+```
+briefingSubscriptions/{userId}
+```
+
+#### 🔑 문서 ID
+
+- `{userId}` = Firebase Auth UID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `notificationHour` | Number | ✅ | 사용자 로컬 브리핑 알림 시각 (0~23) |
+| `timezone` | String | ✅ | IANA 타임존 식별자 |
+| `language` | String | ✅ | 브리핑 언어 코드 |
+| `style` | String | ✅ | 브리핑 스타일 |
+| `nextDispatchAt` | Timestamp | ✅ | 다음 스케줄러 enqueue 시각 (UTC) |
+| `updatedAt` | Timestamp | ✅ | projection 마지막 갱신 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "notificationHour": 8,
+  "timezone": "Asia/Seoul",
+  "language": "ko",
+  "style": "friendly",
+  "nextDispatchAt": "<Timestamp>",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 🔄 갱신 흐름
+
+| 갱신 주체 | 설명 |
+|-----------|------|
+| `onUserSettingsSyncBriefingSubscription` | 브리핑 설정 변경 시 projection 재계산 |
+| `onSubscriptionSyncBriefingSubscription` | 구독 상태 변경 시 projection 재계산 |
+| `onEntitlementOverrideSyncBriefingSubscription` | override 변경 시 projection 재계산 |
+| `backfillBriefingSubscriptions` | 기존 유저 projection 일괄 생성 |
+
+#### 💡 설계 의도
+
+- **비용 절감**: 매시간 전체 `settings`를 스캔하지 않고 due 대상만 조회
+- **권한 정합성**: `subscriptions/{userId}`를 권한 SSOT로 사용
+- **안전성**: stale `proSettings`가 남아 있어도 발송 대상에 포함되지 않음
 
 ---
 

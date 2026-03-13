@@ -5,6 +5,7 @@
  *
  * @added 2026-03-07
  */
+import {FieldValue} from "firebase-admin/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {getFunctions} from "firebase-admin/functions";
@@ -14,24 +15,22 @@ import {
 } from "../config";
 import {generateBriefingInternal} from "./briefing";
 import {DeviceInfo} from "../types/api";
-
-// MARK: - Types
-
-interface BriefingTaskPayload {
-  uid: string;
-  timezone: string;
-  language: string;
-  style: string;
-}
+import {
+  BRIEFING_SUBSCRIPTIONS_COLLECTION,
+  BriefingTaskPayload,
+  buildScheduledBriefingTaskFromProjection,
+  computeNextDispatchAt,
+  isCurrentBriefingTaskEligible,
+} from "../utils/briefingScheduler";
 
 // MARK: - Scheduler (매 시간 정각 실행)
 
 /**
  * 매 시간 정각에 실행되는 브리핑 디스패처
  *
- * 1. Firestore에서 Pro 유저 중 briefingNotificationHour가 설정된 유저 조회
- * 2. 현재 UTC 시간을 기준으로 각 유저의 타임존에서 해당 시간인지 확인
- * 3. 매칭되는 유저별로 Cloud Task enqueue
+ * 1. briefingSubscriptions projection에서 지금 due인 유저 조회
+ * 2. due 문서별 Cloud Task enqueue
+ * 3. 성공한 문서는 다음 dispatch 시각으로 advance
  */
 export const scheduledBriefingDispatch = onSchedule(
   {
@@ -43,70 +42,40 @@ export const scheduledBriefingDispatch = onSchedule(
     const db = admin.firestore();
     const now = new Date();
     const currentUtcHour = now.getUTCHours();
+    const nowTimestamp = admin.firestore.Timestamp.fromDate(now);
 
     console.log(
       `[BriefingScheduler] Dispatch started at UTC ${currentUtcHour}:00`
     );
 
-    // briefing.notificationHour가 설정된 유저만 조회
-    // (Pro 유저만 설정 가능하므로 별도 plan 체크 불필요)
-    // TODO: 유저 수 증가 시 별도 briefingSubscriptions 컬렉션으로 분리 고려
-    const settingsSnap = await db
-      .collectionGroup("settings")
-      .where(
-        "proSettings.briefing.notificationHour", ">=", 0
-      )
+    const projectionSnap = await db
+      .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
+      .where("nextDispatchAt", "<=", nowTimestamp)
       .get();
 
-    if (settingsSnap.empty) {
+    if (projectionSnap.empty) {
       console.log(
-        "[BriefingScheduler] No users with briefing notification"
+        "[BriefingScheduler] No due briefing subscriptions"
       );
       return;
     }
 
-    const tasksToEnqueue: BriefingTaskPayload[] = [];
-
-    for (const doc of settingsSnap.docs) {
-      const data = doc.data();
-      const briefing = data.proSettings?.briefing as {
-        notificationHour?: number;
-        timezone?: string;
-        language?: string;
-        style?: string;
-      } | undefined;
-
-      if (!briefing || briefing.notificationHour == null) {
-        continue;
-      }
-
-      // 경로에서 uid 추출: users/{uid}/settings/main
-      const pathParts = doc.ref.path.split("/");
-      const uid = pathParts[1];
-
-      const tz = briefing.timezone || "Asia/Seoul";
-      const lang = briefing.language || "ko";
-      const style = briefing.style || "friendly";
-
-      // 유저의 로컬 시간 계산
-      const userLocalHour = getHourInTimezone(now, tz);
-
-      if (userLocalHour !== briefing.notificationHour) continue;
-
-      tasksToEnqueue.push({
-        uid,
-        timezone: tz,
-        language: lang,
-        style,
-      });
-    }
+    const dueTasks = projectionSnap.docs
+      .map((doc) => {
+        return buildScheduledBriefingTaskFromProjection({
+          uid: doc.id,
+          projectionData: doc.data(),
+          now,
+        });
+      })
+      .filter((task): task is BriefingTaskPayload => task !== null);
 
     console.log(
-      `[BriefingScheduler] ${tasksToEnqueue.length} users matched ` +
-      `for UTC hour ${currentUtcHour}`
+      `[BriefingScheduler] ${dueTasks.length}/${projectionSnap.size} ` +
+      `projection docs are due for UTC hour ${currentUtcHour}`
     );
 
-    if (tasksToEnqueue.length === 0) return;
+    if (dueTasks.length === 0) return;
 
     // Cloud Tasks에 enqueue
     const queue = getFunctions().taskQueue<BriefingTaskPayload>(
@@ -114,9 +83,10 @@ export const scheduledBriefingDispatch = onSchedule(
     );
 
     let enqueued = 0;
-    for (const payload of tasksToEnqueue) {
+    for (const payload of dueTasks) {
       try {
         await queue.enqueue(payload);
+        await advanceNextDispatch(payload.uid, payload, now);
         enqueued++;
       } catch (error) {
         console.error(
@@ -127,7 +97,7 @@ export const scheduledBriefingDispatch = onSchedule(
     }
 
     console.log(
-      `[BriefingScheduler] Enqueued ${enqueued}/${tasksToEnqueue.length} tasks`
+      `[BriefingScheduler] Enqueued ${enqueued}/${dueTasks.length} tasks`
     );
   }
 );
@@ -163,7 +133,24 @@ export const executeBriefingNotification =
       );
 
       try {
-      // 1. 브리핑 생성 (location 없이 — 서버에서는 유저 위치를 모름)
+        const [settingsData, entitlement] = await Promise.all([
+          loadUserSettings(uid),
+          loadEntitlementState(uid),
+        ]);
+
+        if (!isCurrentBriefingTaskEligible({
+          payload: req.data,
+          settingsData,
+          subscriptionStatus: entitlement.subscriptionStatus,
+          overrideActive: entitlement.overrideActive,
+        })) {
+          console.log(
+            `[BriefingNotification] Skipped stale or ineligible task for ${uid}`
+          );
+          return;
+        }
+
+        // 1. 브리핑 생성 (location 없이 — 서버에서는 유저 위치를 모름)
         const briefing = await generateBriefingInternal({
           uid,
           timezone,
@@ -192,25 +179,78 @@ export const executeBriefingNotification =
 // MARK: - Helpers
 
 /**
- * 특정 타임존에서의 현재 시간(hour) 반환
- * @param {Date} date - 기준 시간
- * @param {string} timezone - 타임존 식별자
- * @return {number} 해당 타임존의 시간 (0~23)
+ * 현재 사용자의 entitlement 상태를 읽는다.
+ * @param {string} uid 사용자 ID.
+ * @return {Promise<object>} subscriptionStatus와 overrideActive를 담은 결과.
  */
-function getHourInTimezone(date: Date, timezone: string): number {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    hourCycle: "h23",
-  });
-  const parsed = parseInt(formatter.format(date), 10);
-  if (isNaN(parsed)) {
-    console.warn(
-      `[BriefingScheduler] Failed to parse hour for tz=${timezone}`
-    );
-    return -1;
+async function loadEntitlementState(uid: string): Promise<{
+  subscriptionStatus: unknown;
+  overrideActive: boolean;
+}> {
+  const db = admin.firestore();
+  const [subscriptionSnapshot, overrideSnapshot] = await Promise.all([
+    db.collection("subscriptions").doc(uid).get(),
+    db.collection("entitlementOverrides").doc(uid).get(),
+  ]);
+
+  return {
+    subscriptionStatus: subscriptionSnapshot.data()?.status,
+    overrideActive: overrideSnapshot.exists &&
+      overrideSnapshot.data()?.isActive === true,
+  };
+}
+
+/**
+ * 사용자의 최신 설정 문서를 로드한다.
+ * @param {string} uid 사용자 ID.
+ * @return {Promise<Record<string, unknown> | null>} settings/main 데이터.
+ */
+async function loadUserSettings(
+  uid: string,
+): Promise<Record<string, unknown> | null> {
+  const settingsDoc = await admin.firestore()
+    .collection("users").doc(uid)
+    .collection("settings").doc("main")
+    .get();
+
+  if (!settingsDoc.exists) {
+    return null;
   }
-  return parsed;
+
+  return (settingsDoc.data() as Record<string, unknown> | undefined) ?? null;
+}
+
+/**
+ * enqueue 성공 후 projection의 다음 dispatch 시각을 갱신한다.
+ * @param {string} uid 사용자 ID.
+ * @param {BriefingTaskPayload} payload enqueue된 task payload.
+ * @param {Date} now 현재 dispatch 시각.
+ * @return {Promise<void>}
+ */
+async function advanceNextDispatch(
+  uid: string,
+  payload: BriefingTaskPayload,
+  now: Date,
+): Promise<void> {
+  const nextDispatchAt = computeNextDispatchAt({
+    now: new Date(now.getTime() + 60 * 60 * 1000),
+    timezone: payload.timezone,
+    notificationHour: payload.notificationHour,
+  });
+
+  const projectionRef = admin.firestore()
+    .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
+    .doc(uid);
+
+  if (!nextDispatchAt) {
+    await projectionRef.delete();
+    return;
+  }
+
+  await projectionRef.update({
+    nextDispatchAt: admin.firestore.Timestamp.fromDate(nextDispatchAt),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 }
 
 /**
