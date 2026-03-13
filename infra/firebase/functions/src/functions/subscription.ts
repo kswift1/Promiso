@@ -544,9 +544,12 @@ export const appleServerNotification = onRequest(
           const settingsRef = db
             .collection("users").doc(userId)
             .collection("settings").doc("main");
+          const briefingSubscriptionRef = db
+            .collection("briefingSubscriptions").doc(userId);
           transaction.set(settingsRef, {
             proSettings: FieldValue.delete(),
           }, {merge: true});
+          transaction.delete(briefingSubscriptionRef);
           console.log(`🧹 [Subscription] Cleaned proSettings for ${userId}`);
         }
 

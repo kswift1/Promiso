@@ -391,11 +391,36 @@ Cron 사전 생성은 하지 않는다:
 
 ---
 
+## 알림 스케줄링
+
+브리핑 알림 스케줄러는 `users/{userId}/settings/main`을 직접 스캔하지 않는다.
+대신 서버가 `briefingSubscriptions/{userId}` projection 컬렉션을 유지하고,
+스케줄러는 `nextDispatchAt <= now` 문서만 조회한다.
+
+projection 입력:
+- `users/{userId}/settings/main.proSettings.briefing`
+- `subscriptions/{userId}` 상태
+- `entitlementOverrides/{userId}` 상태
+
+projection 출력:
+- `notificationHour`
+- `timezone`
+- `language`
+- `style`
+- `nextDispatchAt`
+
+이 구조로 stale `proSettings` 때문에 비구독자에게 브리핑 알림이 가는 문제를 막고,
+매시간 전체 settings 스캔 비용도 줄인다.
+
+---
+
 ## 관련 파일
 
 | 파일 | 역할 |
 |------|------|
 | `infra/firebase/functions/src/functions/briefing.ts` | Cloud Function |
+| `infra/firebase/functions/src/functions/briefingScheduler.ts` | 브리핑 스케줄러 + task handler |
+| `infra/firebase/functions/src/functions/briefingSubscriptionProjection.ts` | 발송 대상 projection 동기화 |
 | `infra/firebase/functions/src/functions/weather.ts` | 날씨 조회 |
 | `infra/firebase/functions/src/functions/transportation.ts` | 교통 정보 조회 (ODsay + Kakao) — 신규 |
 | `infra/firebase/functions/src/functions/scheduleConflicts.ts` | scheduleSlots 트리거 |

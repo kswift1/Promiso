@@ -98,6 +98,7 @@ describe("subscription functions", () => {
   let mockOwnerRef: any;
   let mockSubscriptionRef: any;
   let mockSettingsRef: any;
+  let mockBriefingSubscriptionRef: any;
   let mockUserRef: any;
 
   let ownerDocument: any;
@@ -130,6 +131,10 @@ describe("subscription functions", () => {
       id: "main",
     };
 
+    mockBriefingSubscriptionRef = {
+      id: "user-a",
+    };
+
     mockUserRef = {
       id: "user-a",
       collection: jest.fn((name: string) => {
@@ -153,6 +158,7 @@ describe("subscription functions", () => {
         return Promise.resolve(createMockDocument(false));
       }),
       set: jest.fn(),
+      delete: jest.fn(),
     };
 
     mockFirestore = {
@@ -165,6 +171,11 @@ describe("subscription functions", () => {
         if (name === "subscriptions") {
           return {
             doc: jest.fn().mockReturnValue(mockSubscriptionRef),
+          };
+        }
+        if (name === "briefingSubscriptions") {
+          return {
+            doc: jest.fn().mockReturnValue(mockBriefingSubscriptionRef),
           };
         }
         if (name === "users") {
@@ -536,6 +547,9 @@ describe("subscription functions", () => {
           proSettings: expect.anything(),
         }),
         {merge: true},
+      );
+      expect(mockTransaction.delete).toHaveBeenCalledWith(
+        mockBriefingSubscriptionRef,
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({success: true});

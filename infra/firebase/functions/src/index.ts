@@ -120,6 +120,11 @@ export {
   scheduledBriefingDispatch,
   executeBriefingNotification,
 } from "./functions/briefingScheduler";
+export {
+  onUserSettingsSyncBriefingSubscription,
+  onSubscriptionSyncBriefingSubscription,
+  onEntitlementOverrideSyncBriefingSubscription,
+} from "./functions/briefingSubscriptionProjection";
 
 // ============================================================================
 // Subscription Functions (구독 서버 검증)

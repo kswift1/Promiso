@@ -1,5 +1,7 @@
 # Pro Plan 정의
 
+> 빠른 overview는 [PRO_FEATURES_GUIDE.md](./PRO_FEATURES_GUIDE.md) 먼저 참고.
+
 ## 상품 구성
 
 Product ID는 `Bundle.main.bundleIdentifier` 기반으로 환경별 자동 생성:
