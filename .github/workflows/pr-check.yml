@@ -19,7 +19,7 @@ jobs:
        github.event.issue.pull_request &&
        startsWith(github.event.comment.body, '/check'))
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       pull-requests: write
       issues: write
@@ -272,29 +272,20 @@ jobs:
         run: |
           set -eo pipefail
           MODULES="${{ steps.changes.outputs.modules }}"
-          PIDS=""
+          DERIVED_DATA_PATH="/tmp/DerivedData-Selective"
           mkdir -p /tmp/build-logs
-
-          for module in $MODULES; do
-            echo "━━━ 🔨 빌드 시작: $module ━━━"
-            (
-              xcodebuild build-for-testing \
-                -scheme "$module" \
-                -workspace Promiso.xcworkspace \
-                -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-                -derivedDataPath "/tmp/DerivedData-${module}" \
-                -skipPackagePluginValidation \
-                > "/tmp/build-logs/${module}.log" 2>&1
-            ) &
-            PIDS="$PIDS $!"
-          done
+          rm -rf "$DERIVED_DATA_PATH"
 
           FAILED=""
-          i=0
           for module in $MODULES; do
-            i=$((i + 1))
-            PID=$(echo $PIDS | cut -d' ' -f$i)
-            if ! wait "$PID"; then
+            echo "━━━ 🔨 빌드 시작: $module ━━━"
+            if ! xcodebuild build-for-testing \
+              -scheme "$module" \
+              -workspace Promiso.xcworkspace \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -derivedDataPath "$DERIVED_DATA_PATH" \
+              -skipPackagePluginValidation \
+              > "/tmp/build-logs/${module}.log" 2>&1; then
               FAILED="$FAILED $module"
               echo "❌ 빌드 실패: $module"
             else
@@ -325,31 +316,21 @@ jobs:
         run: |
           set -eo pipefail
           MODULES="${{ steps.changes.outputs.modules }}"
-          PIDS=""
+          DERIVED_DATA_PATH="/tmp/DerivedData-Selective"
           mkdir -p /tmp/test-logs
 
+          FAILED=""
           for module in $MODULES; do
             echo "━━━ 🧪 테스트 시작: $module ━━━"
-            (
-              xcodebuild test-without-building \
-                -scheme "$module" \
-                -workspace Promiso.xcworkspace \
-                -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-                -derivedDataPath "/tmp/DerivedData-${module}" \
-                -skipPackagePluginValidation \
-                -enableCodeCoverage YES \
-                -resultBundlePath "TestResults-${module}.xcresult" \
-                > "/tmp/test-logs/${module}.log" 2>&1
-            ) &
-            PIDS="$PIDS $!"
-          done
-
-          FAILED=""
-          i=0
-          for module in $MODULES; do
-            i=$((i + 1))
-            PID=$(echo $PIDS | cut -d' ' -f$i)
-            if ! wait "$PID"; then
+            if ! xcodebuild test-without-building \
+              -scheme "$module" \
+              -workspace Promiso.xcworkspace \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -derivedDataPath "$DERIVED_DATA_PATH" \
+              -skipPackagePluginValidation \
+              -enableCodeCoverage YES \
+              -resultBundlePath "TestResults-${module}.xcresult" \
+              > "/tmp/test-logs/${module}.log" 2>&1; then
               FAILED="$FAILED $module"
               echo "❌ 테스트 실패: $module"
             else
