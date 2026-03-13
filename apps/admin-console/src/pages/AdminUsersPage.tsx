@@ -21,6 +21,7 @@ import {
   getAdminUsers,
   updateAdminUser,
 } from "../api/admin";
+import {getAdminRoleLabel} from "../auth/adminRoles";
 import {useAuth} from "../auth/AuthProvider";
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -66,16 +67,16 @@ function AdminUserCard(props: {
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip
                 color={user.enabled ? "success" : "default"}
-                label={user.enabled ? "enabled" : "disabled"}
+                label={user.enabled ? "활성" : "비활성"}
               />
-              <Chip label={user.role} />
-              {isCurrentUser && <Chip color="primary" label="current session" />}
+              <Chip label={getAdminRoleLabel(user.role)} />
+              {isCurrentUser && <Chip color="primary" label="현재 세션" />}
             </Stack>
           </Stack>
 
           {isCurrentUser && (
             <Alert severity="info">
-              현재 로그인한 owner 계정은 이 화면에서 비활성화하거나 owner 권한을
+              현재 로그인한 소유자 계정은 이 화면에서 비활성화하거나 소유자 권한을
               해제할 수 없습니다.
             </Alert>
           )}
@@ -83,15 +84,15 @@ function AdminUserCard(props: {
           <Stack spacing={2}>
             <TextField
               select
-              label="Role"
+              label="권한"
               value={role}
               onChange={(event) => setRole(event.target.value as AdminRole)}
               disabled={isCurrentUser}
               fullWidth
             >
-              <MenuItem value="owner">Owner</MenuItem>
-              <MenuItem value="support">Support</MenuItem>
-              <MenuItem value="marketer">Marketer</MenuItem>
+              <MenuItem value="owner">소유자</MenuItem>
+              <MenuItem value="support">지원</MenuItem>
+              <MenuItem value="marketer">마케터</MenuItem>
             </TextField>
 
             <FormControlLabel
@@ -102,7 +103,7 @@ function AdminUserCard(props: {
                   disabled={isCurrentUser}
                 />
               }
-              label="Enabled"
+              label="활성화"
             />
           </Stack>
 
@@ -118,7 +119,7 @@ function AdminUserCard(props: {
                 })
               }
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? "저장 중..." : "변경 저장"}
             </Button>
           </Stack>
         </Stack>
@@ -153,13 +154,13 @@ export function AdminUsersPage() {
       setCreateEnabled(true);
       setMessage({
         type: "success",
-        text: `${user.email ?? user.userId} admin 계정을 등록했습니다.`,
+        text: `${user.email ?? user.userId} 관리자 계정을 등록했습니다.`,
       });
     },
     onError: (error) => {
       setMessage({
         type: "error",
-        text: getErrorMessage(error, "admin 계정 등록에 실패했습니다."),
+        text: getErrorMessage(error, "관리자 계정 등록에 실패했습니다."),
       });
     },
   });
@@ -170,13 +171,13 @@ export function AdminUsersPage() {
       void queryClient.invalidateQueries({queryKey: ["admin-users"]});
       setMessage({
         type: "success",
-        text: `${user.email ?? user.userId} admin 설정을 저장했습니다.`,
+        text: `${user.email ?? user.userId} 관리자 설정을 저장했습니다.`,
       });
     },
     onError: (error) => {
       setMessage({
         type: "error",
-        text: getErrorMessage(error, "admin 계정 수정에 실패했습니다."),
+        text: getErrorMessage(error, "관리자 계정 수정에 실패했습니다."),
       });
     },
   });
@@ -197,9 +198,9 @@ export function AdminUsersPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">Admin Users</Typography>
+        <Typography variant="h4">관리자 계정</Typography>
         <Typography color="text.secondary">
-          owner 전용 관리자 계정 등록/권한 관리 화면입니다.
+          소유자 전용 관리자 계정 등록/권한 관리 화면입니다.
         </Typography>
       </Stack>
 
@@ -211,21 +212,21 @@ export function AdminUsersPage() {
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <Chip label="1" size="small" />
                 <Typography color="text.secondary" variant="body2">
-                  새 admin은 이메일로 등록합니다. 서버가 Firebase Auth에서 같은
-                  이메일의 UID를 찾아 `adminUsers` 문서를 생성합니다.
+                  새 관리자 계정은 이메일로 등록합니다. 서버가 Firebase Auth에서
+                  같은 이메일의 UID를 찾아 관리자 계정 문서를 생성합니다.
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <Chip label="2" size="small" />
                 <Typography color="text.secondary" variant="body2">
-                  계정을 완전히 지우기보다 먼저 `enabled`를 끄는 방식으로 접근을
+                  계정을 완전히 지우기보다 먼저 활성화를 끄는 방식으로 접근을
                   막는 것이 안전합니다.
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <Chip label="3" size="small" />
                 <Typography color="text.secondary" variant="body2">
-                  현재 로그인 중인 owner 계정은 이 화면에서 비활성화하거나 owner
+                  현재 로그인 중인 소유자 계정은 이 화면에서 비활성화하거나 소유자
                   권한을 해제할 수 없습니다.
                 </Typography>
               </Stack>
@@ -245,7 +246,7 @@ export function AdminUsersPage() {
             </Alert>
 
             <TextField
-              label="Admin Email"
+              label="관리자 이메일"
               placeholder="admin@promiso.app"
               value={createEmail}
               onChange={(event) => setCreateEmail(event.target.value)}
@@ -253,14 +254,14 @@ export function AdminUsersPage() {
             />
             <TextField
               select
-              label="Role"
+              label="권한"
               value={createRole}
               onChange={(event) => setCreateRole(event.target.value as AdminRole)}
               fullWidth
             >
-              <MenuItem value="owner">Owner</MenuItem>
-              <MenuItem value="support">Support</MenuItem>
-              <MenuItem value="marketer">Marketer</MenuItem>
+              <MenuItem value="owner">소유자</MenuItem>
+              <MenuItem value="support">지원</MenuItem>
+              <MenuItem value="marketer">마케터</MenuItem>
             </TextField>
             <FormControlLabel
               control={
@@ -269,7 +270,7 @@ export function AdminUsersPage() {
                   onChange={(event) => setCreateEnabled(event.target.checked)}
                 />
               }
-              label="Enabled on create"
+              label="생성 시 활성화"
             />
 
             <Stack direction="row" justifyContent="flex-end">
@@ -285,7 +286,7 @@ export function AdminUsersPage() {
                   });
                 }}
               >
-                {createMutation.isPending ? "Creating..." : "Create Admin User"}
+                {createMutation.isPending ? "생성 중..." : "관리자 계정 생성"}
               </Button>
             </Stack>
           </Stack>
@@ -301,9 +302,9 @@ export function AdminUsersPage() {
               spacing={1}
             >
               <Stack spacing={0.5}>
-                <Typography variant="h6">Current Admin Users</Typography>
+                <Typography variant="h6">현재 관리자 계정</Typography>
                 <Typography color="text.secondary" variant="body2">
-                  현재 등록된 admin 계정을 이메일 또는 userId로 찾고 수정합니다.
+                  현재 등록된 관리자 계정을 이메일 또는 사용자 ID로 찾고 수정합니다.
                 </Typography>
               </Stack>
               <Button
@@ -311,13 +312,13 @@ export function AdminUsersPage() {
                 disabled={adminUsersQuery.isRefetching}
                 onClick={() => void adminUsersQuery.refetch()}
               >
-                {adminUsersQuery.isRefetching ? "Refreshing..." : "Refresh"}
+                {adminUsersQuery.isRefetching ? "새로고침 중..." : "새로고침"}
               </Button>
             </Stack>
 
             <TextField
-              label="Search admin users"
-              placeholder="email / userId"
+              label="관리자 계정 검색"
+              placeholder="이메일 / 사용자 ID"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               fullWidth
@@ -330,21 +331,21 @@ export function AdminUsersPage() {
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={20} />
           <Typography color="text.secondary">
-            admin 계정 목록을 불러오는 중입니다.
+            관리자 계정 목록을 불러오는 중입니다.
           </Typography>
         </Stack>
       ) : adminUsersQuery.isError ? (
         <Alert severity="error">
           {getErrorMessage(
             adminUsersQuery.error,
-            "admin 계정 목록을 불러오지 못했습니다."
+            "관리자 계정 목록을 불러오지 못했습니다."
           )}
         </Alert>
       ) : visibleAdminUsers.length === 0 ? (
         <Alert severity="info">
           {normalizedSearchQuery ?
-            "검색 조건과 일치하는 admin 계정이 없습니다." :
-            "등록된 admin 계정이 없습니다."}
+            "검색 조건과 일치하는 관리자 계정이 없습니다." :
+            "등록된 관리자 계정이 없습니다."}
         </Alert>
       ) : (
         <Stack spacing={2}>

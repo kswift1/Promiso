@@ -38,6 +38,25 @@ jobs:
         working-directory: apps/admin-console
         run: npm ci
 
+      - name: Validate Stage Firebase Config
+        env:
+          ADMIN_CONSOLE_STAGE_FIREBASE_API_KEY: ${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_API_KEY }}
+          ADMIN_CONSOLE_STAGE_FIREBASE_AUTH_DOMAIN: ${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_AUTH_DOMAIN }}
+          ADMIN_CONSOLE_STAGE_FIREBASE_PROJECT_ID: ${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_PROJECT_ID }}
+          ADMIN_CONSOLE_STAGE_FIREBASE_APP_ID: ${{ vars.ADMIN_CONSOLE_STAGE_FIREBASE_APP_ID }}
+        run: |
+          for key in \
+            ADMIN_CONSOLE_STAGE_FIREBASE_API_KEY \
+            ADMIN_CONSOLE_STAGE_FIREBASE_AUTH_DOMAIN \
+            ADMIN_CONSOLE_STAGE_FIREBASE_PROJECT_ID \
+            ADMIN_CONSOLE_STAGE_FIREBASE_APP_ID
+          do
+            if [ -z "${!key}" ]; then
+              echo "::error title=Missing admin console stage config::$key is empty. Set the staging environment variable before deploying."
+              exit 1
+            fi
+          done
+
       - name: Write Stage Env
         working-directory: apps/admin-console
         run: |

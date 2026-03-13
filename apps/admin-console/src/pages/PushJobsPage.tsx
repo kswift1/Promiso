@@ -22,6 +22,7 @@ import {useState} from "react";
 import {
   AdminPushAudience,
   AdminPushJob,
+  AdminPushJobStatus,
   cancelAdminPushJob,
   getAdminPushJobs,
   previewAdminPushAudience,
@@ -55,6 +56,36 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.length > 0 ?
     error.message :
     fallback;
+}
+
+function getAudienceLabel(audience: AdminPushAudience): string {
+  switch (audience) {
+  case "all":
+    return "전체 사용자";
+  case "pro":
+    return "유료 사용자";
+  case "free":
+    return "무료 사용자";
+  case "test_user":
+    return "단일 테스트 사용자";
+  }
+}
+
+function getPushStatusLabel(status: AdminPushJobStatus): string {
+  switch (status) {
+  case "scheduled":
+    return "예약됨";
+  case "processing":
+    return "처리 중";
+  case "completed":
+    return "완료";
+  case "failed":
+    return "실패";
+  case "cancelled":
+    return "취소됨";
+  case "dry_run":
+    return "사전 점검";
+  }
 }
 
 export function PushJobsPage() {
@@ -108,7 +139,7 @@ export function PushJobsPage() {
       setMessage({
         type: "success",
         text: dryRun ?
-          `dry-run 완료: 대상 ${result.targetCount}명` :
+          `사전 점검 완료: 대상 ${result.targetCount}명` :
           `발송 완료: 대상 ${result.targetCount}명, 성공 ${result.successCount}건`,
       });
     },
@@ -198,7 +229,7 @@ export function PushJobsPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">Push Jobs</Typography>
+        <Typography variant="h4">푸시 작업</Typography>
         <Typography color="text.secondary">
           전체 공지와 조건 발송을 다루는 운영 화면입니다.
         </Typography>
@@ -213,7 +244,7 @@ export function PushJobsPage() {
                 <Chip label="1" size="small" />
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    먼저 `test_user` + `dry-run`
+                    먼저 테스트 사용자 + 사전 점검
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
                     내 계정이나 QA 계정 1개로 문구, 링크, 대상 매칭이 맞는지
@@ -225,11 +256,11 @@ export function PushJobsPage() {
                 <Chip label="2" size="small" />
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    실제 발송 전 preview 확인
+                    실제 발송 전 미리보기 확인
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
-                    `all / pro / free`는 preview 대상 수를 먼저 보고, 예상과
-                    다르면 audience를 다시 고릅니다.
+                    전체 / 유료 / 무료 대상은 미리보기 대상 수를 먼저 보고, 예상과
+                    다르면 대상을 다시 고릅니다.
                   </Typography>
                 </Stack>
               </Stack>
@@ -237,7 +268,7 @@ export function PushJobsPage() {
                 <Chip label="3" size="small" />
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    예약 후 Recent Jobs 확인
+                    예약 후 최근 작업 확인
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
                     예약은 최소 5분 이후만 가능합니다. 방금 만든 예약은 아래
@@ -256,12 +287,12 @@ export function PushJobsPage() {
             <Alert severity="info">
               <Stack spacing={0.5}>
                 <Typography variant="body2">
-                  <strong>Tip.</strong> `dry-run`이 켜져 있으면 실제 푸시는
+                  <strong>팁.</strong> 사전 점검이 켜져 있으면 실제 푸시는
                   발송되지 않고, 대상 수와 타겟 매칭만 확인합니다.
                 </Typography>
                 <Typography variant="body2">
-                  가장 안전한 순서는 `test_user`로 내 계정을 넣고,
-                  `dry-run`으로 먼저 확인한 뒤, 문제가 없으면 `dry-run`을 끄고
+                  가장 안전한 순서는 테스트 사용자에 내 계정을 넣고,
+                  사전 점검으로 먼저 확인한 뒤, 문제가 없으면 사전 점검을 끄고
                   실제 1건을 보내 보는 것입니다.
                 </Typography>
                 <Typography variant="body2">
@@ -271,14 +302,14 @@ export function PushJobsPage() {
             </Alert>
 
             <TextField
-              label="Title"
+              label="제목"
               placeholder="공지사항"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               fullWidth
             />
             <TextField
-              label="Body"
+              label="본문"
               placeholder="원하는 메시지를 입력하세요"
               multiline
               minRows={4}
@@ -288,43 +319,43 @@ export function PushJobsPage() {
             />
             <TextField
               select
-              label="Audience"
+              label="대상"
               value={audience}
               onChange={(event) =>
                 setAudience(event.target.value as AdminPushAudience)
               }
               fullWidth
             >
-              <MenuItem value="all">All users</MenuItem>
-              <MenuItem value="pro">Pro users</MenuItem>
-              <MenuItem value="free">Free users</MenuItem>
-              <MenuItem value="test_user">Single test user</MenuItem>
+              <MenuItem value="all">전체 사용자</MenuItem>
+              <MenuItem value="pro">유료 사용자</MenuItem>
+              <MenuItem value="free">무료 사용자</MenuItem>
+              <MenuItem value="test_user">단일 테스트 사용자</MenuItem>
             </TextField>
 
             <Alert severity="info">
               <Stack spacing={0.5}>
                 <Typography variant="body2">
-                  <strong>Audience 기준</strong>
+                  <strong>대상 기준</strong>
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  `all`: 전체 사용자
+                  전체: 전체 사용자
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  `pro`: 활성 구독자 + override 활성 사용자
+                  유료: 활성 구독자 + override 활성 사용자
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  `free`: 현재 pro가 아닌 사용자
+                  무료: 현재 유료가 아닌 사용자
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  `test_user`: 지정한 사용자 1명만 대상
+                  테스트 사용자: 지정한 사용자 1명만 대상
                 </Typography>
               </Stack>
             </Alert>
 
             {audience === "test_user" && (
               <TextField
-                label="Test User ID"
-                placeholder="target user id"
+                label="테스트 사용자 ID"
+                placeholder="대상 사용자 ID"
                 value={testUserId}
                 onChange={(event) => setTestUserId(event.target.value)}
                 fullWidth
@@ -337,10 +368,10 @@ export function PushJobsPage() {
             >
               <CardContent>
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2">Audience Preview</Typography>
+                  <Typography variant="subtitle2">대상 미리보기</Typography>
                   {!previewEnabled ? (
                     <Typography color="text.secondary" variant="body2">
-                      `test_user` 대상은 사용자 ID를 입력하면 preview가 표시됩니다.
+                      테스트 사용자 대상은 사용자 ID를 입력하면 미리보기가 표시됩니다.
                     </Typography>
                   ) : previewQuery.isPending ? (
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -353,19 +384,19 @@ export function PushJobsPage() {
                     <Alert severity="error">
                       {getErrorMessage(
                         previewQuery.error,
-                        "대상 수 preview를 불러오지 못했습니다."
+                        "대상 수 미리보기를 불러오지 못했습니다."
                       )}
                     </Alert>
                   ) : hasPreview ? (
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip label={audience} />
+                      <Chip label={getAudienceLabel(audience)} />
                       <Typography variant="body2">
                         현재 대상 수는 <strong>{targetCount}</strong>명입니다.
                       </Typography>
                     </Stack>
                   ) : (
                     <Typography color="text.secondary" variant="body2">
-                      대상 선택 후 preview가 표시됩니다.
+                      대상 선택 후 미리보기가 표시됩니다.
                     </Typography>
                   )}
                 </Stack>
@@ -376,12 +407,12 @@ export function PushJobsPage() {
               <Alert severity="warning">
                 {audience === "all" ?
                   `전체 사용자 ${targetCount}명에게 실제 푸시가 발송됩니다.` :
-                  `${audience} 대상 ${targetCount}명에게 실제 푸시가 발송됩니다.`}
+                  `${getAudienceLabel(audience)} ${targetCount}명에게 실제 푸시가 발송됩니다.`}
               </Alert>
             )}
 
             <TextField
-              label="Scheduled At"
+              label="예약 시각"
               type="datetime-local"
               value={scheduledAt}
               onChange={(event) => setScheduledAt(event.target.value)}
@@ -401,7 +432,7 @@ export function PushJobsPage() {
                   onChange={(event) => setDryRun(event.target.checked)}
                 />
               }
-              label="Dry run only"
+              label="사전 점검만 실행"
             />
 
             {message && (
@@ -419,7 +450,7 @@ export function PushJobsPage() {
                   setPendingAction("send");
                 }}
               >
-                {dryRun ? "Run Dry Check" : "Send Push"}
+                {dryRun ? "사전 점검 실행" : "푸시 발송"}
               </Button>
               <Button
                 variant="outlined"
@@ -429,7 +460,7 @@ export function PushJobsPage() {
                   setPendingAction("schedule");
                 }}
               >
-                Schedule Push
+                푸시 예약
               </Button>
             </Stack>
           </Stack>
@@ -443,9 +474,9 @@ export function PushJobsPage() {
           spacing={1}
         >
           <Stack spacing={0.5}>
-            <Typography variant="h6">Recent Jobs</Typography>
+            <Typography variant="h6">최근 작업</Typography>
             <Typography color="text.secondary" variant="body2">
-              최근 push job 20개를 상태와 함께 확인합니다.
+              최근 푸시 작업 20개를 상태와 함께 확인합니다.
             </Typography>
           </Stack>
           <Button
@@ -453,7 +484,7 @@ export function PushJobsPage() {
             onClick={() => void jobsQuery.refetch()}
             disabled={jobsQuery.isRefetching}
           >
-            {jobsQuery.isRefetching ? "Refreshing..." : "Refresh"}
+            {jobsQuery.isRefetching ? "새로고침 중..." : "새로고침"}
           </Button>
         </Stack>
 
@@ -468,14 +499,14 @@ export function PushJobsPage() {
               >
                 <CircularProgress size={24} />
                 <Typography color="text.secondary">
-                  push job 목록을 불러오는 중입니다.
+                  푸시 작업 목록을 불러오는 중입니다.
                 </Typography>
               </Stack>
             </CardContent>
           </Card>
         ) : jobsQuery.isError ? (
           <Alert severity="error">
-            push job 목록을 불러오지 못했습니다.
+            푸시 작업 목록을 불러오지 못했습니다.
           </Alert>
         ) : jobsQuery.data && jobsQuery.data.length > 0 ? (
           <Stack spacing={2}>
@@ -495,9 +526,9 @@ export function PushJobsPage() {
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Chip label={job.status} />
-                        <Chip label={job.audience} />
-                        {job.dryRun && <Chip label="dry-run" />}
+                        <Chip label={getPushStatusLabel(job.status)} />
+                        <Chip label={getAudienceLabel(job.audience)} />
+                        {job.dryRun && <Chip label="사전 점검" />}
                       </Stack>
                     </Stack>
 
@@ -505,24 +536,24 @@ export function PushJobsPage() {
 
                     <Stack spacing={0.5}>
                       <Typography color="text.secondary" variant="body2">
-                        Scheduled {formatDateTime(job.scheduledAt)}
+                        예약 {formatDateTime(job.scheduledAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Created {formatDateTime(job.createdAt)}
+                        생성 {formatDateTime(job.createdAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Completed {formatDateTime(job.completedAt)}
+                        완료 {formatDateTime(job.completedAt)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Target Count {job.targetCount ?? "-"}
+                        대상 수 {job.targetCount ?? "-"}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Result {job.result ?
-                          `success ${job.result.successCount} / failure ${job.result.failureCount}` :
+                        결과 {job.result ?
+                          `성공 ${job.result.successCount} / 실패 ${job.result.failureCount}` :
                           "-"}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Error {formatValue(job.errorMessage)}
+                        오류 {formatValue(job.errorMessage)}
                       </Typography>
                     </Stack>
 
@@ -540,7 +571,7 @@ export function PushJobsPage() {
                             cancelMutation.mutate(job.id);
                           }}
                         >
-                          Cancel Scheduled Push
+                          예약 푸시 취소
                         </Button>
                       </Stack>
                     )}
@@ -551,7 +582,7 @@ export function PushJobsPage() {
           </Stack>
         ) : (
           <Alert severity="info">
-            아직 생성된 push job이 없습니다.
+            아직 생성된 푸시 작업이 없습니다.
           </Alert>
         )}
       </Stack>
@@ -568,10 +599,10 @@ export function PushJobsPage() {
       >
         <DialogTitle>
           {pendingAction === "schedule" ?
-            "Schedule Push 확인" :
+            "푸시 예약 확인" :
             dryRun ?
-              "Run Dry Check 확인" :
-              "Send Push 확인"}
+              "사전 점검 확인" :
+              "푸시 발송 확인"}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{pt: 1}}>
@@ -591,15 +622,15 @@ export function PushJobsPage() {
 
             <Stack spacing={0.5}>
               <Typography variant="body2">
-                Mode {pendingAction === "schedule" ? "schedule" : dryRun ? "dry-run" : "send"}
+                모드 {pendingAction === "schedule" ? "예약" : dryRun ? "사전 점검" : "발송"}
               </Typography>
-              <Typography variant="body2">Audience {audience}</Typography>
+              <Typography variant="body2">대상 {getAudienceLabel(audience)}</Typography>
               <Typography variant="body2">
-                Target Count {targetCount ?? "-"}
+                대상 수 {targetCount ?? "-"}
               </Typography>
               {pendingAction === "schedule" && (
                 <Typography variant="body2">
-                  Scheduled At {formatDateTime(scheduledAt)}
+                  예약 시각 {formatDateTime(scheduledAt)}
                 </Typography>
               )}
             </Stack>
@@ -625,7 +656,7 @@ export function PushJobsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={resetConfirmation}>Close</Button>
+          <Button onClick={resetConfirmation}>닫기</Button>
           <Button
             variant="contained"
             disabled={
@@ -636,10 +667,10 @@ export function PushJobsPage() {
             onClick={handleConfirm}
           >
             {pendingAction === "schedule" ?
-              "Confirm Schedule" :
+              "예약 확정" :
               dryRun ?
-                "Confirm Dry Check" :
-                "Confirm Send"}
+                "사전 점검 확정" :
+                "발송 확정"}
           </Button>
         </DialogActions>
       </Dialog>

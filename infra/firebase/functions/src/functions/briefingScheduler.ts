@@ -15,6 +15,7 @@ import {
 } from "../config";
 import {generateBriefingInternal} from "./briefing";
 import {DeviceInfo} from "../types/api";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 import {
   BRIEFING_SUBSCRIPTIONS_COLLECTION,
   BriefingTaskPayload,
@@ -195,8 +196,7 @@ async function loadEntitlementState(uid: string): Promise<{
 
   return {
     subscriptionStatus: subscriptionSnapshot.data()?.status,
-    overrideActive: overrideSnapshot.exists &&
-      overrideSnapshot.data()?.isActive === true,
+    overrideActive: isEntitlementOverrideActive(overrideSnapshot.data()),
   };
 }
 

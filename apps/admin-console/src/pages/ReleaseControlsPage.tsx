@@ -21,6 +21,7 @@ import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useAuth} from "../auth/AuthProvider";
 import {
   AdminReleaseControlField,
+  AdminReleaseControlKey,
   AdminReleaseControlSection,
   AdminReleaseControls,
   getAdminReleaseControls,
@@ -91,6 +92,53 @@ type ReleaseControlSectionGroup = {
   fields: AdminReleaseControlField[];
 };
 
+const releaseControlTranslations: Record<
+  AdminReleaseControlKey,
+  {label: string; description: string; warning: string | null}
+> = {
+  forceUpdateVersion: {
+    label: "강제 업데이트 버전",
+    description: "이 버전보다 낮은 앱은 강제 업데이트를 요구합니다.",
+    warning: "잘못 올리면 구버전 사용자가 즉시 앱 사용을 막힐 수 있습니다.",
+  },
+  recommendedVersion: {
+    label: "권장 업데이트 버전",
+    description: "이 버전보다 낮은 앱에 업데이트 권장 배너를 노출합니다.",
+    warning: "과도하게 올리면 정상 사용자에게 불필요한 업데이트 안내가 노출됩니다.",
+  },
+  appStoreURL: {
+    label: "앱 스토어 링크",
+    description: "업데이트 버튼과 앱 다운로드 이동에 사용하는 링크입니다.",
+    warning: null,
+  },
+  privacyPolicyURL: {
+    label: "개인정보처리방침 URL",
+    description: "설정 화면과 결제 화면에서 노출하는 개인정보처리방침 링크입니다.",
+    warning: null,
+  },
+  termsOfServiceURL: {
+    label: "이용약관 URL",
+    description: "설정 화면과 결제 화면에서 노출하는 이용약관 링크입니다.",
+    warning: null,
+  },
+  supportEmail: {
+    label: "지원 이메일",
+    description: "문의하기와 운영 지원 연결에 사용하는 대표 이메일입니다.",
+    warning: null,
+  },
+  notionFAQDatabaseId: {
+    label: "Notion 도움말 데이터베이스 ID",
+    description: "도움말 화면이 읽는 Notion 데이터베이스 ID입니다.",
+    warning: null,
+  },
+};
+
+const releaseSectionLabels: Record<AdminReleaseControlSection, string> = {
+  version: "버전 제어",
+  legal: "법률/정책",
+  support: "고객 지원",
+};
+
 export function ReleaseControlsPage() {
   const {adminSession} = useAuth();
   const queryClient = useQueryClient();
@@ -111,7 +159,7 @@ export function ReleaseControlsPage() {
     onSuccess: (nextControls) => {
       queryClient.setQueryData(["admin-release-controls"], nextControls);
       setDraftControls(nextControls);
-      setSuccessMessage("Release Controls를 저장했습니다.");
+      setSuccessMessage("릴리스 제어를 저장했습니다.");
       setConfirmOpen(false);
       setConfirmedRisk(false);
     },
@@ -131,7 +179,7 @@ export function ReleaseControlsPage() {
 
       groups.push({
         key: field.section,
-        label: field.sectionLabel,
+        label: releaseSectionLabels[field.section],
         fields: [field],
       });
       return groups;
@@ -159,9 +207,9 @@ export function ReleaseControlsPage() {
     saveMutation.error instanceof Error ?
       saveMutation.error.message :
       controlsQuery.isError ?
-        "Release Controls를 불러오지 못했습니다." :
+        "릴리스 제어를 불러오지 못했습니다." :
         saveMutation.isError ?
-          "Release Controls를 저장하지 못했습니다." :
+          "릴리스 제어를 저장하지 못했습니다." :
           null;
 
   const handleChange = (field: AdminReleaseControlField) =>
@@ -194,9 +242,9 @@ export function ReleaseControlsPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">Release Controls</Typography>
+        <Typography variant="h4">릴리스 제어</Typography>
         <Typography color="text.secondary">
-          Firebase Remote Config 값을 역할별로 안전하게 조회하고 수정합니다.
+          Firebase 원격 설정 값을 역할별로 안전하게 조회하고 수정합니다.
         </Typography>
       </Stack>
 
@@ -209,11 +257,11 @@ export function ReleaseControlsPage() {
                 <Chip label="1" size="small" />
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    `marketer`는 고객 노출 정보만 수정
+                    마케터는 고객 노출 정보만 수정
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
-                    `forceUpdateVersion`, `recommendedVersion`은 owner만 수정할 수
-                    있습니다. marketer는 링크/지원 정보만 다룹니다.
+                    `forceUpdateVersion`, `recommendedVersion`은 소유자만 수정할 수
+                    있습니다. 마케터는 링크/지원 정보만 다룹니다.
                   </Typography>
                 </Stack>
               </Stack>
@@ -233,10 +281,10 @@ export function ReleaseControlsPage() {
                 <Chip label="3" size="small" />
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    저장 후 Last Publish 재확인
+                    저장 후 마지막 배포 재확인
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
-                    저장 직후 publish 버전과 시간, 수정자를 확인해서 의도한 변경이
+                    저장 직후 배포 버전과 시간, 수정자를 확인해서 의도한 변경이
                     반영됐는지 바로 점검합니다.
                   </Typography>
                 </Stack>
@@ -248,7 +296,7 @@ export function ReleaseControlsPage() {
 
       {currentRole === "marketer" && (
         <Alert severity="info">
-          현재 계정은 `marketer` 권한입니다. 버전 제어 항목은 읽기 전용으로
+          현재 계정은 `마케터` 권한입니다. 버전 제어 항목은 읽기 전용으로
           표시되고, 고객 노출 링크/지원 정보만 수정할 수 있습니다.
         </Alert>
       )}
@@ -267,21 +315,21 @@ export function ReleaseControlsPage() {
             >
               <CircularProgress size={28} />
               <Typography color="text.secondary">
-                Release Controls를 불러오는 중입니다.
+                릴리스 제어를 불러오는 중입니다.
               </Typography>
             </Stack>
           ) : (
             <Stack spacing={3}>
               <Stack spacing={0.5}>
-                <Typography variant="subtitle2">Last Publish</Typography>
+                <Typography variant="subtitle2">마지막 배포</Typography>
                 <Typography color="text.secondary" variant="body2">
-                  Version {formatValue(controls.versionNumber)}
+                  버전 {formatValue(controls.versionNumber)}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  Updated At {formatDateTime(controls.updateTime)}
+                  수정 시각 {formatDateTime(controls.updateTime)}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  Updated By {formatValue(controls.updateUserEmail)}
+                  수정자 {formatValue(controls.updateUserEmail)}
                 </Typography>
               </Stack>
 
@@ -301,7 +349,7 @@ export function ReleaseControlsPage() {
                           {section.key === "legal" &&
                             "결제/설정 화면에서 노출하는 법률 링크를 관리합니다."}
                           {section.key === "support" &&
-                            "고객 문의와 FAQ 연결 정보를 관리합니다."}
+                            "고객 문의와 도움말 연결 정보를 관리합니다."}
                         </Typography>
                       </Stack>
 
@@ -320,16 +368,16 @@ export function ReleaseControlsPage() {
                               flexWrap="wrap"
                             >
                               <Typography variant="subtitle2">
-                                {field.label}
+                                {releaseControlTranslations[field.key].label}
                               </Typography>
                               <Chip
-                                label={editable ? "Editable" : "Owner only"}
+                                label={editable ? "수정 가능" : "소유자 전용"}
                                 size="small"
                                 color={editable ? "success" : "default"}
                               />
                               {changed && (
                                 <Chip
-                                  label="Changed"
+                                  label="변경됨"
                                   size="small"
                                   color="warning"
                                 />
@@ -337,15 +385,17 @@ export function ReleaseControlsPage() {
                             </Stack>
 
                             <Typography color="text.secondary" variant="body2">
-                              {field.description}
+                              {releaseControlTranslations[field.key].description}
                             </Typography>
 
-                            {field.warning && (
-                              <Alert severity="warning">{field.warning}</Alert>
+                            {releaseControlTranslations[field.key].warning && (
+                              <Alert severity="warning">
+                                {releaseControlTranslations[field.key].warning}
+                              </Alert>
                             )}
 
                             <TextField
-                              label={field.label}
+                              label={releaseControlTranslations[field.key].label}
                               type={getInputType(field)}
                               value={controls[field.key]}
                               onChange={handleChange(field)}
@@ -374,13 +424,13 @@ export function ReleaseControlsPage() {
                       changes.map((item) => (
                         <Stack key={item.field.key} spacing={0.5}>
                           <Typography variant="subtitle2">
-                            {item.field.label}
+                            {releaseControlTranslations[item.field.key].label}
                           </Typography>
                           <Typography color="text.secondary" variant="body2">
-                            Before: {formatValue(item.before)}
+                            이전: {formatValue(item.before)}
                           </Typography>
                           <Typography color="text.secondary" variant="body2">
-                            After: {formatValue(item.after)}
+                            이후: {formatValue(item.after)}
                           </Typography>
                         </Stack>
                       ))
@@ -395,7 +445,7 @@ export function ReleaseControlsPage() {
                   onClick={handleSave}
                   disabled={!canSave}
                 >
-                  {saveMutation.isPending ? "Saving..." : "Review Changes"}
+                  {saveMutation.isPending ? "저장 중..." : "변경 검토"}
                 </Button>
               </Stack>
             </Stack>
@@ -414,7 +464,7 @@ export function ReleaseControlsPage() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Release Controls 변경 확인</DialogTitle>
+        <DialogTitle>릴리스 제어 변경 확인</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{pt: 1}}>
             <Typography color="text.secondary" variant="body2">
@@ -423,12 +473,14 @@ export function ReleaseControlsPage() {
 
             {changes.map((item) => (
               <Stack key={item.field.key} spacing={0.5}>
-                <Typography variant="subtitle2">{item.field.label}</Typography>
-                <Typography color="text.secondary" variant="body2">
-                  Before: {formatValue(item.before)}
+                <Typography variant="subtitle2">
+                  {releaseControlTranslations[item.field.key].label}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  After: {formatValue(item.after)}
+                  이전: {formatValue(item.before)}
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  이후: {formatValue(item.after)}
                 </Typography>
               </Stack>
             ))}
@@ -461,7 +513,7 @@ export function ReleaseControlsPage() {
             }}
             disabled={saveMutation.isPending}
           >
-            Cancel
+            취소
           </Button>
           <Button
             variant="contained"
@@ -469,7 +521,7 @@ export function ReleaseControlsPage() {
             disabled={saveMutation.isPending || (riskyChanges.length > 0 &&
               !confirmedRisk)}
           >
-            {saveMutation.isPending ? "Saving..." : "Confirm Save"}
+            {saveMutation.isPending ? "저장 중..." : "저장 확인"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -47,7 +47,7 @@ export function UserTimelinePage() {
         spacing={2}
       >
         <Stack spacing={1}>
-          <Typography variant="h4">User Timeline</Typography>
+          <Typography variant="h4">사용자 이력</Typography>
           <Typography color="text.secondary">
             사용자별 현재 상태와 운영 이력을 한 화면에서 확인합니다.
           </Typography>
@@ -55,14 +55,14 @@ export function UserTimelinePage() {
 
         <Stack direction="row" spacing={1}>
           <Button component={RouterLink} to="/users" variant="outlined">
-            Back to Users
+            사용자 목록으로
           </Button>
           <Button
             component={RouterLink}
             to={`/entitlements?userId=${userId}`}
             variant="contained"
           >
-            Manage entitlement
+            override 관리
           </Button>
         </Stack>
       </Stack>
@@ -78,7 +78,7 @@ export function UserTimelinePage() {
             >
               <CircularProgress size={28} />
               <Typography color="text.secondary">
-                사용자 timeline을 불러오는 중입니다.
+                사용자 이력을 불러오는 중입니다.
               </Typography>
             </Stack>
           </CardContent>
@@ -87,7 +87,7 @@ export function UserTimelinePage() {
 
       {timelineQuery.isError && (
         <Alert severity="error">
-          사용자 timeline을 불러오지 못했습니다.
+          사용자 이력을 불러오지 못했습니다.
         </Alert>
       )}
 
@@ -106,7 +106,7 @@ export function UserTimelinePage() {
                     {timelineQuery.data.summary.userId}
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
-                    {formatValue(timelineQuery.data.summary.email, "email unavailable")}
+                    {formatValue(timelineQuery.data.summary.email, "이메일 없음")}
                   </Typography>
                 </Stack>
 
@@ -117,7 +117,7 @@ export function UserTimelinePage() {
                       "default"}
                     label={
                       timelineQuery.data.summary.subscriptionStatus ??
-                      "no subscription"
+                      "subscription 없음"
                     }
                   />
                   <Chip
@@ -126,12 +126,12 @@ export function UserTimelinePage() {
                       "default"}
                     label={
                       timelineQuery.data.summary.overrideActive ?
-                        "override active" :
-                        "override none"
+                        "override 활성" :
+                        "override 없음"
                     }
                   />
-                  <Chip label={`groups ${timelineQuery.data.summary.groupCount}`} />
-                  <Chip label={`devices ${timelineQuery.data.summary.deviceCount}`} />
+                  <Chip label={`그룹 ${timelineQuery.data.summary.groupCount}개`} />
+                  <Chip label={`기기 ${timelineQuery.data.summary.deviceCount}개`} />
                 </Stack>
               </Stack>
             </CardContent>
@@ -142,21 +142,21 @@ export function UserTimelinePage() {
               <Card elevation={0} sx={{height: "100%"}}>
                 <CardContent>
                   <Stack spacing={1.5}>
-                    <Typography variant="h6">Subscription</Typography>
+                    <Typography variant="h6">subscription</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Status {formatValue(timelineQuery.data.subscription.status)}
+                      상태 {formatValue(timelineQuery.data.subscription.status)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Product {formatValue(timelineQuery.data.subscription.productId)}
+                      상품 {formatValue(timelineQuery.data.subscription.productId)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Purchase {formatValue(timelineQuery.data.subscription.purchaseDate)}
+                      구매 {formatValue(timelineQuery.data.subscription.purchaseDate)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Expiration {formatValue(timelineQuery.data.subscription.expirationDate)}
+                      만료 {formatValue(timelineQuery.data.subscription.expirationDate)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Updated {formatValue(timelineQuery.data.subscription.updatedAt)}
+                      수정 {formatValue(timelineQuery.data.subscription.updatedAt)}
                     </Typography>
                   </Stack>
                 </CardContent>
@@ -167,24 +167,24 @@ export function UserTimelinePage() {
               <Card elevation={0} sx={{height: "100%"}}>
                 <CardContent>
                   <Stack spacing={1.5}>
-                    <Typography variant="h6">Entitlement Override</Typography>
+                    <Typography variant="h6">override 상세</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Active {timelineQuery.data.override?.isActive ? "yes" : "no"}
+                      활성 {timelineQuery.data.override?.isActive ? "예" : "아니오"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Type {formatValue(timelineQuery.data.override?.type ?? null)}
+                      유형 {formatValue(timelineQuery.data.override?.type ?? null)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Reason {formatValue(timelineQuery.data.override?.reason ?? null)}
+                      사유 {formatValue(timelineQuery.data.override?.reason ?? null)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Expires {formatValue(timelineQuery.data.override?.expiresAt ?? null)}
+                      만료 {formatValue(timelineQuery.data.override?.expiresAt ?? null)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Created {formatValue(timelineQuery.data.override?.createdAt ?? null)}
+                      생성 {formatValue(timelineQuery.data.override?.createdAt ?? null)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Revoked {formatValue(timelineQuery.data.override?.revokedAt ?? null)}
+                      회수 {formatValue(timelineQuery.data.override?.revokedAt ?? null)}
                     </Typography>
                   </Stack>
                 </CardContent>
@@ -194,15 +194,15 @@ export function UserTimelinePage() {
 
           <Stack spacing={2}>
             <Stack spacing={0.5}>
-              <Typography variant="h6">Audit Timeline</Typography>
+              <Typography variant="h6">감사 이력</Typography>
               <Typography color="text.secondary" variant="body2">
-                대상 user와 직접 연결된 최근 audit log를 표시합니다.
+                대상 사용자와 직접 연결된 최근 감사 로그를 표시합니다.
               </Typography>
             </Stack>
 
             {timelineQuery.data.auditLogs.length === 0 ? (
               <Alert severity="info">
-                이 사용자와 직접 연결된 Audit Log가 아직 없습니다.
+                이 사용자와 직접 연결된 감사 로그가 아직 없습니다.
               </Alert>
             ) : (
               <Stack spacing={2}>
@@ -215,17 +215,17 @@ export function UserTimelinePage() {
                             {log.action ?? "-"}
                           </Typography>
                           <Typography color="text.secondary" variant="body2">
-                            Actor {log.actorId ?? "-"}
+                            수행자 {log.actorId ?? "-"}
                           </Typography>
                           <Typography color="text.secondary" variant="body2">
-                            Created At {log.createdAt ?? "-"}
+                            생성 시각 {log.createdAt ?? "-"}
                           </Typography>
                         </Stack>
 
                         <Divider />
 
                         <Stack spacing={1}>
-                          <Typography variant="subtitle2">Before</Typography>
+                          <Typography variant="subtitle2">이전</Typography>
                           <Typography
                             component="pre"
                             sx={{
@@ -243,7 +243,7 @@ export function UserTimelinePage() {
                         </Stack>
 
                         <Stack spacing={1}>
-                          <Typography variant="subtitle2">After</Typography>
+                          <Typography variant="subtitle2">이후</Typography>
                           <Typography
                             component="pre"
                             sx={{

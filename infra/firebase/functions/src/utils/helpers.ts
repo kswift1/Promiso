@@ -169,3 +169,33 @@ export function randomInviteCode(length: number): string {
   }
   return code;
 }
+
+/**
+ * entitlement override가 현재 시각 기준으로 유효한지 판단한다.
+ *
+ * @param {Record<string, unknown> | null | undefined} overrideData override 문서.
+ * @param {Date} now 비교 기준 시각.
+ * @return {boolean} 현재 유효한 override면 true.
+ */
+export function isEntitlementOverrideActive(
+  overrideData: Record<string, unknown> | null | undefined,
+  now: Date = new Date(Date.now()),
+): boolean {
+  if (overrideData?.isActive !== true) {
+    return false;
+  }
+
+  const expiresAt = typeof overrideData.expiresAt === "string" ?
+    overrideData.expiresAt.trim() :
+    "";
+  if (!expiresAt) {
+    return true;
+  }
+
+  const expiresAtDate = new Date(expiresAt);
+  if (Number.isNaN(expiresAtDate.getTime())) {
+    return true;
+  }
+
+  return expiresAtDate.getTime() > now.getTime();
+}
