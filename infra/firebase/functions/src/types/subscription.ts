@@ -60,6 +60,15 @@ export interface SubscriptionStatusData {
   /** 구매일 (ISO 8601) */
   purchaseDate: string | null;
 
+  /** 가장 최근에 반영한 App Store signedDate (replay 방지용) */
+  latestAppStoreSignedDate?: number | null;
+
+  /** 가장 최근에 반영한 transactionId */
+  latestTransactionId?: string | null;
+
+  /** 가장 최근에 반영한 서버 알림 타입 */
+  lastNotificationType?: string | null;
+
   /** 마지막 업데이트 (Timestamp) */
   updatedAt: FirebaseFirestore.Timestamp;
 }

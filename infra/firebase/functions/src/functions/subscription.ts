@@ -5,27 +5,236 @@
  *
  * @ios ProPlanFeature
  */
+import {
+  JWSRenewalInfoDecodedPayload,
+  JWSTransactionDecodedPayload,
+  NotificationTypeV2,
+} from "@apple/app-store-server-library";
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
-import {verifyAppleJWS} from "../utils/appstore";
 import {
   VerifyPurchaseRequest,
   VerifyPurchaseResponse,
   SubscriptionStatusData,
   AppleNotificationPayload,
 } from "../types/subscription";
+import {
+  verifyAppleNotificationPayload,
+  verifyAppleRenewalInfoJWS,
+  verifyAppleTransactionJWS,
+} from "../utils/appstore";
+
+type SubscriptionStatus = SubscriptionStatusData["status"];
+
+type StoredSubscriptionData = Partial<SubscriptionStatusData> & {
+  updatedAt?: FirebaseFirestore.Timestamp;
+};
+
+const NO_OP_NOTIFICATION_TYPES = new Set<string>([
+  NotificationTypeV2.TEST,
+  NotificationTypeV2.CONSUMPTION_REQUEST,
+  NotificationTypeV2.EXTERNAL_PURCHASE_TOKEN,
+  NotificationTypeV2.ONE_TIME_CHARGE,
+  NotificationTypeV2.RESCIND_CONSENT,
+  NotificationTypeV2.REFUND_DECLINED,
+]);
+
+/**
+ * Apple 재시도가 필요한 웹훅 실패를 나타낸다.
+ */
+class RetryableNotificationError extends Error {}
+
+/**
+ * Apple millisecond timestamp를 ISO 8601 문자열로 변환한다.
+ *
+ * @param {number | null | undefined} timestamp Apple timestamp
+ * @return {string | null} ISO 8601 문자열 또는 null
+ */
+function toISOStringOrNull(timestamp?: number | null): string | null {
+  if (typeof timestamp !== "number") {
+    return null;
+  }
+
+  return new Date(timestamp).toISOString();
+}
+
+/**
+ * 여러 signedDate 중 가장 최신 값을 반환한다.
+ *
+ * @param {...Array<number | undefined>} dates signedDate 후보 목록
+ * @return {number | null} 가장 최신 signedDate
+ */
+function latestSignedDate(
+  ...dates: Array<number | undefined>
+): number | null {
+  const validDates = dates.filter(
+    (value): value is number => typeof value === "number",
+  );
+
+  return validDates.length > 0 ? Math.max(...validDates) : null;
+}
+
+/**
+ * 저장된 구독 문서에서 replay 방지 기준 signedDate를 읽는다.
+ *
+ * @param {StoredSubscriptionData | undefined} data 저장된 구독 데이터
+ * @return {number | null} 저장된 최신 signedDate
+ */
+function existingLatestSignedDate(
+  data?: StoredSubscriptionData,
+): number | null {
+  return typeof data?.latestAppStoreSignedDate === "number" ?
+    data.latestAppStoreSignedDate :
+    null;
+}
+
+/**
+ * Firestore 문서를 클라이언트 응답 형태로 정규화한다.
+ *
+ * @param {StoredSubscriptionData} data Firestore 문서 데이터
+ * @return {SubscriptionStatusData} 응답용 상태 데이터
+ */
+function buildResponseStatus(
+  data: StoredSubscriptionData,
+): SubscriptionStatusData {
+  return {
+    status: (data.status as SubscriptionStatus) ?? "none",
+    productId: data.productId ?? null,
+    originalTransactionId: data.originalTransactionId ?? null,
+    expirationDate: data.expirationDate ?? null,
+    purchaseDate: data.purchaseDate ?? null,
+    latestAppStoreSignedDate: data.latestAppStoreSignedDate ?? null,
+    latestTransactionId: data.latestTransactionId ?? null,
+    lastNotificationType: data.lastNotificationType ?? null,
+    updatedAt: data.updatedAt ?? admin.firestore.Timestamp.now(),
+  };
+}
+
+/**
+ * signed transaction 하나만 기준으로 현재 상태를 계산한다.
+ *
+ * @param {JWSTransactionDecodedPayload} transactionPayload 검증된 transaction
+ * @return {Pick<SubscriptionStatusData,
+ *   "status" | "expirationDate" | "purchaseDate">} 계산된 상태
+ */
+function deriveStatusFromTransaction(
+  transactionPayload: JWSTransactionDecodedPayload,
+): Pick<
+  SubscriptionStatusData,
+  "status" | "expirationDate" | "purchaseDate"
+> {
+  const purchaseDate = toISOStringOrNull(transactionPayload.purchaseDate);
+  const expirationDate = toISOStringOrNull(transactionPayload.expiresDate);
+  const transactionType = transactionPayload.type as string | undefined;
+
+  if (
+    typeof transactionPayload.revocationDate === "number" ||
+    typeof transactionPayload.revocationReason !== "undefined" ||
+    typeof transactionPayload.revocationType !== "undefined"
+  ) {
+    return {
+      status: "revoked",
+      expirationDate,
+      purchaseDate,
+    };
+  }
+
+  if (transactionType === "Non-Consumable" || !transactionPayload.expiresDate) {
+    return {
+      status: "lifetime",
+      expirationDate: null,
+      purchaseDate,
+    };
+  }
+
+  return {
+    status: transactionPayload.expiresDate > Date.now() ?
+      "subscribed" :
+      "expired",
+    expirationDate,
+    purchaseDate,
+  };
+}
+
+/**
+ * notificationType + renewalInfo를 반영해 웹훅 상태를 계산한다.
+ *
+ * @param {string} notificationType App Store notification type
+ * @param {JWSTransactionDecodedPayload} transactionPayload 검증된 transaction
+ * @param {JWSRenewalInfoDecodedPayload | null} renewalInfo 검증된 renewal info
+ * @return {Pick<SubscriptionStatusData,
+ *   "status" | "expirationDate" | "purchaseDate"> | null} 계산된 상태
+ */
+function deriveStatusFromNotification(
+  notificationType: string,
+  transactionPayload: JWSTransactionDecodedPayload,
+  renewalInfo: JWSRenewalInfoDecodedPayload | null,
+): Pick<
+  SubscriptionStatusData,
+  "status" | "expirationDate" | "purchaseDate"
+> | null {
+  const transactionState = deriveStatusFromTransaction(transactionPayload);
+  const graceExpirationDate = toISOStringOrNull(
+    renewalInfo?.gracePeriodExpiresDate ?? renewalInfo?.renewalDate,
+  );
+
+  switch (notificationType) {
+  case NotificationTypeV2.SUBSCRIBED:
+  case NotificationTypeV2.DID_RENEW:
+  case NotificationTypeV2.DID_CHANGE_RENEWAL_PREF:
+  case NotificationTypeV2.DID_CHANGE_RENEWAL_STATUS:
+  case NotificationTypeV2.OFFER_REDEEMED:
+  case NotificationTypeV2.PRICE_INCREASE:
+  case NotificationTypeV2.RENEWAL_EXTENDED:
+  case NotificationTypeV2.RENEWAL_EXTENSION:
+  case NotificationTypeV2.REFUND_REVERSED:
+    return transactionState;
+
+  case NotificationTypeV2.DID_FAIL_TO_RENEW:
+    return {
+      ...transactionState,
+      status: renewalInfo?.isInBillingRetryPeriod ||
+          renewalInfo?.gracePeriodExpiresDate ?
+        "gracePeriod" :
+        "expired",
+      expirationDate: graceExpirationDate ?? transactionState.expirationDate,
+    };
+
+  case NotificationTypeV2.EXPIRED:
+    return {
+      ...transactionState,
+      status: "expired",
+    };
+
+  case NotificationTypeV2.GRACE_PERIOD_EXPIRED:
+    return {
+      ...transactionState,
+      status: "expired",
+      expirationDate: graceExpirationDate ?? transactionState.expirationDate,
+    };
+
+  case NotificationTypeV2.REVOKE:
+  case NotificationTypeV2.REFUND:
+    return {
+      ...transactionState,
+      status: "revoked",
+    };
+
+  default:
+    return null;
+  }
+}
 
 /**
  * verifyPurchase — 클라이언트에서 구매 후 JWS 토큰을 전송하여 서버에서 검증
  *
  * 흐름:
  * 1. 인증 확인
- * 2. JWS 토큰 검증 (Apple 인증서 체인 검증)
- * 3. 트랜잭션 페이로드에서 구독 정보 추출
- * 4. subscriptionOwners/{originalTransactionId}로 소유권 확인 (1:1 바인딩)
- * 5. Firestore subscriptions/{userId} 문서에 상태 저장
- * 6. 결과 반환
+ * 2. App Store signed transaction 검증
+ * 3. subscriptionOwners/{originalTransactionId}로 소유권 확인 (1:1 바인딩)
+ * 4. replay/stale 이벤트를 차단하며 subscriptions/{userId} 갱신
+ * 5. 결과 반환
  *
  * @remarks
  * **인증 필수**
@@ -33,7 +242,6 @@ import {
 export const verifyPurchase = onCall<VerifyPurchaseRequest>(
   {region: REGION},
   async (request): Promise<VerifyPurchaseResponse> => {
-    // 1. 인증 확인
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다");
     }
@@ -41,11 +249,10 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
     const userId = request.auth.uid;
     const data = request.data;
 
-    // 2. 유효성 검사
     if (!data.transactionJWS || !data.productId) {
       throw new HttpsError(
         "invalid-argument",
-        "transactionJWS와 productId는 필수입니다"
+        "transactionJWS와 productId는 필수입니다",
       );
     }
 
@@ -55,135 +262,136 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
     });
 
     try {
-      // 3. JWS 토큰 검증
-      const payload = await verifyAppleJWS(data.transactionJWS);
+      const payload = await verifyAppleTransactionJWS(data.transactionJWS);
 
-      console.log("✅ [Subscription] JWS verified", payload);
+      const productId = payload.productId;
+      const originalTransactionId = payload.originalTransactionId;
+      const transactionId = payload.transactionId ?? null;
 
-      // 4. 트랜잭션 페이로드에서 구독 정보 추출
-      const productId = payload.productId as string;
-      const originalTransactionId = payload.originalTransactionId as string;
-      const purchaseDate = payload.purchaseDate ?
-        new Date(payload.purchaseDate as number).toISOString() : null;
-      const expiresDate = payload.expiresDate ?
-        new Date(payload.expiresDate as number).toISOString() : null;
-      const transactionType = payload.type as string;
-
-      // 5. 상품 ID 검증
-      if (productId !== data.productId) {
+      if (!productId || !originalTransactionId) {
         throw new HttpsError(
-          "invalid-argument",
-          "상품 ID가 일치하지 않습니다"
+          "failed-precondition",
+          "유효한 App Store 트랜잭션 정보가 없습니다",
         );
       }
 
-      // 6. 구독 상태 결정
-      let status: SubscriptionStatusData["status"] = "subscribed";
-      let expirationDate: string | null = expiresDate;
+      console.log("✅ [Subscription] Transaction verified", {
+        originalTransactionId,
+        transactionId,
+        productId,
+      });
 
-      // lifetime 상품 확인 (Non-Consumable 또는 만료일 없음)
-      if (transactionType === "Non-Consumable" || !expiresDate) {
-        status = "lifetime";
-        expirationDate = null;
-      } else {
-        // 구독 상품: 만료일 확인
-        const now = new Date();
-        const expiry = new Date(expiresDate);
-        status = expiry > now ? "subscribed" : "expired";
+      if (productId !== data.productId) {
+        throw new HttpsError(
+          "invalid-argument",
+          "상품 ID가 일치하지 않습니다",
+        );
       }
+
+      const derivedStatus = deriveStatusFromTransaction(payload);
+      const signedDate = latestSignedDate(payload.signedDate);
 
       const db = admin.firestore();
       const subscriptionRef = db.collection("subscriptions").doc(userId);
-
-      // 7. Firestore 업데이트 (트랜잭션 — 소유권 확인 + 상태 저장)
       const ownerRef = db.collection("subscriptionOwners")
         .doc(originalTransactionId);
 
-      await db.runTransaction(async (transaction) => {
-        // 소유권 확인
-        const ownerDoc = await transaction.get(ownerRef);
+      const transactionResult = await db.runTransaction(async (transaction) => {
+        const [ownerDoc, subscriptionDoc] = await Promise.all([
+          transaction.get(ownerRef),
+          transaction.get(subscriptionRef),
+        ]);
 
         if (ownerDoc.exists) {
           const existingOwner = ownerDoc.data()?.userId;
           if (existingOwner && existingOwner !== userId) {
             throw new HttpsError(
               "already-exists",
-              "이 구독은 다른 계정에 연결되어 있습니다"
+              "이 구독은 다른 계정에 연결되어 있습니다",
             );
           }
         }
 
-        // 소유권 등록/갱신
         transaction.set(ownerRef, {
-          userId: userId,
-          productId: productId,
+          userId,
+          productId,
           createdAt: ownerDoc.exists ?
             ownerDoc.data()?.createdAt :
             FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         }, {merge: true});
 
-        // subscriptions/{userId} 문서 업데이트
+        const existingSubscription =
+          subscriptionDoc.data() as StoredSubscriptionData | undefined;
+        const currentLatestSignedDate =
+          existingLatestSignedDate(existingSubscription);
+
+        if (
+          signedDate !== null &&
+          currentLatestSignedDate !== null &&
+          signedDate < currentLatestSignedDate
+        ) {
+          console.warn(
+            "⚠️ [Subscription] Stale purchase verification ignored",
+            {
+              userId,
+              originalTransactionId,
+              signedDate,
+              currentLatestSignedDate,
+            },
+          );
+
+          return buildResponseStatus(existingSubscription ?? {});
+        }
+
         const subscriptionData: SubscriptionStatusData = {
-          status: status,
-          productId: productId,
-          originalTransactionId: originalTransactionId,
-          expirationDate: expirationDate,
-          purchaseDate: purchaseDate,
+          status: derivedStatus.status,
+          productId,
+          originalTransactionId,
+          expirationDate: derivedStatus.expirationDate,
+          purchaseDate: derivedStatus.purchaseDate,
+          latestAppStoreSignedDate: signedDate,
+          latestTransactionId: transactionId,
+          lastNotificationType: null,
           updatedAt: FieldValue.serverTimestamp() as
             FirebaseFirestore.Timestamp,
         };
 
-        transaction.set(
-          subscriptionRef, subscriptionData, {merge: true},
-        );
+        transaction.set(subscriptionRef, subscriptionData, {merge: true});
 
-        console.log(
-          `✅ [Subscription] Updated status: ${status}, owner: ${userId}`
-        );
+        console.log("✅ [Subscription] Updated purchase state", {
+          userId,
+          originalTransactionId,
+          status: derivedStatus.status,
+          signedDate,
+        });
+
+        return buildResponseStatus(subscriptionData);
       });
-
-      // 8. 응답 반환
-      const subscriptionStatus: SubscriptionStatusData = {
-        status: status,
-        productId: productId,
-        originalTransactionId: originalTransactionId,
-        expirationDate: expirationDate,
-        purchaseDate: purchaseDate,
-        updatedAt: admin.firestore.Timestamp.now(),
-      };
 
       return {
         success: true,
-        subscriptionStatus: subscriptionStatus,
+        subscriptionStatus: transactionResult,
       };
     } catch (error) {
       console.error("❌ [Subscription] Verify purchase error:", error);
 
-      // HttpsError는 그대로 throw
       if (error instanceof HttpsError) {
         throw error;
       }
 
       throw new HttpsError(
         "internal",
-        "구매 검증 중 오류가 발생했습니다"
+        "구매 검증 중 오류가 발생했습니다",
       );
     }
-  }
+  },
 );
 
 /**
  * appleServerNotification — App Store Server Notifications V2 웹훅
  *
- * Apple이 구독 상태 변경 시 자동으로 호출하는 웹훅:
- * - SUBSCRIBED: 신규 구독
- * - DID_RENEW: 갱신 성공
- * - EXPIRED: 만료
- * - DID_FAIL_TO_RENEW: 갱신 실패
- * - GRACE_PERIOD_EXPIRED: 유예 기간 만료
- * - REVOKE: 환불
- * - REFUND: 환불
+ * Apple이 구독 상태 변경 시 자동으로 호출하는 웹훅
  *
  * @remarks
  * onRequest를 사용 (onCall이 아님 — Apple이 직접 HTTP POST)
@@ -194,114 +402,144 @@ export const appleServerNotification = onRequest(
     console.log("📱 [Subscription] Apple Server Notification received");
 
     try {
-      // 1. signedPayload 추출
       const body = req.body as AppleNotificationPayload;
       if (!body.signedPayload) {
-        console.error("❌ [Subscription] Missing signedPayload");
-        res.status(200).json({success: false, error: "Missing signedPayload"});
+        res.status(400).json({success: false, error: "Missing signedPayload"});
         return;
       }
 
-      // 2. signedPayload JWS 검증
-      const payload = await verifyAppleJWS(body.signedPayload);
-      console.log("✅ [Subscription] Notification payload verified", payload);
+      const payload = await verifyAppleNotificationPayload(body.signedPayload);
+      const notificationType = payload.notificationType as string | undefined;
 
-      const notificationType = payload.notificationType as string;
-      const data = payload.data as Record<string, unknown>;
-
-      // 3. signedTransactionInfo 추출 및 검증
-      const signedTransactionInfo = data?.signedTransactionInfo as string;
-      if (!signedTransactionInfo) {
-        console.error("❌ [Subscription] Missing signedTransactionInfo");
-        res.status(200).json({
-          success: false, error: "Missing signedTransactionInfo",
+      if (!notificationType) {
+        res.status(400).json({
+          success: false,
+          error: "Missing notificationType",
         });
         return;
       }
 
-      const transactionPayload = await verifyAppleJWS(signedTransactionInfo);
-      console.log(
-        "✅ [Subscription] Transaction payload verified",
-        transactionPayload
+      if (NO_OP_NOTIFICATION_TYPES.has(notificationType)) {
+        console.log(
+          "ℹ️ [Subscription] Notification acknowledged without mutation",
+          {notificationType},
+        );
+        res.status(200).json({success: true});
+        return;
+      }
+
+      const notificationData = payload.data;
+      const signedTransactionInfo = notificationData?.signedTransactionInfo;
+      if (!signedTransactionInfo) {
+        res.status(400).json({
+          success: false,
+          error: "Missing signedTransactionInfo",
+        });
+        return;
+      }
+
+      const transactionPayload =
+        await verifyAppleTransactionJWS(signedTransactionInfo);
+      const renewalInfo = notificationData?.signedRenewalInfo ?
+        await verifyAppleRenewalInfoJWS(notificationData.signedRenewalInfo) :
+        null;
+
+      const originalTransactionId = transactionPayload.originalTransactionId;
+      const productId = transactionPayload.productId ?? null;
+
+      if (!originalTransactionId) {
+        throw new RetryableNotificationError(
+          "Missing originalTransactionId",
+        );
+      }
+
+      console.log("✅ [Subscription] Notification verified", {
+        notificationType,
+        originalTransactionId,
+        transactionId: transactionPayload.transactionId ?? null,
+        productId,
+      });
+
+      const derivedStatus = deriveStatusFromNotification(
+        notificationType,
+        transactionPayload,
+        renewalInfo,
       );
 
-      // 4. 사용자 매핑 (subscriptionOwners에서 소유자 조회)
-      const originalTransactionId =
-        transactionPayload.originalTransactionId as string;
+      if (!derivedStatus) {
+        console.log("ℹ️ [Subscription] Notification type skipped", {
+          notificationType,
+          originalTransactionId,
+        });
+        res.status(200).json({success: true});
+        return;
+      }
+
       const db = admin.firestore();
-      const ownerDoc = await db.collection("subscriptionOwners")
-        .doc(originalTransactionId)
-        .get();
+      const ownerRef = db.collection("subscriptionOwners")
+        .doc(originalTransactionId);
+      const ownerDoc = await ownerRef.get();
 
       if (!ownerDoc.exists) {
-        console.warn(
-          `⚠️ [Subscription] No owner found for txId: ${originalTransactionId}`
+        throw new RetryableNotificationError(
+          `Owner not found for txId: ${originalTransactionId}`,
         );
-        res.status(200).json({success: false, error: "Owner not found"});
-        return;
       }
 
-      const userId = ownerDoc.data()!.userId as string;
-      console.log(`✅ [Subscription] Owner found: ${userId}`);
-
-      // 5. notificationType에 따라 상태 업데이트
-      let status = "subscribed";
-      switch (notificationType) {
-      case "SUBSCRIBED":
-      case "DID_RENEW":
-        status = "subscribed";
-        break;
-      case "EXPIRED":
-      case "GRACE_PERIOD_EXPIRED":
-        status = "expired";
-        break;
-      case "DID_FAIL_TO_RENEW":
-        status = "gracePeriod";
-        break;
-      case "REVOKE":
-      case "REFUND":
-        status = "revoked";
-        break;
-      default:
-        console.warn(
-          `⚠️ [Subscription] Unknown type: ${notificationType}`
+      const ownerData = ownerDoc.data();
+      const userId = ownerData?.userId as string | undefined;
+      if (!userId) {
+        throw new RetryableNotificationError(
+          `Owner userId missing for txId: ${originalTransactionId}`,
         );
-        res.status(200).json({
-          success: false, error: "Unknown notification type",
-        });
-        return;
       }
-
-      // 6. Firestore 업데이트
-      const productId = transactionPayload.productId as string;
-      const purchaseDate = transactionPayload.purchaseDate ?
-        new Date(transactionPayload.purchaseDate as number).toISOString() :
-        null;
-      const expiresDate = transactionPayload.expiresDate ?
-        new Date(transactionPayload.expiresDate as number).toISOString() :
-        null;
-
       const subscriptionRef = db.collection("subscriptions").doc(userId);
+      const signedDate = latestSignedDate(
+        payload.signedDate,
+        transactionPayload.signedDate,
+        renewalInfo?.signedDate,
+      );
 
       await db.runTransaction(async (transaction) => {
-        const subscriptionData = {
-          status: status as SubscriptionStatusData["status"],
-          productId: productId,
-          expirationDate: expiresDate,
-          purchaseDate: purchaseDate,
+        const subscriptionDoc = await transaction.get(subscriptionRef);
+        const existingSubscription =
+          subscriptionDoc.data() as StoredSubscriptionData | undefined;
+        const currentLatestSignedDate =
+          existingLatestSignedDate(existingSubscription);
+
+        if (
+          signedDate !== null &&
+          currentLatestSignedDate !== null &&
+          signedDate < currentLatestSignedDate
+        ) {
+          console.warn("⚠️ [Subscription] Stale notification ignored", {
+            userId,
+            originalTransactionId,
+            notificationType,
+            signedDate,
+            currentLatestSignedDate,
+          });
+          return;
+        }
+
+        const subscriptionData: SubscriptionStatusData = {
+          status: derivedStatus.status,
+          productId,
+          originalTransactionId,
+          expirationDate: derivedStatus.expirationDate,
+          purchaseDate: derivedStatus.purchaseDate,
+          latestAppStoreSignedDate: signedDate,
+          latestTransactionId: transactionPayload.transactionId ?? null,
+          lastNotificationType: notificationType,
           updatedAt: FieldValue.serverTimestamp() as
             FirebaseFirestore.Timestamp,
         };
 
-        transaction.set(
-          subscriptionRef, subscriptionData, {merge: true},
-        );
+        transaction.set(subscriptionRef, subscriptionData, {merge: true});
 
-        // 구독 해지 시 proSettings 정리
-        // (브리핑 알림 등 Pro 전용 설정 비활성화)
-        const isInactive = [
-          "expired", "revoked",
-        ].includes(status);
+        const isInactive = ["expired", "revoked"].includes(
+          derivedStatus.status,
+        );
         if (isInactive) {
           const settingsRef = db
             .collection("users").doc(userId)
@@ -309,20 +547,29 @@ export const appleServerNotification = onRequest(
           transaction.set(settingsRef, {
             proSettings: FieldValue.delete(),
           }, {merge: true});
-          console.log(
-            `🧹 [Subscription] Cleaned proSettings for ${userId}`
-          );
+          console.log(`🧹 [Subscription] Cleaned proSettings for ${userId}`);
         }
 
-        console.log(`✅ [Subscription] Updated status: ${status}`);
+        console.log("✅ [Subscription] Notification applied", {
+          userId,
+          originalTransactionId,
+          notificationType,
+          status: derivedStatus.status,
+          signedDate,
+        });
       });
 
-      // 7. 응답 (Apple은 non-200이면 재시도하므로 항상 200 반환)
       res.status(200).json({success: true});
     } catch (error) {
       console.error("❌ [Subscription] Apple notification error:", error);
-      // 에러 시에도 200 반환 (Apple 재시도 방지)
-      res.status(200).json({success: false, error: String(error)});
+
+      if (error instanceof RetryableNotificationError) {
+        res.status(500).json({success: false, error: error.message});
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(200).json({success: false, error: message});
     }
-  }
+  },
 );

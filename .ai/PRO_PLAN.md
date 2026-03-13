@@ -56,16 +56,29 @@ Product ID는 `Bundle.main.bundleIdentifier` 기반으로 환경별 자동 생�
 ## 아키텍처
 
 ```
-StoreKit 2 (앱) → verifyPurchase (Cloud Function) → Firestore subscriptions/{userId}
-                                                   ↑
-Apple Server Notifications V2 → appleServerNotification (Cloud Function) ─┘
+StoreKit 2 (앱) → verifyPurchase (Cloud Function)
+                  ├→ Firestore subscriptionOwners/{originalTransactionId}
+                  └→ Firestore subscriptions/{userId}
+
+Apple Server Notifications V2 → appleServerNotification (Cloud Function)
+                                 ├→ subscriptionOwners/{originalTransactionId} 조회
+                                 └→ subscriptions/{userId} 갱신
 ```
 
 - **앱**: StoreKit 2로 구매 → JWS 토큰을 서버로 전송
-- **서버**: JWS 검증 후 Firestore 업데이트
+- **서버**: `@apple/app-store-server-library`로 transaction / renewal / notification JWS를 검증
+- **저장소 역할 분리**: `subscriptions/{userId}`는 현재 구독 상태 SSOT, `subscriptionOwners/{originalTransactionId}`는 App Store 구매 소유권 인덱스
+- **정합성 보강**: `signedRenewalInfo`를 반영해 `gracePeriod` / billing retry 상태를 계산하고, `latestAppStoreSignedDate`로 stale replay를 차단
+- **웹훅 재시도**: owner를 찾지 못한 Apple Notification은 `500`을 반환해 Apple 재시도를 유도
 - **실시간**: StoreKit + Firestore 리스너 통합 스트림 (`unifiedStatusStream`)
 - **앱 시작 시 상태 동기화**: `RootTabFeature.observeSubscriptionStatus`에서 `fetchStatus()` 1회 호출 후 `unifiedStatusStream()` 구독
 - **수동 복원**: Paywall의 `restoreTapped`에서만 `AppStore.sync()` 실행
+
+## 운영 메모
+
+- `infra/firebase/functions/certs/AppleRootCA-G2.der`, `AppleRootCA-G3.der`는 Functions 배포 산출물에 반드시 포함되어야 한다.
+- 원격 Dev / Stage 환경은 Apple Sandbox 서명 데이터만 검증한다. Xcode StoreKit 로컬 토큰은 Firebase Emulator에서만 허용된다.
+- `subscriptions/{userId}`는 클라이언트 읽기 전용이며, 모든 쓰기는 `verifyPurchase` / `appleServerNotification` Cloud Functions를 통해서만 이뤄진다.
 
 ## 환경별 배포
 

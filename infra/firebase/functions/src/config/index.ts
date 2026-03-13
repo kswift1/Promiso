@@ -79,7 +79,20 @@ function getAPNsBundleId(): string {
   }
 }
 
-export const APNS_BUNDLE_ID = getAPNsBundleId();
+export const APP_STORE_BUNDLE_ID = getAPNsBundleId();
+
+/**
+ * App Store Connect appAppleId (프로덕션 검증용)
+ *
+ * @remarks
+ * Sandbox 환경에서는 SignedDataVerifier에 appAppleId가 필요하지 않다.
+ */
+export const APP_STORE_APPLE_ID = getCurrentEnvironment() ===
+  FirestoreEnvironment.Release ?
+  1625074042 :
+  undefined;
+
+export const APNS_BUNDLE_ID = APP_STORE_BUNDLE_ID;
 
 // App Store Server Notification 시크릿 (향후 사용)
 // export const APP_STORE_SHARED_SECRET =
