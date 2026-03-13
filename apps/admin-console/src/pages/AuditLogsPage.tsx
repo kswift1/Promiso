@@ -1,4 +1,3 @@
-import {useEffect, useState} from "react";
 import {
   Alert,
   Button,
@@ -9,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import {useQuery} from "@tanstack/react-query";
 import {AdminAuditLog, getAdminAuditLogs} from "../api/admin";
 
 function formatJson(value: unknown): string {
@@ -24,38 +24,16 @@ function formatJson(value: unknown): string {
 }
 
 export function AuditLogsPage() {
-  const [logs, setLogs] = useState<AdminAuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const loadLogs = async (isManualRefresh = false) => {
-    if (isManualRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    setErrorMessage(null);
-
-    try {
-      const nextLogs = await getAdminAuditLogs(50);
-      setLogs(nextLogs);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ?
-          error.message :
-          "Audit Logs를 불러오지 못했습니다."
-      );
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    loadLogs();
-  }, []);
+  const logsQuery = useQuery<AdminAuditLog[]>({
+    queryKey: ["admin-audit-logs", 50],
+    queryFn: () => getAdminAuditLogs(50),
+  });
+  const errorMessage = logsQuery.error instanceof Error ?
+    logsQuery.error.message :
+    logsQuery.isError ?
+      "Audit Logs를 불러오지 못했습니다." :
+      null;
+  const logs = logsQuery.data ?? [];
 
   return (
     <Stack spacing={3}>
@@ -73,16 +51,16 @@ export function AuditLogsPage() {
 
         <Button
           variant="outlined"
-          onClick={() => loadLogs(true)}
-          disabled={isRefreshing}
+          onClick={() => void logsQuery.refetch()}
+          disabled={logsQuery.isRefetching}
         >
-          {isRefreshing ? "Refreshing..." : "Refresh"}
+          {logsQuery.isRefetching ? "Refreshing..." : "Refresh"}
         </Button>
       </Stack>
 
       {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
-      {isLoading ? (
+      {logsQuery.isPending ? (
         <Card elevation={0}>
           <CardContent>
             <Stack

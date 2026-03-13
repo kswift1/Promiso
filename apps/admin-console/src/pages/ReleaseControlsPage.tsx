@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {ChangeEvent, useState} from "react";
 import {
   Alert,
   Button,
@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
   AdminReleaseControls,
   getAdminReleaseControls,
@@ -29,75 +30,58 @@ const emptyControls: AdminReleaseControls = {
 };
 
 export function ReleaseControlsPage() {
-  const [controls, setControls] = useState<AdminReleaseControls>(emptyControls);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [draftControls, setDraftControls] = useState<AdminReleaseControls | null>(
+    null
+  );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const controlsQuery = useQuery({
+    queryKey: ["admin-release-controls"],
+    queryFn: getAdminReleaseControls,
+  });
 
-    const load = async () => {
-      try {
-        const result = await getAdminReleaseControls();
-        if (!isMounted) return;
-        setControls(result);
-      } catch (error) {
-        if (!isMounted) return;
-        setErrorMessage(
-          error instanceof Error ?
-            error.message :
-            "릴리즈 제어 설정을 불러오지 못했습니다."
-        );
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+  const saveMutation = useMutation({
+    mutationFn: updateAdminReleaseControls,
+    onSuccess: (nextControls) => {
+      queryClient.setQueryData(["admin-release-controls"], nextControls);
+      setDraftControls(nextControls);
+      setSuccessMessage("Release Controls를 저장했습니다.");
+    },
+  });
 
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const controls = draftControls ?? controlsQuery.data ?? emptyControls;
+  const errorMessage = controlsQuery.error instanceof Error ?
+    controlsQuery.error.message :
+    saveMutation.error instanceof Error ?
+      saveMutation.error.message :
+      controlsQuery.isError ?
+        "릴리즈 제어 설정을 불러오지 못했습니다." :
+        saveMutation.isError ?
+          "Release Controls를 저장하지 못했습니다." :
+          null;
 
   const handleChange = (field: keyof AdminReleaseControls) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       const {value} = event.target;
-      setControls((current) => ({
-        ...current,
+      setSuccessMessage(null);
+      setDraftControls((current) => ({
+        ...(current ?? controls),
         [field]: value,
       }));
     };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    setErrorMessage(null);
+  const handleSave = () => {
     setSuccessMessage(null);
-
-    try {
-      const nextControls = await updateAdminReleaseControls({
-        forceUpdateVersion: controls.forceUpdateVersion,
-        recommendedVersion: controls.recommendedVersion,
-        appStoreURL: controls.appStoreURL,
-        privacyPolicyURL: controls.privacyPolicyURL,
-        termsOfServiceURL: controls.termsOfServiceURL,
-        supportEmail: controls.supportEmail,
-        notionFAQDatabaseId: controls.notionFAQDatabaseId,
-      });
-      setControls(nextControls);
-      setSuccessMessage("Release Controls를 저장했습니다.");
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ?
-          error.message :
-          "Release Controls를 저장하지 못했습니다."
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    saveMutation.mutate({
+      forceUpdateVersion: controls.forceUpdateVersion,
+      recommendedVersion: controls.recommendedVersion,
+      appStoreURL: controls.appStoreURL,
+      privacyPolicyURL: controls.privacyPolicyURL,
+      termsOfServiceURL: controls.termsOfServiceURL,
+      supportEmail: controls.supportEmail,
+      notionFAQDatabaseId: controls.notionFAQDatabaseId,
+    });
   };
 
   return (
@@ -114,7 +98,7 @@ export function ReleaseControlsPage() {
 
       <Card elevation={0}>
         <CardContent>
-          {isLoading ? (
+          {controlsQuery.isPending ? (
             <Stack
               alignItems="center"
               justifyContent="center"
@@ -184,9 +168,9 @@ export function ReleaseControlsPage() {
                 <Button
                   variant="contained"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={saveMutation.isPending}
                 >
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {saveMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </Stack>
             </Stack>

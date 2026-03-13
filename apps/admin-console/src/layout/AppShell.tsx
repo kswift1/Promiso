@@ -20,8 +20,10 @@ import {
 import {Outlet, useLocation, useNavigate} from "react-router-dom";
 import {useAuth} from "../auth/AuthProvider";
 import {AdminRole, hasAdminRole} from "../auth/adminRoles";
+import packageJson from "../../package.json";
 
 const drawerWidth = 260;
+const adminConsoleVersionLabel = `v${packageJson.version}`;
 
 const navItems = [
   {
@@ -91,7 +93,7 @@ export function AppShell() {
                 {user?.email ?? "Unknown admin"}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {adminSession?.role ?? "unknown"} · release/v1.2.0
+                {adminSession?.role ?? "unknown"} · {adminConsoleVersionLabel}
               </Typography>
             </Stack>
             <Button variant="outlined" onClick={() => void signOutUser()}>

@@ -10,11 +10,12 @@ const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
-
-export const firebaseAuth: Auth | null = isFirebaseConfigured ?
-  getAuth(getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)) :
+const app = isFirebaseConfigured ?
+  (getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)) :
   null;
 
-export const firebaseFunctions: Functions | null = isFirebaseConfigured ?
-  getFunctions(getApps().length > 0 ? getApp() : initializeApp(firebaseConfig), "asia-northeast3") :
+export const firebaseAuth: Auth | null = app ? getAuth(app) : null;
+
+export const firebaseFunctions: Functions | null = app ?
+  getFunctions(app, "asia-northeast3") :
   null;
