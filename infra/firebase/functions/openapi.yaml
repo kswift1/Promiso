@@ -1823,7 +1823,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 missingFields:
                   value:
@@ -1836,7 +1836,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 missingUserId:
                   value:
@@ -1849,7 +1849,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 methodNotAllowed:
                   value:
@@ -4154,6 +4154,3 @@ components:
               type: object
               description: 추가 에러 정보 (선택적)
               additionalProperties: true
-
-    ErrorResponse:
-      $ref: '#/components/schemas/FunctionsError'
