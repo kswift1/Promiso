@@ -99,6 +99,36 @@ export interface RevokeEntitlementOverrideResponse {
 }
 
 export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
+export type AdminPushJobStatus =
+  "scheduled" |
+  "processing" |
+  "completed" |
+  "failed" |
+  "cancelled" |
+  "dry_run";
+
+export interface AdminPushJob {
+  id: string;
+  status: AdminPushJobStatus;
+  audience: AdminPushAudience;
+  title: string;
+  body: string;
+  dryRun: boolean;
+  targetCount: number | null;
+  createdBy: string | null;
+  testUserId: string | null;
+  scheduledAt: string | null;
+  createdAt: string | null;
+  executionStartedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelledReason: string | null;
+  errorMessage: string | null;
+  result: {
+    successCount: number;
+    failureCount: number;
+  } | null;
+}
 
 export interface SendAdminPushRequest {
   title: string;
@@ -115,6 +145,39 @@ export interface SendAdminPushResponse {
   successCount: number;
   failureCount: number;
   jobId: string;
+}
+
+export interface ScheduleAdminPushRequest {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId?: string | null;
+}
+
+export interface ScheduleAdminPushResponse {
+  success: true;
+  jobId: string;
+  scheduledAt: string;
+}
+
+export interface GetAdminPushJobsRequest {
+  limit?: number;
+  status?: AdminPushJobStatus | "all";
+}
+
+export interface GetAdminPushJobsResponse {
+  success: true;
+  jobs: AdminPushJob[];
+}
+
+export interface CancelAdminPushJobRequest {
+  jobId: string;
+  reason?: string | null;
+}
+
+export interface CancelAdminPushJobResponse {
+  success: true;
 }
 
 export interface AdminReleaseControls {

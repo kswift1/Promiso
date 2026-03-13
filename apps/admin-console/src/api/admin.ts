@@ -90,6 +90,36 @@ type RevokeEntitlementOverrideResponse = {
 };
 
 export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
+export type AdminPushJobStatus =
+  "scheduled" |
+  "processing" |
+  "completed" |
+  "failed" |
+  "cancelled" |
+  "dry_run";
+
+export type AdminPushJob = {
+  id: string;
+  status: AdminPushJobStatus;
+  audience: AdminPushAudience;
+  title: string;
+  body: string;
+  dryRun: boolean;
+  targetCount: number | null;
+  createdBy: string | null;
+  testUserId: string | null;
+  scheduledAt: string | null;
+  createdAt: string | null;
+  executionStartedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelledReason: string | null;
+  errorMessage: string | null;
+  result: {
+    successCount: number;
+    failureCount: number;
+  } | null;
+};
 
 type SendAdminPushRequest = {
   title: string;
@@ -106,6 +136,39 @@ type SendAdminPushResponse = {
   successCount: number;
   failureCount: number;
   jobId: string;
+};
+
+type ScheduleAdminPushRequest = {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId?: string | null;
+};
+
+type ScheduleAdminPushResponse = {
+  success: true;
+  jobId: string;
+  scheduledAt: string;
+};
+
+type GetAdminPushJobsRequest = {
+  limit?: number;
+  status?: AdminPushJobStatus | "all";
+};
+
+type GetAdminPushJobsResponse = {
+  success: true;
+  jobs: AdminPushJob[];
+};
+
+type CancelAdminPushJobRequest = {
+  jobId: string;
+  reason?: string | null;
+};
+
+type CancelAdminPushJobResponse = {
+  success: true;
 };
 
 export type AdminReleaseControls = {
@@ -270,6 +333,56 @@ export async function sendAdminPush(params: {
   );
   const result = await callable(params);
   return result.data;
+}
+
+export async function scheduleAdminPush(params: {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId?: string | null;
+}): Promise<ScheduleAdminPushResponse> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    ScheduleAdminPushRequest,
+    ScheduleAdminPushResponse
+  >(firebaseFunctions, "scheduleAdminPush");
+  const result = await callable(params);
+  return result.data;
+}
+
+export async function getAdminPushJobs(params?: {
+  limit?: number;
+  status?: AdminPushJobStatus | "all";
+}): Promise<AdminPushJob[]> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminPushJobsRequest,
+    GetAdminPushJobsResponse
+  >(firebaseFunctions, "getAdminPushJobs");
+  const result = await callable(params ?? {});
+  return result.data.jobs;
+}
+
+export async function cancelAdminPushJob(params: {
+  jobId: string;
+  reason?: string | null;
+}): Promise<void> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    CancelAdminPushJobRequest,
+    CancelAdminPushJobResponse
+  >(firebaseFunctions, "cancelAdminPushJob");
+  await callable(params);
 }
 
 export async function getAdminReleaseControls():

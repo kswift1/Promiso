@@ -4,12 +4,15 @@ import type {
   RemoteConfigTemplate,
 } from "firebase-admin/remote-config";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import {admin, REGION} from "../config";
 import {
   AdminAuditLog,
   AdminOverrideFilter,
   AdminEntitlementOverrideSnapshot,
   AdminDashboardSummary,
+  AdminPushJob,
+  AdminPushJobStatus,
   AdminReleaseControls,
   AdminPushAudience,
   AdminRole,
@@ -23,14 +26,20 @@ import {
   GetAdminAuditLogsRequest,
   GetAdminAuditLogsResponse,
   GetAdminDashboardSummaryResponse,
+  GetAdminPushJobsRequest,
+  GetAdminPushJobsResponse,
   GetAdminSessionResponse,
   GetAdminReleaseControlsResponse,
   GetAdminUserSummaryRequest,
   GetAdminUserSummaryResponse,
   GetAdminUserTimelineRequest,
   GetAdminUserTimelineResponse,
+  CancelAdminPushJobRequest,
+  CancelAdminPushJobResponse,
   RevokeEntitlementOverrideRequest,
   RevokeEntitlementOverrideResponse,
+  ScheduleAdminPushRequest,
+  ScheduleAdminPushResponse,
   SendAdminPushRequest,
   SendAdminPushResponse,
   UpdateAdminReleaseControlsRequest,
@@ -68,6 +77,36 @@ const RELEASE_CONTROL_GROUPS: Record<ReleaseControlKey, string> = {
  */
 function isAdminRole(value: unknown): value is AdminRole {
   return value === "owner" || value === "support" || value === "marketer";
+}
+
+/**
+ * Returns true when the stored push audience is supported.
+ * @param {unknown} value The stored audience value.
+ * @return {boolean} True when the audience is supported.
+ */
+function isAdminPushAudience(value: unknown): value is AdminPushAudience {
+  return (
+    value === "all" ||
+    value === "pro" ||
+    value === "free" ||
+    value === "test_user"
+  );
+}
+
+/**
+ * Returns true when the stored push job status is supported.
+ * @param {unknown} value The stored status value.
+ * @return {boolean} True when the status is supported.
+ */
+function isAdminPushJobStatus(value: unknown): value is AdminPushJobStatus {
+  return (
+    value === "scheduled" ||
+    value === "processing" ||
+    value === "completed" ||
+    value === "failed" ||
+    value === "cancelled" ||
+    value === "dry_run"
+  );
 }
 
 /**
@@ -235,6 +274,16 @@ async function buildUserSummary(
   );
 }
 
+/**
+ * Builds an admin user summary from preloaded user-related documents.
+ * @param {string} userId The target user id.
+ * @param {Record<string, unknown>} userData The stored user document.
+ * @param {Record<string, unknown> | undefined} subscriptionData The stored
+ * subscription document, if any.
+ * @param {Record<string, unknown> | undefined} overrideData The stored
+ * entitlement override document, if any.
+ * @return {AdminUserSummary} The normalized summary payload.
+ */
 function buildUserSummaryPayload(
   userId: string,
   userData: Record<string, unknown>,
@@ -263,6 +312,11 @@ function buildUserSummaryPayload(
   };
 }
 
+/**
+ * Normalizes a requested admin user search field.
+ * @param {unknown} value The raw request value.
+ * @return {AdminUserSearchField} The validated field.
+ */
 function normalizeUserSearchField(value: unknown): AdminUserSearchField {
   if (
     value === "userId" ||
@@ -275,6 +329,11 @@ function normalizeUserSearchField(value: unknown): AdminUserSearchField {
   return "all";
 }
 
+/**
+ * Normalizes a requested subscription filter.
+ * @param {unknown} value The raw request value.
+ * @return {AdminSubscriptionFilter} The validated filter.
+ */
 function normalizeSubscriptionFilter(value: unknown): AdminSubscriptionFilter {
   if (value === "subscribed" || value === "not_subscribed") {
     return value;
@@ -283,6 +342,11 @@ function normalizeSubscriptionFilter(value: unknown): AdminSubscriptionFilter {
   return "all";
 }
 
+/**
+ * Normalizes a requested entitlement override filter.
+ * @param {unknown} value The raw request value.
+ * @return {AdminOverrideFilter} The validated filter.
+ */
 function normalizeOverrideFilter(value: unknown): AdminOverrideFilter {
   if (value === "active" || value === "inactive") {
     return value;
@@ -291,6 +355,12 @@ function normalizeOverrideFilter(value: unknown): AdminOverrideFilter {
   return "all";
 }
 
+/**
+ * Checks whether a user summary matches the requested subscription filter.
+ * @param {AdminUserSummary} summary The summary candidate.
+ * @param {AdminSubscriptionFilter} filter The selected filter.
+ * @return {boolean} True when the summary should be included.
+ */
 function matchesSubscriptionFilter(
   summary: AdminUserSummary,
   filter: AdminSubscriptionFilter
@@ -303,6 +373,12 @@ function matchesSubscriptionFilter(
   return filter === "subscribed" ? isSubscribed : !isSubscribed;
 }
 
+/**
+ * Checks whether a user summary matches the requested override filter.
+ * @param {AdminUserSummary} summary The summary candidate.
+ * @param {AdminOverrideFilter} filter The selected filter.
+ * @return {boolean} True when the summary should be included.
+ */
 function matchesOverrideFilter(
   summary: AdminUserSummary,
   filter: AdminOverrideFilter
@@ -505,6 +581,12 @@ function buildAdminAuditLog(
   };
 }
 
+/**
+ * Builds a normalized subscription snapshot for the timeline UI.
+ * @param {Record<string, unknown> | undefined} data The stored subscription
+ * document, if any.
+ * @return {AdminSubscriptionSnapshot} The normalized snapshot.
+ */
 function buildAdminSubscriptionSnapshot(
   data?: Record<string, unknown>
 ): AdminSubscriptionSnapshot {
@@ -519,6 +601,11 @@ function buildAdminSubscriptionSnapshot(
   };
 }
 
+/**
+ * Builds a normalized entitlement override snapshot for the timeline UI.
+ * @param {Record<string, unknown>} data The stored override document.
+ * @return {AdminEntitlementOverrideSnapshot} The normalized snapshot.
+ */
 function buildAdminEntitlementOverrideSnapshot(
   data: Record<string, unknown>
 ): AdminEntitlementOverrideSnapshot {
@@ -535,6 +622,59 @@ function buildAdminEntitlementOverrideSnapshot(
     revokedAt: toIsoString(data.revokedAt),
     updatedAt: toIsoString(data.updatedAt),
   };
+}
+
+/**
+ * Builds a normalized admin push job payload for the console UI.
+ * @param {string} id The job document id.
+ * @param {Record<string, unknown>} data The stored job document.
+ * @return {AdminPushJob} The normalized job payload.
+ */
+function buildAdminPushJob(
+  id: string,
+  data: Record<string, unknown>
+): AdminPushJob {
+  const result = data.result && typeof data.result === "object" ?
+    data.result as Record<string, unknown> :
+    null;
+
+  return {
+    id,
+    status: isAdminPushJobStatus(data.status) ? data.status : "failed",
+    audience: isAdminPushAudience(data.audience) ? data.audience : "all",
+    title: typeof data.title === "string" ? data.title : "",
+    body: typeof data.body === "string" ? data.body : "",
+    dryRun: data.dryRun === true,
+    targetCount: typeof data.targetCount === "number" ? data.targetCount : null,
+    createdBy: typeof data.createdBy === "string" ? data.createdBy : null,
+    testUserId: typeof data.testUserId === "string" ? data.testUserId : null,
+    scheduledAt: toIsoString(data.scheduledAt),
+    createdAt: toIsoString(data.createdAt),
+    executionStartedAt: toIsoString(data.executionStartedAt),
+    completedAt: toIsoString(data.completedAt),
+    cancelledAt: toIsoString(data.cancelledAt),
+    cancelledReason:
+      typeof data.cancelledReason === "string" ? data.cancelledReason : null,
+    errorMessage:
+      typeof data.errorMessage === "string" ? data.errorMessage : null,
+    result: result ? {
+      successCount:
+        typeof result.successCount === "number" ? result.successCount : 0,
+      failureCount:
+        typeof result.failureCount === "number" ? result.failureCount : 0,
+    } : null,
+  };
+}
+
+/**
+ * Normalizes a requested admin push job status filter.
+ * @param {unknown} value The raw request value.
+ * @return {AdminPushJobStatus | "all"} The validated status filter.
+ */
+function normalizePushJobStatus(
+  value: unknown
+): AdminPushJobStatus | "all" {
+  return isAdminPushJobStatus(value) ? value : "all";
 }
 
 /**
@@ -671,6 +811,66 @@ async function resolvePushAudience(params: {
     .map((item) => item.userId);
 }
 
+/**
+ * Ensures a scheduled push timestamp is valid and in the future.
+ * @param {string | undefined} value The requested ISO datetime string.
+ * @return {string} The normalized ISO datetime string.
+ */
+function requireFutureScheduledAt(value: string | undefined): string {
+  const scheduledAt = requireString(value, "scheduledAt");
+  const parsed = new Date(scheduledAt);
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new HttpsError("invalid-argument", "scheduledAt 형식이 올바르지 않습니다");
+  }
+
+  if (parsed.getTime() <= Date.now()) {
+    throw new HttpsError("invalid-argument", "scheduledAt은 미래 시각이어야 합니다");
+  }
+
+  return parsed.toISOString();
+}
+
+/**
+ * Sends an admin push after resolving the concrete audience.
+ * @param {object} params The push payload.
+ * @return {Promise<{targetCount: number, successCount: number,
+ * failureCount: number}>} The delivery counts.
+ */
+async function deliverAdminPush(params: {
+  actorId: string;
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  testUserId: string | null;
+}): Promise<{
+  targetCount: number;
+  successCount: number;
+  failureCount: number;
+}> {
+  const {actorId, title, body, audience, testUserId} = params;
+  const userIds = await resolvePushAudience({
+    audience,
+    testUserId,
+  });
+  const result = await sendPushNotificationInternal({
+    userIds,
+    type: NotificationType.System,
+    title,
+    body,
+    promiseId: null,
+    groupId: null,
+    relatedUserId: actorId,
+    data: null,
+  });
+
+  return {
+    targetCount: userIds.length,
+    successCount: result.successCount,
+    failureCount: result.failureCount,
+  };
+}
+
 export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
   {region: REGION},
   async (request): Promise<GetAdminUserSummaryResponse> => {
@@ -789,13 +989,17 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
     const requestedLimit = request.data.limit ?? 20;
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
     const db = admin.firestore();
-    const [userSnapshot, subscriptionSnapshot, overrideSnapshot, auditSnapshot] =
-      await Promise.all([
-        db.collection("users").doc(userId).get(),
-        db.collection("subscriptions").doc(userId).get(),
-        db.collection("entitlementOverrides").doc(userId).get(),
-        db.collection("adminAuditLogs").orderBy("createdAt", "desc").get(),
-      ]);
+    const [
+      userSnapshot,
+      subscriptionSnapshot,
+      overrideSnapshot,
+      auditSnapshot,
+    ] = await Promise.all([
+      db.collection("users").doc(userId).get(),
+      db.collection("subscriptions").doc(userId).get(),
+      db.collection("entitlementOverrides").doc(userId).get(),
+      db.collection("adminAuditLogs").orderBy("createdAt", "desc").get(),
+    ]);
 
     const userData = userSnapshot.data();
     if (!userSnapshot.exists || !userData) {
@@ -1096,6 +1300,160 @@ export const revokeEntitlementOverride =
     }
   );
 
+export const getAdminPushJobs = onCall<GetAdminPushJobsRequest>(
+  {region: REGION},
+  async (request): Promise<GetAdminPushJobsResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const adminUser = await getAdminUserDocument(request.auth.uid);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const requestedLimit = request.data.limit ?? 20;
+    const limit = Math.min(Math.max(requestedLimit, 1), 50);
+    const status = normalizePushJobStatus(request.data.status);
+    const snapshot = await admin.firestore()
+      .collection("adminPushJobs")
+      .orderBy("createdAt", "desc")
+      .get();
+    const jobs = snapshot.docs
+      .map((doc) =>
+        buildAdminPushJob(doc.id, doc.data() as Record<string, unknown>)
+      )
+      .filter((job) => status === "all" || job.status === status)
+      .slice(0, limit);
+
+    return {
+      success: true,
+      jobs,
+    };
+  }
+);
+
+export const scheduleAdminPush = onCall<ScheduleAdminPushRequest>(
+  {region: REGION},
+  async (request): Promise<ScheduleAdminPushResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const title = requireString(request.data.title, "title");
+    const body = requireString(request.data.body, "body");
+    const audience = request.data.audience;
+    const scheduledAt = requireFutureScheduledAt(request.data.scheduledAt);
+    const testUserId = request.data.testUserId?.trim() ?? null;
+
+    if (!isAdminPushAudience(audience)) {
+      throw new HttpsError("invalid-argument", "audience는 필수입니다");
+    }
+
+    if (audience === "test_user") {
+      await resolvePushAudience({
+        audience,
+        testUserId,
+      });
+    }
+
+    const jobRef = await admin.firestore().collection("adminPushJobs").add({
+      status: "scheduled",
+      audience,
+      title,
+      body,
+      dryRun: false,
+      targetCount: null,
+      createdBy: actorId,
+      testUserId,
+      scheduledAt,
+      createdAt: FieldValue.serverTimestamp(),
+      executionStartedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      cancelledReason: null,
+      errorMessage: null,
+      result: null,
+    });
+
+    await writeAuditLog({
+      actorId,
+      action: "schedule_admin_push",
+      targetId: jobRef.id,
+      after: {
+        audience,
+        scheduledAt,
+        testUserId,
+      },
+    });
+
+    return {
+      success: true,
+      jobId: jobRef.id,
+      scheduledAt,
+    };
+  }
+);
+
+export const cancelAdminPushJob = onCall<CancelAdminPushJobRequest>(
+  {region: REGION},
+  async (request): Promise<CancelAdminPushJobResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const jobId = requireString(request.data.jobId, "jobId");
+    const reason = request.data.reason?.trim() ?? null;
+    const jobRef = admin.firestore().collection("adminPushJobs").doc(jobId);
+    const snapshot = await jobRef.get();
+
+    if (!snapshot.exists) {
+      throw new HttpsError("not-found", "대상 push job을 찾을 수 없습니다");
+    }
+
+    const job = buildAdminPushJob(
+      jobId,
+      snapshot.data() as Record<string, unknown>
+    );
+
+    if (job.status !== "scheduled") {
+      throw new HttpsError(
+        "failed-precondition",
+        "scheduled 상태의 job만 취소할 수 있습니다"
+      );
+    }
+
+    await jobRef.set({
+      status: "cancelled",
+      cancelledAt: FieldValue.serverTimestamp(),
+      cancelledReason: reason,
+      errorMessage: null,
+    }, {merge: true});
+
+    await writeAuditLog({
+      actorId,
+      action: "cancel_scheduled_admin_push",
+      targetId: jobId,
+      before: {
+        status: job.status,
+        scheduledAt: job.scheduledAt,
+      },
+      after: {
+        status: "cancelled",
+        reason,
+      },
+    });
+
+    return {success: true};
+  }
+);
+
 export const sendAdminPush = onCall<SendAdminPushRequest>(
   {region: REGION},
   async (request): Promise<SendAdminPushResponse> => {
@@ -1121,29 +1479,43 @@ export const sendAdminPush = onCall<SendAdminPushRequest>(
       throw new HttpsError("invalid-argument", "audience는 필수입니다");
     }
 
-    const userIds = await resolvePushAudience({
-      audience,
-      testUserId,
-    });
+    if (!isAdminPushAudience(audience)) {
+      throw new HttpsError("invalid-argument", "audience는 필수입니다");
+    }
 
     const db = admin.firestore();
     const jobRef = await db.collection("adminPushJobs").add({
-      status: dryRun ? "dry_run" : "completed",
+      status: dryRun ? "dry_run" : "processing",
       audience,
       title,
       body,
       dryRun,
-      targetCount: userIds.length,
+      targetCount: null,
       createdBy: actorId,
       testUserId,
       result: dryRun ? {
         successCount: 0,
         failureCount: 0,
       } : null,
+      scheduledAt: null,
       createdAt: FieldValue.serverTimestamp(),
+      executionStartedAt: dryRun ? null : FieldValue.serverTimestamp(),
+      completedAt: null,
+      cancelledAt: null,
+      cancelledReason: null,
+      errorMessage: null,
     });
 
     if (dryRun) {
+      const userIds = await resolvePushAudience({
+        audience,
+        testUserId,
+      });
+
+      await jobRef.set({
+        targetCount: userIds.length,
+      }, {merge: true});
+
       await writeAuditLog({
         actorId,
         action: "dry_run_admin_push",
@@ -1164,24 +1536,23 @@ export const sendAdminPush = onCall<SendAdminPushRequest>(
       };
     }
 
-    const result = await sendPushNotificationInternal({
-      userIds,
-      type: NotificationType.System,
+    const delivery = await deliverAdminPush({
+      actorId,
       title,
       body,
-      promiseId: null,
-      groupId: null,
-      relatedUserId: actorId,
-      data: null,
+      audience,
+      testUserId,
     });
 
     await jobRef.set({
       status: "completed",
+      targetCount: delivery.targetCount,
       result: {
-        successCount: result.successCount,
-        failureCount: result.failureCount,
+        successCount: delivery.successCount,
+        failureCount: delivery.failureCount,
       },
       completedAt: FieldValue.serverTimestamp(),
+      errorMessage: null,
     }, {merge: true});
 
     await writeAuditLog({
@@ -1190,19 +1561,115 @@ export const sendAdminPush = onCall<SendAdminPushRequest>(
       targetId: jobRef.id,
       after: {
         audience,
-        targetCount: userIds.length,
-        successCount: result.successCount,
-        failureCount: result.failureCount,
+        targetCount: delivery.targetCount,
+        successCount: delivery.successCount,
+        failureCount: delivery.failureCount,
       },
     });
 
     return {
       success: true,
       dryRun: false,
-      targetCount: userIds.length,
-      successCount: result.successCount,
-      failureCount: result.failureCount,
+      targetCount: delivery.targetCount,
+      successCount: delivery.successCount,
+      failureCount: delivery.failureCount,
       jobId: jobRef.id,
     };
+  }
+);
+
+export const dispatchScheduledAdminPushes = onSchedule(
+  {
+    schedule: "* * * * *",
+    region: REGION,
+    timeZone: "UTC",
+  },
+  async () => {
+    const now = new Date();
+    const snapshot = await admin.firestore()
+      .collection("adminPushJobs")
+      .get();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data() as Record<string, unknown>;
+      const job = buildAdminPushJob(doc.id, data);
+
+      if (job.status !== "scheduled" || !job.scheduledAt) {
+        continue;
+      }
+
+      const scheduledTime = new Date(job.scheduledAt);
+      if (
+        Number.isNaN(scheduledTime.getTime()) ||
+        scheduledTime.getTime() > now.getTime()
+      ) {
+        continue;
+      }
+
+      await doc.ref.set({
+        status: "processing",
+        executionStartedAt: FieldValue.serverTimestamp(),
+        errorMessage: null,
+      }, {merge: true});
+
+      try {
+        if (!isAdminPushAudience(data.audience)) {
+          throw new Error("유효하지 않은 audience입니다");
+        }
+
+        const actorId = job.createdBy ?? "system";
+        const delivery = await deliverAdminPush({
+          actorId,
+          title: job.title,
+          body: job.body,
+          audience: data.audience,
+          testUserId: job.testUserId,
+        });
+
+        await doc.ref.set({
+          status: "completed",
+          targetCount: delivery.targetCount,
+          result: {
+            successCount: delivery.successCount,
+            failureCount: delivery.failureCount,
+          },
+          completedAt: FieldValue.serverTimestamp(),
+          errorMessage: null,
+        }, {merge: true});
+
+        await writeAuditLog({
+          actorId,
+          action: "send_scheduled_admin_push",
+          targetId: doc.id,
+          after: {
+            audience: data.audience,
+            scheduledAt: job.scheduledAt,
+            targetCount: delivery.targetCount,
+            successCount: delivery.successCount,
+            failureCount: delivery.failureCount,
+          },
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ?
+          error.message :
+          "예약 푸시 실행에 실패했습니다";
+
+        await doc.ref.set({
+          status: "failed",
+          errorMessage,
+          completedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+
+        await writeAuditLog({
+          actorId: job.createdBy ?? "system",
+          action: "fail_scheduled_admin_push",
+          targetId: doc.id,
+          after: {
+            scheduledAt: job.scheduledAt,
+            errorMessage,
+          },
+        });
+      }
+    }
   }
 );
