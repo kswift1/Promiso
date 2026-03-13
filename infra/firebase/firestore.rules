@@ -97,6 +97,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Subscription Owners - 서버 전용 소유권 인덱스
+    match /subscriptionOwners/{originalTransactionId} {
+      allow read, write: if false;
+    }
+
     // 그 외 모든 경로 차단
     match /{document=**} {
       allow read, write: if false;

@@ -1,99 +1,133 @@
 /**
  * App Store JWS 검증 유틸리티
  *
- * Apple의 JWS (JSON Web Signature) 토큰을 검증합니다.
- * - StoreKit 2 Transaction JWS
- * - App Store Server Notifications V2 signedPayload
- *
- * jose 라이브러리를 사용하여 Apple의 공개 인증서 체인을 검증합니다.
+ * Apple 공식 App Store Server Library 기반으로
+ * transaction / renewal / notification JWS를 검증한다.
  */
-import * as jose from "jose";
 import {
-  getCurrentEnvironment,
+  Environment,
+  JWSRenewalInfoDecodedPayload,
+  JWSTransactionDecodedPayload,
+  ResponseBodyV2DecodedPayload,
+  SignedDataVerifier,
+} from "@apple/app-store-server-library";
+import {readFileSync} from "fs";
+import path from "path";
+import {
+  APP_STORE_APPLE_ID,
+  APP_STORE_BUNDLE_ID,
+} from "../config";
+import {
   FirestoreEnvironment,
+  getCurrentEnvironment,
 } from "./firestore";
 
+const APPLE_ROOT_CERTIFICATE_PATHS = [
+  path.resolve(__dirname, "../../certs/AppleRootCA-G2.der"),
+  path.resolve(__dirname, "../../certs/AppleRootCA-G3.der"),
+];
+
+let signedDataVerifier: SignedDataVerifier | null = null;
+
 /**
- * Apple JWS 트랜잭션 토큰을 검증하고 페이로드를 반환
+ * Firebase 환경을 App Store verifier 환경으로 변환한다.
  *
- * 검증 과정:
- * 1. JWS 헤더에서 x5c (인증서 체인) 추출
- * 2. leaf 인증서로 서명 검증
- * 3. 검증된 페이로드 반환
- *
- * @param {string} jwsToken - StoreKit 2 JWS 토큰
- * @return {Promise<Record<string, unknown>>} 검증된 페이로드
- * @throws {Error} 검증 실패 시
+ * @return {Environment} App Store verifier 환경
  */
-export async function verifyAppleJWS(
-  jwsToken: string,
-): Promise<Record<string, unknown>> {
-  // 에뮬레이터 환경에서는 검증 스킵
-  if (process.env.FUNCTIONS_EMULATOR === "true") {
-    console.warn(
-      "⚠️ [AppStore] Emulator: Skipping JWS verify",
-    );
-    return decodeJWSPayload(jwsToken);
-  }
-
-  // dev/stage 환경: Xcode StoreKit Testing JWS 허용
-  const env = getCurrentEnvironment();
-  if (env !== FirestoreEnvironment.Release) {
-    const payload = decodeJWSPayload(jwsToken);
-    if (payload.environment === "Xcode") {
-      console.warn(
-        `⚠️ [AppStore] ${env}: Xcode JWS accepted`,
-      );
-      return payload;
-    }
-  }
-
-  try {
-    // 1. JWS 헤더 디코딩
-    const header = jose.decodeProtectedHeader(jwsToken);
-
-    // 2. x5c (인증서 체인) 추출
-    const x5c = header.x5c;
-    if (!x5c || !Array.isArray(x5c) || x5c.length === 0) {
-      throw new Error(
-        "Missing or invalid x5c certificate chain",
-      );
-    }
-
-    // 3. leaf 인증서 (첫 번째 인증서)로 서명 검증
-    const leafCert =
-      `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
-    const publicKey = await jose.importX509(leafCert, header.alg as string);
-
-    // 4. JWS 서명 검증 및 페이로드 추출
-    const {payload} = await jose.jwtVerify(jwsToken, publicKey);
-
-    console.log("✅ [AppStore] JWS verification successful");
-    return payload as Record<string, unknown>;
-  } catch (error) {
-    console.error("❌ [AppStore] JWS verification failed:", error);
-    throw new Error(`Apple JWS verification failed: ${error}`);
-  }
+function getVerifierEnvironment(): Environment {
+  return getCurrentEnvironment() === FirestoreEnvironment.Release ?
+    Environment.PRODUCTION :
+    Environment.SANDBOX;
 }
 
 /**
- * JWS 토큰에서 페이로드를 검증 없이 디코딩 (개발/디버깅용)
+ * App Store signed data verifier singleton을 생성한다.
  *
- * @param {string} jwsToken - JWS 토큰
- * @return {Record<string, unknown>} 디코딩된 페이로드
+ * @return {SignedDataVerifier} 서명 검증기 인스턴스
  */
-export function decodeJWSPayload(jwsToken: string): Record<string, unknown> {
-  try {
-    const parts = jwsToken.split(".");
-    if (parts.length !== 3) {
-      throw new Error("Invalid JWS format");
-    }
-
-    const payload = parts[1];
-    const decoded = Buffer.from(payload, "base64url").toString("utf-8");
-    return JSON.parse(decoded) as Record<string, unknown>;
-  } catch (error) {
-    console.error("❌ [AppStore] JWS decode failed:", error);
-    throw new Error(`Failed to decode JWS payload: ${error}`);
+function getSignedDataVerifier(): SignedDataVerifier {
+  if (signedDataVerifier) {
+    return signedDataVerifier;
   }
+
+  const appleRootCertificates = APPLE_ROOT_CERTIFICATE_PATHS.map((certPath) =>
+    readFileSync(certPath)
+  );
+
+  signedDataVerifier = new SignedDataVerifier(
+    appleRootCertificates,
+    false,
+    getVerifierEnvironment(),
+    APP_STORE_BUNDLE_ID,
+    APP_STORE_APPLE_ID,
+  );
+
+  return signedDataVerifier;
+}
+
+/**
+ * emulator 전용으로 JWS payload를 서명 검증 없이 디코딩한다.
+ *
+ * @param {string} jwsToken JWS 문자열
+ * @return {T} 디코딩된 payload
+ */
+function decodeJWSPayload<T>(jwsToken: string): T {
+  const parts = jwsToken.split(".");
+  if (parts.length !== 3) {
+    throw new Error("Invalid JWS format");
+  }
+
+  const decoded = Buffer.from(parts[1], "base64url").toString("utf-8");
+  return JSON.parse(decoded) as T;
+}
+
+/**
+ * StoreKit signed transaction을 검증하고 디코딩한다.
+ *
+ * @param {string} jwsToken signed transaction JWS
+ * @return {Promise<JWSTransactionDecodedPayload>} 검증된 transaction payload
+ */
+export async function verifyAppleTransactionJWS(
+  jwsToken: string,
+): Promise<JWSTransactionDecodedPayload> {
+  if (process.env.FUNCTIONS_EMULATOR === "true") {
+    console.warn("⚠️ [AppStore] Emulator: Skipping transaction JWS verify");
+    return decodeJWSPayload<JWSTransactionDecodedPayload>(jwsToken);
+  }
+
+  return getSignedDataVerifier().verifyAndDecodeTransaction(jwsToken);
+}
+
+/**
+ * App Store signed renewal info를 검증하고 디코딩한다.
+ *
+ * @param {string} jwsToken signed renewal info JWS
+ * @return {Promise<JWSRenewalInfoDecodedPayload>} 검증된 renewal payload
+ */
+export async function verifyAppleRenewalInfoJWS(
+  jwsToken: string,
+): Promise<JWSRenewalInfoDecodedPayload> {
+  if (process.env.FUNCTIONS_EMULATOR === "true") {
+    console.warn("⚠️ [AppStore] Emulator: Skipping renewal JWS verify");
+    return decodeJWSPayload<JWSRenewalInfoDecodedPayload>(jwsToken);
+  }
+
+  return getSignedDataVerifier().verifyAndDecodeRenewalInfo(jwsToken);
+}
+
+/**
+ * App Store Server Notification payload를 검증하고 디코딩한다.
+ *
+ * @param {string} signedPayload signedPayload JWS
+ * @return {Promise<ResponseBodyV2DecodedPayload>} 검증된 notification payload
+ */
+export async function verifyAppleNotificationPayload(
+  signedPayload: string,
+): Promise<ResponseBodyV2DecodedPayload> {
+  if (process.env.FUNCTIONS_EMULATOR === "true") {
+    console.warn("⚠️ [AppStore] Emulator: Skipping notification JWS verify");
+    return decodeJWSPayload<ResponseBodyV2DecodedPayload>(signedPayload);
+  }
+
+  return getSignedDataVerifier().verifyAndDecodeNotification(signedPayload);
 }
