@@ -82,7 +82,7 @@ export function EntitlementsPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">Entitlements</Typography>
+        <Typography variant="h4">override 관리</Typography>
         <Typography color="text.secondary">
           Apple 구독 상태와 운영자 수동 보정을 분리해서 다루는 화면입니다.
         </Typography>
@@ -92,21 +92,21 @@ export function EntitlementsPage() {
         <CardContent>
           <Stack spacing={2}>
             <TextField
-              label="User ID"
-              placeholder="target user id"
+              label="사용자 ID"
+              placeholder="대상 사용자 ID"
               value={userId}
               onChange={(event) => setUserId(event.target.value)}
               fullWidth
             />
             <TextField
-              label="Reason"
-              placeholder="CS compensation"
+              label="사유"
+              placeholder="보상 사유"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               fullWidth
             />
             <TextField
-              label="Expires At"
+              label="만료 시각"
               type="datetime-local"
               value={expiresAt}
               onChange={(event) => setExpiresAt(event.target.value)}
@@ -129,7 +129,7 @@ export function EntitlementsPage() {
                   grantMutation.mutate();
                 }}
               >
-                Grant Override
+                override 부여
               </Button>
               <Button
                 variant="outlined"
@@ -140,7 +140,7 @@ export function EntitlementsPage() {
                   revokeMutation.mutate();
                 }}
               >
-                Revoke Override
+                override 회수
               </Button>
             </Stack>
           </Stack>

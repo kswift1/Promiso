@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import {Outlet, useLocation, useNavigate} from "react-router-dom";
 import {useAuth} from "../auth/AuthProvider";
-import {AdminRole, hasAdminRole} from "../auth/adminRoles";
+import {AdminRole, getAdminRoleLabel, hasAdminRole} from "../auth/adminRoles";
 import packageJson from "../../package.json";
 
 const drawerWidth = 260;
@@ -28,41 +28,41 @@ const adminConsoleVersionLabel = `v${packageJson.version}`;
 
 const navItems = [
   {
-    label: "Dashboard",
+    label: "대시보드",
     path: "/dashboard",
     icon: <HomeRoundedIcon />,
   },
   {
-    label: "Admin Users",
+    label: "관리자 계정",
     path: "/admin-users",
     icon: <AdminPanelSettingsRoundedIcon />,
     allowedRoles: ["owner"] as AdminRole[],
   },
   {
-    label: "Users",
+    label: "사용자",
     path: "/users",
     icon: <PeopleRoundedIcon />,
     allowedRoles: ["owner", "support"] as AdminRole[],
   },
   {
-    label: "Entitlements",
+    label: "override 관리",
     path: "/entitlements",
     icon: <WorkspacePremiumRoundedIcon />,
     allowedRoles: ["owner", "support"] as AdminRole[],
   },
   {
-    label: "Push Jobs",
+    label: "푸시 작업",
     path: "/push-jobs",
     icon: <CampaignRoundedIcon />,
     allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {
-    label: "Release Controls",
+    label: "릴리스 제어",
     path: "/release-controls",
     icon: <TuneRoundedIcon />,
     allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
-  {label: "Audit Logs", path: "/audit-logs", icon: <HistoryRoundedIcon />},
+  {label: "감사 로그", path: "/audit-logs", icon: <HistoryRoundedIcon />},
 ];
 
 export function AppShell() {
@@ -90,21 +90,21 @@ export function AppShell() {
         <Toolbar sx={{justifyContent: "space-between"}}>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2" color="text.secondary">
-              Promiso Internal Tool
+              Promiso 운영 도구
             </Typography>
-            <Typography variant="h6">Admin Console</Typography>
+            <Typography variant="h6">운영 콘솔</Typography>
           </Stack>
           <Stack direction="row" spacing={2} alignItems="center">
             <Stack spacing={0.5} sx={{textAlign: "right"}}>
               <Typography variant="body2" color="text.secondary">
-                {user?.email ?? "Unknown admin"}
+                {user?.email ?? "알 수 없는 관리자"}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {adminSession?.role ?? "unknown"} · {adminConsoleVersionLabel}
+                {getAdminRoleLabel(adminSession?.role)} · {adminConsoleVersionLabel}
               </Typography>
             </Stack>
             <Button variant="outlined" onClick={() => void signOutUser()}>
-              Sign out
+              로그아웃
             </Button>
           </Stack>
         </Toolbar>
@@ -128,9 +128,9 @@ export function AppShell() {
         <Toolbar>
           <Stack spacing={0.5}>
             <Typography variant="overline" sx={{color: "#94a3b8"}}>
-              OPERATIONS
+              운영
             </Typography>
-            <Typography variant="h6">Promiso Admin</Typography>
+            <Typography variant="h6">Promiso 운영</Typography>
           </Stack>
         </Toolbar>
         <List sx={{px: 1}}>

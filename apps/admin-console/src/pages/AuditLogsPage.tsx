@@ -47,7 +47,7 @@ export function AuditLogsPage() {
   const errorMessage = logsQuery.error instanceof Error ?
     logsQuery.error.message :
     logsQuery.isError ?
-      "Audit Logs를 불러오지 못했습니다." :
+      "감사 로그를 불러오지 못했습니다." :
       null;
   const logs = logsQuery.data ?? [];
 
@@ -70,7 +70,7 @@ export function AuditLogsPage() {
         spacing={2}
       >
         <Stack spacing={1}>
-          <Typography variant="h4">Audit Logs</Typography>
+          <Typography variant="h4">감사 로그</Typography>
           <Typography color="text.secondary">
             위험한 액션은 모두 기록되고 추적 가능해야 합니다.
           </Typography>
@@ -81,7 +81,7 @@ export function AuditLogsPage() {
           onClick={() => void logsQuery.refetch()}
           disabled={logsQuery.isRefetching}
         >
-          {logsQuery.isRefetching ? "Refreshing..." : "Refresh"}
+          {logsQuery.isRefetching ? "새로고침 중..." : "새로고침"}
         </Button>
       </Stack>
 
@@ -89,14 +89,14 @@ export function AuditLogsPage() {
         <CardContent>
           <Stack component="form" spacing={2} onSubmit={handleSubmit}>
             <Alert severity="info">
-              모든 필터는 exact match 기준입니다. 비워 두면 최근 로그부터
+              모든 필터는 정확 일치 기준입니다. 비워 두면 최근 로그부터
               조회합니다.
             </Alert>
 
             <Grid container spacing={2}>
               <Grid size={{xs: 12, md: 6}}>
                 <TextField
-                  label="Action"
+                  label="동작"
                   placeholder="update_release_controls"
                   value={filters.action}
                   onChange={(event) =>
@@ -111,7 +111,7 @@ export function AuditLogsPage() {
 
               <Grid size={{xs: 12, md: 6}}>
                 <TextField
-                  label="Actor ID"
+                  label="수행자 ID"
                   placeholder="admin-user"
                   value={filters.actorId}
                   onChange={(event) =>
@@ -126,7 +126,7 @@ export function AuditLogsPage() {
 
               <Grid size={{xs: 12, md: 6}}>
                 <TextField
-                  label="Target Type"
+                  label="대상 유형"
                   placeholder="user / remote_config"
                   value={filters.targetType}
                   onChange={(event) =>
@@ -141,7 +141,7 @@ export function AuditLogsPage() {
 
               <Grid size={{xs: 12, md: 6}}>
                 <TextField
-                  label="Target ID"
+                  label="대상 ID"
                   placeholder="user-a"
                   value={filters.targetId}
                   onChange={(event) =>
@@ -157,7 +157,7 @@ export function AuditLogsPage() {
               <Grid size={{xs: 12, md: 4}}>
                 <TextField
                   select
-                  label="Limit"
+                  label="조회 수"
                   value={String(filters.limit)}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -176,7 +176,7 @@ export function AuditLogsPage() {
 
             <Stack direction="row" spacing={1}>
               <Button type="submit" variant="contained">
-                Apply Filters
+                필터 적용
               </Button>
               <Button
                 type="button"
@@ -186,7 +186,7 @@ export function AuditLogsPage() {
                   setSubmittedFilters(defaultAuditLogFilters);
                 }}
               >
-                Reset
+                초기화
               </Button>
             </Stack>
           </Stack>
@@ -209,7 +209,7 @@ export function AuditLogsPage() {
         </Card>
       ) : logs.length === 0 ? (
         <Alert severity="info">
-          조건에 맞는 Audit Log가 없습니다.
+          조건에 맞는 감사 로그가 없습니다.
         </Alert>
       ) : (
         <Stack spacing={2}>
@@ -222,20 +222,20 @@ export function AuditLogsPage() {
                       {log.action ?? "-"}
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
-                      Actor {log.actorId ?? "-"}
+                      수행자 {log.actorId ?? "-"}
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
-                      Target {log.targetType ?? "-"} / {log.targetId ?? "-"}
+                      대상 {log.targetType ?? "-"} / {log.targetId ?? "-"}
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
-                      Created At {log.createdAt ?? "-"}
+                      생성 시각 {log.createdAt ?? "-"}
                     </Typography>
                   </Stack>
 
                   <Divider />
 
                   <Stack spacing={1}>
-                    <Typography variant="subtitle2">Before</Typography>
+                    <Typography variant="subtitle2">이전</Typography>
                     <Typography
                       component="pre"
                       sx={{
@@ -253,7 +253,7 @@ export function AuditLogsPage() {
                   </Stack>
 
                   <Stack spacing={1}>
-                    <Typography variant="subtitle2">After</Typography>
+                    <Typography variant="subtitle2">이후</Typography>
                     <Typography
                       component="pre"
                       sx={{

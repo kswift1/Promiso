@@ -54,9 +54,9 @@ export function UsersPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">Users</Typography>
+        <Typography variant="h4">사용자</Typography>
         <Typography color="text.secondary">
-          userId, email, nickname 기준의 운영 검색 화면입니다.
+          사용자 ID, 이메일, 닉네임 기준의 운영 검색 화면입니다.
         </Typography>
       </Stack>
 
@@ -64,13 +64,13 @@ export function UsersPage() {
         <CardContent>
           <Stack component="form" spacing={2} onSubmit={handleSubmit}>
             <Alert severity="info">
-              검색어는 exact match 기준입니다. 화면 진입 시 기본 25명을 먼저
+              검색어는 정확 일치 기준입니다. 화면 진입 시 기본 25명을 먼저
               보여주고, 검색/필터를 적용하면 결과를 다시 조회합니다.
             </Alert>
 
             <TextField
-              label="Search users"
-              placeholder="userId / email / nickname"
+              label="사용자 검색"
+              placeholder="사용자 ID / 이메일 / 닉네임"
               fullWidth
               value={filters.query}
               onChange={(event) =>
@@ -85,7 +85,7 @@ export function UsersPage() {
               <Grid size={{xs: 12, md: 4}}>
                 <TextField
                   select
-                  label="Search field"
+                  label="검색 필드"
                   value={filters.field}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -95,17 +95,17 @@ export function UsersPage() {
                   }
                   fullWidth
                 >
-                  <MenuItem value="all">All fields</MenuItem>
-                  <MenuItem value="userId">User ID</MenuItem>
-                  <MenuItem value="email">Email</MenuItem>
-                  <MenuItem value="nickname">Nickname</MenuItem>
+                  <MenuItem value="all">전체 필드</MenuItem>
+                  <MenuItem value="userId">사용자 ID</MenuItem>
+                  <MenuItem value="email">이메일</MenuItem>
+                  <MenuItem value="nickname">닉네임</MenuItem>
                 </TextField>
               </Grid>
 
               <Grid size={{xs: 12, md: 4}}>
                 <TextField
                   select
-                  label="Subscription"
+                  label="subscription"
                   value={filters.subscription}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -115,16 +115,16 @@ export function UsersPage() {
                   }
                   fullWidth
                 >
-                  <MenuItem value="all">All users</MenuItem>
-                  <MenuItem value="subscribed">Subscribed</MenuItem>
-                  <MenuItem value="not_subscribed">Not subscribed</MenuItem>
+                  <MenuItem value="all">전체 사용자</MenuItem>
+                  <MenuItem value="subscribed">subscription 활성</MenuItem>
+                  <MenuItem value="not_subscribed">subscription 없음</MenuItem>
                 </TextField>
               </Grid>
 
               <Grid size={{xs: 12, md: 4}}>
                 <TextField
                   select
-                  label="Override"
+                  label="override"
                   value={filters.override}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -134,16 +134,16 @@ export function UsersPage() {
                   }
                   fullWidth
                 >
-                  <MenuItem value="all">All override states</MenuItem>
-                  <MenuItem value="active">Override active</MenuItem>
-                  <MenuItem value="inactive">Override inactive</MenuItem>
+                  <MenuItem value="all">전체 override 상태</MenuItem>
+                  <MenuItem value="active">override 활성</MenuItem>
+                  <MenuItem value="inactive">override 비활성</MenuItem>
                 </TextField>
               </Grid>
             </Grid>
 
             <Stack direction="row" spacing={1}>
               <Button type="submit" variant="contained">
-                Search
+                검색
               </Button>
               <Button
                 type="button"
@@ -153,17 +153,17 @@ export function UsersPage() {
                   setSubmittedFilters(defaultSearchFilters);
                 }}
               >
-                Reset
+                초기화
               </Button>
               <Chip
                 label={submittedFilters?.subscription === "all" ?
-                  "All subscriptions" :
-                  submittedFilters?.subscription ?? "Subscription"}
+                  "전체 subscription" :
+                  submittedFilters?.subscription ?? "subscription"}
               />
               <Chip
                 label={submittedFilters?.override === "all" ?
-                  "All overrides" :
-                  submittedFilters?.override ?? "Override"}
+                  "전체 override" :
+                  submittedFilters?.override ?? "override"}
               />
             </Stack>
           </Stack>
@@ -208,18 +208,18 @@ export function UsersPage() {
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       <Chip
                         color={user.subscriptionStatus ? "primary" : "default"}
-                        label={user.subscriptionStatus ?? "no subscription"}
+                        label={user.subscriptionStatus ?? "subscription 없음"}
                       />
                       <Chip
                         color={user.overrideActive ? "secondary" : "default"}
-                        label={user.overrideActive ? "override active" : "override none"}
+                        label={user.overrideActive ? "override 활성" : "override 없음"}
                       />
-                      <Chip label={`groups ${user.groupCount}`} />
-                      <Chip label={`devices ${user.deviceCount}`} />
+                      <Chip label={`그룹 ${user.groupCount}개`} />
+                      <Chip label={`기기 ${user.deviceCount}개`} />
                     </Stack>
 
                     <Typography variant="body2" color="text.secondary">
-                      {user.email ?? "email unavailable"}
+                      {user.email ?? "이메일 없음"}
                     </Typography>
 
                     <Stack direction="row" spacing={1}>
@@ -229,7 +229,7 @@ export function UsersPage() {
                         variant="contained"
                         size="small"
                       >
-                        View timeline
+                        이력 보기
                       </Button>
                       <Button
                         component={RouterLink}
@@ -237,7 +237,7 @@ export function UsersPage() {
                         variant="text"
                         size="small"
                       >
-                        Manage entitlement
+                        override 관리
                       </Button>
                     </Stack>
                   </Stack>
