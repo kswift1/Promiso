@@ -1,6 +1,18 @@
 import {httpsCallable} from "firebase/functions";
 import {firebaseFunctions} from "../lib/firebase";
 
+export type AdminUserSearchField = "all" | "userId" | "email" | "nickname";
+export type AdminSubscriptionFilter = "all" | "subscribed" | "not_subscribed";
+export type AdminOverrideFilter = "all" | "active" | "inactive";
+export type AdminRole = "owner" | "support" | "marketer";
+
+export type AdminAccount = {
+  userId: string;
+  email: string | null;
+  role: AdminRole;
+  enabled: boolean;
+};
+
 export type AdminUserSummary = {
   userId: string;
   name: string | null;
@@ -12,13 +24,85 @@ export type AdminUserSummary = {
   overrideActive: boolean;
 };
 
+export type AdminSubscriptionSnapshot = {
+  status: string | null;
+  productId: string | null;
+  expirationDate: string | null;
+  purchaseDate: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminEntitlementOverrideSnapshot = {
+  isActive: boolean;
+  type: string | null;
+  reason: string | null;
+  expiresAt: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+  revokedAt: string | null;
+  updatedAt: string | null;
+};
+
 type GetAdminUserSummaryRequest = {
-  query: string;
+  query?: string;
+  field?: AdminUserSearchField;
+  subscription?: AdminSubscriptionFilter;
+  override?: AdminOverrideFilter;
+  limit?: number;
+};
+
+type GetAdminUsersResponse = {
+  success: true;
+  users: AdminAccount[];
+};
+
+type CreateAdminUserRequest = {
+  email: string;
+  role: AdminRole;
+  enabled?: boolean;
+};
+
+type CreateAdminUserResponse = {
+  success: true;
+  user: AdminAccount;
+};
+
+type UpdateAdminUserRequest = {
+  userId: string;
+  role: AdminRole;
+  enabled: boolean;
+};
+
+type UpdateAdminUserResponse = {
+  success: true;
+  user: AdminAccount;
 };
 
 type GetAdminUserSummaryResponse = {
   success: true;
   results: AdminUserSummary[];
+};
+
+type GetAdminUserTimelineRequest = {
+  userId: string;
+  limit?: number;
+};
+
+export type AdminUserTimeline = {
+  summary: AdminUserSummary;
+  subscription: AdminSubscriptionSnapshot;
+  override: AdminEntitlementOverrideSnapshot | null;
+  auditLogs: AdminAuditLog[];
+};
+
+type GetAdminUserTimelineResponse = {
+  success: true;
+  summary: AdminUserSummary;
+  subscription: AdminSubscriptionSnapshot;
+  override: AdminEntitlementOverrideSnapshot | null;
+  auditLogs: AdminAuditLog[];
 };
 
 type GrantEntitlementOverrideRequest = {
@@ -41,6 +125,36 @@ type RevokeEntitlementOverrideResponse = {
 };
 
 export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
+export type AdminPushJobStatus =
+  "scheduled" |
+  "processing" |
+  "completed" |
+  "failed" |
+  "cancelled" |
+  "dry_run";
+
+export type AdminPushJob = {
+  id: string;
+  status: AdminPushJobStatus;
+  audience: AdminPushAudience;
+  title: string;
+  body: string;
+  dryRun: boolean;
+  targetCount: number | null;
+  createdBy: string | null;
+  testUserId: string | null;
+  scheduledAt: string | null;
+  createdAt: string | null;
+  executionStartedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelledReason: string | null;
+  errorMessage: string | null;
+  result: {
+    successCount: number;
+    failureCount: number;
+  } | null;
+};
 
 type SendAdminPushRequest = {
   title: string;
@@ -59,6 +173,80 @@ type SendAdminPushResponse = {
   jobId: string;
 };
 
+type PreviewAdminPushAudienceRequest = {
+  audience: AdminPushAudience;
+  testUserId?: string | null;
+};
+
+type PreviewAdminPushAudienceResponse = {
+  success: true;
+  targetCount: number;
+};
+
+type ScheduleAdminPushRequest = {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId?: string | null;
+};
+
+type ScheduleAdminPushResponse = {
+  success: true;
+  jobId: string;
+  scheduledAt: string;
+};
+
+type GetAdminPushJobsRequest = {
+  limit?: number;
+  status?: AdminPushJobStatus | "all";
+};
+
+type GetAdminPushJobsResponse = {
+  success: true;
+  jobs: AdminPushJob[];
+};
+
+type CancelAdminPushJobRequest = {
+  jobId: string;
+  reason?: string | null;
+};
+
+type CancelAdminPushJobResponse = {
+  success: true;
+};
+
+export type AdminReleaseControlKey =
+  "forceUpdateVersion" |
+  "recommendedVersion" |
+  "appStoreURL" |
+  "privacyPolicyURL" |
+  "termsOfServiceURL" |
+  "supportEmail" |
+  "notionFAQDatabaseId";
+
+export type AdminReleaseControlSection =
+  "version" |
+  "legal" |
+  "support";
+
+export type AdminReleaseControlValueType =
+  "version" |
+  "url" |
+  "email" |
+  "string";
+
+export type AdminReleaseControlField = {
+  key: AdminReleaseControlKey;
+  label: string;
+  description: string;
+  section: AdminReleaseControlSection;
+  sectionLabel: string;
+  valueType: AdminReleaseControlValueType;
+  editableRoles: AdminRole[];
+  warning: string | null;
+};
+
 export type AdminReleaseControls = {
   forceUpdateVersion: string;
   recommendedVersion: string;
@@ -67,6 +255,7 @@ export type AdminReleaseControls = {
   termsOfServiceURL: string;
   supportEmail: string;
   notionFAQDatabaseId: string;
+  fields: AdminReleaseControlField[];
   versionNumber: string | null;
   updateTime: string | null;
   updateUserEmail: string | null;
@@ -81,6 +270,31 @@ export type AdminAuditLog = {
   before: unknown;
   after: unknown;
   createdAt: string | null;
+};
+
+export type AdminAnalyticsWindowDays = 1 | 7 | 30;
+
+export type AdminAnalyticsGa4Summary = {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  logins: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+};
+
+export type AdminAnalyticsBigQuerySummary = {
+  available: boolean;
+  note: string | null;
+  signups: number | null;
+  paywallOpens: number | null;
+  paywallPurchases: number | null;
+};
+
+export type AdminAnalyticsSummary = {
+  windowDays: AdminAnalyticsWindowDays;
+  ga4: AdminAnalyticsGa4Summary;
+  bigQuery: AdminAnalyticsBigQuerySummary;
 };
 
 export type AdminDashboardSummary = {
@@ -117,6 +331,10 @@ type UpdateAdminReleaseControlsResponse = {
 
 type GetAdminAuditLogsRequest = {
   limit?: number;
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
 };
 
 type GetAdminAuditLogsResponse = {
@@ -129,9 +347,22 @@ type GetAdminDashboardSummaryResponse = {
   summary: AdminDashboardSummary;
 };
 
-export async function getAdminUserSummary(
-  query: string
-): Promise<AdminUserSummary[]> {
+type GetAdminAnalyticsSummaryRequest = {
+  windowDays?: AdminAnalyticsWindowDays;
+};
+
+type GetAdminAnalyticsSummaryResponse = {
+  success: true;
+  summary: AdminAnalyticsSummary;
+};
+
+export async function getAdminUserSummary(params: {
+  query?: string;
+  field?: AdminUserSearchField;
+  subscription?: AdminSubscriptionFilter;
+  override?: AdminOverrideFilter;
+  limit?: number;
+}): Promise<AdminUserSummary[]> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");
   }
@@ -140,8 +371,76 @@ export async function getAdminUserSummary(
     GetAdminUserSummaryRequest,
     GetAdminUserSummaryResponse
   >(firebaseFunctions, "getAdminUserSummary");
-  const result = await callable({query});
+  const result = await callable(params);
   return result.data.results;
+}
+
+export async function getAdminUsers(): Promise<AdminAccount[]> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<Record<string, never>, GetAdminUsersResponse>(
+    firebaseFunctions,
+    "getAdminUsers"
+  );
+  const result = await callable({});
+  return result.data.users;
+}
+
+export async function createAdminUser(params: {
+  email: string;
+  role: AdminRole;
+  enabled?: boolean;
+}): Promise<AdminAccount> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    CreateAdminUserRequest,
+    CreateAdminUserResponse
+  >(firebaseFunctions, "createAdminUser");
+  const result = await callable(params);
+  return result.data.user;
+}
+
+export async function updateAdminUser(params: {
+  userId: string;
+  role: AdminRole;
+  enabled: boolean;
+}): Promise<AdminAccount> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    UpdateAdminUserRequest,
+    UpdateAdminUserResponse
+  >(firebaseFunctions, "updateAdminUser");
+  const result = await callable(params);
+  return result.data.user;
+}
+
+export async function getAdminUserTimeline(params: {
+  userId: string;
+  limit?: number;
+}): Promise<AdminUserTimeline> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminUserTimelineRequest,
+    GetAdminUserTimelineResponse
+  >(firebaseFunctions, "getAdminUserTimeline");
+  const result = await callable(params);
+  return {
+    summary: result.data.summary,
+    subscription: result.data.subscription,
+    override: result.data.override,
+    auditLogs: result.data.auditLogs,
+  };
 }
 
 export async function grantEntitlementOverride(params: {
@@ -194,6 +493,72 @@ export async function sendAdminPush(params: {
   return result.data;
 }
 
+export async function previewAdminPushAudience(params: {
+  audience: AdminPushAudience;
+  testUserId?: string | null;
+}): Promise<number> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    PreviewAdminPushAudienceRequest,
+    PreviewAdminPushAudienceResponse
+  >(firebaseFunctions, "previewAdminPushAudience");
+  const result = await callable(params);
+  return result.data.targetCount;
+}
+
+export async function scheduleAdminPush(params: {
+  title: string;
+  body: string;
+  audience: AdminPushAudience;
+  scheduledAt: string;
+  testUserId?: string | null;
+}): Promise<ScheduleAdminPushResponse> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    ScheduleAdminPushRequest,
+    ScheduleAdminPushResponse
+  >(firebaseFunctions, "scheduleAdminPush");
+  const result = await callable(params);
+  return result.data;
+}
+
+export async function getAdminPushJobs(params?: {
+  limit?: number;
+  status?: AdminPushJobStatus | "all";
+}): Promise<AdminPushJob[]> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminPushJobsRequest,
+    GetAdminPushJobsResponse
+  >(firebaseFunctions, "getAdminPushJobs");
+  const result = await callable(params ?? {});
+  return result.data.jobs;
+}
+
+export async function cancelAdminPushJob(params: {
+  jobId: string;
+  reason?: string | null;
+}): Promise<void> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    CancelAdminPushJobRequest,
+    CancelAdminPushJobResponse
+  >(firebaseFunctions, "cancelAdminPushJob");
+  await callable(params);
+}
+
 export async function getAdminReleaseControls():
 Promise<AdminReleaseControls> {
   if (!firebaseFunctions) {
@@ -223,9 +588,13 @@ export async function updateAdminReleaseControls(
   return result.data.controls;
 }
 
-export async function getAdminAuditLogs(
-  limit = 50
-): Promise<AdminAuditLog[]> {
+export async function getAdminAuditLogs(params?: {
+  limit?: number;
+  action?: string;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+}): Promise<AdminAuditLog[]> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");
   }
@@ -234,7 +603,7 @@ export async function getAdminAuditLogs(
     GetAdminAuditLogsRequest,
     GetAdminAuditLogsResponse
   >(firebaseFunctions, "getAdminAuditLogs");
-  const result = await callable({limit});
+  const result = await callable(params ?? {});
   return result.data.logs;
 }
 
@@ -249,5 +618,20 @@ Promise<AdminDashboardSummary> {
     GetAdminDashboardSummaryResponse
   >(firebaseFunctions, "getAdminDashboardSummary");
   const result = await callable({});
+  return result.data.summary;
+}
+
+export async function getAdminAnalyticsSummary(params?: {
+  windowDays?: AdminAnalyticsWindowDays;
+}): Promise<AdminAnalyticsSummary> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    GetAdminAnalyticsSummaryRequest,
+    GetAdminAnalyticsSummaryResponse
+  >(firebaseFunctions, "getAdminAnalyticsSummary");
+  const result = await callable(params ?? {});
   return result.data.summary;
 }

@@ -6,6 +6,7 @@ import {
   Chip,
   CircularProgress,
   Grid,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -13,22 +14,46 @@ import {
 import {useQuery} from "@tanstack/react-query";
 import {FormEvent, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
-import {getAdminUserSummary} from "../api/admin";
+import {
+  AdminOverrideFilter,
+  AdminSubscriptionFilter,
+  AdminUserSearchField,
+  getAdminUserSummary,
+} from "../api/admin";
+
+const defaultSearchFilters = {
+  query: "",
+  field: "all" as AdminUserSearchField,
+  subscription: "all" as AdminSubscriptionFilter,
+  override: "all" as AdminOverrideFilter,
+  limit: 25,
+};
 
 export function UsersPage() {
-  const [inputValue, setInputValue] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [filters, setFilters] = useState(defaultSearchFilters);
+  const [submittedFilters, setSubmittedFilters] = useState<
+    typeof defaultSearchFilters | null
+  >(null);
   const query = useQuery({
-    queryKey: ["admin-user-summary", submittedQuery],
-    queryFn: () => getAdminUserSummary(submittedQuery),
-    enabled: submittedQuery.length > 0,
+    queryKey: ["admin-user-summary", submittedFilters],
+    queryFn: () => getAdminUserSummary({
+      ...submittedFilters,
+      query: submittedFilters?.query || undefined,
+    }),
+    enabled: submittedFilters != null,
   });
+  const canSubmit = filters.query.trim().length > 0 ||
+    filters.subscription !== "all" ||
+    filters.override !== "all";
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    setSubmittedQuery(trimmed);
+    if (!canSubmit) return;
+
+    setSubmittedFilters({
+      ...filters,
+      query: filters.query.trim(),
+    });
   };
 
   return (
@@ -43,20 +68,108 @@ export function UsersPage() {
       <Card elevation={0}>
         <CardContent>
           <Stack component="form" spacing={2} onSubmit={handleSubmit}>
+            <Alert severity="info">
+              검색어는 exact match 기준입니다. 검색어 없이 상태 필터만으로도
+              최대 25명까지 조회할 수 있습니다.
+            </Alert>
+
             <TextField
               label="Search users"
               placeholder="userId / email / nickname"
               fullWidth
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
+              value={filters.query}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  query: event.target.value,
+                }))
+              }
             />
+
+            <Grid container spacing={2}>
+              <Grid size={{xs: 12, md: 4}}>
+                <TextField
+                  select
+                  label="Search field"
+                  value={filters.field}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      field: event.target.value as AdminUserSearchField,
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="all">All fields</MenuItem>
+                  <MenuItem value="userId">User ID</MenuItem>
+                  <MenuItem value="email">Email</MenuItem>
+                  <MenuItem value="nickname">Nickname</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid size={{xs: 12, md: 4}}>
+                <TextField
+                  select
+                  label="Subscription"
+                  value={filters.subscription}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      subscription: event.target.value as AdminSubscriptionFilter,
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="all">All users</MenuItem>
+                  <MenuItem value="subscribed">Subscribed</MenuItem>
+                  <MenuItem value="not_subscribed">Not subscribed</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid size={{xs: 12, md: 4}}>
+                <TextField
+                  select
+                  label="Override"
+                  value={filters.override}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      override: event.target.value as AdminOverrideFilter,
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="all">All override states</MenuItem>
+                  <MenuItem value="active">Override active</MenuItem>
+                  <MenuItem value="inactive">Override inactive</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+
             <Stack direction="row" spacing={1}>
               <Button type="submit" variant="contained">
                 Search
               </Button>
-              <Chip label="Subscription status" />
-              <Chip label="Override status" />
-              <Chip label="Devices" />
+              <Button
+                type="button"
+                variant="text"
+                onClick={() => {
+                  setFilters(defaultSearchFilters);
+                  setSubmittedFilters(null);
+                }}
+              >
+                Reset
+              </Button>
+              <Chip
+                label={submittedFilters?.subscription === "all" ?
+                  "All subscriptions" :
+                  submittedFilters?.subscription ?? "Subscription"}
+              />
+              <Chip
+                label={submittedFilters?.override === "all" ?
+                  "All overrides" :
+                  submittedFilters?.override ?? "Override"}
+              />
             </Stack>
           </Stack>
         </CardContent>
@@ -75,7 +188,7 @@ export function UsersPage() {
         </Alert>
       )}
 
-      {submittedQuery.length > 0 && query.data && query.data.length === 0 && (
+      {submittedFilters && query.data && query.data.length === 0 && (
         <Alert severity="info">
           일치하는 사용자를 찾지 못했습니다.
         </Alert>
@@ -114,14 +227,24 @@ export function UsersPage() {
                       {user.email ?? "email unavailable"}
                     </Typography>
 
-                    <Button
-                      component={RouterLink}
-                      to={`/entitlements?userId=${user.userId}`}
-                      variant="text"
-                      sx={{alignSelf: "flex-start"}}
-                    >
-                      Manage entitlement
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        component={RouterLink}
+                        to={`/users/${user.userId}/timeline`}
+                        variant="contained"
+                        size="small"
+                      >
+                        View timeline
+                      </Button>
+                      <Button
+                        component={RouterLink}
+                        to={`/entitlements?userId=${user.userId}`}
+                        variant="text"
+                        size="small"
+                      >
+                        Manage entitlement
+                      </Button>
+                    </Stack>
                   </Stack>
                 </CardContent>
               </Card>

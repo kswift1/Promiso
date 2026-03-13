@@ -10,16 +10,31 @@ import {
 } from "@jest/globals";
 
 const sendPushNotificationInternalMock = jest.fn();
+const getAdminAnalyticsSummaryDataMock = jest.fn();
+const stringParamValues: Record<string, string> = {
+  GA4_PROPERTY_ID: "test-ga4-property",
+  ANALYTICS_BIGQUERY_PROJECT_ID: "test-analytics-project",
+  ANALYTICS_BIGQUERY_DATASET_ID: "analytics_dataset",
+  ANALYTICS_BIGQUERY_LOCATION: "US",
+};
 
 jest.mock("firebase-functions/params", () => ({
   defineSecret: jest.fn(() => ({
     value: () => "test-secret-value",
+  })),
+  defineString: jest.fn((name: string, options?: {default?: string}) => ({
+    value: () => stringParamValues[name] ?? options?.default ?? "",
   })),
 }));
 
 jest.mock("../src/functions/notifications", () => ({
   sendPushNotificationInternal: (...args: unknown[]) =>
     sendPushNotificationInternalMock(...args),
+}));
+
+jest.mock("../src/utils/adminAnalytics", () => ({
+  getAdminAnalyticsSummaryData: (...args: unknown[]) =>
+    getAdminAnalyticsSummaryDataMock(...args),
 }));
 
 function createMockDocument(
@@ -37,36 +52,81 @@ function createMockDocument(
 describe("admin functions", () => {
   let getAdminSession: any;
   let getAdminDashboardSummary: any;
+  let getAdminAnalyticsSummary: any;
   let getAdminAuditLogs: any;
+  let getAdminPushJobs: any;
+  let getAdminUsers: any;
+  let createAdminUser: any;
+  let updateAdminUser: any;
+  let previewAdminPushAudience: any;
   let getAdminUserSummary: any;
+  let getAdminUserTimeline: any;
   let getAdminReleaseControls: any;
+  let cancelAdminPushJob: any;
+  let dispatchScheduledAdminPushes: any;
   let grantEntitlementOverride: any;
   let revokeEntitlementOverride: any;
+  let scheduleAdminPush: any;
   let sendAdminPush: any;
   let updateAdminReleaseControls: any;
 
   let adminUsersData: Map<string, Record<string, unknown>>;
+  let authUsersByEmail: Map<string, {uid: string; email: string | null}>;
   let usersData: Map<string, Record<string, unknown>>;
   let subscriptionData: Map<string, Record<string, unknown>>;
   let overrideData: Map<string, Record<string, unknown>>;
   let auditLogAdds: Record<string, unknown>[];
+  let adminAuditLogQueryCalls: Array<{
+    field: string;
+    operator: string;
+    value: unknown;
+  }>;
   let adminPushJobDocs: Record<string, unknown>[];
+  let adminPushJobQueryCalls: Array<{
+    field: string;
+    operator: string;
+    value: unknown;
+  }>;
   let remoteConfigTemplate: Record<string, any>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.spyOn(Date, "now").mockReturnValue(
+      new Date("2026-03-13T00:00:00.000Z").getTime()
+    );
     sendPushNotificationInternalMock.mockResolvedValue({
       success: true,
       successCount: 1,
       failureCount: 0,
     });
+    getAdminAnalyticsSummaryDataMock.mockResolvedValue({
+      windowDays: 7,
+      ga4: {
+        available: true,
+        note: null,
+        signups: 10,
+        logins: 20,
+        paywallOpens: 7,
+        paywallPurchases: 3,
+      },
+      bigQuery: {
+        available: true,
+        note: null,
+        signups: 8,
+        paywallOpens: 6,
+        paywallPurchases: 2,
+      },
+    });
 
     adminUsersData = new Map();
+    authUsersByEmail = new Map();
     usersData = new Map();
     subscriptionData = new Map();
     overrideData = new Map();
     auditLogAdds = [];
+    adminAuditLogQueryCalls = [];
     adminPushJobDocs = [];
+    adminPushJobQueryCalls = [];
     remoteConfigTemplate = {
       parameters: {},
       parameterGroups: {
@@ -121,6 +181,13 @@ describe("admin functions", () => {
               get: jest.fn().mockResolvedValue(
                 createMockDocument(id, adminUsersData)
               ),
+              set: jest.fn(async (data: Record<string, unknown>) => {
+                const previous = adminUsersData.get(id) ?? {};
+                adminUsersData.set(id, {
+                  ...previous,
+                  ...data,
+                });
+              }),
             })),
             get: jest.fn().mockResolvedValue({
               docs: [...adminUsersData.keys()].map((id) =>
@@ -185,6 +252,55 @@ describe("admin functions", () => {
         }
 
         if (name === "adminAuditLogs") {
+          const buildAuditLogDocs = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            limit?: number,
+          ) => {
+            let docs = auditLogAdds
+              .map((data, index) => ({
+                id: `log-${index + 1}`,
+                data: () => data,
+              }))
+              .reverse()
+              .filter((doc) =>
+                filters.every(({field, operator, value}) => {
+                  const data = doc.data();
+
+                  if (operator === "==") {
+                    return data[field] === value;
+                  }
+
+                  return false;
+                })
+              );
+
+            if (typeof limit === "number") {
+              docs = docs.slice(0, limit);
+            }
+
+            return docs;
+          };
+
+          const createAuditLogQuery = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            limit?: number,
+          ) => ({
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminAuditLogQueryCalls.push({field, operator, value});
+              return createAuditLogQuery(
+                [...filters, {field, operator, value}],
+                limit
+              );
+            }),
+            orderBy: jest.fn(() => createAuditLogQuery(filters, limit)),
+            limit: jest.fn((nextLimit: number) =>
+              createAuditLogQuery(filters, nextLimit)
+            ),
+            get: jest.fn().mockResolvedValue({
+              docs: buildAuditLogDocs(filters, limit),
+            }),
+          });
+
           return {
             add: jest.fn(async (data: Record<string, unknown>) => {
               auditLogAdds.push(data);
@@ -196,24 +312,127 @@ describe("admin functions", () => {
                 data: () => data,
               })),
             }),
-            orderBy: jest.fn(() => ({
-              limit: jest.fn((limit: number) => ({
-                get: jest.fn().mockResolvedValue({
-                  docs: auditLogAdds
-                    .map((data, index) => ({
-                      id: `log-${index + 1}`,
-                      data: () => data,
-                    }))
-                    .reverse()
-                    .slice(0, limit),
-                }),
-              })),
-            })),
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminAuditLogQueryCalls.push({field, operator, value});
+              return createAuditLogQuery([{field, operator, value}]);
+            }),
+            orderBy: jest.fn(() => createAuditLogQuery()),
           };
         }
 
         if (name === "adminPushJobs") {
+          const toComparableValue = (value: unknown) => {
+            if (
+              value &&
+              typeof value === "object" &&
+              "toDate" in value &&
+              typeof (value as {toDate?: () => Date}).toDate === "function"
+            ) {
+              return (value as {toDate: () => Date}).toDate().toISOString();
+            }
+
+            return value;
+          };
+
+          const buildAdminPushJobDocs = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            orderField?: string,
+            orderDirection: "asc" | "desc" = "asc",
+          ) => {
+            let docs = adminPushJobDocs
+              .map((data, index) => ({
+                id: `job-${index + 1}`,
+                ref: {
+                  set: jest.fn(async (nextData: Record<string, unknown>) => {
+                    adminPushJobDocs[index] = {
+                      ...adminPushJobDocs[index],
+                      ...nextData,
+                    };
+                  }),
+                },
+                data: () => data,
+              }))
+              .filter((doc) =>
+                filters.every(({field, operator, value}) => {
+                  const data = doc.data();
+                  const fieldValue = data[field];
+
+                  if (operator === "==") {
+                    return fieldValue === value;
+                  }
+
+                  if (operator === "<=") {
+                    return (
+                      typeof fieldValue === "string" &&
+                      typeof value === "string" &&
+                      fieldValue <= value
+                    );
+                  }
+
+                  return false;
+                })
+              );
+
+            if (orderField) {
+              docs = [...docs].sort((left, right) => {
+                const leftValue = toComparableValue(left.data()[orderField]);
+                const rightValue = toComparableValue(right.data()[orderField]);
+
+                if (leftValue === rightValue) {
+                  return 0;
+                }
+
+                if (orderDirection === "desc") {
+                  return leftValue > rightValue ? -1 : 1;
+                }
+
+                return leftValue < rightValue ? -1 : 1;
+              });
+            }
+
+            return docs;
+          };
+
+          const createAdminPushJobQuery = (
+            filters: Array<{field: string; operator: string; value: unknown}> = [],
+            orderField?: string,
+            orderDirection: "asc" | "desc" = "asc",
+          ) => ({
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminPushJobQueryCalls.push({field, operator, value});
+              return createAdminPushJobQuery(
+                [...filters, {field, operator, value}],
+                orderField,
+                orderDirection
+              );
+            }),
+            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+              createAdminPushJobQuery(filters, field, direction)
+            ),
+            get: jest.fn().mockResolvedValue({
+              docs: buildAdminPushJobDocs(filters, orderField, orderDirection),
+            }),
+          });
+
           return {
+            doc: jest.fn((id: string) => {
+              const index = Number(id.replace("job-", "")) - 1;
+
+              return {
+                get: jest.fn().mockResolvedValue({
+                  id,
+                  exists: index >= 0 && Boolean(adminPushJobDocs[index]),
+                  data: () => adminPushJobDocs[index],
+                }),
+                set: jest.fn(async (nextData: Record<string, unknown>) => {
+                  const previous = adminPushJobDocs[index] ?? {};
+                  adminPushJobDocs[index] = {
+                    ...previous,
+                    ...nextData,
+                  };
+                }),
+              };
+            }),
             add: jest.fn(async (data: Record<string, unknown>) => {
               adminPushJobDocs.push(data);
               const jobId = `job-${adminPushJobDocs.length}`;
@@ -228,11 +447,15 @@ describe("admin functions", () => {
               };
             }),
             get: jest.fn().mockResolvedValue({
-              docs: adminPushJobDocs.map((data, index) => ({
-                id: `job-${index + 1}`,
-                data: () => data,
-              })),
+              docs: buildAdminPushJobDocs(),
             }),
+            where: jest.fn((field: string, operator: string, value: unknown) => {
+              adminPushJobQueryCalls.push({field, operator, value});
+              return createAdminPushJobQuery([{field, operator, value}]);
+            }),
+            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+              createAdminPushJobQuery([], field, direction)
+            ),
           };
         }
 
@@ -244,6 +467,19 @@ describe("admin functions", () => {
     const firestoreSpy = jest.spyOn(configAdmin, "firestore").mockReturnValue(
       mockFirestore as any
     );
+    jest.spyOn(configAdmin, "auth").mockReturnValue({
+      getUserByEmail: jest.fn(async (email: string) => {
+        const authUser = authUsersByEmail.get(email.toLowerCase());
+
+        if (!authUser) {
+          const error = new Error("User not found");
+          (error as any).code = "auth/user-not-found";
+          throw error;
+        }
+
+        return authUser;
+      }),
+    } as any);
     jest.spyOn(configAdmin, "remoteConfig").mockReturnValue({
       getTemplate: jest.fn(async () => structuredClone(remoteConfigTemplate)),
       publishTemplate: jest.fn(async (template: Record<string, any>) => {
@@ -270,11 +506,21 @@ describe("admin functions", () => {
     const functions = await import("../src/functions/admin");
     getAdminSession = functions.getAdminSession;
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
+    getAdminAnalyticsSummary = functions.getAdminAnalyticsSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
+    getAdminPushJobs = functions.getAdminPushJobs;
+    getAdminUsers = functions.getAdminUsers;
+    createAdminUser = functions.createAdminUser;
+    updateAdminUser = functions.updateAdminUser;
+    previewAdminPushAudience = functions.previewAdminPushAudience;
     getAdminUserSummary = functions.getAdminUserSummary;
+    getAdminUserTimeline = functions.getAdminUserTimeline;
     getAdminReleaseControls = functions.getAdminReleaseControls;
+    cancelAdminPushJob = functions.cancelAdminPushJob;
+    dispatchScheduledAdminPushes = functions.dispatchScheduledAdminPushes;
     grantEntitlementOverride = functions.grantEntitlementOverride;
     revokeEntitlementOverride = functions.revokeEntitlementOverride;
+    scheduleAdminPush = functions.scheduleAdminPush;
     sendAdminPush = functions.sendAdminPush;
     updateAdminReleaseControls = functions.updateAdminReleaseControls;
   });
@@ -335,6 +581,241 @@ describe("admin functions", () => {
     });
   });
 
+  it("owner는 admin 사용자 목록을 조회할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+      email: "support@promiso.app",
+    });
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: false,
+      email: "marketer@promiso.app",
+    });
+
+    const handler = (getAdminUsers as any).run;
+    const result = await handler({
+      data: {},
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      users: [
+        {
+          userId: "owner-user",
+          email: "owner@promiso.app",
+          role: "owner",
+          enabled: true,
+        },
+        {
+          userId: "support-user",
+          email: "support@promiso.app",
+          role: "support",
+          enabled: true,
+        },
+        {
+          userId: "marketer-user",
+          email: "marketer@promiso.app",
+          role: "marketer",
+          enabled: false,
+        },
+      ],
+    });
+  });
+
+  it("support는 admin 사용자 목록을 조회할 수 없다", async () => {
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+      email: "support@promiso.app",
+    });
+
+    const handler = (getAdminUsers as any).run;
+
+    await expect(handler({
+      data: {},
+      auth: {
+        uid: "support-user",
+        token: {
+          email: "support@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
+  it("owner는 이메일 기준으로 admin 사용자를 등록할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    authUsersByEmail.set("new-admin@promiso.app", {
+      uid: "new-admin-user",
+      email: "new-admin@promiso.app",
+    });
+
+    const handler = (createAdminUser as any).run;
+    const result = await handler({
+      data: {
+        email: "new-admin@promiso.app",
+        role: "support",
+        enabled: true,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      user: {
+        userId: "new-admin-user",
+        email: "new-admin@promiso.app",
+        role: "support",
+        enabled: true,
+      },
+    });
+    expect(adminUsersData.get("new-admin-user")).toEqual({
+      role: "support",
+      email: "new-admin@promiso.app",
+      enabled: true,
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "owner-user",
+      action: "create_admin_user",
+      targetType: "admin_user",
+      targetId: "new-admin-user",
+    }));
+  });
+
+  it("owner는 다른 admin 사용자의 role과 enabled를 수정할 수 있다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("target-admin", {
+      role: "support",
+      enabled: true,
+      email: "target@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-admin",
+        role: "marketer",
+        enabled: false,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      user: {
+        userId: "target-admin",
+        email: "target@promiso.app",
+        role: "marketer",
+        enabled: false,
+      },
+    });
+    expect(adminUsersData.get("target-admin")).toEqual({
+      role: "marketer",
+      enabled: false,
+      email: "target@promiso.app",
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "owner-user",
+      action: "update_admin_user",
+      targetType: "admin_user",
+      targetId: "target-admin",
+    }));
+  });
+
+  it("owner도 자기 자신을 비활성화할 수 없다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("other-owner", {
+      role: "owner",
+      enabled: true,
+      email: "other@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "owner-user",
+        role: "owner",
+        enabled: false,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+      message: "자기 자신의 owner 권한을 해제하거나 비활성화할 수 없습니다",
+    });
+  });
+
+  it("owner도 자기 자신의 role을 owner 외로 바꿀 수 없다", async () => {
+    adminUsersData.set("owner-user", {
+      role: "owner",
+      enabled: true,
+      email: "owner@promiso.app",
+    });
+    adminUsersData.set("other-owner", {
+      role: "owner",
+      enabled: true,
+      email: "other@promiso.app",
+    });
+
+    const handler = (updateAdminUser as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "owner-user",
+        role: "support",
+        enabled: true,
+      },
+      auth: {
+        uid: "owner-user",
+        token: {
+          email: "owner@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
   it("검색어가 비어 있으면 invalid-argument", async () => {
     adminUsersData.set("admin-user", {
       role: "owner",
@@ -353,6 +834,56 @@ describe("admin functions", () => {
       },
     })).rejects.toMatchObject({
       code: "invalid-argument",
+    });
+  });
+
+  it("상태 필터만으로도 사용자 요약을 조회할 수 있다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("user-a", {
+      nickname: "alpha",
+      email: "alpha@promiso.app",
+    });
+    usersData.set("user-b", {
+      nickname: "beta",
+      email: "beta@promiso.app",
+    });
+    subscriptionData.set("user-a", {
+      status: "subscribed",
+    });
+    overrideData.set("user-a", {
+      isActive: true,
+    });
+
+    const handler = (getAdminUserSummary as any).run;
+    const result = await handler({
+      data: {
+        override: "active",
+        subscription: "subscribed",
+        limit: 25,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      results: [{
+        userId: "user-a",
+        name: null,
+        nickname: "alpha",
+        email: "alpha@promiso.app",
+        groupCount: 0,
+        deviceCount: 0,
+        subscriptionStatus: "subscribed",
+        overrideActive: true,
+      }],
     });
   });
 
@@ -429,6 +960,155 @@ describe("admin functions", () => {
     });
   });
 
+  it("user timeline을 현재 상태와 audit log로 반환한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    usersData.set("target-user", {
+      name: "성원",
+      nickname: "kswift",
+      email: "kswen@promiso.app",
+      groups: {
+        g1: {role: "admin"},
+      },
+      devices: {
+        d1: {platform: "ios"},
+      },
+    });
+    subscriptionData.set("target-user", {
+      status: "subscribed",
+      productId: "promiso.pro.monthly",
+      expirationDate: "2026-04-13T00:00:00.000Z",
+      purchaseDate: "2026-03-13T00:00:00.000Z",
+      updatedAt: {
+        toDate: () => new Date("2026-03-13T03:00:00.000Z"),
+      },
+    });
+    overrideData.set("target-user", {
+      isActive: true,
+      type: "manual_pro_grant",
+      reason: "CS compensation",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+      createdBy: "admin-user",
+      createdAt: {
+        toDate: () => new Date("2026-03-13T04:00:00.000Z"),
+      },
+      updatedAt: {
+        toDate: () => new Date("2026-03-13T04:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "admin-user",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "target-user",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T05:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "admin-user",
+      action: "update_release_controls",
+      targetType: "remote_config",
+      targetId: "default",
+      before: null,
+      after: {recommendedVersion: "1.2.0"},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T06:00:00.000Z"),
+      },
+    });
+
+    const handler = (getAdminUserTimeline as any).run;
+    const result = await handler({
+      data: {
+        userId: "target-user",
+        limit: 20,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      summary: {
+        userId: "target-user",
+        name: "성원",
+        nickname: "kswift",
+        email: "kswen@promiso.app",
+        groupCount: 1,
+        deviceCount: 1,
+        subscriptionStatus: "subscribed",
+        overrideActive: true,
+      },
+      subscription: {
+        status: "subscribed",
+        productId: "promiso.pro.monthly",
+        expirationDate: "2026-04-13T00:00:00.000Z",
+        purchaseDate: "2026-03-13T00:00:00.000Z",
+        updatedAt: "2026-03-13T03:00:00.000Z",
+      },
+      override: {
+        isActive: true,
+        type: "manual_pro_grant",
+        reason: "CS compensation",
+        expiresAt: "2026-04-30T00:00:00.000Z",
+        createdBy: "admin-user",
+        createdAt: "2026-03-13T04:00:00.000Z",
+        revokedBy: null,
+        revokedReason: null,
+        revokedAt: null,
+        updatedAt: "2026-03-13T04:00:00.000Z",
+      },
+      auditLogs: [
+        {
+          id: "log-1",
+          actorId: "admin-user",
+          action: "grant_entitlement_override",
+          targetType: "user",
+          targetId: "target-user",
+          before: null,
+          after: {isActive: true},
+          createdAt: "2026-03-13T05:00:00.000Z",
+        },
+      ],
+    });
+    expect(adminAuditLogQueryCalls).toContainEqual({
+      field: "targetId",
+      operator: "==",
+      value: "target-user",
+    });
+  });
+
+  it("marketer는 user timeline을 조회할 수 없다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (getAdminUserTimeline as any).run;
+
+    await expect(handler({
+      data: {
+        userId: "target-user",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
   it("dashboard summary를 실데이터로 반환한다", async () => {
     adminUsersData.set("admin-user", {
       role: "owner",
@@ -480,6 +1160,105 @@ describe("admin functions", () => {
         remoteConfigUpdatedAt: "2026-03-13T00:00:00.000Z",
       },
     });
+  });
+
+  it("analytics summary를 조회한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    getAdminAnalyticsSummaryDataMock.mockResolvedValueOnce({
+      windowDays: 30,
+      ga4: {
+        available: true,
+        note: null,
+        signups: 42,
+        logins: 77,
+        paywallOpens: 15,
+        paywallPurchases: 5,
+      },
+      bigQuery: {
+        available: true,
+        note: null,
+        signups: 33,
+        paywallOpens: 12,
+        paywallPurchases: 4,
+      },
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    const result = await handler({
+      data: {windowDays: 30},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(30);
+    expect(result).toEqual({
+      success: true,
+      summary: {
+        windowDays: 30,
+        ga4: {
+          available: true,
+          note: null,
+          signups: 42,
+          logins: 77,
+          paywallOpens: 15,
+          paywallPurchases: 5,
+        },
+        bigQuery: {
+          available: true,
+          note: null,
+          signups: 33,
+          paywallOpens: 12,
+          paywallPurchases: 4,
+        },
+      },
+    });
+  });
+
+  it("analytics window가 없으면 기본값 7일을 사용한다", async () => {
+    adminUsersData.set("support-user", {
+      role: "support",
+      enabled: true,
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    await handler({
+      data: {},
+      auth: {
+        uid: "support-user",
+        token: {
+          email: "support@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(7);
+  });
+
+  it("analytics window는 1/7/30일 preset만 허용한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (getAdminAnalyticsSummary as any).run;
+    await handler({
+      data: {windowDays: 99},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(getAdminAnalyticsSummaryDataMock).toHaveBeenCalledWith(7);
   });
 
   it("audit log를 최신순으로 조회한다", async () => {
@@ -548,6 +1327,82 @@ describe("admin functions", () => {
     });
   });
 
+  it("audit log를 action과 actorId로 필터링한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    auditLogAdds.push({
+      actorId: "owner-1",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "user-a",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "owner-2",
+      action: "grant_entitlement_override",
+      targetType: "user",
+      targetId: "user-b",
+      before: null,
+      after: {isActive: true},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T01:00:00.000Z"),
+      },
+    });
+    auditLogAdds.push({
+      actorId: "owner-2",
+      action: "update_release_controls",
+      targetType: "remote_config",
+      targetId: "default",
+      before: {recommendedVersion: "1.0.0"},
+      after: {recommendedVersion: "1.1.0"},
+      createdAt: {
+        toDate: () => new Date("2026-03-13T02:00:00.000Z"),
+      },
+    });
+
+    const handler = (getAdminAuditLogs as any).run;
+    const result = await handler({
+      data: {
+        action: "grant_entitlement_override",
+        actorId: "owner-2",
+        limit: 10,
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      logs: [
+        {
+          id: "log-2",
+          actorId: "owner-2",
+          action: "grant_entitlement_override",
+          targetType: "user",
+          targetId: "user-b",
+          before: null,
+          after: {isActive: true},
+          createdAt: "2026-03-13T01:00:00.000Z",
+        },
+      ],
+    });
+    expect(adminAuditLogQueryCalls).toContainEqual({
+      field: "actorId",
+      operator: "==",
+      value: "owner-2",
+    });
+  });
+
   it("override를 부여하고 audit log를 남긴다", async () => {
     adminUsersData.set("admin-user", {
       role: "owner",
@@ -606,7 +1461,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
-      controls: {
+      controls: expect.objectContaining({
         forceUpdateVersion: "1.0.0",
         recommendedVersion: "1.1.0",
         appStoreURL: "https://apps.apple.com/app/id1625074042",
@@ -617,8 +1472,22 @@ describe("admin functions", () => {
         versionNumber: "12",
         updateTime: "2026-03-13T00:00:00.000Z",
         updateUserEmail: "admin@promiso.app",
-      },
+      }),
     });
+    expect(result.controls.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "forceUpdateVersion",
+        section: "version",
+        valueType: "version",
+        editableRoles: ["owner"],
+      }),
+      expect.objectContaining({
+        key: "supportEmail",
+        section: "support",
+        valueType: "email",
+        editableRoles: ["owner", "marketer"],
+      }),
+    ]));
   });
 
   it("support는 release controls를 조회할 수 없다", async () => {
@@ -639,6 +1508,119 @@ describe("admin functions", () => {
       },
     })).rejects.toMatchObject({
       code: "permission-denied",
+    });
+  });
+
+  it("marketer는 고객 노출 release controls를 수정할 수 있다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+    const result = await handler({
+      data: {
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      controls: expect.objectContaining({
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+        versionNumber: "13",
+      }),
+    });
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "marketer-user",
+      action: "update_release_controls",
+      before: {
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      after: {
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "help@promiso.app",
+        notionFAQDatabaseId: "marketer-faq-id",
+      },
+    }));
+  });
+
+  it("marketer는 version release controls를 수정할 수 없다", async () => {
+    adminUsersData.set("marketer-user", {
+      role: "marketer",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+
+    await expect(handler({
+      data: {
+        forceUpdateVersion: "1.2.0",
+        recommendedVersion: "1.1.0",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      auth: {
+        uid: "marketer-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+  });
+
+  it("release controls version은 x.y.z 형식이어야 한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (updateAdminReleaseControls as any).run;
+
+    await expect(handler({
+      data: {
+        forceUpdateVersion: "1.2",
+        recommendedVersion: "1.2.1",
+        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        supportEmail: "support@promiso.app",
+        notionFAQDatabaseId: "updated-faq-id",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "invalid-argument",
     });
   });
 
@@ -669,7 +1651,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
-      controls: {
+      controls: expect.objectContaining({
         forceUpdateVersion: "1.2.0",
         recommendedVersion: "1.2.1",
         appStoreURL: "https://apps.apple.com/app/id1625074042",
@@ -680,13 +1662,27 @@ describe("admin functions", () => {
         versionNumber: "13",
         updateTime: "2026-03-13T01:00:00.000Z",
         updateUserEmail: "admin@promiso.app",
-      },
+      }),
     });
     expect(auditLogAdds).toContainEqual(expect.objectContaining({
       actorId: "admin-user",
       action: "update_release_controls",
       targetType: "remote_config",
       targetId: "default",
+      before: {
+        forceUpdateVersion: "1.0.0",
+        recommendedVersion: "1.1.0",
+        privacyPolicyURL: "https://example.com/privacy",
+        termsOfServiceURL: "https://example.com/terms",
+        notionFAQDatabaseId: "faq-database-id",
+      },
+      after: {
+        forceUpdateVersion: "1.2.0",
+        recommendedVersion: "1.2.1",
+        privacyPolicyURL: "https://promiso.app/privacy",
+        termsOfServiceURL: "https://promiso.app/terms",
+        notionFAQDatabaseId: "updated-faq-id",
+      },
     }));
   });
 
@@ -726,6 +1722,319 @@ describe("admin functions", () => {
       action: "revoke_entitlement_override",
       targetId: "target-user",
     }));
+  });
+
+  it("예약 admin push를 생성하고 audit log를 남긴다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (scheduleAdminPush as any).run;
+    const result = await handler({
+      data: {
+        title: "예약 공지",
+        body: "내일 배포 안내",
+        audience: "all",
+        scheduledAt: "2026-03-14T00:00:00.000Z",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      jobId: "job-1",
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+    });
+    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
+      status: "scheduled",
+      audience: "all",
+      title: "예약 공지",
+      body: "내일 배포 안내",
+      dryRun: false,
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+    }));
+    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
+      actorId: "admin-user",
+      action: "schedule_admin_push",
+      targetId: "job-1",
+    }));
+  });
+
+  it("push audience preview는 대상 수를 반환한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "marketer",
+      enabled: true,
+    });
+    usersData.set("user-pro", {nickname: "pro"});
+    usersData.set("user-free", {nickname: "free"});
+    subscriptionData.set("user-pro", {
+      status: "subscribed",
+    });
+
+    const handler = (previewAdminPushAudience as any).run;
+    const result = await handler({
+      data: {
+        audience: "pro",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "marketer@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      targetCount: 1,
+    });
+  });
+
+  it("예약 push는 최소 5분 이후 시각만 허용한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+
+    const handler = (scheduleAdminPush as any).run;
+
+    await expect(handler({
+      data: {
+        title: "예약 공지",
+        body: "곧 발송",
+        audience: "all",
+        scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "invalid-argument",
+      message: "scheduledAt은 최소 5분 이후 시각이어야 합니다",
+    });
+  });
+
+  it("같은 내용과 대상의 예약 push 중복 생성을 막는다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    adminPushJobDocs.push({
+      status: "scheduled",
+      audience: "all",
+      title: "예약 공지",
+      body: "내일 배포 안내",
+      dryRun: false,
+      targetCount: null,
+      createdBy: "admin-user",
+      testUserId: null,
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+      createdAt: {
+        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
+      },
+      result: null,
+    });
+
+    const handler = (scheduleAdminPush as any).run;
+
+    await expect(handler({
+      data: {
+        title: "예약 공지",
+        body: "내일 배포 안내",
+        audience: "all",
+        scheduledAt: "2026-03-14T00:00:00.000Z",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    })).rejects.toMatchObject({
+      code: "already-exists",
+      message: "같은 내용과 대상의 예약 push job이 이미 존재합니다",
+    });
+    expect(adminPushJobDocs).toHaveLength(1);
+    expect(auditLogAdds).toHaveLength(0);
+  });
+
+  it("예약 push job 목록을 최신순으로 조회한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    adminPushJobDocs.push({
+      status: "scheduled",
+      audience: "all",
+      title: "첫 번째",
+      body: "old",
+      dryRun: false,
+      targetCount: null,
+      createdBy: "admin-user",
+      testUserId: null,
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+      createdAt: {
+        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
+      },
+      result: null,
+    });
+    adminPushJobDocs.push({
+      status: "completed",
+      audience: "pro",
+      title: "두 번째",
+      body: "new",
+      dryRun: false,
+      targetCount: 3,
+      createdBy: "admin-user",
+      testUserId: null,
+      scheduledAt: null,
+      createdAt: {
+        toDate: () => new Date("2026-03-13T01:00:00.000Z"),
+      },
+      completedAt: {
+        toDate: () => new Date("2026-03-13T01:05:00.000Z"),
+      },
+      result: {
+        successCount: 3,
+        failureCount: 0,
+      },
+    });
+
+    const handler = (getAdminPushJobs as any).run;
+    const result = await handler({
+      data: {limit: 10},
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      success: true,
+      jobs: [
+        expect.objectContaining({
+          id: "job-2",
+          status: "completed",
+          title: "두 번째",
+        }),
+        expect.objectContaining({
+          id: "job-1",
+          status: "scheduled",
+          title: "첫 번째",
+        }),
+      ],
+    });
+  });
+
+  it("scheduled 상태의 push job을 취소한다", async () => {
+    adminUsersData.set("admin-user", {
+      role: "owner",
+      enabled: true,
+    });
+    adminPushJobDocs.push({
+      status: "scheduled",
+      audience: "all",
+      title: "예약 공지",
+      body: "내일 배포 안내",
+      dryRun: false,
+      targetCount: null,
+      createdBy: "admin-user",
+      testUserId: null,
+      scheduledAt: "2026-03-14T00:00:00.000Z",
+    });
+
+    const handler = (cancelAdminPushJob as any).run;
+    const result = await handler({
+      data: {
+        jobId: "job-1",
+        reason: "내용 수정",
+      },
+      auth: {
+        uid: "admin-user",
+        token: {
+          email: "admin@promiso.app",
+        },
+      },
+    });
+
+    expect(result).toEqual({success: true});
+    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
+      status: "cancelled",
+      cancelledReason: "내용 수정",
+    }));
+    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
+      actorId: "admin-user",
+      action: "cancel_scheduled_admin_push",
+      targetId: "job-1",
+    }));
+  });
+
+  it("dispatcher가 due scheduled push를 발송한다", async () => {
+    usersData.set("target-user", {
+      nickname: "kswift",
+    });
+    adminPushJobDocs.push({
+      status: "scheduled",
+      audience: "test_user",
+      title: "예약 공지",
+      body: "곧 시작합니다",
+      dryRun: false,
+      targetCount: null,
+      createdBy: "admin-user",
+      testUserId: "target-user",
+      scheduledAt: "2026-03-12T23:59:00.000Z",
+      createdAt: {
+        toDate: () => new Date("2026-03-12T23:50:00.000Z"),
+      },
+      result: null,
+    });
+
+    const handler = (dispatchScheduledAdminPushes as any).run;
+    await handler({});
+
+    expect(sendPushNotificationInternalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ["target-user"],
+        title: "예약 공지",
+        body: "곧 시작합니다",
+      })
+    );
+    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
+      status: "completed",
+      targetCount: 1,
+      result: {
+        successCount: 1,
+        failureCount: 0,
+      },
+    }));
+    expect(auditLogAdds).toContainEqual(expect.objectContaining({
+      actorId: "admin-user",
+      action: "send_scheduled_admin_push",
+      targetId: "job-1",
+    }));
+    expect(adminPushJobQueryCalls).toEqual(expect.arrayContaining([
+      {
+        field: "status",
+        operator: "==",
+        value: "scheduled",
+      },
+      {
+        field: "scheduledAt",
+        operator: "<=",
+        value: "2026-03-13T00:00:00.000Z",
+      },
+    ]));
   });
 
   it("dry-run admin push는 발송 없이 대상 수만 계산한다", async () => {

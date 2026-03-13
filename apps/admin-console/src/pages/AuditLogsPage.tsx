@@ -5,11 +5,23 @@ import {
   CardContent,
   CircularProgress,
   Divider,
+  Grid,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import {useQuery} from "@tanstack/react-query";
+import {FormEvent, useState} from "react";
 import {AdminAuditLog, getAdminAuditLogs} from "../api/admin";
+
+const defaultAuditLogFilters = {
+  action: "",
+  actorId: "",
+  targetType: "",
+  targetId: "",
+  limit: 50,
+};
 
 function formatJson(value: unknown): string {
   if (value == null) {
@@ -24,9 +36,13 @@ function formatJson(value: unknown): string {
 }
 
 export function AuditLogsPage() {
+  const [filters, setFilters] = useState(defaultAuditLogFilters);
+  const [submittedFilters, setSubmittedFilters] = useState(
+    defaultAuditLogFilters
+  );
   const logsQuery = useQuery<AdminAuditLog[]>({
-    queryKey: ["admin-audit-logs", 50],
-    queryFn: () => getAdminAuditLogs(50),
+    queryKey: ["admin-audit-logs", submittedFilters],
+    queryFn: () => getAdminAuditLogs(submittedFilters),
   });
   const errorMessage = logsQuery.error instanceof Error ?
     logsQuery.error.message :
@@ -34,6 +50,17 @@ export function AuditLogsPage() {
       "Audit Logs를 불러오지 못했습니다." :
       null;
   const logs = logsQuery.data ?? [];
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmittedFilters({
+      action: filters.action.trim(),
+      actorId: filters.actorId.trim(),
+      targetType: filters.targetType.trim(),
+      targetId: filters.targetId.trim(),
+      limit: filters.limit,
+    });
+  };
 
   return (
     <Stack spacing={3}>
@@ -58,6 +85,114 @@ export function AuditLogsPage() {
         </Button>
       </Stack>
 
+      <Card elevation={0}>
+        <CardContent>
+          <Stack component="form" spacing={2} onSubmit={handleSubmit}>
+            <Alert severity="info">
+              모든 필터는 exact match 기준입니다. 비워 두면 최근 로그부터
+              조회합니다.
+            </Alert>
+
+            <Grid container spacing={2}>
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="Action"
+                  placeholder="update_release_controls"
+                  value={filters.action}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      action: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="Actor ID"
+                  placeholder="admin-user"
+                  value={filters.actorId}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      actorId: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="Target Type"
+                  placeholder="user / remote_config"
+                  value={filters.targetType}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      targetType: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="Target ID"
+                  placeholder="user-a"
+                  value={filters.targetId}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      targetId: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 4}}>
+                <TextField
+                  select
+                  label="Limit"
+                  value={String(filters.limit)}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      limit: Number(event.target.value),
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="25">25</MenuItem>
+                  <MenuItem value="50">50</MenuItem>
+                  <MenuItem value="100">100</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+
+            <Stack direction="row" spacing={1}>
+              <Button type="submit" variant="contained">
+                Apply Filters
+              </Button>
+              <Button
+                type="button"
+                variant="text"
+                onClick={() => {
+                  setFilters(defaultAuditLogFilters);
+                  setSubmittedFilters(defaultAuditLogFilters);
+                }}
+              >
+                Reset
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+
       {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
       {logsQuery.isPending ? (
@@ -72,6 +207,10 @@ export function AuditLogsPage() {
             </Stack>
           </CardContent>
         </Card>
+      ) : logs.length === 0 ? (
+        <Alert severity="info">
+          조건에 맞는 Audit Log가 없습니다.
+        </Alert>
       ) : (
         <Stack spacing={2}>
           {logs.map((log) => (
