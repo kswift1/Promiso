@@ -24,6 +24,7 @@ struct BenefitHomeView: View {
         VStack(spacing: 12) {
           // 오늘의 일정
           todayCard
+            .padding(.horizontal, 24)
 
           // 응답 필요
           if showNeedResponseSection {
@@ -31,7 +32,7 @@ struct BenefitHomeView: View {
               .transition(.move(edge: .bottom).combined(with: .opacity))
           }
         }
-        .padding(.horizontal, 24)
+        .padding(.vertical, 16) // shadow(radius:10, y:4) 클리핑 방지
       }
 
       Spacer()
@@ -40,10 +41,10 @@ struct BenefitHomeView: View {
       // 하단 카피
       if showCopy {
         VStack(spacing: 8) {
-          Text(LocalizedStrings.Onboarding.introHomeTitle)
+          Text("Promiso가 알아서 챙길게요")
             .font(.title3.bold())
             .foregroundStyle(Color.pmtext.primary)
-          Text(LocalizedStrings.Onboarding.introHomeSubtitle)
+          Text("그룹 약속도, 개인 일정도, 응답할 것까지")
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -68,11 +69,11 @@ struct BenefitHomeView: View {
       if showTodayHeader {
         VStack(alignment: .leading, spacing: 0) {
           HStack {
-            Text(LocalizedStrings.Onboarding.introHomeTodayTitle)
+            Text("오늘의 일정")
               .font(.pmHeadline)
               .foregroundStyle(.primary)
             Spacer()
-            Text(LocalizedStrings.Onboarding.introHomeItemCount(3))
+            Text("3개")
               .font(.pmCaption)
               .foregroundStyle(Color.pmindigo.n500)
             Image(systemName: "chevron.down")
@@ -96,8 +97,8 @@ struct BenefitHomeView: View {
           scheduleRow(
             time: "12:00",
             emoji: "🍝",
-            title: LocalizedStrings.Onboarding.introHomeTodayRow1Title,
-            tag: LocalizedStrings.Onboarding.introHomeTodayRow1Tag,
+            title: "점심 일정",
+            tag: "회사 동료",
             tagColor: Color.pmindigo.n500,
             isConfirmed: true,
             participantText: "3/5명 참여",
@@ -144,8 +145,8 @@ struct BenefitHomeView: View {
           scheduleRow(
             time: "18:00",
             emoji: "📚",
-            title: LocalizedStrings.Onboarding.introHomeTodayRow2Title,
-            tag: LocalizedStrings.Onboarding.introHomeTodayRow2Tag,
+            title: "스터디",
+            tag: "개인",
             tagColor: Color.pmaurora.purple,
             isConfirmed: nil,
             participantText: nil,
@@ -249,14 +250,18 @@ struct BenefitHomeView: View {
         if showTransportInfo {
           HStack(spacing: 6) {
             ProBadge()
-            transportChip(icon: "bus.fill", text: "25분", color: Color.pmindigo.n500)
+            transportChip(icon: "tram.fill", text: "25분", color: Color.pmindigo.n500)
             transportChip(icon: "car.fill", text: "15분", color: .secondary)
             Text("·")
               .font(.pmCaption2)
               .foregroundStyle(Color.pmgray.n400)
-            Text("🚶 비추천")
-              .font(.pmCaption2)
-              .foregroundStyle(Color.pmgray.n400)
+            HStack(spacing: 3) {
+              Image(systemName: "figure.walk")
+                .font(.system(size: 9))
+              Text("비추천")
+                .font(.pmCaption2)
+            }
+            .foregroundStyle(Color.pmgray.n400)
           }
         }
       }
@@ -292,7 +297,7 @@ struct BenefitHomeView: View {
           .frame(width: 18, height: 18)
           .background(Circle().fill(Color.orange))
       }
-      .padding(.horizontal, 4)
+      .padding(.horizontal, 28)
 
       // 가로 스크롤 카드
       ScrollView(.horizontal, showsIndicators: false) {
@@ -336,6 +341,8 @@ struct BenefitHomeView: View {
             confirmThreshold: 4
           )
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 4) // glass effect 클리핑 방지
       }
     }
   }

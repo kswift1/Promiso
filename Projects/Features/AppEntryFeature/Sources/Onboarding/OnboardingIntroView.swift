@@ -106,7 +106,7 @@ extension AppEntry.OnboardingIntro {
           }
 
           GlassActionButton(
-            title: store.isLastScreen ? LocalizedStrings.Onboarding.start : LocalizedStrings.Common.next,
+            title: store.isLastScreen ? "시작하기" : "다음",
             leadingSystemImage: store.isLastScreen ? "arrow.right" : nil,
             isPrimary: true,
             isVisible: store.isAnimationComplete,

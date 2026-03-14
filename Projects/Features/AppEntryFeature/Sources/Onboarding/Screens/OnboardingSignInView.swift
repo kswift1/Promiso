@@ -52,7 +52,7 @@ struct OnboardingSignInView: View {
             HStack(spacing: 12) {
               Image(systemName: "apple.logo")
                 .font(.system(size: 20, weight: .medium))
-              Text(LocalizedStrings.Auth.continueWithApple)
+              Text("Apple로 계속하기")
                 .font(.system(size: 16, weight: .semibold))
             }
             .foregroundStyle(.white)
@@ -70,7 +70,7 @@ struct OnboardingSignInView: View {
               ResourceKitAsset.googleLogo.swiftUIImage
                 .resizable()
                 .frame(width: 20, height: 20)
-              Text(LocalizedStrings.Auth.continueWithGoogle)
+              Text("Google로 계속하기")
                 .font(.system(size: 16, weight: .semibold))
             }
             .foregroundStyle(Color.pmtext.primary)

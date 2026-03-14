@@ -159,7 +159,7 @@ extension AppEntry {
           case .appleAuthorizationResult(.success(let authorization)):
             guard let nonce = state.pendingAppleLoginNonce else {
               state.isAuthLoading = false
-              state.authError = LocalizedStrings.Auth.loginFailed
+              state.authError = "로그인에 실패했습니다"
               return .none
             }
             return .run { [authClient] send in
@@ -174,7 +174,7 @@ extension AppEntry {
           case .appleAuthorizationResult(.failure):
             state.isAuthLoading = false
             state.pendingAppleLoginNonce = nil
-            state.authError = LocalizedStrings.Auth.loginFailed
+            state.authError = "로그인에 실패했습니다"
             return .none
           }
 

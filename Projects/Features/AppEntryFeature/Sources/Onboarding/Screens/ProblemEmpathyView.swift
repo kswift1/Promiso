@@ -14,9 +14,9 @@ struct ProblemEmpathyView: View {
   @State private var showBottomCopy: Bool = false
 
   private let cards: [(emoji: String, appName: String, content: String)] = [
-    ("💬", "카카오톡", LocalizedStrings.Onboarding.introProblemPainPoint1),
-    ("📝", "메모", LocalizedStrings.Onboarding.introProblemPainPoint2),
-    ("📅", "캘린더", LocalizedStrings.Onboarding.introProblemPainPoint3)
+    ("💬", "카카오톡", "토요일 고기 ㄱ?"),
+    ("📝", "메모", "강남역 6시"),
+    ("📅", "캘린더", "3/15 저녁")
   ]
 
   var body: some View {
@@ -25,7 +25,7 @@ struct ProblemEmpathyView: View {
 
       // 상단 카피: "약속 하나에 앱 N개"
       HStack(alignment: .center, spacing: 6) {
-        Text(LocalizedStrings.Onboarding.introProblemCountLabel)
+        Text("약속 하나에 앱")
           .font(.system(size: 17, weight: .medium))
           .foregroundStyle(Color.pmtext.secondary)
 
@@ -75,10 +75,10 @@ struct ProblemEmpathyView: View {
 
       // 하단 카피
       VStack(spacing: 4) {
-        Text(LocalizedStrings.Onboarding.introProblemBottomLine1)
+        Text("같은 약속인데")
           .font(.system(size: 18, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
-        Text(LocalizedStrings.Onboarding.introProblemBottomLine2)
+        Text("이렇게 흩어져 있어요")
           .font(.system(size: 18, weight: .semibold))
           .foregroundStyle(Color.pmtext.secondary)
       }
