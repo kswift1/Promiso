@@ -712,6 +712,14 @@ public enum LocalizedStrings {
       String(localized: "onboarding.intro.problem.bottomLine2", bundle: bundle)
     }
 
+    // Intro - Confirm
+    public static var introConfirmTitle: String {
+      String(localized: "onboarding.intro.confirm.title", bundle: bundle)
+    }
+    public static var introConfirmSubtitle: String {
+      String(localized: "onboarding.intro.confirm.subtitle", bundle: bundle)
+    }
+
     // Intro - Vote
     public static var introVoteTitle: String {
       String(localized: "onboarding.intro.vote.title", bundle: bundle)

@@ -214,17 +214,12 @@ extension AppEntry {
             }
             
           case .sessionCheckResponse(let isAuthenticated):
-            if isAuthenticated {
+            // TODO: 테스트용 — 항상 온보딩 표시 (나중에 원복)
+            if false, isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              // 온보딩 인트로 완료 여부에 따라 분기
-              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
-              if !hasCompletedOnboarding {
-                state.isFullOnboarding = true
-                state.destination = .onboardingIntro(OnboardingIntro.State())
-              } else {
-                state.destination = .auth(Auth.Feature.State())
-              }
+              state.isFullOnboarding = true
+              state.destination = .onboardingIntro(OnboardingIntro.State())
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -365,11 +360,21 @@ extension AppEntry {
               }
             }
 
+            var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
+
+            if isSignup && state.isFullOnboarding {
+              effects.append(.run { send in
+                try? await Task.sleep(for: .seconds(1.5))
+                await send(.destination(.presented(.main(.openProPlan))))
+              })
+            }
+
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
-              return .merge(routeDeeplink(deeplink), cacheEffect, .send(.internal(.requestFCMToken)))
+              effects.append(routeDeeplink(deeplink))
             }
-            return .merge(cacheEffect, .send(.internal(.requestFCMToken)))
+
+            return .merge(effects)
 
           case .requestFCMToken:
             return .run { send in
@@ -385,10 +390,13 @@ extension AppEntry {
             return .send(.internal(.fcmTokenReceived(token)))
           }
 
-        case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
-          // 인트로 완료 → 알림 권한 요청 (플래그는 알림 권한 완료 후 저장)
-          state.notificationPermission = NotificationPermission.Feature.State()
-          return .none
+        case .destination(.presented(.onboardingIntro(.delegate(.authCompleted(let providerProfileImageURL))))):
+          // 온보딩 완료 플래그 저장
+          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
+          state.providerProfileImageURL = providerProfileImageURL
+          state.isFullOnboarding = true
+          // 프로필 체크로 이동
+          return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.onboardingStart(.delegate(.completed)))):
           // "나중에 둘러볼게요" → 메인으로
@@ -437,14 +445,12 @@ extension AppEntry {
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
           state.notificationPermission = nil
-          // 온보딩 완료 플래그 저장 (인트로 + 알림 권한까지 완료)
-          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           if let userModel = state.pendingUserForMain {
-            // 기존 플로우: 프로필 설정 후 알림 권한 → 메인 전환
+            // 프로필 설정 후 알림 권한 → 메인 전환
             state.pendingUserForMain = nil
             return .send(.internal(.transitionToMain(userModel, isSignup: true)))
           } else {
-            // 풀 온보딩 플로우: 인트로 후 알림 권한 → 로그인 화면
+            // 비-온보딩 경로에서 알림 권한 → 로그인 화면
             state.destination = .auth(Auth.Feature.State())
           }
           return .none

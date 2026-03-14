@@ -13510,13 +13510,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Who can do Saturday? 🙋"
+            "value": "Let's get BBQ Saturday 💬"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "토요일 되는 사람? 🙋"
+            "value": "토요일 고기 먹으러 가자 💬"
           }
         }
       }
@@ -13528,13 +13528,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "I can only do after 7"
+            "value": "3/15 Study group Gangnam 2pm 📝"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "나 7시 이후만 돼"
+            "value": "3/15 스터디 강남역 2시 📝"
           }
         }
       }
@@ -13546,13 +13546,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seen... no reply..."
+            "value": "Dentist 3 PM 📅"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "읽씹..."
+            "value": "치과 오후 3시 📅"
           }
         }
       }
@@ -13564,13 +13564,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "So what did we decide?"
+            "value": "When was this again...? 🤷"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "결국 어떻게 된거야?"
+            "value": "이거 언제였더라...? 🤷"
           }
         }
       }
@@ -14806,13 +14806,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "From personal plans to group plans and pending responses,\nPromiso keeps track for you"
+            "value": "Just open it and see everything for today"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "개인 일정, 그룹 일정, 응답할 것까지\nPromiso가 알아서 챙겨요"
+            "value": "열기만 하면 오늘 할 일이 다 보여요"
           }
         }
       }
@@ -14824,13 +14824,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open it and see everything for today"
+            "value": "Group plans and personal schedule at a glance"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "열기만 하면, 오늘 뭐 할지 다 보여요"
+            "value": "그룹 약속도, 개인 일정도 한눈에"
           }
         }
       }
@@ -15292,13 +15292,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Share your status once,\nand everyone can see updates even on the lock screen."
+            "value": "Share your status once,\nand check it even on the lock screen"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "각자 상태만 공유하면,\n잠금화면에서도 모두의 상황이 보여요."
+            "value": "각자 상태만 공유하면\n잠금화면에서도 확인돼요"
           }
         }
       }
@@ -15346,13 +15346,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No need to ask if everyone is coming"
+            "value": "On the day, even this"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "오고 있는지, 물어보지 않아도 돼요"
+            "value": "약속 당일엔, 이런 것까지"
           }
         }
       }
@@ -15364,13 +15364,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Planning should be fun,"
+            "value": "Same plan, but"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "일정은 즐거워야 하는데"
+            "value": "같은 약속인데"
           }
         }
       }
@@ -15382,13 +15382,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "the planning part is the most exhausting"
+            "value": "scattered like this"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "잡는 과정이 제일 피곤하잖아요"
+            "value": "이렇게 흩어져 있어요"
           }
         }
       }
@@ -15400,13 +15400,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Messages needed to plan one meetup 💬"
+            "value": "Apps for one plan"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "일정 하나 잡는 데 카톡 수 💬"
+            "value": "약속 하나에 앱"
           }
         }
       }
@@ -15418,13 +15418,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "\"Who can do Saturday?\" chat room bombardment"
+            "value": "BBQ Saturday?"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "\"토요일 되는 사람?\" 단톡방 폭격"
+            "value": "토요일 고기 ㄱ?"
           }
         }
       }
@@ -15436,13 +15436,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Friends who read but do not reply"
+            "value": "Gangnam Station 6 PM"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "읽고 답 안 하는 친구"
+            "value": "강남역 6시"
           }
         }
       }
@@ -15454,13 +15454,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "\"Wait, what did we decide again?\""
+            "value": "3/15 Evening"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "\"그때 뭐 하기로 했지?\""
+            "value": "3/15 저녁"
           }
         }
       }
@@ -15605,6 +15605,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "지금"
+          }
+        }
+      }
+    },
+    "onboarding.intro.confirm.subtitle" : {
+      "comment" : "온보딩 인트로 약속 확정 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gets notified"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림이 가요"
+          }
+        }
+      }
+    },
+    "onboarding.intro.confirm.title" : {
+      "comment" : "온보딩 인트로 약속 확정 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When confirmed, everyone"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확정되면 모두에게"
           }
         }
       }
