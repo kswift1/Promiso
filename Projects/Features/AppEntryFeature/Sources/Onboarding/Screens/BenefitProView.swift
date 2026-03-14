@@ -37,10 +37,10 @@ struct BenefitProView: View {
       // 하단 카피
       if showCopy {
         VStack(spacing: 8) {
-          Text("약속을 더 스마트하게")
+          Text("생각하지 않아도 일정 관리가 돼요")
             .font(.title3.bold())
             .foregroundStyle(Color.pmtext.primary)
-          Text("Pro와 함께라면 빠짐없이 챙길 수 있어요")
+          Text("날씨, 충돌, 출발 시간까지 Pro가 알아서")
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -116,7 +116,7 @@ struct BenefitProView: View {
       // 헤더
       HStack {
         ProBadge()
-        Text("더 똑똑한 일정 관리")
+        Text("Pro 전용 기능")
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
         Spacer()
@@ -131,31 +131,24 @@ struct BenefitProView: View {
       // Pro 기능 리스트
       VStack(spacing: 0) {
         proFeatureRow(
-          icon: "sun.max.fill",
-          iconColor: .orange,
-          title: "오늘의 약속 브리핑",
-          subtitle: "날씨, 교통, 준비물까지 한눈에",
+          icon: "location.fill",
+          iconColor: Color.pmindigo.n500,
+          title: "출발 알림",
+          subtitle: "교통 상황 고려한 맞춤 출발 시간 안내",
           isLast: false
         )
         proFeatureRow(
-          icon: "exclamationmark.triangle.fill",
-          iconColor: Color.pmindigo.n500,
+          icon: "calendar.badge.exclamationmark",
+          iconColor: Color.pmwarning.n600,
           title: "일정 충돌 감지",
           subtitle: "겹치는 약속을 미리 알려드려요",
           isLast: false
         )
         proFeatureRow(
-          icon: "car.fill",
-          iconColor: .cyan,
-          title: "출발 알림",
-          subtitle: "교통 상황 고려한 출발 시간 안내",
-          isLast: false
-        )
-        proFeatureRow(
-          icon: "arrow.triangle.2.circlepath",
-          iconColor: .green,
-          title: "고정 약속 자동 생성",
-          subtitle: "매주 반복되는 약속을 자동으로",
+          icon: "sparkles",
+          iconColor: Color.pmpurple.n500,
+          title: "AI 브리핑",
+          subtitle: "날씨, 교통, 준비물까지 한눈에",
           isLast: true
         )
       }
