@@ -328,6 +328,7 @@ extension Home {
         }
         .padding(.top, 8)
       }
+      .scrollClipDisabled()
       .refreshable {
         store.send(.view(.refreshTriggered))
       }
