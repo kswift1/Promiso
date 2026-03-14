@@ -37,10 +37,10 @@ struct BenefitProView: View {
       // 하단 카피
       if showCopy {
         VStack(spacing: 8) {
-          Text("생각하지 않아도 일정 관리가 돼요")
+          Text("똑똑한 일정 비서, Pro")
             .font(.title3.bold())
             .foregroundStyle(Color.pmtext.primary)
-          Text("날씨, 충돌, 출발 시간까지 Pro가 알아서")
+          Text("날씨, 충돌, 출발 시간까지 알아서 챙겨요")
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -149,6 +149,13 @@ struct BenefitProView: View {
           iconColor: Color.pmpurple.n500,
           title: "AI 브리핑",
           subtitle: "날씨, 교통, 준비물까지 한눈에",
+          isLast: false
+        )
+        proFeatureRow(
+          icon: "bell.fill",
+          iconColor: .orange,
+          title: "매일 하루 브리핑 알림",
+          subtitle: "하루 일정을 매일 아침 알림으로",
           isLast: true
         )
       }
