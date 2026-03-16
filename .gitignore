@@ -94,11 +94,14 @@ Secrets.xcconfig
 *.trace
 firebase-debug.log
 **/firebase-debug.log
+.firebase/
 
 # Environment variables
 .env
 .env.local
 **/.env
+**/.env.*
+!**/.env.*.template
 **/.env.local
 
 # Tuist/SwiftPM caches

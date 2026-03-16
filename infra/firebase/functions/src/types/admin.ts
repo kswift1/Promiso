@@ -363,3 +363,57 @@ export interface GetAdminDashboardSummaryResponse {
   success: true;
   summary: AdminDashboardSummary;
 }
+
+// ============================================================================
+// Coupon Types
+// ============================================================================
+
+export interface AdminCoupon {
+  code: string;
+  durationDays: number;
+  memo: string;
+  redeemedBy: string | null;
+  redeemedAt: string | null;
+  expiresAt: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CreateCouponRequest {
+  code?: string;
+  durationDays: 30 | 90;
+  memo?: string;
+}
+
+export interface CreateCouponResponse {
+  success: true;
+  coupon: AdminCoupon;
+}
+
+export interface GetAdminCouponsRequest {
+  status?: "all" | "available" | "redeemed" | "expired";
+  limit?: number;
+}
+
+export interface GetAdminCouponsResponse {
+  success: true;
+  coupons: AdminCoupon[];
+}
+
+export interface ExpireCouponRequest {
+  code: string;
+}
+
+export interface ExpireCouponResponse {
+  success: true;
+}
+
+export interface RedeemCouponRequest {
+  code: string;
+}
+
+export interface RedeemCouponResponse {
+  success: true;
+  durationDays: number;
+  expiresAt: string;
+}

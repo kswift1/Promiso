@@ -65,6 +65,16 @@ jobs:
       # 3. Firebase 배포 (Stage)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+      - name: Write Functions Env (Stage)
+        working-directory: infra/firebase/functions
+        run: |
+          cat <<EOF > .env.stage
+          GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
+          ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
+          ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}
+          ANALYTICS_BIGQUERY_LOCATION=${{ vars.ANALYTICS_BIGQUERY_LOCATION }}
+          EOF
+
       - name: Deploy Functions to Stage
         id: deploy_functions
         working-directory: infra/firebase

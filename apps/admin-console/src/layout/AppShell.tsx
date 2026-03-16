@@ -4,6 +4,7 @@ import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
+import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import {
   AppBar,
@@ -49,6 +50,12 @@ const navItems = [
     path: "/entitlements",
     icon: <WorkspacePremiumRoundedIcon />,
     allowedRoles: ["owner", "support"] as AdminRole[],
+  },
+  {
+    label: "쿠폰 관리",
+    path: "/coupons",
+    icon: <ConfirmationNumberRoundedIcon />,
+    allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {
     label: "푸시 작업",

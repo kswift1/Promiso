@@ -383,7 +383,57 @@ final class SubscriptionRemoteDataSource: Sendable {
     }
   }
 
-  private static let iso8601Formatter = ISO8601DateFormatter()
+  /// entitlementOverrides/{userId} 문서의 실시간 변경 스트림
+  /// 쿠폰 또는 관리자 수동 부여에 의한 Pro 상태 감지
+  func subscribeToOverrideStatus() -> AsyncStream<SubscriptionStatus> {
+    AsyncStream { continuation in
+      guard let currentUserId = Auth.auth().currentUser?.uid else {
+        continuation.finish()
+        return
+      }
+
+      let docRef = db.collection("entitlementOverrides").document(currentUserId)
+
+      let listener = docRef.addSnapshotListener { snapshot, error in
+        if error != nil { return }
+
+        guard let data = snapshot?.data(),
+              let isActive = data["isActive"] as? Bool,
+              isActive else {
+          continuation.yield(.none)
+          return
+        }
+
+        if let expiresAtString = data["expiresAt"] as? String,
+           let expiresAt = Self.parseISO8601(expiresAtString),
+           expiresAt < Date() {
+          continuation.yield(.expired(expirationDate: expiresAt))
+          return
+        }
+
+        let expiresAtString = data["expiresAt"] as? String
+        let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
+        continuation.yield(.subscribed(productType: nil, expirationDate: expiresAt))
+      }
+
+      continuation.onTermination = { _ in
+        listener.remove()
+      }
+    }
+  }
+
+  private static let iso8601Formatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+  }()
+
+  private static let iso8601FormatterFallback = ISO8601DateFormatter()
+
+  private static func parseISO8601(_ string: String) -> Date? {
+    iso8601Formatter.date(from: string)
+      ?? iso8601FormatterFallback.date(from: string)
+  }
 
   private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
     guard let statusString = data["status"] as? String else { return .none }
