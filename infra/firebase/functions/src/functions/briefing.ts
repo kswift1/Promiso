@@ -302,9 +302,7 @@ async function fetchRecurringEventDetails(
     const match = withoutPrefix.match(dateKeyRegex);
     if (!match) return null;
     const dateKey = match[1];
-    const eventId = withoutPrefix.slice(
-      0, withoutPrefix.length - 1 - dateKey.length,
-    );
+    const eventId = withoutPrefix.replace(dateKeyRegex, "");
     return {slot, eventId, dateKey};
   }).filter(
     (x): x is {
