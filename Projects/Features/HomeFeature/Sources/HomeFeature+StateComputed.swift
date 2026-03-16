@@ -31,6 +31,10 @@ extension Home.Feature.State {
   /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 갱신
   mutating func refreshHomeContentSnapshot() {
     homeContentSnapshot = buildHomeContentSnapshot()
+    // 3개 데이터 소스가 모두 로드/실패 완료되면 초기 로딩 완료로 표시
+    if !hasLoadedOnce && !isLoading {
+      hasLoadedOnce = true
+    }
   }
 
   /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 생성
@@ -233,7 +237,15 @@ extension Home.Feature.State {
 
   /// 로딩 중 여부
   var isLoading: Bool {
-    schedulesState.isLoading
+    // idle은 아직 로딩을 시작하지 않은 초기 상태 — 하나라도 idle이면 초기 로딩 중으로 간주
+    let schedulesIdle = !schedulesState.isLoaded && !schedulesState.isFailed && !schedulesState.isLoading
+    let personalEventsIdle = !personalEventsState.isLoaded && !personalEventsState.isFailed && !personalEventsState.isLoading
+    let recurringEventsIdle = !recurringEventsState.isLoaded && !recurringEventsState.isFailed && !recurringEventsState.isLoading
+    if schedulesIdle || personalEventsIdle || recurringEventsIdle {
+      return true
+    }
+    // 하나라도 loading이면 로딩 중
+    return schedulesState.isLoading || personalEventsState.isLoading || recurringEventsState.isLoading
   }
 
   /// 응답 필요 개수 (배지용)

@@ -214,8 +214,7 @@ extension AppEntry {
             }
             
           case .sessionCheckResponse(let isAuthenticated):
-            // TODO: 테스트용 — 항상 온보딩 표시 (나중에 원복)
-            if false, isAuthenticated {
+            if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
               state.isFullOnboarding = true
@@ -383,13 +382,12 @@ extension AppEntry {
             return .send(.internal(.fcmTokenReceived(token)))
           }
 
-        case .destination(.presented(.onboardingIntro(.delegate(.authCompleted(let providerProfileImageURL))))):
+        case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
           // 온보딩 완료 플래그 저장
           userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
-          state.providerProfileImageURL = providerProfileImageURL
           state.isFullOnboarding = true
-          // 프로필 체크로 이동
-          return .send(.internal(.startProfileCheck))
+          state.destination = .auth(Auth.Feature.State())
+          return .none
 
         case .destination(.presented(.onboardingStart(.delegate(.completed)))):
           // "나중에 둘러볼게요" → 메인으로

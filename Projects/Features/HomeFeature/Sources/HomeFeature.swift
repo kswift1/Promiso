@@ -399,10 +399,8 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 첫 로드 표시
+            // 첫 로드: 출발 알림 복원
             if !state.hasLoadedOnce {
-              state.hasLoadedOnce = true
-              // UserDefaultsClient에서 출발 알림 복원
               state.departureAlerts = Self.loadDepartureAlerts(userDefaultsClient: userDefaultsClient)
             }
             state.refreshHomeContentSnapshot()
@@ -1091,7 +1089,11 @@ extension Home {
             guard !groupIds.isEmpty else {
               state.schedulesState = .loaded([])
               state.refreshHomeContentSnapshot()
-              return .none
+              return .merge(
+                .send(.internal(.fetchUnreadNotificationCount)),
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing()))
+              )
             }
 
             return .run { [scheduleClient] send in

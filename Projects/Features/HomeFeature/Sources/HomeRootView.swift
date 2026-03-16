@@ -221,7 +221,7 @@ extension Home {
       let snapshot = store.homeContentSnapshot
 
       return ScrollView {
-        LazyVStack(spacing: 20) {
+        VStack(spacing: 20) {
           // 홈 헤더
           homeHeader
             .padding(.horizontal, 16)

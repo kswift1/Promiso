@@ -29,8 +29,7 @@ struct DailyBriefingCard: View {
   @State private var showUpdateInfoTooltip = false
 
   var body: some View {
-    if isLoading || summary != nil {
-      VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 0) {
         // 헤더 + 요약 (탭 가능)
         VStack(alignment: .leading, spacing: 0) {
           cardHeader
@@ -142,8 +141,7 @@ struct DailyBriefingCard: View {
           }
         }
       }
-      .proGlassCard(cornerRadius: 20)
-    }
+    .proGlassCard(cornerRadius: 20)
   }
 
   // MARK: - Header
