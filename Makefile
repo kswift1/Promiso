@@ -41,15 +41,22 @@ setup:
 		cp Config/Prod.xcconfig.template Config/Prod.xcconfig 2>/dev/null || true; \
 		echo "  ⚠️  실제 API Key를 사용하려면: export NOTION_API_KEY=... && make secrets-pull"; \
 	fi
-	@echo "3/5 Firebase Functions 의존성 설치..."
+	@echo "3/6 Firebase Functions 의존성 설치..."
 	@if command -v npm >/dev/null 2>&1; then \
 		npm --prefix infra/firebase/functions ci; \
 	else \
 		echo "  ⚠️  npm이 설치되어 있지 않습니다. Functions 의존성 설치를 건너뜁니다."; \
 	fi
-	@echo "4/5 Xcode 프로젝트 생성..."
+	@echo "4/6 Firebase Functions 환경변수 설정..."
+	@if [ ! -f "infra/firebase/functions/.env.stage" ]; then \
+		cp infra/firebase/functions/.env.stage.template infra/firebase/functions/.env.stage; \
+		echo "  ✅ .env.stage 생성 완료 (template에서 복사)"; \
+	else \
+		echo "  ✅ .env.stage 이미 존재"; \
+	fi
+	@echo "5/6 Xcode 프로젝트 생성..."
 	@tuist generate
-	@echo "5/5 Git Hooks 설치 (보안)..."
+	@echo "6/6 Git Hooks 설치 (보안)..."
 	@./scripts/install-git-hooks.sh
 	@echo ""
 	@echo "✅ 초기 설정 완료!"
