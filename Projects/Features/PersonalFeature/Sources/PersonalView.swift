@@ -71,8 +71,7 @@ extension PersonalMode {
     // MARK: - Header
 
     private var defaultMode: ScheduleMode {
-      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultScheduleTabMode) ?? "group"
-      return saved == "own" ? .personal : .group
+      store.defaultScheduleTabMode == "own" ? .personal : .group
     }
 
     @ViewBuilder

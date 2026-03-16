@@ -84,6 +84,9 @@ extension PersonalMode {
       var conflictDetectionThreshold: Int = 0
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
+      /// 일정 탭 기본 모드 (Settings에서 설정)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
+
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?

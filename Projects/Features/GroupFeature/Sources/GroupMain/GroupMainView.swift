@@ -27,6 +27,8 @@ extension GroupMain {
             ScheduleDetail.RootView(store: scheduleDetailStore)
           case .pastSchedules(let pastSchedulesStore):
             PastSchedules.RootView(store: pastSchedulesStore)
+          case .groupOverview(let groupOverviewStore):
+            GroupOverview.View(store: groupOverviewStore)
           }
         }
     }
@@ -229,15 +231,17 @@ extension GroupMain {
     // MARK: - Group Header
 
     private var defaultMode: ScheduleMode {
-      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultScheduleTabMode) ?? "group"
-      return saved == "own" ? .personal : .group
+      store.defaultScheduleTabMode == "own" ? .personal : .group
     }
 
     @ViewBuilder
     private var groupHeaderSection: some View {
       ScheduleTabHeader(
         selectedMode: .group,
-        defaultMode: defaultMode
+        defaultMode: defaultMode,
+        onSettingsTapped: {
+          store.send(.view(.groupOverviewTapped))
+        }
       ) { mode in
         if mode == .personal {
           store.send(.view(.switchToPersonalMode))
