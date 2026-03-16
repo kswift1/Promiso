@@ -39,6 +39,9 @@ extension ProPlan {
           if #available(iOS 15.0, *) {
             manageSubscriptionSection
           }
+
+          // MARK: - 쿠폰 섹션
+          couponSection
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 32)
@@ -46,6 +49,14 @@ extension ProPlan {
       .auroraBackground()
       .navigationTitle(LocalizedStrings.ProPlan.manageTitle)
       .navigationBarTitleDisplayMode(.large)
+      .sheet(
+        isPresented: Binding(
+          get: { store.showCouponSheet },
+          set: { if !$0 { store.send(.view(.couponSheetDismissed)) } }
+        )
+      ) {
+        couponRedeemSheet
+      }
     }
 
     // MARK: - Current Plan Section
@@ -72,10 +83,22 @@ extension ProPlan {
 
             Spacer()
 
-            Text(statusText)
-              .font(.body)
-              .fontWeight(.semibold)
-              .foregroundStyle(Color.pmtext.primary)
+            HStack(spacing: 6) {
+              if store.entitlementInfo.isInTrialPeriod {
+                Text("체험 중")
+                  .font(.caption2)
+                  .fontWeight(.semibold)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(Color.pmindigo.n500.opacity(0.12), in: Capsule())
+              }
+
+              Text(statusText)
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.pmtext.primary)
+            }
           }
 
           // 플랜 종류
@@ -172,6 +195,60 @@ extension ProPlan {
               Text(formattedDate(expirationDate))
                 .font(.body)
                 .foregroundStyle(Color.pmwarning.n500)
+            }
+          }
+
+          // Pro 유형 (source)
+          if store.entitlementInfo.source != .none {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            HStack {
+              Label {
+                Text("이용 유형")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.secondary)
+              } icon: {
+                Image(systemName: sourceIcon)
+                  .font(.caption)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text(sourceText)
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+            }
+          }
+
+          // Override 만료일
+          if let overrideExpiry = store.entitlementInfo.overrideExpiresAt,
+             store.entitlementInfo.source == .coupon || store.entitlementInfo.source == .admin {
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            HStack {
+              Label {
+                Text("혜택 만료일")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.secondary)
+              } icon: {
+                Image(systemName: "hourglass")
+                  .font(.caption)
+                  .foregroundStyle(overrideExpiryColor(overrideExpiry))
+              }
+
+              Spacer()
+
+              VStack(alignment: .trailing, spacing: 2) {
+                Text(formattedDate(overrideExpiry))
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+                Text(remainingDaysText(overrideExpiry))
+                  .font(.caption)
+                  .foregroundStyle(overrideExpiryColor(overrideExpiry))
+              }
             }
           }
         }
@@ -288,6 +365,106 @@ extension ProPlan {
       }
     }
 
+    // MARK: - Coupon Section
+
+    @ViewBuilder
+    private var couponSection: some View {
+      VStack(spacing: 12) {
+        Button {
+          store.send(.view(.couponTapped))
+        } label: {
+          HStack {
+            Image(systemName: "ticket.fill")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+
+            Text("쿠폰 코드 입력")
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+              .font(.caption)
+              .foregroundStyle(Color.pmgray.n400)
+          }
+          .padding(16)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .adaptiveGlassCard()
+      }
+    }
+
+    // MARK: - Coupon Redeem Sheet
+
+    @ViewBuilder
+    private var couponRedeemSheet: some View {
+      NavigationStack {
+        VStack(spacing: 24) {
+          VStack(spacing: 8) {
+            Image(systemName: "ticket.fill")
+              .font(.system(size: 40))
+              .foregroundStyle(Color.pmindigo.n500)
+
+            Text("쿠폰 코드 입력")
+              .font(.title2)
+              .fontWeight(.bold)
+
+            Text("Pro 플랜 체험 쿠폰 코드를 입력해주세요")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          }
+          .padding(.top, 20)
+
+          TextField("쿠폰 코드", text: Binding(
+            get: { store.couponCode },
+            set: { store.send(.view(.couponCodeChanged($0))) }
+          ))
+          .textFieldStyle(.roundedBorder)
+          .textInputAutocapitalization(.characters)
+          .autocorrectionDisabled()
+          .padding(.horizontal, 20)
+
+          if let message = store.couponResultMessage {
+            Text(message)
+              .font(.subheadline)
+              .foregroundStyle(store.couponResultIsSuccess ? Color.pmsuccess.n500 : Color.pmerror.n500)
+              .multilineTextAlignment(.center)
+              .padding(.horizontal, 20)
+          }
+
+          Button {
+            store.send(.view(.redeemCouponTapped))
+          } label: {
+            if store.isRedeemingCoupon {
+              ProgressView()
+                .tint(.white)
+            } else {
+              Text("적용하기")
+            }
+          }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.pmindigo.n500)
+          .disabled(
+            store.couponCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              || store.isRedeemingCoupon
+          )
+          .padding(.horizontal, 20)
+
+          Spacer()
+        }
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("닫기") {
+              store.send(.view(.couponSheetDismissed))
+            }
+          }
+        }
+      }
+      .presentationDetents([.medium])
+    }
+
     // MARK: - Helpers
 
     private var statusColor: Color {
@@ -326,6 +503,35 @@ extension ProPlan {
       formatter.timeStyle = .none
       formatter.locale = LocaleManager.appLocale
       return formatter.string(from: date)
+    }
+
+    private var sourceIcon: String {
+      switch store.entitlementInfo.source {
+      case .subscription: return "creditcard"
+      case .coupon: return "ticket"
+      case .admin: return "person.badge.shield.checkmark"
+      case .none: return "questionmark.circle"
+      }
+    }
+
+    private var sourceText: String {
+      switch store.entitlementInfo.source {
+      case .subscription: return "구독"
+      case .coupon: return "쿠폰"
+      case .admin: return "관리자 부여"
+      case .none: return "-"
+      }
+    }
+
+    private func overrideExpiryColor(_ date: Date) -> Color {
+      let remaining = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+      return remaining <= 7 ? Color.pmwarning.n500 : Color.pmindigo.n500
+    }
+
+    private func remainingDaysText(_ date: Date) -> String {
+      let remaining = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+      if remaining <= 0 { return "만료됨" }
+      return "\(remaining)일 남음"
     }
   }
 }
@@ -373,6 +579,53 @@ extension ProPlan {
             expirationDate: Date().addingTimeInterval(7 * 24 * 3600)
           )
         )
+      ) {
+        ProPlan.Feature()
+      }
+    )
+  }
+}
+
+#Preview("Manage - Coupon") {
+  NavigationStack {
+    ProPlan.ProPlanManageView(
+      store: Store(
+        initialState: {
+          var state = ProPlan.Feature.State(
+            subscriptionStatus: .subscribed(
+              productType: .monthly,
+              expirationDate: Date().addingTimeInterval(20 * 24 * 3600)
+            )
+          )
+          state.entitlementInfo = ProEntitlementInfo(
+            source: .coupon,
+            overrideExpiresAt: Date().addingTimeInterval(5 * 24 * 3600),
+            isInTrialPeriod: true
+          )
+          return state
+        }()
+      ) {
+        ProPlan.Feature()
+      }
+    )
+  }
+}
+
+#Preview("Manage - Admin") {
+  NavigationStack {
+    ProPlan.ProPlanManageView(
+      store: Store(
+        initialState: {
+          var state = ProPlan.Feature.State(
+            subscriptionStatus: .lifetime
+          )
+          state.entitlementInfo = ProEntitlementInfo(
+            source: .admin,
+            overrideExpiresAt: Date().addingTimeInterval(30 * 24 * 3600),
+            isInTrialPeriod: false
+          )
+          return state
+        }()
       ) {
         ProPlan.Feature()
       }

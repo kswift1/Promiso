@@ -132,6 +132,28 @@ public enum SubscriptionStatus: Equatable, Sendable {
   }
 }
 
+/// Pro 엔타이틀먼트 부가 정보 (source, override 만료, 체험 상태)
+public struct ProEntitlementInfo: Equatable, Sendable {
+  public enum Source: String, Equatable, Sendable {
+    case subscription
+    case coupon
+    case admin
+    case none
+  }
+
+  public var source: Source
+  public var overrideExpiresAt: Date?
+  public var isInTrialPeriod: Bool
+
+  public init(source: Source, overrideExpiresAt: Date?, isInTrialPeriod: Bool) {
+    self.source = source
+    self.overrideExpiresAt = overrideExpiresAt
+    self.isInTrialPeriod = isInTrialPeriod
+  }
+
+  public static let empty = ProEntitlementInfo(source: .none, overrideExpiresAt: nil, isInTrialPeriod: false)
+}
+
 /// 구매 결과 (JWS 토큰 포함)
 public struct PurchaseResult: Equatable, Sendable {
   public let jwsString: String

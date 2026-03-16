@@ -157,6 +157,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.statusUpdated)
     await store.receive(\.internal.introOfferEligibilityResult)
     await store.receive(\.internal.purchaseDateLoaded)
+    await store.receive(\.internal.entitlementInfoLoaded)
 
     await store.send(.view(.retryProductsLoadTapped)) {
       $0.isLoadingProducts = true
@@ -173,6 +174,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.statusUpdated)
     await store.receive(\.internal.introOfferEligibilityResult)
     await store.receive(\.internal.purchaseDateLoaded)
+    await store.receive(\.internal.entitlementInfoLoaded)
   }
 
   // MARK: - 상품 선택
@@ -240,8 +242,6 @@ struct ProPlanFeatureTests {
     #expect(store.state.isPurchasing == false)
     #expect(store.state.subscriptionStatus.isPro == true)
     #expect(didLogPurchase.value == true)
-
-    await store.receive(\.delegate.subscriptionStatusChanged)
   }
 
   @Test("구매 성공 시 축하 화면과 별도로 Pro 기본값 초기화 시작")
@@ -280,8 +280,6 @@ struct ProPlanFeatureTests {
       $0.showCelebration = true
       $0.isSettingUpDefaults = true
     }
-
-    await store.receive(\.delegate.subscriptionStatusChanged)
 
     await store.receive(\.internal.proDefaultsInitialized) {
       $0.isSettingUpDefaults = false
@@ -360,8 +358,6 @@ struct ProPlanFeatureTests {
     }
 
     #expect(didLogRestore.value == true)
-
-    await store.receive(\.delegate.subscriptionStatusChanged)
   }
 
   @Test("기존 Pro 설정이 있으면 브리핑 알림 시간 nil이어도 기본값으로 덮어쓰지 않음")
@@ -403,8 +399,6 @@ struct ProPlanFeatureTests {
       $0.subscriptionStatus = .lifetime
       $0.isSettingUpDefaults = true
     }
-
-    await store.receive(\.delegate.subscriptionStatusChanged)
 
     await store.receive(\.internal.proExistingSettingsLoaded) {
       $0.isSettingUpDefaults = false
@@ -696,6 +690,8 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.checkIntroOfferEligibility = { false }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.subscriptionClient.fetchPurchaseDate = { nil }
+      $0.subscriptionClient.fetchEntitlementInfo = { .empty }
+      $0.subscriptionClient.checkTrialStatus = { false }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.authClient.currentUser = {
         FirebaseUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
