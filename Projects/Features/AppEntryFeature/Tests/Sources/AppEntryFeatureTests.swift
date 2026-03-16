@@ -117,17 +117,16 @@ struct AppEntryFeatureTests {
     await store.send(.view(.scenePhaseChanged(.inactive)))
   }
 
-  @Test("sessionCheckResponse 인증됨이어도 온보딩 표시 (TODO: 나중에 원복)")
-  func sessionCheck_authenticated_showsOnboarding() async {
+  @Test("sessionCheckResponse 인증됨이면 profileCheck 시작")
+  func sessionCheck_authenticated_startsProfileCheck() async {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
+    } withDependencies: {
+      $0.authClient.currentUser = { nil }
     }
 
-    await store.send(.internal(.sessionCheckResponse(isAuthenticated: true))) {
-      $0.isFullOnboarding = true
-      $0.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
-      $0.splash = .animatingOut
-    }
+    await store.send(.internal(.sessionCheckResponse(isAuthenticated: true)))
+    await store.receive(\.internal.startProfileCheck)
   }
 
   @Test("startProfileCheck currentUser=nil 이면 종료")
@@ -499,8 +498,8 @@ struct AppEntryFeatureTests {
     }
   }
 
-  @Test("onboardingIntro.delegate.authCompleted → isFullOnboarding = true")
-  func onboardingIntroAuthCompleted_setsFullOnboarding() async {
+  @Test("onboardingIntro.delegate.introCompleted → auth 화면으로 전환")
+  func onboardingIntroCompleted_showsAuth() async {
     var state = AppEntry.Feature.State()
     state.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
 
@@ -508,12 +507,11 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.userDefaultsClient.setBool = { _, _ in }
-      $0.authClient.currentUser = { nil }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.destination(.presented(.onboardingIntro(.delegate(.authCompleted(providerProfileImageURL: nil)))))) {
+    await store.send(.destination(.presented(.onboardingIntro(.delegate(.introCompleted))))) {
       $0.isFullOnboarding = true
+      $0.destination = .auth(AppEntry.Auth.Feature.State())
     }
   }
 

@@ -1086,7 +1086,7 @@ extension Home {
             }
 
           case .emptyCreatePersonalEventTapped:
-            let startAt = Date().addingTimeInterval(3600)
+            let startAt = Date().addingTimeInterval(60 * 60)
             state.createPersonalEvent = CreatePersonalEvent.Feature.State(
               event: PersonalEventModel(startAt: startAt)
             )
