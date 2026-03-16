@@ -4,10 +4,9 @@ import KakaoMapsSDK
 import ResourceKit
 
 private enum RouteMapColors {
-  private static let bundle = ResourceKitResources.bundle
-  static var indigo: UIColor { UIColor(named: "PMIndigo.n500", in: bundle, compatibleWith: nil) ?? .systemIndigo }
-  static var error: UIColor { UIColor(named: "PMError.n500", in: bundle, compatibleWith: nil) ?? .systemRed }
-  static var gray: UIColor { UIColor(named: "PMGray.n100", in: bundle, compatibleWith: nil) ?? .systemGray6 }
+  static var indigo: UIColor { UIColor(Color.pmindigo.n500) }
+  static var error: UIColor { UIColor(Color.pmerror.n500) }
+  static var gray: UIColor { UIColor(Color.pmgray.n100) }
 }
 
 public struct KakaoRouteMapView: UIViewRepresentable {
@@ -96,8 +95,8 @@ public struct KakaoRouteMapView: UIViewRepresentable {
       let manager = mapView.getRouteManager()
       guard let layer = manager.addRouteLayer(layerID: "routeLayer", zOrder: 0) else { return }
 
-      let lineStyle = RouteLineStyle(styles: [
-        PerLevelRouteLineStyle(
+      let lineStyle = RouteStyle(styles: [
+        PerLevelRouteStyle(
           width: 12,
           color: RouteMapColors.indigo,
           strokeWidth: 2,
@@ -115,7 +114,9 @@ public struct KakaoRouteMapView: UIViewRepresentable {
       guard !points.isEmpty else { return }
 
       let segment = RouteSegment(points: points, styleIndex: 0)
-      let route = layer.addRoute(routeID: "drivingRoute", styleID: "routeStyle", segments: [segment])
+      let routeOption = RouteOptions(routeID: "drivingRoute", styleID: "routeStyle", zOrder: 0)
+      routeOption.segments = [segment]
+      let route = layer.addRoute(option: routeOption)
       route?.show()
     }
 
@@ -173,7 +174,8 @@ public struct KakaoRouteMapView: UIViewRepresentable {
       let southWest = MapPoint(longitude: minLng, latitude: minLat)
       let northEast = MapPoint(longitude: maxLng, latitude: maxLat)
       let areaRect = AreaRect(southWest: southWest, northEast: northEast)
-      mapView.moveCamera(CameraUpdate.make(area: areaRect, padding: 100, mapView: mapView))
+      mapView.setMargins(UIEdgeInsets(top: 100, left: 100, bottom: 100, right: 100))
+      mapView.moveCamera(CameraUpdate.make(area: areaRect))
     }
 
     private func makeCircleImage(color: UIColor, size: CGFloat) -> UIImage {
