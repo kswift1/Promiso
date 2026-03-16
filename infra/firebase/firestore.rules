@@ -102,6 +102,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Entitlement Overrides - 서버 관리 Pro 권한 오버라이드 (쿠폰/관리자 부여)
+    match /entitlementOverrides/{userId} {
+      // 본인 오버라이드 상태만 읽기 가능
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
+      allow write: if false;
+    }
+
     // 그 외 모든 경로 차단
     match /{document=**} {
       allow read, write: if false;
