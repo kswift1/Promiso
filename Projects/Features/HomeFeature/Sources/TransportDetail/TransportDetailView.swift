@@ -111,49 +111,51 @@ extension TransportDetail {
           }
         }
         ToolbarItem(placement: .principal) {
-          segmentControl
-            .frame(width: 220)
+          transportMenu
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            ForEach(store.availableMapApps, id: \.self) { app in
+              Button {
+                store.send(.view(.mapAppSelected(app)))
+              } label: {
+                Text(app.displayName)
+              }
+            }
+          } label: {
+            Image(systemName: "arrow.triangle.turn.up.right.diamond")
+              .font(.system(size: 16, weight: .semibold))
+          }
         }
       }
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .confirmationDialog(
-        LocalizedStrings.Home.transportMapAppDialog,
-        isPresented: Binding(
-          get: { store.isMapAppSheetPresented },
-          set: { _ in store.send(.view(.mapAppSheetDismissed)) }
-        )
-      ) {
-        ForEach(store.availableMapApps, id: \.self) { app in
-          Button(app.displayName) {
-            store.send(.view(.mapAppSelected(app)))
-          }
-        }
-      }
     }
 
     // MARK: - Map Layer
 
-    @ViewBuilder
     private var mapLayer: some View {
       let originLat = store.originCoordinate?.latitude ?? store.destinationCoordinate.latitude
       let originLng = store.originCoordinate?.longitude ?? store.destinationCoordinate.longitude
-      let destLat = store.destinationCoordinate.latitude
-      let destLng = store.destinationCoordinate.longitude
 
+      return KakaoTransportMapView(
+        data: transportMapData,
+        originLatitude: originLat,
+        originLongitude: originLng,
+        destinationLatitude: store.destinationCoordinate.latitude,
+        destinationLongitude: store.destinationCoordinate.longitude,
+        moveToOrigin: $moveToMyLocation
+      )
+    }
+
+    private var transportMapData: TransportMapData {
       switch store.selectedSegment {
       case .driving:
         if let driving = store.transportData.driving {
-          KakaoRouteMapView(
-            routePoints: driving.routePoints,
-            originLatitude: originLat,
-            originLongitude: originLng,
-            destinationLatitude: destLat,
-            destinationLongitude: destLng,
-            moveToOrigin: $moveToMyLocation
-          )
+          return .driving(routePoints: driving.routePoints)
         }
+        return .walking
       case .transit:
         if let route = store.selectedTransitRoute {
           let segments = route.subPaths.compactMap { subPath -> TransitRouteSegmentData? in
@@ -164,25 +166,11 @@ extension TransportDetail {
               trafficType: subPath.trafficType
             )
           }
-          KakaoTransitMapView(
-            segments: segments,
-            originLatitude: originLat,
-            originLongitude: originLng,
-            destinationLatitude: destLat,
-            destinationLongitude: destLng,
-            moveToOrigin: $moveToMyLocation
-          )
-          .id(route.id)
+          return .transit(segments: segments)
         }
+        return .walking
       case .walking:
-        KakaoRouteMapView(
-          routePoints: [],
-          originLatitude: originLat,
-          originLongitude: originLng,
-          destinationLatitude: destLat,
-          destinationLongitude: destLng,
-          moveToOrigin: $moveToMyLocation
-        )
+        return .walking
       }
     }
 
@@ -227,8 +215,6 @@ extension TransportDetail {
             }
 
             bufferSelector
-
-            openMapButton
 
             alertButton
               .padding(.bottom, bottomInset + 16)
@@ -322,26 +308,43 @@ extension TransportDetail {
       }
     }
 
-    // MARK: - Segment Control
+    // MARK: - Transport Menu
 
-    private var segmentControl: some View {
-      let availableTypes: [HomeModels.TransportType] = {
-        var types: [HomeModels.TransportType] = []
-        if store.transportData.driving != nil { types.append(.driving) }
-        if !store.transportData.transitRoutes.isEmpty { types.append(.transit) }
-        types.append(.walking)
-        return types
-      }()
+    private var availableTransportTypes: [HomeModels.TransportType] {
+      var types: [HomeModels.TransportType] = []
+      if store.transportData.driving != nil { types.append(.driving) }
+      if !store.transportData.transitRoutes.isEmpty { types.append(.transit) }
+      types.append(.walking)
+      return types
+    }
 
-      return Picker(LocalizedStrings.SettingsStrings.briefingTransport, selection: Binding(
-        get: { store.selectedSegment },
-        set: { store.send(.view(.segmentChanged($0))) }
-      )) {
-        ForEach(availableTypes, id: \.self) { type in
-          Text(type.displayName).tag(type)
+    private var transportMenu: some View {
+      Menu {
+        ForEach(availableTransportTypes, id: \.self) { type in
+          Button {
+            store.send(.view(.segmentChanged(type)))
+          } label: {
+            Label(type.displayName, systemImage: transportIcon(type))
+          }
+        }
+      } label: {
+        HStack(spacing: 4) {
+          Text(store.selectedSegment.displayName)
+            .font(.pmBodySemibold)
+            .foregroundStyle(Color.pmtext.primary)
+          Image(systemName: "chevron.down")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Color.pmtext.secondary)
         }
       }
-      .pickerStyle(.segmented)
+    }
+
+    private func transportIcon(_ type: HomeModels.TransportType) -> String {
+      switch type {
+      case .driving: return "car.fill"
+      case .transit: return "tram.fill"
+      case .walking: return "figure.walk"
+      }
     }
 
     // MARK: - Route Selector
@@ -424,7 +427,15 @@ extension TransportDetail {
     }
 
     private func subPathRow(subPath: HomeModels.TransportSubPath, isLast: Bool) -> some View {
-      HStack(alignment: .top, spacing: 12) {
+      let lineColor: Color = if let hex = subPath.laneColor {
+        Color(hex: hex)
+      } else if subPath.trafficType == 3 {
+        Color.pmgray.n300
+      } else {
+        subPathIconColor(trafficType: subPath.trafficType)
+      }
+
+      return HStack(alignment: .top, spacing: 12) {
         // 타임라인 세로선 + 노드
         VStack(spacing: 0) {
           subPathIcon(trafficType: subPath.trafficType, laneColor: subPath.laneColor)
@@ -432,7 +443,7 @@ extension TransportDetail {
 
           if !isLast {
             Rectangle()
-              .fill(Color.pmgray.n300)
+              .fill(lineColor.opacity(0.4))
               .frame(width: 2, height: 32)
           }
         }
@@ -510,7 +521,7 @@ extension TransportDetail {
         if let way = subPath.way {
           Text("\(way) 방면")
             .font(.pmCaption)
-            .foregroundStyle(Color.pmindigo.n400)
+            .foregroundStyle(subPath.laneColor.map { Color(hex: $0) } ?? Color.pmindigo.n400)
         }
         if !routeText.isEmpty {
           Text(routeText)
@@ -638,29 +649,6 @@ extension TransportDetail {
       }
       .buttonStyle(.plain)
       .accessibilityLabel(bufferAccessibilityLabel(minutes))
-    }
-
-    // MARK: - Open Map Button
-
-    private var openMapButton: some View {
-      Button {
-        store.send(.view(.openMapTapped))
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "map")
-            .font(.system(size: 14))
-          Text(LocalizedStrings.Home.transportOpenInMap)
-            .font(.pmCaptionSemibold)
-        }
-        .foregroundStyle(Color.pmindigo.n500)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          RoundedRectangle(cornerRadius: 14)
-            .strokeBorder(Color.pmindigo.n300, lineWidth: 1)
-        )
-      }
-      .buttonStyle(.plain)
     }
 
     // MARK: - Alert Button

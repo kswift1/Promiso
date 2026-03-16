@@ -1694,7 +1694,7 @@ extension Home {
                   let laneColor: String?
                   if let firstLane = subPath.lanes.first {
                     laneName = firstLane.name ?? firstLane.busNo
-                    laneColor = firstLane.busColor
+                    laneColor = firstLane.busColor ?? Self.subwayColor(code: firstLane.subwayCode)
                   } else {
                     laneName = nil
                     laneColor = nil
@@ -2166,6 +2166,39 @@ extension Home {
       AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
 
       return input
+    }
+
+    // MARK: - 지하철 호선 색상
+
+    private static func subwayColor(code: Int?) -> String? {
+      guard let code else { return nil }
+      switch code {
+      case 1: return "#0052A4"   // 1호선
+      case 2: return "#00A84D"   // 2호선
+      case 3: return "#EF7C1C"   // 3호선
+      case 4: return "#00A4E3"   // 4호선
+      case 5: return "#996CAC"   // 5호선
+      case 6: return "#CD7C2F"   // 6호선
+      case 7: return "#747F00"   // 7호선
+      case 8: return "#E6186C"   // 8호선
+      case 9: return "#BDB092"   // 9호선
+      case 100: return "#7CA1D3" // 분당선
+      case 101: return "#F5A200" // 공항철도
+      case 102: return "#32A1C8" // 자기부상
+      case 104: return "#EB8B00" // 경의중앙선
+      case 107: return "#C4C73D" // 에버라인
+      case 108: return "#A71E31" // 경춘선
+      case 109: return "#F5A200" // 신분당선
+      case 110: return "#A4D80B" // 의정부경전철
+      case 112: return "#6789CA" // 경강선
+      case 113: return "#003DA5" // 우이신설선
+      case 114: return "#E0861A" // 서해선
+      case 115: return "#8B50A4" // 김포골드라인
+      case 116: return "#C6C100" // 수인분당선
+      case 117: return "#004E6F" // 신림선
+      case 118: return "#71B5E4" // GTX-A
+      default: return nil
+      }
     }
   }
 }

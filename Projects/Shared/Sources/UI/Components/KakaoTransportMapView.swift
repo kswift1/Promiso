@@ -3,16 +3,49 @@ import UIKit
 import KakaoMapsSDK
 import ResourceKit
 
-private enum TransitMapColors {
+// MARK: - TransportMapData
+
+/// 교통수단별 지도 표시 데이터
+public enum TransportMapData: Equatable {
+  /// 자동차: routePoints [[lng, lat], ...]
+  case driving(routePoints: [[Double]])
+  /// 대중교통: 구간별 좌표 + 색상
+  case transit(segments: [TransitRouteSegmentData])
+  /// 도보: 경로 없이 마커만
+  case walking
+}
+
+// MARK: - TransitRouteSegmentData
+
+/// 대중교통 경로 구간 (지도 렌더링용)
+public struct TransitRouteSegmentData: Equatable, Sendable {
+  /// 경유 정류장 좌표 [[lng, lat], ...]
+  public let coords: [[Double]]
+  /// 노선 색상 (Hex, 예: "#0052A4"), nil이면 도보
+  public let color: String?
+  /// 교통 수단 (1=지하철, 2=버스, 3=도보)
+  public let trafficType: Int
+
+  public init(coords: [[Double]], color: String?, trafficType: Int) {
+    self.coords = coords
+    self.color = color
+    self.trafficType = trafficType
+  }
+}
+
+// MARK: - MapColors
+
+private enum MapColors {
   static var indigo: UIColor { UIColor(Color.pmindigo.n500) }
   static var error: UIColor { UIColor(Color.pmerror.n500) }
   static var gray: UIColor { UIColor(Color.pmgray.n300) }
   static var bgGray: UIColor { UIColor(Color.pmgray.n100) }
 }
 
+// MARK: - KakaoTransportMapView
 
-public struct KakaoTransitMapView: UIViewRepresentable {
-  public let segments: [TransitRouteSegmentData]
+public struct KakaoTransportMapView: UIViewRepresentable {
+  public let data: TransportMapData
   public let originLatitude: Double
   public let originLongitude: Double
   public let destinationLatitude: Double
@@ -20,14 +53,14 @@ public struct KakaoTransitMapView: UIViewRepresentable {
   @Binding public var moveToOrigin: Bool
 
   public init(
-    segments: [TransitRouteSegmentData],
+    data: TransportMapData,
     originLatitude: Double,
     originLongitude: Double,
     destinationLatitude: Double,
     destinationLongitude: Double,
     moveToOrigin: Binding<Bool> = .constant(false)
   ) {
-    self.segments = segments
+    self.data = data
     self.originLatitude = originLatitude
     self.originLongitude = originLongitude
     self.destinationLatitude = destinationLatitude
@@ -37,30 +70,48 @@ public struct KakaoTransitMapView: UIViewRepresentable {
 
   public func makeUIView(context: Context) -> KMViewContainer {
     let container = KMViewContainer()
-    container.backgroundColor = TransitMapColors.bgGray
+    container.backgroundColor = MapColors.bgGray
     container.isUserInteractionEnabled = true
     return container
   }
 
   public func updateUIView(_ container: KMViewContainer, context: Context) {
-    if context.coordinator.mapController != nil {
+    let coordinator = context.coordinator
+
+    // 엔진이 이미 생성된 경우
+    if coordinator.mapController != nil {
+      // moveToOrigin 처리
       if moveToOrigin {
         DispatchQueue.main.async { moveToOrigin = false }
-        if let mapView = context.coordinator.mapController?.getView("mapview") as? KakaoMap {
+        if let mapView = coordinator.mapController?.getView("mapview") as? KakaoMap {
           let position = MapPoint(longitude: originLongitude, latitude: originLatitude)
           mapView.moveCamera(CameraUpdate.make(target: position, zoomLevel: 15, mapView: mapView))
+        }
+        return
+      }
+
+      // 데이터 변경 감지 → clear & redraw
+      if coordinator.currentData != data {
+        coordinator.currentData = data
+        coordinator.pendingOriginLatitude = originLatitude
+        coordinator.pendingOriginLongitude = originLongitude
+        coordinator.pendingDestinationLatitude = destinationLatitude
+        coordinator.pendingDestinationLongitude = destinationLongitude
+
+        if let mapView = coordinator.mapController?.getView("mapview") as? KakaoMap {
+          coordinator.clearAndRedraw(mapView: mapView)
         }
       }
       return
     }
 
-    // container가 레이아웃되기 전이면 다음 런루프에서 재시도
+    // 최초 엔진 생성
     guard container.bounds.size != .zero else {
-      DispatchQueue.main.async { [segments, originLatitude, originLongitude, destinationLatitude, destinationLongitude] in
+      DispatchQueue.main.async { [data, originLatitude, originLongitude, destinationLatitude, destinationLongitude] in
         guard context.coordinator.mapController == nil else { return }
         context.coordinator.createEngine(
           container: container,
-          segments: segments,
+          data: data,
           originLatitude: originLatitude,
           originLongitude: originLongitude,
           destinationLatitude: destinationLatitude,
@@ -70,9 +121,9 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       return
     }
 
-    context.coordinator.createEngine(
+    coordinator.createEngine(
       container: container,
-      segments: segments,
+      data: data,
       originLatitude: originLatitude,
       originLongitude: originLongitude,
       destinationLatitude: destinationLatitude,
@@ -89,23 +140,28 @@ public struct KakaoTransitMapView: UIViewRepresentable {
     coordinator.mapController?.resetEngine()
   }
 
+  // MARK: - Coordinator
+
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
-    private var pendingSegments: [TransitRouteSegmentData] = []
-    private var pendingOriginLatitude: Double = 0
-    private var pendingOriginLongitude: Double = 0
-    private var pendingDestinationLatitude: Double = 0
-    private var pendingDestinationLongitude: Double = 0
+    var currentData: TransportMapData = .walking
+    var pendingOriginLatitude: Double = 0
+    var pendingOriginLongitude: Double = 0
+    var pendingDestinationLatitude: Double = 0
+    var pendingDestinationLongitude: Double = 0
+
+    private let routeLayerID = "transportRouteLayer"
+    private let markerLayerID = "transportMarkerLayer"
 
     func createEngine(
       container: KMViewContainer,
-      segments: [TransitRouteSegmentData],
+      data: TransportMapData,
       originLatitude: Double,
       originLongitude: Double,
       destinationLatitude: Double,
       destinationLongitude: Double
     ) {
-      pendingSegments = segments
+      currentData = data
       pendingOriginLatitude = originLatitude
       pendingOriginLongitude = originLongitude
       pendingDestinationLatitude = destinationLatitude
@@ -117,13 +173,71 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       mapController?.prepareEngine()
     }
 
-    private func addTransitRoutes(mapView: KakaoMap) {
-      guard !pendingSegments.isEmpty else { return }
+    func clearAndRedraw(mapView: KakaoMap) {
+      // 기존 레이어 제거
+      let routeManager = mapView.getRouteManager()
+      routeManager.removeRouteLayer(layerID: routeLayerID)
+
+      let labelManager = mapView.getLabelManager()
+      labelManager.removeLabelLayer(layerID: markerLayerID)
+
+      // 새로 그리기
+      addRoute(mapView: mapView)
+      addMarkers(mapView: mapView)
+      fitCamera(mapView: mapView)
+    }
+
+    // MARK: - Route Drawing
+
+    private func addRoute(mapView: KakaoMap) {
+      switch currentData {
+      case .driving(let routePoints):
+        addDrivingRoute(mapView: mapView, routePoints: routePoints)
+      case .transit(let segments):
+        addTransitRoutes(mapView: mapView, segments: segments)
+      case .walking:
+        break
+      }
+    }
+
+    private func addDrivingRoute(mapView: KakaoMap, routePoints: [[Double]]) {
+      guard !routePoints.isEmpty else { return }
 
       let manager = mapView.getRouteManager()
-      guard let layer = manager.addRouteLayer(layerID: "transitRouteLayer", zOrder: 0) else { return }
+      guard let layer = manager.addRouteLayer(layerID: routeLayerID, zOrder: 0) else { return }
 
-      for (index, segment) in pendingSegments.enumerated() {
+      let lineStyle = RouteStyle(styles: [
+        PerLevelRouteStyle(
+          width: 12,
+          color: MapColors.indigo,
+          strokeWidth: 2,
+          strokeColor: MapColors.indigo.withAlphaComponent(0.3),
+          level: 0
+        )
+      ])
+      let styleSet = RouteStyleSet(styleID: "drivingRouteStyle", styles: [lineStyle])
+      manager.addRouteStyleSet(styleSet)
+
+      let points = routePoints.compactMap { point -> MapPoint? in
+        guard point.count >= 2 else { return nil }
+        return MapPoint(longitude: point[0], latitude: point[1])
+      }
+      guard !points.isEmpty else { return }
+
+      let segment = RouteSegment(points: points, styleIndex: 0)
+      let routeOption = RouteOptions(routeID: "drivingRoute", styleID: "drivingRouteStyle", zOrder: 0)
+      routeOption.segments = [segment]
+      let route = layer.addRoute(option: routeOption)
+      route?.show()
+    }
+
+    private func addTransitRoutes(mapView: KakaoMap, segments: [TransitRouteSegmentData]) {
+      guard !segments.isEmpty else { return }
+
+      let manager = mapView.getRouteManager()
+      guard let layer = manager.addRouteLayer(layerID: routeLayerID, zOrder: 0) else { return }
+
+      for (index, segment) in segments.enumerated() {
         guard !segment.coords.isEmpty else { continue }
 
         let points = segment.coords.compactMap { coord -> MapPoint? in
@@ -140,8 +254,8 @@ public struct KakaoTransitMapView: UIViewRepresentable {
         let lineWidth: UInt
 
         if segment.trafficType == 3 {
-          lineColor = TransitMapColors.gray
-          strokeColor = TransitMapColors.gray.withAlphaComponent(0.3)
+          lineColor = MapColors.gray
+          strokeColor = MapColors.gray.withAlphaComponent(0.3)
           lineWidth = 6
         } else {
           lineColor = hexColor(segment.color)
@@ -169,11 +283,13 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       }
     }
 
+    // MARK: - Markers
+
     private func addMarkers(mapView: KakaoMap) {
       let manager = mapView.getLabelManager()
 
       let layerOption = LabelLayerOptions(
-        layerID: "transitMarkerLayer",
+        layerID: markerLayerID,
         competitionType: .none,
         competitionUnit: .symbolFirst,
         orderType: .rank,
@@ -181,17 +297,17 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       )
       guard let layer = manager.addLabelLayer(option: layerOption) else { return }
 
-      let originIcon = makeCircleImage(color: TransitMapColors.indigo, size: 20)
+      let originIcon = makeCircleImage(color: MapColors.indigo, size: 20)
       let originIconStyle = PoiIconStyle(symbol: originIcon, anchorPoint: CGPoint(x: 0.5, y: 0.5))
-      let originPoiStyle = PoiStyle(styleID: "transitOriginStyle", styles: [PerLevelPoiStyle(iconStyle: originIconStyle, level: 0)])
+      let originPoiStyle = PoiStyle(styleID: "transportOriginStyle", styles: [PerLevelPoiStyle(iconStyle: originIconStyle, level: 0)])
       manager.addPoiStyle(originPoiStyle)
 
-      let destIcon = makeCircleImage(color: TransitMapColors.error, size: 20)
+      let destIcon = makeCircleImage(color: MapColors.error, size: 20)
       let destIconStyle = PoiIconStyle(symbol: destIcon, anchorPoint: CGPoint(x: 0.5, y: 0.5))
-      let destPoiStyle = PoiStyle(styleID: "transitDestStyle", styles: [PerLevelPoiStyle(iconStyle: destIconStyle, level: 0)])
+      let destPoiStyle = PoiStyle(styleID: "transportDestStyle", styles: [PerLevelPoiStyle(iconStyle: destIconStyle, level: 0)])
       manager.addPoiStyle(destPoiStyle)
 
-      let originOption = PoiOptions(styleID: "transitOriginStyle")
+      let originOption = PoiOptions(styleID: "transportOriginStyle")
       originOption.rank = 1
       originOption.clickable = false
       let originPosition = MapPoint(longitude: pendingOriginLongitude, latitude: pendingOriginLatitude)
@@ -199,7 +315,7 @@ public struct KakaoTransitMapView: UIViewRepresentable {
         poi.show()
       }
 
-      let destOption = PoiOptions(styleID: "transitDestStyle")
+      let destOption = PoiOptions(styleID: "transportDestStyle")
       destOption.rank = 1
       destOption.clickable = false
       let destPosition = MapPoint(longitude: pendingDestinationLongitude, latitude: pendingDestinationLatitude)
@@ -208,20 +324,27 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       }
     }
 
+    // MARK: - Camera
+
     private func fitCamera(mapView: KakaoMap) {
-      var lats: [Double] = []
-      var lngs: [Double] = []
+      var lats: [Double] = [pendingOriginLatitude, pendingDestinationLatitude]
+      var lngs: [Double] = [pendingOriginLongitude, pendingDestinationLongitude]
 
-      for segment in pendingSegments {
-        for coord in segment.coords {
-          guard coord.count >= 2 else { continue }
-          lngs.append(coord[0])
-          lats.append(coord[1])
+      switch currentData {
+      case .driving(let routePoints):
+        lats.append(contentsOf: routePoints.compactMap { $0.count >= 2 ? $0[1] : nil })
+        lngs.append(contentsOf: routePoints.compactMap { $0.count >= 2 ? $0[0] : nil })
+      case .transit(let segments):
+        for segment in segments {
+          for coord in segment.coords {
+            guard coord.count >= 2 else { continue }
+            lngs.append(coord[0])
+            lats.append(coord[1])
+          }
         }
+      case .walking:
+        break
       }
-
-      lats.append(contentsOf: [pendingOriginLatitude, pendingDestinationLatitude])
-      lngs.append(contentsOf: [pendingOriginLongitude, pendingDestinationLongitude])
 
       guard let minLat = lats.min(),
             let maxLat = lats.max(),
@@ -235,9 +358,11 @@ public struct KakaoTransitMapView: UIViewRepresentable {
       mapView.moveCamera(CameraUpdate.make(area: areaRect))
     }
 
+    // MARK: - Helpers
+
     private func hexColor(_ hex: String?) -> UIColor {
       guard let hex = hex, hex.count >= 7 else {
-        return TransitMapColors.indigo
+        return MapColors.indigo
       }
       var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
       hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
@@ -284,7 +409,7 @@ public struct KakaoTransitMapView: UIViewRepresentable {
     public func addViewSucceeded(_ viewName: String, viewInfoName: String) {
       guard let mapView = mapController?.getView("mapview") as? KakaoMap else { return }
 
-      addTransitRoutes(mapView: mapView)
+      addRoute(mapView: mapView)
       addMarkers(mapView: mapView)
       fitCamera(mapView: mapView)
     }
