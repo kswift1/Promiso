@@ -688,7 +688,7 @@ extension Settings {
           if let message = store.couponResultMessage {
             Text(message)
               .font(.subheadline)
-              .foregroundStyle(store.couponResultIsSuccess ? Color.green : Color.red)
+              .foregroundStyle(store.couponResultIsSuccess ? Color.pmsuccess.n500 : Color.pmerror.n500)
               .multilineTextAlignment(.center)
               .padding(.horizontal, 20)
           }

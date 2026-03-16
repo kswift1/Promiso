@@ -151,10 +151,10 @@ export function CouponsPage() {
                 label="쿠폰 유효기한"
                 type="datetime-local"
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
                 InputLabelProps={{shrink: true}}
                 size="small"
                 fullWidth
+                disabled
                 helperText="기간 선택 시 자동 설정됨"
               />
             </Stack>

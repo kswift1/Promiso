@@ -70,7 +70,12 @@ extension DependencyValues {
 
 extension CouponClient: DependencyKey {
   public static let liveValue: CouponClient = {
-    let iso8601Formatter = ISO8601DateFormatter()
+    let iso8601Formatter: ISO8601DateFormatter = {
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+      return formatter
+    }()
+    let iso8601FormatterFallback = ISO8601DateFormatter()
 
     return Self(
       redeemCoupon: { code in
@@ -82,7 +87,7 @@ extension CouponClient: DependencyKey {
           guard let data = result.data as? [String: Any],
                 let durationDays = data["durationDays"] as? Int,
                 let expiresAtString = data["expiresAt"] as? String,
-                let expiresAt = iso8601Formatter.date(from: expiresAtString) else {
+                let expiresAt = iso8601Formatter.date(from: expiresAtString) ?? iso8601FormatterFallback.date(from: expiresAtString) else {
             throw CouponError.unknown("응답 형식이 올바르지 않습니다")
           }
 
