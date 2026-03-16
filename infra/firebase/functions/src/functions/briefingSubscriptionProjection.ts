@@ -10,10 +10,8 @@ import {
   BRIEFING_SUBSCRIPTIONS_COLLECTION,
   buildBriefingSubscriptionProjection,
 } from "../utils/briefingScheduler";
-import {isEntitlementOverrideActive} from "../utils/helpers";
-
 /**
- * 사용자의 현재 settings/subscription/override 상태를 projection으로 동기화한다.
+ * 사용자의 현재 settings/entitlements 상태를 projection으로 동기화한다.
  * @param {string} uid 사용자 ID.
  * @return {Promise<void>}
  */
@@ -26,18 +24,21 @@ export async function reconcileBriefingSubscription(
       .collection(BRIEFING_SUBSCRIPTIONS_COLLECTION)
       .doc(uid);
 
-    const [settingsDoc, subscriptionDoc, overrideDoc] = await Promise.all([
+    const [settingsDoc, entitlementDoc] = await Promise.all([
       db.collection("users").doc(uid)
         .collection("settings").doc("main")
         .get(),
-      db.collection("subscriptions").doc(uid).get(),
-      db.collection("entitlementOverrides").doc(uid).get(),
+      db.collection("entitlements").doc(uid).get(),
     ]);
+
+    const entitlementData = entitlementDoc.data();
+    const subscriptionStatus = entitlementData?.subscriptionStatus ?? null;
+    const overrideActive = entitlementData?.overrideActive === true;
 
     const projection = buildBriefingSubscriptionProjection({
       settingsData: settingsDoc.data() ?? null,
-      subscriptionStatus: subscriptionDoc.data()?.status,
-      overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
+      subscriptionStatus,
+      overrideActive,
       now: new Date(),
     });
 
@@ -84,23 +85,10 @@ export const onUserSettingsSyncBriefingSubscription = onDocumentWritten(
 );
 
 /**
- * subscriptions/{uid} 변경 시 브리핑 projection을 재계산한다.
+ * entitlements/{uid} 변경 시 브리핑 projection을 재계산한다.
  */
-export const onSubscriptionSyncBriefingSubscription = onDocumentWritten(
-  {document: "subscriptions/{uid}", region: REGION},
-  async (event) => {
-    const uid = event.params.uid;
-    if (!uid) return;
-
-    await reconcileBriefingSubscription(uid);
-  },
-);
-
-/**
- * entitlementOverrides/{uid} 변경 시 브리핑 projection을 재계산한다.
- */
-export const onEntitlementOverrideSyncBriefingSubscription = onDocumentWritten(
-  {document: "entitlementOverrides/{uid}", region: REGION},
+export const onEntitlementSyncBriefingSubscription = onDocumentWritten(
+  {document: "entitlements/{uid}", region: REGION},
   async (event) => {
     const uid = event.params.uid;
     if (!uid) return;

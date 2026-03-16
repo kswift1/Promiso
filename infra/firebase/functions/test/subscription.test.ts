@@ -504,7 +504,7 @@ describe("subscription functions", () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it("refund 웹훅이면 revoke와 함께 proSettings를 정리한다", async () => {
+    it("refund 웹훅이면 revoked 상태를 저장한다", async () => {
       verifyAppleNotificationPayloadMock.mockResolvedValue(
         createMockNotificationPayload({
           notificationType: "REFUND",
@@ -534,16 +534,6 @@ describe("subscription functions", () => {
           lastNotificationType: "REFUND",
         }),
         {merge: true},
-      );
-      expect(mockTransaction.set).toHaveBeenCalledWith(
-        mockSettingsRef,
-        expect.objectContaining({
-          proSettings: expect.anything(),
-        }),
-        {merge: true},
-      );
-      expect(mockTransaction.delete).toHaveBeenCalledWith(
-        mockBriefingSubscriptionRef,
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({success: true});

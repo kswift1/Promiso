@@ -185,9 +185,9 @@ extension SubscriptionClient: DependencyKey {
         return AsyncStream { continuation in
           let task = Task {
             await withTaskGroup(of: Void.self) { group in
-              // Firestore subscriptions/{userId} listener (서버 상태는 항상 반영)
+              // Firestore entitlements/{userId} listener (서버 합산 Pro 상태)
               group.addTask {
-                for await status in remoteDataSource.subscribeToStatus() {
+                for await status in remoteDataSource.subscribeToEntitlement() {
                   let merged = await merger.updateServer(status)
                   continuation.yield(merged)
                 }
@@ -197,14 +197,6 @@ extension SubscriptionClient: DependencyKey {
                 for await status in dataSource.statusStream() {
                   if let filtered = await merger.filterStoreKit(status) {
                     continuation.yield(filtered)
-                  }
-                }
-              }
-              // entitlementOverrides/{userId} listener (쿠폰/관리자 부여)
-              group.addTask {
-                for await status in remoteDataSource.subscribeToOverrideStatus() {
-                  if status.isActive {
-                    continuation.yield(status)
                   }
                 }
               }

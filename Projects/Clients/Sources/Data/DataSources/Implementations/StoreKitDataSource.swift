@@ -345,14 +345,46 @@ final class SubscriptionRemoteDataSource: Sendable {
       return .none
     }
 
-    let docRef = db.collection("subscriptions").document(currentUserId)
-    let snapshot = try await docRef.getDocument()
+    // 1. entitlements read model 먼저 시도
+    let entitlementRef = db.collection("entitlements").document(currentUserId)
+    let entitlementSnapshot = try await entitlementRef.getDocument()
 
-    guard let data = snapshot.data() else {
+    if let data = entitlementSnapshot.data() {
+      return Self.parseEntitlement(from: data)
+    }
+
+    // 2. Fallback: entitlements 문서 미존재 시 기존 경로 (subscriptions + entitlementOverrides)
+    let overrideRef = db.collection("entitlementOverrides").document(currentUserId)
+    let subscriptionRef = db.collection("subscriptions").document(currentUserId)
+
+    async let overrideSnap = overrideRef.getDocument()
+    async let subscriptionSnap = subscriptionRef.getDocument()
+
+    // override 먼저 확인
+    if let overrideData = try await overrideSnap.data(),
+       let isActive = overrideData["isActive"] as? Bool,
+       isActive {
+      let expiresAtString = overrideData["expiresAt"] as? String
+      let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
+
+      if let definiteExpiresAt = expiresAt {
+        // 만료일이 있는 경우, 현재 시각보다 미래인지 확인
+        if definiteExpiresAt >= Date() {
+          return .subscribed(productType: nil, expirationDate: definiteExpiresAt)
+        }
+        // 만료된 경우, 아래의 subscription fallback으로 넘어감
+      } else {
+        // 만료일이 없는 override는 영구적인 것으로 간주
+        return .subscribed(productType: nil, expirationDate: nil)
+      }
+    }
+
+    // subscriptions fallback
+    guard let subData = try await subscriptionSnap.data() else {
       return .none
     }
 
-    return Self.parseStatus(from: data)
+    return Self.parseStatus(from: subData)
   }
 
   /// subscriptions/{userId} 문서의 실시간 변경 스트림
@@ -422,6 +454,37 @@ final class SubscriptionRemoteDataSource: Sendable {
     }
   }
 
+  /// entitlements/{userId} 문서의 실시간 변경 스트림
+  /// 서버에서 구독 + 오버라이드를 합산한 단일 Pro 판정 결과
+  func subscribeToEntitlement() -> AsyncStream<SubscriptionStatus> {
+    AsyncStream { continuation in
+      guard let currentUserId = Auth.auth().currentUser?.uid else {
+        continuation.finish()
+        return
+      }
+
+      let docRef = db.collection("entitlements").document(currentUserId)
+
+      let listener = docRef.addSnapshotListener { snapshot, error in
+        if error != nil { return }
+
+        guard let snapshot = snapshot else { return }
+
+        // 문서가 아직 생성되지 않은 기존 유저 — yield하지 않고 대기
+        guard snapshot.exists else { return }
+
+        guard let data = snapshot.data() else { return }
+
+        let status = Self.parseEntitlement(from: data)
+        continuation.yield(status)
+      }
+
+      continuation.onTermination = { _ in
+        listener.remove()
+      }
+    }
+  }
+
   private static let iso8601Formatter: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -433,6 +496,48 @@ final class SubscriptionRemoteDataSource: Sendable {
   private static func parseISO8601(_ string: String) -> Date? {
     iso8601Formatter.date(from: string)
       ?? iso8601FormatterFallback.date(from: string)
+  }
+
+  /// entitlements/{uid} 문서를 SubscriptionStatus로 변환
+  /// hasPro == false인 경우에도 expired/revoked를 정확히 반환
+  private static func parseEntitlement(from data: [String: Any]) -> SubscriptionStatus {
+    let hasPro = data["hasPro"] as? Bool ?? false
+    let source = data["source"] as? String ?? "none"
+    let rawStatus = data["subscriptionStatus"] as? String
+    let productIdStr = data["productId"] as? String
+    let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
+    let expirationDateStr = data["expirationDate"] as? String
+    let expirationDate = expirationDateStr.flatMap { parseISO8601($0) }
+
+    if hasPro {
+      switch source {
+      case "subscription":
+        switch rawStatus {
+        case "lifetime":
+          return .lifetime
+        case "gracePeriod":
+          return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
+        default:
+          return .subscribed(productType: productType, expirationDate: expirationDate)
+        }
+      case "override":
+        let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
+        let overrideExpiresAt = overrideExpiresAtStr.flatMap { parseISO8601($0) }
+        return .subscribed(productType: nil, expirationDate: overrideExpiresAt)
+      default:
+        return .subscribed(productType: productType, expirationDate: expirationDate)
+      }
+    }
+
+    // hasPro == false: expired/revoked 구분 보존
+    switch rawStatus {
+    case "expired":
+      return .expired(expirationDate: expirationDate ?? .distantPast)
+    case "revoked":
+      return .revoked
+    default:
+      return .none
+    }
   }
 
   private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
