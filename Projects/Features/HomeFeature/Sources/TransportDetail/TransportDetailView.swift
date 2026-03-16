@@ -15,6 +15,8 @@ extension TransportDetail {
 
     @State private var sheetHeight: CGFloat = RootView.collapsedHeight
     @State private var sheetBaseHeight: CGFloat = RootView.collapsedHeight
+    @State private var bottomInset: CGFloat = 0
+    @Environment(\.dismiss) private var dismiss
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -57,8 +59,24 @@ extension TransportDetail {
         bottomPanel
       }
       .ignoresSafeArea(edges: .bottom)
+      .onGeometryChange(for: CGFloat.self) { proxy in
+        proxy.safeAreaInsets.bottom
+      } action: { value in
+        if bottomInset == 0 { bottomInset = value }
+      }
       .navigationTitle(LocalizedStrings.Home.transportTitle)
       .navigationBarTitleDisplayMode(.inline)
+      .navigationBarBackButtonHidden()
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button {
+            dismiss()
+          } label: {
+            Image(systemName: "chevron.left")
+              .font(.system(size: 16, weight: .semibold))
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -174,12 +192,12 @@ extension TransportDetail {
             openMapButton
 
             alertButton
-              .padding(.bottom, safeAreaBottomInset + 16)
+              .padding(.bottom, bottomInset + 16)
           }
           .padding(.horizontal, 20)
         }
       }
-      .frame(height: sheetHeight + safeAreaBottomInset)
+      .frame(height: sheetHeight + bottomInset)
       .frame(maxWidth: .infinity)
       .background(
         UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
@@ -189,11 +207,6 @@ extension TransportDetail {
       .animation(.spring(response: 0.24, dampingFraction: 0.88), value: store.selectedSegment)
     }
 
-    private var safeAreaBottomInset: CGFloat {
-      UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .first?.windows.first?.safeAreaInsets.bottom ?? 0
-    }
 
     // MARK: - Bottom Info Content
 
