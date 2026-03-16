@@ -46,7 +46,9 @@ export interface SubPathInfo {
     name?: string;
     busNo?: string;
     subwayCode?: number;
-    /** 노선 색상 (Hex, 예: "#0052A4") */
+    /** 버스 종류 코드 */
+    type?: number;
+    /** 노선 색상 (Hex) */
     busColor?: string;
   }[];
 }
@@ -178,6 +180,7 @@ async function fetchTransitRoute(
           name: lane.name as string | undefined,
           busNo: lane.busNo as string | undefined,
           subwayCode: lane.subwayCode as number | undefined,
+          type: lane.type as number | undefined,
           busColor: lane.busColor as string | undefined,
         }));
 

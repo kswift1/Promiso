@@ -124,13 +124,20 @@ public struct TransportationResult: Equatable, Sendable {
     public let name: String?          // 지하철 노선명
     public let busNo: String?         // 버스번호
     public let subwayCode: Int?       // 지하철 호선
-    public let busColor: String?      // 노선 색상 (Hex)
+    public let busColor: String?      // 노선 색상 (Hex) — ODsay API에서 실제로 내려오지 않음
+    public let busType: Int?          // 버스 종류 코드 (1=일반, 2=좌석, 3=마을, 4=직행좌석, 5=공항, 6=간선급행, 10=외곽, 11=간선, 13=순환, 14=광역, 15=급행)
 
-    public init(name: String?, busNo: String?, subwayCode: Int?, busColor: String? = nil) {
+    private enum CodingKeys: String, CodingKey {
+      case name, busNo, subwayCode, busColor
+      case busType = "type"
+    }
+
+    public init(name: String?, busNo: String?, subwayCode: Int?, busColor: String? = nil, busType: Int? = nil) {
       self.name = name
       self.busNo = busNo
       self.subwayCode = subwayCode
       self.busColor = busColor
+      self.busType = busType
     }
   }
 
@@ -249,7 +256,7 @@ extension TransportationClient: TestDependencyKey {
             subPaths: [
               .init(trafficType: 3, sectionTime: 5, distance: 400, startName: nil, endName: "강남역", stationCount: nil, lanes: []),
               .init(trafficType: 1, sectionTime: 28, distance: 18000, startName: "강남역", endName: "홍대입구역", stationCount: 6, lanes: [
-                .init(name: "2호선", busNo: nil, subwayCode: 2, busColor: "#33A23D")
+                .init(name: "2호선", busNo: nil, subwayCode: 2, busColor: nil, busType: nil)
               ], startX: 127.0276, startY: 37.4981, endX: 126.9236, endY: 37.5567, way: "합정", passStopCoords: [[127.0276, 37.4981], [126.9824, 37.5340], [126.9236, 37.5567]]),
               .init(trafficType: 3, sectionTime: 7, distance: 550, startName: "홍대입구역", endName: nil, stationCount: nil, lanes: [])
             ]
@@ -263,7 +270,7 @@ extension TransportationClient: TestDependencyKey {
             subPaths: [
               .init(trafficType: 3, sectionTime: 3, distance: 250, startName: nil, endName: "강남역버스정류장", stationCount: nil, lanes: []),
               .init(trafficType: 2, sectionTime: 35, distance: 20000, startName: "강남역버스정류장", endName: "홍대입구버스정류장", stationCount: 8, lanes: [
-                .init(name: nil, busNo: "143", subwayCode: nil, busColor: "#3D5BAB")
+                .init(name: nil, busNo: "143", subwayCode: nil, busColor: nil, busType: 11)
               ], startX: 127.0276, startY: 37.4981, endX: 126.9236, endY: 37.5567, passStopCoords: [[127.0276, 37.4981], [126.9236, 37.5567]]),
               .init(trafficType: 3, sectionTime: 7, distance: 550, startName: "홍대입구버스정류장", endName: nil, stationCount: nil, lanes: [])
             ]

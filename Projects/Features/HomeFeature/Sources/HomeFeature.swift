@@ -1694,7 +1694,13 @@ extension Home {
                   let laneColor: String?
                   if let firstLane = subPath.lanes.first {
                     laneName = firstLane.name ?? firstLane.busNo
-                    laneColor = firstLane.busColor ?? Self.subwayColor(code: firstLane.subwayCode)
+                    if subPath.trafficType == 1 {
+                      laneColor = Self.subwayColor(code: firstLane.subwayCode)
+                    } else if subPath.trafficType == 2 {
+                      laneColor = Self.busColor(type: firstLane.busType)
+                    } else {
+                      laneColor = nil
+                    }
                   } else {
                     laneName = nil
                     laneColor = nil
@@ -2169,6 +2175,29 @@ extension Home {
     }
 
     // MARK: - 지하철 호선 색상
+
+    private static func busColor(type: Int?) -> String? {
+      guard let type else { return nil }
+      switch type {
+      case 1: return "#53B332"   // 일반 (초록)
+      case 2: return "#E60012"   // 좌석 (빨강)
+      case 3: return "#53B332"   // 마을 (초록)
+      case 4: return "#E60012"   // 직행좌석 (빨강)
+      case 5: return "#8B4513"   // 공항
+      case 6: return "#003087"   // 간선급행 (파랑)
+      case 10: return "#53B332"  // 외곽 (초록)
+      case 11: return "#003087"  // 간선 (파랑)
+      case 12: return "#53B332"  // 지선 (초록)
+      case 13: return "#53B332"  // 순환 (초록)
+      case 14: return "#E60012"  // 광역 (빨강)
+      case 15: return "#E60012"  // 급행 (빨강)
+      case 16: return "#F99D1C"  // 경기 일반 (노랑)
+      case 20: return "#003087"  // 인천 간선 (파랑)
+      case 22: return "#E60012"  // 인천 광역 (빨강)
+      case 26: return "#53B332"  // 인천 지선 (초록)
+      default: return "#53B332"  // 기본 초록
+      }
+    }
 
     private static func subwayColor(code: Int?) -> String? {
       guard let code else { return nil }
