@@ -371,6 +371,7 @@ export interface GetAdminDashboardSummaryResponse {
 export interface AdminCoupon {
   code: string;
   durationDays: number;
+  memo: string;
   redeemedBy: string | null;
   redeemedAt: string | null;
   expiresAt: string;
@@ -381,7 +382,7 @@ export interface AdminCoupon {
 export interface CreateCouponRequest {
   code?: string;
   durationDays: 30 | 90;
-  expiresAt?: string;
+  memo?: string;
 }
 
 export interface CreateCouponResponse {

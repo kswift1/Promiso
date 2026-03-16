@@ -55,6 +55,7 @@ export function CouponsPage() {
   const queryClient = useQueryClient();
   const [code, setCode] = useState("");
   const [durationDays, setDurationDays] = useState<30 | 90>(30);
+  const [memo, setMemo] = useState("");
 
   const calcDefaultExpiry = (days: number) => {
     const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -78,6 +79,7 @@ export function CouponsPage() {
       createCoupon({
         code: code.trim() || undefined,
         durationDays,
+        memo: memo.trim() || undefined,
       }),
     onSuccess: (coupon) => {
       setMessage({
@@ -85,6 +87,7 @@ export function CouponsPage() {
         text: `쿠폰이 생성되었습니다: ${coupon.code}`,
       });
       setCode("");
+      setMemo("");
       setExpiresAt(calcDefaultExpiry(durationDays));
       void queryClient.invalidateQueries({queryKey: ["admin-coupons"]});
     },
@@ -155,6 +158,14 @@ export function CouponsPage() {
                 helperText="기간 선택 시 자동 설정됨"
               />
             </Stack>
+            <TextField
+              label="메모"
+              placeholder="쿠폰 용도 등 (선택)"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              fullWidth
+              size="small"
+            />
 
             {message && (
               <Alert severity={message.type}>{message.text}</Alert>
@@ -214,6 +225,7 @@ export function CouponsPage() {
                   <TableRow>
                     <TableCell>코드</TableCell>
                     <TableCell>기간</TableCell>
+                    <TableCell>메모</TableCell>
                     <TableCell>상태</TableCell>
                     <TableCell>사용자</TableCell>
                     <TableCell>사용일</TableCell>
@@ -253,6 +265,7 @@ export function CouponsPage() {
                           </Stack>
                         </TableCell>
                         <TableCell>{coupon.durationDays}일</TableCell>
+                        <TableCell>{coupon.memo || "-"}</TableCell>
                         <TableCell>
                           <StatusChip status={getCouponStatus(coupon)} />
                         </TableCell>

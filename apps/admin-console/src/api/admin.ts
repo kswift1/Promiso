@@ -643,6 +643,7 @@ export async function getAdminAnalyticsSummary(params?: {
 export type AdminCoupon = {
   code: string;
   durationDays: number;
+  memo: string;
   redeemedBy: string | null;
   redeemedAt: string | null;
   expiresAt: string;
@@ -653,7 +654,7 @@ export type AdminCoupon = {
 type CreateCouponRequest = {
   code?: string;
   durationDays: 30 | 90;
-  expiresAt?: string;
+  memo?: string;
 };
 
 type CreateCouponResponse = {
@@ -674,7 +675,7 @@ type GetAdminCouponsResponse = {
 export async function createCoupon(params: {
   code?: string;
   durationDays: 30 | 90;
-  expiresAt?: string;
+  memo?: string;
 }): Promise<AdminCoupon> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");

@@ -2403,6 +2403,7 @@ function toCouponSnapshot(
   return {
     code,
     durationDays: data.durationDays ?? 0,
+    memo: data.memo ?? "",
     redeemedBy: data.redeemedBy ?? null,
     redeemedAt,
     expiresAt,
@@ -2454,8 +2455,11 @@ export const createCoupon = onCall<CreateCouponRequest>(
       Date.now() + durationDays * 24 * 60 * 60 * 1000
     );
 
+    const memo = (request.data.memo ?? "").trim();
+
     const couponData = {
       durationDays,
+      memo,
       redeemedBy: null,
       redeemedAt: null,
       expiresAt: expiresAt.toISOString(),
@@ -2478,6 +2482,7 @@ export const createCoupon = onCall<CreateCouponRequest>(
       coupon: {
         code,
         durationDays,
+        memo,
         redeemedBy: null,
         redeemedAt: null,
         expiresAt: expiresAt.toISOString(),
