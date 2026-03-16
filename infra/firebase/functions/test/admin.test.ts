@@ -160,8 +160,8 @@ describe("admin functions", () => {
 
     const mockFirestore = {
       collection: jest.fn((name: string) => {
-        if (name === "adminUsers") {
-          return {
+        const adminSubcollections: Record<string, () => any> = {
+          "users": () => ({
             doc: jest.fn((id: string) => ({
               get: jest.fn().mockResolvedValue(
                 createMockDocument(id, adminUsersData)
@@ -179,6 +179,224 @@ describe("admin functions", () => {
                 createMockDocument(id, adminUsersData)
               ),
             }),
+          }),
+          "auditLogs": () => {
+            const buildAuditLogDocs = (
+              filters: Array<{field: string; operator: string; value: unknown}> = [],
+              limit?: number,
+            ) => {
+              let docs = auditLogAdds
+                .map((data, index) => ({
+                  id: `log-${index + 1}`,
+                  data: () => data,
+                }))
+                .reverse()
+                .filter((doc) =>
+                  filters.every(({field, operator, value}) => {
+                    const data = doc.data();
+
+                    if (operator === "==") {
+                      return data[field] === value;
+                    }
+
+                    return false;
+                  })
+                );
+
+              if (typeof limit === "number") {
+                docs = docs.slice(0, limit);
+              }
+
+              return docs;
+            };
+
+            const createAuditLogQuery = (
+              filters: Array<{field: string; operator: string; value: unknown}> = [],
+              limit?: number,
+            ) => ({
+              where: jest.fn((field: string, operator: string, value: unknown) => {
+                adminAuditLogQueryCalls.push({field, operator, value});
+                return createAuditLogQuery(
+                  [...filters, {field, operator, value}],
+                  limit
+                );
+              }),
+              orderBy: jest.fn(() => createAuditLogQuery(filters, limit)),
+              limit: jest.fn((nextLimit: number) =>
+                createAuditLogQuery(filters, nextLimit)
+              ),
+              get: jest.fn().mockResolvedValue({
+                docs: buildAuditLogDocs(filters, limit),
+              }),
+            });
+
+            return {
+              add: jest.fn(async (data: Record<string, unknown>) => {
+                auditLogAdds.push(data);
+                return {id: `log-${auditLogAdds.length}`};
+              }),
+              get: jest.fn().mockResolvedValue({
+                docs: auditLogAdds.map((data, index) => ({
+                  id: `log-${index + 1}`,
+                  data: () => data,
+                })),
+              }),
+              where: jest.fn((field: string, operator: string, value: unknown) => {
+                adminAuditLogQueryCalls.push({field, operator, value});
+                return createAuditLogQuery([{field, operator, value}]);
+              }),
+              orderBy: jest.fn(() => createAuditLogQuery()),
+            };
+          },
+          "pushJobs": () => {
+            const toComparableValue = (value: unknown) => {
+              if (
+                value &&
+                typeof value === "object" &&
+                "toDate" in value &&
+                typeof (value as {toDate?: () => Date}).toDate === "function"
+              ) {
+                return (value as {toDate: () => Date}).toDate().toISOString();
+              }
+
+              return value;
+            };
+
+            const buildAdminPushJobDocs = (
+              filters: Array<{field: string; operator: string; value: unknown}> = [],
+              orderField?: string,
+              orderDirection: "asc" | "desc" = "asc",
+            ) => {
+              let docs = adminPushJobDocs
+                .map((data, index) => ({
+                  id: `job-${index + 1}`,
+                  ref: {
+                    set: jest.fn(async (nextData: Record<string, unknown>) => {
+                      adminPushJobDocs[index] = {
+                        ...adminPushJobDocs[index],
+                        ...nextData,
+                      };
+                    }),
+                  },
+                  data: () => data,
+                }))
+                .filter((doc) =>
+                  filters.every(({field, operator, value}) => {
+                    const data = doc.data();
+                    const fieldValue = data[field];
+
+                    if (operator === "==") {
+                      return fieldValue === value;
+                    }
+
+                    if (operator === "<=") {
+                      return (
+                        typeof fieldValue === "string" &&
+                        typeof value === "string" &&
+                        fieldValue <= value
+                      );
+                    }
+
+                    return false;
+                  })
+                );
+
+              if (orderField) {
+                docs = [...docs].sort((left, right) => {
+                  const leftValue = toComparableValue(left.data()[orderField]);
+                  const rightValue = toComparableValue(right.data()[orderField]);
+
+                  if (leftValue === rightValue) {
+                    return 0;
+                  }
+
+                  if (orderDirection === "desc") {
+                    return leftValue > rightValue ? -1 : 1;
+                  }
+
+                  return leftValue < rightValue ? -1 : 1;
+                });
+              }
+
+              return docs;
+            };
+
+            const createAdminPushJobQuery = (
+              filters: Array<{field: string; operator: string; value: unknown}> = [],
+              orderField?: string,
+              orderDirection: "asc" | "desc" = "asc",
+            ) => ({
+              where: jest.fn((field: string, operator: string, value: unknown) => {
+                adminPushJobQueryCalls.push({field, operator, value});
+                return createAdminPushJobQuery(
+                  [...filters, {field, operator, value}],
+                  orderField,
+                  orderDirection
+                );
+              }),
+              orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+                createAdminPushJobQuery(filters, field, direction)
+              ),
+              get: jest.fn().mockResolvedValue({
+                docs: buildAdminPushJobDocs(filters, orderField, orderDirection),
+              }),
+            });
+
+            return {
+              doc: jest.fn((id: string) => {
+                const index = Number(id.replace("job-", "")) - 1;
+
+                return {
+                  get: jest.fn().mockResolvedValue({
+                    id,
+                    exists: index >= 0 && Boolean(adminPushJobDocs[index]),
+                    data: () => adminPushJobDocs[index],
+                  }),
+                  set: jest.fn(async (nextData: Record<string, unknown>) => {
+                    const previous = adminPushJobDocs[index] ?? {};
+                    adminPushJobDocs[index] = {
+                      ...previous,
+                      ...nextData,
+                    };
+                  }),
+                };
+              }),
+              add: jest.fn(async (data: Record<string, unknown>) => {
+                adminPushJobDocs.push(data);
+                const jobId = `job-${adminPushJobDocs.length}`;
+                return {
+                  id: jobId,
+                  set: jest.fn(async (nextData: Record<string, unknown>) => {
+                    adminPushJobDocs[adminPushJobDocs.length - 1] = {
+                      ...adminPushJobDocs[adminPushJobDocs.length - 1],
+                      ...nextData,
+                    };
+                  }),
+                };
+              }),
+              get: jest.fn().mockResolvedValue({
+                docs: buildAdminPushJobDocs(),
+              }),
+              where: jest.fn((field: string, operator: string, value: unknown) => {
+                adminPushJobQueryCalls.push({field, operator, value});
+                return createAdminPushJobQuery([{field, operator, value}]);
+              }),
+              orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
+                createAdminPushJobQuery([], field, direction)
+              ),
+            };
+          },
+        };
+
+        if (name === "admin") {
+          return {
+            doc: jest.fn((_id: string) => ({
+              collection: jest.fn((subName: string) => {
+                const handler = adminSubcollections[subName];
+                if (handler) return handler();
+                return {};
+              }),
+            })),
           };
         }
 
@@ -240,214 +458,6 @@ describe("admin functions", () => {
                 createMockDocument(id, overrideData)
               ),
             }),
-          };
-        }
-
-        if (name === "adminAuditLogs") {
-          const buildAuditLogDocs = (
-            filters: Array<{field: string; operator: string; value: unknown}> = [],
-            limit?: number,
-          ) => {
-            let docs = auditLogAdds
-              .map((data, index) => ({
-                id: `log-${index + 1}`,
-                data: () => data,
-              }))
-              .reverse()
-              .filter((doc) =>
-                filters.every(({field, operator, value}) => {
-                  const data = doc.data();
-
-                  if (operator === "==") {
-                    return data[field] === value;
-                  }
-
-                  return false;
-                })
-              );
-
-            if (typeof limit === "number") {
-              docs = docs.slice(0, limit);
-            }
-
-            return docs;
-          };
-
-          const createAuditLogQuery = (
-            filters: Array<{field: string; operator: string; value: unknown}> = [],
-            limit?: number,
-          ) => ({
-            where: jest.fn((field: string, operator: string, value: unknown) => {
-              adminAuditLogQueryCalls.push({field, operator, value});
-              return createAuditLogQuery(
-                [...filters, {field, operator, value}],
-                limit
-              );
-            }),
-            orderBy: jest.fn(() => createAuditLogQuery(filters, limit)),
-            limit: jest.fn((nextLimit: number) =>
-              createAuditLogQuery(filters, nextLimit)
-            ),
-            get: jest.fn().mockResolvedValue({
-              docs: buildAuditLogDocs(filters, limit),
-            }),
-          });
-
-          return {
-            add: jest.fn(async (data: Record<string, unknown>) => {
-              auditLogAdds.push(data);
-              return {id: `log-${auditLogAdds.length}`};
-            }),
-            get: jest.fn().mockResolvedValue({
-              docs: auditLogAdds.map((data, index) => ({
-                id: `log-${index + 1}`,
-                data: () => data,
-              })),
-            }),
-            where: jest.fn((field: string, operator: string, value: unknown) => {
-              adminAuditLogQueryCalls.push({field, operator, value});
-              return createAuditLogQuery([{field, operator, value}]);
-            }),
-            orderBy: jest.fn(() => createAuditLogQuery()),
-          };
-        }
-
-        if (name === "adminPushJobs") {
-          const toComparableValue = (value: unknown) => {
-            if (
-              value &&
-              typeof value === "object" &&
-              "toDate" in value &&
-              typeof (value as {toDate?: () => Date}).toDate === "function"
-            ) {
-              return (value as {toDate: () => Date}).toDate().toISOString();
-            }
-
-            return value;
-          };
-
-          const buildAdminPushJobDocs = (
-            filters: Array<{field: string; operator: string; value: unknown}> = [],
-            orderField?: string,
-            orderDirection: "asc" | "desc" = "asc",
-          ) => {
-            let docs = adminPushJobDocs
-              .map((data, index) => ({
-                id: `job-${index + 1}`,
-                ref: {
-                  set: jest.fn(async (nextData: Record<string, unknown>) => {
-                    adminPushJobDocs[index] = {
-                      ...adminPushJobDocs[index],
-                      ...nextData,
-                    };
-                  }),
-                },
-                data: () => data,
-              }))
-              .filter((doc) =>
-                filters.every(({field, operator, value}) => {
-                  const data = doc.data();
-                  const fieldValue = data[field];
-
-                  if (operator === "==") {
-                    return fieldValue === value;
-                  }
-
-                  if (operator === "<=") {
-                    return (
-                      typeof fieldValue === "string" &&
-                      typeof value === "string" &&
-                      fieldValue <= value
-                    );
-                  }
-
-                  return false;
-                })
-              );
-
-            if (orderField) {
-              docs = [...docs].sort((left, right) => {
-                const leftValue = toComparableValue(left.data()[orderField]);
-                const rightValue = toComparableValue(right.data()[orderField]);
-
-                if (leftValue === rightValue) {
-                  return 0;
-                }
-
-                if (orderDirection === "desc") {
-                  return leftValue > rightValue ? -1 : 1;
-                }
-
-                return leftValue < rightValue ? -1 : 1;
-              });
-            }
-
-            return docs;
-          };
-
-          const createAdminPushJobQuery = (
-            filters: Array<{field: string; operator: string; value: unknown}> = [],
-            orderField?: string,
-            orderDirection: "asc" | "desc" = "asc",
-          ) => ({
-            where: jest.fn((field: string, operator: string, value: unknown) => {
-              adminPushJobQueryCalls.push({field, operator, value});
-              return createAdminPushJobQuery(
-                [...filters, {field, operator, value}],
-                orderField,
-                orderDirection
-              );
-            }),
-            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
-              createAdminPushJobQuery(filters, field, direction)
-            ),
-            get: jest.fn().mockResolvedValue({
-              docs: buildAdminPushJobDocs(filters, orderField, orderDirection),
-            }),
-          });
-
-          return {
-            doc: jest.fn((id: string) => {
-              const index = Number(id.replace("job-", "")) - 1;
-
-              return {
-                get: jest.fn().mockResolvedValue({
-                  id,
-                  exists: index >= 0 && Boolean(adminPushJobDocs[index]),
-                  data: () => adminPushJobDocs[index],
-                }),
-                set: jest.fn(async (nextData: Record<string, unknown>) => {
-                  const previous = adminPushJobDocs[index] ?? {};
-                  adminPushJobDocs[index] = {
-                    ...previous,
-                    ...nextData,
-                  };
-                }),
-              };
-            }),
-            add: jest.fn(async (data: Record<string, unknown>) => {
-              adminPushJobDocs.push(data);
-              const jobId = `job-${adminPushJobDocs.length}`;
-              return {
-                id: jobId,
-                set: jest.fn(async (nextData: Record<string, unknown>) => {
-                  adminPushJobDocs[adminPushJobDocs.length - 1] = {
-                    ...adminPushJobDocs[adminPushJobDocs.length - 1],
-                    ...nextData,
-                  };
-                }),
-              };
-            }),
-            get: jest.fn().mockResolvedValue({
-              docs: buildAdminPushJobDocs(),
-            }),
-            where: jest.fn((field: string, operator: string, value: unknown) => {
-              adminPushJobQueryCalls.push({field, operator, value});
-              return createAdminPushJobQuery([{field, operator, value}]);
-            }),
-            orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
-              createAdminPushJobQuery([], field, direction)
-            ),
           };
         }
 
