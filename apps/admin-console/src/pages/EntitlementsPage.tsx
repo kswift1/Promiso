@@ -46,13 +46,13 @@ export function EntitlementsPage() {
     onSuccess: () => {
       setMessage({
         type: "success",
-        text: "override를 부여했습니다.",
+        text: "Pro를 수동 부여했습니다.",
       });
     },
     onError: () => {
       setMessage({
         type: "error",
-        text: "override 부여에 실패했습니다.",
+        text: "Pro 수동 부여에 실패했습니다.",
       });
     },
   });
@@ -65,13 +65,13 @@ export function EntitlementsPage() {
     onSuccess: () => {
       setMessage({
         type: "success",
-        text: "override를 회수했습니다.",
+        text: "Pro를 수동 회수했습니다.",
       });
     },
     onError: () => {
       setMessage({
         type: "error",
-        text: "override 회수에 실패했습니다.",
+        text: "Pro 수동 회수에 실패했습니다.",
       });
     },
   });
@@ -82,7 +82,7 @@ export function EntitlementsPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
-        <Typography variant="h4">override 관리</Typography>
+        <Typography variant="h4">Pro 수동 변경</Typography>
         <Typography color="text.secondary">
           Apple 구독 상태와 운영자 수동 보정을 분리해서 다루는 화면입니다.
         </Typography>
@@ -129,7 +129,7 @@ export function EntitlementsPage() {
                   grantMutation.mutate();
                 }}
               >
-                override 부여
+                Pro 수동 부여
               </Button>
               <Button
                 variant="outlined"
@@ -140,7 +140,7 @@ export function EntitlementsPage() {
                   revokeMutation.mutate();
                 }}
               >
-                override 회수
+                Pro 수동 회수
               </Button>
             </Stack>
           </Stack>

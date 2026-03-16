@@ -62,7 +62,7 @@ export function UserTimelinePage() {
             to={`/entitlements?userId=${userId}`}
             variant="contained"
           >
-            override 관리
+            Pro 수동 변경
           </Button>
         </Stack>
       </Stack>
@@ -126,8 +126,8 @@ export function UserTimelinePage() {
                       "default"}
                     label={
                       timelineQuery.data.summary.overrideActive ?
-                        "override 활성" :
-                        "override 없음"
+                        "수동 변경 활성" :
+                        "수동 변경 없음"
                     }
                   />
                   <Chip label={`그룹 ${timelineQuery.data.summary.groupCount}개`} />
@@ -167,7 +167,7 @@ export function UserTimelinePage() {
               <Card elevation={0} sx={{height: "100%"}}>
                 <CardContent>
                   <Stack spacing={1.5}>
-                    <Typography variant="h6">override 상세</Typography>
+                    <Typography variant="h6">Pro 수동 변경 상세</Typography>
                     <Typography variant="body2" color="text.secondary">
                       활성 {timelineQuery.data.override?.isActive ? "예" : "아니오"}
                     </Typography>
