@@ -116,7 +116,7 @@ struct UpcomingSection: View {
         Button {
           onCreateRecurringEventTap()
         } label: {
-          Text("추가")
+          Text(LocalizedStrings.Common.add)
             .font(.pmCaption)
             .foregroundStyle(Color.pmindigo.n500)
             .padding(4)

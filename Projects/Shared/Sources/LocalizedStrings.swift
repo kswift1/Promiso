@@ -46,6 +46,7 @@ public enum LocalizedStrings {
     public static var change: String { String(localized: "common.change", bundle: bundle) }
     public static var laterAction: String { String(localized: "common.later", bundle: bundle) }
     public static var all: String { String(localized: "common.all", bundle: bundle) }
+    public static var add: String { String(localized: "common.add", bundle: bundle) }
     public static var today: String { String(localized: "common.today", bundle: bundle) }
     public static var photo: String { String(localized: "common.photo", bundle: bundle) }
     public static var settings: String { String(localized: "common.settings", bundle: bundle) }
