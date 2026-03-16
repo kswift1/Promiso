@@ -833,7 +833,9 @@ export async function generateBriefingInternal(params: {
 
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
-    const [slots, userGroups, settingsDoc, subscriptionDoc, overrideDoc] = await Promise.all([
+    const [
+      slots, userGroups, settingsDoc, subscriptionDoc, overrideDoc,
+    ] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
       admin.firestore()
@@ -1019,7 +1021,8 @@ export async function generateBriefingInternal(params: {
 
     // 9. 프롬프트 조립
     const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
-    const effectiveLanguage = SUPPORTED_LANGUAGES.includes(language as any) ? language : "ko";
+    const effectiveLanguage = SUPPORTED_LANGUAGES
+      .includes(language as "ko" | "en") ? language : "ko";
     const prompt = buildPrompt(
       effectiveLanguage === "ko" ? "한국어" : effectiveLanguage,
       dateTimeStr,

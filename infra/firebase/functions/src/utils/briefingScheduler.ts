@@ -123,17 +123,18 @@ function getConfiguredBriefing(
 
   const SUPPORTED_LANGUAGES = ["ko", "en"];
   const rawLanguage = briefing.language || "ko";
-  const language = SUPPORTED_LANGUAGES.includes(rawLanguage) ? rawLanguage : "ko";
+  const language = SUPPORTED_LANGUAGES.includes(rawLanguage) ?
+    rawLanguage : "ko";
 
   const defaultLocation = briefing.defaultLocation?.name &&
     briefing.defaultLocation?.latitude != null &&
-    briefing.defaultLocation?.longitude != null
-    ? {
+    briefing.defaultLocation?.longitude != null ?
+    {
       title: briefing.defaultLocation.name,
       latitude: briefing.defaultLocation.latitude,
       longitude: briefing.defaultLocation.longitude,
-    }
-    : null;
+    } :
+    null;
 
   return {
     notificationHour: briefing.notificationHour,
@@ -310,13 +311,13 @@ function getConfiguredProjection(
 
   const defaultLocation = data.defaultLocation?.title &&
     data.defaultLocation?.latitude != null &&
-    data.defaultLocation?.longitude != null
-    ? {
+    data.defaultLocation?.longitude != null ?
+    {
       title: data.defaultLocation.title,
       latitude: data.defaultLocation.latitude,
       longitude: data.defaultLocation.longitude,
-    }
-    : null;
+    } :
+    null;
 
   return {
     notificationHour: data.notificationHour,
