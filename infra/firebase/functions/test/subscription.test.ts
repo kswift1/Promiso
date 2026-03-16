@@ -14,12 +14,6 @@ import {
   afterEach,
 } from "@jest/globals";
 
-jest.mock("firebase-functions/params", () => ({
-  defineSecret: jest.fn((_name: string) => ({
-    value: () => "test-secret-value",
-  })),
-}));
-
 jest.mock("../src/utils/appstore", () => ({
   verifyAppleTransactionJWS: jest.fn(),
   verifyAppleRenewalInfoJWS: jest.fn(),

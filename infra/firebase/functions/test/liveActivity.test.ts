@@ -40,6 +40,9 @@ jest.mock('firebase-functions/params', () => ({
       value: () => secrets[name] || 'test-secret-value',
     };
   }),
+  defineString: jest.fn((name: string, options?: {default?: string}) => ({
+    value: () => options?.default ?? '',
+  })),
 }));
 
 // HTTP/2 mock

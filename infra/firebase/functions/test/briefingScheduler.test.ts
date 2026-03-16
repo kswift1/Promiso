@@ -122,6 +122,7 @@ describe("briefing scheduling helpers", () => {
       language: "ko",
       style: "friendly",
       notificationHour: 8,
+      defaultLocation: null,
     });
   });
 

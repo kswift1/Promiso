@@ -5,13 +5,6 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import * as admin from 'firebase-admin';
 import * as jwt from 'jsonwebtoken';
 
-// Secret mock
-jest.mock('firebase-functions/params', () => ({
-  defineSecret: jest.fn((name: string) => ({
-    value: () => 'test-secret-key',
-  })),
-}));
-
 describe('generateWidgetToken', () => {
   let generateWidgetToken: any;
   let mockFirestore: any;
@@ -63,7 +56,7 @@ describe('generateWidgetToken', () => {
       expect(result.expiresAt).toBeGreaterThan(Date.now() / 1000);
 
       // JWT 검증
-      const decoded = jwt.verify(result.widgetToken, 'test-secret-key') as any;
+      const decoded = jwt.verify(result.widgetToken, 'test-secret-value') as any;
       expect(decoded.sub).toBe('test-user-id');
       expect(decoded.scope).toBe('widget:read');
       expect(decoded.deviceId).toBe('test-device-id');
