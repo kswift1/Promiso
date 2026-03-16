@@ -19633,6 +19633,57 @@
         }
       }
     },
+    "proPlan.transfer.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer to This Account"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 계정으로 가져오기"
+          }
+        }
+      }
+    },
+    "proPlan.transfer.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This subscription is currently active on another account. Transferring it will deactivate Pro on the previous account."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 구독은 다른 계정에서 사용 중입니다. 이 계정으로 가져오면 기존 계정의 Pro가 해제됩니다."
+          }
+        }
+      }
+    },
+    "proPlan.transfer.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer Subscription"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 이전"
+          }
+        }
+      }
+    },
     "proPlan.weather.dateLimitHint": {
       "extractionState": "stale",
       "localizations": {

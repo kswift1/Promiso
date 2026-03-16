@@ -296,6 +296,8 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
       const ownerRef = db.collection("subscriptionOwners")
         .doc(originalTransactionId);
 
+      const forceTransfer = data.forceTransfer ?? false;
+
       const transactionResult = await db.runTransaction(async (transaction) => {
         const [ownerDoc, subscriptionDoc] = await Promise.all([
           transaction.get(ownerRef),
@@ -305,9 +307,30 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
         if (ownerDoc.exists) {
           const existingOwner = ownerDoc.data()?.userId;
           if (existingOwner && existingOwner !== userId) {
-            throw new HttpsError(
-              "already-exists",
-              "이 구독은 다른 계정에 연결되어 있습니다",
+            if (!forceTransfer) {
+              throw new HttpsError(
+                "already-exists",
+                "이 구독은 다른 계정에 연결되어 있습니다",
+              );
+            }
+
+            // 기존 소유자의 구독을 expired로 처리 후 현재 유저에게 이전
+            console.log("🔄 [Subscription] Force transfer initiated", {
+              fromUserId: existingOwner,
+              toUserId: userId,
+              originalTransactionId,
+            });
+
+            const existingOwnerSubscriptionRef = db
+              .collection("subscriptions")
+              .doc(existingOwner);
+            transaction.set(
+              existingOwnerSubscriptionRef,
+              {
+                status: "expired",
+                updatedAt: FieldValue.serverTimestamp(),
+              },
+              {merge: true},
             );
           }
         }

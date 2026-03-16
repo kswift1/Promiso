@@ -89,6 +89,12 @@ extension ProPlan {
       public var onboardingTransports: Set<AvailableTransport> = [.transit, .car]
       /// 온보딩 현재 스텝 (0: 충돌감지, 1: 브리핑, 2: 완료)
       public var onboardingStep: Int = 0
+      /// 구독 이전 확인 얼럿 표시 여부
+      public var showTransferAlert: Bool = false
+      /// 이전 시 사용할 JWS 저장
+      public var pendingTransferJWS: String? = nil
+      /// 이전 시 사용할 productId 저장
+      public var pendingTransferProductId: String? = nil
 
       /// State를 위한 기본 initializer
       public init(
@@ -164,6 +170,10 @@ extension ProPlan {
       case onboardingNextStep
       /// 온보딩 이전 스텝
       case onboardingPreviousStep
+      /// 구독 이전 확인 — "이 계정으로 가져오기" 버튼
+      case transferConfirmed
+      /// 구독 이전 취소
+      case transferCancelled
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -187,6 +197,10 @@ extension ProPlan {
       case proExistingSettingsLoaded(UserSettings)
       /// Pro 기본값 설정 실패
       case proDefaultsFailed
+      /// forceTransfer 검증 결과
+      case transferResponse(Result<SubscriptionStatus, Error>)
+      /// 다른 계정 소유 구독 이전 얼럿 표시 요청 (jwsString, productId 저장)
+      case transferAlertRequested(jws: String, productId: String)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -288,9 +302,14 @@ extension ProPlan {
               do {
                 // 1. StoreKit 구매 + JWS 토큰 획득
                 let result = try await subscriptionClient.purchaseWithReceipt(productId)
-                // 2. 서버에 검증 요청
-                let verifiedStatus = try await subscriptionClient.verifyPurchase(result.jwsString, productId)
-                await send(.internal(.purchaseResponse(.success(verifiedStatus))))
+                do {
+                  // 2. 서버에 검증 요청
+                  let verifiedStatus = try await subscriptionClient.verifyPurchase(result.jwsString, productId, false)
+                  await send(.internal(.purchaseResponse(.success(verifiedStatus))))
+                } catch let subscriptionError as SubscriptionError where subscriptionError == .alreadyOwnedByOther {
+                  // 다른 계정 소유 — 이전 얼럿을 위해 jws/productId 저장
+                  await send(.internal(.transferAlertRequested(jws: result.jwsString, productId: productId)))
+                }
               } catch {
                 await send(.internal(.purchaseResponse(.failure(error))))
               }
@@ -311,9 +330,14 @@ extension ProPlan {
                     throw SubscriptionError.verificationFailed
                   }
 
-                  // 2. 서버에 검증 요청 (Firestore 동기화)
-                  let verifiedStatus = try await subscriptionClient.verifyPurchase(jwsString, productId)
-                  await send(.internal(.restoreResponse(.success(verifiedStatus))))
+                  do {
+                    // 2. 서버에 검증 요청 (Firestore 동기화)
+                    let verifiedStatus = try await subscriptionClient.verifyPurchase(jwsString, productId, false)
+                    await send(.internal(.restoreResponse(.success(verifiedStatus))))
+                  } catch let subscriptionError as SubscriptionError where subscriptionError == .alreadyOwnedByOther {
+                    // 다른 계정 소유 — 이전 얼럿을 위해 jws/productId 저장
+                    await send(.internal(.transferAlertRequested(jws: jwsString, productId: productId)))
+                  }
                 } else {
                   await send(.internal(.restoreResponse(.success(result.localStatus))))
                 }
@@ -398,6 +422,29 @@ extension ProPlan {
               state.onboardingStep -= 1
             }
             return .run { _ in await hapticFeedback.selection() }
+
+          case .transferConfirmed:
+            guard let jwsString = state.pendingTransferJWS,
+                  let productId = state.pendingTransferProductId else {
+              return .none
+            }
+            state.isPurchasing = true
+            state.showTransferAlert = false
+            return .run { [subscriptionClient] send in
+              do {
+                let verifiedStatus = try await subscriptionClient.verifyPurchase(jwsString, productId, true)
+                await send(.internal(.transferResponse(.success(verifiedStatus))))
+              } catch {
+                await send(.internal(.transferResponse(.failure(error))))
+              }
+            }
+
+          case .transferCancelled:
+            state.showTransferAlert = false
+            state.pendingTransferJWS = nil
+            state.pendingTransferProductId = nil
+            state.isPurchasing = false
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -453,10 +500,7 @@ extension ProPlan {
               case .purchasePending:
                 state.errorMessage = LocalizedStrings.Error.subscriptionPurchasePending
                 return .none
-              case .alreadyOwnedByOther:
-                state.errorMessage = subscriptionError.errorDescription
-                return .none
-              case .productNotFound, .verificationFailed, .unknown:
+              case .alreadyOwnedByOther, .productNotFound, .verificationFailed, .unknown:
                 state.errorMessage = subscriptionError.errorDescription ?? LocalizedStrings.ProPlan.purchaseFailed
               }
             } else {
@@ -529,6 +573,47 @@ extension ProPlan {
             state.onboardingTransports = settings.availableTransports
             state.showProOnboarding = true
             return .none
+
+          case .transferAlertRequested(let jws, let productId):
+            state.isPurchasing = false
+            state.pendingTransferJWS = jws
+            state.pendingTransferProductId = productId
+            state.showTransferAlert = true
+            return .none
+
+          case .transferResponse(.success(let status)):
+            state.isPurchasing = false
+            state.pendingTransferJWS = nil
+            state.pendingTransferProductId = nil
+            state.subscriptionStatus = status
+
+            if status.isPro {
+              state.showCelebration = true
+              state.isSettingUpDefaults = true
+              return .concatenate(
+                .run { send in
+                  await hapticFeedback.success()
+                  await send(.delegate(.subscriptionStatusChanged(status)))
+                },
+                prepareProOnboarding()
+              )
+            }
+            return .run { _ in
+              await hapticFeedback.success()
+            }
+
+          case .transferResponse(.failure(let error)):
+            state.isPurchasing = false
+            state.pendingTransferJWS = nil
+            state.pendingTransferProductId = nil
+            if let subscriptionError = error as? SubscriptionError {
+              state.errorMessage = subscriptionError.errorDescription ?? LocalizedStrings.ProPlan.purchaseFailed
+            } else {
+              state.errorMessage = LocalizedStrings.ProPlan.purchaseFailed
+            }
+            return .run { _ in
+              await hapticFeedback.error()
+            }
           }
 
         // MARK: - Delegate Actions
@@ -589,6 +674,24 @@ extension ProPlan {
           if let errorMessage = store.errorMessage {
             Text(errorMessage)
           }
+        }
+      )
+      .alert(
+        LocalizedStrings.ProPlan.transferTitle,
+        isPresented: Binding(
+          get: { store.showTransferAlert },
+          set: { if !$0 { store.send(.view(.transferCancelled)) } }
+        ),
+        actions: {
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {
+            store.send(.view(.transferCancelled))
+          }
+          Button(LocalizedStrings.ProPlan.transferConfirm, role: .destructive) {
+            store.send(.view(.transferConfirmed))
+          }
+        },
+        message: {
+          Text(LocalizedStrings.ProPlan.transferMessage)
         }
       )
       .overlay {
@@ -691,6 +794,12 @@ extension ProPlan.Feature.InternalAction {
       return true
     case (.proExistingSettingsLoaded(let lhs), .proExistingSettingsLoaded(let rhs)):
       return lhs == rhs
+    case (.transferAlertRequested(let lhsJws, let lhsId), .transferAlertRequested(let rhsJws, let rhsId)):
+      return lhsJws == rhsJws && lhsId == rhsId
+    case (.transferResponse(.success(let lhsStatus)), .transferResponse(.success(let rhsStatus))):
+      return lhsStatus == rhsStatus
+    case (.transferResponse(.failure), .transferResponse(.failure)):
+      return true
     default:
       return false
     }

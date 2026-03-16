@@ -1981,6 +1981,9 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%1$lld", with: "\(days)")
         .replacingOccurrences(of: "%2$@", with: description)
     }
+    public static var transferTitle: String { String(localized: "proPlan.transfer.title", bundle: bundle) }
+    public static var transferMessage: String { String(localized: "proPlan.transfer.message", bundle: bundle) }
+    public static var transferConfirm: String { String(localized: "proPlan.transfer.confirm", bundle: bundle) }
   }
 
   // MARK: - RootTab
