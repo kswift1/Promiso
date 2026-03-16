@@ -37,9 +37,7 @@ extension Home {
         .sheet(
           item: $store.scope(state: \.createSchedule, action: \.createSchedule)
         ) { createScheduleStore in
-          NavigationStack {
-            CreateSchedule.RootView(store: createScheduleStore)
-          }
+          CreateSchedule.RootView(store: createScheduleStore)
         }
         .sheet(isPresented: Binding(
           get: { store.departureAlertItem != nil },

@@ -1084,8 +1084,7 @@ extension Home {
             }
 
           case .emptyCreatePersonalEventTapped:
-            let calendar = Calendar.scheduleDisplay
-            let startAt = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+            let startAt = Date().addingTimeInterval(3600)
             state.createPersonalEvent = CreatePersonalEvent.Feature.State(
               event: PersonalEventModel(startAt: startAt)
             )
