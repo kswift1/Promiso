@@ -1490,20 +1490,14 @@ extension Home {
             let currentMonth = state.overlayCalendarMonth.startOfMonth
 
             var effects: [Effect<Action>] = []
-            if let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth {
-              if !state.overlayLoadedMonths.contains(prevMonth) {
-                effects.append(.send(.internal(.fetchOverlaySchedules(month: prevMonth))))
+            for monthOffset in [-1, 1] {
+              guard let adjacentMonth = calendar.date(byAdding: .month, value: monthOffset, to: currentMonth)?.startOfMonth else { continue }
+
+              if !state.overlayLoadedMonths.contains(adjacentMonth) {
+                effects.append(.send(.internal(.fetchOverlaySchedules(month: adjacentMonth))))
               }
-              if !state.overlayLoadedPersonalEventMonths.contains(prevMonth) {
-                effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: prevMonth))))
-              }
-            }
-            if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth {
-              if !state.overlayLoadedMonths.contains(nextMonth) {
-                effects.append(.send(.internal(.fetchOverlaySchedules(month: nextMonth))))
-              }
-              if !state.overlayLoadedPersonalEventMonths.contains(nextMonth) {
-                effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: nextMonth))))
+              if !state.overlayLoadedPersonalEventMonths.contains(adjacentMonth) {
+                effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: adjacentMonth))))
               }
             }
             return effects.isEmpty ? .none : .merge(effects)
