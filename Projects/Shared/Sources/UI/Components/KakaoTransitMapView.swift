@@ -50,12 +50,28 @@ public struct KakaoTransitMapView: UIViewRepresentable {
   public func makeUIView(context: Context) -> KMViewContainer {
     let container = KMViewContainer()
     container.backgroundColor = TransitMapColors.bgGray
-    container.isUserInteractionEnabled = false
+    container.isUserInteractionEnabled = true
     return container
   }
 
   public func updateUIView(_ container: KMViewContainer, context: Context) {
-    if context.coordinator.mapController?.getView("mapview") != nil {
+    if context.coordinator.mapController != nil {
+      return
+    }
+
+    // container가 레이아웃되기 전이면 다음 런루프에서 재시도
+    guard container.bounds.size != .zero else {
+      DispatchQueue.main.async { [segments, originLatitude, originLongitude, destinationLatitude, destinationLongitude] in
+        guard context.coordinator.mapController == nil else { return }
+        context.coordinator.createEngine(
+          container: container,
+          segments: segments,
+          originLatitude: originLatitude,
+          originLongitude: originLongitude,
+          destinationLatitude: destinationLatitude,
+          destinationLongitude: destinationLongitude
+        )
+      }
       return
     }
 

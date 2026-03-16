@@ -33,12 +33,27 @@ public struct KakaoRouteMapView: UIViewRepresentable {
   public func makeUIView(context: Context) -> KMViewContainer {
     let container = KMViewContainer()
     container.backgroundColor = RouteMapColors.gray
-    container.isUserInteractionEnabled = false
+    container.isUserInteractionEnabled = true
     return container
   }
 
   public func updateUIView(_ container: KMViewContainer, context: Context) {
-    if context.coordinator.mapController?.getView("mapview") != nil {
+    if context.coordinator.mapController != nil {
+      return
+    }
+
+    guard container.bounds.size != .zero else {
+      DispatchQueue.main.async { [routePoints, originLatitude, originLongitude, destinationLatitude, destinationLongitude] in
+        guard context.coordinator.mapController == nil else { return }
+        context.coordinator.createEngine(
+          container: container,
+          routePoints: routePoints,
+          originLatitude: originLatitude,
+          originLongitude: originLongitude,
+          destinationLatitude: destinationLatitude,
+          destinationLongitude: destinationLongitude
+        )
+      }
       return
     }
 

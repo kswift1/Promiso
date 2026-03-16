@@ -238,7 +238,6 @@ async function fetchDrivingRoute(
     const url = new URL("https://apis-navi.kakaomobility.com/v1/directions");
     url.searchParams.append("origin", `${fromLng},${fromLat}`);
     url.searchParams.append("destination", `${toLng},${toLat}`);
-    url.searchParams.append("summary", "true");
 
     const response = await fetch(url.toString(), {
       method: "GET",
