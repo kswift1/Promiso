@@ -345,6 +345,45 @@ final class SubscriptionRemoteDataSource: Sendable {
       return .none
     }
 
+    // 1. entitlements read model 먼저 시도
+    let entitlementRef = db.collection("entitlements").document(currentUserId)
+    let entitlementSnapshot = try await entitlementRef.getDocument()
+
+    if let data = entitlementSnapshot.data(),
+       let hasPro = data["hasPro"] as? Bool {
+      guard hasPro else { return .none }
+
+      let source = data["source"] as? String ?? "none"
+      let productIdStr = data["productId"] as? String
+      let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
+      let expirationDateStr = data["expirationDate"] as? String
+      let expirationDate = expirationDateStr.flatMap { Self.parseISO8601($0) }
+
+      switch source {
+      case "subscription":
+        let rawStatus = data["subscriptionStatus"] as? String ?? "subscribed"
+        switch rawStatus {
+        case "lifetime":
+          return .lifetime
+        case "gracePeriod":
+          return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
+        case "revoked":
+          return .revoked
+        case "expired":
+          return .expired(expirationDate: expirationDate ?? .distantPast)
+        default:
+          return .subscribed(productType: productType, expirationDate: expirationDate)
+        }
+      case "override":
+        let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
+        let overrideExpiresAt = overrideExpiresAtStr.flatMap { Self.parseISO8601($0) }
+        return .subscribed(productType: nil, expirationDate: overrideExpiresAt)
+      default:
+        return .none
+      }
+    }
+
+    // 2. Fallback: entitlements 문서 미존재 시 기존 subscriptions 직접 읽기
     let docRef = db.collection("subscriptions").document(currentUserId)
     let snapshot = try await docRef.getDocument()
 
@@ -436,9 +475,17 @@ final class SubscriptionRemoteDataSource: Sendable {
       let listener = docRef.addSnapshotListener { snapshot, error in
         if error != nil { return }
 
-        guard let data = snapshot?.data(),
-              let hasPro = data["hasPro"] as? Bool,
-              hasPro else {
+        guard let snapshot = snapshot else { return }
+
+        // 문서가 아직 생성되지 않은 기존 유저 — yield하지 않고 대기
+        guard snapshot.exists else { return }
+
+        guard let data = snapshot.data(),
+              let hasPro = data["hasPro"] as? Bool else {
+          return
+        }
+
+        guard hasPro else {
           continuation.yield(.none)
           return
         }
@@ -448,13 +495,18 @@ final class SubscriptionRemoteDataSource: Sendable {
         switch source {
         case "subscription":
           let rawStatus = data["subscriptionStatus"] as? String ?? "subscribed"
+          let productIdStr = data["productId"] as? String
+          let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
+          let expirationDateStr = data["expirationDate"] as? String
+          let expirationDate = expirationDateStr.flatMap { Self.parseISO8601($0) }
+
           switch rawStatus {
           case "lifetime":
             continuation.yield(.lifetime)
           case "gracePeriod":
-            continuation.yield(.gracePeriod(expirationDate: .distantFuture))
+            continuation.yield(.gracePeriod(expirationDate: expirationDate ?? .distantFuture))
           default:
-            continuation.yield(.subscribed(productType: nil, expirationDate: nil))
+            continuation.yield(.subscribed(productType: productType, expirationDate: expirationDate))
           }
 
         case "override":

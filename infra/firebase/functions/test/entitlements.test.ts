@@ -70,7 +70,11 @@ describe("entitlements reconcile", () => {
   it("구독이 active면 hasPro=true, source='subscription'으로 기록한다", async () => {
     subscriptionDoc = {
       exists: true,
-      data: () => ({status: "subscribed"}),
+      data: () => ({
+        status: "subscribed",
+        productId: "com.promiso.pro.monthly",
+        expirationDate: "2026-12-31T00:00:00Z",
+      }),
     };
     overrideDoc = {exists: false, data: () => undefined};
 
@@ -81,6 +85,8 @@ describe("entitlements reconcile", () => {
         hasPro: true,
         source: "subscription",
         subscriptionStatus: "subscribed",
+        productId: "com.promiso.pro.monthly",
+        expirationDate: "2026-12-31T00:00:00Z",
         overrideActive: false,
         overrideExpiresAt: null,
       }),
@@ -105,6 +111,8 @@ describe("entitlements reconcile", () => {
         hasPro: true,
         source: "override",
         subscriptionStatus: "expired",
+        productId: null,
+        expirationDate: null,
         overrideActive: true,
         overrideExpiresAt: "2026-12-31T00:00:00Z",
       }),
@@ -128,6 +136,8 @@ describe("entitlements reconcile", () => {
       expect.objectContaining({
         hasPro: true,
         source: "subscription",
+        productId: null,
+        expirationDate: null,
       }),
       {merge: true},
     );
@@ -149,6 +159,8 @@ describe("entitlements reconcile", () => {
       expect.objectContaining({
         hasPro: false,
         source: "none",
+        productId: null,
+        expirationDate: null,
       }),
       {merge: true},
     );
@@ -165,6 +177,8 @@ describe("entitlements reconcile", () => {
         hasPro: false,
         source: "none",
         subscriptionStatus: null,
+        productId: null,
+        expirationDate: null,
         overrideActive: false,
       }),
       {merge: true},

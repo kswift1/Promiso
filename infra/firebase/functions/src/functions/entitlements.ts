@@ -24,9 +24,18 @@ export async function reconcileEntitlement(uid: string): Promise<void> {
       db.collection("entitlementOverrides").doc(uid).get(),
     ]);
 
+    const subscriptionData = subscriptionDoc.data();
     const subscriptionStatus =
-      typeof subscriptionDoc.data()?.status === "string"
-        ? (subscriptionDoc.data()?.status as string)
+      typeof subscriptionData?.status === "string"
+        ? (subscriptionData.status as string)
+        : null;
+    const productId =
+      typeof subscriptionData?.productId === "string"
+        ? subscriptionData.productId
+        : null;
+    const expirationDate =
+      typeof subscriptionData?.expirationDate === "string"
+        ? subscriptionData.expirationDate
         : null;
     const overrideData = overrideDoc.data() ?? null;
 
@@ -48,6 +57,8 @@ export async function reconcileEntitlement(uid: string): Promise<void> {
         hasPro,
         source,
         subscriptionStatus,
+        productId,
+        expirationDate,
         overrideActive,
         overrideExpiresAt,
         updatedAt: FieldValue.serverTimestamp(),
