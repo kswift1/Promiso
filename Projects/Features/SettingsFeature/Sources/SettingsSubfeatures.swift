@@ -1996,7 +1996,6 @@ extension BriefingSettings {
           ScrollView {
             VStack(spacing: 16) {
               notificationSection
-              defaultLocationSection
               transportSection
               styleSection
             }
@@ -2045,84 +2044,6 @@ extension BriefingSettings {
           LocationPicker.RootView(store: pickerStore)
         }
         .presentationDetents([.large])
-      }
-    }
-
-    // MARK: - Default Location Section
-
-    private var defaultLocationSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          if let location = store.defaultLocation {
-            Button {
-              store.send(.view(.defaultLocationTapped))
-            } label: {
-              HStack(spacing: 12) {
-                Image(systemName: "mappin.circle.fill")
-                  .font(.system(size: 20))
-                  .foregroundStyle(Color.pmindigo.n500)
-
-                VStack(alignment: .leading, spacing: 2) {
-                  Text(location.name)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.pmtext.primary)
-
-                  if let address = location.address {
-                    Text(address)
-                      .font(.caption)
-                      .foregroundStyle(Color.pmtext.secondary)
-                      .lineLimit(1)
-                  }
-                }
-
-                Spacer()
-
-                Button {
-                  store.send(.view(.removeDefaultLocationTapped))
-                } label: {
-                  Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.pmtext.secondary)
-                }
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-          } else {
-            Button {
-              store.send(.view(.defaultLocationTapped))
-            } label: {
-              HStack(spacing: 12) {
-                Image(systemName: "plus.circle")
-                  .font(.system(size: 20))
-                  .foregroundStyle(Color.pmindigo.n500)
-
-                Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
-                  .font(.subheadline)
-                  .foregroundStyle(Color.pmtext.secondary)
-
-                Spacer()
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-          }
-        }
-        .adaptiveGlassCard()
-        .opacity(store.isPro ? 1 : 0.5)
       }
     }
 
@@ -2358,6 +2279,81 @@ extension BriefingSettings {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+          }
+
+          Divider()
+            .padding(.leading, 16)
+
+          VStack(alignment: .leading, spacing: 4) {
+            Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+          .padding(.horizontal, 16)
+          .padding(.top, 14)
+          .padding(.bottom, 4)
+
+          if let location = store.defaultLocation {
+            Button {
+              store.send(.view(.defaultLocationTapped))
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "mappin.circle.fill")
+                  .font(.system(size: 20))
+                  .foregroundStyle(Color.pmindigo.n500)
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(location.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  if let address = location.address {
+                    Text(address)
+                      .font(.caption)
+                      .foregroundStyle(Color.pmtext.secondary)
+                      .lineLimit(1)
+                  }
+                }
+
+                Spacer()
+
+                Button {
+                  store.send(.view(.removeDefaultLocationTapped))
+                } label: {
+                  Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          } else {
+            Button {
+              store.send(.view(.defaultLocationTapped))
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "plus.circle")
+                  .font(.system(size: 20))
+                  .foregroundStyle(Color.pmindigo.n500)
+
+                Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmtext.secondary)
+
+                Spacer()
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
           }
         }
         .adaptiveGlassCard()
