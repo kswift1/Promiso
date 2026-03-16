@@ -124,7 +124,7 @@ export function UsersPage() {
               <Grid size={{xs: 12, md: 4}}>
                 <TextField
                   select
-                  label="override"
+                  label="Pro 수동 변경"
                   value={filters.override}
                   onChange={(event) =>
                     setFilters((current) => ({
@@ -134,9 +134,9 @@ export function UsersPage() {
                   }
                   fullWidth
                 >
-                  <MenuItem value="all">전체 override 상태</MenuItem>
-                  <MenuItem value="active">override 활성</MenuItem>
-                  <MenuItem value="inactive">override 비활성</MenuItem>
+                  <MenuItem value="all">전체 수동 변경 상태</MenuItem>
+                  <MenuItem value="active">수동 변경 활성</MenuItem>
+                  <MenuItem value="inactive">수동 변경 비활성</MenuItem>
                 </TextField>
               </Grid>
             </Grid>
@@ -161,9 +161,13 @@ export function UsersPage() {
                   submittedFilters?.subscription ?? "subscription"}
               />
               <Chip
-                label={submittedFilters?.override === "all" ?
-                  "전체 override" :
-                  submittedFilters?.override ?? "override"}
+                label={
+                  submittedFilters?.override === "active"
+                    ? "수동 변경 활성"
+                    : submittedFilters?.override === "inactive"
+                    ? "수동 변경 비활성"
+                    : "전체 수동 변경"
+                }
               />
             </Stack>
           </Stack>
@@ -212,7 +216,7 @@ export function UsersPage() {
                       />
                       <Chip
                         color={user.overrideActive ? "secondary" : "default"}
-                        label={user.overrideActive ? "override 활성" : "override 없음"}
+                        label={user.overrideActive ? "수동 변경 활성" : "수동 변경 없음"}
                       />
                       <Chip label={`그룹 ${user.groupCount}개`} />
                       <Chip label={`기기 ${user.deviceCount}개`} />
@@ -237,7 +241,7 @@ export function UsersPage() {
                         variant="text"
                         size="small"
                       >
-                        override 관리
+                        Pro 수동 변경
                       </Button>
                     </Stack>
                   </Stack>

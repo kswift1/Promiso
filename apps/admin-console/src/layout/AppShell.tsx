@@ -46,7 +46,7 @@ const navItems = [
     allowedRoles: ["owner", "support"] as AdminRole[],
   },
   {
-    label: "override 관리",
+    label: "Pro 수동 변경",
     path: "/entitlements",
     icon: <WorkspacePremiumRoundedIcon />,
     allowedRoles: ["owner", "support"] as AdminRole[],

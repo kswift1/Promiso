@@ -31,9 +31,9 @@ const featureStatuses = [
     note: "사용자 ID / 이메일 / 닉네임 정확 일치 검색",
   },
   {
-    name: "override 관리",
+    name: "Pro 수동 변경",
     status: "implemented",
-    note: "override 부여 / 회수, 사유, 만료 시각",
+    note: "Pro 수동 부여 / 회수, 사유, 만료 시각",
   },
   {
     name: "푸시 작업",
@@ -53,7 +53,7 @@ const featureStatuses = [
   {
     name: "대시보드 지표",
     status: "implemented",
-    note: "실사용자 수, 유료 사용자 수, override 수, 푸시/로그 수, 조회 기간",
+    note: "실사용자 수, 유료 사용자 수, 수동 변경 수, 푸시/로그 수, 조회 기간",
   },
   {
     name: "고급 검색 / 필터",
@@ -73,7 +73,7 @@ const featureStatuses = [
   {
     name: "사용자 상세 이력",
     status: "implemented",
-    note: "subscription / override / 감사 로그 상세 조회",
+    note: "subscription / 수동 변경 / 감사 로그 상세 조회",
   },
   {
     name: "관리자 계정 관리 화면",
@@ -243,7 +243,7 @@ export function DashboardPage() {
       value: summaryQuery.data.freeUsers,
     },
     {
-      label: "활성 override",
+      label: "활성 수동 변경",
       value: summaryQuery.data.activeOverrides,
     },
     {
@@ -286,7 +286,7 @@ export function DashboardPage() {
                     `실시간 요약`은 운영 총량 확인용
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
-                    전체 사용자 수, 활성 override 수, 푸시/로그 총량처럼
+                    전체 사용자 수, 활성 수동 변경 수, 푸시/로그 총량처럼
                     현재 운영 규모를 빠르게 확인할 때 봅니다.
                   </Typography>
                 </Stack>
