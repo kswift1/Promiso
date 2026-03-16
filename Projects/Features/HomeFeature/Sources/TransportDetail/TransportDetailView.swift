@@ -16,6 +16,10 @@ extension TransportDetail {
     @State private var sheetHeight: CGFloat = RootView.collapsedHeight
     @State private var sheetBaseHeight: CGFloat = RootView.collapsedHeight
     @State private var bottomInset: CGFloat = 0
+    @State private var scrollEnabled = false
+    @State private var scrollAtTop = true
+    @State private var isDraggingSheet = false
+    @State private var dragStartOffset: CGFloat = 0
     @Environment(\.dismiss) private var dismiss
 
     public init(store: StoreOf<Feature>) {
@@ -29,17 +33,42 @@ extension TransportDetail {
     private var sheetDragGesture: some Gesture {
       DragGesture(minimumDistance: 5, coordinateSpace: .global)
         .onChanged { value in
-          let proposed = sheetBaseHeight - value.translation.height
+          let isExpanded = sheetBaseHeight == Self.expandedHeight
+          let pullingDown = value.translation.height > 0
+
+          // expanded 상태에서 스크롤 맨 위 + 아래로 드래그 → 시트 이동
+          if isExpanded && !isDraggingSheet {
+            if scrollAtTop && pullingDown {
+              isDraggingSheet = true
+              dragStartOffset = value.translation.height
+              scrollEnabled = false
+            } else {
+              return
+            }
+          }
+
+          // collapsed 상태에서는 항상 시트 이동
+          if !isExpanded && !isDraggingSheet {
+            isDraggingSheet = true
+            dragStartOffset = value.translation.height
+          }
+
+          let delta = value.translation.height - dragStartOffset
+          let proposed = sheetBaseHeight - delta
           sheetHeight = max(Self.collapsedHeight, min(Self.expandedHeight, proposed))
         }
         .onEnded { value in
-          let projected = sheetBaseHeight - value.predictedEndTranslation.height
+          guard isDraggingSheet else { return }
+          let predictedDelta = value.predictedEndTranslation.height - dragStartOffset
+          let projected = sheetBaseHeight - predictedDelta
           let mid = (Self.collapsedHeight + Self.expandedHeight) / 2
           let target = projected > mid ? Self.expandedHeight : Self.collapsedHeight
           withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
             sheetHeight = target
           }
           sheetBaseHeight = target
+          scrollEnabled = (target == Self.expandedHeight)
+          isDraggingSheet = false
         }
     }
 
@@ -161,15 +190,13 @@ extension TransportDetail {
 
     private var bottomPanel: some View {
       VStack(spacing: 0) {
-        // Drag handle (gesture target)
+        // Drag handle
         Capsule()
           .fill(Color.pmgray.n300)
           .frame(width: 36, height: 5)
           .padding(.top, 10)
           .padding(.bottom, 8)
           .frame(maxWidth: .infinity)
-          .contentShape(Rectangle())
-          .gesture(sheetDragGesture)
 
         // Scrollable content
         ScrollView {
@@ -191,9 +218,17 @@ extension TransportDetail {
           }
           .padding(.horizontal, 20)
         }
+        .scrollDisabled(!scrollEnabled)
+        .onScrollGeometryChange(for: Bool.self) { geo in
+          geo.contentOffset.y <= 0
+        } action: { _, atTop in
+          scrollAtTop = atTop
+        }
       }
       .frame(height: sheetHeight + bottomInset)
       .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+      .simultaneousGesture(sheetDragGesture)
       .background(
         UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
           .fill(.ultraThinMaterial)
