@@ -28,16 +28,26 @@ extension ProPlan {
 
     public var body: some View {
       ScrollView {
-        VStack(spacing: 24) {
-          // MARK: - 현재 플랜 정보
-          currentPlanSection
+        VStack(spacing: 20) {
+          // MARK: - Grace Period 배너 (최상단)
+          if case .gracePeriod(let expirationDate) = store.subscriptionStatus {
+            gracePeriodBanner(expirationDate: expirationDate)
+          }
+
+          // MARK: - Hero 카드
+          heroCard
+
+          // MARK: - 업셀 카드 (조건부)
+          upsellCard
 
           // MARK: - Pro 전용 기능
           proFeaturesSection
 
-          // MARK: - 구독 관리 버튼
+          // MARK: - 구독 관리 버튼 (구독형만)
           if #available(iOS 15.0, *) {
-            manageSubscriptionSection
+            if isSubscriptionSource {
+              manageSubscriptionSection
+            }
           }
 
           // MARK: - 쿠폰 섹션
@@ -47,8 +57,16 @@ extension ProPlan {
         .padding(.vertical, 32)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.ProPlan.manageTitle)
-      .navigationBarTitleDisplayMode(.large)
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          HStack(spacing: 6) {
+            ProBadge()
+            Text("Pro 플랜 관리")
+              .font(.headline)
+          }
+        }
+      }
       .sheet(
         isPresented: Binding(
           get: { store.showCouponSheet },
@@ -59,202 +77,361 @@ extension ProPlan {
       }
     }
 
-    // MARK: - Current Plan Section
+    // MARK: - Hero Card
 
     @ViewBuilder
-    private var currentPlanSection: some View {
-      VStack(alignment: .leading, spacing: 16) {
-        Text(LocalizedStrings.ProPlan.subscriptionInfo)
-          .font(.headline)
-          .foregroundStyle(Color.pmtext.primary)
+    private var heroCard: some View {
+      let source = store.entitlementInfo.source
 
-        VStack(spacing: 12) {
-          // 구독 상태
-          HStack {
-            Label {
-              Text(LocalizedStrings.ProPlan.status)
-                .font(.body)
-                .foregroundStyle(Color.pmtext.secondary)
-            } icon: {
-              Image(systemName: "circle.fill")
-                .font(.caption)
-                .foregroundStyle(statusColor)
-            }
+      if source == .coupon || source == .admin {
+        overrideHeroCard
+      } else if case .lifetime = store.subscriptionStatus, source != .coupon, source != .admin {
+        lifetimeHeroCard
+      } else {
+        subscriptionHeroCard
+      }
+    }
+
+    // 구독형 Hero (monthly/yearly)
+    @ViewBuilder
+    private var subscriptionHeroCard: some View {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack(alignment: .top) {
+          Image(systemName: "crown.fill")
+            .font(.system(size: 36))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Spacer()
+
+          // productType badge
+          if let badgeText = subscriptionBadgeText {
+            Text(badgeText)
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(.white)
+              .padding(.horizontal, 10)
+              .padding(.vertical, 4)
+              .background(Color.pmindigo.n500, in: Capsule())
+          }
+        }
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Promiso Pro")
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundStyle(Color.pmtext.primary)
+
+          if store.entitlementInfo.isInTrialPeriod {
+            Text("무료 체험 중")
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmindigo.n500)
+              .padding(.horizontal, 8)
+              .padding(.vertical, 3)
+              .background(Color.pmindigo.n500.opacity(0.12), in: Capsule())
+          }
+        }
+
+        if case .subscribed(_, let expirationDate) = store.subscriptionStatus,
+           let date = expirationDate {
+          HStack(alignment: .center) {
+            Text("\(formattedDate(date))에 갱신됩니다")
+              .font(.subheadline)
+              .foregroundStyle(Color.pmtext.secondary)
 
             Spacer()
 
-            HStack(spacing: 6) {
-              if store.entitlementInfo.isInTrialPeriod {
-                Text("체험 중")
-                  .font(.caption2)
-                  .fontWeight(.semibold)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .padding(.horizontal, 6)
-                  .padding(.vertical, 2)
-                  .background(Color.pmindigo.n500.opacity(0.12), in: Capsule())
-              }
-
-              Text(statusText)
-                .font(.body)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-          }
-
-          // 플랜 종류
-          if let planName = store.subscriptionStatus.planDisplayName {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text(LocalizedStrings.ProPlan.plan)
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: "creditcard")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-
-              Spacer()
-
-              Text(LocalizedStrings.ProPlan.planValue(planName))
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-          }
-
-          // 구독 시작일
-          if let purchaseDate = store.purchaseDate {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text(LocalizedStrings.ProPlan.startDate)
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: "calendar.badge.clock")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-
-              Spacer()
-
-              Text(formattedDate(purchaseDate))
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-          }
-
-          // 만료일 (구독형인 경우만)
-          if case .subscribed(_, let expirationDate) = store.subscriptionStatus,
-             let date = expirationDate {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text(LocalizedStrings.ProPlan.renewalDate)
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: "calendar")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-
-              Spacer()
-
-              Text(formattedDate(date))
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-          }
-
-          // Grace Period 안내
-          if case .gracePeriod(let expirationDate) = store.subscriptionStatus {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text(LocalizedStrings.ProPlan.gracePeriodEnds)
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: "exclamationmark.triangle")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmwarning.n500)
-              }
-
-              Spacer()
-
-              Text(formattedDate(expirationDate))
-                .font(.body)
-                .foregroundStyle(Color.pmwarning.n500)
-            }
-          }
-
-          // Pro 유형 (source)
-          if store.entitlementInfo.source != .none {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text("이용 유형")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: sourceIcon)
-                  .font(.caption)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-
-              Spacer()
-
-              Text(sourceText)
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
-            }
-          }
-
-          // Override 만료일
-          if let overrideExpiry = store.entitlementInfo.overrideExpiresAt,
-             store.entitlementInfo.source == .coupon || store.entitlementInfo.source == .admin {
-            Divider()
-              .background(Color.white.opacity(0.12))
-
-            HStack {
-              Label {
-                Text("혜택 만료일")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.secondary)
-              } icon: {
-                Image(systemName: "hourglass")
-                  .font(.caption)
-                  .foregroundStyle(overrideExpiryColor(overrideExpiry))
-              }
-
-              Spacer()
-
-              VStack(alignment: .trailing, spacing: 2) {
-                Text(formattedDate(overrideExpiry))
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-                Text(remainingDaysText(overrideExpiry))
-                  .font(.caption)
-                  .foregroundStyle(overrideExpiryColor(overrideExpiry))
-              }
+            let days = remainingDays(date)
+            if days >= 0 {
+              Text("D-\(days)")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(Color.pmindigo.n500)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.pmindigo.n500.opacity(0.12), in: Capsule())
             }
           }
         }
-        .padding(16)
-        .adaptiveGlassCard()
       }
+      .padding(20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(
+        LinearGradient(
+          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .compositingGroup()
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .staticGlassBackground(cornerRadius: 16)
+    }
+
+    // 평생 Hero
+    @ViewBuilder
+    private var lifetimeHeroCard: some View {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack(alignment: .top) {
+          Image(systemName: "crown.fill")
+            .font(.system(size: 36))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Spacer()
+
+          Text("평생")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.pmindigo.n500, in: Capsule())
+        }
+
+        VStack(alignment: .leading, spacing: 8) {
+          Text("Promiso Pro")
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text("영구적으로 이용 가능합니다")
+            .font(.subheadline)
+            .foregroundStyle(Color.pmtext.secondary)
+
+          Text("감사합니다 🎉")
+            .font(.subheadline)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+      }
+      .padding(20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(
+        LinearGradient(
+          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .compositingGroup()
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .staticGlassBackground(cornerRadius: 16)
+    }
+
+    // 쿠폰/어드민 Override Hero
+    @ViewBuilder
+    private var overrideHeroCard: some View {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack(alignment: .top) {
+          Image(systemName: "crown.fill")
+            .font(.system(size: 36))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Spacer()
+
+          Text(store.entitlementInfo.source == .coupon ? "쿠폰" : "관리자")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+              store.entitlementInfo.source == .coupon
+                ? Color.pmindigo.n500
+                : Color.pmgray.n400,
+              in: Capsule()
+            )
+        }
+
+        Text("Pro 체험 중")
+          .font(.title2)
+          .fontWeight(.bold)
+          .foregroundStyle(Color.pmtext.primary)
+
+        if let overrideExpiry = store.entitlementInfo.overrideExpiresAt {
+          VStack(alignment: .leading, spacing: 8) {
+            // 진행률 바
+            let totalDays = 30.0  // 기본 쿠폰 기간
+            let remaining = Double(max(0, Calendar.current.dateComponents([.day], from: Date(), to: overrideExpiry).day ?? 0))
+            let progress = min(1.0, remaining / totalDays)
+
+            HStack {
+              ProgressView(value: progress)
+                .tint(Color.pmindigo.n500)
+
+              Text("\(Int(remaining))일 남음")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(remaining <= 7 ? Color.pmwarning.n500 : Color.pmtext.secondary)
+                .frame(minWidth: 60, alignment: .trailing)
+            }
+
+            Text("\(formattedDate(overrideExpiry)) 만료")
+              .font(.subheadline)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+        }
+      }
+      .padding(20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(
+        LinearGradient(
+          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .compositingGroup()
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .staticGlassBackground(cornerRadius: 16)
+    }
+
+    // MARK: - Grace Period 배너
+
+    @ViewBuilder
+    private func gracePeriodBanner(expirationDate: Date) -> some View {
+      let days = remainingDays(expirationDate)
+
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 8) {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .font(.body)
+            .foregroundStyle(Color.pmwarning.n500)
+
+          Text("결제 정보를 확인해주세요")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+
+        if days > 0 {
+          Text("\(days)일 후 Pro 기능이 비활성화됩니다")
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+
+        if #available(iOS 15.0, *) {
+          Button {
+            showManageSheet = true
+          } label: {
+            Text("결제 수단 업데이트")
+              .font(.caption)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmwarning.n500)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .manageSubscriptionsSheet(
+            isPresented: $showManageSheet,
+            subscriptionGroupID: "21947112"
+          )
+        }
+      }
+      .padding(14)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color.pmwarning.n500.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .strokeBorder(Color.pmwarning.n500.opacity(0.3), lineWidth: 1)
+      )
+    }
+
+    // MARK: - Upsell Card
+
+    @ViewBuilder
+    private var upsellCard: some View {
+      let source = store.entitlementInfo.source
+
+      if case .subscribed(let productType, _) = store.subscriptionStatus,
+         productType == .monthly,
+         source == .subscription || source == .none {
+        // 월간 → 연간 업셀
+        if let discount = yearlyDiscount {
+          monthlyToYearlyUpsellCard(discount: discount)
+        }
+      } else if source == .coupon || source == .admin {
+        // 쿠폰/어드민 → 구독 전환 유도
+        couponToSubscriptionUpsellCard
+      }
+    }
+
+    @ViewBuilder
+    private func monthlyToYearlyUpsellCard(discount: Int) -> some View {
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 8) {
+          Image(systemName: "star.fill")
+            .font(.body)
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Text("연간으로 전환하면 \(discount)% 절약")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+
+        if let yearlyProduct = store.products.first(where: { $0.type == .yearly }) {
+          Text("연간 플랜: \(yearlyProduct.displayPrice) / 년")
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+
+        Button {
+          if let yearlyId = store.products.first(where: { $0.type == .yearly })?.id {
+            store.send(.view(.productSelected(yearlyId)))
+            store.send(.view(.purchaseTapped))
+          }
+        } label: {
+          Text("연간 플랜으로 전환")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(Color.pmindigo.n500, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(16)
+      .adaptiveGlassCard()
+    }
+
+    @ViewBuilder
+    private var couponToSubscriptionUpsellCard: some View {
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 8) {
+          Image(systemName: "arrow.triangle.2.circlepath")
+            .font(.body)
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Text("구독으로 전환하면 계속 이용 가능")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+
+        Text("체험 기간이 끝나도 Pro 기능을 계속 사용하세요")
+          .font(.caption)
+          .foregroundStyle(Color.pmtext.secondary)
+
+        Button {
+          if let yearlyId = store.products.first(where: { $0.type == .yearly })?.id {
+            store.send(.view(.productSelected(yearlyId)))
+            store.send(.view(.purchaseTapped))
+          }
+        } label: {
+          Text("구독 시작하기")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(Color.pmindigo.n500, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(16)
+      .adaptiveGlassCard()
     }
 
     // MARK: - Pro Features Section
@@ -467,33 +644,17 @@ extension ProPlan {
 
     // MARK: - Helpers
 
-    private var statusColor: Color {
-      switch store.subscriptionStatus {
-      case .subscribed, .lifetime:
-        return Color.pmsuccess.n500
-      case .gracePeriod:
-        return Color.pmwarning.n500
-      case .expired, .revoked:
-        return Color.pmerror.n500
-      case .none:
-        return Color.pmgray.n400
-      }
+    private var isSubscriptionSource: Bool {
+      let source = store.entitlementInfo.source
+      return source == .subscription || source == .none
     }
 
-    private var statusText: String {
+    private var subscriptionBadgeText: String? {
       switch store.subscriptionStatus {
-      case .subscribed:
-        return LocalizedStrings.ProPlan.statusActive
-      case .lifetime:
-        return LocalizedStrings.ProPlan.statusLifetime
-      case .gracePeriod:
-        return LocalizedStrings.ProPlan.statusGracePeriod
-      case .expired:
-        return LocalizedStrings.ProPlan.statusExpired
-      case .revoked:
-        return LocalizedStrings.ProPlan.statusRefunded
-      case .none:
-        return LocalizedStrings.ProPlan.statusNone
+      case .subscribed(let productType, _):
+        return productType?.displayName
+      default:
+        return nil
       }
     }
 
@@ -505,50 +666,89 @@ extension ProPlan {
       return formatter.string(from: date)
     }
 
-    private var sourceIcon: String {
-      switch store.entitlementInfo.source {
-      case .subscription: return "creditcard"
-      case .coupon: return "ticket"
-      case .admin: return "person.badge.shield.checkmark"
-      case .none: return "questionmark.circle"
-      }
+    private func remainingDays(_ date: Date) -> Int {
+      Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
     }
 
-    private var sourceText: String {
-      switch store.entitlementInfo.source {
-      case .subscription: return "구독"
-      case .coupon: return "쿠폰"
-      case .admin: return "관리자 부여"
-      case .none: return "-"
-      }
-    }
-
-    private func overrideExpiryColor(_ date: Date) -> Color {
-      let remaining = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
-      return remaining <= 7 ? Color.pmwarning.n500 : Color.pmindigo.n500
-    }
-
-    private func remainingDaysText(_ date: Date) -> String {
-      let remaining = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
-      if remaining <= 0 { return "만료됨" }
-      return "\(remaining)일 남음"
+    private var yearlyDiscount: Int? {
+      guard
+        let monthlyPrice = store.products.first(where: { $0.type == .monthly })?.price,
+        let yearlyPrice = store.products.first(where: { $0.type == .yearly })?.price,
+        monthlyPrice > 0
+      else { return nil }
+      let annualMonthly = monthlyPrice * 12
+      let discountDecimal = ((annualMonthly - yearlyPrice) * 100) / annualMonthly
+      let discount = NSDecimalNumber(decimal: discountDecimal).intValue
+      return discount > 0 ? discount : nil
     }
   }
 }
 
 // MARK: - Preview
 
-#Preview("Manage - Subscribed") {
+#Preview("Manage - Subscribed (Yearly)") {
   NavigationStack {
     ProPlan.ProPlanManageView(
       store: Store(
-        initialState: ProPlan.Feature.State(
-          subscriptionStatus: .subscribed(
-            productType: .yearly,
-            expirationDate: Date().addingTimeInterval(30 * 24 * 3600)
-          ),
-          purchaseDate: Date().addingTimeInterval(-335 * 24 * 3600)
-        )
+        initialState: {
+          var state = ProPlan.Feature.State(
+            subscriptionStatus: .subscribed(
+              productType: .yearly,
+              expirationDate: Date().addingTimeInterval(31 * 24 * 3600)
+            ),
+            purchaseDate: Date().addingTimeInterval(-335 * 24 * 3600)
+          )
+          state.entitlementInfo = ProEntitlementInfo(
+            source: .subscription,
+            overrideExpiresAt: nil,
+            isInTrialPeriod: false
+          )
+          return state
+        }()
+      ) {
+        ProPlan.Feature()
+      }
+    )
+  }
+}
+
+#Preview("Manage - Subscribed (Monthly)") {
+  NavigationStack {
+    ProPlan.ProPlanManageView(
+      store: Store(
+        initialState: {
+          var state = ProPlan.Feature.State(
+            products: [
+              SubscriptionProduct(
+                id: "com.promiso.pro.monthly",
+                type: .monthly,
+                displayName: "월간",
+                description: "",
+                displayPrice: "₩3,900",
+                price: 3900
+              ),
+              SubscriptionProduct(
+                id: "com.promiso.pro.yearly",
+                type: .yearly,
+                displayName: "연간",
+                description: "",
+                displayPrice: "₩29,900",
+                price: 29900
+              )
+            ],
+            subscriptionStatus: .subscribed(
+              productType: .monthly,
+              expirationDate: Date().addingTimeInterval(20 * 24 * 3600)
+            ),
+            purchaseDate: Date().addingTimeInterval(-10 * 24 * 3600)
+          )
+          state.entitlementInfo = ProEntitlementInfo(
+            source: .subscription,
+            overrideExpiresAt: nil,
+            isInTrialPeriod: false
+          )
+          return state
+        }()
       ) {
         ProPlan.Feature()
       }
@@ -576,7 +776,7 @@ extension ProPlan {
       store: Store(
         initialState: ProPlan.Feature.State(
           subscriptionStatus: .gracePeriod(
-            expirationDate: Date().addingTimeInterval(7 * 24 * 3600)
+            expirationDate: Date().addingTimeInterval(5 * 24 * 3600)
           )
         )
       ) {
@@ -594,12 +794,12 @@ extension ProPlan {
           var state = ProPlan.Feature.State(
             subscriptionStatus: .subscribed(
               productType: .monthly,
-              expirationDate: Date().addingTimeInterval(20 * 24 * 3600)
+              expirationDate: Date().addingTimeInterval(15 * 24 * 3600)
             )
           )
           state.entitlementInfo = ProEntitlementInfo(
             source: .coupon,
-            overrideExpiresAt: Date().addingTimeInterval(5 * 24 * 3600),
+            overrideExpiresAt: Date().addingTimeInterval(15 * 24 * 3600),
             isInTrialPeriod: true
           )
           return state

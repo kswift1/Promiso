@@ -632,7 +632,7 @@ extension Settings {
                 .foregroundStyle(Color.pmgray.n400)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
