@@ -56,6 +56,23 @@ struct PersonalEventDetailFeatureTests {
     )
   }
 
+  nonisolated private func makeDeleteAlert(
+    eventTitle: String
+  ) -> AlertState<PersonalEventDetail.Feature.Action.Alert> {
+    AlertState {
+      TextState(LocalizedStrings.Shared.deleteEvent)
+    } actions: {
+      ButtonState(role: .destructive, action: .confirmDelete) {
+        TextState(LocalizedStrings.Common.delete)
+      }
+      ButtonState(role: .cancel) {
+        TextState(LocalizedStrings.Common.cancel)
+      }
+    } message: {
+      TextState(LocalizedStrings.Shared.deleteEventConfirm(eventTitle))
+    }
+  }
+
   @Test("onAppear 시 신선한 날씨 캐시를 사용하고 재조회하지 않는다")
   func onAppear_usesFreshCachedWeather() async {
     let fetchCount = LockIsolated(0)
@@ -74,7 +91,6 @@ struct PersonalEventDetailFeatureTests {
         return fetchedWeather
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear)) {
       $0.weatherInfo = cachedWeather
@@ -90,8 +106,9 @@ struct PersonalEventDetailFeatureTests {
     let staleWeather = makeWeatherInfo(fetchedAt: Date().addingTimeInterval(-7 * 3600))
     let refreshedWeather = makeWeatherInfo(fetchedAt: Date())
     let requestedCoordinates = LockIsolated<[Double]>([])
+    let weatherContinuation = LockIsolated<CheckedContinuation<WeatherInfo, Never>?>(nil)
 
-    var state = PersonalEventDetail.Feature.State(event: event)
+    let state = PersonalEventDetail.Feature.State(event: event)
     state.$weatherCache.withLock { $0 = [event.id: staleWeather] }
 
     let store = TestStore(initialState: state) {
@@ -99,19 +116,31 @@ struct PersonalEventDetailFeatureTests {
     } withDependencies: {
       $0.weatherClient.getWeather = { lat, lng, date in
         requestedCoordinates.setValue([lat, lng, date.timeIntervalSince1970])
-        return refreshedWeather
+        return await withCheckedContinuation { continuation in
+          weatherContinuation.setValue(continuation)
+        }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear)) {
       $0.weatherInfo = staleWeather
     }
-    await store.receive(\.internal)
-    await store.receive(\.internal) {
+    await store.receive {
+      guard case .internal(.fetchWeather) = $0 else { return false }
+      return true
+    }
+    #expect(weatherContinuation.value != nil)
+    weatherContinuation.value?.resume(returning: refreshedWeather)
+    await store.receive(
+      {
+        guard case .internal(.weatherFetched(.success(let info))) = $0 else { return false }
+        return info == refreshedWeather
+      }
+    ) {
       $0.weatherInfo = refreshedWeather
       $0.$weatherCache.withLock { $0[event.id] = refreshedWeather }
     }
+    await store.finish()
 
     #expect(requestedCoordinates.value.count == 3)
     #expect(requestedCoordinates.value[0] == 37.4979)
@@ -169,13 +198,14 @@ struct PersonalEventDetailFeatureTests {
         successCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.deleteTapped))
-    #expect(store.state.deleteAlert != nil)
+    await store.send(.view(.deleteTapped)) {
+      $0.deleteAlert = makeDeleteAlert(eventTitle: event.title)
+    }
 
     await store.send(.alert(.presented(.confirmDelete))) {
       $0.isDeleting = true
+      $0.deleteAlert = nil
     }
     await store.receive(\.internal) {
       $0.isDeleting = false
@@ -210,13 +240,14 @@ struct PersonalEventDetailFeatureTests {
         errorCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.deleteTapped))
-    #expect(store.state.deleteAlert != nil)
+    await store.send(.view(.deleteTapped)) {
+      $0.deleteAlert = makeDeleteAlert(eventTitle: event.title)
+    }
 
     await store.send(.alert(.presented(.confirmDelete))) {
       $0.isDeleting = true
+      $0.deleteAlert = nil
     }
     await store.receive(\.internal) {
       $0.isDeleting = false
@@ -238,7 +269,6 @@ struct PersonalEventDetailFeatureTests {
     let store = TestStore(initialState: state) {
       PersonalEventDetail.Feature()
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.editEvent(.presented(.delegate(.eventUpdated(updated))))) {
       $0.event = updated

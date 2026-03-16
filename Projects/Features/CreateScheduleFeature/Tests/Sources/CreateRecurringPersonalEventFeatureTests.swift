@@ -79,7 +79,6 @@ struct CreateRecurringPersonalEventFeatureTests {
         selectionCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.weekdayToggled(2)))
     await store.finish()
@@ -103,7 +102,6 @@ struct CreateRecurringPersonalEventFeatureTests {
         selectionCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseEndTime)) {
       $0.useEndTime = true
@@ -134,7 +132,6 @@ struct CreateRecurringPersonalEventFeatureTests {
         selectionCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.toggleUseSeriesEndDate)) {
       $0.useSeriesEndDate = true
@@ -160,12 +157,12 @@ struct CreateRecurringPersonalEventFeatureTests {
         selectionCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     #expect(store.state.useSeriesEndDate == true)
 
     await store.send(.view(.toggleUseSeriesEndDate)) {
       $0.useSeriesEndDate = false
+      $0.event.recurrence = .weekly(Array($0.selectedWeekdays))
     }
     await store.finish()
 
@@ -213,7 +210,6 @@ struct CreateRecurringPersonalEventFeatureTests {
         successCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.saveTapped)) {
       $0.isSaving = true
@@ -269,7 +265,6 @@ struct CreateRecurringPersonalEventFeatureTests {
         errorCount.withValue { $0 += 1 }
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.saveTapped)) {
       $0.isSaving = true

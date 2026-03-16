@@ -122,10 +122,14 @@ struct LocationPickerFeatureTests {
         savedPlace.setValue(place)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.confirmSelectionTapped)) {
       $0.selectedPlace = place
+    }
+    let expectedLocation = place.toLocationInfo()
+    await store.receive {
+      guard case .delegate(.locationSelected(let location)) = $0 else { return false }
+      return location == expectedLocation
     }
     await store.finish()
 

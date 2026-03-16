@@ -43,6 +43,22 @@ struct RecurringPersonalEventDetailFeatureTests {
     )
   }
 
+  nonisolated private func makeDeleteSeriesAlert(
+  ) -> AlertState<RecurringPersonalEventDetail.Feature.Action.Alert> {
+    AlertState {
+      TextState(LocalizedStrings.Personal.recurringDetailTitle)
+    } actions: {
+      ButtonState(role: .destructive, action: .confirmDeleteSeries) {
+        TextState(LocalizedStrings.Common.delete)
+      }
+      ButtonState(role: .cancel) {
+        TextState(LocalizedStrings.Common.cancel)
+      }
+    } message: {
+      TextState(LocalizedStrings.Personal.recurringDeleteSeriesMessage)
+    }
+  }
+
   @Test("editTapped 시 반복 일정 편집 시트를 연다")
   func editTapped_presentsEditor() async {
     let event = makeRecurringEvent()
@@ -78,7 +94,6 @@ struct RecurringPersonalEventDetailFeatureTests {
         updatedEvent.setValue(event)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.excludeInstanceTapped))
     await store.receive(\.internal) {
@@ -108,12 +123,13 @@ struct RecurringPersonalEventDetailFeatureTests {
         cancelledIDs.setValue(ids)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.deleteTapped))
-    #expect(store.state.deleteAlert != nil)
+    await store.send(.view(.deleteTapped)) {
+      $0.deleteAlert = makeDeleteSeriesAlert()
+    }
     await store.send(.alert(.presented(.confirmDeleteSeries))) {
       $0.isDeleting = true
+      $0.deleteAlert = nil
     }
     await store.receive(\.internal) {
       $0.isDeleting = false
@@ -142,12 +158,13 @@ struct RecurringPersonalEventDetailFeatureTests {
         throw TestError()
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.deleteTapped))
-    #expect(store.state.deleteAlert != nil)
+    await store.send(.view(.deleteTapped)) {
+      $0.deleteAlert = makeDeleteSeriesAlert()
+    }
     await store.send(.alert(.presented(.confirmDeleteSeries))) {
       $0.isDeleting = true
+      $0.deleteAlert = nil
     }
     await store.receive(\.internal) {
       $0.isDeleting = false
@@ -166,7 +183,6 @@ struct RecurringPersonalEventDetailFeatureTests {
     let store = TestStore(initialState: state) {
       RecurringPersonalEventDetail.Feature()
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.editEvent(.presented(.delegate(.eventUpdated(updated))))) {
       $0.recurringEvent = updated

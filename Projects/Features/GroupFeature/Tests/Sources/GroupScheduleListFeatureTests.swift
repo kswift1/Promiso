@@ -138,7 +138,6 @@ struct GroupScheduleListFeatureTests {
         calendarSyncEnabled.setValue(enabled)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.acceptTapped(schedule))) {
       $0.respondingStates[schedule.id] = .accepting
@@ -184,7 +183,6 @@ struct GroupScheduleListFeatureTests {
         removedScheduleID.setValue(scheduleID)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.rejectTapped(schedule))) {
       $0.respondingStates[schedule.id] = .rejecting

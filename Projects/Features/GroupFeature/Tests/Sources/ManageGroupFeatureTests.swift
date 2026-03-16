@@ -71,7 +71,6 @@ struct ManageGroupFeatureTests {
     } withDependencies: {
       $0.groupClient.fetchGroupMembers = { _ in members }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear))
     await store.receive(\.internal) {
@@ -104,7 +103,6 @@ struct ManageGroupFeatureTests {
     } withDependencies: {
       $0.groupClient.fetchGroupMembers = { _ in refreshed }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear))
     await store.receive(\.internal)
@@ -132,7 +130,6 @@ struct ManageGroupFeatureTests {
         leftGroupID.setValue(groupID)
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.confirmLeave)) {
       $0.isLeavingGroup = true
@@ -162,7 +159,6 @@ struct ManageGroupFeatureTests {
         throw GroupClientError.serverError
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.confirmDelete)) {
       $0.isDeletingGroup = true
@@ -195,7 +191,6 @@ struct ManageGroupFeatureTests {
         transferred.setValue((groupID, newHostID))
       }
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.confirmTransferHost)) {
       $0.isTransferringHost = true
