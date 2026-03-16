@@ -95,9 +95,12 @@ export async function verifyAppleTransactionJWS(
     return decodeJWSPayload<JWSTransactionDecodedPayload>(jwsToken);
   }
 
+  const verify = () =>
+    getSignedDataVerifier().verifyAndDecodeTransaction(jwsToken);
+
   if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
     try {
-      return await getSignedDataVerifier().verifyAndDecodeTransaction(jwsToken);
+      return await verify();
     } catch (error) {
       console.warn(
         "⚠️ [AppStore] Dev: Apple verify failed," +
@@ -110,8 +113,7 @@ export async function verifyAppleTransactionJWS(
     }
   }
 
-  return getSignedDataVerifier()
-    .verifyAndDecodeTransaction(jwsToken);
+  return verify();
 }
 
 /**
@@ -132,10 +134,12 @@ export async function verifyAppleRenewalInfoJWS(
     );
   }
 
+  const verify = () =>
+    getSignedDataVerifier().verifyAndDecodeRenewalInfo(jwsToken);
+
   if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
     try {
-      return await getSignedDataVerifier()
-        .verifyAndDecodeRenewalInfo(jwsToken);
+      return await verify();
     } catch (error) {
       console.warn(
         "⚠️ [AppStore] Dev: Apple verify failed," +
@@ -148,8 +152,7 @@ export async function verifyAppleRenewalInfoJWS(
     }
   }
 
-  return getSignedDataVerifier()
-    .verifyAndDecodeRenewalInfo(jwsToken);
+  return verify();
 }
 
 /**
@@ -170,10 +173,12 @@ export async function verifyAppleNotificationPayload(
     );
   }
 
+  const verify = () =>
+    getSignedDataVerifier().verifyAndDecodeNotification(signedPayload);
+
   if (getCurrentEnvironment() === FirestoreEnvironment.Dev) {
     try {
-      return await getSignedDataVerifier()
-        .verifyAndDecodeNotification(signedPayload);
+      return await verify();
     } catch (error) {
       console.warn(
         "⚠️ [AppStore] Dev: Apple verify failed," +
@@ -186,6 +191,5 @@ export async function verifyAppleNotificationPayload(
     }
   }
 
-  return getSignedDataVerifier()
-    .verifyAndDecodeNotification(signedPayload);
+  return verify();
 }

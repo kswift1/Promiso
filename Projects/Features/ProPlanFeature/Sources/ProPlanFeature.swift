@@ -563,7 +563,7 @@ extension ProPlan {
         .navigationDestination(isPresented: Binding(
           get: { store.showProOnboarding },
           set: { newValue in
-            if !newValue {
+            if !newValue && store.showProOnboarding {
               store.send(.view(.proOnboardingCompleted))
             }
           }
