@@ -15,6 +15,7 @@ struct UpcomingSection: View {
   let onCreatePersonalEventTap: () -> Void
   let onCreateScheduleTap: () -> Void
   let onCreateRecurringEventTap: () -> Void
+  let onRecurringSummaryTap: (HomeModels.RecurringEventSummary) -> Void
 
   @State private var isRecurringExpanded = false
   @State private var showCreateOptions = false
@@ -118,28 +119,34 @@ struct UpcomingSection: View {
             .padding(.horizontal, 14)
 
           ForEach(recurringSummaries) { summary in
-            HStack(spacing: 8) {
-              Text(summary.emoji)
-                .font(.pmCaption)
+            Button {
+              onRecurringSummaryTap(summary)
+            } label: {
+              HStack(spacing: 8) {
+                Text(summary.emoji)
+                  .font(.pmCaption)
 
-              Text(summary.title)
-                .font(.pmCaption)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
+                Text(summary.title)
+                  .font(.pmCaption)
+                  .foregroundStyle(.primary)
+                  .lineLimit(1)
 
-              Text("·")
-                .font(.pmCaption)
-                .foregroundStyle(.tertiary)
+                Text("·")
+                  .font(.pmCaption)
+                  .foregroundStyle(.tertiary)
 
-              Text(summary.recurrenceText)
-                .font(.pmCaption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                Text(summary.recurrenceText)
+                  .font(.pmCaption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
 
-              Spacer()
+                Spacer()
+              }
+              .padding(.horizontal, 14)
+              .padding(.vertical, 8)
+              .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .buttonStyle(.plain)
 
             if summary.id != recurringSummaries.last?.id {
               Divider()
@@ -286,7 +293,8 @@ private struct DateGroup {
     onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
-    onCreateRecurringEventTap: {}
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -301,7 +309,8 @@ private struct DateGroup {
     onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
-    onCreateRecurringEventTap: {}
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -320,7 +329,8 @@ private struct DateGroup {
     onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
-    onCreateRecurringEventTap: {}
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
   )
   .padding()
   .auroraBackground()

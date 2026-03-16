@@ -338,6 +338,9 @@ extension Home {
               },
               onCreateRecurringEventTap: {
                 store.send(.view(.emptyCreateRecurringEventTapped))
+              },
+              onRecurringSummaryTap: { summary in
+                store.send(.view(.recurringSummaryTapped(summary)))
               }
             )
             .padding(.horizontal, 16)

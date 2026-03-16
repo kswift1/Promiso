@@ -318,6 +318,8 @@ extension Home {
         case emptyCreateScheduleTapped
         /// 반복 일정 빈 상태에서 반복 일정 생성 탭
         case emptyCreateRecurringEventTapped
+        /// 반복 일정 요약 항목 탭 (상세 화면)
+        case recurringSummaryTapped(HomeModels.RecurringEventSummary)
       }
 
       @CasePathable
@@ -1099,6 +1101,15 @@ extension Home {
 
           case .emptyCreateRecurringEventTapped:
             state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State()
+            return .none
+
+          case .recurringSummaryTapped(let summary):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == summary.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring
+              )))
+            }
             return .none
 
           }
