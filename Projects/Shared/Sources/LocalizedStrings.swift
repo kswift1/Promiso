@@ -2306,6 +2306,16 @@ public enum LocalizedStrings {
     public static var colorPreviewSampleTitle: String { String(localized: "groupSettingsView.colorPreview.sampleTitle", bundle: bundle) }
   }
 
+  // MARK: - GroupOverview
+  public enum GroupOverview {
+    public static var title: String { String(localized: "groupOverview.title", bundle: bundle) }
+    public static var myGroups: String { String(localized: "groupOverview.myGroups", bundle: bundle) }
+    public static var groupManagement: String { String(localized: "groupOverview.groupManagement", bundle: bundle) }
+    public static var createGroup: String { String(localized: "groupOverview.createGroup", bundle: bundle) }
+    public static var joinGroup: String { String(localized: "groupOverview.joinGroup", bundle: bundle) }
+    public static var host: String { String(localized: "groupOverview.host", bundle: bundle) }
+  }
+
   // MARK: - GroupMain
   public enum GroupMain {
     public static var createSchedule: String { String(localized: "groupMain.createSchedule", bundle: bundle) }

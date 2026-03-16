@@ -1136,6 +1136,11 @@ extension GroupMain {
             return .none
 
           case .groupForSettingsResponse(.failure, _):
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: LocalizedStrings.Error.unknownError,
+              position: .top
+            )
             return .none
 
           case .fetchSettings:

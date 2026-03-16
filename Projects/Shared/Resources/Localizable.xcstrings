@@ -6723,6 +6723,114 @@
         }
       }
     },
+    "groupOverview.createGroup": {
+      "comment": "그룹 만들기",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Group"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 만들기"
+          }
+        }
+      }
+    },
+    "groupOverview.groupManagement": {
+      "comment": "그룹 관리",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Management"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 관리"
+          }
+        }
+      }
+    },
+    "groupOverview.host": {
+      "comment": "호스트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Host"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "호스트"
+          }
+        }
+      }
+    },
+    "groupOverview.joinGroup": {
+      "comment": "그룹 합류하기",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join Group"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 합류하기"
+          }
+        }
+      }
+    },
+    "groupOverview.myGroups": {
+      "comment": "내 그룹",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Groups"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 그룹"
+          }
+        }
+      }
+    },
+    "groupOverview.title": {
+      "comment": "그룹 설정",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 설정"
+          }
+        }
+      }
+    },
     "groupScheduleList.empty.all": {
       "comment": "일정 없음 (전체)",
       "extractionState": "manual",

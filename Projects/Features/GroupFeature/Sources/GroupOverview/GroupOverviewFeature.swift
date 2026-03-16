@@ -20,7 +20,7 @@ extension GroupOverview {
       }
     }
 
-    public enum Action {
+    public enum Action: Sendable {
       case view(ViewAction)
       case delegate(DelegateAction)
     }

@@ -53,7 +53,7 @@ public struct ScheduleTabHeader: View {
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
-        .accessibilityLabel("그룹 설정")
+        .accessibilityLabel(LocalizedStrings.GroupMain.groupSettings)
         .padding(.leading, 4)
       }
 

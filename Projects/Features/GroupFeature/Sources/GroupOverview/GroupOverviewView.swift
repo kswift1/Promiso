@@ -16,7 +16,7 @@ extension GroupOverview {
         VStack(spacing: 24) {
           // 내 그룹 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("내 그룹")
+            Text(LocalizedStrings.GroupOverview.myGroups)
               .font(.system(size: 16, weight: .semibold))
               .foregroundStyle(.secondary)
               .padding(.horizontal, 4)
@@ -32,21 +32,21 @@ extension GroupOverview {
 
           // 그룹 관리 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("그룹 관리")
+            Text(LocalizedStrings.GroupOverview.groupManagement)
               .font(.system(size: 16, weight: .semibold))
               .foregroundStyle(.secondary)
               .padding(.horizontal, 4)
 
             VStack(spacing: 8) {
               actionRow(
-                title: "그룹 만들기",
+                title: LocalizedStrings.GroupOverview.createGroup,
                 systemImage: "plus.circle.fill",
                 color: Color.pmindigo.n500
               ) {
                 store.send(.view(.createGroupTapped))
               }
               actionRow(
-                title: "그룹 합류하기",
+                title: LocalizedStrings.GroupOverview.joinGroup,
                 systemImage: "person.badge.plus",
                 color: Color.pmindigo.n500
               ) {
@@ -58,7 +58,7 @@ extension GroupOverview {
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
       }
-      .navigationTitle("그룹 설정")
+      .navigationTitle(LocalizedStrings.GroupOverview.title)
       .navigationBarTitleDisplayMode(.large)
       .auroraBackground()
     }
@@ -159,7 +159,7 @@ private struct GroupOverviewRow: SwiftUI.View {
 
   @ViewBuilder
   private var hostBadge: some SwiftUI.View {
-    Text("호스트")
+    Text(LocalizedStrings.GroupOverview.host)
       .font(.system(size: 11, weight: .medium))
       .foregroundStyle(Color.pmindigo.n500)
       .padding(.horizontal, 6)
