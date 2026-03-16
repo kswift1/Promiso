@@ -266,6 +266,7 @@ extension PersonalMode {
             return .merge(
               .send(.internal(.subscribeToEvents)),
               .send(.internal(.syncPersonalCalendar)),
+              .send(.internal(.fetchRecurringEvents)),
               .run { [userSettingsClient] send in
                 if let settings = try? await userSettingsClient.fetchSettings(userId) {
                   await send(.internal(.conflictSettingsLoaded(settings.conflictDetectionThreshold)))
