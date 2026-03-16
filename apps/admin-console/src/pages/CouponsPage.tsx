@@ -78,7 +78,6 @@ export function CouponsPage() {
       createCoupon({
         code: code.trim() || undefined,
         durationDays,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       }),
     onSuccess: (coupon) => {
       setMessage({

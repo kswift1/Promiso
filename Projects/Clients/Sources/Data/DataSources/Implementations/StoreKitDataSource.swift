@@ -405,14 +405,14 @@ final class SubscriptionRemoteDataSource: Sendable {
         }
 
         if let expiresAtString = data["expiresAt"] as? String,
-           let expiresAt = Self.iso8601Formatter.date(from: expiresAtString),
+           let expiresAt = Self.parseISO8601(expiresAtString),
            expiresAt < Date() {
           continuation.yield(.expired(expirationDate: expiresAt))
           return
         }
 
         let expiresAtString = data["expiresAt"] as? String
-        let expiresAt = expiresAtString.flatMap { Self.iso8601Formatter.date(from: $0) }
+        let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
         continuation.yield(.subscribed(productType: nil, expirationDate: expiresAt))
       }
 
@@ -422,7 +422,18 @@ final class SubscriptionRemoteDataSource: Sendable {
     }
   }
 
-  private static let iso8601Formatter = ISO8601DateFormatter()
+  private static let iso8601Formatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+  }()
+
+  private static let iso8601FormatterFallback = ISO8601DateFormatter()
+
+  private static func parseISO8601(_ string: String) -> Date? {
+    iso8601Formatter.date(from: string)
+      ?? iso8601FormatterFallback.date(from: string)
+  }
 
   private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
     guard let statusString = data["status"] as? String else { return .none }

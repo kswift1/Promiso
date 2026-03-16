@@ -586,7 +586,11 @@ export const getAdminDashboardSummary = onCall<Record<string, never>>(
 
 export const getAdminAnalyticsSummary =
   onCall<GetAdminAnalyticsSummaryRequest>(
-    {region: REGION},
+    {
+      region: REGION,
+      serviceAccount:
+        `${process.env.GCLOUD_PROJECT}@appspot.gserviceaccount.com`,
+    },
     async (request): Promise<GetAdminAnalyticsSummaryResponse> => {
       if (!request.auth) {
         throw new HttpsError("unauthenticated", "로그인이 필요합니다");
@@ -2446,16 +2450,9 @@ export const createCoupon = onCall<CreateCouponRequest>(
       }
     }
 
-    let expiresAt: Date;
-    if (request.data.expiresAt) {
-      const parsed = new Date(request.data.expiresAt);
-      if (Number.isNaN(parsed.getTime())) {
-        throw new HttpsError("invalid-argument", "expiresAt 형식이 올바르지 않습니다");
-      }
-      expiresAt = parsed;
-    } else {
-      expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-    }
+    const expiresAt = new Date(
+      Date.now() + durationDays * 24 * 60 * 60 * 1000
+    );
 
     const couponData = {
       durationDays,
