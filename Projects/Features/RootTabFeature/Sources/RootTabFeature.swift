@@ -172,11 +172,13 @@ extension RootTab {
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정
       var pendingLiveScheduleDetailRequest: Bool = false
 
+      /// 일정 탭 기본 모드 (Settings에서 설정)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
-        // UserDefaults에서 일정 탭 기본 모드 읽기
-        let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultScheduleTabMode) ?? "group"
-        self.scheduleMode = savedMode == "own" ? .own : .group
+        // @Shared appStorage에서 일정 탭 기본 모드 읽기
+        self.scheduleMode = _defaultScheduleTabMode.wrappedValue == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         let savedCalendarMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultCalendarDisplayMode)

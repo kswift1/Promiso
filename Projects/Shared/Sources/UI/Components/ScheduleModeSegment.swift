@@ -17,15 +17,18 @@ public enum ScheduleMode: String, CaseIterable, Sendable {
 public struct ScheduleTabHeader: View {
   let selectedMode: ScheduleMode
   let defaultMode: ScheduleMode
+  let onSettingsTapped: (() -> Void)?
   let onModeChange: (ScheduleMode) -> Void
 
   public init(
     selectedMode: ScheduleMode,
     defaultMode: ScheduleMode,
+    onSettingsTapped: (() -> Void)? = nil,
     onModeChange: @escaping (ScheduleMode) -> Void
   ) {
     self.selectedMode = selectedMode
     self.defaultMode = defaultMode
+    self.onSettingsTapped = onSettingsTapped
     self.onModeChange = onModeChange
   }
 
@@ -41,6 +44,18 @@ public struct ScheduleTabHeader: View {
     HStack {
       Text(LocalizedStrings.ScheduleModeSegment.scheduleTitle)
         .font(.system(size: 28, weight: .bold))
+
+      if let onSettingsTapped {
+        Button(action: onSettingsTapped) {
+          Image(systemName: "gearshape.fill")
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .accessibilityLabel("그룹 설정")
+        .padding(.leading, 4)
+      }
 
       Spacer()
 

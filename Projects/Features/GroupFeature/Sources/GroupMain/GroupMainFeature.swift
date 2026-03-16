@@ -82,6 +82,9 @@ extension GroupMain {
       /// Pro 구독 여부
       @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
 
+      /// 일정 탭 기본 모드 (Settings에서 설정)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
+
       /// 과거 일정 상태 (별도 fetch)
       var pastSchedulesState: LoadingState<[ScheduleModel]> = .idle
 
@@ -150,6 +153,7 @@ extension GroupMain {
       case groupScheduleList(GroupScheduleList.Feature)
       case scheduleDetail(ScheduleDetail.Feature)
       case pastSchedules(PastSchedules.Feature)
+      case groupOverview(GroupOverview.Feature)
     }
 
     @CasePathable
@@ -206,6 +210,7 @@ extension GroupMain {
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allSchedulesTapped  // "모든 일정 보기"
         case groupSettingsTapped  // "그룹 설정"
+        case groupOverviewTapped  // "그룹 개요" (모든 그룹 설정)
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (scheduleId)
         case openCreateScheduleIfPossible  // Widget 딥링크: 그룹 있으면 일정 생성
@@ -249,6 +254,8 @@ extension GroupMain {
         case liveActivityChanged(scheduleId: String?)
         case fetchPastSchedules(groupId: String)
         case pastSchedulesResponse(Result<[ScheduleModel], AppError>)
+        case fetchGroupForSettings(groupInfo: UserGroupInfo)
+        case groupForSettingsResponse(Result<GroupModel, AppError>, summary: UserGroupInfo)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
@@ -540,6 +547,14 @@ extension GroupMain {
 
           case .groupSettingsTapped:
             return handleGroupSettingsTapped(&state)
+
+          case .groupOverviewTapped:
+            let groups = state.allGroupSummaries ?? []
+            state.path.append(.groupOverview(.init(
+              groups: groups,
+              currentUser: state.$currentUser
+            )))
+            return .none
 
           case .sortSettingsTapped:
             // 커스텀 정렬 순서에 따라 그룹 정렬
@@ -1092,6 +1107,37 @@ extension GroupMain {
             state.pastSchedulesState = .failed(error)
             return .none
 
+          case .fetchGroupForSettings(let groupInfo):
+            return .run { [groupClient] send in
+              do {
+                let group = try await groupClient.fetchGroup(groupInfo.id)
+                await send(.internal(.groupForSettingsResponse(.success(group), summary: groupInfo)))
+              } catch {
+                await send(.internal(.groupForSettingsResponse(.failure(AppError(error)), summary: groupInfo)))
+              }
+            }
+
+          case .groupForSettingsResponse(.success(let group), let summary):
+            let upcomingSchedules: [ScheduleModel] = {
+              if let groupId = state.currentGroup?.id, groupId == group.id {
+                return state.allSchedules.filter { $0.isUpcoming }
+              }
+              return []
+            }()
+            let preloadedMembers = state.groupMembersCache[group.id]
+            state.path.append(.groupSettings(.init(
+              group: group,
+              summary: summary,
+              currentUserId: state.currentUser.userId,
+              isPro: state.isPro,
+              preloadedMembers: preloadedMembers,
+              upcomingSchedules: upcomingSchedules
+            )))
+            return .none
+
+          case .groupForSettingsResponse(.failure, _):
+            return .none
+
           case .fetchSettings:
             return .merge(
               .run { [userSettingsClient, currentUser = state.currentUser] send in
@@ -1462,6 +1508,24 @@ extension GroupMain {
           return .none
 
         case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated)))):
+          return .none
+
+        // GroupOverview delegate actions
+        case .path(.element(id: _, action: .groupOverview(.delegate(.groupSelected(let groupInfo))))):
+          return .send(.internal(.fetchGroupForSettings(groupInfo: groupInfo)))
+
+        case .path(.element(id: _, action: .groupOverview(.delegate(.createGroup)))):
+          state.path.removeAll()
+          state.createGroup = CreateGroup.Feature.State(
+            currentUser: state.currentUser
+          )
+          return .none
+
+        case .path(.element(id: _, action: .groupOverview(.delegate(.joinGroup)))):
+          state.path.removeAll()
+          state.joinGroup = JoinGroup.Feature.State(
+            currentUser: state.currentUser
+          )
           return .none
 
         case .path:
