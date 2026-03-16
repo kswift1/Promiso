@@ -1178,14 +1178,29 @@ export async function generateBriefingInternal(params: {
       };
     }
 
-    // JSON 파싱
+    // JSON 파싱 — markdown fence 제거 후 summary+detail 포함 블록 추출
     try {
-      const jsonStr = text
-        .replace(/^```json\s*/i, "")
-        .replace(/```\s*$/, "")
-        .trim();
-      const parsed = JSON.parse(jsonStr);
-      if (parsed.summary && parsed.detail) {
+      // 모든 ```json ... ``` 블록 내용 추출
+      const fencePattern = /```(?:json)?\s*([\s\S]*?)```/gi;
+      const blocks: string[] = [];
+      let m;
+      while ((m = fencePattern.exec(text)) !== null) {
+        blocks.push(m[1].trim());
+      }
+      // fence가 없으면 전체 텍스트를 시도
+      if (blocks.length === 0) blocks.push(text.trim());
+
+      let parsed: {summary?: string; detail?: string} | null = null;
+      for (const block of blocks) {
+        try {
+          const candidate = JSON.parse(block);
+          if (candidate.summary && candidate.detail) {
+            parsed = candidate;
+            break;
+          }
+        } catch {/* skip */}
+      }
+      if (parsed?.summary && parsed?.detail) {
         // user-data 태그 제거
         const strip = (s: string) =>
           s.replace(/<\/?user-data>/g, "");
@@ -1225,10 +1240,12 @@ export async function generateBriefingInternal(params: {
     }
 
     // Fallback: 전체 텍스트를 detail로
-    const firstSentence = text.split(/[.!?。]/)[0];
+    const stripTags = (s: string) => s.replace(/<\/?user-data>/g, "");
+    const cleaned = stripTags(text);
+    const firstSentence = cleaned.split(/[.!?。]/)[0];
     return {
       summary: firstSentence.substring(0, 30),
-      detail: text,
+      detail: cleaned,
       isUpdated: false,
       style: effectiveStyle,
       availableTransports,
