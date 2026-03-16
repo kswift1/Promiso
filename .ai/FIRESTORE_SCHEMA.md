@@ -21,6 +21,7 @@
    - [8. subscriptions](#8-subscriptions-컬렉션)
    - [9. subscriptionOwners](#9-subscriptionowners-컬렉션)
    - [10. briefingSubscriptions](#10-briefingsubscriptions-컬렉션)
+   - [11. entitlements](#11-entitlements-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -85,6 +86,9 @@ Firestore Root
 │
 ├─ subscriptionOwners/              # App Store 원본 트랜잭션 소유권 인덱스
 │  └─ {originalTransactionId}/      # 구매 소유자 문서
+│
+├─ entitlements/                    # Pro 판정 read model (구독 + 오버라이드 합산, 서버 관리)
+│  └─ {userId}/                     # 최종 Pro 여부 및 근거 문서
 │
 └─ briefingSubscriptions/           # 브리핑 알림 발송 projection (서버 관리)
    └─ {userId}/                     # 다음 dispatch 시각과 브리핑 설정
@@ -1251,6 +1255,31 @@ subscriptionOwners/{originalTransactionId}
 - **소유권 고정**: 같은 `originalTransactionId`는 하나의 Firebase 사용자에게만 연결
 - **웹훅 라우팅**: Apple Notification에서 사용자 문서를 찾는 인덱스로 사용
 - **보안**: Firestore Rules에서 클라이언트 read/write를 모두 차단
+
+---
+
+### 11. entitlements 컬렉션
+
+> **Pro 판정 read model** — `subscriptions`와 `entitlementOverrides`를 합산한 단일 조회 문서
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|:----:|------|
+| `hasPro` | Boolean | ✅ | 최종 Pro 여부 |
+| `source` | String | ✅ | Pro 근거: `"subscription"` \| `"override"` \| `"none"` |
+| `subscriptionStatus` | String \| null | ✅ | `subscriptions`에서 온 raw 상태 |
+| `overrideActive` | Boolean | ✅ | `entitlementOverrides` 활성 여부 |
+| `overrideExpiresAt` | String \| null | ✅ | override 만료 시점 (ISO 8601) |
+| `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
+
+#### 갱신 트리거
+
+- `subscriptions/{uid}` onWrite → `reconcileEntitlement(uid)`
+- `entitlementOverrides/{uid}` onWrite → `reconcileEntitlement(uid)`
+
+#### 보안 규칙
+
+- 읽기: 본인만 (`auth.uid == userId`)
+- 쓰기: Cloud Functions (Admin SDK) 전용
 
 ---
 

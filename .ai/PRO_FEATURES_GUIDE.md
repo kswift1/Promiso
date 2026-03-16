@@ -18,7 +18,8 @@ Promiso의 Pro 기능은 단순히 "결제했는가"만으로 동작하지 않�
 
 ### SSOT
 
-- 기본 SSOT: `subscriptions/{uid}`
+- **통합 판정 read model**: `entitlements/{uid}` (구독 + 오버라이드 합산)
+- 원본 구독 상태: `subscriptions/{uid}`
 - 운영 예외 권한: `entitlementOverrides/{uid}`
 
 ### 활성 Pro로 보는 상태
@@ -83,13 +84,16 @@ StoreKit 2 / Apple Server Notification
   -> verifyPurchase / appleServerNotification
   -> subscriptions/{uid} 갱신
   -> 필요 시 subscriptionOwners/{originalTransactionId} 갱신
+  -> onSubscriptionWriteSyncEntitlement 트리거
+  -> entitlements/{uid} read model 갱신
 ```
 
 핵심 포인트:
-- `subscriptions/{uid}`는 현재 구독 상태 SSOT
+- `subscriptions/{uid}`는 App Store 구독 상태 원본
+- `entitlements/{uid}`는 구독 + 오버라이드를 합산한 Pro 판정 read model
 - `subscriptionOwners/{originalTransactionId}`는 소유권 인덱스
 - 만료/환불/웹훅 반영은 서버가 담당
-- 클라이언트는 상태를 계산하지 않고 읽기/리스닝 위주
+- 클라이언트는 `entitlements/{uid}` 단일 리스닝으로 Pro 상태를 수신
 
 ---
 
@@ -125,14 +129,12 @@ briefingSubscriptions/{uid}
 ### projection 입력
 
 - `users/{uid}/settings/main.proSettings.briefing`
-- `subscriptions/{uid}`
-- `entitlementOverrides/{uid}`
+- `entitlements/{uid}` (구독 + 오버라이드 합산)
 
 ### projection 갱신 트리거
 
-- settings 변경
-- subscription 변경
-- entitlement override 변경
+- settings/main 변경
+- entitlements/{uid} 변경
 
 ### 스케줄러 동작
 
@@ -149,8 +151,7 @@ scheduledBriefingDispatch
 실행 직전에 다시 아래 값을 읽는다.
 
 - 최신 `settings/main`
-- 최신 `subscriptions/{uid}`
-- 최신 `entitlementOverrides/{uid}`
+- 최신 `entitlements/{uid}`
 
 이유:
 - enqueue 후 구독 상태가 바뀔 수 있음
@@ -199,8 +200,8 @@ Promiso는 브리핑에 대해 B를 채택했다.
 
 ### "왜 이 유저가 Pro인가?"
 
-1. `subscriptions/{uid}` 상태 확인
-2. `entitlementOverrides/{uid}` 존재 여부 확인
+1. `entitlements/{uid}` 확인 (`hasPro`, `source` 필드)
+2. 원인 추적: `subscriptions/{uid}` 또는 `entitlementOverrides/{uid}` 확인
 
 ### "왜 브리핑 알림이 갔나 / 안 갔나?"
 
