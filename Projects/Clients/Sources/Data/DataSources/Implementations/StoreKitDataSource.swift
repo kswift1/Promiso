@@ -349,49 +349,38 @@ final class SubscriptionRemoteDataSource: Sendable {
     let entitlementRef = db.collection("entitlements").document(currentUserId)
     let entitlementSnapshot = try await entitlementRef.getDocument()
 
-    if let data = entitlementSnapshot.data(),
-       let hasPro = data["hasPro"] as? Bool {
-      guard hasPro else { return .none }
+    if let data = entitlementSnapshot.data() {
+      return Self.parseEntitlement(from: data)
+    }
 
-      let source = data["source"] as? String ?? "none"
-      let productIdStr = data["productId"] as? String
-      let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
-      let expirationDateStr = data["expirationDate"] as? String
-      let expirationDate = expirationDateStr.flatMap { Self.parseISO8601($0) }
+    // 2. Fallback: entitlements 문서 미존재 시 기존 경로 (subscriptions + entitlementOverrides)
+    let overrideRef = db.collection("entitlementOverrides").document(currentUserId)
+    let subscriptionRef = db.collection("subscriptions").document(currentUserId)
 
-      switch source {
-      case "subscription":
-        let rawStatus = data["subscriptionStatus"] as? String ?? "subscribed"
-        switch rawStatus {
-        case "lifetime":
-          return .lifetime
-        case "gracePeriod":
-          return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
-        case "revoked":
-          return .revoked
-        case "expired":
-          return .expired(expirationDate: expirationDate ?? .distantPast)
-        default:
-          return .subscribed(productType: productType, expirationDate: expirationDate)
-        }
-      case "override":
-        let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
-        let overrideExpiresAt = overrideExpiresAtStr.flatMap { Self.parseISO8601($0) }
-        return .subscribed(productType: nil, expirationDate: overrideExpiresAt)
-      default:
-        return .none
+    async let overrideSnap = overrideRef.getDocument()
+    async let subscriptionSnap = subscriptionRef.getDocument()
+
+    // override 먼저 확인
+    if let overrideData = try await overrideSnap.data(),
+       let isActive = overrideData["isActive"] as? Bool,
+       isActive {
+      if let expiresAtString = overrideData["expiresAt"] as? String,
+         let expiresAt = Self.parseISO8601(expiresAtString),
+         expiresAt < Date() {
+        // override 만료
+      } else {
+        let expiresAtString = overrideData["expiresAt"] as? String
+        let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
+        return .subscribed(productType: nil, expirationDate: expiresAt)
       }
     }
 
-    // 2. Fallback: entitlements 문서 미존재 시 기존 subscriptions 직접 읽기
-    let docRef = db.collection("subscriptions").document(currentUserId)
-    let snapshot = try await docRef.getDocument()
-
-    guard let data = snapshot.data() else {
+    // subscriptions fallback
+    guard let subData = try await subscriptionSnap.data() else {
       return .none
     }
 
-    return Self.parseStatus(from: data)
+    return Self.parseStatus(from: subData)
   }
 
   /// subscriptions/{userId} 문서의 실시간 변경 스트림
@@ -480,43 +469,10 @@ final class SubscriptionRemoteDataSource: Sendable {
         // 문서가 아직 생성되지 않은 기존 유저 — yield하지 않고 대기
         guard snapshot.exists else { return }
 
-        guard let data = snapshot.data(),
-              let hasPro = data["hasPro"] as? Bool else {
-          return
-        }
+        guard let data = snapshot.data() else { return }
 
-        guard hasPro else {
-          continuation.yield(.none)
-          return
-        }
-
-        let source = data["source"] as? String ?? "none"
-
-        switch source {
-        case "subscription":
-          let rawStatus = data["subscriptionStatus"] as? String ?? "subscribed"
-          let productIdStr = data["productId"] as? String
-          let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
-          let expirationDateStr = data["expirationDate"] as? String
-          let expirationDate = expirationDateStr.flatMap { Self.parseISO8601($0) }
-
-          switch rawStatus {
-          case "lifetime":
-            continuation.yield(.lifetime)
-          case "gracePeriod":
-            continuation.yield(.gracePeriod(expirationDate: expirationDate ?? .distantFuture))
-          default:
-            continuation.yield(.subscribed(productType: productType, expirationDate: expirationDate))
-          }
-
-        case "override":
-          let expiresAtString = data["overrideExpiresAt"] as? String
-          let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
-          continuation.yield(.subscribed(productType: nil, expirationDate: expiresAt))
-
-        default:
-          continuation.yield(.none)
-        }
+        let status = Self.parseEntitlement(from: data)
+        continuation.yield(status)
       }
 
       continuation.onTermination = { _ in
@@ -536,6 +492,48 @@ final class SubscriptionRemoteDataSource: Sendable {
   private static func parseISO8601(_ string: String) -> Date? {
     iso8601Formatter.date(from: string)
       ?? iso8601FormatterFallback.date(from: string)
+  }
+
+  /// entitlements/{uid} 문서를 SubscriptionStatus로 변환
+  /// hasPro == false인 경우에도 expired/revoked를 정확히 반환
+  private static func parseEntitlement(from data: [String: Any]) -> SubscriptionStatus {
+    let hasPro = data["hasPro"] as? Bool ?? false
+    let source = data["source"] as? String ?? "none"
+    let rawStatus = data["subscriptionStatus"] as? String
+    let productIdStr = data["productId"] as? String
+    let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
+    let expirationDateStr = data["expirationDate"] as? String
+    let expirationDate = expirationDateStr.flatMap { parseISO8601($0) }
+
+    if hasPro {
+      switch source {
+      case "subscription":
+        switch rawStatus {
+        case "lifetime":
+          return .lifetime
+        case "gracePeriod":
+          return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
+        default:
+          return .subscribed(productType: productType, expirationDate: expirationDate)
+        }
+      case "override":
+        let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
+        let overrideExpiresAt = overrideExpiresAtStr.flatMap { parseISO8601($0) }
+        return .subscribed(productType: nil, expirationDate: overrideExpiresAt)
+      default:
+        return .subscribed(productType: productType, expirationDate: expirationDate)
+      }
+    }
+
+    // hasPro == false: expired/revoked 구분 보존
+    switch rawStatus {
+    case "expired":
+      return .expired(expirationDate: expirationDate ?? .distantPast)
+    case "revoked":
+      return .revoked
+    default:
+      return .none
+    }
   }
 
   private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
