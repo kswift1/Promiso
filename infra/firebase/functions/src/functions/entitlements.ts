@@ -25,32 +25,28 @@ export async function reconcileEntitlement(uid: string): Promise<void> {
     ]);
 
     const subscriptionData = subscriptionDoc.data();
+    const rawStatus = subscriptionData?.status;
     const subscriptionStatus =
-      typeof subscriptionData?.status === "string"
-        ? (subscriptionData.status as string)
-        : null;
+      typeof rawStatus === "string" ? rawStatus : null;
+    const rawProductId = subscriptionData?.productId;
     const productId =
-      typeof subscriptionData?.productId === "string"
-        ? subscriptionData.productId
-        : null;
+      typeof rawProductId === "string" ? rawProductId : null;
+    const rawExpiration = subscriptionData?.expirationDate;
     const expirationDate =
-      typeof subscriptionData?.expirationDate === "string"
-        ? subscriptionData.expirationDate
-        : null;
+      typeof rawExpiration === "string" ? rawExpiration : null;
     const overrideData = overrideDoc.data() ?? null;
 
     const subscriptionActive = hasActiveSubscription(subscriptionStatus);
     const overrideActive = isEntitlementOverrideActive(overrideData);
     const hasPro = subscriptionActive || overrideActive;
 
-    const source: "subscription" | "override" | "none" = subscriptionActive
-      ? "subscription"
-      : overrideActive
-        ? "override"
-        : "none";
+    let source: "subscription" | "override" | "none" = "none";
+    if (subscriptionActive) source = "subscription";
+    else if (overrideActive) source = "override";
 
+    const rawOverrideExp = overrideData?.expiresAt;
     const overrideExpiresAt =
-      typeof overrideData?.expiresAt === "string" ? overrideData.expiresAt : null;
+      typeof rawOverrideExp === "string" ? rawOverrideExp : null;
 
     await db.collection("entitlements").doc(uid).set(
       {
