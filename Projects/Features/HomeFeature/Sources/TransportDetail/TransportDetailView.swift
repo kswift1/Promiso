@@ -20,6 +20,7 @@ extension TransportDetail {
     @State private var scrollAtTop = true
     @State private var isDraggingSheet = false
     @State private var dragStartOffset: CGFloat = 0
+    @State private var moveToMyLocation = false
     @Environment(\.dismiss) private var dismiss
 
     public init(store: StoreOf<Feature>) {
@@ -73,24 +74,23 @@ extension TransportDetail {
     }
 
     public var body: some View {
-      ZStack(alignment: .bottom) {
-        // Layer 1: Full-screen map
-        mapLayer
-          .ignoresSafeArea(edges: .bottom)
+      VStack(spacing: -20) {
+        // Layer 1: Map (fills remaining space above sheet)
+        ZStack(alignment: .bottom) {
+          mapLayer
 
-        // Layer 2: Floating route selector (above sheet)
-        VStack(spacing: 0) {
-          Spacer()
-          if store.selectedSegment == .transit && store.transportData.transitRoutes.count > 1 {
-            routeSelector
-              .padding(.horizontal, 20)
-              .padding(.bottom, 8)
+          // Floating controls
+          HStack {
+            if store.selectedSegment == .transit && store.transportData.transitRoutes.count > 1 {
+              routeSelector
+            }
+            Spacer()
+            myLocationButton
           }
-          // spacer for bottom panel
-          Color.clear.frame(height: sheetHeight + bottomInset)
+          .padding(.bottom, 28)
         }
 
-        // Layer 3: Bottom panel
+        // Layer 2: Bottom panel
         bottomPanel
       }
       .ignoresSafeArea(edges: .bottom)
@@ -150,9 +150,9 @@ extension TransportDetail {
             originLatitude: originLat,
             originLongitude: originLng,
             destinationLatitude: destLat,
-            destinationLongitude: destLng
+            destinationLongitude: destLng,
+            moveToOrigin: $moveToMyLocation
           )
-          .ignoresSafeArea(edges: .bottom)
         }
       case .transit:
         if let route = store.selectedTransitRoute {
@@ -169,10 +169,10 @@ extension TransportDetail {
             originLatitude: originLat,
             originLongitude: originLng,
             destinationLatitude: destLat,
-            destinationLongitude: destLng
+            destinationLongitude: destLng,
+            moveToOrigin: $moveToMyLocation
           )
           .id(route.id)
-          .ignoresSafeArea(edges: .bottom)
         }
       case .walking:
         KakaoRouteMapView(
@@ -180,10 +180,27 @@ extension TransportDetail {
           originLatitude: originLat,
           originLongitude: originLng,
           destinationLatitude: destLat,
-          destinationLongitude: destLng
+          destinationLongitude: destLng,
+          moveToOrigin: $moveToMyLocation
         )
-        .ignoresSafeArea(edges: .bottom)
       }
+    }
+
+    // MARK: - My Location Button
+
+    private var myLocationButton: some View {
+      Button {
+        moveToMyLocation.toggle()
+      } label: {
+        Image(systemName: "location.fill")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 40, height: 40)
+          .background(.ultraThinMaterial, in: Circle())
+          .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+      }
+      .buttonStyle(.plain)
+      .padding(.trailing, 16)
     }
 
     // MARK: - Bottom Panel
@@ -336,7 +353,7 @@ extension TransportDetail {
             routeSelectorChip(route: route)
           }
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 20)
       }
     }
 
@@ -399,6 +416,7 @@ extension TransportDetail {
         }
       }
       .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
       .background(
         RoundedRectangle(cornerRadius: 14)
           .fill(Color.pmgray.n100)
@@ -547,6 +565,7 @@ extension TransportDetail {
     private func infoCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
       content()
         .padding(16)
+        .frame(maxWidth: .infinity)
         .background(
           RoundedRectangle(cornerRadius: 14)
             .fill(Color.pmgray.n100)

@@ -32,19 +32,22 @@ public struct KakaoTransitMapView: UIViewRepresentable {
   public let originLongitude: Double
   public let destinationLatitude: Double
   public let destinationLongitude: Double
+  @Binding public var moveToOrigin: Bool
 
   public init(
     segments: [TransitRouteSegmentData],
     originLatitude: Double,
     originLongitude: Double,
     destinationLatitude: Double,
-    destinationLongitude: Double
+    destinationLongitude: Double,
+    moveToOrigin: Binding<Bool> = .constant(false)
   ) {
     self.segments = segments
     self.originLatitude = originLatitude
     self.originLongitude = originLongitude
     self.destinationLatitude = destinationLatitude
     self.destinationLongitude = destinationLongitude
+    self._moveToOrigin = moveToOrigin
   }
 
   public func makeUIView(context: Context) -> KMViewContainer {
@@ -56,6 +59,13 @@ public struct KakaoTransitMapView: UIViewRepresentable {
 
   public func updateUIView(_ container: KMViewContainer, context: Context) {
     if context.coordinator.mapController != nil {
+      if moveToOrigin {
+        DispatchQueue.main.async { moveToOrigin = false }
+        if let mapView = context.coordinator.mapController?.getView("mapview") as? KakaoMap {
+          let position = MapPoint(longitude: originLongitude, latitude: originLatitude)
+          mapView.moveCamera(CameraUpdate.make(target: position, zoomLevel: 15, mapView: mapView))
+        }
+      }
       return
     }
 
