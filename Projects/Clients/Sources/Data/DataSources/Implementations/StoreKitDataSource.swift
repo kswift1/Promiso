@@ -364,14 +364,18 @@ final class SubscriptionRemoteDataSource: Sendable {
     if let overrideData = try await overrideSnap.data(),
        let isActive = overrideData["isActive"] as? Bool,
        isActive {
-      if let expiresAtString = overrideData["expiresAt"] as? String,
-         let expiresAt = Self.parseISO8601(expiresAtString),
-         expiresAt < Date() {
-        // override 만료
+      let expiresAtString = overrideData["expiresAt"] as? String
+      let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
+
+      if let definiteExpiresAt = expiresAt {
+        // 만료일이 있는 경우, 현재 시각보다 미래인지 확인
+        if definiteExpiresAt >= Date() {
+          return .subscribed(productType: nil, expirationDate: definiteExpiresAt)
+        }
+        // 만료된 경우, 아래의 subscription fallback으로 넘어감
       } else {
-        let expiresAtString = overrideData["expiresAt"] as? String
-        let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
-        return .subscribed(productType: nil, expirationDate: expiresAt)
+        // 만료일이 없는 override는 영구적인 것으로 간주
+        return .subscribed(productType: nil, expirationDate: nil)
       }
     }
 
