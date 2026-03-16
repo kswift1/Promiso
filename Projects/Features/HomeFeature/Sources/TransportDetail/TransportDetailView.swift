@@ -49,10 +49,16 @@ extension TransportDetail {
         mapLayer
           .ignoresSafeArea(edges: .bottom)
 
-        // Layer 2: Floating top controls
+        // Layer 2: Floating route selector (above sheet)
         VStack(spacing: 0) {
-          topControls
           Spacer()
+          if store.selectedSegment == .transit && store.transportData.transitRoutes.count > 1 {
+            routeSelector
+              .padding(.horizontal, 20)
+              .padding(.bottom, 8)
+          }
+          // spacer for bottom panel
+          Color.clear.frame(height: sheetHeight + bottomInset)
         }
 
         // Layer 3: Bottom panel
@@ -64,7 +70,6 @@ extension TransportDetail {
       } action: { value in
         if bottomInset == 0 { bottomInset = value }
       }
-      .navigationTitle(LocalizedStrings.Home.transportTitle)
       .navigationBarTitleDisplayMode(.inline)
       .navigationBarBackButtonHidden()
       .toolbar {
@@ -75,6 +80,10 @@ extension TransportDetail {
             Image(systemName: "chevron.left")
               .font(.system(size: 16, weight: .semibold))
           }
+        }
+        ToolbarItem(placement: .principal) {
+          segmentControl
+            .frame(width: 220)
         }
       }
       .onAppear {
@@ -146,20 +155,6 @@ extension TransportDetail {
         )
         .ignoresSafeArea(edges: .bottom)
       }
-    }
-
-    // MARK: - Top Controls (floating)
-
-    private var topControls: some View {
-      VStack(spacing: 8) {
-        segmentControl
-
-        if store.selectedSegment == .transit && store.transportData.transitRoutes.count > 1 {
-          routeSelector
-        }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 8)
     }
 
     // MARK: - Bottom Panel
