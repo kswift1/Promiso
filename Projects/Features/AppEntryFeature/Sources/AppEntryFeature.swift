@@ -362,13 +362,6 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
-            if isSignup && state.isFullOnboarding {
-              effects.append(.run { send in
-                try? await Task.sleep(for: .seconds(1.5))
-                await send(.destination(.presented(.main(.openProPlan))))
-              })
-            }
-
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
               effects.append(routeDeeplink(deeplink))
