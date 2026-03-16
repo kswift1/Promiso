@@ -1007,6 +1007,7 @@ extension Home {
             let destName = location.name
 
             state.path.append(.transportDetail(.init(
+              scheduleItemId: item.id,
               scheduleTitle: item.title,
               scheduleEmoji: item.displayEmoji,
               scheduleStartAt: item.startAt,
@@ -1679,7 +1680,8 @@ extension Home {
                   durationMinutes: driving.duration,
                   departureTime: departureTime,
                   additionalInfo: info,
-                  distanceMeters: driving.distance
+                  distanceMeters: driving.distance,
+                  routePoints: driving.routePoints
                 )
               } else {
                 drivingOption = nil
@@ -1690,10 +1692,19 @@ extension Home {
                 let departureTime = itemStartAt.addingTimeInterval(-Double(route.totalTime * 60))
                 let subPaths = route.subPaths.map { subPath -> HomeModels.TransportSubPath in
                   let laneName: String?
+                  let laneColor: String?
                   if let firstLane = subPath.lanes.first {
                     laneName = firstLane.name ?? firstLane.busNo
+                    if subPath.trafficType == 1 {
+                      laneColor = Self.subwayColor(code: firstLane.subwayCode)
+                    } else if subPath.trafficType == 2 {
+                      laneColor = Self.busColor(type: firstLane.busType)
+                    } else {
+                      laneColor = nil
+                    }
                   } else {
                     laneName = nil
+                    laneColor = nil
                   }
                   return HomeModels.TransportSubPath(
                     trafficType: subPath.trafficType,
@@ -1702,7 +1713,11 @@ extension Home {
                     startName: subPath.startName,
                     endName: subPath.endName,
                     stationCount: subPath.stationCount,
-                    laneName: laneName
+                    laneName: laneName,
+                    laneColor: laneColor,
+                    way: subPath.way,
+                    endExitNo: subPath.endExitNo,
+                    passStopCoords: subPath.passStopCoords
                   )
                 }
                 return HomeModels.TransitRouteOption(
@@ -2055,8 +2070,95 @@ extension Home {
 
         // MARK: - TransportDetail Path Actions
 
-        case .path(.element(id: _, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
-          return .send(.internal(.scheduleAlertForSelection(selection, bufferMinutes)))
+        case .path(.element(id: let id, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
+          guard let detailState = state.path[id: id],
+                case .transportDetail(let tdState) = detailState else {
+            return .none
+          }
+          let transportData = tdState.transportData
+          let scheduleItemId = tdState.scheduleItemId
+          let scheduleTitle = tdState.scheduleTitle
+          let scheduleStartAt = tdState.scheduleStartAt
+          let durationMinutes: Int
+          let rawDepartureTime: Date
+          let transportType: HomeModels.TransportType
+          switch selection {
+          case .driving:
+            guard let opt = transportData.driving else { return .none }
+            durationMinutes = opt.durationMinutes
+            rawDepartureTime = opt.departureTime
+            transportType = .driving
+          case .transit(let index):
+            guard let route = transportData.transitRoutes.first(where: { $0.id == index }) else { return .none }
+            durationMinutes = route.totalTime
+            rawDepartureTime = route.departureTime
+            transportType = .transit
+          case .walking:
+            durationMinutes = transportData.walking.durationMinutes
+            rawDepartureTime = transportData.walking.departureTime
+            transportType = .walking
+          }
+          let departureTime = rawDepartureTime.addingTimeInterval(-Double(bufferMinutes * 60))
+          let alertInfo = HomeModels.DepartureAlertInfo(
+            scheduleItemId: scheduleItemId,
+            selectedTransport: transportType,
+            durationMinutes: durationMinutes,
+            departureTime: departureTime
+          )
+          state.departureAlerts[scheduleItemId] = alertInfo
+          let alertsAfterSchedule = state.departureAlerts
+          let notificationId = "departure_alert_\(scheduleItemId)"
+          let timeText = scheduleStartAt.formattedTime
+          let transport = transportType.displayName
+
+          typealias NotificationTemplate = (
+            title: (String) -> String,
+            body: (String, String, Int, Int) -> String
+          )
+
+          let templates: [NotificationTemplate] = [
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleSoon($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodySoonWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodySoon(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleNow($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyNowWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyNow(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleReady($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyReadyWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyReady(time, trans, duration)
+              }
+            ),
+          ]
+
+          guard let template = templates.randomElement() else { return .none }
+          let title = template.title(scheduleTitle)
+          let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
+          let triggerDate = departureTime
+          return .run { [localNotificationClient, userDefaultsClient] send in
+            Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
+            do {
+              try await localNotificationClient.schedule(
+                notificationId, title, body, triggerDate,
+                ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+              )
+            } catch {
+              // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+            }
+            await send(.internal(.departureAlertScheduled(alertInfo)))
+          }
 
         case .path:
           return .none
@@ -2158,6 +2260,62 @@ extension Home {
       AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
 
       return input
+    }
+
+    // MARK: - 지하철 호선 색상
+
+    private static func busColor(type: Int?) -> String? {
+      guard let type else { return nil }
+      switch type {
+      case 1: return "#53B332"   // 일반 (초록)
+      case 2: return "#E60012"   // 좌석 (빨강)
+      case 3: return "#53B332"   // 마을 (초록)
+      case 4: return "#E60012"   // 직행좌석 (빨강)
+      case 5: return "#8B4513"   // 공항
+      case 6: return "#003087"   // 간선급행 (파랑)
+      case 10: return "#53B332"  // 외곽 (초록)
+      case 11: return "#003087"  // 간선 (파랑)
+      case 12: return "#53B332"  // 지선 (초록)
+      case 13: return "#53B332"  // 순환 (초록)
+      case 14: return "#E60012"  // 광역 (빨강)
+      case 15: return "#E60012"  // 급행 (빨강)
+      case 16: return "#F99D1C"  // 경기 일반 (노랑)
+      case 20: return "#003087"  // 인천 간선 (파랑)
+      case 22: return "#E60012"  // 인천 광역 (빨강)
+      case 26: return "#53B332"  // 인천 지선 (초록)
+      default: return "#53B332"  // 기본 초록
+      }
+    }
+
+    private static func subwayColor(code: Int?) -> String? {
+      guard let code else { return nil }
+      switch code {
+      case 1: return "#0052A4"   // 1호선
+      case 2: return "#00A84D"   // 2호선
+      case 3: return "#EF7C1C"   // 3호선
+      case 4: return "#00A4E3"   // 4호선
+      case 5: return "#996CAC"   // 5호선
+      case 6: return "#CD7C2F"   // 6호선
+      case 7: return "#747F00"   // 7호선
+      case 8: return "#E6186C"   // 8호선
+      case 9: return "#BDB092"   // 9호선
+      case 100: return "#7CA1D3" // 분당선
+      case 101: return "#F5A200" // 공항철도
+      case 102: return "#32A1C8" // 자기부상
+      case 104: return "#EB8B00" // 경의중앙선
+      case 107: return "#C4C73D" // 에버라인
+      case 108: return "#A71E31" // 경춘선
+      case 109: return "#F5A200" // 신분당선
+      case 110: return "#A4D80B" // 의정부경전철
+      case 112: return "#6789CA" // 경강선
+      case 113: return "#003DA5" // 우이신설선
+      case 114: return "#E0861A" // 서해선
+      case 115: return "#8B50A4" // 김포골드라인
+      case 116: return "#C6C100" // 수인분당선
+      case 117: return "#004E6F" // 신림선
+      case 118: return "#71B5E4" // GTX-A
+      default: return nil
+      }
     }
   }
 }

@@ -9,6 +9,20 @@ extension TransportDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
 
+    // MARK: - Sheet Drag State
+    private static let collapsedHeight: CGFloat = 130
+    private static var expandedHeight: CGFloat { UIScreen.main.bounds.height * 0.55 }
+
+    @State private var sheetHeight: CGFloat = RootView.collapsedHeight
+    @State private var sheetBaseHeight: CGFloat = RootView.collapsedHeight
+    @State private var bottomInset: CGFloat = 0
+    @State private var scrollEnabled = false
+    @State private var scrollAtTop = true
+    @State private var isDraggingSheet = false
+    @State private var dragStartOffset: CGFloat = 0
+    @State private var moveToMyLocation = false
+    @Environment(\.dismiss) private var dismiss
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -17,218 +31,323 @@ extension TransportDetail {
       raw.addingTimeInterval(-Double(store.bufferMinutes * 60))
     }
 
+    private var sheetDragGesture: some Gesture {
+      DragGesture(minimumDistance: 5, coordinateSpace: .global)
+        .onChanged { value in
+          let isExpanded = sheetBaseHeight == Self.expandedHeight
+          let pullingDown = value.translation.height > 0
+
+          // expanded 상태에서 스크롤 맨 위 + 아래로 드래그 → 시트 이동
+          if isExpanded && !isDraggingSheet {
+            if scrollAtTop && pullingDown {
+              isDraggingSheet = true
+              dragStartOffset = value.translation.height
+              scrollEnabled = false
+            } else {
+              return
+            }
+          }
+
+          // collapsed 상태에서는 항상 시트 이동
+          if !isExpanded && !isDraggingSheet {
+            isDraggingSheet = true
+            dragStartOffset = value.translation.height
+          }
+
+          let delta = value.translation.height - dragStartOffset
+          let proposed = sheetBaseHeight - delta
+          sheetHeight = max(Self.collapsedHeight, min(Self.expandedHeight, proposed))
+        }
+        .onEnded { value in
+          guard isDraggingSheet else { return }
+          let predictedDelta = value.predictedEndTranslation.height - dragStartOffset
+          let projected = sheetBaseHeight - predictedDelta
+          let mid = (Self.collapsedHeight + Self.expandedHeight) / 2
+          let target = projected > mid ? Self.expandedHeight : Self.collapsedHeight
+          withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+            sheetHeight = target
+          }
+          sheetBaseHeight = target
+          scrollEnabled = (target == Self.expandedHeight)
+          isDraggingSheet = false
+        }
+    }
+
     public var body: some View {
-      VStack(spacing: 0) {
-        // 일정 정보 헤더
-        scheduleHeader
-          .padding(.horizontal, 20)
-          .padding(.top, 20)
-          .padding(.bottom, 12)
+      VStack(spacing: -20) {
+        // Layer 1: Map (fills remaining space above sheet)
+        ZStack(alignment: .bottom) {
+          mapLayer
 
-        // 경로 요약 카드
-        routeSummaryCard
-          .padding(.horizontal, 20)
-          .padding(.bottom, 16)
-
-        // 세그먼트 컨트롤
-        segmentControl
-          .padding(.horizontal, 20)
-          .padding(.bottom, 16)
-
-        Divider()
-          .padding(.horizontal, 20)
-
-        // 컨텐츠 영역
-        ScrollView {
-          contentArea
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
+          // Floating controls
+          HStack {
+            if store.selectedSegment == .transit && store.transportData.transitRoutes.count > 1 {
+              routeSelector
+            }
+            Spacer()
+            myLocationButton
+          }
+          .padding(.bottom, 28)
         }
 
-        // 여유시간 선택
-        bufferSelector
-          .padding(.horizontal, 20)
-          .padding(.top, 8)
-
-        // 지도에서 경로보기 버튼
-        openMapButton
-          .padding(.horizontal, 20)
-          .padding(.top, 12)
-
-        // 하단 알림 버튼
-        alertButton
-          .padding(.horizontal, 20)
-          .padding(.bottom, 32)
-          .padding(.top, 8)
+        // Layer 2: Bottom panel
+        bottomPanel
       }
-      .auroraBackground()
-      .navigationTitle(LocalizedStrings.Home.transportTitle)
+      .ignoresSafeArea(edges: .bottom)
+      .onGeometryChange(for: CGFloat.self) { proxy in
+        proxy.safeAreaInsets.bottom
+      } action: { value in
+        if bottomInset == 0 { bottomInset = value }
+      }
       .navigationBarTitleDisplayMode(.inline)
+      .navigationBarBackButtonHidden()
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button {
+            dismiss()
+          } label: {
+            Image(systemName: "chevron.left")
+              .font(.system(size: 16, weight: .semibold))
+          }
+        }
+        ToolbarItem(placement: .principal) {
+          transportMenu
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            ForEach(store.availableMapApps, id: \.self) { app in
+              Button {
+                store.send(.view(.mapAppSelected(app)))
+              } label: {
+                Text(app.displayName)
+              }
+            }
+          } label: {
+            Image(systemName: "arrow.triangle.turn.up.right.diamond")
+              .font(.system(size: 16, weight: .semibold))
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .confirmationDialog(
-        LocalizedStrings.Home.transportMapAppDialog,
-        isPresented: Binding(
-          get: { store.isMapAppSheetPresented },
-          set: { _ in store.send(.view(.mapAppSheetDismissed)) }
-        )
-      ) {
-        ForEach(store.availableMapApps, id: \.self) { app in
-          Button(app.displayName) {
-            store.send(.view(.mapAppSelected(app)))
-          }
-        }
-      }
     }
 
-    // MARK: - Schedule Header
+    // MARK: - Map Layer
 
-    private var scheduleHeader: some View {
-      HStack(spacing: 8) {
-        Text(store.scheduleEmoji)
-          .font(.pmTitle2)
+    private var mapLayer: some View {
+      let originLat = store.originCoordinate?.latitude ?? store.destinationCoordinate.latitude
+      let originLng = store.originCoordinate?.longitude ?? store.destinationCoordinate.longitude
 
-        VStack(alignment: .leading, spacing: 2) {
-          Text(store.scheduleTitle)
-            .font(.pmBodySemibold)
-            .foregroundStyle(Color.pmtext.primary)
-            .lineLimit(1)
-
-          Text(store.scheduleStartAt.formattedTime)
-            .font(.pmCaption)
-            .foregroundStyle(Color.pmtext.secondary)
-        }
-
-        Spacer()
-      }
-    }
-
-    // MARK: - Route Summary Card
-
-    private var routeSummaryCard: some View {
-      VStack(spacing: 12) {
-        // 출발지
-        HStack(spacing: 8) {
-          Circle()
-            .fill(Color.pmindigo.n500)
-            .frame(width: 8, height: 8)
-          Text(store.originName ?? LocalizedStrings.Home.transportCurrentLocation)
-            .font(.pmCaption)
-            .foregroundStyle(Color.pmtext.secondary)
-          Spacer()
-        }
-
-        // 연결선
-        HStack(spacing: 8) {
-          Rectangle()
-            .fill(Color.pmgray.n300)
-            .frame(width: 2, height: 16)
-            .padding(.leading, 3)
-          Spacer()
-        }
-
-        // 도착지
-        HStack(spacing: 8) {
-          Circle()
-            .fill(Color.pmerror.n500)
-            .frame(width: 8, height: 8)
-          Text(store.destinationName)
-            .font(.pmCaptionSemibold)
-            .foregroundStyle(Color.pmtext.primary)
-          Spacer()
-        }
-      }
-      .padding(16)
-      .background(
-        RoundedRectangle(cornerRadius: 14)
-          .fill(Color.pmgray.n100)
+      return KakaoTransportMapView(
+        data: transportMapData,
+        originLatitude: originLat,
+        originLongitude: originLng,
+        destinationLatitude: store.destinationCoordinate.latitude,
+        destinationLongitude: store.destinationCoordinate.longitude,
+        moveToOrigin: $moveToMyLocation
       )
     }
 
-    // MARK: - Segment Control
-
-    private var segmentControl: some View {
-      let availableTypes: [HomeModels.TransportType] = {
-        var types: [HomeModels.TransportType] = []
-        if store.transportData.driving != nil { types.append(.driving) }
-        if !store.transportData.transitRoutes.isEmpty { types.append(.transit) }
-        types.append(.walking)
-        return types
-      }()
-
-      return Picker(LocalizedStrings.SettingsStrings.briefingTransport, selection: Binding(
-        get: { store.selectedSegment },
-        set: { store.send(.view(.segmentChanged($0))) }
-      )) {
-        ForEach(availableTypes, id: \.self) { type in
-          Text(type.displayName).tag(type)
-        }
-      }
-      .pickerStyle(.segmented)
-    }
-
-    // MARK: - Content Area
-
-    @ViewBuilder
-    private var contentArea: some View {
+    private var transportMapData: TransportMapData {
       switch store.selectedSegment {
       case .driving:
         if let driving = store.transportData.driving {
-          drivingContent(driving: driving)
+          return .driving(routePoints: driving.routePoints)
         }
+        return .walking
       case .transit:
-        transitContent
+        if let route = store.selectedTransitRoute {
+          let segments = route.subPaths.compactMap { subPath -> TransitRouteSegmentData? in
+            guard !subPath.passStopCoords.isEmpty else { return nil }
+            return TransitRouteSegmentData(
+              coords: subPath.passStopCoords,
+              color: subPath.laneColor,
+              trafficType: subPath.trafficType
+            )
+          }
+          return .transit(segments: segments)
+        }
+        return .walking
       case .walking:
-        walkingContent
+        return .walking
       }
     }
 
-    // MARK: - Driving Content
+    // MARK: - My Location Button
 
-    private func drivingContent(driving: HomeModels.TransportOption) -> some View {
-      VStack(spacing: 16) {
-        infoCard {
+    private var myLocationButton: some View {
+      Button {
+        moveToMyLocation.toggle()
+      } label: {
+        Image(systemName: "location.fill")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 40, height: 40)
+          .background(.ultraThinMaterial, in: Circle())
+          .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+      }
+      .buttonStyle(.plain)
+      .padding(.trailing, 16)
+    }
+
+    // MARK: - Bottom Panel
+
+    private var bottomPanel: some View {
+      VStack(spacing: 0) {
+        // Drag handle
+        Capsule()
+          .fill(Color.pmgray.n300)
+          .frame(width: 36, height: 5)
+          .padding(.top, 10)
+          .padding(.bottom, 8)
+          .frame(maxWidth: .infinity)
+
+        // Scrollable content
+        ScrollView {
           VStack(spacing: 12) {
-            infoRow(
-              iconName: "clock",
-              label: LocalizedStrings.Home.transportDuration,
-              value: approximateMinutes(driving.durationMinutes)
-            )
-            Divider()
-            infoRow(
-              iconName: "car.fill",
-              label: LocalizedStrings.Home.transportExpectedDeparture,
-              value: adjustedTime(driving.departureTime).formattedTime
-            )
-            if let info = driving.additionalInfo {
-              Divider()
-              infoRow(
-                iconName: "wonsign.circle",
-                label: LocalizedStrings.Home.transportToll,
-                value: info
-              )
+            bottomInfoContent
+
+            if store.selectedSegment == .transit,
+               let route = store.selectedTransitRoute,
+               !route.subPaths.isEmpty {
+              subPathTimeline(subPaths: route.subPaths)
             }
+
+            bufferSelector
+
+            alertButton
+              .padding(.bottom, bottomInset + 16)
+          }
+          .padding(.horizontal, 20)
+        }
+        .scrollDisabled(!scrollEnabled)
+        .onScrollGeometryChange(for: Bool.self) { geo in
+          geo.contentOffset.y <= 0
+        } action: { _, atTop in
+          scrollAtTop = atTop
+        }
+      }
+      .frame(height: sheetHeight + bottomInset)
+      .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+      .simultaneousGesture(sheetDragGesture)
+      .background(
+        UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
+          .fill(.ultraThinMaterial)
+      )
+      .shadow(color: .black.opacity(0.1), radius: 10, y: -2)
+      .animation(.spring(response: 0.24, dampingFraction: 0.88), value: store.selectedSegment)
+    }
+
+
+    // MARK: - Bottom Info Content
+
+    @ViewBuilder
+    private var bottomInfoContent: some View {
+      switch store.selectedSegment {
+      case .driving:
+        if let driving = store.transportData.driving {
+          infoCard {
+            VStack(spacing: 12) {
+              infoRow(iconName: "clock", label: LocalizedStrings.Home.transportDuration, value: approximateMinutes(driving.durationMinutes))
+              Divider()
+              infoRow(iconName: "car.fill", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(driving.departureTime).formattedTime)
+              if let info = driving.additionalInfo {
+                Divider()
+                infoRow(iconName: "wonsign.circle", label: LocalizedStrings.Home.transportToll, value: info)
+              }
+            }
+          }
+        }
+      case .transit:
+        if let route = store.selectedTransitRoute {
+          infoCard {
+            VStack(spacing: 12) {
+              infoRow(iconName: "clock", label: LocalizedStrings.Home.transportTotalDuration, value: approximateMinutes(route.totalTime))
+              Divider()
+              infoRow(iconName: "tram.fill", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(route.departureTime).formattedTime)
+              if route.payment > 0 {
+                Divider()
+                infoRow(iconName: "wonsign.circle", label: LocalizedStrings.Home.transportFare, value: wonAmount(route.payment))
+              }
+              if route.transitCount > 0 {
+                Divider()
+                infoRow(iconName: "arrow.triangle.2.circlepath", label: LocalizedStrings.Home.transportTransfers, value: transferCount(route.transitCount))
+              }
+            }
+          }
+        }
+      case .walking:
+        let walking = store.transportData.walking
+        VStack(spacing: 12) {
+          infoCard {
+            VStack(spacing: 12) {
+              infoRow(iconName: "clock", label: LocalizedStrings.Home.transportDuration, value: approximateMinutes(walking.durationMinutes))
+              Divider()
+              infoRow(iconName: "figure.walk", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(walking.departureTime).formattedTime)
+              if let meters = walking.distanceMeters, meters > 0 {
+                Divider()
+                infoRow(iconName: "map", label: LocalizedStrings.Home.transportDistance, value: "\((Double(meters) / 1000.0).formatted(.number.precision(.fractionLength(1))))km")
+              }
+            }
+          }
+          if (walking.distanceMeters ?? 0) >= 10_000 {
+            HStack(spacing: 6) {
+              Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.pmwarning.n500)
+              Text(LocalizedStrings.Home.transportWalkingNotRecommended)
+                .font(.pmCaption)
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
           }
         }
       }
     }
 
-    // MARK: - Transit Content
+    // MARK: - Transport Menu
 
-    private var transitContent: some View {
-      VStack(spacing: 16) {
-        // 경로 선택 (여러 경로가 있을 때)
-        if store.transportData.transitRoutes.count > 1 {
-          routeSelector
+    private var availableTransportTypes: [HomeModels.TransportType] {
+      var types: [HomeModels.TransportType] = []
+      if store.transportData.driving != nil { types.append(.driving) }
+      if !store.transportData.transitRoutes.isEmpty { types.append(.transit) }
+      types.append(.walking)
+      return types
+    }
+
+    private var transportMenu: some View {
+      Menu {
+        ForEach(availableTransportTypes, id: \.self) { type in
+          Button {
+            store.send(.view(.segmentChanged(type)))
+          } label: {
+            Label(type.displayName, systemImage: transportIcon(type))
+          }
         }
-
-        // 선택된 경로 상세
-        if let route = store.selectedTransitRoute {
-          transitRouteDetail(route: route)
+      } label: {
+        HStack(spacing: 4) {
+          Text(store.selectedSegment.displayName)
+            .font(.pmBodySemibold)
+            .foregroundStyle(Color.pmtext.primary)
+          Image(systemName: "chevron.down")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Color.pmtext.secondary)
         }
       }
     }
+
+    private func transportIcon(_ type: HomeModels.TransportType) -> String {
+      switch type {
+      case .driving: return "car.fill"
+      case .transit: return "tram.fill"
+      case .walking: return "figure.walk"
+      }
+    }
+
+    // MARK: - Route Selector
 
     private var routeSelector: some View {
       ScrollView(.horizontal, showsIndicators: false) {
@@ -237,7 +356,7 @@ extension TransportDetail {
             routeSelectorChip(route: route)
           }
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 20)
       }
     }
 
@@ -286,32 +405,6 @@ extension TransportDetail {
       .accessibilityLabel(routeAccessibilityLabel(isSelected: isSelected, routeIndex: route.id + 1, minutes: route.totalTime))
     }
 
-    private func transitRouteDetail(route: HomeModels.TransitRouteOption) -> some View {
-      VStack(spacing: 16) {
-        // 요약 카드
-        infoCard {
-          VStack(spacing: 12) {
-            infoRow(iconName: "clock", label: LocalizedStrings.Home.transportTotalDuration, value: approximateMinutes(route.totalTime))
-            Divider()
-            infoRow(iconName: "tram.fill", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(route.departureTime).formattedTime)
-            if route.payment > 0 {
-              Divider()
-              infoRow(iconName: "wonsign.circle", label: LocalizedStrings.Home.transportFare, value: wonAmount(route.payment))
-            }
-            if route.transitCount > 0 {
-              Divider()
-              infoRow(iconName: "arrow.triangle.2.circlepath", label: LocalizedStrings.Home.transportTransfers, value: transferCount(route.transitCount))
-            }
-          }
-        }
-
-        // 경로 타임라인
-        if !route.subPaths.isEmpty {
-          subPathTimeline(subPaths: route.subPaths)
-        }
-      }
-    }
-
     // MARK: - SubPath Timeline
 
     private func subPathTimeline(subPaths: [HomeModels.TransportSubPath]) -> some View {
@@ -326,6 +419,7 @@ extension TransportDetail {
         }
       }
       .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
       .background(
         RoundedRectangle(cornerRadius: 14)
           .fill(Color.pmgray.n100)
@@ -333,15 +427,23 @@ extension TransportDetail {
     }
 
     private func subPathRow(subPath: HomeModels.TransportSubPath, isLast: Bool) -> some View {
-      HStack(alignment: .top, spacing: 12) {
+      let lineColor: Color = if let hex = subPath.laneColor {
+        Color(hex: hex)
+      } else if subPath.trafficType == 3 {
+        Color.pmgray.n300
+      } else {
+        subPathIconColor(trafficType: subPath.trafficType)
+      }
+
+      return HStack(alignment: .top, spacing: 12) {
         // 타임라인 세로선 + 노드
         VStack(spacing: 0) {
-          subPathIcon(trafficType: subPath.trafficType)
+          subPathIcon(trafficType: subPath.trafficType, laneColor: subPath.laneColor)
             .frame(width: 28, height: 28)
 
           if !isLast {
             Rectangle()
-              .fill(Color.pmgray.n300)
+              .fill(lineColor.opacity(0.4))
               .frame(width: 2, height: 32)
           }
         }
@@ -374,9 +476,13 @@ extension TransportDetail {
       }
     }
 
-    private func subPathIcon(trafficType: Int) -> some View {
+    private func subPathIcon(trafficType: Int, laneColor: String? = nil) -> some View {
       let iconName = subPathIconName(trafficType: trafficType)
-      let color = subPathIconColor(trafficType: trafficType)
+      let color: Color = if let hex = laneColor {
+        Color(hex: hex)
+      } else {
+        subPathIconColor(trafficType: trafficType)
+      }
       return ZStack {
         Circle()
           .fill(color.opacity(0.12))
@@ -402,9 +508,21 @@ extension TransportDetail {
       let stationText = subPath.stationCount.map(stationCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
-        Text("\(laneName) \(stationText)")
-          .font(.pmCaptionSemibold)
-          .foregroundStyle(Color.pmtext.primary)
+        HStack(spacing: 6) {
+          if let color = subPath.laneColor {
+            Circle()
+              .fill(Color(hex: color))
+              .frame(width: 8, height: 8)
+          }
+          Text("\(laneName) \(stationText)")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+        if let way = subPath.way {
+          Text("\(way) 방면")
+            .font(.pmCaption)
+            .foregroundStyle(subPath.laneColor.map { Color(hex: $0) } ?? Color.pmindigo.n400)
+        }
         if !routeText.isEmpty {
           Text(routeText)
             .font(.pmCaption)
@@ -413,6 +531,11 @@ extension TransportDetail {
         Text(minutesOnly(subPath.sectionTime))
           .font(.pmCaption)
           .foregroundStyle(Color.pmtext.secondary)
+        if let exitNo = subPath.endExitNo {
+          Text("\(exitNo)번 출구")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
       }
     }
 
@@ -421,9 +544,16 @@ extension TransportDetail {
       let stopText = subPath.stationCount.map(stopCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
-        Text("\(busNo) \(stopText)")
-          .font(.pmCaptionSemibold)
-          .foregroundStyle(Color.pmtext.primary)
+        HStack(spacing: 6) {
+          if let color = subPath.laneColor {
+            Circle()
+              .fill(Color(hex: color))
+              .frame(width: 8, height: 8)
+          }
+          Text("\(busNo) \(stopText)")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
         if !routeText.isEmpty {
           Text(routeText)
             .font(.pmCaption)
@@ -441,46 +571,12 @@ extension TransportDetail {
         .foregroundStyle(Color.pmtext.secondary)
     }
 
-    // MARK: - Walking Content
-
-    private var walkingContent: some View {
-      let walking = store.transportData.walking
-      return VStack(spacing: 16) {
-        infoCard {
-          VStack(spacing: 12) {
-            infoRow(iconName: "clock", label: LocalizedStrings.Home.transportDuration, value: approximateMinutes(walking.durationMinutes))
-            Divider()
-            infoRow(iconName: "figure.walk", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(walking.departureTime).formattedTime)
-            if let meters = walking.distanceMeters, meters > 0 {
-              Divider()
-              infoRow(
-                iconName: "map",
-                label: LocalizedStrings.Home.transportDistance,
-                value: String(format: "%.1fkm", Double(meters) / 1000.0)
-              )
-            }
-          }
-        }
-        if (walking.distanceMeters ?? 0) >= 10_000 {
-          HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle")
-              .font(.system(size: 13))
-              .foregroundStyle(Color.pmwarning.n500)
-            Text(LocalizedStrings.Home.transportWalkingNotRecommended)
-              .font(.pmCaption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 4)
-        }
-      }
-    }
-
     // MARK: - Info Card / Row
 
     private func infoCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
       content()
         .padding(16)
+        .frame(maxWidth: .infinity)
         .background(
           RoundedRectangle(cornerRadius: 14)
             .fill(Color.pmgray.n100)
@@ -555,30 +651,11 @@ extension TransportDetail {
       .accessibilityLabel(bufferAccessibilityLabel(minutes))
     }
 
-    // MARK: - Open Map Button
-
-    private var openMapButton: some View {
-      Button {
-        store.send(.view(.openMapTapped))
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "map")
-            .font(.system(size: 14))
-          Text(LocalizedStrings.Home.transportOpenInMap)
-            .font(.pmCaptionSemibold)
-        }
-        .foregroundStyle(Color.pmindigo.n500)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-          RoundedRectangle(cornerRadius: 14)
-            .strokeBorder(Color.pmindigo.n300, lineWidth: 1)
-        )
-      }
-      .buttonStyle(.plain)
-    }
-
     // MARK: - Alert Button
+
+    private var isAlertDisabled: Bool {
+      store.selectedSegment == .walking && (store.transportData.walking.distanceMeters ?? 0) >= 10_000
+    }
 
     private var alertButton: some View {
       Button {
@@ -591,10 +668,11 @@ extension TransportDetail {
           .padding(.vertical, 16)
           .background(
             RoundedRectangle(cornerRadius: 14)
-              .fill(Color.pmindigo.n500)
+              .fill(isAlertDisabled ? Color.pmgray.n300 : Color.pmindigo.n500)
           )
       }
       .buttonStyle(.plain)
+      .disabled(isAlertDisabled)
     }
 
     private func approximateMinutes(_ minutes: Int) -> String {
@@ -668,6 +746,7 @@ extension TransportDetail {
     TransportDetail.RootView(
       store: Store(
         initialState: TransportDetail.Feature.State(
+          scheduleItemId: "preview-1",
           scheduleTitle: "점심 모임",
           scheduleEmoji: "🍕",
           scheduleStartAt: startAt,

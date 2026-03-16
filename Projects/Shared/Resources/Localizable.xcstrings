@@ -11004,7 +11004,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About %lld min"
+            "value": "~%lld min"
           }
         },
         "ko": {
@@ -11021,7 +11021,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld min"
+            "value": "%lldm"
           }
         },
         "ko": {
@@ -11089,7 +11089,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buffer Time"
+            "value": "Buffer"
           }
         },
         "ko": {
@@ -11191,7 +11191,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leave By"
+            "value": "Depart"
           }
         },
         "ko": {
@@ -11364,7 +11364,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alert Me for This Route"
+            "value": "Set Alert"
           }
         },
         "ko": {

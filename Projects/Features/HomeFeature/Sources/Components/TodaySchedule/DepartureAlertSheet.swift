@@ -223,20 +223,22 @@ struct DepartureAlertSheet: View {
 
         Spacer(minLength: 8)
 
+        let isDetailEnabled = transportData != nil
         Button {
           onDetailTapped()
         } label: {
           HStack(spacing: 2) {
             Text(LocalizedStrings.Home.departureDetail)
               .font(.pmCaption)
-              .foregroundStyle(Color.pmindigo.n500)
+              .foregroundStyle(isDetailEnabled ? Color.pmindigo.n500 : Color.pmgray.n400)
             Image(systemName: "chevron.right")
               .font(.system(size: 10, weight: .semibold))
-              .foregroundStyle(Color.pmindigo.n500)
+              .foregroundStyle(isDetailEnabled ? Color.pmindigo.n500 : Color.pmgray.n400)
           }
           .padding(.top, 4)
         }
         .buttonStyle(.plain)
+        .disabled(!isDetailEnabled)
       }
 
       // 서브타이틀: 카운트다운 ↔ 정확한 시간 토글

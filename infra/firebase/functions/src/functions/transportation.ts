@@ -29,8 +29,28 @@ export interface SubPathInfo {
   endName?: string;
   /** 경유 정류장 수 */
   stationCount?: number;
+  /** 구간 시작 좌표 */
+  startX?: number;
+  startY?: number;
+  /** 구간 종료 좌표 */
+  endX?: number;
+  endY?: number;
+  /** 지하철 행선지 방향 (예: "합정") */
+  way?: string;
+  /** 지하철 하차 출구 번호 */
+  endExitNo?: string;
+  /** 경유 정류장 좌표 [[lng, lat], ...] */
+  passStopCoords?: number[][];
   /** 노선 정보 */
-  lanes?: { name?: string; busNo?: string; subwayCode?: number }[];
+  lanes?: {
+    name?: string;
+    busNo?: string;
+    subwayCode?: number;
+    /** 버스 종류 코드 */
+    type?: number;
+    /** 노선 색상 (Hex) */
+    busColor?: string;
+  }[];
 }
 
 /** 대중교통 경로 정보 */
@@ -56,6 +76,8 @@ export interface DrivingInfo {
   duration: number;
   /** 통행료 (원) */
   toll: number;
+  /** 경로 좌표 [[lng, lat], [lng, lat], ...] */
+  routePoints: number[][];
 }
 
 export interface TransportationResult {
@@ -67,6 +89,41 @@ export interface TransportationResult {
 }
 
 // MARK: - ODsay (대중교통)
+
+/**
+ * passStopList에서 정류장 좌표 추출
+ * @param {any} sp ODsay subPath 객체
+ * @return {Array<number[]>|undefined} 좌표 배열
+ */
+function extractPassStopCoords(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sp: any,
+): number[][] | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stations: any[] =
+    sp?.passStopList?.stations ?? [];
+  if (!Array.isArray(stations) || stations.length === 0) {
+    return undefined;
+  }
+  const coords = stations
+    .filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) =>
+        typeof s.x === "string" &&
+        typeof s.y === "string"
+    )
+    .map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) => [
+        parseFloat(s.x),
+        parseFloat(s.y),
+      ]
+    )
+    .filter(
+      (c) => !isNaN(c[0]) && !isNaN(c[1])
+    );
+  return coords.length > 0 ? coords : undefined;
+}
 
 /**
  * ODsay 대중교통 경로 조회 (최대 5개 경로 반환)
@@ -123,6 +180,8 @@ async function fetchTransitRoute(
           name: lane.name as string | undefined,
           busNo: lane.busNo as string | undefined,
           subwayCode: lane.subwayCode as number | undefined,
+          type: lane.type as number | undefined,
+          busColor: lane.busColor as string | undefined,
         }));
 
         return {
@@ -132,6 +191,13 @@ async function fetchTransitRoute(
           startName: sp.startName as string | undefined,
           endName: sp.endName as string | undefined,
           stationCount: sp.stationCount as number | undefined,
+          startX: sp.startX as number | undefined,
+          startY: sp.startY as number | undefined,
+          endX: sp.endX as number | undefined,
+          endY: sp.endY as number | undefined,
+          way: sp.way as string | undefined,
+          endExitNo: sp.endExitNo as string | undefined,
+          passStopCoords: extractPassStopCoords(sp),
           lanes: lanes.length > 0 ? lanes : undefined,
         };
       });
@@ -175,7 +241,6 @@ async function fetchDrivingRoute(
     const url = new URL("https://apis-navi.kakaomobility.com/v1/directions");
     url.searchParams.append("origin", `${fromLng},${fromLat}`);
     url.searchParams.append("destination", `${toLng},${toLat}`);
-    url.searchParams.append("summary", "true");
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -194,13 +259,33 @@ async function fetchDrivingRoute(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await response.json();
-    const summary = data?.routes?.[0]?.summary;
+    const route = data?.routes?.[0];
+    const summary = route?.summary;
     if (!summary) return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sections: any[] =
+      Array.isArray(route?.sections) ? route.sections : [];
+    const routePoints: number[][] = [];
+    for (const section of sections) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const roads: any[] =
+        Array.isArray(section?.roads) ? section.roads : [];
+      for (const road of roads) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const verts: any[] =
+          Array.isArray(road?.vertexes) ? road.vertexes : [];
+        for (let i = 0; i + 1 < verts.length; i += 2) {
+          routePoints.push([verts[i], verts[i + 1]]);
+        }
+      }
+    }
 
     return {
       distance: summary.distance ?? 0,
       duration: Math.round((summary.duration ?? 0) / 60), // 초 → 분
       toll: summary.fare?.toll ?? 0,
+      routePoints,
     };
   } catch (error) {
     console.error("[Transportation] Kakao Mobility fetch error:", error);
