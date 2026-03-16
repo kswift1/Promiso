@@ -126,7 +126,7 @@ export const executeBriefingNotification =
       },
     },
     async (req) => {
-      const {uid, timezone, language, style} = req.data;
+      const {uid, timezone, language, style, defaultLocation} = req.data;
 
       console.log(
         `[BriefingNotification] Starting for uid=${uid}, ` +
@@ -151,13 +151,13 @@ export const executeBriefingNotification =
           return;
         }
 
-        // 1. 브리핑 생성 (location 없이 — 서버에서는 유저 위치를 모름)
+        // 1. 브리핑 생성 (기본 위치 사용 — 설정된 경우)
         const briefing = await generateBriefingInternal({
           uid,
           timezone,
           language,
-          location: null, // 스케줄러에서는 위치 정보 없음
-          forceRefresh: false, // 캐시 활용
+          location: defaultLocation,
+          forceRefresh: false,
           style,
         });
 

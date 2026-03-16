@@ -6,6 +6,12 @@ interface RawBriefingSettings {
   timezone?: string;
   language?: string;
   style?: string;
+  defaultLocation?: {
+    name: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  };
 }
 
 interface ConfiguredBriefingSettings {
@@ -13,6 +19,11 @@ interface ConfiguredBriefingSettings {
   timezone: string;
   language: string;
   style: string;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 interface RawSettingsDocument {
@@ -27,6 +38,11 @@ interface RawBriefingSubscriptionDocument {
   language?: string;
   style?: string;
   nextDispatchAt?: Date | string | {toDate: () => Date};
+  defaultLocation?: {
+    title?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export const BRIEFING_SUBSCRIPTIONS_COLLECTION = "briefingSubscriptions";
@@ -37,6 +53,11 @@ export interface BriefingTaskPayload {
   language: string;
   style: string;
   notificationHour: number;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 export interface BriefingSubscriptionProjection {
@@ -45,6 +66,11 @@ export interface BriefingSubscriptionProjection {
   language: string;
   style: string;
   nextDispatchAt: Date;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 /**
@@ -99,11 +125,22 @@ function getConfiguredBriefing(
   const rawLanguage = briefing.language || "ko";
   const language = SUPPORTED_LANGUAGES.includes(rawLanguage) ? rawLanguage : "ko";
 
+  const defaultLocation = briefing.defaultLocation?.name &&
+    briefing.defaultLocation?.latitude != null &&
+    briefing.defaultLocation?.longitude != null
+    ? {
+      title: briefing.defaultLocation.name,
+      latitude: briefing.defaultLocation.latitude,
+      longitude: briefing.defaultLocation.longitude,
+    }
+    : null;
+
   return {
     notificationHour: briefing.notificationHour,
     timezone: briefing.timezone || "Asia/Seoul",
     language,
     style: briefing.style || "friendly",
+    defaultLocation,
   };
 }
 
@@ -208,6 +245,7 @@ export function buildScheduledBriefingTaskFromProjection(params: {
     language: projection.language,
     style: projection.style,
     notificationHour: projection.notificationHour,
+    defaultLocation: projection.defaultLocation,
   };
 }
 
@@ -270,12 +308,23 @@ function getConfiguredProjection(
     return null;
   }
 
+  const defaultLocation = data.defaultLocation?.title &&
+    data.defaultLocation?.latitude != null &&
+    data.defaultLocation?.longitude != null
+    ? {
+      title: data.defaultLocation.title,
+      latitude: data.defaultLocation.latitude,
+      longitude: data.defaultLocation.longitude,
+    }
+    : null;
+
   return {
     notificationHour: data.notificationHour,
     timezone: data.timezone || "Asia/Seoul",
     language: data.language || "ko",
     style: data.style || "friendly",
     nextDispatchAt,
+    defaultLocation,
   };
 }
 

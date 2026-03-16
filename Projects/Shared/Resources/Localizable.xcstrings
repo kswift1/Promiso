@@ -21208,6 +21208,57 @@
         }
       }
     },
+    "settings.briefing.defaultLocation": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본 위치"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.description": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get weather and travel time based on this location, even without opening the app"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱을 열지 않아도, 설정한 위치 기준으로 날씨와 이동 시간을 알려드려요"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.placeholder": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Home, office, or wherever you usually are in the morning"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: 집, 회사 등 아침에 주로 있는 장소"
+          }
+        }
+      }
+    },
     "settings.briefing.style": {
       "extractionState": "stale",
       "localizations": {

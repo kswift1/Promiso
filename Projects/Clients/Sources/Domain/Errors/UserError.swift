@@ -91,6 +91,7 @@ public struct UserSettings: Equatable, Sendable {
   public var briefingStyle: BriefingStyle
   public var briefingNotificationHour: Int?
   public var availableTransports: Set<AvailableTransport>
+  public var briefingDefaultLocation: LocationInfoModel?
 
   public init(
     notificationEnabled: Bool,
@@ -98,7 +99,8 @@ public struct UserSettings: Equatable, Sendable {
     conflictDetectionThreshold: Int = 0,
     briefingStyle: BriefingStyle = .friendly,
     briefingNotificationHour: Int? = nil,
-    availableTransports: Set<AvailableTransport> = [.transit, .car]
+    availableTransports: Set<AvailableTransport> = [.transit, .car],
+    briefingDefaultLocation: LocationInfoModel? = nil
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
@@ -106,6 +108,7 @@ public struct UserSettings: Equatable, Sendable {
     self.briefingStyle = briefingStyle
     self.briefingNotificationHour = briefingNotificationHour
     self.availableTransports = availableTransports
+    self.briefingDefaultLocation = briefingDefaultLocation
   }
 
   /// 기본 설정값

@@ -28,6 +28,9 @@ public struct UserSettingsClient: Sendable {
   /// 이용 가능 교통수단 업데이트
   public var updateAvailableTransports: @Sendable (_ userId: String, _ transports: Set<AvailableTransport>) async throws -> Void
 
+  /// 브리핑 기본 위치 업데이트
+  public var updateBriefingDefaultLocation: @Sendable (_ userId: String, _ location: LocationInfoModel?) async throws -> Void
+
   /// Pro 가입 시 기본 설정값 초기화
   public var initializeProDefaults: @Sendable (_ userId: String) async throws -> Void
 }
@@ -46,6 +49,7 @@ extension UserSettingsClient: TestDependencyKey {
     updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
     updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour"),
     updateAvailableTransports: unimplemented("\(Self.self).updateAvailableTransports"),
+    updateBriefingDefaultLocation: unimplemented("\(Self.self).updateBriefingDefaultLocation"),
     initializeProDefaults: unimplemented("\(Self.self).initializeProDefaults")
   )
 
@@ -74,6 +78,9 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.2))
     },
     updateAvailableTransports: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingDefaultLocation: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
     initializeProDefaults: { _ in
@@ -118,6 +125,9 @@ extension UserSettingsClient: DependencyKey {
       },
       updateAvailableTransports: { userId, transports in
         try await dataSource.updateAvailableTransports(userId: userId, transports: transports)
+      },
+      updateBriefingDefaultLocation: { userId, location in
+        try await dataSource.updateBriefingDefaultLocation(userId: userId, location: location)
       },
       initializeProDefaults: { userId in
         try await dataSource.initializeProDefaults(userId: userId)
