@@ -56,6 +56,13 @@ public struct TransportationResult: Equatable, Sendable {
     public let endName: String?
     public let stationCount: Int?
     public let lanes: [LaneInfo]
+    public let startX: Double?
+    public let startY: Double?
+    public let endX: Double?
+    public let endY: Double?
+    public let way: String?           // 지하철 행선지 방향
+    public let endExitNo: String?     // 하차 출구 번호
+    public let passStopCoords: [[Double]]  // 경유 정류장 좌표
 
     public init(
       trafficType: Int,
@@ -64,7 +71,14 @@ public struct TransportationResult: Equatable, Sendable {
       startName: String?,
       endName: String?,
       stationCount: Int?,
-      lanes: [LaneInfo]
+      lanes: [LaneInfo],
+      startX: Double? = nil,
+      startY: Double? = nil,
+      endX: Double? = nil,
+      endY: Double? = nil,
+      way: String? = nil,
+      endExitNo: String? = nil,
+      passStopCoords: [[Double]] = []
     ) {
       self.trafficType = trafficType
       self.sectionTime = sectionTime
@@ -73,10 +87,18 @@ public struct TransportationResult: Equatable, Sendable {
       self.endName = endName
       self.stationCount = stationCount
       self.lanes = lanes
+      self.startX = startX
+      self.startY = startY
+      self.endX = endX
+      self.endY = endY
+      self.way = way
+      self.endExitNo = endExitNo
+      self.passStopCoords = passStopCoords
     }
 
     private enum CodingKeys: String, CodingKey {
       case trafficType, sectionTime, distance, startName, endName, stationCount, lanes
+      case startX, startY, endX, endY, way, endExitNo, passStopCoords
     }
 
     public init(from decoder: Decoder) throws {
@@ -88,6 +110,13 @@ public struct TransportationResult: Equatable, Sendable {
       endName = try container.decodeIfPresent(String.self, forKey: .endName)
       stationCount = try container.decodeIfPresent(Int.self, forKey: .stationCount)
       lanes = (try? container.decode([LaneInfo].self, forKey: .lanes)) ?? []
+      startX = try container.decodeIfPresent(Double.self, forKey: .startX)
+      startY = try container.decodeIfPresent(Double.self, forKey: .startY)
+      endX = try container.decodeIfPresent(Double.self, forKey: .endX)
+      endY = try container.decodeIfPresent(Double.self, forKey: .endY)
+      way = try container.decodeIfPresent(String.self, forKey: .way)
+      endExitNo = try container.decodeIfPresent(String.self, forKey: .endExitNo)
+      passStopCoords = (try container.decodeIfPresent([[Double]].self, forKey: .passStopCoords)) ?? []
     }
   }
 
@@ -95,11 +124,13 @@ public struct TransportationResult: Equatable, Sendable {
     public let name: String?          // 지하철 노선명
     public let busNo: String?         // 버스번호
     public let subwayCode: Int?       // 지하철 호선
+    public let busColor: String?      // 노선 색상 (Hex)
 
-    public init(name: String?, busNo: String?, subwayCode: Int?) {
+    public init(name: String?, busNo: String?, subwayCode: Int?, busColor: String? = nil) {
       self.name = name
       self.busNo = busNo
       self.subwayCode = subwayCode
+      self.busColor = busColor
     }
   }
 
@@ -218,8 +249,8 @@ extension TransportationClient: TestDependencyKey {
             subPaths: [
               .init(trafficType: 3, sectionTime: 5, distance: 400, startName: nil, endName: "강남역", stationCount: nil, lanes: []),
               .init(trafficType: 1, sectionTime: 28, distance: 18000, startName: "강남역", endName: "홍대입구역", stationCount: 6, lanes: [
-                .init(name: "2호선", busNo: nil, subwayCode: 2)
-              ]),
+                .init(name: "2호선", busNo: nil, subwayCode: 2, busColor: "#33A23D")
+              ], startX: 127.0276, startY: 37.4981, endX: 126.9236, endY: 37.5567, way: "합정", passStopCoords: [[127.0276, 37.4981], [126.9824, 37.5340], [126.9236, 37.5567]]),
               .init(trafficType: 3, sectionTime: 7, distance: 550, startName: "홍대입구역", endName: nil, stationCount: nil, lanes: [])
             ]
           ),
@@ -232,8 +263,8 @@ extension TransportationClient: TestDependencyKey {
             subPaths: [
               .init(trafficType: 3, sectionTime: 3, distance: 250, startName: nil, endName: "강남역버스정류장", stationCount: nil, lanes: []),
               .init(trafficType: 2, sectionTime: 35, distance: 20000, startName: "강남역버스정류장", endName: "홍대입구버스정류장", stationCount: 8, lanes: [
-                .init(name: nil, busNo: "143", subwayCode: nil)
-              ]),
+                .init(name: nil, busNo: "143", subwayCode: nil, busColor: "#3D5BAB")
+              ], startX: 127.0276, startY: 37.4981, endX: 126.9236, endY: 37.5567, passStopCoords: [[127.0276, 37.4981], [126.9236, 37.5567]]),
               .init(trafficType: 3, sectionTime: 7, distance: 550, startName: "홍대입구버스정류장", endName: nil, stationCount: nil, lanes: [])
             ]
           )

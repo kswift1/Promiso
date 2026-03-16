@@ -302,7 +302,29 @@ extension TransportDetail {
 
     private func transitRouteDetail(route: HomeModels.TransitRouteOption) -> some View {
       VStack(spacing: 16) {
-        // 요약 카드
+        if route.subPaths.contains(where: { !$0.passStopCoords.isEmpty }) {
+          let segments = route.subPaths.compactMap { subPath -> TransitRouteSegmentData? in
+            guard !subPath.passStopCoords.isEmpty else { return nil }
+            return TransitRouteSegmentData(
+              coords: subPath.passStopCoords,
+              color: subPath.laneColor,
+              trafficType: subPath.trafficType
+            )
+          }
+          let originLat = store.originCoordinate?.latitude ?? store.destinationCoordinate.latitude
+          let originLng = store.originCoordinate?.longitude ?? store.destinationCoordinate.longitude
+          KakaoTransitMapView(
+            segments: segments,
+            originLatitude: originLat,
+            originLongitude: originLng,
+            destinationLatitude: store.destinationCoordinate.latitude,
+            destinationLongitude: store.destinationCoordinate.longitude
+          )
+          .frame(height: 200)
+          .clipShape(RoundedRectangle(cornerRadius: 14))
+          .id(route.id)
+        }
+
         infoCard {
           VStack(spacing: 12) {
             infoRow(iconName: "clock", label: LocalizedStrings.Home.transportTotalDuration, value: approximateMinutes(route.totalTime))
@@ -319,7 +341,6 @@ extension TransportDetail {
           }
         }
 
-        // 경로 타임라인
         if !route.subPaths.isEmpty {
           subPathTimeline(subPaths: route.subPaths)
         }
@@ -350,7 +371,7 @@ extension TransportDetail {
       HStack(alignment: .top, spacing: 12) {
         // 타임라인 세로선 + 노드
         VStack(spacing: 0) {
-          subPathIcon(trafficType: subPath.trafficType)
+          subPathIcon(trafficType: subPath.trafficType, laneColor: subPath.laneColor)
             .frame(width: 28, height: 28)
 
           if !isLast {
@@ -388,9 +409,13 @@ extension TransportDetail {
       }
     }
 
-    private func subPathIcon(trafficType: Int) -> some View {
+    private func subPathIcon(trafficType: Int, laneColor: String? = nil) -> some View {
       let iconName = subPathIconName(trafficType: trafficType)
-      let color = subPathIconColor(trafficType: trafficType)
+      let color: Color = if let hex = laneColor {
+        Color(hex: hex)
+      } else {
+        subPathIconColor(trafficType: trafficType)
+      }
       return ZStack {
         Circle()
           .fill(color.opacity(0.12))
@@ -416,9 +441,21 @@ extension TransportDetail {
       let stationText = subPath.stationCount.map(stationCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
-        Text("\(laneName) \(stationText)")
-          .font(.pmCaptionSemibold)
-          .foregroundStyle(Color.pmtext.primary)
+        HStack(spacing: 6) {
+          if let color = subPath.laneColor {
+            Circle()
+              .fill(Color(hex: color))
+              .frame(width: 8, height: 8)
+          }
+          Text("\(laneName) \(stationText)")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+        if let way = subPath.way {
+          Text("\(way) 방면")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmindigo.n400)
+        }
         if !routeText.isEmpty {
           Text(routeText)
             .font(.pmCaption)
@@ -427,6 +464,11 @@ extension TransportDetail {
         Text(minutesOnly(subPath.sectionTime))
           .font(.pmCaption)
           .foregroundStyle(Color.pmtext.secondary)
+        if let exitNo = subPath.endExitNo {
+          Text("\(exitNo)번 출구")
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
       }
     }
 
@@ -435,9 +477,16 @@ extension TransportDetail {
       let stopText = subPath.stationCount.map(stopCountText) ?? ""
       let routeText = [subPath.startName, subPath.endName].compactMap { $0 }.joined(separator: " → ")
       return VStack(alignment: .leading, spacing: 2) {
-        Text("\(busNo) \(stopText)")
-          .font(.pmCaptionSemibold)
-          .foregroundStyle(Color.pmtext.primary)
+        HStack(spacing: 6) {
+          if let color = subPath.laneColor {
+            Circle()
+              .fill(Color(hex: color))
+              .frame(width: 8, height: 8)
+          }
+          Text("\(busNo) \(stopText)")
+            .font(.pmCaptionSemibold)
+            .foregroundStyle(Color.pmtext.primary)
+        }
         if !routeText.isEmpty {
           Text(routeText)
             .font(.pmCaption)

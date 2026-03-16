@@ -1691,10 +1691,13 @@ extension Home {
                 let departureTime = itemStartAt.addingTimeInterval(-Double(route.totalTime * 60))
                 let subPaths = route.subPaths.map { subPath -> HomeModels.TransportSubPath in
                   let laneName: String?
+                  let laneColor: String?
                   if let firstLane = subPath.lanes.first {
                     laneName = firstLane.name ?? firstLane.busNo
+                    laneColor = firstLane.busColor
                   } else {
                     laneName = nil
+                    laneColor = nil
                   }
                   return HomeModels.TransportSubPath(
                     trafficType: subPath.trafficType,
@@ -1703,7 +1706,11 @@ extension Home {
                     startName: subPath.startName,
                     endName: subPath.endName,
                     stationCount: subPath.stationCount,
-                    laneName: laneName
+                    laneName: laneName,
+                    laneColor: laneColor,
+                    way: subPath.way,
+                    endExitNo: subPath.endExitNo,
+                    passStopCoords: subPath.passStopCoords
                   )
                 }
                 return HomeModels.TransitRouteOption(

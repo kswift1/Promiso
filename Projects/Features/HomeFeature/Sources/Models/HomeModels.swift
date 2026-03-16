@@ -324,6 +324,14 @@ extension HomeModels {
     public let endName: String?
     public let stationCount: Int?
     public let laneName: String?          // 대표 노선명 (2호선, 143번 등)
+    /// 노선 색상 (Hex, 예: "#0052A4")
+    public let laneColor: String?
+    /// 지하철 행선지 방향 (예: "합정")
+    public let way: String?
+    /// 하차 출구 번호
+    public let endExitNo: String?
+    /// 경유 정류장 좌표 [[lng, lat], ...]
+    public let passStopCoords: [[Double]]
 
     public init(
       trafficType: Int,
@@ -332,7 +340,11 @@ extension HomeModels {
       startName: String?,
       endName: String?,
       stationCount: Int?,
-      laneName: String?
+      laneName: String?,
+      laneColor: String? = nil,
+      way: String? = nil,
+      endExitNo: String? = nil,
+      passStopCoords: [[Double]] = []
     ) {
       self.trafficType = trafficType
       self.sectionTime = sectionTime
@@ -341,6 +353,10 @@ extension HomeModels {
       self.endName = endName
       self.stationCount = stationCount
       self.laneName = laneName
+      self.laneColor = laneColor
+      self.way = way
+      self.endExitNo = endExitNo
+      self.passStopCoords = passStopCoords
     }
   }
 

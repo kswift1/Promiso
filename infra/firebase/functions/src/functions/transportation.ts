@@ -29,8 +29,26 @@ export interface SubPathInfo {
   endName?: string;
   /** 경유 정류장 수 */
   stationCount?: number;
+  /** 구간 시작 좌표 */
+  startX?: number;
+  startY?: number;
+  /** 구간 종료 좌표 */
+  endX?: number;
+  endY?: number;
+  /** 지하철 행선지 방향 (예: "합정") */
+  way?: string;
+  /** 지하철 하차 출구 번호 */
+  endExitNo?: string;
+  /** 경유 정류장 좌표 [[lng, lat], ...] */
+  passStopCoords?: number[][];
   /** 노선 정보 */
-  lanes?: { name?: string; busNo?: string; subwayCode?: number }[];
+  lanes?: {
+    name?: string;
+    busNo?: string;
+    subwayCode?: number;
+    /** 노선 색상 (Hex, 예: "#0052A4") */
+    busColor?: string;
+  }[];
 }
 
 /** 대중교통 경로 정보 */
@@ -69,6 +87,41 @@ export interface TransportationResult {
 }
 
 // MARK: - ODsay (대중교통)
+
+/**
+ * passStopList에서 정류장 좌표 추출
+ * @param {any} sp ODsay subPath 객체
+ * @return {Array<number[]>|undefined} 좌표 배열
+ */
+function extractPassStopCoords(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sp: any,
+): number[][] | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stations: any[] =
+    sp?.passStopList?.stations ?? [];
+  if (!Array.isArray(stations) || stations.length === 0) {
+    return undefined;
+  }
+  const coords = stations
+    .filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) =>
+        typeof s.x === "string" &&
+        typeof s.y === "string"
+    )
+    .map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) => [
+        parseFloat(s.x),
+        parseFloat(s.y),
+      ]
+    )
+    .filter(
+      (c) => !isNaN(c[0]) && !isNaN(c[1])
+    );
+  return coords.length > 0 ? coords : undefined;
+}
 
 /**
  * ODsay 대중교통 경로 조회 (최대 5개 경로 반환)
@@ -125,6 +178,7 @@ async function fetchTransitRoute(
           name: lane.name as string | undefined,
           busNo: lane.busNo as string | undefined,
           subwayCode: lane.subwayCode as number | undefined,
+          busColor: lane.busColor as string | undefined,
         }));
 
         return {
@@ -134,6 +188,13 @@ async function fetchTransitRoute(
           startName: sp.startName as string | undefined,
           endName: sp.endName as string | undefined,
           stationCount: sp.stationCount as number | undefined,
+          startX: sp.startX as number | undefined,
+          startY: sp.startY as number | undefined,
+          endX: sp.endX as number | undefined,
+          endY: sp.endY as number | undefined,
+          way: sp.way as string | undefined,
+          endExitNo: sp.endExitNo as string | undefined,
+          passStopCoords: extractPassStopCoords(sp),
           lanes: lanes.length > 0 ? lanes : undefined,
         };
       });
