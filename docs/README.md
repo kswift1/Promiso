@@ -15,6 +15,7 @@ Promiso 저장소의 공식 개발 문서를 빠르게 찾기 위한 인덱스�
 | 새 개발 환경 세팅 | [SETUP_GUIDE.md](SETUP_GUIDE.md) |
 | 로컬 환경값/xcconfig 구성 | [ENVIRONMENT.md](ENVIRONMENT.md) |
 | 아키텍처 이해 | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| 제품 정체성/메시지 정렬 | [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md) |
 | 운영 콘솔 계획 확인 | [ADMIN_CONSOLE_PLAN.md](ADMIN_CONSOLE_PLAN.md) |
 | 기능 개발/테스트 규칙 | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | 테스트 의존성/Unimplemented/중복링킹 대응 | [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md) |
@@ -26,6 +27,7 @@ Promiso 저장소의 공식 개발 문서를 빠르게 찾기 위한 인덱스�
 
 | 문서 | 핵심 범위 | 제외 범위 |
 |------|----------|----------|
+| [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md) | 제품 카테고리, 포지셔닝, Free/Pro 가치, 온보딩/Paywall 메시지 기준 | 구현 세부 아키텍처, 배포 절차 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 모듈 구조, 의존성 규칙, 데이터 흐름 | 배포 절차 상세 |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Feature 개발, 테스트, 코딩 컨벤션 | CI/CD 운영 정책 |
 | [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md) | TestStore 의존성 규칙, `testValue`, 중복링킹 대응 | 일반 기능 구현 컨벤션 전체 |

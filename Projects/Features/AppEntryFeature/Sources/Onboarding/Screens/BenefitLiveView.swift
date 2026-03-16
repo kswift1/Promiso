@@ -70,17 +70,17 @@ struct BenefitLiveView: View {
       // Glass 컨테이너: ETA 버튼 + 유도 문구
       VStack(spacing: 10) {
         HStack(spacing: 8) {
-          etaSelectButton(title: LocalizedStrings.Onboarding.introLiveEtaMinutes(20), eta: 20, progress: 0.2)
-          etaSelectButton(title: LocalizedStrings.Onboarding.introLiveEtaMinutes(10), eta: 10, progress: 0.55)
-          etaSelectButton(title: LocalizedStrings.Onboarding.introLiveEtaMinutes(5), eta: 5, progress: 0.8)
-          etaSelectButton(title: LocalizedStrings.Onboarding.introLiveEtaArrived, emoji: "🏁", eta: 0, progress: 1.0)
+          etaSelectButton(title: "20분", eta: 20, progress: 0.2)
+          etaSelectButton(title: "10분", eta: 10, progress: 0.55)
+          etaSelectButton(title: "5분", eta: 5, progress: 0.8)
+          etaSelectButton(title: "도착", emoji: "🏁", eta: 0, progress: 1.0)
         }
 
         HStack(spacing: 4) {
           Image(systemName: "hand.tap.fill")
             .font(.system(size: 11))
             .foregroundStyle(Color.pmindigo.n500)
-          Text(LocalizedStrings.Onboarding.introLiveTapHint)
+          Text("도착 예정 시간을 눌러보세요")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmtext.secondary.opacity(0.8))
         }
@@ -90,11 +90,11 @@ struct BenefitLiveView: View {
 
       // 카피
       VStack(spacing: 6) {
-        Text(LocalizedStrings.Onboarding.introLiveTitle)
+        Text("약속 당일엔, 이런 것까지")
           .font(.title3.bold())
           .foregroundStyle(Color.pmtext.primary)
           .minimumScaleFactor(0.8)
-        Text(LocalizedStrings.Onboarding.introLiveSubtitle)
+        Text("각자 상태만 공유하면\n잠금화면에서도 확인돼요")
           .font(.subheadline)
           .foregroundStyle(Color.pmtext.secondary)
           .minimumScaleFactor(0.8)
@@ -136,7 +136,7 @@ struct BenefitLiveView: View {
           Text("\(eta)")
             .font(.system(size: 18, weight: .bold))
             .foregroundStyle(isSelected ? .white : buttonColor)
-          + Text(LocalizedStrings.Onboarding.introLiveMinuteUnit)
+          + Text("분")
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(isSelected ? .white.opacity(0.8) : Color.pmtext.secondary)
         }
@@ -207,10 +207,10 @@ struct BenefitLiveView: View {
         .font(.system(size: 22))
 
       VStack(alignment: .leading, spacing: 2) {
-        Text(LocalizedStrings.Onboarding.introLiveGroupName)
+        Text("대학 동기 모임")
           .font(.system(size: 15, weight: .bold))
           .foregroundStyle(.white)
-        Text(LocalizedStrings.Onboarding.introLiveTimeRemaining)
+        Text("일정 시간까지 15분 남았어요")
           .font(.system(size: 12))
           .foregroundStyle(.white.opacity(0.6))
       }
@@ -222,7 +222,7 @@ struct BenefitLiveView: View {
         LottieView(animation: LottieAsset.live.animation)
           .playing(loopMode: .loop)
           .frame(width: 14, height: 10)
-        Text(LocalizedStrings.Onboarding.introLiveRealtime)
+        Text("실시간")
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(Color.pmindigo.n200)
       }
@@ -321,7 +321,7 @@ struct BenefitLiveView: View {
 
             // ETA 뱃지 (이동 중인 경우)
             if let eta = participant.eta, eta > 0 {
-              Text(LocalizedStrings.Onboarding.introLiveEtaMinutes(eta))
+              Text("\(eta)분")
                 .font(.system(size: 7, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 3)
@@ -401,7 +401,7 @@ struct BenefitLiveView: View {
             .foregroundStyle(.white)
 
           if participant.isCurrentUser {
-            Text(LocalizedStrings.Onboarding.introLiveMe)
+            Text("나")
               .font(.system(size: 10, weight: .bold))
               .foregroundStyle(.white)
               .padding(.horizontal, 5)
@@ -426,11 +426,11 @@ struct BenefitLiveView: View {
   }
 
   private func statusText(for participant: MockParticipant) -> String {
-    guard let eta = participant.eta else { return LocalizedStrings.Onboarding.introLiveStatusBeforeStart }
-    if eta == 0 { return LocalizedStrings.Onboarding.introLiveStatusArrived }
-    if eta <= 3 { return LocalizedStrings.Onboarding.introLiveStatusAlmostThere }
-    if eta > 15 { return LocalizedStrings.Onboarding.introLiveStatusLateExpected }
-    return LocalizedStrings.Onboarding.introLiveStatusOnTheWay
+    guard let eta = participant.eta else { return "아직 출발 전" }
+    if eta == 0 { return "도착 완료" }
+    if eta <= 3 { return "거의 도착" }
+    if eta > 15 { return "지각 예상" }
+    return "이동 중"
   }
 
   @ViewBuilder
@@ -440,7 +440,7 @@ struct BenefitLiveView: View {
         HStack(spacing: 3) {
           Image(systemName: "checkmark")
             .font(.system(size: 9, weight: .bold))
-          Text(LocalizedStrings.Onboarding.introLiveBadgeArrived)
+          Text("도착")
             .font(.system(size: 11, weight: .semibold))
         }
         .foregroundStyle(.green)
@@ -452,7 +452,7 @@ struct BenefitLiveView: View {
           Circle()
             .fill(eta > 10 ? Color.orange : Color.pmindigo.n500)
             .frame(width: 5, height: 5)
-          Text(LocalizedStrings.Onboarding.introLiveEtaMinutes(eta))
+          Text("\(eta)분")
             .font(.system(size: 11, weight: .bold))
             .foregroundStyle(eta > 10 ? Color.orange : Color.pmindigo.n500)
         }
@@ -464,7 +464,7 @@ struct BenefitLiveView: View {
         )
       }
     } else {
-      Text(LocalizedStrings.Onboarding.introLiveBadgeWaiting)
+      Text("대기")
         .font(.system(size: 11))
         .foregroundStyle(.white.opacity(0.5))
         .padding(.horizontal, 8)
