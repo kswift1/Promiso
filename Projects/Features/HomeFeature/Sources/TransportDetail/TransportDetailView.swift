@@ -653,6 +653,10 @@ extension TransportDetail {
 
     // MARK: - Alert Button
 
+    private var isAlertDisabled: Bool {
+      store.selectedSegment == .walking && (store.transportData.walking.distanceMeters ?? 0) >= 10_000
+    }
+
     private var alertButton: some View {
       Button {
         store.send(.view(.alertButtonTapped))
@@ -664,10 +668,11 @@ extension TransportDetail {
           .padding(.vertical, 16)
           .background(
             RoundedRectangle(cornerRadius: 14)
-              .fill(Color.pmindigo.n500)
+              .fill(isAlertDisabled ? Color.pmgray.n300 : Color.pmindigo.n500)
           )
       }
       .buttonStyle(.plain)
+      .disabled(isAlertDisabled)
     }
 
     private func approximateMinutes(_ minutes: Int) -> String {
@@ -741,6 +746,7 @@ extension TransportDetail {
     TransportDetail.RootView(
       store: Store(
         initialState: TransportDetail.Feature.State(
+          scheduleItemId: "preview-1",
           scheduleTitle: "점심 모임",
           scheduleEmoji: "🍕",
           scheduleStartAt: startAt,

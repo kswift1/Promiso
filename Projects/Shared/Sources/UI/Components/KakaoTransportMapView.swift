@@ -297,12 +297,12 @@ public struct KakaoTransportMapView: UIViewRepresentable {
       )
       guard let layer = manager.addLabelLayer(option: layerOption) else { return }
 
-      let originIcon = makeCircleImage(color: MapColors.indigo, size: 20)
+      let originIcon = makeCircleImage(color: MapColors.indigo, size: 10)
       let originIconStyle = PoiIconStyle(symbol: originIcon, anchorPoint: CGPoint(x: 0.5, y: 0.5))
       let originPoiStyle = PoiStyle(styleID: "transportOriginStyle", styles: [PerLevelPoiStyle(iconStyle: originIconStyle, level: 0)])
       manager.addPoiStyle(originPoiStyle)
 
-      let destIcon = makeCircleImage(color: MapColors.error, size: 20)
+      let destIcon = makeCircleImage(color: MapColors.error, size: 10)
       let destIconStyle = PoiIconStyle(symbol: destIcon, anchorPoint: CGPoint(x: 0.5, y: 0.5))
       let destPoiStyle = PoiStyle(styleID: "transportDestStyle", styles: [PerLevelPoiStyle(iconStyle: destIconStyle, level: 0)])
       manager.addPoiStyle(destPoiStyle)

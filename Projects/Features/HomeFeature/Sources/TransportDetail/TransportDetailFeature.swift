@@ -18,6 +18,7 @@ extension TransportDetail {
 
     @ObservableState
     public struct State: Equatable {
+      public let scheduleItemId: String
       public let scheduleTitle: String
       public let scheduleEmoji: String
       public let scheduleStartAt: Date
@@ -39,6 +40,7 @@ extension TransportDetail {
       public var availableMapApps: [MapApp] = []
 
       public init(
+        scheduleItemId: String,
         scheduleTitle: String,
         scheduleEmoji: String,
         scheduleStartAt: Date,
@@ -48,6 +50,7 @@ extension TransportDetail {
         destinationCoordinate: Coordinate,
         destinationName: String
       ) {
+        self.scheduleItemId = scheduleItemId
         self.scheduleTitle = scheduleTitle
         self.scheduleEmoji = scheduleEmoji
         self.scheduleStartAt = scheduleStartAt

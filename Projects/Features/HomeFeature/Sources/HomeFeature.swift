@@ -1007,6 +1007,7 @@ extension Home {
             let destName = location.name
 
             state.path.append(.transportDetail(.init(
+              scheduleItemId: item.id,
               scheduleTitle: item.title,
               scheduleEmoji: item.displayEmoji,
               scheduleStartAt: item.startAt,
@@ -2069,8 +2070,96 @@ extension Home {
 
         // MARK: - TransportDetail Path Actions
 
-        case .path(.element(id: _, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
-          return .send(.internal(.scheduleAlertForSelection(selection, bufferMinutes)))
+        case .path(.element(id: let id, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
+          guard let detailState = state.path[id: id],
+                case .transportDetail(let tdState) = detailState else {
+            return .none
+          }
+          let transportData = tdState.transportData
+          let scheduleItemId = tdState.scheduleItemId
+          let scheduleTitle = tdState.scheduleTitle
+          let scheduleStartAt = tdState.scheduleStartAt
+          let durationMinutes: Int
+          let rawDepartureTime: Date
+          let transportType: HomeModels.TransportType
+          switch selection {
+          case .driving:
+            guard let opt = transportData.driving else { return .none }
+            durationMinutes = opt.durationMinutes
+            rawDepartureTime = opt.departureTime
+            transportType = .driving
+          case .transit(let index):
+            guard let route = transportData.transitRoutes.first(where: { $0.id == index }) else { return .none }
+            durationMinutes = route.totalTime
+            rawDepartureTime = route.departureTime
+            transportType = .transit
+          case .walking:
+            durationMinutes = transportData.walking.durationMinutes
+            rawDepartureTime = transportData.walking.departureTime
+            transportType = .walking
+          }
+          let departureTime = rawDepartureTime.addingTimeInterval(-Double(bufferMinutes * 60))
+          let alertInfo = HomeModels.DepartureAlertInfo(
+            scheduleItemId: scheduleItemId,
+            selectedTransport: transportType,
+            durationMinutes: durationMinutes,
+            departureTime: departureTime
+          )
+          state.departureAlerts[scheduleItemId] = alertInfo
+          let alertsAfterSchedule = state.departureAlerts
+          let notificationId = "departure_alert_\(scheduleItemId)"
+          let timeText = scheduleStartAt.formattedTime
+          let transport = transportType.displayName
+
+          typealias NotificationTemplate = (
+            title: (String) -> String,
+            body: (String, String, Int, Int) -> String
+          )
+
+          let templates: [NotificationTemplate] = [
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleSoon($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodySoonWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodySoon(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleNow($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyNowWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyNow(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleReady($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyReadyWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyReady(time, trans, duration)
+              }
+            ),
+          ]
+
+          // swiftlint:disable:next force_unwrapping
+          let template = templates.randomElement()!
+          let title = template.title(scheduleTitle)
+          let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
+          let triggerDate = departureTime
+          return .run { [localNotificationClient, userDefaultsClient] send in
+            Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
+            do {
+              try await localNotificationClient.schedule(
+                notificationId, title, body, triggerDate,
+                ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+              )
+            } catch {
+              // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+            }
+            await send(.internal(.departureAlertScheduled(alertInfo)))
+          }
 
         case .path:
           return .none
