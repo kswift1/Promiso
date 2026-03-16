@@ -16,7 +16,7 @@ struct OnboardingIntroTests {
     #expect(state.isFirstScreen == true)
     #expect(state.isLastScreen == false)
     #expect(state.screenProgress == 0)
-    #expect(state.screenCount == 5)
+    #expect(state.screenCount == 6)
   }
 
   // MARK: - nextTapped
@@ -31,49 +31,51 @@ struct OnboardingIntroTests {
       $0.isAnimationComplete = false
       $0.isNextButtonEnabled = true
       $0.isGoingBack = false
-      $0.currentScreen = .problemEmpathy
+      $0.currentScreen = .benefitConfirm
     }
   }
 
-  @Test("마지막 화면에서 nextTapped → delegate.completed")
-  func nextTapped_lastScreen_completes() async {
+  @Test("signIn 화면에서 nextTapped → 무시")
+  func nextTapped_signInScreen_ignored() async {
     var state = AppEntry.OnboardingIntro.State()
-    state.currentScreen = .benefitLive
+    state.currentScreen = .signIn
 
     let store = TestStore(initialState: state) {
       AppEntry.OnboardingIntro()
     }
 
     await store.send(.view(.nextTapped))
-    await store.receive(\.delegate)
   }
 
-  @Test("연속 next로 마지막까지 이동")
+  @Test("연속 next로 signIn 직전까지 이동")
   func nextTapped_sequentialAdvance() async {
     let store = TestStore(initialState: AppEntry.OnboardingIntro.State()) {
       AppEntry.OnboardingIntro()
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    // cinematicHero → problemEmpathy
+    // cinematicHero → benefitConfirm
     await store.send(.view(.nextTapped)) {
-      $0.currentScreen = .problemEmpathy
+      $0.currentScreen = .benefitConfirm
     }
-    // problemEmpathy → benefitVote
-    await store.send(.view(.nextTapped)) {
-      $0.currentScreen = .benefitVote
-    }
-    // benefitVote → benefitHome
+    // benefitConfirm → benefitHome
     await store.send(.view(.nextTapped)) {
       $0.currentScreen = .benefitHome
     }
-    // benefitHome → benefitLive
+    // benefitHome → benefitPro
+    await store.send(.view(.nextTapped)) {
+      $0.currentScreen = .benefitPro
+    }
+    // benefitPro → benefitLive
     await store.send(.view(.nextTapped)) {
       $0.currentScreen = .benefitLive
     }
-    // benefitLive → delegate.completed
+    // benefitLive → signIn
+    await store.send(.view(.nextTapped)) {
+      $0.currentScreen = .signIn
+    }
+    // signIn → 무시
     await store.send(.view(.nextTapped))
-    await store.receive(\.delegate)
   }
 
   // MARK: - backTapped
@@ -89,7 +91,7 @@ struct OnboardingIntroTests {
   @Test("일반 화면에서 backTapped → 이전 화면")
   func backTapped_normalScreen_goesBack() async {
     var state = AppEntry.OnboardingIntro.State()
-    state.currentScreen = .benefitVote
+    state.currentScreen = .benefitHome
 
     let store = TestStore(initialState: state) {
       AppEntry.OnboardingIntro()
@@ -98,19 +100,22 @@ struct OnboardingIntroTests {
       $0.isAnimationComplete = false
       $0.isNextButtonEnabled = true
       $0.isGoingBack = true
-      $0.currentScreen = .problemEmpathy
+      $0.currentScreen = .benefitConfirm
     }
   }
 
   // MARK: - skipTapped
 
-  @Test("skipTapped → delegate.completed")
-  func skipTapped_completes() async {
+  @Test("skipTapped → signIn 화면으로 이동")
+  func skipTapped_goesToSignIn() async {
     let store = TestStore(initialState: AppEntry.OnboardingIntro.State()) {
       AppEntry.OnboardingIntro()
     }
-    await store.send(.view(.skipTapped))
-    await store.receive(\.delegate)
+    await store.send(.view(.skipTapped)) {
+      $0.currentScreen = .signIn
+      $0.isAnimationComplete = true
+      $0.isNextButtonEnabled = true
+    }
   }
 
   // MARK: - screenAnimationCompleted

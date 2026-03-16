@@ -13,42 +13,16 @@ struct OnboardingStartTests {
     #expect(state.nickname == "테스터")
   }
 
-  // MARK: - createGroupTapped
+  // MARK: - startTapped
 
-  @Test("createGroupTapped → delegate.createGroup")
-  func createGroupTapped_delegatesCreateGroup() async {
+  @Test("startTapped → delegate.completed")
+  func startTapped_delegatesCompleted() async {
     let store = TestStore(
       initialState: AppEntry.OnboardingStart.State(nickname: "테스터")
     ) {
       AppEntry.OnboardingStart()
     }
-    await store.send(.view(.createGroupTapped))
-    await store.receive(\.delegate)
-  }
-
-  // MARK: - enterInviteCodeTapped
-
-  @Test("enterInviteCodeTapped → delegate.enterInviteCode")
-  func enterInviteCodeTapped_delegatesEnterInviteCode() async {
-    let store = TestStore(
-      initialState: AppEntry.OnboardingStart.State(nickname: "테스터")
-    ) {
-      AppEntry.OnboardingStart()
-    }
-    await store.send(.view(.enterInviteCodeTapped))
-    await store.receive(\.delegate)
-  }
-
-  // MARK: - personalScheduleTapped
-
-  @Test("personalScheduleTapped → delegate.completed")
-  func personalScheduleTapped_delegatesCompleted() async {
-    let store = TestStore(
-      initialState: AppEntry.OnboardingStart.State(nickname: "테스터")
-    ) {
-      AppEntry.OnboardingStart()
-    }
-    await store.send(.view(.personalScheduleTapped))
+    await store.send(.view(.startTapped))
     await store.receive(\.delegate)
   }
 }
