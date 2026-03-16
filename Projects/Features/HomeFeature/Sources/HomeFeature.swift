@@ -2143,8 +2143,7 @@ extension Home {
             ),
           ]
 
-          // swiftlint:disable:next force_unwrapping
-          let template = templates.randomElement()!
+          guard let template = templates.randomElement() else { return .none }
           let title = template.title(scheduleTitle)
           let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
           let triggerDate = departureTime

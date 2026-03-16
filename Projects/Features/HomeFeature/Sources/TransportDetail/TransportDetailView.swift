@@ -288,7 +288,7 @@ extension TransportDetail {
               infoRow(iconName: "figure.walk", label: LocalizedStrings.Home.transportExpectedDeparture, value: adjustedTime(walking.departureTime).formattedTime)
               if let meters = walking.distanceMeters, meters > 0 {
                 Divider()
-                infoRow(iconName: "map", label: LocalizedStrings.Home.transportDistance, value: String(format: "%.1fkm", Double(meters) / 1000.0))
+                infoRow(iconName: "map", label: LocalizedStrings.Home.transportDistance, value: "\((Double(meters) / 1000.0).formatted(.number.precision(.fractionLength(1))))km")
               }
             }
           }
