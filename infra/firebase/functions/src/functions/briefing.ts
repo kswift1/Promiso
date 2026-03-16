@@ -23,6 +23,8 @@ import {
 } from "../types/api";
 import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
 import {fetchTransportation, TransportationResult} from "./transportation";
+import {hasEffectiveProAccess} from "../utils/briefingScheduler";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 
 // MARK: - Types
 
@@ -830,13 +832,15 @@ export async function generateBriefingInternal(params: {
 
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
-    const [slots, userGroups, settingsDoc] = await Promise.all([
+    const [slots, userGroups, settingsDoc, subscriptionDoc, overrideDoc] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
       admin.firestore()
         .collection("users").doc(uid)
         .collection("settings").doc("main")
         .get(),
+      admin.firestore().collection("subscriptions").doc(uid).get(),
+      admin.firestore().collection("entitlementOverrides").doc(uid).get(),
     ]);
     const settingsData = settingsDoc.data() as
       UserSettingsDocument | undefined;
@@ -849,11 +853,16 @@ export async function generateBriefingInternal(params: {
             ["transit", "car"]);
     const notificationHour = briefingSettings?.notificationHour ?? null;
     const effectiveStyle = briefingSettings?.style || style || "friendly";
+    const isPro = hasEffectiveProAccess({
+      subscriptionStatus: subscriptionDoc.data()?.status,
+      overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
+    });
 
     console.log(
       `[Briefing] uid=${uid}, date=${todayKey}, ` +
       `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
-      `forceRefresh=${forceRefresh}, style=${effectiveStyle}`
+      `forceRefresh=${forceRefresh}, style=${effectiveStyle}, ` +
+      `isPro=${isPro}`
     );
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
@@ -958,17 +967,19 @@ export async function generateBriefingInternal(params: {
       }
     }
 
-    // 7. 이동 거리 계산 + 교통 정보 조회
-    const detailsWithLocation = sortedSlots
-      .map((s) => allDetails.get(s.id))
-      .filter((d): d is ScheduleDetail => d != null);
-
-    const travelSegments = await calculateTravelSegmentsWithTransport(
-      location?.latitude ?? null,
-      location?.longitude ?? null,
-      location?.title ?? null,
-      detailsWithLocation,
-    );
+    // 7. 이동 거리 계산 + 교통 정보 조회 (Pro 유저만)
+    let travelSegments: TravelSegment[] = [];
+    if (isPro) {
+      const detailsWithLocation = sortedSlots
+        .map((s) => allDetails.get(s.id))
+        .filter((d): d is ScheduleDetail => d != null);
+      travelSegments = await calculateTravelSegmentsWithTransport(
+        location?.latitude ?? null,
+        location?.longitude ?? null,
+        location?.title ?? null,
+        detailsWithLocation,
+      );
+    }
 
     // 8. 오늘 일정 없으면 미래 일정 조회
     let upcoming: {
