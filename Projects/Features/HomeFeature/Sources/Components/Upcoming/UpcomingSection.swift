@@ -84,33 +84,48 @@ struct UpcomingSection: View {
 
   private var recurringEventsBadge: some View {
     VStack(spacing: 0) {
-      // 헤더 (탭하면 펼침/접힘)
-      Button {
-        withAnimation(.easeInOut(duration: 0.2)) {
-          isRecurringExpanded.toggle()
+      // 헤더
+      HStack(spacing: 6) {
+        // 펼침/접힘 영역
+        Button {
+          withAnimation(.easeInOut(duration: 0.2)) {
+            isRecurringExpanded.toggle()
+          }
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: "arrow.trianglehead.2.counterclockwise")
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmindigo.n500)
+
+            Text(LocalizedStrings.Home.recurringCount(recurringSummaries.count))
+              .font(.pmCaption)
+              .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+              .font(.system(size: 10, weight: .medium))
+              .foregroundStyle(.tertiary)
+              .rotationEffect(.degrees(isRecurringExpanded ? 90 : 0))
+          }
+          .contentShape(Rectangle())
         }
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "arrow.trianglehead.2.counterclockwise")
+        .buttonStyle(.plain)
+
+        // 추가 버튼
+        Button {
+          onCreateRecurringEventTap()
+        } label: {
+          Text("추가")
             .font(.pmCaption)
             .foregroundStyle(Color.pmindigo.n500)
-
-          Text(LocalizedStrings.Home.recurringCount(recurringSummaries.count))
-            .font(.pmCaption)
-            .foregroundStyle(.secondary)
-
-          Spacer()
-
-          Image(systemName: "chevron.right")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.tertiary)
-            .rotationEffect(.degrees(isRecurringExpanded ? 90 : 0))
+            .padding(4)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
       }
-      .buttonStyle(.plain)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 10)
 
       // 펼침 시 종류별 목록
       if isRecurringExpanded {
