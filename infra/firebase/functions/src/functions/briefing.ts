@@ -1095,10 +1095,16 @@ export async function generateBriefingInternal(params: {
         .trim();
       const parsed = JSON.parse(jsonStr);
       if (parsed.summary && parsed.detail) {
+        // user-data 태그 제거
+        const strip = (s: string) =>
+          s.replace(/<\/?user-data>/g, "");
+        const summary = strip(parsed.summary);
+        const detail = strip(parsed.detail);
+
         console.log(
           `[Briefing] uid=${uid}, OK ` +
-          `summary="${parsed.summary}" ` +
-          `detail_len=${parsed.detail.length}`
+          `summary="${summary}" ` +
+          `detail_len=${detail.length}`
         );
 
         // Firestore에 캐시 저장
@@ -1106,15 +1112,15 @@ export async function generateBriefingInternal(params: {
           .collection("users").doc(uid)
           .collection("dailyBriefings").doc(todayKey)
           .set({
-            summary: parsed.summary,
-            detail: parsed.detail,
+            summary,
+            detail,
             promptKey,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
         return {
-          summary: parsed.summary,
-          detail: parsed.detail,
+          summary,
+          detail,
           isUpdated,
           style: effectiveStyle,
           availableTransports,
