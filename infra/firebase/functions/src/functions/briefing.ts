@@ -541,7 +541,7 @@ function buildPrompt(
   // 브리핑 가이드
   lines.push("[브리핑 가이드]");
   lines.push("- 일정 많으면 -> 바쁜 하루 강조");
-  lines.push("- 일정 없으면 -> 여유로운 톤");
+  lines.push(weather ? "- 일정 없으면 -> 날씨 중심, 여유로운 톤" : "- 일정 없으면 -> 여유로운 톤");
   lines.push("- 비/눈 예보 -> 우산 챙기기 언급");
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
