@@ -279,6 +279,93 @@ async function fetchPersonalEventDetails(
 }
 
 /**
+ * 반복일정 슬롯들의 상세 정보를 조회하여 슬롯 ID 기준 Map 반환
+ * 슬롯 ID 형식: `recurring_${eventId}_${dateKey}` (dateKey: YYYY-MM-DD)
+ * override location이 있으면 우선 적용
+ * @param {string} uid - 사용자 ID
+ * @param {ScheduleSlotEntry[]} recurringSlots - recurringPersonalEvent 타입 슬롯들
+ * @return {Promise<Map<string, ScheduleDetail>>} 슬롯 ID → ScheduleDetail 맵
+ */
+async function fetchRecurringEventDetails(
+  uid: string,
+  recurringSlots: ScheduleSlotEntry[],
+): Promise<Map<string, ScheduleDetail>> {
+  const db = admin.firestore();
+  const result = new Map<string, ScheduleDetail>();
+
+  // 슬롯 ID에서 eventId와 dateKey 파싱
+  // 형식: recurring_{eventId}_{YYYY-MM-DD}
+  // eventId에 '_'가 포함될 수 있으므로 마지막 '_YYYY-MM-DD' 기준으로 분리
+  const dateKeyRegex = /_(\d{4}-\d{2}-\d{2})$/;
+  const slotParsed = recurringSlots.map((slot) => {
+    const withoutPrefix = slot.id.replace(/^recurring_/, "");
+    const match = withoutPrefix.match(dateKeyRegex);
+    if (!match) return null;
+    const dateKey = match[1];
+    const eventId = withoutPrefix.slice(
+      0, withoutPrefix.length - 1 - dateKey.length,
+    );
+    return {slot, eventId, dateKey};
+  }).filter(
+    (x): x is {
+      slot: ScheduleSlotEntry;
+      eventId: string;
+      dateKey: string;
+    } => x !== null,
+  );
+
+  // eventId 중복 제거 후 Firestore 일괄 조회
+  const uniqueEventIds = [...new Set(slotParsed.map((x) => x.eventId))];
+  const docs = await Promise.all(
+    uniqueEventIds.map((id) =>
+      db.collection("users").doc(uid)
+        .collection("recurringEvents").doc(id).get()
+    )
+  );
+
+  const docMap = new Map<string, FirebaseFirestore.DocumentData>();
+  for (const doc of docs) {
+    if (!doc.exists) continue;
+    const data = doc.data();
+    if (!data) continue;
+    docMap.set(doc.id, data);
+  }
+
+  // 각 슬롯에 대해 ScheduleDetail 생성
+  for (const {slot, eventId, dateKey} of slotParsed) {
+    const data = docMap.get(eventId);
+    if (!data) continue;
+
+    // override location 우선, 없으면 기본 location 사용
+    const overrides = data.overrides as Record<string, {
+      location?: { name?: string; latitude?: number; longitude?: number };
+    }> | null | undefined;
+    const overrideLocation = overrides?.[dateKey]?.location;
+    const baseLocation = data.location as {
+      name?: string;
+      latitude?: number;
+      longitude?: number;
+    } | null | undefined;
+    const location = overrideLocation ?? baseLocation;
+
+    result.set(slot.id, {
+      id: slot.id,
+      title: (slot.title as string) || "",
+      emoji: (slot.emoji as string) || null,
+      startAt: slot.startAt.toDate(),
+      endAt: slot.endAt ? slot.endAt.toDate() : null,
+      severity: "confirmed",
+      locationName: location?.name || null,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      groupName: null,
+    });
+  }
+
+  return result;
+}
+
+/**
  * 사용자 그룹 맵 조회
  * @param {string} uid - 사용자 ID
  * @return {Promise<Record>} 그룹 맵
@@ -895,20 +982,25 @@ export async function generateBriefingInternal(params: {
       }
     }
 
-    // 3. 일정 상세 조회 (promise + personalEvent 병렬)
+    // 3. 일정 상세 조회 (promise + personalEvent + recurringPersonalEvent 병렬)
     const promiseIds = slots
       .filter((s) => s.type === "promise")
       .map((s) => s.id);
     const eventIds = slots
       .filter((s) => s.type === "personalEvent")
       .map((s) => s.id);
+    const recurringSlots = slots
+      .filter((s) => s.type === "recurringPersonalEvent");
 
-    const [promiseDetails, eventDetails] = await Promise.all([
+    const [promiseDetails, eventDetails, recurringDetails] = await Promise.all([
       promiseIds.length > 0 ?
         fetchPromiseDetails(promiseIds, userGroups) :
         Promise.resolve(new Map<string, ScheduleDetail>()),
       eventIds.length > 0 ?
         fetchPersonalEventDetails(uid, eventIds) :
+        Promise.resolve(new Map<string, ScheduleDetail>()),
+      recurringSlots.length > 0 ?
+        fetchRecurringEventDetails(uid, recurringSlots) :
         Promise.resolve(new Map<string, ScheduleDetail>()),
     ]);
 
@@ -939,6 +1031,7 @@ export async function generateBriefingInternal(params: {
     const allDetails = new Map<string, ScheduleDetail>([
       ...promiseDetails,
       ...eventDetails,
+      ...recurringDetails,
     ]);
 
     const enrichedSchedules = sortedSlots.map((slot) => {
