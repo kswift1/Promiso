@@ -10,12 +10,6 @@ import {
 } from "@jest/globals";
 import {Timestamp} from "firebase-admin/firestore";
 
-jest.mock("firebase-functions/params", () => ({
-  defineSecret: jest.fn(() => ({
-    value: () => "test-secret",
-  })),
-}));
-
 function createMockDocument(
   exists: boolean,
   data?: Record<string, unknown>,

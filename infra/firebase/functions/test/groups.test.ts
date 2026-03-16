@@ -24,13 +24,6 @@ import * as admin from 'firebase-admin';
 // Mock 설정
 // ============================================================================
 
-// Firebase Functions params mock
-jest.mock('firebase-functions/params', () => ({
-  defineSecret: jest.fn((name: string) => ({
-    value: () => 'test-secret-value',
-  })),
-}));
-
 // Notifications mock
 jest.mock('../src/functions/notifications', () => ({
   sendPushNotificationInternal: jest.fn(() => Promise.resolve({

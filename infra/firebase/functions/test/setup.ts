@@ -1,3 +1,13 @@
+// firebase-functions/params 전역 mock (Jest 환경에서 defineSecret/defineString 미지원)
+jest.mock('firebase-functions/params', () => ({
+  defineSecret: jest.fn((name: string) => ({
+    value: () => 'test-secret-value',
+  })),
+  defineString: jest.fn((name: string, options?: {default?: string}) => ({
+    value: () => options?.default ?? '',
+  })),
+}));
+
 /**
  * Jest 테스트 환경 설정
  */

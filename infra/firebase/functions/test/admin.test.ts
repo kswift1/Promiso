@@ -11,21 +11,6 @@ import {
 
 const sendPushNotificationInternalMock = jest.fn();
 const getAdminAnalyticsSummaryDataMock = jest.fn();
-const stringParamValues: Record<string, string> = {
-  GA4_PROPERTY_ID: "test-ga4-property",
-  ANALYTICS_BIGQUERY_PROJECT_ID: "test-analytics-project",
-  ANALYTICS_BIGQUERY_DATASET_ID: "analytics_dataset",
-  ANALYTICS_BIGQUERY_LOCATION: "US",
-};
-
-jest.mock("firebase-functions/params", () => ({
-  defineSecret: jest.fn(() => ({
-    value: () => "test-secret-value",
-  })),
-  defineString: jest.fn((name: string, options?: {default?: string}) => ({
-    value: () => stringParamValues[name] ?? options?.default ?? "",
-  })),
-}));
 
 jest.mock("../src/functions/notifications", () => ({
   sendPushNotificationInternal: (...args: unknown[]) =>
