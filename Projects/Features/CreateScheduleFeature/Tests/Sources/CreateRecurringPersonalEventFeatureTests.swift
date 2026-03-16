@@ -166,11 +166,13 @@ struct CreateRecurringPersonalEventFeatureTests {
 
     await store.send(.view(.toggleUseSeriesEndDate)) {
       $0.useSeriesEndDate = false
-      $0.event.recurrence = .weekly([2, 4])
     }
     await store.finish()
 
     #expect(selectionCount.value == 1)
+    #expect(store.state.event.recurrence.frequency == .weekly)
+    #expect(Set(store.state.event.recurrence.daysOfWeek ?? []) == Set([2, 4]))
+    #expect(store.state.event.recurrence.seriesEndDate == nil)
   }
 
   @Test("saveTapped 생성 성공 시 반복 알림을 다시 예약하고 완료 delegate를 보낸다")
