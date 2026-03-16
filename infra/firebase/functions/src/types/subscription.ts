@@ -23,6 +23,15 @@ export interface VerifyPurchaseRequest {
 
   /** 상품 ID */
   productId: string;
+
+  /**
+   * 기존 소유자로부터 강제 이전 여부
+   *
+   * @remarks
+   * - true이면 기존 소유자의 구독을 expired로 처리하고 현재 유저에게 이전
+   * - false(기본값)이면 already-exists 에러 반환
+   */
+  forceTransfer?: boolean;
 }
 
 /**

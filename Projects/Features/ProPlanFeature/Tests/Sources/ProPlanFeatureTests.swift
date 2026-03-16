@@ -259,7 +259,7 @@ struct ProPlanFeatureTests {
           localStatus: .subscribed(productType: .yearly, expirationDate: expirationDate)
         )
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in
+      $0.subscriptionClient.verifyPurchase = { _, _, _ in
         .subscribed(productType: .yearly, expirationDate: expirationDate)
       }
       $0.userSettingsClient.hasProSettings = { _ in false }
@@ -340,7 +340,7 @@ struct ProPlanFeatureTests {
           localStatus: .lifetime
         )
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in .lifetime }
+      $0.subscriptionClient.verifyPurchase = { _, _, _ in .lifetime }
       $0.analyticsClient.logEvent = { name, _ in
         if name == AnalyticsClient.EventName.paywallRestore {
           didLogRestore.setValue(true)
@@ -384,7 +384,7 @@ struct ProPlanFeatureTests {
           localStatus: .lifetime
         )
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in .lifetime }
+      $0.subscriptionClient.verifyPurchase = { _, _, _ in .lifetime }
       $0.userSettingsClient.hasProSettings = { _ in true }
       $0.userSettingsClient.fetchSettings = { _ in existingSettings }
       $0.userSettingsClient.initializeProDefaults = { _ in
@@ -461,16 +461,19 @@ struct ProPlanFeatureTests {
     }
   }
 
-  @Test("다른 계정 소유 구독 구매 시 소유권 충돌 에러 메시지 표시")
-  func purchaseTapped_alreadyOwnedByOther_showsOwnershipError() async {
+  @Test("다른 계정 소유 구독 구매 시 이전 확인 얼럿 표시")
+  func purchaseTapped_alreadyOwnedByOther_showsTransferAlert() async {
     var state = ProPlan.Feature.State()
     state.selectedProductId = SubscriptionProductType.yearly.productId
+    let expirationDate = Date().addingTimeInterval(365 * 24 * 3600)
+    let mockJws = "mock-jws"
+    let productId = SubscriptionProductType.yearly.productId
 
     let store = makeStore(state: state) {
       $0.subscriptionClient.purchaseWithReceipt = { _ in
-        PurchaseResult(jwsString: "mock-jws", localStatus: .subscribed(productType: .yearly, expirationDate: Date().addingTimeInterval(365 * 24 * 3600)))
+        PurchaseResult(jwsString: mockJws, localStatus: .subscribed(productType: .yearly, expirationDate: expirationDate))
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in
+      $0.subscriptionClient.verifyPurchase = { _, _, _ in
         throw SubscriptionError.alreadyOwnedByOther
       }
     }
@@ -481,9 +484,11 @@ struct ProPlanFeatureTests {
       $0.errorMessage = nil
     }
 
-    await store.receive(\.internal.purchaseResponse.failure) {
+    await store.receive(\.internal.transferAlertRequested) {
       $0.isPurchasing = false
-      $0.errorMessage = SubscriptionError.alreadyOwnedByOther.errorDescription
+      $0.pendingTransferJWS = mockJws
+      $0.pendingTransferProductId = productId
+      $0.showTransferAlert = true
     }
   }
 
@@ -682,7 +687,7 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.purchaseWithReceipt = { _ in
         PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(productType: .monthly, expirationDate: expirationDate))
       }
-      $0.subscriptionClient.verifyPurchase = { _, _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
+      $0.subscriptionClient.verifyPurchase = { _, _, _ in .subscribed(productType: .monthly, expirationDate: expirationDate) }
       $0.subscriptionClient.restore = { .none }
       $0.subscriptionClient.restoreWithReceipt = {
         RestoreResult(jwsString: nil, productId: nil, localStatus: .none)

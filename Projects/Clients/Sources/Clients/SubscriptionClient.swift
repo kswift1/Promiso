@@ -25,7 +25,7 @@ public struct SubscriptionClient: Sendable {
   public var fetchStatus: @Sendable () async throws -> SubscriptionStatus
 
   /// 서버에 구매 검증 요청
-  public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String) async throws -> SubscriptionStatus
+  public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String, _ forceTransfer: Bool) async throws -> SubscriptionStatus
 
   /// 무료 체험 대상 여부 확인
   public var checkIntroOfferEligibility: @Sendable () async -> Bool = { false }
@@ -103,7 +103,7 @@ extension SubscriptionClient: TestDependencyKey {
     fetchStatus: {
       return .none
     },
-    verifyPurchase: { _, _ in
+    verifyPurchase: { _, _, _ in
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
     },
@@ -153,8 +153,8 @@ extension SubscriptionClient: DependencyKey {
       fetchStatus: {
         try await remoteDataSource.fetchRemoteStatus()
       },
-      verifyPurchase: { jwsString, productId in
-        try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId)
+      verifyPurchase: { jwsString, productId, forceTransfer in
+        try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId, forceTransfer: forceTransfer)
       },
       checkIntroOfferEligibility: {
         await dataSource.checkIntroOfferEligibility()
@@ -217,14 +217,18 @@ extension SubscriptionClient: DependencyKey {
 
   private static let iso8601Formatter = ISO8601DateFormatter()
 
-  private static func verifyPurchaseOnServer(transactionJWS: String, productId: String) async throws -> SubscriptionStatus {
+  private static func verifyPurchaseOnServer(transactionJWS: String, productId: String, forceTransfer: Bool = false) async throws -> SubscriptionStatus {
     let functions = DefaultFunctionsProvider().functions
 
     do {
-      let result = try await functions.httpsCallable("verifyPurchase").call([
+      var callData: [String: Any] = [
         "transactionJWS": transactionJWS,
         "productId": productId,
-      ])
+      ]
+      if forceTransfer {
+        callData["forceTransfer"] = true
+      }
+      let result = try await functions.httpsCallable("verifyPurchase").call(callData)
 
       guard let data = result.data as? [String: Any],
             let statusData = data["subscriptionStatus"] as? [String: Any],
