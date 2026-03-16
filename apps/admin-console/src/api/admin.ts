@@ -635,3 +635,71 @@ export async function getAdminAnalyticsSummary(params?: {
   const result = await callable(params ?? {});
   return result.data.summary;
 }
+
+// ============================================================================
+// Coupon API
+// ============================================================================
+
+export type AdminCoupon = {
+  code: string;
+  durationDays: number;
+  redeemedBy: string | null;
+  redeemedAt: string | null;
+  expiresAt: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+type CreateCouponRequest = {
+  code?: string;
+  durationDays: 30 | 90;
+  expiresAt?: string;
+};
+
+type CreateCouponResponse = {
+  success: true;
+  coupon: AdminCoupon;
+};
+
+type GetAdminCouponsRequest = {
+  status?: "all" | "available" | "redeemed" | "expired";
+  limit?: number;
+};
+
+type GetAdminCouponsResponse = {
+  success: true;
+  coupons: AdminCoupon[];
+};
+
+export async function createCoupon(params: {
+  code?: string;
+  durationDays: 30 | 90;
+  expiresAt?: string;
+}): Promise<AdminCoupon> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<CreateCouponRequest, CreateCouponResponse>(
+    firebaseFunctions,
+    "createCoupon"
+  );
+  const result = await callable(params);
+  return result.data.coupon;
+}
+
+export async function getAdminCoupons(params?: {
+  status?: "all" | "available" | "redeemed" | "expired";
+  limit?: number;
+}): Promise<AdminCoupon[]> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<GetAdminCouponsRequest, GetAdminCouponsResponse>(
+    firebaseFunctions,
+    "getAdminCoupons"
+  );
+  const result = await callable(params ?? {});
+  return result.data.coupons;
+}

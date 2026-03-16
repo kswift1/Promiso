@@ -157,7 +157,14 @@ export {
   revokeEntitlementOverride,
   sendAdminPush,
   updateAdminReleaseControls,
+  createCoupon,
+  getAdminCoupons,
 } from "./functions/admin";
+
+// ============================================================================
+// Coupon Functions (사용자 쿠폰 사용)
+// ============================================================================
+export {redeemCoupon} from "./functions/coupon";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================
 export {

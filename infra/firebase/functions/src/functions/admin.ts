@@ -6,6 +6,12 @@ import type {
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {admin, REGION} from "../config";
+
+// Admin subcollection 헬퍼
+const adminDoc = () =>
+  admin.firestore().collection("admin").doc("config");
+const adminCol = (name: string) =>
+  adminDoc().collection(name);
 import {
   AdminAccount,
   AdminAuditLog,
@@ -56,6 +62,11 @@ import {
   UpdateAdminUserResponse,
   UpdateAdminReleaseControlsRequest,
   UpdateAdminReleaseControlsResponse,
+  AdminCoupon,
+  CreateCouponRequest,
+  CreateCouponResponse,
+  GetAdminCouponsRequest,
+  GetAdminCouponsResponse,
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
 import {isEntitlementOverrideActive} from "../utils/helpers";
@@ -215,7 +226,7 @@ export async function getAdminUserDocument(
   userId: string
 ): Promise<AdminUserDocument> {
   const snapshot = await admin.firestore()
-    .collection("adminUsers")
+    .collection("admin").doc("config").collection("users")
     .doc(userId)
     .get();
 
@@ -311,7 +322,7 @@ function compareAdminAccounts(left: AdminAccount, right: AdminAccount): number {
  */
 async function listAdminAccounts(): Promise<AdminAccount[]> {
   const snapshot = await admin.firestore()
-    .collection("adminUsers")
+    .collection("admin").doc("config").collection("users")
     .get();
 
   return snapshot.docs
@@ -451,7 +462,7 @@ export const createAdminUser = onCall<CreateAdminUserRequest>(
     const role = requireAdminRoleValue(request.data.role, "role");
     const enabled = request.data.enabled !== false;
     const authUser = await getFirebaseAuthUserByEmail(email);
-    const docRef = admin.firestore().collection("adminUsers").doc(authUser.uid);
+    const docRef = adminCol("users").doc(authUser.uid);
     const snapshot = await docRef.get();
 
     if (snapshot.exists) {
@@ -501,7 +512,7 @@ export const updateAdminUser = onCall<UpdateAdminUserRequest>(
     const userId = requireString(request.data.userId, "userId");
     const role = requireAdminRoleValue(request.data.role, "role");
     const enabled = requireBoolean(request.data.enabled, "enabled");
-    const docRef = admin.firestore().collection("adminUsers").doc(userId);
+    const docRef = adminCol("users").doc(userId);
     const snapshot = await docRef.get();
 
     if (!snapshot.exists) {
@@ -605,10 +616,10 @@ async function buildAdminDashboardSummary(): Promise<AdminDashboardSummary> {
     adminAuditLogsSnapshot,
   ] = await Promise.all([
     db.collection("users").get(),
-    db.collection("adminUsers").get(),
+    adminCol("users").get(),
     db.collection("entitlementOverrides").get(),
-    db.collection("adminPushJobs").get(),
-    db.collection("adminAuditLogs").get(),
+    adminCol("pushJobs").get(),
+    adminCol("auditLogs").get(),
   ]);
 
   const userIds = usersSnapshot.docs.map((doc) => doc.id);
@@ -800,7 +811,7 @@ async function writeAuditLog(params: {
     before,
     after,
   } = params;
-  await admin.firestore().collection("adminAuditLogs").add({
+  await adminCol("auditLogs").add({
     actorId,
     action,
     targetType: targetType ?? "user",
@@ -1454,7 +1465,7 @@ async function hasDuplicateScheduledPushJob(params: {
 }): Promise<boolean> {
   const {title, body, audience, scheduledAt, testUserId} = params;
   const snapshot = await admin.firestore()
-    .collection("adminPushJobs")
+    .collection("admin").doc("config").collection("pushJobs")
     .get();
 
   return snapshot.docs.some((doc) => {
@@ -1595,7 +1606,7 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
       db.collection("users").doc(userId).get(),
       db.collection("subscriptions").doc(userId).get(),
       db.collection("entitlementOverrides").doc(userId).get(),
-      db.collection("adminAuditLogs")
+      adminCol("auditLogs")
         .where("targetId", "==", userId)
         .orderBy("createdAt", "desc")
         .limit(limit)
@@ -1778,7 +1789,7 @@ export const getAdminAuditLogs = onCall<GetAdminAuditLogsRequest>(
       ) :
       limit;
     let query: FirebaseFirestore.Query = admin.firestore()
-      .collection("adminAuditLogs");
+      .collection("admin").doc("config").collection("auditLogs");
 
     if (primaryFilter) {
       query = query.where(primaryFilter.field, "==", primaryFilter.value);
@@ -1941,7 +1952,7 @@ export const getAdminPushJobs = onCall<GetAdminPushJobsRequest>(
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
     const status = normalizePushJobStatus(request.data.status);
     const snapshot = await admin.firestore()
-      .collection("adminPushJobs")
+      .collection("admin").doc("config").collection("pushJobs")
       .orderBy("createdAt", "desc")
       .get();
     const jobs = snapshot.docs
@@ -2028,7 +2039,7 @@ export const scheduleAdminPush = onCall<ScheduleAdminPushRequest>(
       );
     }
 
-    const jobRef = await admin.firestore().collection("adminPushJobs").add({
+    const jobRef = await adminCol("pushJobs").add({
       status: "scheduled",
       audience,
       title,
@@ -2079,7 +2090,7 @@ export const cancelAdminPushJob = onCall<CancelAdminPushJobRequest>(
 
     const jobId = requireString(request.data.jobId, "jobId");
     const reason = request.data.reason?.trim() ?? null;
-    const jobRef = admin.firestore().collection("adminPushJobs").doc(jobId);
+    const jobRef = adminCol("pushJobs").doc(jobId);
     const snapshot = await jobRef.get();
 
     if (!snapshot.exists) {
@@ -2152,8 +2163,7 @@ export const sendAdminPush = onCall<SendAdminPushRequest>(
       throw new HttpsError("invalid-argument", "audience는 필수입니다");
     }
 
-    const db = admin.firestore();
-    const jobRef = await db.collection("adminPushJobs").add({
+    const jobRef = await adminCol("pushJobs").add({
       status: dryRun ? "dry_run" : "processing",
       audience,
       title,
@@ -2256,7 +2266,7 @@ export const dispatchScheduledAdminPushes = onSchedule(
   async () => {
     const now = new Date(Date.now());
     const snapshot = await admin.firestore()
-      .collection("adminPushJobs")
+      .collection("admin").doc("config").collection("pushJobs")
       .where("status", "==", "scheduled")
       .where("scheduledAt", "<=", now.toISOString())
       .orderBy("scheduledAt", "asc")
@@ -2340,5 +2350,191 @@ export const dispatchScheduledAdminPushes = onSchedule(
         });
       }
     }
+  }
+);
+
+// ============================================================================
+// Coupon Functions
+// ============================================================================
+
+import * as crypto from "crypto";
+
+const COUPON_CODE_LENGTH = 8;
+
+/**
+ * Generates a random coupon code.
+ * @return {string} Generated coupon code.
+ */
+function generateCouponCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(COUPON_CODE_LENGTH);
+  let code = "";
+  for (let i = 0; i < COUPON_CODE_LENGTH; i++) {
+    code += chars[bytes[i] % chars.length];
+  }
+  return code;
+}
+
+/**
+ * Converts Firestore document data to AdminCoupon.
+ * @param {string} code - Coupon code.
+ * @param {FirebaseFirestore.DocumentData} data - Document data.
+ * @return {AdminCoupon} Converted coupon object.
+ */
+function toCouponSnapshot(
+  code: string,
+  data: FirebaseFirestore.DocumentData,
+): AdminCoupon {
+  const redeemedAt =
+    data.redeemedAt?.toDate?.()?.toISOString?.() ??
+    data.redeemedAt ?? null;
+  const expiresAt =
+    data.expiresAt?.toDate?.()?.toISOString?.() ??
+    data.expiresAt ?? "";
+  const createdAt =
+    data.createdAt?.toDate?.()?.toISOString?.() ??
+    data.createdAt ?? "";
+  return {
+    code,
+    durationDays: data.durationDays ?? 0,
+    redeemedBy: data.redeemedBy ?? null,
+    redeemedAt,
+    expiresAt,
+    createdBy: data.createdBy ?? "",
+    createdAt,
+  };
+}
+
+export const createCoupon = onCall<CreateCouponRequest>(
+  {region: REGION},
+  async (request): Promise<CreateCouponResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const durationDays = request.data.durationDays;
+    if (durationDays !== 30 && durationDays !== 90) {
+      throw new HttpsError("invalid-argument", "durationDays는 30 또는 90이어야 합니다");
+    }
+
+    let code = request.data.code?.trim().toUpperCase();
+    if (code) {
+      const existing =
+        await adminCol("coupons").doc(code).get();
+      if (existing.exists) {
+        throw new HttpsError(
+          "already-exists", "이미 존재하는 쿠폰 코드입니다"
+        );
+      }
+    } else {
+      let attempts = 0;
+      do {
+        code = generateCouponCode();
+        const existing =
+          await adminCol("coupons").doc(code).get();
+        if (!existing.exists) break;
+        attempts++;
+      } while (attempts < 10);
+      if (attempts >= 10) {
+        throw new HttpsError("internal", "쿠폰 코드 생성에 실패했습니다");
+      }
+    }
+
+    let expiresAt: Date;
+    if (request.data.expiresAt) {
+      const parsed = new Date(request.data.expiresAt);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new HttpsError("invalid-argument", "expiresAt 형식이 올바르지 않습니다");
+      }
+      expiresAt = parsed;
+    } else {
+      expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    }
+
+    const couponData = {
+      durationDays,
+      redeemedBy: null,
+      redeemedAt: null,
+      expiresAt: expiresAt.toISOString(),
+      createdBy: actorId,
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    await adminCol("coupons").doc(code).set(couponData);
+
+    await writeAuditLog({
+      actorId,
+      action: "create_coupon",
+      targetType: "coupon",
+      targetId: code,
+      after: {durationDays, expiresAt: expiresAt.toISOString()},
+    });
+
+    return {
+      success: true,
+      coupon: {
+        code,
+        durationDays,
+        redeemedBy: null,
+        redeemedAt: null,
+        expiresAt: expiresAt.toISOString(),
+        createdBy: actorId,
+        createdAt: new Date().toISOString(),
+      },
+    };
+  }
+);
+
+export const getAdminCoupons = onCall<GetAdminCouponsRequest>(
+  {region: REGION},
+  async (request): Promise<GetAdminCouponsResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const statusFilter = request.data.status ?? "all";
+    const limit = Math.min(request.data.limit ?? 50, 200);
+
+    const snapshot = await admin.firestore()
+      .collection("admin").doc("config").collection("coupons")
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+
+    const now = new Date();
+    const coupons: AdminCoupon[] = [];
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const coupon = toCouponSnapshot(doc.id, data);
+
+      if (statusFilter === "all") {
+        coupons.push(coupon);
+        continue;
+      }
+
+      const isRedeemed = !!data.redeemedBy;
+      const isExpired = !isRedeemed &&
+        coupon.expiresAt !== "" &&
+        new Date(coupon.expiresAt) < now;
+
+      if (
+        (statusFilter === "redeemed" && isRedeemed) ||
+        (statusFilter === "expired" && isExpired) ||
+        (statusFilter === "available" && !isRedeemed && !isExpired)
+      ) {
+        coupons.push(coupon);
+      }
+    }
+
+    return {success: true, coupons};
   }
 );

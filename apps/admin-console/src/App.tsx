@@ -7,6 +7,7 @@ import {AppShell} from "./layout/AppShell";
 import {AdminUsersPage} from "./pages/AdminUsersPage";
 import {AuditLogsPage} from "./pages/AuditLogsPage";
 import {DashboardPage} from "./pages/DashboardPage";
+import {CouponsPage} from "./pages/CouponsPage";
 import {EntitlementsPage} from "./pages/EntitlementsPage";
 import {LoginPage} from "./pages/LoginPage";
 import {PushJobsPage} from "./pages/PushJobsPage";
@@ -106,6 +107,14 @@ export function App() {
           element={
             <RoleProtectedRoute allowedRoles={["owner", "support"]}>
               <EntitlementsPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/coupons"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
+              <CouponsPage />
             </RoleProtectedRoute>
           }
         />

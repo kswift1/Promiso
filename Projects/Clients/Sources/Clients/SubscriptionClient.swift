@@ -200,6 +200,14 @@ extension SubscriptionClient: DependencyKey {
                   }
                 }
               }
+              // entitlementOverrides/{userId} listener (쿠폰/관리자 부여)
+              group.addTask {
+                for await status in remoteDataSource.subscribeToOverrideStatus() {
+                  if status.isActive {
+                    continuation.yield(status)
+                  }
+                }
+              }
               await group.waitForAll()
             }
             continuation.finish()
