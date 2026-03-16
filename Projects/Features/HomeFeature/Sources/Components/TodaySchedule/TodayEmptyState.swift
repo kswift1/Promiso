@@ -5,13 +5,13 @@ import PromisoShared
 
 /// 오늘 일정이 없을 때 표시하는 뷰
 struct TodayEmptyState: View {
-  private let message: RandomMessage
+  @State private var message: RandomMessage
 
   init() {
-    self.message = TimeBasedMessageGenerator.generate(
+    self._message = State(initialValue: TimeBasedMessageGenerator.generate(
       timeMessages: Self.timeMessages,
       randomMessages: Self.randomMessages
-    )
+    ))
   }
 
   var body: some View {

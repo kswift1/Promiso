@@ -11770,6 +11770,96 @@
         }
       }
     },
+    "home.upcoming.recurring.empty.title": {
+      "comment": "반복 일정 없음 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No recurring events"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "등록된 반복 일정이 없어요"
+          }
+        }
+      }
+    },
+    "home.upcoming.recurring.empty.subtitle": {
+      "comment": "반복 일정 없음 서브타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a recurring event for regular schedules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정기적인 일정을 반복 일정으로 등록해보세요"
+          }
+        }
+      }
+    },
+    "home.upcoming.createDialog.title": {
+      "comment": "일정 생성 다이얼로그 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a new event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로운 일정 만들기"
+          }
+        }
+      }
+    },
+    "home.upcoming.createDialog.groupSchedule": {
+      "comment": "그룹 일정 생성 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 일정"
+          }
+        }
+      }
+    },
+    "home.upcoming.createDialog.personalEvent": {
+      "comment": "개인 일정 생성 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인 일정"
+          }
+        }
+      }
+    },
     "home.upcoming.recurringCount": {
       "comment": "반복 일정 개수",
       "extractionState": "manual",

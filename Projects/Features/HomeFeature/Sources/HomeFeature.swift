@@ -148,6 +148,10 @@ extension Home {
 
       /// 개인 일정 생성 모달
       @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 반복 개인 일정 생성 모달
+      @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
+      /// 그룹 일정 생성 모달
+      @Presents var createSchedule: CreateSchedule.Feature.State?
 
       /// 오버레이 내 일정 상세 (일정 + 개인 일정 통합)
       var overlayScheduleDetail: OverlayScheduleDetail.Feature.State?
@@ -225,6 +229,8 @@ extension Home {
       case delegate(Delegate)
       case path(StackActionOf<Path>)
       case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
+      case createSchedule(PresentationAction<CreateSchedule.Feature.Action>)
       case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
       case overlayCreateSchedule(CreateSchedule.Feature.Action)
       @CasePathable
@@ -311,6 +317,14 @@ extension Home {
         case departureOriginChanged(HomeModels.DepartureOrigin)
         /// 출발 알림 시트에서 설정으로 이동
         case departureAlertOpenSettingsTapped
+        /// 다가오는 일정 빈 상태에서 개인 일정 생성 탭
+        case emptyCreatePersonalEventTapped
+        /// 다가오는 일정 빈 상태에서 그룹 일정 생성 탭
+        case emptyCreateScheduleTapped
+        /// 반복 일정 빈 상태에서 반복 일정 생성 탭
+        case emptyCreateRecurringEventTapped
+        /// 반복 일정 요약 항목 탭 (상세 화면)
+        case recurringSummaryTapped(HomeModels.RecurringEventSummary)
       }
 
       @CasePathable
@@ -402,10 +416,8 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 첫 로드 표시
+            // 첫 로드: 출발 알림 복원
             if !state.hasLoadedOnce {
-              state.hasLoadedOnce = true
-              // UserDefaultsClient에서 출발 알림 복원
               state.departureAlerts = Self.loadDepartureAlerts(userDefaultsClient: userDefaultsClient)
             }
             state.refreshHomeContentSnapshot()
@@ -1071,6 +1083,33 @@ extension Home {
               }
             }
 
+          case .emptyCreatePersonalEventTapped:
+            let startAt = Date().addingTimeInterval(60 * 60)
+            state.createPersonalEvent = CreatePersonalEvent.Feature.State(
+              event: PersonalEventModel(startAt: startAt)
+            )
+            return .none
+
+          case .emptyCreateScheduleTapped:
+            state.createSchedule = CreateSchedule.Feature.State(
+              groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
+              currentUserId: state.currentUser.userId
+            )
+            return .none
+
+          case .emptyCreateRecurringEventTapped:
+            state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State()
+            return .none
+
+          case .recurringSummaryTapped(let summary):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == summary.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring
+              )))
+            }
+            return .none
+
           }
 
         case .internal(let internalAction):
@@ -1089,7 +1128,11 @@ extension Home {
             guard !groupIds.isEmpty else {
               state.schedulesState = .loaded([])
               state.refreshHomeContentSnapshot()
-              return .none
+              return .merge(
+                .send(.internal(.fetchUnreadNotificationCount)),
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing()))
+              )
             }
 
             return .run { [scheduleClient] send in
@@ -1820,6 +1863,37 @@ extension Home {
         case .createPersonalEvent:
           return .none
 
+        // MARK: - CreateRecurringEvent Delegate
+
+        case .createRecurringEvent(.presented(.delegate(.eventCreated))),
+             .createRecurringEvent(.presented(.delegate(.eventUpdated(_)))):
+          state.createRecurringEvent = nil
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .createRecurringEvent(.presented(.delegate(.dismiss))):
+          state.createRecurringEvent = nil
+          return .none
+
+        case .createRecurringEvent:
+          return .none
+
+        // MARK: - CreateSchedule (Sheet) Delegate
+
+        case .createSchedule(.presented(.delegate(.scheduleCreated(_)))):
+          state.createSchedule = nil
+          return .send(.internal(.fetchSchedules))
+
+        case .createSchedule(.presented(.delegate(.dismiss))):
+          state.createSchedule = nil
+          return .none
+
+        case .createSchedule(.presented(.delegate(.createGroupRequested))):
+          state.createSchedule = nil
+          return .send(.delegate(.navigateToCreateSchedule))
+
+        case .createSchedule:
+          return .none
+
         // MARK: - Overlay Schedule Detail Actions
 
         case .overlayScheduleDetail(.delegate(.dismiss)):
@@ -1991,6 +2065,12 @@ extension Home {
       .forEach(\.path, action: \.path)
       .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$createRecurringEvent, action: \.createRecurringEvent) {
+        CreateRecurringPersonalEvent.Feature()
+      }
+      .ifLet(\.$createSchedule, action: \.createSchedule) {
+        CreateSchedule.Feature()
       }
       .ifLet(\.overlayScheduleDetail, action: \.overlayScheduleDetail) {
         OverlayScheduleDetail.Feature()
