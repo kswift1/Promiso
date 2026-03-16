@@ -95,10 +95,14 @@ function getConfiguredBriefing(
     return null;
   }
 
+  const SUPPORTED_LANGUAGES = ["ko", "en"];
+  const rawLanguage = briefing.language || "ko";
+  const language = SUPPORTED_LANGUAGES.includes(rawLanguage) ? rawLanguage : "ko";
+
   return {
     notificationHour: briefing.notificationHour,
     timezone: briefing.timezone || "Asia/Seoul",
-    language: briefing.language || "ko",
+    language,
     style: briefing.style || "friendly",
   };
 }

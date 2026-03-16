@@ -539,7 +539,7 @@ function buildPrompt(
   // 브리핑 가이드
   lines.push("[브리핑 가이드]");
   lines.push("- 일정 많으면 -> 바쁜 하루 강조");
-  lines.push("- 일정 없으면 -> 날씨 중심, 여유로운 톤");
+  lines.push("- 일정 없으면 -> 여유로운 톤");
   lines.push("- 비/눈 예보 -> 우산 챙기기 언급");
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
@@ -630,7 +630,7 @@ function buildPrompt(
     lines.push(`- 최고 ${Math.max(...allTemps)}도 / 최저 ${Math.min(...allTemps)}도`);
     lines.push("");
   } else {
-    lines.push("날씨: 정보 없음");
+    lines.push("날씨: 정보 없음 (날씨에 대해 언급하지 마세요)");
     lines.push("");
   }
 
@@ -979,8 +979,10 @@ export async function generateBriefingInternal(params: {
     }
 
     // 9. 프롬프트 조립
+    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
+    const effectiveLanguage = SUPPORTED_LANGUAGES.includes(language as any) ? language : "ko";
     const prompt = buildPrompt(
-      language === "ko" ? "한국어" : language,
+      effectiveLanguage === "ko" ? "한국어" : effectiveLanguage,
       dateTimeStr,
       location?.title ?? null,
       weather,

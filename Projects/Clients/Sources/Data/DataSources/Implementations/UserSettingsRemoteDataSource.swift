@@ -109,7 +109,7 @@ public actor UserSettingsRemoteDataSource {
           "style": BriefingStyle.friendly.rawValue,
           "notificationHour": 8,
           "timezone": TimeZone.current.identifier,
-          "language": Locale.current.language.languageCode?.identifier ?? "ko",
+          "language": AppLanguage.resolved.rawValue,
           "availableTransports": AvailableTransport.allCases.map(\.rawValue),
         ]
       ]
@@ -122,7 +122,7 @@ public actor UserSettingsRemoteDataSource {
       try await settingsRef(userId: userId).updateData([
         "proSettings.briefing.notificationHour": hour,
         "proSettings.briefing.timezone": TimeZone.current.identifier,
-        "proSettings.briefing.language": Locale.current.language.languageCode?.identifier ?? "ko",
+        "proSettings.briefing.language": AppLanguage.resolved.rawValue,
       ])
     } else {
       try await settingsRef(userId: userId).updateData([
