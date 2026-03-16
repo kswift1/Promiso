@@ -552,11 +552,23 @@ extension ProPlan {
     }
 
     public var body: some View {
-      Group {
-        if store.subscriptionStatus.isActive {
-          ProPlanManageView(store: store)
-        } else {
-          PaywallView(store: store)
+      NavigationStack {
+        Group {
+          if store.subscriptionStatus.isActive {
+            ProPlanManageView(store: store)
+          } else {
+            PaywallView(store: store)
+          }
+        }
+        .navigationDestination(isPresented: Binding(
+          get: { store.showProOnboarding },
+          set: { newValue in
+            if !newValue && store.showProOnboarding {
+              store.send(.view(.proOnboardingCompleted))
+            }
+          }
+        )) {
+          ProOnboardingSetupView(store: store)
         }
       }
       .onAppear {
@@ -584,8 +596,6 @@ extension ProPlan {
           ProCelebrationView {
             store.send(.view(.dismissCelebration))
           }
-        } else if store.showProOnboarding {
-          ProOnboardingSetupView(store: store)
         }
       }
     }
