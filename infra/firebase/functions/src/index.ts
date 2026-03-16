@@ -122,8 +122,7 @@ export {
 } from "./functions/briefingScheduler";
 export {
   onUserSettingsSyncBriefingSubscription,
-  onSubscriptionSyncBriefingSubscription,
-  onEntitlementOverrideSyncBriefingSubscription,
+  onEntitlementSyncBriefingSubscription,
 } from "./functions/briefingSubscriptionProjection";
 
 // ============================================================================
@@ -133,14 +132,6 @@ export {
   verifyPurchase,
   appleServerNotification,
 } from "./functions/subscription";
-
-// ============================================================================
-// Entitlement Functions (Pro 판정 read model)
-// ============================================================================
-export {
-  onSubscriptionWriteSyncEntitlement,
-  onEntitlementOverrideWriteSyncEntitlement,
-} from "./functions/entitlements";
 
 // ============================================================================
 // Admin Functions (운영 콘솔)
@@ -190,3 +181,11 @@ export {
 // Transportation Functions (교통 정보 조회)
 // ============================================================================
 export {getTransportation} from "./functions/transportation";
+
+// ============================================================================
+// Entitlement Read Model Functions (Pro 권한 통합 read model)
+// ============================================================================
+export {
+  onSubscriptionWriteSyncEntitlement,
+  onEntitlementOverrideWriteSyncEntitlement,
+} from "./functions/entitlements";

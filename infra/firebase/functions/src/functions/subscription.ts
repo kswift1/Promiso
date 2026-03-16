@@ -560,22 +560,6 @@ export const appleServerNotification = onRequest(
 
         transaction.set(subscriptionRef, subscriptionData, {merge: true});
 
-        const isInactive = ["expired", "revoked"].includes(
-          derivedStatus.status,
-        );
-        if (isInactive) {
-          const settingsRef = db
-            .collection("users").doc(userId)
-            .collection("settings").doc("main");
-          const briefingSubscriptionRef = db
-            .collection("briefingSubscriptions").doc(userId);
-          transaction.set(settingsRef, {
-            proSettings: FieldValue.delete(),
-          }, {merge: true});
-          transaction.delete(briefingSubscriptionRef);
-          console.log(`🧹 [Subscription] Cleaned proSettings for ${userId}`);
-        }
-
         console.log("✅ [Subscription] Notification applied", {
           userId,
           originalTransactionId,
