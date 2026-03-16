@@ -373,6 +373,7 @@ extension ProPlan {
 
           case .proOnboardingCompleted:
             state.showProOnboarding = false
+            let status = state.subscriptionStatus
             return .run { [state, userSettingsClient, authClient] send in
               if let userId = await authClient.currentUser()?.uid {
                 do {
@@ -385,6 +386,7 @@ extension ProPlan {
                   print("[ProPlan] Onboarding settings save failed: \(error)")
                 }
               }
+              await send(.delegate(.subscriptionStatusChanged(status)))
               await send(.delegate(.dismissRequested))
             }
 
@@ -480,9 +482,8 @@ extension ProPlan {
               state.showCelebration = true
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -517,9 +518,8 @@ extension ProPlan {
             if status.isPro {
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -591,9 +591,8 @@ extension ProPlan {
               state.showCelebration = true
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -637,25 +636,16 @@ extension ProPlan {
     }
 
     public var body: some View {
-      NavigationStack {
-        Group {
-          if store.subscriptionStatus.isActive {
-            ProPlanManageView(store: store)
-          } else {
-            PaywallView(store: store)
-          }
-        }
-        .navigationDestination(isPresented: Binding(
-          get: { store.showProOnboarding },
-          set: { newValue in
-            if !newValue && store.showProOnboarding {
-              store.send(.view(.proOnboardingCompleted))
-            }
-          }
-        )) {
+      Group {
+        if store.showProOnboarding {
           ProOnboardingSetupView(store: store)
+        } else if store.subscriptionStatus.isActive {
+          ProPlanManageView(store: store)
+        } else {
+          PaywallView(store: store)
         }
       }
+      .animation(.default, value: store.showProOnboarding)
       .onAppear {
         store.send(.view(.onAppear))
       }
