@@ -67,6 +67,8 @@ import {
   CreateCouponResponse,
   GetAdminCouponsRequest,
   GetAdminCouponsResponse,
+  ExpireCouponRequest,
+  ExpireCouponResponse,
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
 import {isEntitlementOverrideActive} from "../utils/helpers";
@@ -2536,5 +2538,58 @@ export const getAdminCoupons = onCall<GetAdminCouponsRequest>(
     }
 
     return {success: true, coupons};
+  }
+);
+
+/**
+ * Expires a coupon immediately.
+ */
+export const expireCoupon = onCall<ExpireCouponRequest>(
+  {region: REGION},
+  async (request): Promise<ExpireCouponResponse> => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated", "로그인이 필요합니다"
+      );
+    }
+
+    const actorId = request.auth.uid;
+    const adminUser = await getAdminUserDocument(actorId);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    const code = request.data.code?.trim().toUpperCase();
+    if (!code) {
+      throw new HttpsError(
+        "invalid-argument", "쿠폰 코드가 필요합니다"
+      );
+    }
+
+    const couponRef = adminCol("coupons").doc(code);
+    const couponDoc = await couponRef.get();
+
+    if (!couponDoc.exists) {
+      throw new HttpsError("not-found", "쿠폰을 찾을 수 없습니다");
+    }
+
+    const data = couponDoc.data()!;
+    if (data.redeemedBy) {
+      throw new HttpsError(
+        "failed-precondition",
+        "이미 사용된 쿠폰은 만료 처리할 수 없습니다"
+      );
+    }
+
+    await couponRef.update({
+      expiresAt: new Date().toISOString(),
+    });
+
+    await writeAuditLog({
+      actorId,
+      action: "expire_coupon",
+      targetType: "coupon",
+      targetId: code,
+    });
+
+    return {success: true};
   }
 );

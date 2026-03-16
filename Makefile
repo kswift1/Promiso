@@ -48,11 +48,11 @@ setup:
 		echo "  ⚠️  npm이 설치되어 있지 않습니다. Functions 의존성 설치를 건너뜁니다."; \
 	fi
 	@echo "4/6 Firebase Functions 환경변수 설정..."
-	@if [ ! -f "infra/firebase/functions/.env.stage" ]; then \
-		cp infra/firebase/functions/.env.stage.template infra/firebase/functions/.env.stage; \
-		echo "  ✅ .env.stage 생성 완료 (template에서 복사)"; \
+	@if [ ! -f "infra/firebase/functions/.env.promiso-stage" ]; then \
+		cp infra/firebase/functions/.env.promiso-stage.template infra/firebase/functions/.env.promiso-stage; \
+		echo "  ✅ .env.promiso-stage 생성 완료 (template에서 복사)"; \
 	else \
-		echo "  ✅ .env.stage 이미 존재"; \
+		echo "  ✅ .env.promiso-stage 이미 존재"; \
 	fi
 	@echo "5/6 Xcode 프로젝트 생성..."
 	@tuist generate

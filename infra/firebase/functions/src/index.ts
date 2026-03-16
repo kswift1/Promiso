@@ -159,6 +159,7 @@ export {
   updateAdminReleaseControls,
   createCoupon,
   getAdminCoupons,
+  expireCoupon,
 } from "./functions/admin";
 
 // ============================================================================

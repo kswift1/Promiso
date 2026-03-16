@@ -703,3 +703,15 @@ export async function getAdminCoupons(params?: {
   const result = await callable(params ?? {});
   return result.data.coupons;
 }
+
+export async function expireCoupon(code: string): Promise<void> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<{code: string}, {success: true}>(
+    firebaseFunctions,
+    "expireCoupon"
+  );
+  await callable({code});
+}

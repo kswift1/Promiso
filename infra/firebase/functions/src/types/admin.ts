@@ -399,6 +399,14 @@ export interface GetAdminCouponsResponse {
   coupons: AdminCoupon[];
 }
 
+export interface ExpireCouponRequest {
+  code: string;
+}
+
+export interface ExpireCouponResponse {
+  success: true;
+}
+
 export interface RedeemCouponRequest {
   code: string;
 }

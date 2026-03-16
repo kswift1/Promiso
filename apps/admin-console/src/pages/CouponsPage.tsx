@@ -24,6 +24,7 @@ import {useState} from "react";
 import {
   type AdminCoupon,
   createCoupon,
+  expireCoupon,
   getAdminCoupons,
 } from "../api/admin";
 
@@ -54,7 +55,13 @@ export function CouponsPage() {
   const queryClient = useQueryClient();
   const [code, setCode] = useState("");
   const [durationDays, setDurationDays] = useState<30 | 90>(30);
-  const [expiresAt, setExpiresAt] = useState("");
+
+  const calcDefaultExpiry = (days: number) => {
+    const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    return d.toISOString().slice(0, 16);
+  };
+
+  const [expiresAt, setExpiresAt] = useState(() => calcDefaultExpiry(30));
   const [statusFilter, setStatusFilter] = useState<CouponStatusFilter>("all");
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -79,11 +86,22 @@ export function CouponsPage() {
         text: `쿠폰이 생성되었습니다: ${coupon.code}`,
       });
       setCode("");
-      setExpiresAt("");
+      setExpiresAt(calcDefaultExpiry(durationDays));
       void queryClient.invalidateQueries({queryKey: ["admin-coupons"]});
     },
     onError: () => {
       setMessage({type: "error", text: "쿠폰 생성에 실패했습니다."});
+    },
+  });
+
+  const expireMutation = useMutation({
+    mutationFn: (couponCode: string) => expireCoupon(couponCode),
+    onSuccess: () => {
+      setMessage({type: "success", text: "쿠폰이 만료 처리되었습니다."});
+      void queryClient.invalidateQueries({queryKey: ["admin-coupons"]});
+    },
+    onError: () => {
+      setMessage({type: "error", text: "쿠폰 만료 처리에 실패했습니다."});
     },
   });
 
@@ -116,7 +134,11 @@ export function CouponsPage() {
             <Stack direction="row" spacing={2}>
               <Select
                 value={durationDays}
-                onChange={(e) => setDurationDays(e.target.value as 30 | 90)}
+                onChange={(e) => {
+                  const days = e.target.value as 30 | 90;
+                  setDurationDays(days);
+                  setExpiresAt(calcDefaultExpiry(days));
+                }}
                 size="small"
                 sx={{minWidth: 140}}
               >
@@ -131,7 +153,7 @@ export function CouponsPage() {
                 InputLabelProps={{shrink: true}}
                 size="small"
                 fullWidth
-                helperText="비워두면 90일 후 만료"
+                helperText="기간 선택 시 자동 설정됨"
               />
             </Stack>
 
@@ -198,12 +220,13 @@ export function CouponsPage() {
                     <TableCell>사용일</TableCell>
                     <TableCell>쿠폰 만료일</TableCell>
                     <TableCell>생성일</TableCell>
+                    <TableCell>관리</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {couponsQuery.data.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={8} align="center">
                         <Typography color="text.secondary" sx={{py: 4}}>
                           쿠폰이 없습니다
                         </Typography>
@@ -251,6 +274,23 @@ export function CouponsPage() {
                         <TableCell>{formatDate(coupon.redeemedAt)}</TableCell>
                         <TableCell>{formatDate(coupon.expiresAt)}</TableCell>
                         <TableCell>{formatDate(coupon.createdAt)}</TableCell>
+                        <TableCell>
+                          {getCouponStatus(coupon) === "available" && (
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              disabled={expireMutation.isPending}
+                              onClick={() => {
+                                if (confirm(`${coupon.code} 쿠폰을 만료 처리하시겠습니까?`)) {
+                                  expireMutation.mutate(coupon.code);
+                                }
+                              }}
+                            >
+                              만료
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
