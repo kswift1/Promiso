@@ -96,30 +96,22 @@ extension ProPlan {
     @ViewBuilder
     private var subscriptionHeroCard: some View {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(alignment: .top) {
-          Image(systemName: "crown.fill")
-            .font(.system(size: 36))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          Spacer()
-
-          // productType badge
-          if let badgeText = subscriptionBadgeText {
-            Text(badgeText)
-              .font(.caption)
-              .fontWeight(.semibold)
-              .foregroundStyle(.white)
-              .padding(.horizontal, 10)
-              .padding(.vertical, 4)
-              .background(Color.pmindigo.n500, in: Capsule())
-          }
-        }
-
-        VStack(alignment: .leading, spacing: 4) {
-          Text("Promiso Pro")
-            .font(.title2)
-            .fontWeight(.bold)
-            .foregroundStyle(Color.pmtext.primary)
+        HStack(alignment: .center, spacing: 8) {
+          // Pro 뱃지 스타일 타이틀
+          Text("PRO \(subscriptionBadgeText ?? "")")
+            .font(.title3)
+            .fontWeight(.heavy)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(
+              LinearGradient(
+                colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+                startPoint: .leading,
+                endPoint: .trailing
+              ),
+              in: Capsule()
+            )
 
           if store.entitlementInfo.isInTrialPeriod {
             Text("무료 체험 중")
@@ -136,7 +128,7 @@ extension ProPlan {
            let date = expirationDate {
           HStack(alignment: .center) {
             Text("\(formattedDate(date))에 갱신됩니다")
-              .font(.subheadline)
+              .font(.caption)
               .foregroundStyle(Color.pmtext.secondary)
 
             Spacer()
@@ -156,13 +148,25 @@ extension ProPlan {
       }
       .padding(20)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(
-        LinearGradient(
-          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background {
+        ZStack(alignment: .trailing) {
+          LinearGradient(
+            colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+
+          GeometryReader { geo in
+            ResourceKitAsset.paywallHero.swiftUIImage
+              .resizable()
+              .scaledToFill()
+              .frame(width: geo.size.height, height: geo.size.height)
+              .opacity(0.25)
+              .clipped()
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
+        }
+      }
       .compositingGroup()
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
       .staticGlassBackground(cornerRadius: 16)
@@ -172,46 +176,46 @@ extension ProPlan {
     @ViewBuilder
     private var lifetimeHeroCard: some View {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(alignment: .top) {
-          Image(systemName: "crown.fill")
-            .font(.system(size: 36))
-            .foregroundStyle(Color.pmindigo.n500)
+        Text("PRO 평생")
+          .font(.title3)
+          .fontWeight(.heavy)
+          .foregroundStyle(.white)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 6)
+          .background(
+            LinearGradient(
+              colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+              startPoint: .leading,
+              endPoint: .trailing
+            ),
+            in: Capsule()
+          )
 
-          Spacer()
-
-          Text("평생")
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Color.pmindigo.n500, in: Capsule())
-        }
-
-        VStack(alignment: .leading, spacing: 8) {
-          Text("Promiso Pro")
-            .font(.title2)
-            .fontWeight(.bold)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Text("영구적으로 이용 가능합니다")
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
-
-          Text("감사합니다 🎉")
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
-        }
+        Text("영구적으로 이용 가능합니다")
+          .font(.caption)
+          .foregroundStyle(Color.pmtext.secondary)
       }
       .padding(20)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(
-        LinearGradient(
-          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background {
+        ZStack(alignment: .trailing) {
+          LinearGradient(
+            colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+
+          GeometryReader { geo in
+            ResourceKitAsset.paywallHero.swiftUIImage
+              .resizable()
+              .scaledToFill()
+              .frame(width: geo.size.height, height: geo.size.height)
+              .opacity(0.25)
+              .clipped()
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
+        }
+      }
       .compositingGroup()
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
       .staticGlassBackground(cornerRadius: 16)
@@ -221,36 +225,34 @@ extension ProPlan {
     @ViewBuilder
     private var overrideHeroCard: some View {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(alignment: .top) {
-          Image(systemName: "crown.fill")
-            .font(.system(size: 36))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          Spacer()
-
-          Text(store.entitlementInfo.source == .coupon ? "쿠폰" : "관리자")
-            .font(.caption)
-            .fontWeight(.semibold)
+        HStack(alignment: .center, spacing: 8) {
+          Text("PRO \(store.entitlementInfo.source == .coupon ? "쿠폰" : "관리자")")
+            .font(.title3)
+            .fontWeight(.heavy)
             .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
             .background(
-              store.entitlementInfo.source == .coupon
-                ? Color.pmindigo.n500
-                : Color.pmgray.n400,
+              LinearGradient(
+                colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+                startPoint: .leading,
+                endPoint: .trailing
+              ),
               in: Capsule()
             )
-        }
 
-        Text("Pro 체험 중")
-          .font(.title2)
-          .fontWeight(.bold)
-          .foregroundStyle(Color.pmtext.primary)
+          Text("체험 중")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.pmindigo.n500)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.pmindigo.n500.opacity(0.12), in: Capsule())
+        }
 
         if let overrideExpiry = store.entitlementInfo.overrideExpiresAt {
           VStack(alignment: .leading, spacing: 8) {
-            // 진행률 바
-            let totalDays = 30.0  // 기본 쿠폰 기간
+            let totalDays = 30.0
             let remaining = Double(max(0, Calendar.current.dateComponents([.day], from: Date(), to: overrideExpiry).day ?? 0))
             let progress = min(1.0, remaining / totalDays)
 
@@ -266,20 +268,32 @@ extension ProPlan {
             }
 
             Text("\(formattedDate(overrideExpiry)) 만료")
-              .font(.subheadline)
+              .font(.caption)
               .foregroundStyle(Color.pmtext.secondary)
           }
         }
       }
       .padding(20)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(
-        LinearGradient(
-          colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background {
+        ZStack(alignment: .trailing) {
+          LinearGradient(
+            colors: [Color.pmaurora.purple.opacity(0.3), Color.pmaurora.indigo.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+
+          GeometryReader { geo in
+            ResourceKitAsset.paywallHero.swiftUIImage
+              .resizable()
+              .scaledToFill()
+              .frame(width: geo.size.height, height: geo.size.height)
+              .opacity(0.25)
+              .clipped()
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
+        }
+      }
       .compositingGroup()
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
       .staticGlassBackground(cornerRadius: 16)
@@ -374,8 +388,10 @@ extension ProPlan {
             .foregroundStyle(Color.pmtext.secondary)
         }
 
+        let yearlyProduct = store.products.first(where: { $0.type == .yearly })
+
         Button {
-          if let yearlyId = store.products.first(where: { $0.type == .yearly })?.id {
+          if let yearlyId = yearlyProduct?.id {
             store.send(.view(.productSelected(yearlyId)))
             store.send(.view(.purchaseTapped))
           }
@@ -390,6 +406,8 @@ extension ProPlan {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(yearlyProduct == nil || store.isPurchasing)
+        .opacity(yearlyProduct == nil ? 0.5 : 1)
       }
       .padding(16)
       .adaptiveGlassCard()
@@ -413,8 +431,10 @@ extension ProPlan {
           .font(.caption)
           .foregroundStyle(Color.pmtext.secondary)
 
+        let yearlyProduct = store.products.first(where: { $0.type == .yearly })
+
         Button {
-          if let yearlyId = store.products.first(where: { $0.type == .yearly })?.id {
+          if let yearlyId = yearlyProduct?.id {
             store.send(.view(.productSelected(yearlyId)))
             store.send(.view(.purchaseTapped))
           }
@@ -429,6 +449,8 @@ extension ProPlan {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(yearlyProduct == nil || store.isPurchasing)
+        .opacity(yearlyProduct == nil ? 0.5 : 1)
       }
       .padding(16)
       .adaptiveGlassCard()
