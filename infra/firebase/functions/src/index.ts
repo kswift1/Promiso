@@ -135,6 +135,14 @@ export {
 } from "./functions/subscription";
 
 // ============================================================================
+// Entitlement Functions (Pro 판정 read model)
+// ============================================================================
+export {
+  onSubscriptionWriteSyncEntitlement,
+  onEntitlementOverrideWriteSyncEntitlement,
+} from "./functions/entitlements";
+
+// ============================================================================
 // Admin Functions (운영 콘솔)
 // ============================================================================
 export {
