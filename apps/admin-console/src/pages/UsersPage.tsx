@@ -161,9 +161,13 @@ export function UsersPage() {
                   submittedFilters?.subscription ?? "subscription"}
               />
               <Chip
-                label={submittedFilters?.override === "all" ?
-                  "전체 수동 변경" :
-                  submittedFilters?.override ?? "수동 변경"}
+                label={
+                  submittedFilters?.override === "active"
+                    ? "수동 변경 활성"
+                    : submittedFilters?.override === "inactive"
+                    ? "수동 변경 비활성"
+                    : "전체 수동 변경"
+                }
               />
             </Stack>
           </Stack>
