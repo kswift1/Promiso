@@ -27,6 +27,20 @@ extension Home {
             CreatePersonalEvent.RootView(store: createEventStore)
           }
         }
+        .sheet(
+          item: $store.scope(state: \.createRecurringEvent, action: \.createRecurringEvent)
+        ) { createRecurringStore in
+          NavigationStack {
+            CreateRecurringPersonalEvent.RootView(store: createRecurringStore)
+          }
+        }
+        .sheet(
+          item: $store.scope(state: \.createSchedule, action: \.createSchedule)
+        ) { createScheduleStore in
+          NavigationStack {
+            CreateSchedule.RootView(store: createScheduleStore)
+          }
+        }
         .sheet(isPresented: Binding(
           get: { store.departureAlertItem != nil },
           set: { if !$0 { store.send(.view(.departureAlertSheetDismissed)) } }
@@ -317,6 +331,15 @@ extension Home {
               },
               onSeeAllTap: {
                 store.send(.view(.seeAllUpcomingTapped))
+              },
+              onCreatePersonalEventTap: {
+                store.send(.view(.emptyCreatePersonalEventTapped))
+              },
+              onCreateScheduleTap: {
+                store.send(.view(.emptyCreateScheduleTapped))
+              },
+              onCreateRecurringEventTap: {
+                store.send(.view(.emptyCreateRecurringEventTapped))
               }
             )
             .padding(.horizontal, 16)

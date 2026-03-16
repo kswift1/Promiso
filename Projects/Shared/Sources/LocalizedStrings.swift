@@ -1202,6 +1202,11 @@ public enum LocalizedStrings {
     public static var upcomingSchedule: String { String(localized: "home.upcoming.title", bundle: bundle) }
     public static var noUpcomingTitle: String { String(localized: "home.upcoming.empty.title", bundle: bundle) }
     public static var noUpcomingSubtitle: String { String(localized: "home.upcoming.empty.subtitle", bundle: bundle) }
+    public static var noRecurringTitle: String { String(localized: "home.upcoming.recurring.empty.title", bundle: bundle) }
+    public static var noRecurringSubtitle: String { String(localized: "home.upcoming.recurring.empty.subtitle", bundle: bundle) }
+    public static var createScheduleDialogTitle: String { String(localized: "home.upcoming.createDialog.title", bundle: bundle) }
+    public static var createPersonalEvent: String { String(localized: "home.upcoming.createDialog.personalEvent", bundle: bundle) }
+    public static var createGroupSchedule: String { String(localized: "home.upcoming.createDialog.groupSchedule", bundle: bundle) }
     public static func recurringCount(_ count: Int) -> String {
       String(localized: "home.upcoming.recurringCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")

@@ -12,8 +12,12 @@ struct UpcomingSection: View {
   let recurringSummaries: [HomeModels.RecurringEventSummary]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
+  let onCreatePersonalEventTap: () -> Void
+  let onCreateScheduleTap: () -> Void
+  let onCreateRecurringEventTap: () -> Void
 
   @State private var isRecurringExpanded = false
+  @State private var showCreateOptions = false
 
   /// 표시할 최대 개수
   private let maxDisplayCount = 5
@@ -24,10 +28,10 @@ struct UpcomingSection: View {
       sectionHeader
 
       // 카드들 (날짜별 그룹)
-      if items.isEmpty && recurringSummaries.isEmpty {
-        emptyState
-      } else {
-        VStack(spacing: 10) {
+      VStack(spacing: 10) {
+        if items.isEmpty {
+          emptyState
+        } else {
           ForEach(groupedByDate, id: \.date) { group in
             UpcomingDateCard(
               date: group.date,
@@ -36,11 +40,13 @@ struct UpcomingSection: View {
               onItemTap: onItemTap
             )
           }
+        }
 
-          // 반복 일정 요약
-          if !recurringSummaries.isEmpty {
-            recurringEventsBadge
-          }
+        // 반복 일정 요약
+        if recurringSummaries.isEmpty {
+          recurringEmptyState
+        } else {
+          recurringEventsBadge
         }
       }
     }
@@ -147,34 +153,86 @@ struct UpcomingSection: View {
     .adaptiveGlassCard(cornerRadius: 10)
   }
 
+  // MARK: - Recurring Empty State
+
+  private var recurringEmptyState: some View {
+    Button {
+      onCreateRecurringEventTap()
+    } label: {
+      HStack(spacing: 14) {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500.opacity(0.1))
+            .frame(width: 48, height: 48)
+
+          Image(systemName: "arrow.trianglehead.2.counterclockwise")
+            .font(.pmTitle3)
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(LocalizedStrings.Home.noRecurringTitle)
+            .font(.pmSubheadlineSemibold)
+            .foregroundStyle(.primary)
+
+          Text(LocalizedStrings.Home.noRecurringSubtitle)
+            .font(.pmCaption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
+      }
+      .padding(14)
+      .adaptiveGlassCard(cornerRadius: 14)
+    }
+    .buttonStyle(.plain)
+  }
+
   // MARK: - Empty State
 
   private var emptyState: some View {
-    HStack(spacing: 14) {
-      ZStack {
-        Circle()
-          .fill(Color.pmindigo.n500.opacity(0.1))
-          .frame(width: 48, height: 48)
+    Button {
+      showCreateOptions = true
+    } label: {
+      HStack(spacing: 14) {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500.opacity(0.1))
+            .frame(width: 48, height: 48)
 
-        Image(systemName: "calendar.badge.clock")
-          .font(.pmTitle3)
-          .foregroundStyle(Color.pmindigo.n500)
+          Image(systemName: "calendar.badge.clock")
+            .font(.pmTitle3)
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(LocalizedStrings.Home.noUpcomingTitle)
+            .font(.pmSubheadlineSemibold)
+            .foregroundStyle(.primary)
+
+          Text(LocalizedStrings.Home.noUpcomingSubtitle)
+            .font(.pmCaption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
       }
-
-      VStack(alignment: .leading, spacing: 2) {
-        Text(LocalizedStrings.Home.noUpcomingTitle)
-          .font(.pmSubheadlineSemibold)
-          .foregroundStyle(.primary)
-
-        Text(LocalizedStrings.Home.noUpcomingSubtitle)
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
-      }
-
-      Spacer()
+      .padding(14)
+      .adaptiveGlassCard(cornerRadius: 14)
     }
-    .padding(14)
-    .adaptiveGlassCard(cornerRadius: 14)
+    .buttonStyle(.plain)
+    .confirmationDialog(
+      LocalizedStrings.Home.createScheduleDialogTitle,
+      isPresented: $showCreateOptions,
+      titleVisibility: .visible
+    ) {
+      Button(LocalizedStrings.Home.createPersonalEvent) {
+        onCreatePersonalEventTap()
+      }
+      Button(LocalizedStrings.Home.createGroupSchedule) {
+        onCreateScheduleTap()
+      }
+    }
   }
 
   // MARK: - Computed Properties
@@ -225,7 +283,10 @@ private struct DateGroup {
       .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
     ],
     onItemTap: { _ in },
-    onSeeAllTap: {}
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {}
   )
   .padding()
   .auroraBackground()
@@ -235,9 +296,12 @@ private struct DateGroup {
   UpcomingSection(
     items: [],
     weatherCache: [:],
-    recurringSummaries: [],
+    recurringSummaries: [],  // 두 emptyState 모두 표시
     onItemTap: { _ in },
-    onSeeAllTap: {}
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {}
   )
   .padding()
   .auroraBackground()
@@ -253,7 +317,10 @@ private struct DateGroup {
       .init(recurringEventId: "r3", title: "영어 수업", emoji: "📚", recurrenceText: "매주 화, 목", nextInstanceDate: Date().addingTimeInterval(259200)),
     ],
     onItemTap: { _ in },
-    onSeeAllTap: {}
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {}
   )
   .padding()
   .auroraBackground()
