@@ -56,6 +56,8 @@ struct HomeFeatureStateTests {
     @Shared(.inMemory("test-\(UUID().uuidString.prefix(8))")) var currentUser = makeCurrentUser()
     var state = Home.Feature.State(currentUser: $currentUser)
     state.schedulesState = schedulesState
+    state.personalEventsState = .loaded([])
+    state.recurringEventsState = .loaded([])
     state.selectedStatusFilter = selectedStatusFilter
     state.selectedGroupId = selectedGroupId
     state.refreshHomeContentSnapshot()
@@ -76,10 +78,10 @@ struct HomeFeatureStateTests {
     #expect(state.isLoading == false)
   }
 
-  @Test("schedulesState가 idle이면 false")
-  func isLoading_whenIdle_returnsFalse() {
+  @Test("schedulesState가 idle이면 true (아직 로딩 시작 전)")
+  func isLoading_whenIdle_returnsTrue() {
     let state = makeState(schedulesState: .idle)
-    #expect(state.isLoading == false)
+    #expect(state.isLoading == true)
   }
 
   // MARK: - homeContentSnapshot.todaySchedules 테스트

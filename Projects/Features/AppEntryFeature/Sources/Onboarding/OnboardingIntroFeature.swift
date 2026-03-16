@@ -64,6 +64,7 @@ extension AppEntry {
         case screenInteractionCompleted
       }
 
+      @CasePathable
       public enum DelegateAction: Equatable, Sendable {
         case introCompleted
       }

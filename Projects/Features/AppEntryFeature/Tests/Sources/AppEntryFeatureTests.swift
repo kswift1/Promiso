@@ -511,7 +511,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.destination(.presented(.onboardingIntro(.delegate(.introCompleted))))) {
       $0.isFullOnboarding = true
-      $0.destination = .auth(AppEntry.Auth.Feature.State())
+      $0.destination = .auth(AuthFeature.Auth.Feature.State())
     }
   }
 

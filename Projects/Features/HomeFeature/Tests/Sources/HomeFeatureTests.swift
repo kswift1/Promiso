@@ -109,9 +109,7 @@ struct HomeFeatureTests {
       $0.userDefaultsClient.setString = { _, _ in }
     }
 
-    await store.send(.view(.onAppear)) {
-      $0.hasLoadedOnce = true
-    }
+    await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
@@ -123,6 +121,8 @@ struct HomeFeatureTests {
     }
     await store.receive(\.internal.unreadNotificationCountResponse)
     await store.finish()
+
+    #expect(store.state.hasLoadedOnce == true)
   }
 
   @Test("onAppear 반복 호출 시에도 fetchSchedules 트리거")
@@ -139,10 +139,17 @@ struct HomeFeatureTests {
       $0.personalEventClient.getActiveEvents = { _ in [] }
       $0.recurringPersonalEventClient.getAllEvents = { [] }
       $0.notificationClient.getAuthorizationStatus = { .notDetermined }
+      $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -170,7 +177,12 @@ struct HomeFeatureTests {
       $0.personalEventClient.getActiveEvents = { _ in [] }
       $0.recurringPersonalEventClient.getAllEvents = { [] }
       $0.notificationClient.getAuthorizationStatus = { .notDetermined }
+      $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
@@ -179,9 +191,7 @@ struct HomeFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.onAppear)) {
-      $0.hasLoadedOnce = true
-    }
+    await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loaded([])
@@ -203,6 +213,12 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.personalEventClient.getActiveEvents = { _ in [] }
       $0.recurringPersonalEventClient.getAllEvents = { [] }
+      $0.notificationClient.getUnreadCount = { _ in 0 }
+      $0.locationClient.authorizationStatus = { .notDetermined }
+      $0.locationClient.getCurrentLocation = { Coordinate(latitude: 37.5, longitude: 127.0) }
+      $0.locationClient.reverseGeocode = { _ in "서울" }
+      $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
+      $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -242,9 +258,7 @@ struct HomeFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.onAppear)) {
-      $0.hasLoadedOnce = true
-    }
+    await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
@@ -420,9 +434,7 @@ struct HomeFeatureTests {
       $0.userDefaultsClient.setString = { _, _ in }
     }
 
-    await store.send(.view(.onAppear)) {
-      $0.hasLoadedOnce = true
-    }
+    await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
@@ -490,6 +502,8 @@ struct HomeFeatureTests {
 
     var state = Home.Feature.State(currentUser: $currentUser)
     state.schedulesState = .loaded([])
+    state.personalEventsState = .loaded([])
+    state.recurringEventsState = .loaded([])
     #expect(state.isLoading == false)
   }
 
@@ -646,9 +660,7 @@ struct HomeFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.onAppear)) {
-      $0.hasLoadedOnce = true
-    }
+    await store.send(.view(.onAppear))
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
     }
