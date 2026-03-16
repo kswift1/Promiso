@@ -422,6 +422,57 @@ final class SubscriptionRemoteDataSource: Sendable {
     }
   }
 
+  /// entitlements/{userId} 문서의 실시간 변경 스트림
+  /// 서버에서 구독 + 오버라이드를 합산한 단일 Pro 판정 결과
+  func subscribeToEntitlement() -> AsyncStream<SubscriptionStatus> {
+    AsyncStream { continuation in
+      guard let currentUserId = Auth.auth().currentUser?.uid else {
+        continuation.finish()
+        return
+      }
+
+      let docRef = db.collection("entitlements").document(currentUserId)
+
+      let listener = docRef.addSnapshotListener { snapshot, error in
+        if error != nil { return }
+
+        guard let data = snapshot?.data(),
+              let hasPro = data["hasPro"] as? Bool,
+              hasPro else {
+          continuation.yield(.none)
+          return
+        }
+
+        let source = data["source"] as? String ?? "none"
+
+        switch source {
+        case "subscription":
+          let rawStatus = data["subscriptionStatus"] as? String ?? "subscribed"
+          switch rawStatus {
+          case "lifetime":
+            continuation.yield(.lifetime)
+          case "gracePeriod":
+            continuation.yield(.gracePeriod(expirationDate: .distantFuture))
+          default:
+            continuation.yield(.subscribed(productType: nil, expirationDate: nil))
+          }
+
+        case "override":
+          let expiresAtString = data["overrideExpiresAt"] as? String
+          let expiresAt = expiresAtString.flatMap { Self.parseISO8601($0) }
+          continuation.yield(.subscribed(productType: nil, expirationDate: expiresAt))
+
+        default:
+          continuation.yield(.none)
+        }
+      }
+
+      continuation.onTermination = { _ in
+        listener.remove()
+      }
+    }
+  }
+
   private static let iso8601Formatter: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
