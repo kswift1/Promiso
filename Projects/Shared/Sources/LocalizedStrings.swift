@@ -537,6 +537,9 @@ public enum LocalizedStrings {
     public static var briefingNotificationToggle: String { String(localized: "settings.briefing.notification.toggle", bundle: bundle) }
     public static var briefingNotificationTime: String { String(localized: "settings.briefing.notification.time", bundle: bundle) }
     public static var briefingNotificationPermissionRequired: String { String(localized: "settings.briefing.notification.permissionRequired", bundle: bundle) }
+    public static var briefingDefaultLocation: String { String(localized: "settings.briefing.defaultLocation", bundle: bundle) }
+    public static var briefingDefaultLocationDescription: String { String(localized: "settings.briefing.defaultLocation.description", bundle: bundle) }
+    public static var briefingDefaultLocationPlaceholder: String { String(localized: "settings.briefing.defaultLocation.placeholder", bundle: bundle) }
   }
 
   // MARK: - Errors

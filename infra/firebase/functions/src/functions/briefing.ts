@@ -22,7 +22,10 @@ import {
   ScheduleSlotEntry,
 } from "../types/api";
 import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
+import {expandRecurringEvent} from "./scheduleConflicts";
 import {fetchTransportation, TransportationResult} from "./transportation";
+import {hasEffectiveProAccess} from "../utils/briefingScheduler";
+import {isEntitlementOverrideActive} from "../utils/helpers";
 
 // MARK: - Types
 
@@ -264,6 +267,91 @@ async function fetchPersonalEventDetails(
       emoji: (data.emoji as string) || null,
       startAt: startAt.toDate(),
       endAt: endAt ? endAt.toDate() : null,
+      severity: "confirmed",
+      locationName: location?.name || null,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      groupName: null,
+    });
+  }
+
+  return result;
+}
+
+/**
+ * 반복일정 슬롯들의 상세 정보를 조회하여 슬롯 ID 기준 Map 반환
+ * 슬롯 ID 형식: `recurring_${eventId}_${dateKey}` (dateKey: YYYY-MM-DD)
+ * override location이 있으면 우선 적용
+ * @param {string} uid - 사용자 ID
+ * @param {ScheduleSlotEntry[]} recurringSlots - recurringPersonalEvent 타입 슬롯들
+ * @return {Promise<Map<string, ScheduleDetail>>} 슬롯 ID → ScheduleDetail 맵
+ */
+async function fetchRecurringEventDetails(
+  uid: string,
+  recurringSlots: ScheduleSlotEntry[],
+): Promise<Map<string, ScheduleDetail>> {
+  const db = admin.firestore();
+  const result = new Map<string, ScheduleDetail>();
+
+  // 슬롯 ID에서 eventId와 dateKey 파싱
+  // 형식: recurring_{eventId}_{YYYY-MM-DD}
+  // eventId에 '_'가 포함될 수 있으므로 마지막 '_YYYY-MM-DD' 기준으로 분리
+  const dateKeyRegex = /_(\d{4}-\d{2}-\d{2})$/;
+  const slotParsed = recurringSlots.map((slot) => {
+    const withoutPrefix = slot.id.replace(/^recurring_/, "");
+    const match = withoutPrefix.match(dateKeyRegex);
+    if (!match) return null;
+    const dateKey = match[1];
+    const eventId = withoutPrefix.replace(dateKeyRegex, "");
+    return {slot, eventId, dateKey};
+  }).filter(
+    (x): x is {
+      slot: ScheduleSlotEntry;
+      eventId: string;
+      dateKey: string;
+    } => x !== null,
+  );
+
+  // eventId 중복 제거 후 Firestore 일괄 조회
+  const uniqueEventIds = [...new Set(slotParsed.map((x) => x.eventId))];
+  const docs = await Promise.all(
+    uniqueEventIds.map((id) =>
+      db.collection("users").doc(uid)
+        .collection("recurringEvents").doc(id).get()
+    )
+  );
+
+  const docMap = new Map<string, FirebaseFirestore.DocumentData>();
+  for (const doc of docs) {
+    if (!doc.exists) continue;
+    const data = doc.data();
+    if (!data) continue;
+    docMap.set(doc.id, data);
+  }
+
+  // 각 슬롯에 대해 ScheduleDetail 생성
+  for (const {slot, eventId, dateKey} of slotParsed) {
+    const data = docMap.get(eventId);
+    if (!data) continue;
+
+    // override location 우선, 없으면 기본 location 사용
+    const overrides = data.overrides as Record<string, {
+      location?: { name?: string; latitude?: number; longitude?: number };
+    }> | null | undefined;
+    const overrideLocation = overrides?.[dateKey]?.location;
+    const baseLocation = data.location as {
+      name?: string;
+      latitude?: number;
+      longitude?: number;
+    } | null | undefined;
+    const location = overrideLocation ?? baseLocation;
+
+    result.set(slot.id, {
+      id: slot.id,
+      title: (slot.title as string) || "",
+      emoji: (slot.emoji as string) || null,
+      startAt: slot.startAt.toDate(),
+      endAt: slot.endAt ? slot.endAt.toDate() : null,
       severity: "confirmed",
       locationName: location?.name || null,
       latitude: location?.latitude || null,
@@ -539,7 +627,7 @@ function buildPrompt(
   // 브리핑 가이드
   lines.push("[브리핑 가이드]");
   lines.push("- 일정 많으면 -> 바쁜 하루 강조");
-  lines.push("- 일정 없으면 -> 날씨 중심, 여유로운 톤");
+  lines.push(weather ? "- 일정 없으면 -> 날씨 중심, 여유로운 톤" : "- 일정 없으면 -> 여유로운 톤");
   lines.push("- 비/눈 예보 -> 우산 챙기기 언급");
   lines.push("- 일교차 크면 -> 겉옷 챙기기 언급");
   lines.push("- 미확정 약속 (severity: pending) -> 확정 여부 확인 유도");
@@ -630,7 +718,7 @@ function buildPrompt(
     lines.push(`- 최고 ${Math.max(...allTemps)}도 / 최저 ${Math.min(...allTemps)}도`);
     lines.push("");
   } else {
-    lines.push("날씨: 정보 없음");
+    lines.push("날씨: 정보 없음 (날씨에 대해 언급하지 마세요)");
     lines.push("");
   }
 
@@ -830,13 +918,17 @@ export async function generateBriefingInternal(params: {
 
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
-    const [slots, userGroups, settingsDoc] = await Promise.all([
+    const [
+      slots, userGroups, settingsDoc, subscriptionDoc, overrideDoc,
+    ] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
       admin.firestore()
         .collection("users").doc(uid)
         .collection("settings").doc("main")
         .get(),
+      admin.firestore().collection("subscriptions").doc(uid).get(),
+      admin.firestore().collection("entitlementOverrides").doc(uid).get(),
     ]);
     const settingsData = settingsDoc.data() as
       UserSettingsDocument | undefined;
@@ -849,27 +941,64 @@ export async function generateBriefingInternal(params: {
             ["transit", "car"]);
     const notificationHour = briefingSettings?.notificationHour ?? null;
     const effectiveStyle = briefingSettings?.style || style || "friendly";
+    const isPro = hasEffectiveProAccess({
+      subscriptionStatus: subscriptionDoc.data()?.status,
+      overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
+    });
 
     console.log(
       `[Briefing] uid=${uid}, date=${todayKey}, ` +
       `tz=${timezone}, loc=${location?.title ?? "없음"}, ` +
-      `forceRefresh=${forceRefresh}, style=${effectiveStyle}`
+      `forceRefresh=${forceRefresh}, style=${effectiveStyle}, ` +
+      `isPro=${isPro}`
     );
 
-    // 3. 일정 상세 조회 (promise + personalEvent 병렬)
+    // 2.5 반복일정 확장 (recurringEvents → slots에 추가)
+    const recurringEventsSnap = await admin.firestore()
+      .collection("users").doc(uid)
+      .collection("recurringEvents").get();
+
+    if (!recurringEventsSnap.empty) {
+      const dayStart = new Date(`${todayKey}T00:00:00Z`);
+      const dayEnd = new Date(`${todayKey}T23:59:59Z`);
+      const existingIds = new Set(slots.map((s) => s.id));
+
+      for (const doc of recurringEventsSnap.docs) {
+        const expanded = expandRecurringEvent(
+          doc.id,
+          doc.data(),
+          dayStart,
+          dayEnd,
+          timezone,
+        );
+        for (const slot of expanded) {
+          if (!existingIds.has(slot.id)) {
+            slots.push(slot);
+            existingIds.add(slot.id);
+          }
+        }
+      }
+    }
+
+    // 3. 일정 상세 조회 (promise + personalEvent + recurringPersonalEvent 병렬)
     const promiseIds = slots
       .filter((s) => s.type === "promise")
       .map((s) => s.id);
     const eventIds = slots
       .filter((s) => s.type === "personalEvent")
       .map((s) => s.id);
+    const recurringSlots = slots
+      .filter((s) => s.type === "recurringPersonalEvent");
 
-    const [promiseDetails, eventDetails] = await Promise.all([
+    const [promiseDetails, eventDetails, recurringDetails] = await Promise.all([
       promiseIds.length > 0 ?
         fetchPromiseDetails(promiseIds, userGroups) :
         Promise.resolve(new Map<string, ScheduleDetail>()),
       eventIds.length > 0 ?
         fetchPersonalEventDetails(uid, eventIds) :
+        Promise.resolve(new Map<string, ScheduleDetail>()),
+      recurringSlots.length > 0 ?
+        fetchRecurringEventDetails(uid, recurringSlots) :
         Promise.resolve(new Map<string, ScheduleDetail>()),
     ]);
 
@@ -900,6 +1029,7 @@ export async function generateBriefingInternal(params: {
     const allDetails = new Map<string, ScheduleDetail>([
       ...promiseDetails,
       ...eventDetails,
+      ...recurringDetails,
     ]);
 
     const enrichedSchedules = sortedSlots.map((slot) => {
@@ -958,17 +1088,19 @@ export async function generateBriefingInternal(params: {
       }
     }
 
-    // 7. 이동 거리 계산 + 교통 정보 조회
-    const detailsWithLocation = sortedSlots
-      .map((s) => allDetails.get(s.id))
-      .filter((d): d is ScheduleDetail => d != null);
-
-    const travelSegments = await calculateTravelSegmentsWithTransport(
-      location?.latitude ?? null,
-      location?.longitude ?? null,
-      location?.title ?? null,
-      detailsWithLocation,
-    );
+    // 7. 이동 거리 계산 + 교통 정보 조회 (Pro 유저만)
+    let travelSegments: TravelSegment[] = [];
+    if (isPro) {
+      const detailsWithLocation = sortedSlots
+        .map((s) => allDetails.get(s.id))
+        .filter((d): d is ScheduleDetail => d != null);
+      travelSegments = await calculateTravelSegmentsWithTransport(
+        location?.latitude ?? null,
+        location?.longitude ?? null,
+        location?.title ?? null,
+        detailsWithLocation,
+      );
+    }
 
     // 8. 오늘 일정 없으면 미래 일정 조회
     let upcoming: {
@@ -979,8 +1111,11 @@ export async function generateBriefingInternal(params: {
     }
 
     // 9. 프롬프트 조립
+    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
+    const effectiveLanguage = SUPPORTED_LANGUAGES
+      .includes(language as "ko" | "en") ? language : "ko";
     const prompt = buildPrompt(
-      language === "ko" ? "한국어" : language,
+      effectiveLanguage === "ko" ? "한국어" : effectiveLanguage,
       dateTimeStr,
       location?.title ?? null,
       weather,
@@ -1043,18 +1178,39 @@ export async function generateBriefingInternal(params: {
       };
     }
 
-    // JSON 파싱
+    // JSON 파싱 — markdown fence 제거 후 summary+detail 포함 블록 추출
     try {
-      const jsonStr = text
-        .replace(/^```json\s*/i, "")
-        .replace(/```\s*$/, "")
-        .trim();
-      const parsed = JSON.parse(jsonStr);
-      if (parsed.summary && parsed.detail) {
+      // 모든 ```json ... ``` 블록 내용 추출
+      const fencePattern = /```(?:json)?\s*([\s\S]*?)```/gi;
+      const blocks: string[] = [];
+      let m;
+      while ((m = fencePattern.exec(text)) !== null) {
+        blocks.push(m[1].trim());
+      }
+      // fence가 없으면 전체 텍스트를 시도
+      if (blocks.length === 0) blocks.push(text.trim());
+
+      let parsed: {summary?: string; detail?: string} | null = null;
+      for (const block of blocks) {
+        try {
+          const candidate = JSON.parse(block);
+          if (candidate.summary && candidate.detail) {
+            parsed = candidate;
+            break;
+          }
+        } catch {/* skip */}
+      }
+      if (parsed?.summary && parsed?.detail) {
+        // user-data 태그 제거
+        const strip = (s: string) =>
+          s.replace(/<\/?user-data>/g, "");
+        const summary = strip(parsed.summary);
+        const detail = strip(parsed.detail);
+
         console.log(
           `[Briefing] uid=${uid}, OK ` +
-          `summary="${parsed.summary}" ` +
-          `detail_len=${parsed.detail.length}`
+          `summary="${summary}" ` +
+          `detail_len=${detail.length}`
         );
 
         // Firestore에 캐시 저장
@@ -1062,15 +1218,15 @@ export async function generateBriefingInternal(params: {
           .collection("users").doc(uid)
           .collection("dailyBriefings").doc(todayKey)
           .set({
-            summary: parsed.summary,
-            detail: parsed.detail,
+            summary,
+            detail,
             promptKey,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
         return {
-          summary: parsed.summary,
-          detail: parsed.detail,
+          summary,
+          detail,
           isUpdated,
           style: effectiveStyle,
           availableTransports,
@@ -1084,10 +1240,12 @@ export async function generateBriefingInternal(params: {
     }
 
     // Fallback: 전체 텍스트를 detail로
-    const firstSentence = text.split(/[.!?。]/)[0];
+    const stripTags = (s: string) => s.replace(/<\/?user-data>/g, "");
+    const cleaned = stripTags(text);
+    const firstSentence = cleaned.split(/[.!?。]/)[0];
     return {
       summary: firstSentence.substring(0, 30),
-      detail: text,
+      detail: cleaned,
       isUpdated: false,
       style: effectiveStyle,
       availableTransports,

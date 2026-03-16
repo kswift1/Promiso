@@ -52,13 +52,25 @@ public actor UserSettingsRemoteDataSource {
       }
     }()
 
+    let briefingDefaultLocation: LocationInfoModel? = {
+      guard let loc = briefingMap?["defaultLocation"] as? [String: Any],
+            let name = loc["name"] as? String else { return nil }
+      return LocationInfoModel(
+        name: name,
+        address: loc["address"] as? String,
+        latitude: loc["latitude"] as? Double,
+        longitude: loc["longitude"] as? Double
+      )
+    }()
+
     return UserSettings(
       notificationEnabled: notificationEnabled,
       groupSortOption: groupSortOption,
       conflictDetectionThreshold: conflictDetectionThreshold,
       briefingStyle: briefingStyle,
       briefingNotificationHour: briefingNotificationHour,
-      availableTransports: availableTransports
+      availableTransports: availableTransports,
+      briefingDefaultLocation: briefingDefaultLocation
     )
   }
 
@@ -109,11 +121,28 @@ public actor UserSettingsRemoteDataSource {
           "style": BriefingStyle.friendly.rawValue,
           "notificationHour": 8,
           "timezone": TimeZone.current.identifier,
-          "language": Locale.current.language.languageCode?.identifier ?? "ko",
+          "language": AppLanguage.resolved.rawValue,
           "availableTransports": AvailableTransport.allCases.map(\.rawValue),
         ]
       ]
     ], merge: true)
+  }
+
+  /// 브리핑 기본 위치 업데이트
+  public func updateBriefingDefaultLocation(userId: String, location: LocationInfoModel?) async throws {
+    if let location {
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address { locationData["address"] = address }
+      if let lat = location.latitude { locationData["latitude"] = lat }
+      if let lng = location.longitude { locationData["longitude"] = lng }
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.defaultLocation": locationData,
+      ])
+    } else {
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.defaultLocation": FieldValue.delete(),
+      ])
+    }
   }
 
   /// 브리핑 알림 시간 업데이트
@@ -122,7 +151,7 @@ public actor UserSettingsRemoteDataSource {
       try await settingsRef(userId: userId).updateData([
         "proSettings.briefing.notificationHour": hour,
         "proSettings.briefing.timezone": TimeZone.current.identifier,
-        "proSettings.briefing.language": Locale.current.language.languageCode?.identifier ?? "ko",
+        "proSettings.briefing.language": AppLanguage.resolved.rawValue,
       ])
     } else {
       try await settingsRef(userId: userId).updateData([

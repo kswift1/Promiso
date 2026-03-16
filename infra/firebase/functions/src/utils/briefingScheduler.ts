@@ -6,6 +6,12 @@ interface RawBriefingSettings {
   timezone?: string;
   language?: string;
   style?: string;
+  defaultLocation?: {
+    name: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  };
 }
 
 interface ConfiguredBriefingSettings {
@@ -13,6 +19,11 @@ interface ConfiguredBriefingSettings {
   timezone: string;
   language: string;
   style: string;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 interface RawSettingsDocument {
@@ -27,6 +38,53 @@ interface RawBriefingSubscriptionDocument {
   language?: string;
   style?: string;
   nextDispatchAt?: Date | string | {toDate: () => Date};
+  defaultLocation?: {
+    title?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+}
+
+const SUPPORTED_LANGUAGES = ["ko", "en"];
+
+/**
+ * 언어 코드를 검증하여 지원 언어만 반환한다.
+ * @param {string | undefined} lang 원본 언어 코드.
+ * @return {string} 유효한 언어 코드 (기본: "ko").
+ */
+function getEffectiveLanguage(lang: string | undefined): string {
+  const raw = lang || "ko";
+  return SUPPORTED_LANGUAGES.includes(raw) ? raw : "ko";
+}
+
+/**
+ * 위치 객체를 정규화하여 유효한 경우만 반환한다.
+ * @param {object | null | undefined} loc 원본 위치 데이터.
+ * @return {object | null} 정규화된 위치 또는 null.
+ */
+function parseDefaultLocation(loc: {
+  title?: string;
+  name?: string;
+  latitude?: number;
+  longitude?: number;
+} | null | undefined): {
+  title: string;
+  latitude: number;
+  longitude: number;
+} | null {
+  const title = loc?.title || loc?.name;
+  if (
+    !title ||
+    loc?.latitude == null ||
+    loc?.longitude == null
+  ) {
+    return null;
+  }
+  return {
+    title,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+  };
 }
 
 export const BRIEFING_SUBSCRIPTIONS_COLLECTION = "briefingSubscriptions";
@@ -37,6 +95,11 @@ export interface BriefingTaskPayload {
   language: string;
   style: string;
   notificationHour: number;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 export interface BriefingSubscriptionProjection {
@@ -45,6 +108,11 @@ export interface BriefingSubscriptionProjection {
   language: string;
   style: string;
   nextDispatchAt: Date;
+  defaultLocation: {
+    title: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 }
 
 /**
@@ -98,8 +166,11 @@ function getConfiguredBriefing(
   return {
     notificationHour: briefing.notificationHour,
     timezone: briefing.timezone || "Asia/Seoul",
-    language: briefing.language || "ko",
+    language: getEffectiveLanguage(briefing.language),
     style: briefing.style || "friendly",
+    defaultLocation: parseDefaultLocation(
+      briefing.defaultLocation,
+    ),
   };
 }
 
@@ -204,6 +275,7 @@ export function buildScheduledBriefingTaskFromProjection(params: {
     language: projection.language,
     style: projection.style,
     notificationHour: projection.notificationHour,
+    defaultLocation: projection.defaultLocation,
   };
 }
 
@@ -269,9 +341,12 @@ function getConfiguredProjection(
   return {
     notificationHour: data.notificationHour,
     timezone: data.timezone || "Asia/Seoul",
-    language: data.language || "ko",
+    language: getEffectiveLanguage(data.language),
     style: data.style || "friendly",
     nextDispatchAt,
+    defaultLocation: parseDefaultLocation(
+      data.defaultLocation,
+    ),
   };
 }
 

@@ -21197,13 +21197,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Receive daily briefing notifications every morning"
+            "value": "We'll send you a notification every morning to help you prepare for the day"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "매일 아침 브리핑을 알림으로 받아보세요"
+            "value": "매일 아침 오늘 하루를 준비할 수 있도록 알림을 보내드려요"
           }
         }
       }
@@ -21255,6 +21255,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "알림 받기"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본 위치"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.description": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather and travel time in your briefing will be based on this location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리핑 생성 시 이 위치 기준으로 날씨와 이동 시간을 알려드려요"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.placeholder": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Home, office, or wherever you usually are at notification time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: 집, 회사 등 알림 시간에 주로 있는 장소"
           }
         }
       }

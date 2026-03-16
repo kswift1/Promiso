@@ -54,6 +54,7 @@ export async function reconcileBriefingSubscription(
       style: projection.style,
       nextDispatchAt: admin.firestore.Timestamp
         .fromDate(projection.nextDispatchAt),
+      defaultLocation: projection.defaultLocation,
       updatedAt: FieldValue.serverTimestamp(),
     });
 

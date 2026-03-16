@@ -1693,6 +1693,8 @@ extension BriefingSettings {
       var selectedTransports: Set<AvailableTransport> = [.transit, .car]
       var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
       @Presents var notificationPermission: NotificationPermission.Feature.State?
+      var defaultLocation: LocationInfoModel? = nil
+      @Presents var locationPicker: LocationPicker.Feature.State?
 
       var isNotificationEnabled: Bool { notificationHour != nil }
 
@@ -1707,6 +1709,7 @@ extension BriefingSettings {
       case `internal`(Internal)
       case delegate(Delegate)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
+      case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
     }
 
     @CasePathable
@@ -1719,15 +1722,18 @@ extension BriefingSettings {
       case notificationPermissionBannerTapped
       case onSceneActive
       case proFeatureTapped
+      case defaultLocationTapped
+      case removeDefaultLocationTapped
     }
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
-      case settingsLoaded(BriefingStyle, Int?, Set<AvailableTransport>)
+      case settingsLoaded(BriefingStyle, Int?, Set<AvailableTransport>, LocationInfoModel?)
       case notificationAuthStatusLoaded(NotificationAuthorizationStatus)
       case styleSaved
       case notificationHourSaved
       case saveFailed
+      case defaultLocationSaved
     }
 
     @CasePathable
@@ -1764,15 +1770,15 @@ extension BriefingSettings {
             return .run { send in
               async let authStatus = notificationClient.getAuthorizationStatus()
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car], nil)))
                 await send(.internal(.notificationAuthStatusLoaded(authStatus)))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports, settings.briefingDefaultLocation)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car], nil)))
               }
               await send(.internal(.notificationAuthStatusLoaded(authStatus)))
             }
@@ -1849,14 +1855,41 @@ extension BriefingSettings {
               await hapticFeedback.selection()
               await send(.delegate(.proPlanRequested))
             }
+
+          case .defaultLocationTapped:
+            guard state.isPro else {
+              return .run { send in
+                await hapticFeedback.selection()
+                await send(.delegate(.proPlanRequested))
+              }
+            }
+            state.locationPicker = LocationPicker.Feature.State()
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .removeDefaultLocationTapped:
+            state.defaultLocation = nil
+            return .run { [authClient, userSettingsClient] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updateBriefingDefaultLocation(userId, nil)
+                await send(.internal(.defaultLocationSaved))
+              } catch {
+                await send(.internal(.saveFailed))
+              }
+            }
+            .cancellable(id: CancelID.save, cancelInFlight: true)
           }
 
         case .internal(let internalAction):
           switch internalAction {
-          case .settingsLoaded(let style, let hour, let transports):
+          case .settingsLoaded(let style, let hour, let transports, let location):
             state.selectedStyle = style
             state.notificationHour = hour
             state.selectedTransports = transports
+            state.defaultLocation = location
             state.isLoading = false
             state.hasLoaded = true
             return .none
@@ -1865,7 +1898,7 @@ extension BriefingSettings {
             state.notificationAuthStatus = status
             return .none
 
-          case .styleSaved, .notificationHourSaved:
+          case .styleSaved, .notificationHourSaved, .defaultLocationSaved:
             return .none
 
           case .saveFailed:
@@ -1873,14 +1906,14 @@ extension BriefingSettings {
             state.isLoading = true
             return .run { [authClient, userSettingsClient] send in
               guard let userId = await authClient.currentUser()?.uid else {
-                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car], nil)))
                 return
               }
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
-                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports)))
+                await send(.internal(.settingsLoaded(settings.briefingStyle, settings.briefingNotificationHour, settings.availableTransports, settings.briefingDefaultLocation)))
               } catch {
-                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car])))
+                await send(.internal(.settingsLoaded(.friendly, nil, [.transit, .car], nil)))
               }
             }
           }
@@ -1908,10 +1941,38 @@ extension BriefingSettings {
 
         case .notificationPermission:
           return .none
+
+        // MARK: - LocationPicker
+
+        case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
+          state.defaultLocation = location
+          state.locationPicker = nil
+          let hapticFeedback = self.hapticFeedback
+          return .run { [location, authClient, userSettingsClient] send in
+            await hapticFeedback.selection()
+            guard let userId = await authClient.currentUser()?.uid else { return }
+            do {
+              try await userSettingsClient.updateBriefingDefaultLocation(userId, location)
+              await send(.internal(.defaultLocationSaved))
+            } catch {
+              await send(.internal(.saveFailed))
+            }
+          }
+          .cancellable(id: CancelID.save, cancelInFlight: true)
+
+        case .locationPicker(.presented(.delegate(.dismissed))):
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker:
+          return .none
         }
       }
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
+      }
+      .ifLet(\.$locationPicker, action: \.locationPicker) {
+        LocationPicker.Feature()
       }
     }
   }
@@ -1972,6 +2033,17 @@ extension BriefingSettings {
       ) { permissionStore in
         NotificationPermission.View(store: permissionStore)
           .presentationDetents([.large])
+      }
+      .sheet(
+        item: $store.scope(
+          state: \.locationPicker,
+          action: \.locationPicker
+        )
+      ) { pickerStore in
+        NavigationStack {
+          LocationPicker.RootView(store: pickerStore)
+        }
+        .presentationDetents([.large])
       }
     }
 
@@ -2207,6 +2279,81 @@ extension BriefingSettings {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+          }
+
+          Divider()
+            .padding(.leading, 16)
+
+          VStack(alignment: .leading, spacing: 4) {
+            Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+          .padding(.horizontal, 16)
+          .padding(.top, 14)
+          .padding(.bottom, 4)
+
+          if let location = store.defaultLocation {
+            Button {
+              store.send(.view(.defaultLocationTapped))
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "mappin.circle.fill")
+                  .font(.system(size: 20))
+                  .foregroundStyle(Color.pmindigo.n500)
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(location.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  if let address = location.address {
+                    Text(address)
+                      .font(.caption)
+                      .foregroundStyle(Color.pmtext.secondary)
+                      .lineLimit(1)
+                  }
+                }
+
+                Spacer()
+
+                Button {
+                  store.send(.view(.removeDefaultLocationTapped))
+                } label: {
+                  Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          } else {
+            Button {
+              store.send(.view(.defaultLocationTapped))
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "plus.circle")
+                  .font(.system(size: 20))
+                  .foregroundStyle(Color.pmindigo.n500)
+
+                Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmtext.secondary)
+
+                Spacer()
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
           }
         }
         .adaptiveGlassCard()
