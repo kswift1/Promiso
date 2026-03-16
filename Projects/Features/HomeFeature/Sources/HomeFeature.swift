@@ -1679,7 +1679,8 @@ extension Home {
                   durationMinutes: driving.duration,
                   departureTime: departureTime,
                   additionalInfo: info,
-                  distanceMeters: driving.distance
+                  distanceMeters: driving.distance,
+                  routePoints: driving.routePoints
                 )
               } else {
                 drivingOption = nil

@@ -188,6 +188,20 @@ extension TransportDetail {
 
     private func drivingContent(driving: HomeModels.TransportOption) -> some View {
       VStack(spacing: 16) {
+        if !driving.routePoints.isEmpty {
+          let originLat = store.originCoordinate?.latitude ?? store.destinationCoordinate.latitude
+          let originLng = store.originCoordinate?.longitude ?? store.destinationCoordinate.longitude
+          KakaoRouteMapView(
+            routePoints: driving.routePoints,
+            originLatitude: originLat,
+            originLongitude: originLng,
+            destinationLatitude: store.destinationCoordinate.latitude,
+            destinationLongitude: store.destinationCoordinate.longitude
+          )
+          .frame(height: 200)
+          .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+
         infoCard {
           VStack(spacing: 12) {
             infoRow(

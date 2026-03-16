@@ -242,19 +242,23 @@ extension HomeModels {
     public let additionalInfo: String?
     /// 이동 거리 (미터, 도보/자동차에서만 사용)
     public let distanceMeters: Int?
+    /// 자동차 경로 좌표 [[lng, lat], ...]
+    public let routePoints: [[Double]]
 
     public init(
       type: TransportType,
       durationMinutes: Int,
       departureTime: Date,
       additionalInfo: String? = nil,
-      distanceMeters: Int? = nil
+      distanceMeters: Int? = nil,
+      routePoints: [[Double]] = []
     ) {
       self.type = type
       self.durationMinutes = durationMinutes
       self.departureTime = departureTime
       self.additionalInfo = additionalInfo
       self.distanceMeters = distanceMeters
+      self.routePoints = routePoints
     }
   }
 

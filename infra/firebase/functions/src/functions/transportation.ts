@@ -56,6 +56,8 @@ export interface DrivingInfo {
   duration: number;
   /** 통행료 (원) */
   toll: number;
+  /** 경로 좌표 [[lng, lat], [lng, lat], ...] */
+  routePoints: number[][];
 }
 
 export interface TransportationResult {
@@ -194,13 +196,33 @@ async function fetchDrivingRoute(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await response.json();
-    const summary = data?.routes?.[0]?.summary;
+    const route = data?.routes?.[0];
+    const summary = route?.summary;
     if (!summary) return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sections: any[] =
+      Array.isArray(route?.sections) ? route.sections : [];
+    const routePoints: number[][] = [];
+    for (const section of sections) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const roads: any[] =
+        Array.isArray(section?.roads) ? section.roads : [];
+      for (const road of roads) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const verts: any[] =
+          Array.isArray(road?.vertexes) ? road.vertexes : [];
+        for (let i = 0; i + 1 < verts.length; i += 2) {
+          routePoints.push([verts[i], verts[i + 1]]);
+        }
+      }
+    }
 
     return {
       distance: summary.distance ?? 0,
       duration: Math.round((summary.duration ?? 0) / 60), // 초 → 분
       toll: summary.fare?.toll ?? 0,
+      routePoints,
     };
   } catch (error) {
     console.error("[Transportation] Kakao Mobility fetch error:", error);

@@ -107,11 +107,26 @@ public struct TransportationResult: Equatable, Sendable {
     public let distance: Int
     public let duration: Int
     public let toll: Int
+    /// 자동차 경로 좌표 [[lng, lat], [lng, lat], ...]
+    public let routePoints: [[Double]]
 
-    public init(distance: Int, duration: Int, toll: Int) {
+    public init(distance: Int, duration: Int, toll: Int, routePoints: [[Double]] = []) {
       self.distance = distance
       self.duration = duration
       self.toll = toll
+      self.routePoints = routePoints
+    }
+
+    private enum CodingKeys: String, CodingKey {
+      case distance, duration, toll, routePoints
+    }
+
+    public init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      distance = try container.decode(Int.self, forKey: .distance)
+      duration = try container.decode(Int.self, forKey: .duration)
+      toll = try container.decode(Int.self, forKey: .toll)
+      routePoints = (try container.decodeIfPresent([[Double]].self, forKey: .routePoints)) ?? []
     }
   }
 }
@@ -223,7 +238,12 @@ extension TransportationClient: TestDependencyKey {
             ]
           )
         ],
-        driving: .init(distance: 15000, duration: 25, toll: 0),
+        driving: .init(distance: 15000, duration: 25, toll: 0, routePoints: [
+          [126.9784, 37.5665],
+          [126.9612, 37.5567],
+          [126.9250, 37.5550],
+          [126.9236, 37.5547]
+        ]),
         walkingMinutes: 55,
         walkingDistanceMeters: 4000
       )
