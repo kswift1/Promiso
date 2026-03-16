@@ -28,9 +28,9 @@ import {
 // ============================================================================
 
 const MAX_SLOT_DATE_RANGE_DAYS = 31;
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
-type LocalDate = {
+export type LocalDate = {
   year: number;
   month: number;
   day: number;
@@ -42,7 +42,7 @@ type LocalDateTime = LocalDate & {
   second: number;
 };
 
-type TimeComponents = {
+export type TimeComponents = {
   hour: number;
   minute: number;
 };
@@ -176,7 +176,7 @@ function parseFormatterParts(
  * @param {string} timeZone IANA 타임존 문자열
  * @return {LocalDate} 로컬 날짜 (year/month/day)
  */
-function getLocalDate(date: Date, timeZone: string): LocalDate {
+export function getLocalDate(date: Date, timeZone: string): LocalDate {
   const parts = parseFormatterParts(getDateFormatter(timeZone), date);
   return {
     year: parts.year,
@@ -210,7 +210,7 @@ function getLocalDateTime(date: Date, timeZone: string): LocalDateTime {
  * @param {LocalDate} date 로컬 날짜
  * @return {string} YYYY-MM-DD 형식 날짜 키
  */
-function localDateKey(date: LocalDate): string {
+export function localDateKey(date: LocalDate): string {
   return [
     String(date.year).padStart(4, "0"),
     String(date.month).padStart(2, "0"),
@@ -225,7 +225,7 @@ function localDateKey(date: LocalDate): string {
  * @param {LocalDate} b 두 번째 날짜
  * @return {number} 음수(a < b), 0(같음), 양수(a > b)
  */
-function compareLocalDates(a: LocalDate, b: LocalDate): number {
+export function compareLocalDates(a: LocalDate, b: LocalDate): number {
   if (a.year !== b.year) return a.year - b.year;
   if (a.month !== b.month) return a.month - b.month;
   return a.day - b.day;
@@ -238,7 +238,7 @@ function compareLocalDates(a: LocalDate, b: LocalDate): number {
  * @param {LocalDate} b 두 번째 날짜
  * @return {LocalDate} 더 늦은 날짜
  */
-function maxLocalDate(a: LocalDate, b: LocalDate): LocalDate {
+export function maxLocalDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDates(a, b) >= 0 ? a : b;
 }
 
@@ -249,7 +249,7 @@ function maxLocalDate(a: LocalDate, b: LocalDate): LocalDate {
  * @param {LocalDate} b 두 번째 날짜
  * @return {LocalDate} 더 이른 날짜
  */
-function minLocalDate(a: LocalDate, b: LocalDate): LocalDate {
+export function minLocalDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDates(a, b) <= 0 ? a : b;
 }
 
@@ -260,7 +260,7 @@ function minLocalDate(a: LocalDate, b: LocalDate): LocalDate {
  * @param {number} days 더할 일수 (음수 가능)
  * @return {LocalDate} 계산된 날짜
  */
-function addDays(date: LocalDate, days: number): LocalDate {
+export function addDays(date: LocalDate, days: number): LocalDate {
   const next = new Date(Date.UTC(date.year, date.month - 1, date.day));
   next.setUTCDate(next.getUTCDate() + days);
   return {
@@ -277,7 +277,7 @@ function addDays(date: LocalDate, days: number): LocalDate {
  * @param {number} month 월 (1~12)
  * @return {number} 해당 월의 마지막 날 (28~31)
  */
-function getDaysInMonth(year: number, month: number): number {
+export function getDaysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
@@ -287,7 +287,7 @@ function getDaysInMonth(year: number, month: number): number {
  * @param {LocalDate} date 로컬 날짜
  * @return {number} 요일 번호 (일=1, 월=2, 화=3, 수=4, 목=5, 금=6, 토=7)
  */
-function getWeekday(date: LocalDate): number {
+export function getWeekday(date: LocalDate): number {
   const jsWeekday = new Date(
     Date.UTC(date.year, date.month - 1, date.day, 12),
   ).getUTCDay();
@@ -320,7 +320,7 @@ function localDateTimeToComparableMs(date: LocalDateTime): number {
  * @param {string} timeZone IANA 타임존 문자열
  * @return {Date} UTC Date 객체
  */
-function makeDateInTimeZone(
+export function makeDateInTimeZone(
   date: LocalDate,
   time: TimeComponents,
   timeZone: string,
@@ -402,7 +402,7 @@ function shouldExcludeSlot(
  * @param {"confirmed" | "pending"} severity - 확정 상태
  * @return {ScheduleSlotEntry} 슬롯 엔트리 (startAt/endAt은 Timestamp)
  */
-function createSlotEntry(
+export function createSlotEntry(
   id: string,
   type: "promise" | "personalEvent" | "recurringPersonalEvent",
   title: string,
@@ -432,7 +432,7 @@ function createSlotEntry(
  * @param {string} timeZone - 반복 일정 기준 IANA 타임존 문자열
  * @return {ScheduleSlotEntry[]} 확장된 슬롯 목록
  */
-function expandRecurringEvent(
+export function expandRecurringEvent(
   eventId: string,
   data: FirebaseFirestore.DocumentData,
   queryStartAt: Date,

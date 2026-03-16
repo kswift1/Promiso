@@ -22,6 +22,7 @@ import {
   ScheduleSlotEntry,
 } from "../types/api";
 import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
+import {expandRecurringEvent} from "./scheduleConflicts";
 import {fetchTransportation, TransportationResult} from "./transportation";
 import {hasEffectiveProAccess} from "../utils/briefingScheduler";
 import {isEntitlementOverrideActive} from "../utils/helpers";
@@ -864,6 +865,33 @@ export async function generateBriefingInternal(params: {
       `forceRefresh=${forceRefresh}, style=${effectiveStyle}, ` +
       `isPro=${isPro}`
     );
+
+    // 2.5 반복일정 확장 (recurringEvents → slots에 추가)
+    const recurringEventsSnap = await admin.firestore()
+      .collection("users").doc(uid)
+      .collection("recurringEvents").get();
+
+    if (!recurringEventsSnap.empty) {
+      const dayStart = new Date(`${todayKey}T00:00:00Z`);
+      const dayEnd = new Date(`${todayKey}T23:59:59Z`);
+      const existingIds = new Set(slots.map((s) => s.id));
+
+      for (const doc of recurringEventsSnap.docs) {
+        const expanded = expandRecurringEvent(
+          doc.id,
+          doc.data(),
+          dayStart,
+          dayEnd,
+          timezone,
+        );
+        for (const slot of expanded) {
+          if (!existingIds.has(slot.id)) {
+            slots.push(slot);
+            existingIds.add(slot.id);
+          }
+        }
+      }
+    }
 
     // 3. 일정 상세 조회 (promise + personalEvent 병렬)
     const promiseIds = slots
