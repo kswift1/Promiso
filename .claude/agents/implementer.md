@@ -1,7 +1,6 @@
 ---
 name: implementer
 description: 코드 작성 통합 에이전트 (Feature, View, Firebase, 리팩터링)
-model: sonnet
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

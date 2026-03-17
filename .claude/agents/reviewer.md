@@ -1,7 +1,6 @@
 ---
 name: reviewer
 description: 검증/리뷰 통합 에이전트 (코드 품질, 성능, 접근성, Firebase, 보안)
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -71,6 +70,10 @@ grep -rn "print(" --include="*.swift" .
 
 ## 출력 형식
 
+리뷰 결과는 아래 **두 가지 형식을 모두** 출력한다.
+
+### 1. 사람용 요약 (유저/메인 Claude가 읽음)
+
 ```
 ## 리뷰 결과
 
@@ -88,3 +91,26 @@ grep -rn "print(" --include="*.swift" .
 - Warning: N건
 - 총평: (한 줄)
 ```
+
+### 2. 구조화 피드백 (implementer가 파싱하여 즉시 수정 가능)
+
+Critical/Warning 항목이 있을 때만 출력. implementer가 이 블록을 받아 바로 수정에 착수할 수 있도록 구체적인 수정 지시를 포함한다.
+
+```json
+{
+  "fixes": [
+    {
+      "severity": "critical",
+      "file": "파일 경로",
+      "start_line": 42,
+      "end_line": 45,
+      "issue": "문제 설명",
+      "suggestion": "대체할 코드 스니펫"
+    }
+  ]
+}
+```
+
+- `severity`: `"critical"` 또는 `"warning"`
+- `start_line` / `end_line`: 수정 대상 범위 (단일 줄이면 동일 값)
+- `suggestion`: 자연어 설명이 아닌, 해당 범위를 대체할 코드를 직접 제공

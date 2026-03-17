@@ -6,11 +6,13 @@
 > sub-agent(implementer, reviewer, test-writer, researcher)는 각자의 `.claude/agents/*.md` 프롬프트를 따릅니다.
 
 ```
-❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행
-❌ 탐색 없이 구현 금지
-❌ 검증 없이 커밋 금지
+❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행 (XS 제외)
+❌ 탐색 없이 구현 금지 (XS 제외)
+❌ 검증 없이 커밋 금지 (XS 제외)
 ❌ 유저 승인 없이 커밋 금지
 ```
+
+> **XS 예외**: 1파일 5줄 이내 수정(오타, import, 1줄 수정 등)은 메인 Claude가 직접 처리 가능. 에이전트 위임 불필요.
 
 ---
 
@@ -48,20 +50,32 @@
 - ❌ `.ai/DOMAIN_RULES.md` 및 `.ai/domain-rules/` 사용자 허락 없이 수정 금지
 
 Claude Code 추가 규칙:
-- 구현 단계에서 implementer agent에게 위임 (직접 Edit/Write 금지)
+- XS: 메인 Claude가 직접 Edit/Write 처리 (에이전트 위임 불필요)
+- S 이상: 구현 단계에서 implementer agent에게 위임 (직접 Edit/Write 금지)
 - 검증 단계에서 reviewer agent로 컨벤션 체크 (Critical 시 Step 3 복귀, 3회 초과 시 에스컬레이션)
 
 ---
 
 ## 에이전트 (4개 + Explore)
 
-| 에이전트 | 역할 | 모델 | 트리거 |
-|----------|------|------|--------|
-| `implementer` | 코드 작성 (Feature, View, Firebase, 리팩터링) | sonnet | "만들어줘", "수정해줘" |
-| `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | sonnet | "리뷰해줘", 검증 단계 |
-| `test-writer` | Swift Testing 테스트 작성 | haiku | "테스트 작성" |
-| `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | sonnet | "조사해줘", "레퍼런스" |
-| `Explore` | 코드베이스 탐색 (읽기 전용) | - | 탐색 단계 |
+| 에이전트 | 역할 | 트리거 |
+|----------|------|--------|
+| `implementer` | 코드 작성 (Feature, View, Firebase, 리팩터링) | "만들어줘", "수정해줘" |
+| `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | "리뷰해줘", 검증 단계 |
+| `test-writer` | Swift Testing 테스트 작성 | "테스트 작성" |
+| `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | "조사해줘", "레퍼런스" |
+| `Explore` | 코드베이스 탐색 (읽기 전용) | 탐색 단계 |
+
+### 모델 선택 가이드라인
+
+에이전트 호출 시 메인 Claude가 작업 복잡도에 따라 모델을 런타임 선택한다:
+
+| 모델 | 사용 기준 |
+|------|----------|
+| **haiku** | 단순 컨벤션 체크, 1-2파일 리뷰, 단순 테스트, 키워드 기반 조사 |
+| **sonnet** | 복잡한 구현, 멀티파일 리뷰, TCA 패턴 테스트, 심층 분석 |
+
+기본값: 판단이 어려우면 **sonnet** 사용.
 
 ### 자동 호출 규칙
 - Feature/View/API 코드 작성 → `implementer`
@@ -70,6 +84,11 @@ Claude Code 추가 규칙:
 - UI 레퍼런스, 최신 기술 조사 → `researcher`
 - 코드베이스 분석 → `Explore`
 - 빌드 수정 → 에이전트 없이 직접 처리
+
+### researcher 자동 트리거 (명시적 요청 없이도 호출)
+- deprecated API 사용 감지 시 → 대체 API 조사
+- iOS 버전별 분기(`#available`) 추가가 필요한 상황 → 최신 HIG/API 확인
+- 외부 라이브러리 버전 업데이트 관련 작업 시 → 마이그레이션 가이드 조사
 
 ### 플러그인 에이전트 사용 금지
 ```

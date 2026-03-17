@@ -1,7 +1,6 @@
 ---
 name: test-writer
 description: Swift Testing 기반 테스트 코드 작성. 테스트 요청 시 use proactively
-model: haiku
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
