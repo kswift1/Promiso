@@ -102,10 +102,15 @@ Critical/Warning 항목이 있을 때만 출력. implementer가 이 블록을 �
     {
       "severity": "critical",
       "file": "파일 경로",
-      "line": 42,
+      "start_line": 42,
+      "end_line": 45,
       "issue": "문제 설명",
-      "fix": "구체적 수정 방법 (코드 예시 포함)"
+      "suggestion": "대체할 코드 스니펫"
     }
   ]
 }
 ```
+
+- `severity`: `"critical"` 또는 `"warning"`
+- `start_line` / `end_line`: 수정 대상 범위 (단일 줄이면 동일 값)
+- `suggestion`: 자연어 설명이 아닌, 해당 범위를 대체할 코드를 직접 제공
