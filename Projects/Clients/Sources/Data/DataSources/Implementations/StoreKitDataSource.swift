@@ -502,8 +502,11 @@ final class SubscriptionRemoteDataSource: Sendable {
 
         guard let snapshot = snapshot else { return }
 
-        // 문서가 아직 생성되지 않은 기존 유저 — yield하지 않고 대기
-        guard snapshot.exists else { return }
+        // 문서가 아직 생성되지 않은 유저 — .none을 yield하여 lastServerStatus 초기화
+        guard snapshot.exists else {
+          continuation.yield(.none)
+          return
+        }
 
         guard let data = snapshot.data() else { return }
 

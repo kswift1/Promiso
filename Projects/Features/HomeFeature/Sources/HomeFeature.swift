@@ -798,7 +798,7 @@ extension Home {
 
           case .departureAlertTapped(let item):
             guard state.isPro else {
-              return .none
+              return .send(.delegate(.proPlanRequested))
             }
             guard let location = item.location,
                   let lat = location.latitude,
