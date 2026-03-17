@@ -1976,6 +1976,7 @@ public enum LocalizedStrings {
     public static var onboardingConflictOverlap: String { String(localized: "proPlan.onboarding.conflict.overlap", bundle: bundle) }
     public static var onboardingBriefingSubtitle: String { String(localized: "proPlan.onboarding.briefing.subtitle", bundle: bundle) }
     public static var onboardingAlertAndTransport: String { String(localized: "proPlan.onboarding.alertAndTransport", bundle: bundle) }
+    public static var onboardingMultipleSelectHint: String { String(localized: "proPlan.onboarding.multipleSelectHint", bundle: bundle) }
     public static var onboardingTodayBriefing: String { String(localized: "proPlan.onboarding.todayBriefing", bundle: bundle) }
     public static var onboardingTodayBriefingTime: String { String(localized: "proPlan.onboarding.todayBriefing.time", bundle: bundle) }
     public static var onboardingTodayBriefingMessage: String { String(localized: "proPlan.onboarding.todayBriefing.message", bundle: bundle) }

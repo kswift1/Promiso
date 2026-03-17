@@ -342,54 +342,6 @@ struct ProOnboardingSetupView: View {
         briefingPreviewCard
 
         VStack(alignment: .leading, spacing: 10) {
-          Text(LocalizedStrings.SettingsStrings.briefingStyle)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmtext.primary)
-
-          VStack(spacing: 0) {
-            ForEach(BriefingStyle.allCases, id: \.rawValue) { style in
-              Button {
-                store.send(.view(.onboardingStyleChanged(style)))
-              } label: {
-                HStack(spacing: 12) {
-                  Image(systemName: briefingStyleIcon(style))
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.pmindigo.n500)
-                    .frame(width: 20)
-
-                  VStack(alignment: .leading, spacing: 2) {
-                    Text(style.displayName)
-                      .font(.body)
-                      .foregroundStyle(Color.pmtext.primary)
-                    Text(style.description)
-                      .font(.caption)
-                      .foregroundStyle(Color.pmtext.secondary)
-                  }
-
-                  Spacer()
-
-                  if store.onboardingBriefingStyle == style {
-                    Image(systemName: "checkmark")
-                      .font(.system(size: 14, weight: .semibold))
-                      .foregroundStyle(Color.pmindigo.n500)
-                  }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
-
-              if style != BriefingStyle.allCases.last {
-                Divider()
-                  .padding(.leading, 48)
-              }
-            }
-          }
-          .adaptiveGlassCard()
-        }
-
-        VStack(alignment: .leading, spacing: 10) {
           Text(LocalizedStrings.ProPlan.onboardingAlertAndTransport)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
@@ -437,13 +389,13 @@ struct ProOnboardingSetupView: View {
             Divider().padding(.leading, 16)
 
             VStack(alignment: .leading, spacing: 8) {
-              HStack(spacing: 8) {
-                Image(systemName: "car.fill")
-                  .font(.system(size: 14))
-                  .foregroundStyle(Color.pmindigo.n500)
+              HStack(spacing: 4) {
                 Text(LocalizedStrings.SettingsStrings.briefingTransport)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
+                Text(LocalizedStrings.ProPlan.onboardingMultipleSelectHint)
+                  .font(.caption)
+                  .foregroundStyle(Color.pmtext.secondary)
               }
               .padding(.horizontal, 16)
               .padding(.top, 14)
@@ -477,6 +429,54 @@ struct ProOnboardingSetupView: View {
                 .buttonStyle(.plain)
               }
               .padding(.bottom, 6)
+            }
+          }
+          .adaptiveGlassCard()
+        }
+
+        VStack(alignment: .leading, spacing: 10) {
+          Text(LocalizedStrings.SettingsStrings.briefingStyle)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
+
+          VStack(spacing: 0) {
+            ForEach(BriefingStyle.allCases, id: \.rawValue) { style in
+              Button {
+                store.send(.view(.onboardingStyleChanged(style)))
+              } label: {
+                HStack(spacing: 12) {
+                  Image(systemName: briefingStyleIcon(style))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 20)
+
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(style.displayName)
+                      .font(.body)
+                      .foregroundStyle(Color.pmtext.primary)
+                    Text(style.description)
+                      .font(.caption)
+                      .foregroundStyle(Color.pmtext.secondary)
+                  }
+
+                  Spacer()
+
+                  if store.onboardingBriefingStyle == style {
+                    Image(systemName: "checkmark")
+                      .font(.system(size: 14, weight: .semibold))
+                      .foregroundStyle(Color.pmindigo.n500)
+                  }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              if style != BriefingStyle.allCases.last {
+                Divider()
+                  .padding(.leading, 48)
+              }
             }
           }
           .adaptiveGlassCard()

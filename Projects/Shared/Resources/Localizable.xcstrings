@@ -29773,6 +29773,28 @@
           }
         }
       }
+    },
+    "proPlan.onboarding.multipleSelectHint": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(중복 선택 가능)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(multiple selection)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(複数選択可)"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
