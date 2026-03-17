@@ -70,6 +70,10 @@ grep -rn "print(" --include="*.swift" .
 
 ## 출력 형식
 
+리뷰 결과는 아래 **두 가지 형식을 모두** 출력한다.
+
+### 1. 사람용 요약 (유저/메인 Claude가 읽음)
+
 ```
 ## 리뷰 결과
 
@@ -86,4 +90,22 @@ grep -rn "print(" --include="*.swift" .
 - Critical: N건
 - Warning: N건
 - 총평: (한 줄)
+```
+
+### 2. 구조화 피드백 (implementer가 파싱하여 즉시 수정 가능)
+
+Critical/Warning 항목이 있을 때만 출력. implementer가 이 블록을 받아 바로 수정에 착수할 수 있도록 구체적인 수정 지시를 포함한다.
+
+```json
+{
+  "fixes": [
+    {
+      "severity": "critical",
+      "file": "파일 경로",
+      "line": 42,
+      "issue": "문제 설명",
+      "fix": "구체적 수정 방법 (코드 예시 포함)"
+    }
+  ]
+}
 ```
