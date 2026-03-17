@@ -313,7 +313,7 @@ extension Settings {
             return .none
 
           case .accountInfoTapped:
-            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
+            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser, subscriptionStatus: state.subscriptionStatus)))
             return .run { _ in
               await hapticFeedback.selection()
             }
