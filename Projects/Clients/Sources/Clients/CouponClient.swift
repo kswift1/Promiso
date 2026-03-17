@@ -20,6 +20,7 @@ public enum CouponError: Error, Equatable, Sendable {
   case notFound
   case alreadyRedeemed
   case expired
+  case activeSubscription
   case unknown(String)
 
   public var localizedDescription: String {
@@ -27,6 +28,7 @@ public enum CouponError: Error, Equatable, Sendable {
     case .notFound: return "유효하지 않은 쿠폰 코드입니다"
     case .alreadyRedeemed: return "이미 사용된 쿠폰입니다"
     case .expired: return "만료된 쿠폰입니다"
+    case .activeSubscription: return "구독 중에는 쿠폰을 사용할 수 없습니다"
     case .unknown(let msg): return msg
     }
   }
@@ -100,6 +102,9 @@ extension CouponClient: DependencyKey {
           case .alreadyExists:
             throw CouponError.alreadyRedeemed
           case .failedPrecondition:
+            if error.localizedDescription.contains("구독") {
+              throw CouponError.activeSubscription
+            }
             throw CouponError.expired
           default:
             throw CouponError.unknown(error.localizedDescription)

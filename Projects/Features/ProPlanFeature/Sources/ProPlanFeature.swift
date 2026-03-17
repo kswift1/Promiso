@@ -195,6 +195,8 @@ extension ProPlan {
       case redeemCouponTapped
       /// 쿠폰 시트 닫기
       case couponSheetDismissed
+      /// Pro 기능 설정 바로가기
+      case proSettingTapped(ProSettingDestination)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -237,6 +239,14 @@ extension ProPlan {
       case subscriptionStatusChanged(SubscriptionStatus)
       /// 시트 dismiss 요청 (구매 완료 후 축하 화면에서 "시작하기" 탭)
       case dismissRequested
+      /// Pro 기능 설정 화면으로 이동 요청
+      case navigateToProSetting(ProSettingDestination)
+    }
+
+    /// Pro 기능 설정 바로가기 목적지
+    public enum ProSettingDestination: Equatable, Sendable {
+      case conflictThreshold
+      case briefing
     }
 
     // MARK: - Reducer Body
@@ -513,6 +523,9 @@ extension ProPlan {
           case .couponSheetDismissed:
             state.showCouponSheet = false
             return .none
+
+          case .proSettingTapped(let destination):
+            return .send(.delegate(.navigateToProSetting(destination)))
           }
 
         // MARK: - Internal Actions

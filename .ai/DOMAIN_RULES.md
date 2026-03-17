@@ -45,6 +45,13 @@
 **핵심 제약**: 토큰 30일, 데이터 최대 7개, 캐시 2시간
 **핵심 보안**: 디바이스 바인딩, 버전 기반 무효화
 
+### [쿠폰 (Coupon)](domain-rules/coupon.md) — 15 rules
+
+**핵심 제약**: 1인 1쿠폰 (사용 이력 있으면 다른 쿠폰도 불가), 코드 8자리
+**핵심 권한**: 생성 = admin/marketer, 사용 = 로그인 유저, 만료 = 관리자
+**핵심 동작**: 사용 시 entitlementOverrides 생성 → reconcileEntitlement 자동 동기화
+**UI**: Paywall에서만 쿠폰 입력 노출, ManageView 미노출
+
 ### [접근 제어 + 보안 (Security)](domain-rules/security.md) — 16 rules
 
 **Firestore**: 본인 데이터 본인만, 그룹 데이터 멤버만, 알림 생성 Functions만
@@ -62,8 +69,9 @@
 | 알림+배지 | 15 | [domain-rules/notification.md](domain-rules/notification.md) |
 | LiveActivity | 18 | [domain-rules/liveactivity.md](domain-rules/liveactivity.md) |
 | 위젯 | 13 | [domain-rules/widget.md](domain-rules/widget.md) |
+| 쿠폰 | 15 | [domain-rules/coupon.md](domain-rules/coupon.md) |
 | 보안 | 16 | [domain-rules/security.md](domain-rules/security.md) |
-| **합계** | **155** | |
+| **합계** | **170** | |
 
 ---
 

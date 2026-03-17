@@ -683,6 +683,10 @@ extension Settings {
           case .dismissRequested:
             state.proPlan = nil
             return .none
+
+          case .navigateToProSetting:
+            // sheet에서는 설정 바로가기 미지원
+            return .none
           }
 
         case .proPlan:
@@ -695,6 +699,18 @@ extension Settings {
             return .send(.delegate(.subscriptionStatusChanged(status)))
           case .dismissRequested:
             return .none
+          case .navigateToProSetting(let destination):
+            switch destination {
+            case .conflictThreshold:
+              state.path.append(.conflictThresholdSettings(
+                ConflictThresholdSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+              ))
+            case .briefing:
+              state.path.append(.briefingSettings(
+                BriefingSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+              ))
+            }
+            return .run { _ in await hapticFeedback.selection() }
           }
 
         case .path:

@@ -50,8 +50,6 @@ extension ProPlan {
             }
           }
 
-          // MARK: - 쿠폰 섹션
-          couponSection
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 32)
@@ -66,14 +64,6 @@ extension ProPlan {
               .font(.headline)
           }
         }
-      }
-      .sheet(
-        isPresented: Binding(
-          get: { store.showCouponSheet },
-          set: { if !$0 { store.send(.view(.couponSheetDismissed)) } }
-        )
-      ) {
-        couponRedeemSheet
       }
     }
 
@@ -466,39 +456,88 @@ extension ProPlan {
           .foregroundStyle(Color.pmtext.primary)
 
         VStack(spacing: 0) {
-          proFeatureRow(
-            icon: "exclamationmark.triangle",
-            title: LocalizedStrings.ProPlan.featureConflictTitle,
-            description: LocalizedStrings.ProPlan.featureConflictDescription
+          proFeatureButton(
+            icon: "calendar.badge.exclamationmark",
+            iconColor: Color.pmwarning.n600,
+            title: "일정 충돌 감지",
+            description: "겹치는 일정을 자동으로 찾아줍니다",
+            destination: .conflictThreshold
+          )
+
+          Divider()
+            .background(Color.white.opacity(0.12))
+
+          proFeatureButton(
+            icon: "sparkles",
+            iconColor: Color.pmpurple.n500,
+            title: "AI 데일리 브리핑",
+            description: "매일 아침 오늘의 일정을 요약해줍니다",
+            destination: .briefing
           )
 
           Divider()
             .background(Color.white.opacity(0.12))
 
           proFeatureRow(
-            icon: "wand.and.stars",
-            title: LocalizedStrings.ProPlan.featureRecommendationTitle,
-            description: LocalizedStrings.ProPlan.featureRecommendationDescription
-          )
-
-          Divider()
-            .background(Color.white.opacity(0.12))
-
-          proFeatureRow(
-            icon: "chart.bar",
-            title: LocalizedStrings.ProPlan.featureStatsTitle,
-            description: LocalizedStrings.ProPlan.featureStatsDescription
+            icon: "location.fill",
+            iconColor: Color.pmindigo.n500,
+            title: "스마트 출발 알림",
+            description: "교통수단별 최적 출발 시간을 알려줍니다"
           )
         }
         .adaptiveGlassCard()
       }
     }
 
-    private func proFeatureRow(icon: String, title: String, description: String) -> some View {
+    private func proFeatureButton(
+      icon: String,
+      iconColor: Color,
+      title: String,
+      description: String,
+      destination: ProPlan.Feature.ProSettingDestination
+    ) -> some View {
+      Button {
+        store.send(.view(.proSettingTapped(destination)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: icon)
+            .font(.body)
+            .foregroundStyle(iconColor)
+            .frame(width: 24, height: 24)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.caption)
+            .foregroundStyle(Color.pmgray.n400)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private func proFeatureRow(
+      icon: String,
+      iconColor: Color,
+      title: String,
+      description: String
+    ) -> some View {
       HStack(spacing: 12) {
         Image(systemName: icon)
           .font(.body)
-          .foregroundStyle(Color.pmindigo.n500)
+          .foregroundStyle(iconColor)
           .frame(width: 24, height: 24)
 
         VStack(alignment: .leading, spacing: 2) {
@@ -564,105 +603,6 @@ extension ProPlan {
       }
     }
 
-    // MARK: - Coupon Section
-
-    @ViewBuilder
-    private var couponSection: some View {
-      VStack(spacing: 12) {
-        Button {
-          store.send(.view(.couponTapped))
-        } label: {
-          HStack {
-            Image(systemName: "ticket.fill")
-              .font(.body)
-              .foregroundStyle(Color.pmindigo.n500)
-
-            Text("쿠폰 코드 입력")
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-              .font(.caption)
-              .foregroundStyle(Color.pmgray.n400)
-          }
-          .padding(16)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .adaptiveGlassCard()
-      }
-    }
-
-    // MARK: - Coupon Redeem Sheet
-
-    @ViewBuilder
-    private var couponRedeemSheet: some View {
-      NavigationStack {
-        VStack(spacing: 24) {
-          VStack(spacing: 8) {
-            Image(systemName: "ticket.fill")
-              .font(.system(size: 40))
-              .foregroundStyle(Color.pmindigo.n500)
-
-            Text("쿠폰 코드 입력")
-              .font(.title2)
-              .fontWeight(.bold)
-
-            Text("Pro 플랜 체험 쿠폰 코드를 입력해주세요")
-              .font(.subheadline)
-              .foregroundStyle(.secondary)
-          }
-          .padding(.top, 20)
-
-          TextField("쿠폰 코드", text: Binding(
-            get: { store.couponCode },
-            set: { store.send(.view(.couponCodeChanged($0))) }
-          ))
-          .textFieldStyle(.roundedBorder)
-          .textInputAutocapitalization(.characters)
-          .autocorrectionDisabled()
-          .padding(.horizontal, 20)
-
-          if let message = store.couponResultMessage {
-            Text(message)
-              .font(.subheadline)
-              .foregroundStyle(store.couponResultIsSuccess ? Color.pmsuccess.n500 : Color.pmerror.n500)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal, 20)
-          }
-
-          Button {
-            store.send(.view(.redeemCouponTapped))
-          } label: {
-            if store.isRedeemingCoupon {
-              ProgressView()
-                .tint(.white)
-            } else {
-              Text("적용하기")
-            }
-          }
-          .buttonStyle(.borderedProminent)
-          .tint(Color.pmindigo.n500)
-          .disabled(
-            store.couponCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-              || store.isRedeemingCoupon
-          )
-          .padding(.horizontal, 20)
-
-          Spacer()
-        }
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("닫기") {
-              store.send(.view(.couponSheetDismissed))
-            }
-          }
-        }
-      }
-      .presentationDetents([.medium])
-    }
 
     // MARK: - Helpers
 
