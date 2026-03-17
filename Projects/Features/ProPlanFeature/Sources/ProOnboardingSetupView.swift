@@ -9,6 +9,7 @@ import Clients
 import ComposableArchitecture
 import PromisoShared
 import ResourceKit
+import SharedFeature
 import SwiftUI
 
 private func localizedPreviewTime(hour: Int, minute: Int) -> String {
@@ -62,6 +63,11 @@ struct ProOnboardingSetupView: View {
     .auroraBackground()
     .toolbar(.hidden, for: .navigationBar)
     .interactiveDismissDisabled()
+    .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { locationStore in
+      NavigationStack {
+        LocationPicker.RootView(store: locationStore)
+      }
+    }
   }
 
   private var conflictOptions: [ConflictOption] {
@@ -488,6 +494,78 @@ struct ProOnboardingSetupView: View {
           }
           .adaptiveGlassCard()
         }
+
+        VStack(alignment: .leading, spacing: 10) {
+          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmtext.secondary)
+
+          VStack(spacing: 0) {
+            if let location = store.onboardingDefaultLocation {
+              Button {
+                store.send(.view(.onboardingDefaultLocationTapped))
+              } label: {
+                HStack(spacing: 12) {
+                  Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.pmindigo.n500)
+
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(location.name)
+                      .font(.subheadline.weight(.medium))
+                      .foregroundStyle(Color.pmtext.primary)
+
+                    if let address = location.address {
+                      Text(address)
+                        .font(.caption)
+                        .foregroundStyle(Color.pmtext.secondary)
+                        .lineLimit(1)
+                    }
+                  }
+
+                  Spacer()
+
+                  Button {
+                    store.send(.view(.onboardingRemoveDefaultLocation))
+                  } label: {
+                    Image(systemName: "xmark.circle.fill")
+                      .font(.system(size: 18))
+                      .foregroundStyle(Color.pmtext.secondary)
+                  }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+            } else {
+              Button {
+                store.send(.view(.onboardingDefaultLocationTapped))
+              } label: {
+                HStack(spacing: 12) {
+                  Image(systemName: "plus.circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.pmindigo.n500)
+
+                  Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.pmtext.secondary)
+
+                  Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+            }
+          }
+          .adaptiveGlassCard()
+        }
       }
       .padding(.horizontal, 20)
       .padding(.bottom, 100)
@@ -621,6 +699,15 @@ struct ProOnboardingSetupView: View {
             title: LocalizedStrings.SettingsStrings.briefingTransport,
             value: store.onboardingTransports.sorted(by: { $0.rawValue < $1.rawValue }).map(\.displayName).joined(separator: ", ")
           )
+          if let location = store.onboardingDefaultLocation {
+            Divider().padding(.leading, 48)
+            summaryRow(
+              icon: "mappin.circle.fill",
+              iconColor: Color.pmindigo.n500,
+              title: LocalizedStrings.SettingsStrings.briefingDefaultLocation,
+              value: location.name
+            )
+          }
         }
         .adaptiveGlassCard()
       }
