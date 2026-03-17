@@ -1,7 +1,6 @@
 ---
 name: researcher
 description: 조사/검색 통합 에이전트 (UI 레퍼런스, 최신 기술, App Store 심사)
-model: sonnet
 tools: Read, WebSearch, WebFetch
 ---
 

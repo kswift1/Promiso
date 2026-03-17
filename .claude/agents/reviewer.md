@@ -1,7 +1,6 @@
 ---
 name: reviewer
 description: 검증/리뷰 통합 에이전트 (코드 품질, 성능, 접근성, Firebase, 보안)
-model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

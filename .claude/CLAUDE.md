@@ -55,13 +55,24 @@ Claude Code 추가 규칙:
 
 ## 에이전트 (4개 + Explore)
 
-| 에이전트 | 역할 | 모델 | 트리거 |
-|----------|------|------|--------|
-| `implementer` | 코드 작성 (Feature, View, Firebase, 리팩터링) | sonnet | "만들어줘", "수정해줘" |
-| `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | sonnet | "리뷰해줘", 검증 단계 |
-| `test-writer` | Swift Testing 테스트 작성 | haiku | "테스트 작성" |
-| `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | sonnet | "조사해줘", "레퍼런스" |
-| `Explore` | 코드베이스 탐색 (읽기 전용) | - | 탐색 단계 |
+| 에이전트 | 역할 | 트리거 |
+|----------|------|--------|
+| `implementer` | 코드 작성 (Feature, View, Firebase, 리팩터링) | "만들어줘", "수정해줘" |
+| `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | "리뷰해줘", 검증 단계 |
+| `test-writer` | Swift Testing 테스트 작성 | "테스트 작성" |
+| `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | "조사해줘", "레퍼런스" |
+| `Explore` | 코드베이스 탐색 (읽기 전용) | 탐색 단계 |
+
+### 모델 선택 가이드라인
+
+에이전트 호출 시 메인 Claude가 작업 복잡도에 따라 모델을 런타임 선택한다:
+
+| 모델 | 사용 기준 |
+|------|----------|
+| **haiku** | 단순 컨벤션 체크, 1-2파일 리뷰, 단순 테스트, 키워드 기반 조사 |
+| **sonnet** | 복잡한 구현, 멀티파일 리뷰, TCA 패턴 테스트, 심층 분석 |
+
+기본값: 판단이 어려우면 **sonnet** 사용.
 
 ### 자동 호출 규칙
 - Feature/View/API 코드 작성 → `implementer`
