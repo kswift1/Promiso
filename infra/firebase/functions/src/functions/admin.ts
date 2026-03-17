@@ -2645,9 +2645,9 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
 
   for (const doc of subscriptionsSnapshot.docs) {
     const data = doc.data();
-    const status = (data.status as string) ?? "none";
-    const productId = (data.productId as string) ?? "";
-    const updatedAt = (data.updatedAt as string) ?? null;
+    const status = typeof data.status === "string" ? data.status : "none";
+    const productId = typeof data.productId === "string" ? data.productId : "";
+    const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : null;
 
     allSubDocs.push({userId: doc.id, status, productId, updatedAt});
 
@@ -2708,6 +2708,11 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     .sort((a, b) => {
       const aTime = new Date(a.updatedAt!).getTime();
       const bTime = new Date(b.updatedAt!).getTime();
+
+      if (isNaN(aTime) && isNaN(bTime)) return 0;
+      if (isNaN(aTime)) return 1;
+      if (isNaN(bTime)) return -1;
+
       return bTime - aTime;
     })
     .slice(0, 20)

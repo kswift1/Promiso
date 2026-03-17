@@ -88,9 +88,9 @@ function getStatusLabel(status: string): string {
 
 function getProductLabel(productId: string | null): string {
   if (!productId) return "-";
-  if (productId.includes("monthly")) return "월간";
-  if (productId.includes("yearly")) return "연간";
-  if (productId.includes("lifetime")) return "평생";
+  if (productId.endsWith(".monthly")) return "월간";
+  if (productId.endsWith(".yearly")) return "연간";
+  if (productId.endsWith(".lifetime")) return "평생";
   return productId;
 }
 
