@@ -2667,8 +2667,7 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     const data = doc.data();
     const status = typeof data.status === "string" ? data.status : "none";
     const productId = typeof data.productId === "string" ? data.productId : "";
-    const updatedAt =
-      typeof data.updatedAt === "string" ? data.updatedAt : null;
+    const updatedAt = toIsoString(data.updatedAt);
 
     allSubDocs.push({userId: doc.id, status, productId, updatedAt});
 
