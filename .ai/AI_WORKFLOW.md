@@ -39,10 +39,15 @@
 
 ### 0. 작업 공간 설정
 - 현재 브랜치 확인 (`git branch --show-current`)
-- 이미 Conductor 등으로 격리된 workspace/worktree 안에서 작업 중이면 추가 worktree 생성 금지
-- 격리된 workspace가 없고 진행 중 작업과 충돌할 때만 Worktree 생성: `git worktree add ../Promiso-{브랜치명} -b {브랜치명} {base}`
+- **Conductor 멀티 워크스페이스 환경**: 각 워크스페이스는 독립된 작업 디렉토리. 추가 worktree 생성 금지.
+- Conductor가 아닌 환경에서 진행 중 작업과 충돌할 때만 Worktree 생성: `git worktree add ../Promiso-{브랜치명} -b {브랜치명} {base}`
 - 브랜치 네이밍은 런타임/도구 지시를 우선하고, 별도 지시가 없으면 `fix/`, `feat/`, `refactor/`
 - 유저 확인이 필요하면 commentary로 먼저 공유할 수 있지만, **final에도 같은 확인 포인트를 다시 적는다**
+
+**Conductor 워크스페이스 간 협업**:
+- 각 워크스페이스에는 `.context/` 디렉토리(gitignored)가 있음
+- 다른 워크스페이스와 공유할 컨텍스트(결정사항, 의존성 정보 등)는 `.context/`에 파일로 저장
+- 병렬 작업 시 동일 파일 수정 충돌을 피하기 위해, 작업 대상 파일 목록을 `.context/`에 기록
 
 ### 1. 탐색 — 🟢 자동
 - 기존 코드 패턴과 의존성 방향 파악
