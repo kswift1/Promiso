@@ -412,12 +412,7 @@ extension RootTab {
           return .send(.delegate(.logoutRequested))
 
         case .settings(.delegate(.subscriptionStatusChanged(let status))):
-          state.subscriptionStatus = status
-          state.settings.subscriptionStatus = status
-          @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
-          $isPro.withLock { $0 = status.isPro }
-          analyticsClient.setSubscriptionTier(status)
-          return .none
+          return applySubscriptionStatus(status, state: &state)
 
         case .settings:
           return .none
@@ -699,12 +694,7 @@ extension RootTab {
             .cancellable(id: CancelID.subscriptionStatus, cancelInFlight: true)
 
           case .subscriptionStatusChanged(let status):
-            state.subscriptionStatus = status
-            state.settings.subscriptionStatus = status
-            @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
-            $isPro.withLock { $0 = status.isPro }
-            analyticsClient.setSubscriptionTier(status)
-            return .none
+            return applySubscriptionStatus(status, state: &state)
 
           case .refreshSubscriptionStatus:
             return .run { [subscriptionClient] send in
@@ -731,6 +721,18 @@ extension RootTab {
       .ifLet(\.$liveScheduleDetail, action: \.liveScheduleDetail) {
         LiveSchedule.Detail()
       }
+    }
+
+    private func applySubscriptionStatus(
+      _ status: SubscriptionStatus,
+      state: inout State
+    ) -> Effect<Action> {
+      state.subscriptionStatus = status
+      state.settings.subscriptionStatus = status
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
+      $isPro.withLock { $0 = status.isPro }
+      analyticsClient.setSubscriptionTier(status)
+      return .none
     }
   }
 }
