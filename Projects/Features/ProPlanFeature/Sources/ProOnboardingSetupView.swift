@@ -175,145 +175,152 @@ struct ProOnboardingSetupView: View {
   @ViewBuilder
   private var conflictPreviewCard: some View {
     VStack(alignment: .leading, spacing: 10) {
-      // PRO badge card
-      VStack(alignment: .leading, spacing: 6) {
-        // PRO badge
-        HStack(spacing: 2) {
-          Image(systemName: "sparkles")
-            .font(.system(size: 7, weight: .bold))
-          Text("PRO")
-            .font(.system(size: 7, weight: .heavy))
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 5)
-        .padding(.vertical, 2)
-        .background(
-          LinearGradient(
-            colors: [Color.pmindigo.n500, Color.pmpurple.n500],
-            startPoint: .leading,
-            endPoint: .trailing
-          ),
-          in: Capsule()
-        )
-
-        // Weather row
-        HStack(spacing: 6) {
-          Image(systemName: "cloud.rain.fill")
-            .symbolRenderingMode(.multicolor)
-            .font(.system(size: 11))
-            .frame(width: 20, height: 20)
-            .background(
-              Circle()
-                .fill(Color.cyan.opacity(0.12))
-            )
-
-          Text("8°")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(Color.pmtext.primary)
-
-          Text(LocalizedStrings.ProPlan.mockRainAlert)
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmtext.secondary)
-            .lineLimit(1)
-
-          Spacer(minLength: 0)
-
-          Image(systemName: "info.circle")
-            .font(.system(size: 10))
-            .foregroundStyle(Color.pmgray.n400)
-        }
-
-        // Conflict summary row
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmwarning.n500)
-
-          Text(LocalizedStrings.ProPlan.mockConflictTitle)
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmtext.primary)
-            .lineLimit(1)
-
-          Spacer(minLength: 0)
-
-          Image(systemName: "info.circle")
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmgray.n400)
-        }
-      }
-      .padding(.horizontal, 10)
-      .padding(.vertical, 8)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .adaptiveGlassCard()
-
-      // Timeline visualization
-      HStack(alignment: .top, spacing: 4) {
-        // Time labels
-        VStack(alignment: .trailing, spacing: 0) {
-          Text("1:00")
-            .font(.system(size: 8, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.pmtext.secondary)
-          Spacer()
-          Text("1:30")
-            .font(.system(size: 8, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.pmwarning.n600)
-          Spacer()
-          Text("2:00")
-            .font(.system(size: 8, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.pmtext.secondary)
-          Spacer()
-          Text("3:00")
-            .font(.system(size: 8, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.pmtext.secondary)
-        }
-        .frame(width: 26, height: 64)
-
-        // Team meeting block (1:00-2:00)
-        VStack(spacing: 0) {
-          RoundedRectangle(cornerRadius: 4)
-            .fill(Color.pmindigo.n500.opacity(0.15))
-            .overlay(
-              RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(Color.pmindigo.n500.opacity(0.4), lineWidth: 1)
-            )
-            .overlay(
-              Text(verbatim: "📌 \(LocalizedStrings.ProPlan.mockConflictExistingTitle)")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(Color.pmindigo.n500)
-            )
-            .frame(height: 32)
-          Spacer(minLength: 0)
-        }
-        .frame(height: 64)
-
-        // Lunch block (1:30-3:00)
-        VStack(spacing: 0) {
-          Spacer().frame(height: 16)
-          RoundedRectangle(cornerRadius: 4)
-            .fill(Color.pmwarning.n600.opacity(0.12))
-            .overlay(
-              RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(Color.pmwarning.n600.opacity(0.4), lineWidth: 1)
-            )
-            .overlay(
-              Text(verbatim: "🍽️ \(LocalizedStrings.ProPlan.mockConflictNewTitle)")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(Color.pmwarning.n600)
-            )
-            .frame(height: 48)
-        }
-        .frame(height: 64)
-      }
-      .padding(8)
-      .background(
-        RoundedRectangle(cornerRadius: 8)
-          .fill(Color(.systemBackground).opacity(0.5))
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 8)
-          .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
-      )
+      conflictPreviewBadgeCard
+      conflictPreviewTimeline
     }
+  }
+
+  @ViewBuilder
+  private var conflictPreviewBadgeCard: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      // PRO badge
+      HStack(spacing: 2) {
+        Image(systemName: "sparkles")
+          .font(.system(size: 7, weight: .bold))
+        Text("PRO")
+          .font(.system(size: 7, weight: .heavy))
+      }
+      .foregroundStyle(.white)
+      .padding(.horizontal, 5)
+      .padding(.vertical, 2)
+      .background(
+        LinearGradient(
+          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+          startPoint: .leading,
+          endPoint: .trailing
+        ),
+        in: Capsule()
+      )
+
+      // Weather row
+      HStack(spacing: 6) {
+        Image(systemName: "cloud.rain.fill")
+          .symbolRenderingMode(.multicolor)
+          .font(.system(size: 11))
+          .frame(width: 20, height: 20)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
+
+        Text("8°")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(Color.pmtext.primary)
+
+        Text(LocalizedStrings.ProPlan.mockRainAlert)
+          .font(.system(size: 11))
+          .foregroundStyle(Color.pmtext.secondary)
+          .lineLimit(1)
+
+        Spacer(minLength: 0)
+
+        Image(systemName: "info.circle")
+          .font(.system(size: 10))
+          .foregroundStyle(Color.pmgray.n400)
+      }
+
+      // Conflict summary row
+      HStack(spacing: 6) {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmwarning.n500)
+
+        Text(LocalizedStrings.ProPlan.mockConflictTitle)
+          .font(.system(size: 11))
+          .foregroundStyle(Color.pmtext.primary)
+          .lineLimit(1)
+
+        Spacer(minLength: 0)
+
+        Image(systemName: "info.circle")
+          .font(.system(size: 11))
+          .foregroundStyle(Color.pmgray.n400)
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .adaptiveGlassCard()
+  }
+
+  @ViewBuilder
+  private var conflictPreviewTimeline: some View {
+    HStack(alignment: .top, spacing: 4) {
+      // Time labels
+      VStack(alignment: .trailing, spacing: 0) {
+        Text("1:00")
+          .font(.system(size: 8, weight: .medium, design: .rounded))
+          .foregroundStyle(Color.pmtext.secondary)
+        Spacer()
+        Text("1:30")
+          .font(.system(size: 8, weight: .medium, design: .rounded))
+          .foregroundStyle(Color.pmwarning.n600)
+        Spacer()
+        Text("2:00")
+          .font(.system(size: 8, weight: .medium, design: .rounded))
+          .foregroundStyle(Color.pmtext.secondary)
+        Spacer()
+        Text("3:00")
+          .font(.system(size: 8, weight: .medium, design: .rounded))
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+      .frame(width: 26, height: 64)
+
+      // Team meeting block (1:00-2:00)
+      VStack(spacing: 0) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color.pmindigo.n500.opacity(0.15))
+          .overlay(
+            RoundedRectangle(cornerRadius: 4)
+              .strokeBorder(Color.pmindigo.n500.opacity(0.4), lineWidth: 1)
+          )
+          .overlay(
+            Text(verbatim: "📌 \(LocalizedStrings.ProPlan.mockConflictExistingTitle)")
+              .font(.system(size: 9, weight: .medium))
+              .foregroundStyle(Color.pmindigo.n500)
+          )
+          .frame(height: 32)
+        Spacer(minLength: 0)
+      }
+      .frame(height: 64)
+
+      // Lunch block (1:30-3:00)
+      VStack(spacing: 0) {
+        Spacer().frame(height: 16)
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color.pmwarning.n600.opacity(0.12))
+          .overlay(
+            RoundedRectangle(cornerRadius: 4)
+              .strokeBorder(Color.pmwarning.n600.opacity(0.4), lineWidth: 1)
+          )
+          .overlay(
+            Text(verbatim: "🍽️ \(LocalizedStrings.ProPlan.mockConflictNewTitle)")
+              .font(.system(size: 9, weight: .medium))
+              .foregroundStyle(Color.pmwarning.n600)
+          )
+          .frame(height: 48)
+      }
+      .frame(height: 64)
+    }
+    .padding(8)
+    .background(
+      RoundedRectangle(cornerRadius: 8)
+        .fill(Color(.systemBackground).opacity(0.5))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 8)
+        .strokeBorder(Color.pmgray.n200.opacity(0.3), lineWidth: 1)
+    )
   }
 
   // MARK: - Step 1: Briefing
