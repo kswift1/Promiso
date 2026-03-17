@@ -2602,9 +2602,26 @@ export const expireCoupon = onCall<ExpireCouponRequest>(
 // ProPlan Dashboard
 // ============================================================================
 
-const PROPLAN_MONTHLY_PRICE = 3900;
-const PROPLAN_YEARLY_PRICE = 39000;
-const PROPLAN_LIFETIME_PRICE = 59000;
+const DEFAULT_PROPLAN_PRICES = {
+  monthly: 3900,
+  yearly: 39000,
+  lifetime: 59000,
+};
+
+async function getProPlanPrices(): Promise<typeof DEFAULT_PROPLAN_PRICES> {
+  const doc = await admin.firestore()
+    .collection("admin").doc("proPlanPrices").get();
+  if (!doc.exists) return DEFAULT_PROPLAN_PRICES;
+  const data = doc.data()!;
+  return {
+    monthly: typeof data.monthly === "number" ?
+      data.monthly : DEFAULT_PROPLAN_PRICES.monthly,
+    yearly: typeof data.yearly === "number" ?
+      data.yearly : DEFAULT_PROPLAN_PRICES.yearly,
+    lifetime: typeof data.lifetime === "number" ?
+      data.lifetime : DEFAULT_PROPLAN_PRICES.lifetime,
+  };
+}
 
 /**
  * Builds a ProPlan dashboard summary with subscription breakdown,
@@ -2622,12 +2639,14 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     overridesSnapshot,
     couponsSnapshot,
     entitlementsSnapshot,
+    prices,
   ] = await Promise.all([
     db.collection("users").get(),
     db.collection("subscriptions").get(),
     db.collection("entitlementOverrides").get(),
     adminCol("coupons").get(),
     db.collection("entitlements").where("hasPro", "==", true).get(),
+    getProPlanPrices(),
   ]);
 
   // Subscription breakdown by plan type
@@ -2674,9 +2693,9 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
   const totalUsers = usersSnapshot.docs.length;
 
   // Revenue estimates
-  const monthlyRevenue = monthlyCount * PROPLAN_MONTHLY_PRICE;
-  const yearlyRevenue = yearlyCount * PROPLAN_YEARLY_PRICE;
-  const lifetimeTotalRevenue = lifetimeCount * PROPLAN_LIFETIME_PRICE;
+  const monthlyRevenue = monthlyCount * prices.monthly;
+  const yearlyRevenue = yearlyCount * prices.yearly;
+  const lifetimeTotalRevenue = lifetimeCount * prices.lifetime;
   const estimatedMRR =
     monthlyRevenue + Math.round(yearlyRevenue / 12);
 
@@ -2744,9 +2763,9 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
       totalLifetimeRevenue: lifetimeTotalRevenue,
     },
     prices: {
-      monthly: PROPLAN_MONTHLY_PRICE,
-      yearly: PROPLAN_YEARLY_PRICE,
-      lifetime: PROPLAN_LIFETIME_PRICE,
+      monthly: prices.monthly,
+      yearly: prices.yearly,
+      lifetime: prices.lifetime,
     },
     coupons: {
       total: couponTotal,
