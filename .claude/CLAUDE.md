@@ -85,6 +85,11 @@ Claude Code 추가 규칙:
 - 코드베이스 분석 → `Explore`
 - 빌드 수정 → 에이전트 없이 직접 처리
 
+### researcher 자동 트리거 (명시적 요청 없이도 호출)
+- deprecated API 사용 감지 시 → 대체 API 조사
+- iOS 버전별 분기(`#available`) 추가가 필요한 상황 → 최신 HIG/API 확인
+- 외부 라이브러리 버전 업데이트 관련 작업 시 → 마이그레이션 가이드 조사
+
 ### 플러그인 에이전트 사용 금지
 ```
 ❌ pr-review-toolkit:code-reviewer  → ✅ reviewer
