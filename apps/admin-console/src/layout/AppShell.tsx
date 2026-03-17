@@ -5,6 +5,7 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
+import MonetizationOnRoundedIcon from "@mui/icons-material/MonetizationOnRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import {
   AppBar,
@@ -32,6 +33,12 @@ const navItems = [
     label: "대시보드",
     path: "/dashboard",
     icon: <HomeRoundedIcon />,
+  },
+  {
+    label: "Pro 플랜",
+    path: "/pro-plan",
+    icon: <MonetizationOnRoundedIcon />,
+    allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {
     label: "관리자 계정",
