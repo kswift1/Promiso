@@ -603,7 +603,6 @@ extension ProPlan {
       }
     }
 
-
     // MARK: - Helpers
 
     private var isSubscriptionSource: Bool {
