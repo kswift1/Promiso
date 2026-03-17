@@ -4,6 +4,7 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
+import {hasActiveSubscription} from "../utils/briefingScheduler";
 import type {
   RedeemCouponRequest, RedeemCouponResponse,
 } from "../types/admin";
@@ -36,8 +37,31 @@ export const redeemCoupon = onCall<RedeemCouponRequest>(
     const overrideRef =
       db.collection("entitlementOverrides").doc(userId);
 
+    const subscriptionRef =
+      db.collection("subscriptions").doc(userId);
+
     const result = await db.runTransaction(async (tx) => {
-      const couponDoc = await tx.get(couponRef);
+      const [couponDoc, overrideDoc, subscriptionDoc] = await Promise.all([
+        tx.get(couponRef),
+        tx.get(overrideRef),
+        tx.get(subscriptionRef),
+      ]);
+
+      // 구독 활성 상태면 쿠폰 사용 차단
+      const subData = subscriptionDoc.data();
+      if (subData && hasActiveSubscription(subData.status)) {
+        throw new HttpsError(
+          "unavailable", "구독 중에는 쿠폰을 사용할 수 없습니다"
+        );
+      }
+
+      // 1인 1쿠폰: 이미 쿠폰을 사용한 적이 있으면 거부
+      const overrideData = overrideDoc.data();
+      if (overrideDoc.exists && overrideData?.type === "coupon_redeem") {
+        throw new HttpsError(
+          "resource-exhausted", "이미 쿠폰을 사용한 계정입니다"
+        );
+      }
 
       if (!couponDoc.exists) {
         throw new HttpsError("not-found", "유효하지 않은 쿠폰 코드입니다");

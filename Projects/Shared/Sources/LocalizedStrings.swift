@@ -272,6 +272,12 @@ public enum LocalizedStrings {
     public static var deleteAccountConfirm: String { String(localized: "settings.deleteAccountConfirm", bundle: bundle) }
     public static var deleteAccountFailed: String { String(localized: "settings.deleteAccountFailed", bundle: bundle) }
 
+    // Pro Subscription Warning (Account Deletion)
+    public static var proSubscriptionWarningTitle: String { String(localized: "settings.proSubscriptionWarningTitle", bundle: bundle) }
+    public static var proSubscriptionWarningMessage: String { String(localized: "settings.proSubscriptionWarningMessage", bundle: bundle) }
+    public static var manageSubscription: String { String(localized: "settings.manageSubscription", bundle: bundle) }
+    public static var proceedDeleteAccount: String { String(localized: "settings.proceedDeleteAccount", bundle: bundle) }
+
     // Errors
     public static var errorTitle: String { String(localized: "settings.errorTitle", bundle: bundle) }
     public static var logoutFailed: String { String(localized: "settings.logoutFailed", bundle: bundle) }
@@ -1970,6 +1976,7 @@ public enum LocalizedStrings {
     public static var onboardingConflictOverlap: String { String(localized: "proPlan.onboarding.conflict.overlap", bundle: bundle) }
     public static var onboardingBriefingSubtitle: String { String(localized: "proPlan.onboarding.briefing.subtitle", bundle: bundle) }
     public static var onboardingAlertAndTransport: String { String(localized: "proPlan.onboarding.alertAndTransport", bundle: bundle) }
+    public static var onboardingMultipleSelectHint: String { String(localized: "proPlan.onboarding.multipleSelectHint", bundle: bundle) }
     public static var onboardingTodayBriefing: String { String(localized: "proPlan.onboarding.todayBriefing", bundle: bundle) }
     public static var onboardingTodayBriefingTime: String { String(localized: "proPlan.onboarding.todayBriefing.time", bundle: bundle) }
     public static var onboardingTodayBriefingMessage: String { String(localized: "proPlan.onboarding.todayBriefing.message", bundle: bundle) }

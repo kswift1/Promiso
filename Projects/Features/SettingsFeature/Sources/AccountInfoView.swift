@@ -23,20 +23,24 @@ extension AccountInfo {
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.authClient) var authClient
+    @Dependency(\.openURL) var openURL
 
     public init() {}
 
     @ObservableState
     public struct State: Equatable, Sendable {
       public var currentUser: UserPrivateModel
+      public var subscriptionStatus: SubscriptionStatus = .none
       public var showLogoutAlert: Bool = false
       public var showDeleteAccountAlert: Bool = false
+      public var showProSubscriptionWarning: Bool = false
       public var isDeletingAccount: Bool = false
       public var deleteAccountError: String?
       public var toastMessage: ToastMessage?
 
-      public init(currentUser: UserPrivateModel) {
+      public init(currentUser: UserPrivateModel, subscriptionStatus: SubscriptionStatus = .none) {
         self.currentUser = currentUser
+        self.subscriptionStatus = subscriptionStatus
       }
     }
 
@@ -57,6 +61,9 @@ extension AccountInfo {
       case deleteAccountCancelled
       case dismissDeleteAccountError
       case toastDismissed
+      case manageSubscriptionTapped
+      case proceedDeleteAccountTapped
+      case proSubscriptionWarningDismissed
     }
 
     public enum Internal: Equatable, Sendable {
@@ -100,10 +107,30 @@ extension AccountInfo {
             return .none
 
           case .deleteAccountTapped:
-            state.showDeleteAccountAlert = true
+            if state.subscriptionStatus.isPro {
+              state.showProSubscriptionWarning = true
+            } else {
+              state.showDeleteAccountAlert = true
+            }
             return .run { _ in
               await hapticFeedback.medium()
             }
+
+          case .manageSubscriptionTapped:
+            state.showProSubscriptionWarning = false
+            return .run { _ in
+              guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else { return }
+              await openURL(url)
+            }
+
+          case .proceedDeleteAccountTapped:
+            state.showProSubscriptionWarning = false
+            state.showDeleteAccountAlert = true
+            return .none
+
+          case .proSubscriptionWarningDismissed:
+            state.showProSubscriptionWarning = false
+            return .none
 
           case .deleteAccountConfirmed:
             state.showDeleteAccountAlert = false
@@ -287,6 +314,26 @@ extension AccountInfo {
         if let error = store.deleteAccountError {
           Text(error)
         }
+      }
+      .confirmationDialog(
+        LocalizedStrings.SettingsStrings.proSubscriptionWarningTitle,
+        isPresented: Binding(
+          get: { store.showProSubscriptionWarning },
+          set: { if !$0 { store.send(.view(.proSubscriptionWarningDismissed)) } }
+        ),
+        titleVisibility: .visible
+      ) {
+        Button(LocalizedStrings.SettingsStrings.manageSubscription) {
+          store.send(.view(.manageSubscriptionTapped))
+        }
+        Button(LocalizedStrings.SettingsStrings.proceedDeleteAccount, role: .destructive) {
+          store.send(.view(.proceedDeleteAccountTapped))
+        }
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
+          store.send(.view(.proSubscriptionWarningDismissed))
+        }
+      } message: {
+        Text(LocalizedStrings.SettingsStrings.proSubscriptionWarningMessage)
       }
       .onAppear {
         store.send(.view(.onAppear))

@@ -356,6 +356,18 @@ final class SubscriptionRemoteDataSource: Sendable {
     self.db = db
   }
 
+  /// entitlements/{userId} 문서에서 ProEntitlementInfo 조회
+  func fetchEntitlementInfo() async throws -> ProEntitlementInfo {
+    guard let uid = Auth.auth().currentUser?.uid else {
+      return .empty
+    }
+    let snapshot = try await db.collection("entitlements").document(uid).getDocument()
+    guard let data = snapshot.data() else {
+      return .empty
+    }
+    return Self.parseEntitlement(from: data).1
+  }
+
   /// subscriptions/{userId} 문서 단건 조회
   /// - 문서 있음 → 서버 상태 반환
   /// - 문서 없음 → .none 반환
@@ -370,7 +382,7 @@ final class SubscriptionRemoteDataSource: Sendable {
     let entitlementSnapshot = try await entitlementRef.getDocument()
 
     if let data = entitlementSnapshot.data() {
-      return Self.parseEntitlement(from: data)
+      return Self.parseEntitlement(from: data).0
     }
 
     // 2. Fallback: entitlements 문서 미존재 시 기존 경로 (subscriptions + entitlementOverrides)
@@ -495,7 +507,7 @@ final class SubscriptionRemoteDataSource: Sendable {
 
         guard let data = snapshot.data() else { return }
 
-        let status = Self.parseEntitlement(from: data)
+        let status = Self.parseEntitlement(from: data).0
         continuation.yield(status)
       }
 
@@ -518,45 +530,63 @@ final class SubscriptionRemoteDataSource: Sendable {
       ?? iso8601FormatterFallback.date(from: string)
   }
 
-  /// entitlements/{uid} 문서를 SubscriptionStatus로 변환
+  /// entitlements/{uid} 문서를 (SubscriptionStatus, ProEntitlementInfo)로 변환
   /// hasPro == false인 경우에도 expired/revoked를 정확히 반환
-  private static func parseEntitlement(from data: [String: Any]) -> SubscriptionStatus {
+  static func parseEntitlement(from data: [String: Any]) -> (SubscriptionStatus, ProEntitlementInfo) {
     let hasPro = data["hasPro"] as? Bool ?? false
-    let source = data["source"] as? String ?? "none"
+    let sourceStr = data["source"] as? String ?? "none"
     let rawStatus = data["subscriptionStatus"] as? String
     let productIdStr = data["productId"] as? String
     let productType = productIdStr.flatMap { SubscriptionProductType(productId: $0) }
     let expirationDateStr = data["expirationDate"] as? String
     let expirationDate = expirationDateStr.flatMap { parseISO8601($0) }
 
+    let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
+    let overrideExpiresAt = overrideExpiresAtStr.flatMap { parseISO8601($0) }
+
+    let overrideType = data["overrideType"] as? String ?? ""
+    let entitlementSource: ProEntitlementInfo.Source
+    switch sourceStr {
+    case "subscription":
+      entitlementSource = .subscription
+    case "override":
+      entitlementSource = overrideType == "coupon_redeem" ? .coupon : .admin
+    default:
+      entitlementSource = .none
+    }
+
+    let entitlementInfo = ProEntitlementInfo(
+      source: entitlementSource,
+      overrideExpiresAt: overrideExpiresAt,
+      isInTrialPeriod: false
+    )
+
     if hasPro {
-      switch source {
+      switch sourceStr {
       case "subscription":
         switch rawStatus {
         case "lifetime":
-          return .lifetime
+          return (.lifetime, entitlementInfo)
         case "gracePeriod":
-          return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
+          return (.gracePeriod(expirationDate: expirationDate ?? .distantFuture), entitlementInfo)
         default:
-          return .subscribed(productType: productType, expirationDate: expirationDate)
+          return (.subscribed(productType: productType, expirationDate: expirationDate), entitlementInfo)
         }
       case "override":
-        let overrideExpiresAtStr = data["overrideExpiresAt"] as? String
-        let overrideExpiresAt = overrideExpiresAtStr.flatMap { parseISO8601($0) }
-        return .subscribed(productType: nil, expirationDate: overrideExpiresAt)
+        return (.subscribed(productType: nil, expirationDate: overrideExpiresAt), entitlementInfo)
       default:
-        return .subscribed(productType: productType, expirationDate: expirationDate)
+        return (.subscribed(productType: productType, expirationDate: expirationDate), entitlementInfo)
       }
     }
 
     // hasPro == false: expired/revoked 구분 보존
     switch rawStatus {
     case "expired":
-      return .expired(expirationDate: expirationDate ?? .distantPast)
+      return (.expired(expirationDate: expirationDate ?? .distantPast), entitlementInfo)
     case "revoked":
-      return .revoked
+      return (.revoked, entitlementInfo)
     default:
-      return .none
+      return (.none, entitlementInfo)
     }
   }
 

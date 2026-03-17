@@ -1,6 +1,9 @@
 import ComposableArchitecture
-import Foundation
+import FirebaseAuth
 import FirebaseFunctions
+@preconcurrency import FirebaseFirestore
+import Foundation
+import StoreKit
 import os.log
 import PromisoShared
 
@@ -38,6 +41,12 @@ public struct SubscriptionClient: Sendable {
 
   /// 최초 구매일 조회
   public var fetchPurchaseDate: @Sendable () async -> Date? = { nil }
+
+  /// Pro 엔타이틀먼트 부가 정보 조회 (source, override 만료, 체험 상태)
+  public var fetchEntitlementInfo: @Sendable () async throws -> ProEntitlementInfo = { .empty }
+
+  /// StoreKit 기반 무료 체험 중 여부 확인
+  public var checkTrialStatus: @Sendable () async -> Bool = { false }
 }
 
 // MARK: - Test & Preview Values
@@ -53,7 +62,9 @@ extension SubscriptionClient: TestDependencyKey {
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
     checkIntroOfferEligibility: unimplemented("\(Self.self).checkIntroOfferEligibility", placeholder: false),
     unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished),
-    fetchPurchaseDate: unimplemented("\(Self.self).fetchPurchaseDate", placeholder: nil)
+    fetchPurchaseDate: unimplemented("\(Self.self).fetchPurchaseDate", placeholder: nil),
+    fetchEntitlementInfo: unimplemented("\(Self.self).fetchEntitlementInfo", placeholder: .empty),
+    checkTrialStatus: unimplemented("\(Self.self).checkTrialStatus", placeholder: false)
   )
 
   public static let previewValue = Self(
@@ -116,7 +127,9 @@ extension SubscriptionClient: TestDependencyKey {
         continuation.finish()
       }
     },
-    fetchPurchaseDate: { Date().addingTimeInterval(-90 * 24 * 3600) }
+    fetchPurchaseDate: { Date().addingTimeInterval(-90 * 24 * 3600) },
+    fetchEntitlementInfo: { .empty },
+    checkTrialStatus: { false }
   )
 }
 
@@ -172,11 +185,17 @@ extension SubscriptionClient: DependencyKey {
           }
 
           func filterStoreKit(_ status: SubscriptionStatus) -> SubscriptionStatus? {
-            guard let server = lastServerStatus else { return nil }
+            guard let server = lastServerStatus else {
+              return nil
+            }
             switch server {
             case .none, .expired, .revoked:
               return nil
             case .subscribed, .lifetime, .gracePeriod:
+              // 서버가 Pro인데 StoreKit이 만료/취소면 무시 (서버 SSOT)
+              guard status.isActive else {
+                return nil
+              }
               return status
             }
           }
@@ -213,6 +232,18 @@ extension SubscriptionClient: DependencyKey {
       },
       fetchPurchaseDate: {
         await dataSource.fetchPurchaseDate()
+      },
+      fetchEntitlementInfo: {
+        try await remoteDataSource.fetchEntitlementInfo()
+      },
+      checkTrialStatus: {
+        for await result in StoreKit.Transaction.currentEntitlements {
+          guard case .verified(let transaction) = result else { continue }
+          if transaction.offerType == .introductory {
+            return true
+          }
+        }
+        return false
       }
     )
   }()

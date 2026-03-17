@@ -37,6 +37,7 @@ extension ProPlan {
     // MARK: - Dependencies
 
     @Dependency(\.subscriptionClient) private var subscriptionClient
+    @Dependency(\.couponClient) private var couponClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.userSettingsClient) private var userSettingsClient
     @Dependency(\.authClient) private var authClient
@@ -95,6 +96,18 @@ extension ProPlan {
       public var pendingTransferJWS: String? = nil
       /// 이전 시 사용할 productId 저장
       public var pendingTransferProductId: String? = nil
+      /// Pro 엔타이틀먼트 정보 (source, override 만료, 체험)
+      public var entitlementInfo: ProEntitlementInfo = .empty
+      /// 쿠폰 입력 시트 표시
+      public var showCouponSheet: Bool = false
+      /// 쿠폰 코드
+      public var couponCode: String = ""
+      /// 쿠폰 적용 중
+      public var isRedeemingCoupon: Bool = false
+      /// 쿠폰 결과 메시지
+      public var couponResultMessage: String?
+      /// 쿠폰 결과 성공 여부
+      public var couponResultIsSuccess: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -174,6 +187,16 @@ extension ProPlan {
       case transferConfirmed
       /// 구독 이전 취소
       case transferCancelled
+      /// 쿠폰 입력 시트 열기
+      case couponTapped
+      /// 쿠폰 코드 변경
+      case couponCodeChanged(String)
+      /// 쿠폰 적용 버튼 탭
+      case redeemCouponTapped
+      /// 쿠폰 시트 닫기
+      case couponSheetDismissed
+      /// Pro 기능 설정 바로가기
+      case proSettingTapped(ProSettingDestination)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -201,6 +224,12 @@ extension ProPlan {
       case transferResponse(Result<SubscriptionStatus, Error>)
       /// 다른 계정 소유 구독 이전 얼럿 표시 요청 (jwsString, productId 저장)
       case transferAlertRequested(jws: String, productId: String)
+      /// 엔타이틀먼트 정보 로드 완료
+      case entitlementInfoLoaded(ProEntitlementInfo)
+      /// 쿠폰 적용 성공 (활성화 일수)
+      case couponRedeemSucceeded(Int)
+      /// 쿠폰 적용 실패 (에러 메시지)
+      case couponRedeemFailed(String)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -210,6 +239,14 @@ extension ProPlan {
       case subscriptionStatusChanged(SubscriptionStatus)
       /// 시트 dismiss 요청 (구매 완료 후 축하 화면에서 "시작하기" 탭)
       case dismissRequested
+      /// Pro 기능 설정 화면으로 이동 요청
+      case navigateToProSetting(ProSettingDestination)
+    }
+
+    /// Pro 기능 설정 바로가기 목적지
+    public enum ProSettingDestination: Equatable, Sendable {
+      case conflictThreshold
+      case briefing
     }
 
     // MARK: - Reducer Body
@@ -254,6 +291,16 @@ extension ProPlan {
 
           await send(.internal(.introOfferEligibilityResult(await eligibility)))
           await send(.internal(.purchaseDateLoaded(await purchaseDate)))
+
+          do {
+            let info = try await subscriptionClient.fetchEntitlementInfo()
+            let isTrialing = await subscriptionClient.checkTrialStatus()
+            var finalInfo = info
+            finalInfo.isInTrialPeriod = isTrialing
+            await send(.internal(.entitlementInfoLoaded(finalInfo)))
+          } catch {
+            // silent fail — ManageView는 entitlementInfo 없이도 동작
+          }
 
           for await status in subscriptionClient.unifiedStatusStream() {
             await send(.internal(.statusUpdated(status)))
@@ -373,6 +420,7 @@ extension ProPlan {
 
           case .proOnboardingCompleted:
             state.showProOnboarding = false
+            let status = state.subscriptionStatus
             return .run { [state, userSettingsClient, authClient] send in
               if let userId = await authClient.currentUser()?.uid {
                 do {
@@ -385,6 +433,7 @@ extension ProPlan {
                   print("[ProPlan] Onboarding settings save failed: \(error)")
                 }
               }
+              await send(.delegate(.subscriptionStatusChanged(status)))
               await send(.delegate(.dismissRequested))
             }
 
@@ -445,6 +494,38 @@ extension ProPlan {
             state.pendingTransferProductId = nil
             state.isPurchasing = false
             return .none
+
+          case .couponTapped:
+            state.showCouponSheet = true
+            state.couponCode = ""
+            state.couponResultMessage = nil
+            return .none
+
+          case .couponCodeChanged(let code):
+            state.couponCode = code
+            return .none
+
+          case .redeemCouponTapped:
+            let code = state.couponCode.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !code.isEmpty else { return .none }
+            state.isRedeemingCoupon = true
+            state.couponResultMessage = nil
+            return .run { [couponClient] send in
+              do {
+                let result = try await couponClient.redeemCoupon(code)
+                await send(.internal(.couponRedeemSucceeded(result.durationDays)))
+              } catch {
+                let message = (error as? CouponError)?.localizedDescription ?? "쿠폰 적용에 실패했습니다"
+                await send(.internal(.couponRedeemFailed(message)))
+              }
+            }
+
+          case .couponSheetDismissed:
+            state.showCouponSheet = false
+            return .none
+
+          case .proSettingTapped(let destination):
+            return .send(.delegate(.navigateToProSetting(destination)))
           }
 
         // MARK: - Internal Actions
@@ -478,11 +559,11 @@ extension ProPlan {
 
             if status.isPro {
               state.showCelebration = true
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -515,11 +596,11 @@ extension ProPlan {
             state.subscriptionStatus = status
 
             if status.isPro {
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -589,11 +670,11 @@ extension ProPlan {
 
             if status.isPro {
               state.showCelebration = true
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
-                .run { send in
+                .run { _ in
                   await hapticFeedback.success()
-                  await send(.delegate(.subscriptionStatusChanged(status)))
                 },
                 prepareProOnboarding()
               )
@@ -614,6 +695,23 @@ extension ProPlan {
             return .run { _ in
               await hapticFeedback.error()
             }
+
+          case .entitlementInfoLoaded(let info):
+            state.entitlementInfo = info
+            return .none
+
+          case .couponRedeemSucceeded(let days):
+            state.isRedeemingCoupon = false
+            state.couponResultMessage = "Pro 플랜이 \(days)일 동안 활성화되었습니다!"
+            state.couponResultIsSuccess = true
+            state.couponCode = ""
+            return .run { _ in await hapticFeedback.success() }
+
+          case .couponRedeemFailed(let message):
+            state.isRedeemingCoupon = false
+            state.couponResultMessage = message
+            state.couponResultIsSuccess = false
+            return .run { _ in await hapticFeedback.error() }
           }
 
         // MARK: - Delegate Actions
@@ -637,25 +735,16 @@ extension ProPlan {
     }
 
     public var body: some View {
-      NavigationStack {
-        Group {
-          if store.subscriptionStatus.isActive {
-            ProPlanManageView(store: store)
-          } else {
-            PaywallView(store: store)
-          }
-        }
-        .navigationDestination(isPresented: Binding(
-          get: { store.showProOnboarding },
-          set: { newValue in
-            if !newValue && store.showProOnboarding {
-              store.send(.view(.proOnboardingCompleted))
-            }
-          }
-        )) {
+      Group {
+        if store.showProOnboarding {
           ProOnboardingSetupView(store: store)
+        } else if store.subscriptionStatus.isActive {
+          ProPlanManageView(store: store)
+        } else {
+          PaywallView(store: store)
         }
       }
+      .animation(.default, value: store.showProOnboarding)
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -800,6 +889,12 @@ extension ProPlan.Feature.InternalAction {
       return lhsStatus == rhsStatus
     case (.transferResponse(.failure), .transferResponse(.failure)):
       return true
+    case (.entitlementInfoLoaded(let lhs), .entitlementInfoLoaded(let rhs)):
+      return lhs == rhs
+    case (.couponRedeemSucceeded(let lhs), .couponRedeemSucceeded(let rhs)):
+      return lhs == rhs
+    case (.couponRedeemFailed(let lhs), .couponRedeemFailed(let rhs)):
+      return lhs == rhs
     default:
       return false
     }
