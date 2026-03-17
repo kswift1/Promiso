@@ -736,6 +736,12 @@ export type AdminProPlanActivity = {
   timestamp: string;
 };
 
+export type AdminProPlanPrices = {
+  monthly: number;
+  yearly: number;
+  lifetime: number;
+};
+
 export type AdminProPlanDashboard = {
   overview: {
     totalUsers: number;
@@ -745,6 +751,7 @@ export type AdminProPlanDashboard = {
   };
   breakdown: AdminProPlanBreakdown;
   revenue: AdminProPlanRevenue;
+  prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
 };

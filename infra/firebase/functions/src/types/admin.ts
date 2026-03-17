@@ -449,6 +449,12 @@ export interface AdminProPlanActivity {
   timestamp: string;
 }
 
+export interface AdminProPlanPrices {
+  monthly: number;
+  yearly: number;
+  lifetime: number;
+}
+
 export interface AdminProPlanDashboard {
   overview: {
     totalUsers: number;
@@ -458,6 +464,7 @@ export interface AdminProPlanDashboard {
   };
   breakdown: AdminProPlanBreakdown;
   revenue: AdminProPlanRevenue;
+  prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
 }

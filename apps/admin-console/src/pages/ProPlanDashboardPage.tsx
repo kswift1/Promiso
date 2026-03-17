@@ -298,7 +298,7 @@ export function ProPlanDashboardPage() {
                         {formatCurrency(dashboard.breakdown.monthly.revenue)}
                       </Typography>
                       <Typography color="text.secondary" variant="caption">
-                        {dashboard.breakdown.monthly.count}명 × ₩3,900
+                        {dashboard.breakdown.monthly.count}명 × ₩{dashboard.prices.monthly.toLocaleString("ko-KR")}
                       </Typography>
                     </Stack>
                   </CardContent>
@@ -315,7 +315,7 @@ export function ProPlanDashboardPage() {
                         {formatCurrency(dashboard.breakdown.yearly.revenue)}
                       </Typography>
                       <Typography color="text.secondary" variant="caption">
-                        {dashboard.breakdown.yearly.count}명 × ₩39,000
+                        {dashboard.breakdown.yearly.count}명 × ₩{dashboard.prices.yearly.toLocaleString("ko-KR")}
                       </Typography>
                     </Stack>
                   </CardContent>
@@ -332,7 +332,7 @@ export function ProPlanDashboardPage() {
                         {formatCurrency(dashboard.revenue.totalLifetimeRevenue)}
                       </Typography>
                       <Typography color="text.secondary" variant="caption">
-                        {dashboard.breakdown.lifetime.count}명 × ₩59,000
+                        {dashboard.breakdown.lifetime.count}명 × ₩{dashboard.prices.lifetime.toLocaleString("ko-KR")}
                       </Typography>
                     </Stack>
                   </CardContent>
@@ -454,7 +454,7 @@ export function ProPlanDashboardPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      dashboard.recentActivities.map((activity, index) => (
+                      dashboard.recentActivities.map((activity) => (
                         <TableRow key={`${activity.userId}-${activity.timestamp}`}>
                           <TableCell>
                             <Typography variant="body2" sx={{fontFamily: "monospace", fontSize: 12}}>

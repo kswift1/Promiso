@@ -2738,6 +2738,11 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
       estimatedMRR,
       totalLifetimeRevenue: lifetimeTotalRevenue,
     },
+    prices: {
+      monthly: PROPLAN_MONTHLY_PRICE,
+      yearly: PROPLAN_YEARLY_PRICE,
+      lifetime: PROPLAN_LIFETIME_PRICE,
+    },
     coupons: {
       total: couponTotal,
       available: couponAvailable,
