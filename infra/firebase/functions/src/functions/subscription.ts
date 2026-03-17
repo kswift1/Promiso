@@ -282,6 +282,10 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
       });
 
       if (productId !== data.productId) {
+        console.warn("⚠️ [Subscription] ProductId mismatch", {
+          requestedProductId: data.productId,
+          actualProductId: productId,
+        });
         throw new HttpsError(
           "invalid-argument",
           "상품 ID가 일치하지 않습니다",
@@ -289,6 +293,11 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
       }
 
       const derivedStatus = deriveStatusFromTransaction(payload);
+      console.log("ℹ️ [Subscription] Derived status", {
+        status: derivedStatus.status,
+        expirationDate: derivedStatus.expirationDate,
+        productId,
+      });
       const signedDate = latestSignedDate(payload.signedDate);
 
       const db = admin.firestore();
@@ -308,6 +317,11 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
           const existingOwner = ownerDoc.data()?.userId;
           if (existingOwner && existingOwner !== userId) {
             if (!forceTransfer) {
+              console.warn("⚠️ [Subscription] Already owned by another user", {
+                existingOwnerUserId: existingOwner,
+                requestingUserId: userId,
+                originalTransactionId,
+              });
               throw new HttpsError(
                 "already-exists",
                 "이 구독은 다른 계정에 연결되어 있습니다",
