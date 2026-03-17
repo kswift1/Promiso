@@ -2,6 +2,7 @@ import ComposableArchitecture
 import Foundation
 import FirebaseFunctions
 import os.log
+import PromisoShared
 
 // MARK: - Client
 
