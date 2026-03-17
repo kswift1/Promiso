@@ -414,6 +414,8 @@ extension RootTab {
         case .settings(.delegate(.subscriptionStatusChanged(let status))):
           state.subscriptionStatus = status
           state.settings.subscriptionStatus = status
+          @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
+          $isPro.withLock { $0 = status.isPro }
           analyticsClient.setSubscriptionTier(status)
           return .none
 

@@ -345,32 +345,34 @@ extension Settings {
             .adaptiveGlassCard()
           }
 
-          // MARK: - 쿠폰 섹션
-          Button {
-            store.send(.view(.couponTapped))
-          } label: {
-            HStack(spacing: 16) {
-              Image(systemName: "ticket.fill")
-                .font(.body)
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 24, height: 24)
+          // MARK: - 쿠폰 섹션 (비구독자만 노출 — C-12, C-13)
+          if !store.subscriptionStatus.isPro {
+            Button {
+              store.send(.view(.couponTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "ticket.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
 
-              Text("쿠폰 코드 입력")
-                .font(.body)
-                .foregroundStyle(Color.pmtext.primary)
+                Text("쿠폰 코드 입력")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
 
-              Spacer()
+                Spacer()
 
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(Color.pmgray.n400)
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .adaptiveGlassCard()
           }
-          .buttonStyle(.plain)
-          .adaptiveGlassCard()
 
           // MARK: - 지원 섹션
           Button {
