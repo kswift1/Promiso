@@ -6,11 +6,13 @@
 > sub-agent(implementer, reviewer, test-writer, researcher)는 각자의 `.claude/agents/*.md` 프롬프트를 따릅니다.
 
 ```
-❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행
-❌ 탐색 없이 구현 금지
-❌ 검증 없이 커밋 금지
+❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행 (XS 제외)
+❌ 탐색 없이 구현 금지 (XS 제외)
+❌ 검증 없이 커밋 금지 (XS 제외)
 ❌ 유저 승인 없이 커밋 금지
 ```
+
+> **XS 예외**: 1파일 5줄 이내 수정(오타, import, 1줄 수정 등)은 메인 Claude가 직접 처리 가능. 에이전트 위임 불필요.
 
 ---
 
@@ -48,7 +50,8 @@
 - ❌ `.ai/DOMAIN_RULES.md` 및 `.ai/domain-rules/` 사용자 허락 없이 수정 금지
 
 Claude Code 추가 규칙:
-- 구현 단계에서 implementer agent에게 위임 (직접 Edit/Write 금지)
+- XS: 메인 Claude가 직접 Edit/Write 처리 (에이전트 위임 불필요)
+- S 이상: 구현 단계에서 implementer agent에게 위임 (직접 Edit/Write 금지)
 - 검증 단계에서 reviewer agent로 컨벤션 체크 (Critical 시 Step 3 복귀, 3회 초과 시 에스컬레이션)
 
 ---
