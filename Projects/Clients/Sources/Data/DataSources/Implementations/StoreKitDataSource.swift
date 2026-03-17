@@ -356,6 +356,18 @@ final class SubscriptionRemoteDataSource: Sendable {
     self.db = db
   }
 
+  /// entitlements/{userId} 문서에서 ProEntitlementInfo 조회
+  func fetchEntitlementInfo() async throws -> ProEntitlementInfo {
+    guard let uid = Auth.auth().currentUser?.uid else {
+      return .empty
+    }
+    let snapshot = try await db.collection("entitlements").document(uid).getDocument()
+    guard let data = snapshot.data() else {
+      return .empty
+    }
+    return Self.parseEntitlement(from: data).1
+  }
+
   /// subscriptions/{userId} 문서 단건 조회
   /// - 문서 있음 → 서버 상태 반환
   /// - 문서 없음 → .none 반환

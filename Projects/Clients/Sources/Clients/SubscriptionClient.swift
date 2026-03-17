@@ -234,15 +234,7 @@ extension SubscriptionClient: DependencyKey {
         await dataSource.fetchPurchaseDate()
       },
       fetchEntitlementInfo: {
-        guard let uid = Auth.auth().currentUser?.uid else {
-          return .empty
-        }
-        let db = Firestore.firestore()
-        let snapshot = try await db.collection("entitlements").document(uid).getDocument()
-        guard let data = snapshot.data() else {
-          return .empty
-        }
-        return SubscriptionRemoteDataSource.parseEntitlement(from: data).1
+        try await remoteDataSource.fetchEntitlementInfo()
       },
       checkTrialStatus: {
         for await result in StoreKit.Transaction.currentEntitlements {
