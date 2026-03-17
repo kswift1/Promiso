@@ -7,6 +7,7 @@ import ComposableArchitecture
 import Lottie
 import PromisoShared
 import ResourceKit
+import SharedFeature
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -97,6 +98,10 @@ extension ProPlan {
       public var pendingTransferProductId: String? = nil
       /// Pro 엔타이틀먼트 정보 (source, override 만료, 체험)
       public var entitlementInfo: ProEntitlementInfo = .empty
+      /// 온보딩 설정: 브리핑 기본 위치
+      public var onboardingDefaultLocation: LocationInfoModel? = nil
+      /// LocationPicker sheet
+      @Presents public var locationPicker: LocationPicker.Feature.State?
       /// State를 위한 기본 initializer
       public init(
         products: [SubscriptionProduct] = [],
@@ -130,6 +135,7 @@ extension ProPlan {
       case view(ViewAction)
       case `internal`(InternalAction)
       case delegate(DelegateAction)
+      case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
@@ -177,6 +183,10 @@ extension ProPlan {
       case transferCancelled
       /// Pro 기능 설정 바로가기
       case proSettingTapped(ProSettingDestination)
+      /// 온보딩 기본 위치 탭 — LocationPicker sheet 열기
+      case onboardingDefaultLocationTapped
+      /// 온보딩 기본 위치 제거
+      case onboardingRemoveDefaultLocation
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -404,7 +414,8 @@ extension ProPlan {
                   async let t2: Void = userSettingsClient.updateBriefingStyle(userId, state.onboardingBriefingStyle)
                   async let t3: Void = userSettingsClient.updateBriefingNotificationHour(userId, state.onboardingBriefingHour)
                   async let t4: Void = userSettingsClient.updateAvailableTransports(userId, state.onboardingTransports)
-                  _ = try await (t1, t2, t3, t4)
+                  async let t5: Void = userSettingsClient.updateBriefingDefaultLocation(userId, state.onboardingDefaultLocation)
+                  _ = try await (t1, t2, t3, t4, t5)
                 } catch {
                   AppLogger.subscription.error("[ProPlan] Onboarding settings save failed: \(error)")
                 }
@@ -473,6 +484,14 @@ extension ProPlan {
 
           case .proSettingTapped(let destination):
             return .send(.delegate(.navigateToProSetting(destination)))
+
+          case .onboardingDefaultLocationTapped:
+            state.locationPicker = LocationPicker.Feature.State()
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .onboardingRemoveDefaultLocation:
+            state.onboardingDefaultLocation = nil
+            return .run { _ in await hapticFeedback.selection() }
           }
 
         // MARK: - Internal Actions
@@ -599,6 +618,7 @@ extension ProPlan {
             state.onboardingBriefingStyle = settings.briefingStyle
             state.onboardingBriefingHour = settings.briefingNotificationHour ?? 8
             state.onboardingTransports = settings.availableTransports
+            state.onboardingDefaultLocation = settings.briefingDefaultLocation
             state.showProOnboarding = true
             return .none
 
@@ -653,7 +673,23 @@ extension ProPlan {
         case .delegate:
           // Delegate 액션은 부모에서 처리하므로 여기서는 pass-through
           return .none
+
+        // MARK: - LocationPicker
+        case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
+          state.onboardingDefaultLocation = location
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker(.presented(.delegate(.dismissed))):
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker:
+          return .none
         }
+      }
+      .ifLet(\.$locationPicker, action: \.locationPicker) {
+        LocationPicker.Feature()
       }
     }
   }
