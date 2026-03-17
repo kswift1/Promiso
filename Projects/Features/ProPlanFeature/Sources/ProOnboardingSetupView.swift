@@ -506,9 +506,7 @@ struct ProOnboardingSetupView: View {
 
           VStack(spacing: 0) {
             if let location = store.onboardingDefaultLocation {
-              Button {
-                store.send(.view(.onboardingDefaultLocationTapped))
-              } label: {
+              HStack(spacing: 12) {
                 HStack(spacing: 12) {
                   Image(systemName: "mappin.circle.fill")
                     .font(.system(size: 20))
@@ -526,22 +524,25 @@ struct ProOnboardingSetupView: View {
                         .lineLimit(1)
                     }
                   }
-
-                  Spacer()
-
-                  Button {
-                    store.send(.view(.onboardingRemoveDefaultLocation))
-                  } label: {
-                    Image(systemName: "xmark.circle.fill")
-                      .font(.system(size: 18))
-                      .foregroundStyle(Color.pmtext.secondary)
-                  }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
                 .contentShape(Rectangle())
+                .onTapGesture {
+                  store.send(.view(.onboardingDefaultLocationTapped))
+                }
+
+                Spacer()
+
+                Button {
+                  store.send(.view(.onboardingRemoveDefaultLocation))
+                } label: {
+                  Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
+                .buttonStyle(.plain)
               }
-              .buttonStyle(.plain)
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
             } else {
               Button {
                 store.send(.view(.onboardingDefaultLocationTapped))
