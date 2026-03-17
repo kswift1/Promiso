@@ -11004,7 +11004,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About %lld min"
+            "value": "~%lld min"
           }
         },
         "ko": {
@@ -11021,7 +11021,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld min"
+            "value": "%lldm"
           }
         },
         "ko": {
@@ -11089,7 +11089,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buffer Time"
+            "value": "Buffer"
           }
         },
         "ko": {
@@ -11191,7 +11191,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leave By"
+            "value": "Depart"
           }
         },
         "ko": {
@@ -11364,7 +11364,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alert Me for This Route"
+            "value": "Set Alert"
           }
         },
         "ko": {
@@ -15807,38 +15807,38 @@
         }
       }
     },
-    "onboarding.intro.confirm.subtitle" : {
-      "comment" : "온보딩 인트로 약속 확정 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gets notified"
+    "onboarding.intro.confirm.subtitle": {
+      "comment": "온보딩 인트로 약속 확정 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gets notified"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "알림이 가요"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림이 가요"
           }
         }
       }
     },
-    "onboarding.intro.confirm.title" : {
-      "comment" : "온보딩 인트로 약속 확정 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "When confirmed, everyone"
+    "onboarding.intro.confirm.title": {
+      "comment": "온보딩 인트로 약속 확정 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When confirmed, everyone"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "확정되면 모두에게"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정되면 모두에게"
           }
         }
       }
@@ -29752,6 +29752,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "초대 코드로 참여하기"
+          }
+        }
+      }
+    },
+    "common.add": {
+      "comment": "추가 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
           }
         }
       }

@@ -42,6 +42,9 @@ public enum AppLogger {
   /// 개인 일정 관련 로그
   public static let personal = Logger(subsystem: subsystem, category: "Personal")
 
+  /// 구독/결제 관련 로그
+  public static let subscription = Logger(subsystem: subsystem, category: "Subscription")
+
   /// 일반 로그
   public static let general = Logger(subsystem: subsystem, category: "General")
 

@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 import PromisoShared
 import StoreKit
 
@@ -49,28 +50,38 @@ final class StoreKitDataSource: Sendable {
   // MARK: - Purchase with Receipt (서버 검증용)
 
   func purchaseWithReceipt(productId: String) async throws -> PurchaseResult {
+    AppLogger.subscription.debug("purchaseWithReceipt started: productId=\(productId)")
     let storeProducts = try await Product.products(for: [productId])
+    AppLogger.subscription.debug("Products fetched: count=\(storeProducts.count)")
     guard let product = storeProducts.first else {
+      AppLogger.subscription.error("Product not found for productId=\(productId)")
       throw SubscriptionError.productNotFound
     }
 
+    AppLogger.subscription.debug("Calling product.purchase() for productId=\(product.id)")
     let result = try await product.purchase()
+    AppLogger.subscription.debug("product.purchase() returned")
 
     switch result {
     case .success(let verification):
       let transaction = try checkVerified(verification)
+      AppLogger.subscription.debug("Purchase success: transactionId=\(transaction.id), productID=\(transaction.productID), revoked=\(transaction.revocationDate != nil)")
       await transaction.finish()
 
       // JWS 토큰 추출
       let jwsString = verification.jwsRepresentation
+      AppLogger.subscription.debug("JWS extracted: length=\(jwsString.count)")
 
       let status = try await fetchCurrentStatus()
+      AppLogger.subscription.debug("fetchCurrentStatus result: \(String(describing: status))")
       return PurchaseResult(jwsString: jwsString, localStatus: status)
 
     case .userCancelled:
+      AppLogger.subscription.debug("Purchase userCancelled")
       throw SubscriptionError.purchaseCancelled
 
     case .pending:
+      AppLogger.subscription.debug("Purchase pending")
       throw SubscriptionError.purchasePending
 
     @unknown default:
@@ -143,12 +154,14 @@ final class StoreKitDataSource: Sendable {
   // MARK: - Current Status
 
   func fetchCurrentStatus() async throws -> SubscriptionStatus {
+    AppLogger.subscription.debug("fetchCurrentStatus started")
     var lifetimeTransaction: StoreKit.Transaction?
     var latestSubscriptionTransaction: StoreKit.Transaction?
 
     // 단일 패스로 entitlements 수집
     for await result in StoreKit.Transaction.currentEntitlements {
       guard let transaction = try? checkVerified(result) else { continue }
+      AppLogger.subscription.debug("Entitlement: productID=\(transaction.productID), revocationDate=\(String(describing: transaction.revocationDate)), expirationDate=\(String(describing: transaction.expirationDate))")
 
       if transaction.productID == SubscriptionProductType.lifetime.productId {
         lifetimeTransaction = transaction
@@ -161,14 +174,17 @@ final class StoreKitDataSource: Sendable {
     // 1. Lifetime 판별
     if let lifetime = lifetimeTransaction {
       if lifetime.revocationDate != nil {
+        AppLogger.subscription.debug("fetchCurrentStatus -> .revoked (lifetime revoked)")
         return .revoked
       }
+      AppLogger.subscription.debug("fetchCurrentStatus -> .lifetime")
       return .lifetime
     }
 
     // 2. 구독 판별
     if let subscription = latestSubscriptionTransaction {
       if subscription.revocationDate != nil {
+        AppLogger.subscription.debug("fetchCurrentStatus -> .revoked (subscription revoked)")
         return .revoked
       }
 
@@ -176,16 +192,20 @@ final class StoreKitDataSource: Sendable {
         if expirationDate > Date() {
           // Grace period 감지
           if let gracePeriodExpiration = try? await detectGracePeriod(for: subscription) {
+            AppLogger.subscription.debug("fetchCurrentStatus -> .gracePeriod(expirationDate=\(gracePeriodExpiration))")
             return .gracePeriod(expirationDate: gracePeriodExpiration)
           }
           let productType = SubscriptionProductType(productId: subscription.productID)
+          AppLogger.subscription.debug("fetchCurrentStatus -> .subscribed(productType=\(String(describing: productType)), expirationDate=\(expirationDate))")
           return .subscribed(productType: productType, expirationDate: expirationDate)
         } else {
+          AppLogger.subscription.debug("fetchCurrentStatus -> .expired(expirationDate=\(expirationDate))")
           return .expired(expirationDate: expirationDate)
         }
       }
     }
 
+    AppLogger.subscription.debug("fetchCurrentStatus -> .none")
     return .none
   }
 

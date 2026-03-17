@@ -4,6 +4,8 @@ import FirebaseFunctions
 @preconcurrency import FirebaseFirestore
 import Foundation
 import StoreKit
+import os.log
+import PromisoShared
 
 // MARK: - Client
 
@@ -257,6 +259,7 @@ extension SubscriptionClient: DependencyKey {
   private static let iso8601Formatter = ISO8601DateFormatter()
 
   private static func verifyPurchaseOnServer(transactionJWS: String, productId: String, forceTransfer: Bool = false) async throws -> SubscriptionStatus {
+    AppLogger.subscription.debug("verifyPurchaseOnServer called: productId=\(productId), forceTransfer=\(forceTransfer)")
     let functions = DefaultFunctionsProvider().functions
 
     do {
@@ -267,6 +270,7 @@ extension SubscriptionClient: DependencyKey {
       if forceTransfer {
         callData["forceTransfer"] = true
       }
+      AppLogger.subscription.debug("Calling Firebase Function: verifyPurchase")
       let result = try await functions.httpsCallable("verifyPurchase").call(callData)
 
       guard let data = result.data as? [String: Any],
@@ -275,28 +279,32 @@ extension SubscriptionClient: DependencyKey {
         throw SubscriptionError.verificationFailed
       }
 
+      let expirationDateRaw = statusData["expirationDate"] as? String
+      AppLogger.subscription.debug("Server response: status=\(statusString), expirationDate=\(expirationDateRaw ?? "nil")")
+
+      let finalStatus: SubscriptionStatus
       switch statusString {
       case "subscribed":
-        let expirationString = statusData["expirationDate"] as? String
-        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
+        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) }
         let productType = SubscriptionProductType(productId: productId)
-        return .subscribed(productType: productType, expirationDate: expirationDate)
+        finalStatus = .subscribed(productType: productType, expirationDate: expirationDate)
       case "lifetime":
-        return .lifetime
+        finalStatus = .lifetime
       case "expired":
-        let expirationString = statusData["expirationDate"] as? String
-        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
-        return .expired(expirationDate: expirationDate ?? .distantPast)
+        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) }
+        finalStatus = .expired(expirationDate: expirationDate ?? .distantPast)
       case "gracePeriod":
-        let expirationString = statusData["expirationDate"] as? String
-        let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
-        return .gracePeriod(expirationDate: expirationDate)
+        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
+        finalStatus = .gracePeriod(expirationDate: expirationDate)
       case "revoked":
-        return .revoked
+        finalStatus = .revoked
       default:
-        return .none
+        finalStatus = .none
       }
+      AppLogger.subscription.debug("Parsed SubscriptionStatus: \(String(describing: finalStatus))")
+      return finalStatus
     } catch let error as NSError where error.domain == FunctionsErrorDomain {
+      AppLogger.subscription.error("Firebase Function error: domain=\(error.domain), code=\(error.code), message=\(error.localizedDescription)")
       let code = FunctionsErrorCode(rawValue: error.code)
       if code == .alreadyExists {
         throw SubscriptionError.alreadyOwnedByOther
