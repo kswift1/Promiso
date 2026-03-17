@@ -24,6 +24,7 @@ struct ConflictOption: Identifiable {
 /// Pro 가입 후 초기 설정 워크스루 (PaywallView, RootView 양쪽에서 재사용)
 struct ProOnboardingSetupView: View {
   @Bindable private var store: StoreOf<ProPlan.Feature>
+  @State private var navigateForward: Bool = true
 
   init(store: StoreOf<ProPlan.Feature>) {
     self.store = store
@@ -33,15 +34,16 @@ struct ProOnboardingSetupView: View {
     VStack(spacing: 0) {
       onboardingProgressBar
 
-      TabView(selection: Binding(
-        get: { store.onboardingStep },
-        set: { _ in }
-      )) {
-        onboardingStep0.tag(0)
-        onboardingStep1.tag(1)
-        onboardingStep2.tag(2)
+      Group {
+        switch store.onboardingStep {
+        case 0: onboardingStep0
+        case 1: onboardingStep1
+        case 2: onboardingStep2
+        default: EmptyView()
+        }
       }
-      .tabViewStyle(.page(indexDisplayMode: .never))
+      .id(store.onboardingStep)
+      .transition(.push(from: navigateForward ? .trailing : .leading))
       .animation(.easeInOut(duration: 0.3), value: store.onboardingStep)
 
       onboardingBottomBar
@@ -516,6 +518,7 @@ struct ProOnboardingSetupView: View {
     HStack(spacing: 12) {
       if store.onboardingStep > 0 {
         Button {
+          navigateForward = false
           store.send(.view(.onboardingPreviousStep))
         } label: {
           Image(systemName: "chevron.left")
@@ -528,6 +531,7 @@ struct ProOnboardingSetupView: View {
       }
 
       Button {
+        navigateForward = true
         if store.onboardingStep < 2 {
           store.send(.view(.onboardingNextStep))
         } else {
