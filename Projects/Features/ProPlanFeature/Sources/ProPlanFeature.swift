@@ -559,6 +559,7 @@ extension ProPlan {
 
             if status.isPro {
               state.showCelebration = true
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
                 .run { _ in
@@ -595,6 +596,7 @@ extension ProPlan {
             state.subscriptionStatus = status
 
             if status.isPro {
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
                 .run { _ in
@@ -668,6 +670,7 @@ extension ProPlan {
 
             if status.isPro {
               state.showCelebration = true
+              state.showProOnboarding = true
               state.isSettingUpDefaults = true
               return .concatenate(
                 .run { _ in

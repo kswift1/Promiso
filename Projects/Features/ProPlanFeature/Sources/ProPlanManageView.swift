@@ -185,7 +185,7 @@ extension ProPlan {
           .font(.caption)
           .foregroundStyle(Color.pmtext.secondary)
       }
-      .padding(20)
+      .padding(20) 
       .frame(maxWidth: .infinity, alignment: .leading)
       .background {
         ZStack(alignment: .trailing) {
