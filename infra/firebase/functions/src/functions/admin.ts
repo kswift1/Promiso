@@ -2608,6 +2608,7 @@ const DEFAULT_PROPLAN_PRICES = {
   lifetime: 59000,
 };
 
+/** Fetches Pro plan prices from Firestore or returns defaults. */
 async function getProPlanPrices(): Promise<typeof DEFAULT_PROPLAN_PRICES> {
   const doc = await admin.firestore()
     .collection("admin").doc("proPlanPrices").get();
@@ -2666,7 +2667,7 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     const data = doc.data();
     const status = typeof data.status === "string" ? data.status : "none";
     const productId = typeof data.productId === "string" ? data.productId : "";
-    const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : null;
+    const updatedAt = toIsoString(data.updatedAt);
 
     allSubDocs.push({userId: doc.id, status, productId, updatedAt});
 
