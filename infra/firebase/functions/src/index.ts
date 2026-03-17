@@ -156,6 +156,7 @@ export {
   revokeEntitlementOverride,
   sendAdminPush,
   updateAdminReleaseControls,
+  getAdminProPlanDashboard,
   createCoupon,
   getAdminCoupons,
   expireCoupon,
