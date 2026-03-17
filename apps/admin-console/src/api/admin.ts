@@ -705,6 +705,75 @@ export async function getAdminCoupons(params?: {
   return result.data.coupons;
 }
 
+// ============================================================================
+// ProPlan Dashboard API
+// ============================================================================
+
+export type AdminProPlanBreakdown = {
+  monthly: { count: number; revenue: number };
+  yearly: { count: number; revenue: number };
+  lifetime: { count: number; totalRevenue: number };
+  override: { count: number };
+  gracePeriod: { count: number };
+};
+
+export type AdminProPlanRevenue = {
+  estimatedMRR: number;
+  totalLifetimeRevenue: number;
+};
+
+export type AdminProPlanCouponSummary = {
+  total: number;
+  available: number;
+  redeemed: number;
+  expired: number;
+};
+
+export type AdminProPlanActivity = {
+  userId: string;
+  type: string;
+  productId: string | null;
+  timestamp: string;
+};
+
+export type AdminProPlanPrices = {
+  monthly: number;
+  yearly: number;
+  lifetime: number;
+};
+
+export type AdminProPlanDashboard = {
+  overview: {
+    totalUsers: number;
+    proUsers: number;
+    freeUsers: number;
+    proRate: number;
+  };
+  breakdown: AdminProPlanBreakdown;
+  revenue: AdminProPlanRevenue;
+  prices: AdminProPlanPrices;
+  coupons: AdminProPlanCouponSummary;
+  recentActivities: AdminProPlanActivity[];
+};
+
+type GetAdminProPlanDashboardResponse = {
+  success: true;
+  dashboard: AdminProPlanDashboard;
+};
+
+export async function getAdminProPlanDashboard(): Promise<AdminProPlanDashboard> {
+  if (!firebaseFunctions) {
+    throw new Error("Firebase Functions is not configured");
+  }
+
+  const callable = httpsCallable<
+    Record<string, never>,
+    GetAdminProPlanDashboardResponse
+  >(firebaseFunctions, "getAdminProPlanDashboard");
+  const result = await callable({});
+  return result.data.dashboard;
+}
+
 export async function expireCoupon(code: string): Promise<void> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");

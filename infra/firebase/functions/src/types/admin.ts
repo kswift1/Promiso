@@ -417,3 +417,59 @@ export interface RedeemCouponResponse {
   durationDays: number;
   expiresAt: string;
 }
+
+// ============================================================================
+// ProPlan Dashboard Types
+// ============================================================================
+
+export interface AdminProPlanBreakdown {
+  monthly: { count: number; revenue: number };
+  yearly: { count: number; revenue: number };
+  lifetime: { count: number; totalRevenue: number };
+  override: { count: number };
+  gracePeriod: { count: number };
+}
+
+export interface AdminProPlanRevenue {
+  estimatedMRR: number;
+  totalLifetimeRevenue: number;
+}
+
+export interface AdminProPlanCouponSummary {
+  total: number;
+  available: number;
+  redeemed: number;
+  expired: number;
+}
+
+export interface AdminProPlanActivity {
+  userId: string;
+  type: string;
+  productId: string | null;
+  timestamp: string;
+}
+
+export interface AdminProPlanPrices {
+  monthly: number;
+  yearly: number;
+  lifetime: number;
+}
+
+export interface AdminProPlanDashboard {
+  overview: {
+    totalUsers: number;
+    proUsers: number;
+    freeUsers: number;
+    proRate: number;
+  };
+  breakdown: AdminProPlanBreakdown;
+  revenue: AdminProPlanRevenue;
+  prices: AdminProPlanPrices;
+  coupons: AdminProPlanCouponSummary;
+  recentActivities: AdminProPlanActivity[];
+}
+
+export interface GetAdminProPlanDashboardResponse {
+  success: true;
+  dashboard: AdminProPlanDashboard;
+}

@@ -69,6 +69,8 @@ import {
   GetAdminCouponsResponse,
   ExpireCouponRequest,
   ExpireCouponResponse,
+  AdminProPlanDashboard,
+  GetAdminProPlanDashboardResponse,
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
 import {isEntitlementOverrideActive} from "../utils/helpers";
@@ -2593,5 +2595,201 @@ export const expireCoupon = onCall<ExpireCouponRequest>(
     });
 
     return {success: true};
+  }
+);
+
+// ============================================================================
+// ProPlan Dashboard
+// ============================================================================
+
+const DEFAULT_PROPLAN_PRICES = {
+  monthly: 3900,
+  yearly: 39000,
+  lifetime: 59000,
+};
+
+async function getProPlanPrices(): Promise<typeof DEFAULT_PROPLAN_PRICES> {
+  const doc = await admin.firestore()
+    .collection("admin").doc("proPlanPrices").get();
+  if (!doc.exists) return DEFAULT_PROPLAN_PRICES;
+  const data = doc.data()!;
+  return {
+    monthly: typeof data.monthly === "number" ?
+      data.monthly : DEFAULT_PROPLAN_PRICES.monthly,
+    yearly: typeof data.yearly === "number" ?
+      data.yearly : DEFAULT_PROPLAN_PRICES.yearly,
+    lifetime: typeof data.lifetime === "number" ?
+      data.lifetime : DEFAULT_PROPLAN_PRICES.lifetime,
+  };
+}
+
+/**
+ * Builds a ProPlan dashboard summary with subscription breakdown,
+ * revenue estimates, coupon stats, and recent activities.
+ *
+ * NOTE: 전체 컬렉션 스캔 방식은 기존 buildAdminDashboardSummary()와 동일합니다.
+ * 사용자 수가 대규모로 증가하면 집계 문서(counter document) 도입을 검토하세요.
+ */
+async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
+  const db = admin.firestore();
+
+  const [
+    usersSnapshot,
+    subscriptionsSnapshot,
+    overridesSnapshot,
+    couponsSnapshot,
+    entitlementsSnapshot,
+    prices,
+  ] = await Promise.all([
+    db.collection("users").get(),
+    db.collection("subscriptions").get(),
+    db.collection("entitlementOverrides").get(),
+    adminCol("coupons").get(),
+    db.collection("entitlements").where("hasPro", "==", true).get(),
+    getProPlanPrices(),
+  ]);
+
+  // Subscription breakdown by plan type
+  let monthlyCount = 0;
+  let yearlyCount = 0;
+  let lifetimeCount = 0;
+  let gracePeriodCount = 0;
+
+  const allSubDocs: Array<{
+    userId: string;
+    status: string;
+    productId: string | null;
+    updatedAt: string | null;
+  }> = [];
+
+  for (const doc of subscriptionsSnapshot.docs) {
+    const data = doc.data();
+    const status = typeof data.status === "string" ? data.status : "none";
+    const productId = typeof data.productId === "string" ? data.productId : "";
+    const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : null;
+
+    allSubDocs.push({userId: doc.id, status, productId, updatedAt});
+
+    if (status === "subscribed") {
+      if (productId.includes("monthly")) {
+        monthlyCount++;
+      } else if (productId.includes("yearly")) {
+        yearlyCount++;
+      }
+    } else if (status === "lifetime") {
+      lifetimeCount++;
+    } else if (status === "gracePeriod") {
+      gracePeriodCount++;
+    }
+  }
+
+  // Active overrides
+  const activeOverrideCount = overridesSnapshot.docs.filter((doc) =>
+    isEntitlementOverrideActive(doc.data())
+  ).length;
+
+  // Pro users from entitlements (SSOT)
+  const proUsers = entitlementsSnapshot.docs.length;
+  const totalUsers = usersSnapshot.docs.length;
+
+  // Revenue estimates
+  const monthlyRevenue = monthlyCount * prices.monthly;
+  const yearlyRevenue = yearlyCount * prices.yearly;
+  const lifetimeTotalRevenue = lifetimeCount * prices.lifetime;
+  const estimatedMRR =
+    monthlyRevenue + Math.round(yearlyRevenue / 12);
+
+  // Coupon stats
+  let couponTotal = 0;
+  let couponAvailable = 0;
+  let couponRedeemed = 0;
+  let couponExpired = 0;
+  const now = new Date();
+
+  for (const doc of couponsSnapshot.docs) {
+    const data = doc.data();
+    couponTotal++;
+    if (data.redeemedBy) {
+      couponRedeemed++;
+    } else if (
+      data.expiresAt &&
+      new Date(data.expiresAt as string) < now
+    ) {
+      couponExpired++;
+    } else {
+      couponAvailable++;
+    }
+  }
+
+  // Recent activities (latest 20 by updatedAt)
+  const recentActivities = allSubDocs
+    .filter((d) => d.updatedAt != null)
+    .sort((a, b) => {
+      const aTime = new Date(a.updatedAt!).getTime();
+      const bTime = new Date(b.updatedAt!).getTime();
+
+      if (isNaN(aTime) && isNaN(bTime)) return 0;
+      if (isNaN(aTime)) return 1;
+      if (isNaN(bTime)) return -1;
+
+      return bTime - aTime;
+    })
+    .slice(0, 20)
+    .map((d) => ({
+      userId: d.userId,
+      type: d.status,
+      productId: d.productId || null,
+      timestamp: d.updatedAt!,
+    }));
+
+  return {
+    overview: {
+      totalUsers,
+      proUsers,
+      freeUsers: totalUsers - proUsers,
+      proRate: totalUsers > 0 ?
+        Math.round((proUsers / totalUsers) * 10000) / 100 :
+        0,
+    },
+    breakdown: {
+      monthly: {count: monthlyCount, revenue: monthlyRevenue},
+      yearly: {count: yearlyCount, revenue: yearlyRevenue},
+      lifetime: {count: lifetimeCount, totalRevenue: lifetimeTotalRevenue},
+      override: {count: activeOverrideCount},
+      gracePeriod: {count: gracePeriodCount},
+    },
+    revenue: {
+      estimatedMRR,
+      totalLifetimeRevenue: lifetimeTotalRevenue,
+    },
+    prices: {
+      monthly: prices.monthly,
+      yearly: prices.yearly,
+      lifetime: prices.lifetime,
+    },
+    coupons: {
+      total: couponTotal,
+      available: couponAvailable,
+      redeemed: couponRedeemed,
+      expired: couponExpired,
+    },
+    recentActivities,
+  };
+}
+
+export const getAdminProPlanDashboard = onCall<Record<string, never>>(
+  {region: REGION},
+  async (request): Promise<GetAdminProPlanDashboardResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const adminUser = await getAdminUserDocument(request.auth.uid);
+    requireAdminRole(adminUser, ["owner", "marketer"]);
+
+    return {
+      success: true,
+      dashboard: await buildProPlanDashboard(),
+    };
   }
 );

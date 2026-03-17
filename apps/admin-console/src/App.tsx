@@ -10,6 +10,7 @@ import {DashboardPage} from "./pages/DashboardPage";
 import {CouponsPage} from "./pages/CouponsPage";
 import {EntitlementsPage} from "./pages/EntitlementsPage";
 import {LoginPage} from "./pages/LoginPage";
+import {ProPlanDashboardPage} from "./pages/ProPlanDashboardPage";
 import {PushJobsPage} from "./pages/PushJobsPage";
 import {ReleaseControlsPage} from "./pages/ReleaseControlsPage";
 import {UserTimelinePage} from "./pages/UserTimelinePage";
@@ -78,6 +79,14 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route index element={<Navigate replace to="/dashboard" />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/pro-plan"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
+              <ProPlanDashboardPage />
+            </RoleProtectedRoute>
+          }
+        />
         <Route
           path="/admin-users"
           element={
