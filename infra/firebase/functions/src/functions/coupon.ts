@@ -51,7 +51,7 @@ export const redeemCoupon = onCall<RedeemCouponRequest>(
       const subData = subscriptionDoc.data();
       if (subData && hasActiveSubscription(subData.status)) {
         throw new HttpsError(
-          "failed-precondition", "구독 중에는 쿠폰을 사용할 수 없습니다"
+          "unavailable", "구독 중에는 쿠폰을 사용할 수 없습니다"
         );
       }
 
@@ -59,7 +59,7 @@ export const redeemCoupon = onCall<RedeemCouponRequest>(
       const overrideData = overrideDoc.data();
       if (overrideDoc.exists && overrideData?.type === "coupon_redeem") {
         throw new HttpsError(
-          "already-exists", "이미 쿠폰을 사용한 계정입니다"
+          "resource-exhausted", "이미 쿠폰을 사용한 계정입니다"
         );
       }
 

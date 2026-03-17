@@ -19,6 +19,7 @@ public struct CouponRedeemResult: Equatable, Sendable {
 public enum CouponError: Error, Equatable, Sendable {
   case notFound
   case alreadyRedeemed
+  case alreadyUsedByAccount
   case expired
   case activeSubscription
   case unknown(String)
@@ -27,6 +28,7 @@ public enum CouponError: Error, Equatable, Sendable {
     switch self {
     case .notFound: return "유효하지 않은 쿠폰 코드입니다"
     case .alreadyRedeemed: return "이미 사용된 쿠폰입니다"
+    case .alreadyUsedByAccount: return "이미 쿠폰을 사용한 계정입니다"
     case .expired: return "만료된 쿠폰입니다"
     case .activeSubscription: return "구독 중에는 쿠폰을 사용할 수 없습니다"
     case .unknown(let msg): return msg
@@ -101,10 +103,11 @@ extension CouponClient: DependencyKey {
             throw CouponError.notFound
           case .alreadyExists:
             throw CouponError.alreadyRedeemed
+          case .resourceExhausted:
+            throw CouponError.alreadyUsedByAccount
+          case .unavailable:
+            throw CouponError.activeSubscription
           case .failedPrecondition:
-            if error.localizedDescription.contains("구독") {
-              throw CouponError.activeSubscription
-            }
             throw CouponError.expired
           default:
             throw CouponError.unknown(error.localizedDescription)
