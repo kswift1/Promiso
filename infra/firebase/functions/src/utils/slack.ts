@@ -27,6 +27,9 @@ interface SubscriptionNotificationParams {
 
 /**
  * productId를 한글 플랜명으로 변환
+ *
+ * @param {string} productId 상품 ID
+ * @return {string} 한글 플랜명
  */
 function getPlanLabel(productId: string): string {
   if (productId.includes("monthly")) return "월간 구독";
@@ -38,11 +41,12 @@ function getPlanLabel(productId: string): string {
 /**
  * 신규 유료 구독 시 Slack 알림 전송
  *
- * @param {SubscriptionNotificationParams} params - 구독 정보
+ * @param {SubscriptionNotificationParams} params 구독 정보
+ * @return {Promise<void>}
  *
  * @remarks
  * - 프로덕션 환경에서만 실제 전송
- * - 전송 실패 시에도 에러를 throw하지 않음 (구독 처리 비차단)
+ * - 전송 실패 시에도 에러를 throw하지 않음
  */
 export async function sendSlackSubscriptionNotification(
   params: SubscriptionNotificationParams,
@@ -87,7 +91,11 @@ export async function sendSlackSubscriptionNotification(
       {
         type: "context",
         elements: [
-          {type: "mrkdwn", text: `⏰ ${now}  |  총 Pro 사용자: ${params.totalProUsers}명`},
+          {
+            type: "mrkdwn",
+            text: `⏰ ${now}  |  ` +
+              `총 Pro 사용자: ${params.totalProUsers}명`,
+          },
         ],
       },
     ],

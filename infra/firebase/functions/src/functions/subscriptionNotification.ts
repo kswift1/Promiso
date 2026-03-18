@@ -18,7 +18,10 @@ const DEFAULT_PRICES: Record<string, number> = {
 
 /**
  * productId에서 플랜 종류를 추출하여 가격을 반환한다.
- * Firestore admin/proPlanPrices 문서가 있으면 해당 가격을, 없으면 기본값을 사용한다.
+ *
+ * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
+ * @param {string} productId 상품 ID
+ * @return {Promise<number>} 가격
  */
 async function getPriceForProduct(
   db: FirebaseFirestore.Firestore,
@@ -26,13 +29,17 @@ async function getPriceForProduct(
 ): Promise<number> {
   let prices = DEFAULT_PRICES;
 
-  const priceDoc = await db.collection("admin").doc("proPlanPrices").get();
+  const priceDoc = await db
+    .collection("admin").doc("proPlanPrices").get();
   if (priceDoc.exists) {
     const data = priceDoc.data()!;
+    const m = data.monthly;
+    const y = data.yearly;
+    const l = data.lifetime;
     prices = {
-      monthly: typeof data.monthly === "number" ? data.monthly : DEFAULT_PRICES.monthly,
-      yearly: typeof data.yearly === "number" ? data.yearly : DEFAULT_PRICES.yearly,
-      lifetime: typeof data.lifetime === "number" ? data.lifetime : DEFAULT_PRICES.lifetime,
+      monthly: typeof m === "number" ? m : DEFAULT_PRICES.monthly,
+      yearly: typeof y === "number" ? y : DEFAULT_PRICES.yearly,
+      lifetime: typeof l === "number" ? l : DEFAULT_PRICES.lifetime,
     };
   }
 
@@ -43,10 +50,15 @@ async function getPriceForProduct(
 }
 
 /**
- * subscriptions/{uid} 변경 시 신규 Pro 구독 시작 여부를 감지하여 Slack 알림을 전송한다.
+ * subscriptions/{uid} 변경 시 신규 Pro 구독 시작을
+ * 감지하여 Slack 알림을 전송한다.
  */
 export const onSubscriptionWriteNotifySlack = onDocumentWritten(
-  {document: "subscriptions/{uid}", region: REGION, secrets: [SLACK_WEBHOOK_URL]},
+  {
+    document: "subscriptions/{uid}",
+    region: REGION,
+    secrets: [SLACK_WEBHOOK_URL],
+  },
   async (event) => {
     const uid = event.params.uid;
     if (!uid) return;
@@ -54,41 +66,45 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
     const beforeData = event.data?.before?.data();
     const afterData = event.data?.after?.data();
 
-    // after가 없거나 status가 활성 상태가 아니면 스킵
     if (!afterData) return;
 
-    const afterStatus: string = typeof afterData.status === "string" ? afterData.status : "";
+    const afterStatus: string =
+      typeof afterData.status === "string" ?
+        afterData.status : "";
     const beforeStatus: string =
-      typeof beforeData?.status === "string" ? beforeData.status : "";
+      typeof beforeData?.status === "string" ?
+        beforeData.status : "";
 
     const isAfterActive = ACTIVE_STATUSES.includes(afterStatus);
     const isBeforeActive = ACTIVE_STATUSES.includes(beforeStatus);
 
-    // 신규 구독 시작이 아니면 스킵 (이미 활성 상태였거나 비활성으로 변경된 경우)
+    // 신규 구독 시작이 아니면 스킵
     if (!isAfterActive || isBeforeActive) return;
 
     try {
       const db = admin.firestore();
 
-      // 사용자 닉네임 조회
-      const userDoc = await db.collection("users").doc(uid).get();
+      const userDoc = await db
+        .collection("users").doc(uid).get();
+      const userData = userDoc.data();
       const nickname: string =
-        typeof userDoc.data()?.nickname === "string" ?
-          userDoc.data()!.nickname :
-          uid;
+        typeof userData?.nickname === "string" ?
+          userData.nickname : uid;
 
-      // 총 Pro 사용자 수 카운트
-      const proCountSnapshot = await db
+      const proSnap = await db
         .collection("entitlements")
         .where("hasPro", "==", true)
         .count()
         .get();
-      const totalProUsers = proCountSnapshot.data().count;
+      const totalProUsers = proSnap.data().count;
 
       const productId: string =
-        typeof afterData.productId === "string" ? afterData.productId : "";
+        typeof afterData.productId === "string" ?
+          afterData.productId : "";
 
-      const price = await getPriceForProduct(db, productId);
+      const price = await getPriceForProduct(
+        db, productId,
+      );
 
       await sendSlackSubscriptionNotification({
         uid,
@@ -99,7 +115,10 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
         totalProUsers,
       });
     } catch (error) {
-      console.error(`[SubscriptionNotification] uid=${uid} 처리 중 오류:`, error);
+      console.error(
+        `[SubscriptionNotification] uid=${uid}`,
+        error,
+      );
     }
   },
 );
