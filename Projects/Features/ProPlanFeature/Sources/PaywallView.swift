@@ -34,6 +34,7 @@ extension ProPlan {
 
     @State private var isPricingExpanded = false
     @State private var hasAutoExpanded = false
+    @State private var showOfferCodeRedemption = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -91,7 +92,15 @@ extension ProPlan {
       .onDisappear {
         store.send(.view(.paywallDisappeared))
       }
-      .offerCodeRedemption(isPresented: $store.showOfferCodeRedemption.sending(\.view.setOfferCodePresented))
+      .offerCodeRedemption(isPresented: $showOfferCodeRedemption)
+      .onChange(of: store.showOfferCodeRedemption) { _, newValue in
+        showOfferCodeRedemption = newValue
+      }
+      .onChange(of: showOfferCodeRedemption) { _, newValue in
+        if store.showOfferCodeRedemption != newValue {
+          store.send(.view(.setOfferCodePresented(newValue)))
+        }
+      }
     }
 
     // MARK: - Hero
@@ -373,23 +382,26 @@ extension ProPlan {
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
 
-        Button {
-          store.send(.view(.restoreTapped))
-        } label: {
-          Text(LocalizedStrings.ProPlan.restorePurchases)
-            .font(.caption)
-            .foregroundStyle(Color.pmtext.secondary)
-            .underline()
-        }
-        .disabled(store.isPurchasing)
+        HStack(spacing: 12) {
+          Button {
+            store.send(.view(.restoreTapped))
+          } label: {
+            Text(LocalizedStrings.ProPlan.restorePurchases)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
 
-        Button {
-          store.send(.view(.offerCodeTapped))
-        } label: {
-          Text(LocalizedStrings.ProPlan.redeemOfferCode)
+          Text("·")
             .font(.caption)
-            .foregroundStyle(Color.pmtext.secondary)
-            .underline()
+            .foregroundStyle(Color.pmgray.n400)
+
+          Button {
+            store.send(.view(.offerCodeTapped))
+          } label: {
+            Text(LocalizedStrings.ProPlan.redeemOfferCode)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
         }
         .disabled(store.isPurchasing)
       }

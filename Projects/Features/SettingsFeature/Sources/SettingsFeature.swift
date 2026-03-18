@@ -85,8 +85,6 @@ extension Settings {
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) public var defaultScheduleTabMode: String = "group"
       /// 구독 상태 (RootTab에서 전달)
       public var subscriptionStatus: SubscriptionStatus = .none
-      /// Apple Offer Code Redemption sheet 표시 여부
-      public var showOfferCodeRedemption: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -221,10 +219,6 @@ extension Settings {
       case defaultScheduleTabModeChanged(String)
       /// 토스트 닫힘
       case toastDismissed
-      /// Apple Offer Code 사용 버튼 탭
-      case offerCodeTapped
-      /// Apple Offer Code Redemption sheet 닫기
-      case setOfferCodePresented(Bool)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -475,13 +469,6 @@ extension Settings {
             state.toastMessage = nil
             return .none
 
-          case .offerCodeTapped:
-            state.showOfferCodeRedemption = true
-            return .none
-
-          case .setOfferCodePresented(let isPresented):
-            state.showOfferCodeRedemption = isPresented
-            return .none
           }
 
         // MARK: - Internal Actions

@@ -109,15 +109,6 @@ extension Settings {
             .onAppear { startBenefitRotation() }
             .onDisappear { stopBenefitRotation() }
 
-            Button {
-              store.send(.view(.offerCodeTapped))
-            } label: {
-              Text(LocalizedStrings.ProPlan.redeemOfferCode)
-                .font(.caption)
-                .foregroundStyle(Color.pmtext.secondary)
-                .underline()
-            }
-            .buttonStyle(.plain)
           }
 
           // MARK: - 앱 설정 섹션
@@ -521,7 +512,6 @@ extension Settings {
         )
         .presentationBackground(.black)
       }
-      .offerCodeRedemption(isPresented: $store.showOfferCodeRedemption.sending(\.view.setOfferCodePresented))
     }
 
     // MARK: - Loading Overlay
