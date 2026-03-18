@@ -37,7 +37,6 @@ extension Settings {
 
     @Dependency(\.authClient) private var authClient
     @Dependency(\.userProfileClient) private var userProfileClient
-    @Dependency(\.couponClient) private var couponClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
 
     /// Reducer를 위한 기본 initializer
@@ -86,16 +85,6 @@ extension Settings {
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) public var defaultScheduleTabMode: String = "group"
       /// 구독 상태 (RootTab에서 전달)
       public var subscriptionStatus: SubscriptionStatus = .none
-      /// 쿠폰 입력 시트 표시 여부
-      public var showCouponSheet: Bool = false
-      /// 쿠폰 코드 입력값
-      public var couponCode: String = ""
-      /// 쿠폰 적용 중 로딩
-      public var isRedeemingCoupon: Bool = false
-      /// 쿠폰 결과 메시지
-      public var couponResultMessage: String?
-      /// 쿠폰 결과 성공 여부
-      public var couponResultIsSuccess: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -230,14 +219,6 @@ extension Settings {
       case defaultScheduleTabModeChanged(String)
       /// 토스트 닫힘
       case toastDismissed
-      /// 쿠폰 입력 버튼 탭
-      case couponTapped
-      /// 쿠폰 코드 변경
-      case couponCodeChanged(String)
-      /// 쿠폰 적용 버튼 탭
-      case redeemCouponTapped
-      /// 쿠폰 시트 닫기
-      case couponSheetDismissed
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -257,10 +238,6 @@ extension Settings {
       case profileSaveCompleted(UserPrivateModel)
       /// 프로필 저장 실패
       case profileSaveFailed(String)
-      /// 쿠폰 적용 성공
-      case couponRedeemSucceeded(Int)
-      /// 쿠폰 적용 실패
-      case couponRedeemFailed(String)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -385,37 +362,6 @@ extension Settings {
             ))
             return .run { _ in await hapticFeedback.selection() }
           #endif
-
-          // MARK: - Coupon View Actions
-
-          case .couponTapped:
-            state.showCouponSheet = true
-            state.couponCode = ""
-            state.couponResultMessage = nil
-            return .run { _ in await hapticFeedback.selection() }
-
-          case .couponCodeChanged(let code):
-            state.couponCode = code
-            return .none
-
-          case .redeemCouponTapped:
-            let code = state.couponCode.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !code.isEmpty else { return .none }
-            state.isRedeemingCoupon = true
-            state.couponResultMessage = nil
-            return .run { send in
-              do {
-                let result = try await couponClient.redeemCoupon(code)
-                await send(.internal(.couponRedeemSucceeded(result.durationDays)))
-              } catch {
-                let message = (error as? CouponError)?.localizedDescription ?? "쿠폰 적용에 실패했습니다"
-                await send(.internal(.couponRedeemFailed(message)))
-              }
-            }
-
-          case .couponSheetDismissed:
-            state.showCouponSheet = false
-            return .none
 
           // MARK: - Profile Edit View Actions
 
@@ -578,20 +524,6 @@ extension Settings {
               await hapticFeedback.error()
             }
 
-          // MARK: - Coupon Internal Actions
-
-          case .couponRedeemSucceeded(let days):
-            state.isRedeemingCoupon = false
-            state.couponResultMessage = "Pro 플랜이 \(days)일 동안 활성화되었습니다!"
-            state.couponResultIsSuccess = true
-            state.couponCode = ""
-            return .run { _ in await hapticFeedback.success() }
-
-          case .couponRedeemFailed(let message):
-            state.isRedeemingCoupon = false
-            state.couponResultMessage = message
-            state.couponResultIsSuccess = false
-            return .run { _ in await hapticFeedback.error() }
           }
 
         // MARK: - Delegate Actions
