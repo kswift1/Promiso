@@ -19,7 +19,7 @@ extension AppEntry {
       var nickname: String
       var phase: Phase = .idle
       var calendarGroups: [CalendarGroup] = []
-      var selectedCalendarNames: Set<String> = []
+      var selectedEventIds: Set<String> = []
       var expandedCalendarNames: Set<String> = []
       var importProgress: Int = 0
       var importTotal: Int = 0
@@ -35,8 +35,7 @@ extension AppEntry {
       }
 
       var selectedEventCount: Int {
-        calendarGroups.filter { selectedCalendarNames.contains($0.calendarName) }
-          .reduce(0) { $0 + $1.eventCount }
+        selectedEventIds.count
       }
 
       public init(nickname: String) {
@@ -58,6 +57,7 @@ extension AppEntry {
         case laterTapped
         case calendarToggled(String)
         case calendarExpandToggled(String)
+        case eventToggled(String)
         case confirmImportTapped
         case startTapped
       }
@@ -100,10 +100,13 @@ extension AppEntry {
             return .send(.delegate(.completed(nil)))
 
           case .calendarToggled(let name):
-            if state.selectedCalendarNames.contains(name) {
-              state.selectedCalendarNames.remove(name)
+            guard let group = state.calendarGroups.first(where: { $0.calendarName == name }) else { return .none }
+            let groupEventIds = Set(group.events.map(\.id))
+            let allSelected = groupEventIds.isSubset(of: state.selectedEventIds)
+            if allSelected {
+              state.selectedEventIds.subtract(groupEventIds)
             } else {
-              state.selectedCalendarNames.insert(name)
+              state.selectedEventIds.formUnion(groupEventIds)
             }
             return .none
 
@@ -115,10 +118,18 @@ extension AppEntry {
             }
             return .none
 
+          case .eventToggled(let eventId):
+            if state.selectedEventIds.contains(eventId) {
+              state.selectedEventIds.remove(eventId)
+            } else {
+              state.selectedEventIds.insert(eventId)
+            }
+            return .none
+
           case .confirmImportTapped:
             let selectedEvents = state.calendarGroups
-              .filter { state.selectedCalendarNames.contains($0.calendarName) }
               .flatMap(\.events)
+              .filter { state.selectedEventIds.contains($0.id) }
 
             guard !selectedEvents.isEmpty else {
               return .send(.delegate(.completed(CalendarImportResult(totalImported: 0, thisWeekCount: 0))))
@@ -197,14 +208,19 @@ extension AppEntry {
             }
 
           case .eventsFetched(let events):
-            let groups = CalendarGroup.groupBy(events)
+            let filteredEvents = events.filter { event in
+              let name = event.calendarName.lowercased()
+              return name != "birthdays" && name != "생일"
+            }
+            let groups = CalendarGroup.groupBy(filteredEvents)
 
             guard !groups.isEmpty else {
               return .send(.delegate(.completed(CalendarImportResult(totalImported: 0, thisWeekCount: 0))))
             }
 
             state.calendarGroups = groups
-            state.selectedCalendarNames = Set(groups.map(\.calendarName))
+            state.selectedEventIds = Set(filteredEvents.map(\.id))
+            state.expandedCalendarNames = Set(groups.map(\.calendarName))
             state.phase = .selecting
             return .none
 

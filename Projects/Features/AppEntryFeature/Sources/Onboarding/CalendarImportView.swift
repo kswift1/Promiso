@@ -14,7 +14,8 @@ extension AppEntry.CalendarImport {
       self.store = store
     }
 
-    @SwiftUI.State private var showEmoji: Bool = false
+    @SwiftUI.State private var cardsScattered: Bool = true
+    @SwiftUI.State private var cardsGathered: Bool = false
     @SwiftUI.State private var showContent: Bool = false
     @SwiftUI.State private var showButtons: Bool = false
 
@@ -48,35 +49,37 @@ extension AppEntry.CalendarImport {
     }
 
     private var selectingLayoutView: some SwiftUI.View {
-      VStack(spacing: 0) {
-        ScrollView {
-          selectingPhaseView
-            .padding(.top, 60)
-            .padding(.bottom, 100)
-        }
-
-        // 하단 고정 버튼 + 그라데이션
+      ScrollView {
+        selectingPhaseView
+          .padding(.top, 60)
+          .padding(.bottom, 100)
+      }
+      .safeAreaInset(edge: .bottom) {
         VStack(spacing: 0) {
-          GlassActionButton(
-            title: "가져오기 (\(store.selectedEventCount)개)",
-            isPrimary: true,
-            isEnabled: store.selectedEventCount > 0,
-            action: { store.send(.view(.confirmImportTapped)) }
-          )
-          .padding(.horizontal, 24)
-          .padding(.vertical, 16)
-        }
-        .overlay(alignment: .top) {
           LinearGradient(
-            colors: [Color.black.opacity(0), Color.black.opacity(0.15)],
+            colors: [
+              Color(.systemBackground).opacity(0),
+              Color(.systemBackground).opacity(0.6),
+              Color(.systemBackground).opacity(0.95)
+            ],
             startPoint: .top,
             endPoint: .bottom
           )
-          .frame(height: 24)
-          .offset(y: -24)
+          .frame(height: 40)
           .allowsHitTesting(false)
+
+          VStack(spacing: 0) {
+            GlassActionButton(
+              title: "가져오기 (\(store.selectedEventCount)개)",
+              isPrimary: true,
+              isEnabled: store.selectedEventCount > 0,
+              action: { store.send(.view(.confirmImportTapped)) }
+            )
+          }
+          .padding(.horizontal, 24)
+          .padding(.vertical, 16)
+          .background(Color(.systemBackground).opacity(0.95))
         }
-        .padding(.bottom, UIScreen.main.bounds.height < 700 ? 8 : 24)
       }
     }
 
@@ -87,12 +90,10 @@ extension AppEntry.CalendarImport {
       switch store.phase {
       case .idle:
         idlePhaseView
-      case .requesting, .scanning:
+      case .requesting, .scanning, .uploading:
         loadingPhaseView
       case .selecting:
         selectingPhaseView
-      case .uploading:
-        uploadingPhaseView
       case .success(let result):
         successPhaseView(result: result)
       case .completed:
@@ -103,18 +104,15 @@ extension AppEntry.CalendarImport {
     // MARK: - Idle Phase
 
     private var idlePhaseView: some SwiftUI.View {
-      VStack(spacing: 20) {
-        if showEmoji {
-          Text("📅")
-            .font(.system(size: 72))
-            .transition(.scale.combined(with: .opacity))
-        }
+      VStack(spacing: 24) {
+        sampleCardsView
 
         if showContent {
           VStack(spacing: 10) {
             Text("먼저 기존 일정을 확인할게요")
               .font(.largeTitle.bold())
               .foregroundStyle(Color.pmtext.primary)
+              .multilineTextAlignment(.center)
 
             Text("Apple Calendar에 있는 일정을 가져오면\n홈에서 모든 약속을 한눈에 볼 수 있어요")
               .font(.title3)
@@ -125,7 +123,84 @@ extension AppEntry.CalendarImport {
           .transition(.opacity.combined(with: .offset(y: 12)))
         }
       }
-      .padding(.horizontal, 20)
+      .padding(.horizontal, 40)
+    }
+
+    private var sampleCardsView: some SwiftUI.View {
+      ZStack {
+        // 좌상단에서 모여옴
+        sampleEventCard(emoji: "☕️", title: "카페 모임", time: "오후 3:00", location: "스타벅스")
+          .offset(
+            x: cardsGathered ? 0 : -140,
+            y: cardsGathered ? -70 : -180
+          )
+          .rotationEffect(.degrees(cardsGathered ? -2 : -12))
+          .scaleEffect(cardsGathered ? 1 : 0.85)
+          .opacity(cardsScattered ? 0 : (cardsGathered ? 1 : 0.6))
+
+        // 우측에서 모여옴
+        sampleEventCard(emoji: "💼", title: "프로젝트 회의", time: "오전 10:00", location: nil)
+          .offset(
+            x: cardsGathered ? 0 : 150,
+            y: cardsGathered ? 0 : -40
+          )
+          .rotationEffect(.degrees(cardsGathered ? 1 : 8))
+          .scaleEffect(cardsGathered ? 1 : 0.85)
+          .opacity(cardsScattered ? 0 : (cardsGathered ? 1 : 0.6))
+
+        // 하단에서 모여옴
+        sampleEventCard(emoji: "🍽️", title: "점심 약속", time: "오후 12:30", location: "강남역")
+          .offset(
+            x: cardsGathered ? 0 : 60,
+            y: cardsGathered ? 70 : 200
+          )
+          .rotationEffect(.degrees(cardsGathered ? 2 : 15))
+          .scaleEffect(cardsGathered ? 1 : 0.85)
+          .opacity(cardsScattered ? 0 : (cardsGathered ? 1 : 0.6))
+      }
+      .frame(height: 220)
+    }
+
+    private func sampleEventCard(
+      emoji: String,
+      title: String,
+      time: String,
+      location: String?
+    ) -> some SwiftUI.View {
+      HStack(alignment: .top, spacing: 12) {
+        Text(emoji)
+          .font(.system(size: 28))
+
+        VStack(alignment: .leading, spacing: 3) {
+          Text(title)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Color.pmtext.primary)
+
+          HStack(spacing: 10) {
+            HStack(spacing: 3) {
+              Image(systemName: "clock")
+                .font(.system(size: 9))
+              Text(time)
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(Color.pmtext.secondary)
+
+            if let location {
+              HStack(spacing: 3) {
+                Image(systemName: "mappin")
+                  .font(.system(size: 9))
+                Text(location)
+              }
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+            }
+          }
+        }
+
+        Spacer()
+      }
+      .padding(12)
+      .staticGlassBackground(cornerRadius: 14)
     }
 
     // MARK: - Loading Phase
@@ -147,7 +222,7 @@ extension AppEntry.CalendarImport {
     private var selectingPhaseView: some SwiftUI.View {
       VStack(spacing: 20) {
         VStack(spacing: 8) {
-          Text("가져올 캘린더를 선택해주세요")
+          Text("가져올 일정을 선택해주세요")
             .font(.title2.bold())
             .foregroundStyle(Color.pmtext.primary)
           Text("Apple Calendar에 있는 일정이에요")
@@ -159,29 +234,16 @@ extension AppEntry.CalendarImport {
           ForEach(store.calendarGroups) { group in
             CalendarGroupRow(
               group: group,
-              isSelected: store.selectedCalendarNames.contains(group.calendarName),
+              selectedEventIds: store.selectedEventIds,
               isExpanded: store.expandedCalendarNames.contains(group.calendarName),
-              onTap: { store.send(.view(.calendarExpandToggled(group.calendarName))) },
-              onToggle: { store.send(.view(.calendarToggled(group.calendarName))) }
+              onExpandToggle: { store.send(.view(.calendarExpandToggled(group.calendarName))) },
+              onSectionToggle: { store.send(.view(.calendarToggled(group.calendarName))) },
+              onEventToggle: { eventId in store.send(.view(.eventToggled(eventId))) }
             )
           }
         }
         .padding(.horizontal, 8)
-      }
-    }
-
-    // MARK: - Uploading Phase
-
-    private var uploadingPhaseView: some SwiftUI.View {
-      VStack(spacing: 16) {
-        ProgressView(value: Double(store.importProgress), total: Double(store.importTotal))
-          .progressViewStyle(.linear)
-          .tint(Color.pmsuccess.n500)
-          .frame(width: 200)
-
-        Text("\(store.importProgress)/\(store.importTotal)개 가져오는 중...")
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.expandedCalendarNames)
       }
     }
 
@@ -242,11 +304,14 @@ extension AppEntry.CalendarImport {
             )
             .transition(.opacity.combined(with: .offset(y: 16)))
 
-            GlassActionButton(
-              title: "나중에",
-              isPrimary: false,
-              action: { store.send(.view(.laterTapped)) }
-            )
+            Button {
+              store.send(.view(.laterTapped))
+            } label: {
+              Text("나중에")
+                .font(.body)
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+            .buttonStyle(.plain)
             .transition(.opacity.combined(with: .offset(y: 16)))
           }
         }
@@ -264,17 +329,26 @@ extension AppEntry.CalendarImport {
     // MARK: - Animation Sequence
 
     private func runAnimationSequence() async {
+      // 1) 카드 흩어진 상태로 페이드인
       try? await Task.sleep(for: .seconds(0.3))
-      withAnimation(.spring(response: 0.7, dampingFraction: 0.6)) {
-        showEmoji = true
+      withAnimation(.easeOut(duration: 0.5)) {
+        cardsScattered = false
       }
 
+      // 2) 흩어진 카드가 중앙으로 모여듦
+      try? await Task.sleep(for: .seconds(0.6))
+      withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) {
+        cardsGathered = true
+      }
+
+      // 3) 텍스트 등장
       try? await Task.sleep(for: .seconds(0.5))
       withAnimation(.easeOut(duration: 0.65)) {
         showContent = true
       }
 
-      try? await Task.sleep(for: .seconds(0.6))
+      // 4) 버튼 등장
+      try? await Task.sleep(for: .seconds(0.5))
       withAnimation(.easeOut(duration: 0.55)) {
         showButtons = true
       }
@@ -286,10 +360,23 @@ extension AppEntry.CalendarImport {
 
 private struct CalendarGroupRow: SwiftUI.View {
   let group: CalendarGroup
-  let isSelected: Bool
+  let selectedEventIds: Set<String>
   let isExpanded: Bool
-  let onTap: () -> Void
-  let onToggle: () -> Void
+  let onExpandToggle: () -> Void
+  let onSectionToggle: () -> Void
+  let onEventToggle: (String) -> Void
+
+  private var groupEventIds: Set<String> {
+    Set(group.events.map(\.id))
+  }
+
+  private var allSelected: Bool {
+    groupEventIds.isSubset(of: selectedEventIds)
+  }
+
+  private var someSelected: Bool {
+    !groupEventIds.isDisjoint(with: selectedEventIds)
+  }
 
   var body: some SwiftUI.View {
     VStack(spacing: 0) {
@@ -314,8 +401,8 @@ private struct CalendarGroupRow: SwiftUI.View {
         Spacer()
 
         Toggle("", isOn: Binding(
-          get: { isSelected },
-          set: { _ in onToggle() }
+          get: { allSelected },
+          set: { _ in onSectionToggle() }
         ))
         .labelsHidden()
         .tint(Color.pmsuccess.n500)
@@ -323,49 +410,47 @@ private struct CalendarGroupRow: SwiftUI.View {
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .contentShape(Rectangle())
-      .onTapGesture(perform: onTap)
+      .onTapGesture(perform: onExpandToggle)
 
       if isExpanded {
-        expandedEventsView
+        VStack(spacing: 8) {
+          ForEach(group.events, id: \.id) { event in
+            CalendarEventCard(
+              event: event,
+              isSelected: selectedEventIds.contains(event.id),
+              onToggle: { onEventToggle(event.id) }
+            )
+          }
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
+        .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
     .background(Color.pmsurface.glass.opacity(0.3))
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
-
-  @ViewBuilder
-  private var expandedEventsView: some SwiftUI.View {
-    VStack(spacing: 8) {
-      ForEach(Array(group.events.prefix(5)), id: \.id) { event in
-        CalendarEventCardRow(event: event)
-      }
-      if group.eventCount > 5 {
-        Text("외 \(group.eventCount - 5)개")
-          .font(.caption)
-          .foregroundStyle(Color.pmtext.secondary)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 4)
-      }
-    }
-    .padding(.horizontal, 12)
-    .padding(.bottom, 12)
-    .transition(.opacity.combined(with: .move(edge: .top)))
-  }
 }
 
-// MARK: - CalendarEventCardRow
+// MARK: - CalendarEventCard
 
-private struct CalendarEventCardRow: SwiftUI.View {
+private struct CalendarEventCard: SwiftUI.View {
   let event: CalendarEvent
+  let isSelected: Bool
+  let onToggle: () -> Void
 
   var body: some SwiftUI.View {
-    HStack(alignment: .top, spacing: 10) {
+    HStack(spacing: 12) {
+      Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+        .font(.title3)
+        .foregroundStyle(isSelected ? Color.pmsuccess.n500 : Color.pmgray.n300)
+
       Text(event.displayEmoji ?? "📅")
-        .font(.system(size: 28))
+        .font(.system(size: 44))
 
       VStack(alignment: .leading, spacing: 4) {
         Text(event.displayTitle)
-          .font(.subheadline.weight(.medium))
+          .font(.system(size: 16, weight: .semibold))
           .foregroundStyle(Color.pmtext.primary)
           .lineLimit(1)
 
@@ -391,9 +476,10 @@ private struct CalendarEventCardRow: SwiftUI.View {
 
       Spacer()
     }
-    .padding(10)
-    .background(Color.pmsurface.glass.opacity(0.2))
-    .clipShape(RoundedRectangle(cornerRadius: 10))
+    .padding(16)
+    .adaptiveGlassBackground(cornerRadius: 16)
+    .contentShape(Rectangle())
+    .onTapGesture(perform: onToggle)
   }
 }
 
@@ -425,7 +511,7 @@ private struct CalendarEventCardRow: SwiftUI.View {
         var state = AppEntry.CalendarImport.State(nickname: "성원")
         state.phase = .selecting
         state.calendarGroups = groups
-        state.selectedCalendarNames = Set(groups.map(\.calendarName))
+        state.selectedEventIds = Set(groups.flatMap(\.events).map(\.id))
         return state
       }()
     ) {
