@@ -302,6 +302,43 @@ struct FeatureTests {
 - CRUD + Real-time (`AsyncStream`) 분리
 - Firestore 스키마: `.ai/FIRESTORE_SCHEMA.md` 참조
 
+### Functions 코드 규칙 (Google ESLint + max-len 80)
+
+`infra/firebase/functions/` 코드는 `google` ESLint 프리셋을 사용한다. 코드 생성 시 아래를 반드시 준수:
+
+| 규칙 | 설명 |
+|------|------|
+| **max-len 80** | 모든 줄 80자 이내. 긴 문자열은 `+` 연결 또는 줄바꿈 |
+| **valid-jsdoc** | export 함수 및 주요 함수에 `@param`, `@return` JSDoc 필수 |
+| **quotes: double** | 쌍따옴표(`"`) 사용 |
+| **indent: 2** | 2칸 들여쓰기 |
+
+```typescript
+// ✅ Good — 80자 이내, JSDoc 완비
+/**
+ * 가격을 반환한다.
+ *
+ * @param {string} productId 상품 ID
+ * @return {number} 가격
+ */
+function getPrice(productId: string): number {
+  const label = "long text " +
+    "continuation";
+  return 0;
+}
+
+// ❌ Bad — 80자 초과, JSDoc 누락
+function getPrice(productId: string): number {
+  const label = "this is a very long string that exceeds the eighty character limit";
+  return 0;
+}
+```
+
+**배포 전 검증 필수:**
+```bash
+cd infra/firebase/functions && npm run lint
+```
+
 ### 문서 정합
 - API 변경 시 OpenAPI (`infra/firebase/functions/openapi.yaml`) 반영
 - Firestore 변경 시 `.ai/FIRESTORE_SCHEMA.md` 반영
