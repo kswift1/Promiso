@@ -9,5 +9,4 @@ public protocol RecurringPersonalEventRemoteDataSourceProtocol: Sendable {
   func deleteEvent(id: String) async throws
   func getEvent(id: String) async throws -> RecurringPersonalEventModel?
   func getAllEvents() async throws -> [RecurringPersonalEventModel]
-  func subscribeToAllEvents() async -> AsyncStream<[RecurringPersonalEventModel]>
 }
