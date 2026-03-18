@@ -91,6 +91,7 @@ extension ProPlan {
       .onDisappear {
         store.send(.view(.paywallDisappeared))
       }
+      .offerCodeRedemption(isPresented: $store.showOfferCodeRedemption.sending(\.view.setOfferCodePresented))
     }
 
     // MARK: - Hero
@@ -376,6 +377,16 @@ extension ProPlan {
           store.send(.view(.restoreTapped))
         } label: {
           Text(LocalizedStrings.ProPlan.restorePurchases)
+            .font(.caption)
+            .foregroundStyle(Color.pmtext.secondary)
+            .underline()
+        }
+        .disabled(store.isPurchasing)
+
+        Button {
+          store.send(.view(.offerCodeTapped))
+        } label: {
+          Text(LocalizedStrings.ProPlan.redeemOfferCode)
             .font(.caption)
             .foregroundStyle(Color.pmtext.secondary)
             .underline()
