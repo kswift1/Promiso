@@ -96,6 +96,11 @@ extension ProPlan {
       .onChange(of: store.showOfferCodeRedemption) { _, newValue in
         showOfferCodeRedemption = newValue
       }
+      .onChange(of: showOfferCodeRedemption) { _, newValue in
+        if store.showOfferCodeRedemption != newValue {
+          store.send(.view(.setOfferCodePresented(newValue)))
+        }
+      }
     }
 
     // MARK: - Hero
