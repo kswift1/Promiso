@@ -46,6 +46,8 @@ extension ScheduleDetail {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       var groupCalendarSyncCache: [String: Bool] = [:]
 
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       // 멤버 시트 상태
       var memberSheet: MemberSheetState?
 
@@ -516,6 +518,7 @@ extension ScheduleDetail {
             return .none
 
           case .fetchWeather:
+            guard state.isPro else { return .none }
             guard let lat = state.schedule.location?.latitude,
                   let lng = state.schedule.location?.longitude,
                   !state.schedule.isPast else {
