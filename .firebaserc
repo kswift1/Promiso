@@ -12,6 +12,13 @@
           "promiso-stage-admin"
         ]
       }
+    },
+    "promiso-prod": {
+      "hosting": {
+        "admin-console": [
+          "promiso-prod-admin"
+        ]
+      }
     }
   },
   "etags": {}
