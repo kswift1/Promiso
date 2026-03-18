@@ -132,6 +132,9 @@ export {
   verifyPurchase,
   appleServerNotification,
 } from "./functions/subscription";
+export {
+  onSubscriptionWriteNotifySlack,
+} from "./functions/subscriptionNotification";
 
 // ============================================================================
 // Admin Functions (운영 콘솔)
