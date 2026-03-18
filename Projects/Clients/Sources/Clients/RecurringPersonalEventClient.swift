@@ -75,8 +75,6 @@ public struct RecurringPersonalEventClient: Sendable {
   /// 반복 일정 전체 조회
   public var getAllEvents: @Sendable () async throws -> [RecurringPersonalEventModel]
 
-  /// 반복 일정 전체 실시간 구독
-  public var subscribeToAllEvents: @Sendable () async -> AsyncStream<[RecurringPersonalEventModel]> = { AsyncStream { _ in } }
 }
 
 // MARK: - Test & Preview Values
@@ -96,15 +94,7 @@ extension RecurringPersonalEventClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.5))
     },
     getEvent: { _ in nil },
-    getAllEvents: { [.mock()] },
-    subscribeToAllEvents: {
-      AsyncStream { continuation in
-        Task {
-          try? await Task.sleep(for: .seconds(0.5))
-          continuation.yield([.mock()])
-        }
-      }
-    }
+    getAllEvents: { [.mock()] }
   )
 }
 
@@ -161,9 +151,6 @@ extension RecurringPersonalEventClient: DependencyKey {
         } catch {
           throw RecurringPersonalEventClientError(from: error)
         }
-      },
-      subscribeToAllEvents: {
-        await dataSource.subscribeToAllEvents()
       }
     )
   }()

@@ -108,6 +108,16 @@ extension Settings {
             .adaptiveGlassCard()
             .onAppear { startBenefitRotation() }
             .onDisappear { stopBenefitRotation() }
+
+            Button {
+              store.send(.view(.offerCodeTapped))
+            } label: {
+              Text(LocalizedStrings.ProPlan.redeemOfferCode)
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
+                .underline()
+            }
+            .buttonStyle(.plain)
           }
 
           // MARK: - 앱 설정 섹션
@@ -345,35 +355,6 @@ extension Settings {
             .adaptiveGlassCard()
           }
 
-          // MARK: - 쿠폰 섹션 (비구독자만 노출 — C-12, C-13)
-          if !store.subscriptionStatus.isPro {
-            Button {
-              store.send(.view(.couponTapped))
-            } label: {
-              HStack(spacing: 16) {
-                Image(systemName: "ticket.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 24, height: 24)
-
-                Text("쿠폰 코드 입력")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .adaptiveGlassCard()
-          }
-
           // MARK: - 지원 섹션
           Button {
             store.send(.view(.supportTapped))
@@ -525,14 +506,6 @@ extension Settings {
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .sheet(
-        isPresented: Binding(
-          get: { store.showCouponSheet },
-          set: { if !$0 { store.send(.view(.couponSheetDismissed)) } }
-        )
-      ) {
-        Settings.CouponRedeemSheet(store: store)
-      }
       .fullScreenCover(
         isPresented: Binding(
           get: { store.showImageDetail },
@@ -548,6 +521,7 @@ extension Settings {
         )
         .presentationBackground(.black)
       }
+      .offerCodeRedemption(isPresented: $store.showOfferCodeRedemption.sending(\.view.setOfferCodePresented))
     }
 
     // MARK: - Loading Overlay
@@ -646,83 +620,6 @@ extension Settings {
     /// 앱 버전 정보
     private var appVersion: String {
       Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-    }
-  }
-}
-
-// MARK: - Coupon Redeem Sheet
-
-extension Settings {
-  struct CouponRedeemSheet: View {
-    @Bindable var store: StoreOf<Feature>
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-      NavigationStack {
-        VStack(spacing: 24) {
-          VStack(spacing: 8) {
-            Image(systemName: "ticket.fill")
-              .font(.system(size: 40))
-              .foregroundStyle(Color.pmindigo.n500)
-
-            Text("쿠폰 코드 입력")
-              .font(.title2)
-              .fontWeight(.bold)
-
-            Text("Pro 플랜 체험 쿠폰 코드를 입력해주세요")
-              .font(.subheadline)
-              .foregroundStyle(.secondary)
-          }
-          .padding(.top, 20)
-
-          TextField("쿠폰 코드", text: Binding(
-            get: { store.couponCode },
-            set: { store.send(.view(.couponCodeChanged($0))) }
-          ))
-          .textFieldStyle(.roundedBorder)
-          .textInputAutocapitalization(.characters)
-          .autocorrectionDisabled()
-          .focused($isFocused)
-          .padding(.horizontal, 20)
-
-          if let message = store.couponResultMessage {
-            Text(message)
-              .font(.subheadline)
-              .foregroundStyle(store.couponResultIsSuccess ? Color.pmsuccess.n500 : Color.pmerror.n500)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal, 20)
-          }
-
-          Button {
-            store.send(.view(.redeemCouponTapped))
-          } label: {
-            if store.isRedeemingCoupon {
-              ProgressView()
-                .tint(.white)
-            } else {
-              Text("적용하기")
-            }
-          }
-          .buttonStyle(.borderedProminent)
-          .tint(Color.pmindigo.n500)
-          .disabled(
-            store.couponCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || store.isRedeemingCoupon
-          )
-          .padding(.horizontal, 20)
-
-          Spacer()
-        }
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("닫기") {
-              store.send(.view(.couponSheetDismissed))
-            }
-          }
-        }
-      }
-      .presentationDetents([.medium])
-      .onAppear { isFocused = true }
     }
   }
 }

@@ -100,6 +100,8 @@ extension ProPlan {
       public var entitlementInfo: ProEntitlementInfo = .empty
       /// 온보딩 설정: 브리핑 기본 위치
       public var onboardingDefaultLocation: LocationInfoModel? = nil
+      /// Apple Offer Code Redemption sheet 표시 여부
+      public var showOfferCodeRedemption: Bool = false
       /// LocationPicker sheet
       @Presents public var locationPicker: LocationPicker.Feature.State?
       /// State를 위한 기본 initializer
@@ -187,6 +189,10 @@ extension ProPlan {
       case onboardingDefaultLocationTapped
       /// 온보딩 기본 위치 제거
       case onboardingRemoveDefaultLocation
+      /// Apple Offer Code 사용 버튼 탭
+      case offerCodeTapped
+      /// Apple Offer Code Redemption sheet 닫기
+      case setOfferCodePresented(Bool)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -492,6 +498,14 @@ extension ProPlan {
           case .onboardingRemoveDefaultLocation:
             state.onboardingDefaultLocation = nil
             return .run { _ in await hapticFeedback.selection() }
+
+          case .offerCodeTapped:
+            state.showOfferCodeRedemption = true
+            return .none
+
+          case .setOfferCodePresented(let isPresented):
+            state.showOfferCodeRedemption = isPresented
+            return .none
           }
 
         // MARK: - Internal Actions
