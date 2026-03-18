@@ -76,6 +76,20 @@ extension Home {
             }
           )
         }
+        .sheet(
+          isPresented: Binding(
+            get: { store.calendarImportResult != nil },
+            set: { if !$0 { store.send(.view(.calendarImportSheetDismissed)) } }
+          )
+        ) {
+          if let result = store.calendarImportResult {
+            CalendarImportResultSheet(result: result) {
+              store.send(.view(.calendarImportSheetDismissed))
+            }
+            .presentationDetents([.height(260)])
+            .presentationDragIndicator(.visible)
+          }
+        }
     }
 
     // MARK: - Navigation Stack
@@ -237,6 +251,16 @@ extension Home {
           // 홈 헤더
           homeHeader
             .padding(.horizontal, 16)
+
+          // 캘린더 임포트 배너
+          if store.showCalendarImportBanner {
+            CalendarImportBanner(
+              onTap: { store.send(.view(.calendarImportBannerTapped)) },
+              onDismiss: { store.send(.view(.calendarImportBannerDismissed)) }
+            )
+            .padding(.horizontal, 16)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+          }
 
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
