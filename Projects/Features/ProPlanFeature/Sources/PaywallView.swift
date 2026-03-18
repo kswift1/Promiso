@@ -377,23 +377,26 @@ extension ProPlan {
           .font(.caption2)
           .foregroundStyle(Color.pmgray.n400)
 
-        Button {
-          store.send(.view(.restoreTapped))
-        } label: {
-          Text(LocalizedStrings.ProPlan.restorePurchases)
-            .font(.caption)
-            .foregroundStyle(Color.pmtext.secondary)
-            .underline()
-        }
-        .disabled(store.isPurchasing)
+        HStack(spacing: 12) {
+          Button {
+            store.send(.view(.restoreTapped))
+          } label: {
+            Text(LocalizedStrings.ProPlan.restorePurchases)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
 
-        Button {
-          store.send(.view(.offerCodeTapped))
-        } label: {
-          Text(LocalizedStrings.ProPlan.redeemOfferCode)
+          Text("·")
             .font(.caption)
-            .foregroundStyle(Color.pmtext.secondary)
-            .underline()
+            .foregroundStyle(Color.pmgray.n400)
+
+          Button {
+            store.send(.view(.offerCodeTapped))
+          } label: {
+            Text(LocalizedStrings.ProPlan.redeemOfferCode)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
         }
         .disabled(store.isPurchasing)
       }

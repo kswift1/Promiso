@@ -20,7 +20,6 @@ extension Settings {
     @Bindable private var store: StoreOf<Feature>
     @State private var currentBenefitIndex = 0
     @State private var benefitTimer: Timer?
-    @State private var showOfferCodeRedemption = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -110,31 +109,6 @@ extension Settings {
             .onAppear { startBenefitRotation() }
             .onDisappear { stopBenefitRotation() }
 
-            Button {
-              store.send(.view(.offerCodeTapped))
-            } label: {
-              HStack(spacing: 16) {
-                Image(systemName: "giftcard.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 24, height: 24)
-
-                Text(LocalizedStrings.ProPlan.redeemOfferCode)
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .adaptiveGlassCard()
           }
 
           // MARK: - 앱 설정 섹션
@@ -537,10 +511,6 @@ extension Settings {
           }
         )
         .presentationBackground(.black)
-      }
-      .offerCodeRedemption(isPresented: $showOfferCodeRedemption)
-      .onChange(of: store.showOfferCodeRedemption) { _, newValue in
-        showOfferCodeRedemption = newValue
       }
     }
 
