@@ -16,7 +16,28 @@ struct TodayScheduleCard: View {
   let onDepartureAlertTap: (HomeModels.ScheduleItem) -> Void
   let onDepartureAlertCancel: (String) -> Void
 
-  @State private var isExpanded: Bool = true
+  @State private var isExpanded: Bool
+
+  init(
+    items: [HomeModels.ScheduleItem],
+    weatherCache: [String: WeatherInfo],
+    departureAlerts: [String: HomeModels.DepartureAlertInfo],
+    groupColorMap: [String: Color],
+    isPro: Bool,
+    onItemTap: @escaping (HomeModels.ScheduleItem) -> Void,
+    onDepartureAlertTap: @escaping (HomeModels.ScheduleItem) -> Void,
+    onDepartureAlertCancel: @escaping (String) -> Void
+  ) {
+    self.items = items
+    self.weatherCache = weatherCache
+    self.departureAlerts = departureAlerts
+    self.groupColorMap = groupColorMap
+    self.isPro = isPro
+    self.onItemTap = onItemTap
+    self.onDepartureAlertTap = onDepartureAlertTap
+    self.onDepartureAlertCancel = onDepartureAlertCancel
+    self._isExpanded = State(initialValue: !items.isEmpty)
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
