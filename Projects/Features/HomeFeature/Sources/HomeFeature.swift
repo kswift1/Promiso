@@ -180,8 +180,6 @@ extension Home {
       var currentLocationCoordinate: Coordinate? = nil
 
       // MARK: - Calendar Import
-      /// 캘린더 임포트 결과 (온보딩에서 전달 → onAppear에서 바텀시트)
-      public var calendarImportResult: CalendarImportResult? = nil
       /// 캘린더 임포트 배너 (스킵/거부 유저)
       public var showCalendarImportBanner: Bool = false
 
@@ -336,8 +334,6 @@ extension Home {
         case calendarImportBannerTapped
         /// 캘린더 임포트 배너 닫기
         case calendarImportBannerDismissed
-        /// 캘린더 임포트 시트 닫기
-        case calendarImportSheetDismissed
       }
 
       @CasePathable
@@ -1131,10 +1127,6 @@ extension Home {
 
           case .calendarImportBannerDismissed:
             state.showCalendarImportBanner = false
-            return .none
-
-          case .calendarImportSheetDismissed:
-            state.calendarImportResult = nil
             return .none
 
           }

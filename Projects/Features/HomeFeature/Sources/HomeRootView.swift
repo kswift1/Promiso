@@ -76,20 +76,6 @@ extension Home {
             }
           )
         }
-        .sheet(
-          isPresented: Binding(
-            get: { store.calendarImportResult != nil },
-            set: { if !$0 { store.send(.view(.calendarImportSheetDismissed)) } }
-          )
-        ) {
-          if let result = store.calendarImportResult {
-            CalendarImportResultSheet(result: result) {
-              store.send(.view(.calendarImportSheetDismissed))
-            }
-            .presentationDetents([.height(260)])
-            .presentationDragIndicator(.visible)
-          }
-        }
     }
 
     // MARK: - Navigation Stack

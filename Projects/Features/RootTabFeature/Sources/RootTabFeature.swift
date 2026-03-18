@@ -526,9 +526,7 @@ extension RootTab {
           return .send(.settings(.view(.proPlanTapped)))
 
         case .showCalendarImportResult(let result):
-          if let result {
-            state.home.calendarImportResult = result
-          } else {
+          if result == nil {
             state.home.showCalendarImportBanner = true
           }
           return .none

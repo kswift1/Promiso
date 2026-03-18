@@ -370,9 +370,11 @@ extension AppEntry {
             if isSignup {
               let importResult = state.pendingCalendarImportResult
               state.pendingCalendarImportResult = nil
-              effects.append(.send(.destination(.presented(
-                .main(.showCalendarImportResult(importResult))
-              ))))
+              if importResult == nil {
+                effects.append(.send(.destination(.presented(
+                  .main(.showCalendarImportResult(nil))
+                ))))
+              }
             }
 
             if let deeplink = state.pendingDeeplink {

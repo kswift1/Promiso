@@ -19,16 +19,12 @@ extension AppEntry.CalendarImport {
     @SwiftUI.State private var showButtons: Bool = false
 
     public var body: some SwiftUI.View {
-      VStack(spacing: 0) {
-        Spacer()
-
-        phaseContentView
-
-        Spacer()
-
-        buttonArea
-          .padding(.horizontal, 24)
-          .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
+      Group {
+        if store.phase == .selecting {
+          selectingLayoutView
+        } else {
+          defaultLayoutView
+        }
       }
       .auroraBackground()
       .onAppear {
@@ -37,6 +33,50 @@ extension AppEntry.CalendarImport {
             await runAnimationSequence()
           }
         }
+      }
+    }
+
+    private var defaultLayoutView: some SwiftUI.View {
+      VStack(spacing: 0) {
+        Spacer()
+        phaseContentView
+        Spacer()
+        buttonArea
+          .padding(.horizontal, 24)
+          .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
+      }
+    }
+
+    private var selectingLayoutView: some SwiftUI.View {
+      VStack(spacing: 0) {
+        ScrollView {
+          selectingPhaseView
+            .padding(.top, 60)
+            .padding(.bottom, 100)
+        }
+
+        // 하단 고정 버튼 + 그라데이션
+        VStack(spacing: 0) {
+          GlassActionButton(
+            title: "가져오기 (\(store.selectedEventCount)개)",
+            isPrimary: true,
+            isEnabled: store.selectedEventCount > 0,
+            action: { store.send(.view(.confirmImportTapped)) }
+          )
+          .padding(.horizontal, 24)
+          .padding(.vertical, 16)
+        }
+        .overlay(alignment: .top) {
+          LinearGradient(
+            colors: [Color.black.opacity(0), Color.black.opacity(0.15)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .frame(height: 24)
+          .offset(y: -24)
+          .allowsHitTesting(false)
+        }
+        .padding(.bottom, UIScreen.main.bounds.height < 700 ? 8 : 24)
       }
     }
 
@@ -53,6 +93,8 @@ extension AppEntry.CalendarImport {
         selectingPhaseView
       case .uploading:
         uploadingPhaseView
+      case .success(let result):
+        successPhaseView(result: result)
       case .completed:
         EmptyView()
       }
@@ -83,6 +125,7 @@ extension AppEntry.CalendarImport {
           .transition(.opacity.combined(with: .offset(y: 12)))
         }
       }
+      .padding(.horizontal, 20)
     }
 
     // MARK: - Loading Phase
@@ -107,48 +150,24 @@ extension AppEntry.CalendarImport {
           Text("가져올 캘린더를 선택해주세요")
             .font(.title2.bold())
             .foregroundStyle(Color.pmtext.primary)
-
           Text("Apple Calendar에 있는 일정이에요")
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
 
-        VStack(spacing: 12) {
-          selectAllToggle
-
-          ScrollView {
-            VStack(spacing: 8) {
-              ForEach(store.calendarGroups) { group in
-                CalendarGroupRow(
-                  group: group,
-                  isSelected: store.selectedCalendarNames.contains(group.calendarName),
-                  isExpanded: store.expandedCalendarNames.contains(group.calendarName),
-                  onTap: { store.send(.view(.calendarExpandToggled(group.calendarName))) },
-                  onToggle: { store.send(.view(.calendarToggled(group.calendarName))) }
-                )
-              }
-            }
+        VStack(spacing: 8) {
+          ForEach(store.calendarGroups) { group in
+            CalendarGroupRow(
+              group: group,
+              isSelected: store.selectedCalendarNames.contains(group.calendarName),
+              isExpanded: store.expandedCalendarNames.contains(group.calendarName),
+              onTap: { store.send(.view(.calendarExpandToggled(group.calendarName))) },
+              onToggle: { store.send(.view(.calendarToggled(group.calendarName))) }
+            )
           }
-          .frame(maxHeight: 350)
         }
         .padding(.horizontal, 8)
       }
-    }
-
-    private var selectAllToggle: some SwiftUI.View {
-      HStack {
-        Text("전체 선택")
-          .font(.subheadline.weight(.medium))
-          .foregroundStyle(Color.pmtext.primary)
-        Spacer()
-        Toggle("", isOn: Binding(
-          get: { store.isAllSelected },
-          set: { _ in store.send(.view(.selectAllToggled)) }
-        ))
-        .labelsHidden()
-        .tint(Color.pmsuccess.n500)
-      }
-      .padding(.horizontal, 20)
     }
 
     // MARK: - Uploading Phase
@@ -163,6 +182,48 @@ extension AppEntry.CalendarImport {
         Text("\(store.importProgress)/\(store.importTotal)개 가져오는 중...")
           .font(.body)
           .foregroundStyle(Color.pmtext.secondary)
+      }
+    }
+
+    // MARK: - Success Phase
+
+    private func successPhaseView(result: CalendarImportResult) -> some SwiftUI.View {
+      VStack(spacing: 20) {
+        Text(result.totalImported > 0 ? "🎉" : "📅")
+          .font(.system(size: 72))
+
+        VStack(spacing: 10) {
+          Text(successTitle(result))
+            .font(.largeTitle.bold())
+            .foregroundStyle(Color.pmtext.primary)
+            .multilineTextAlignment(.center)
+
+          Text(successSubtitle(result))
+            .font(.title3)
+            .foregroundStyle(Color.pmtext.secondary)
+            .multilineTextAlignment(.center)
+            .lineSpacing(4)
+        }
+      }
+      .padding(.horizontal, 20)
+      .transition(.opacity.combined(with: .offset(y: 12)))
+    }
+
+    private func successTitle(_ result: CalendarImportResult) -> String {
+      if result.thisWeekCount > 0 {
+        return "이번 주 약속 \(result.thisWeekCount)개\n가져왔어요!"
+      } else if result.totalImported > 0 {
+        return "일정 \(result.totalImported)개\n가져왔어요!"
+      } else {
+        return "준비 완료!"
+      }
+    }
+
+    private func successSubtitle(_ result: CalendarImportResult) -> String {
+      if result.totalImported > 0 {
+        return "다가오는 약속을 미리 챙겨드릴게요"
+      } else {
+        return "첫 약속을 만들면 바로 챙겨드릴게요"
       }
     }
 
@@ -189,12 +250,11 @@ extension AppEntry.CalendarImport {
             .transition(.opacity.combined(with: .offset(y: 16)))
           }
         }
-      case .selecting:
+      case .success:
         GlassActionButton(
-          title: "가져오기 (\(store.selectedEventCount)개)",
+          title: "시작해보세요!",
           isPrimary: true,
-          isEnabled: store.selectedEventCount > 0,
-          action: { store.send(.view(.confirmImportTapped)) }
+          action: { store.send(.view(.startTapped)) }
         )
       default:
         EmptyView()
@@ -253,12 +313,12 @@ private struct CalendarGroupRow: SwiftUI.View {
 
         Spacer()
 
-        Button(action: onToggle) {
-          Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-            .font(.title3)
-            .foregroundStyle(isSelected ? Color.pmsuccess.n500 : Color.pmtext.secondary)
-        }
-        .buttonStyle(.plain)
+        Toggle("", isOn: Binding(
+          get: { isSelected },
+          set: { _ in onToggle() }
+        ))
+        .labelsHidden()
+        .tint(Color.pmsuccess.n500)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
@@ -275,37 +335,131 @@ private struct CalendarGroupRow: SwiftUI.View {
 
   @ViewBuilder
   private var expandedEventsView: some SwiftUI.View {
-    VStack(spacing: 4) {
-      ForEach(Array(group.events.prefix(3)), id: \.id) { event in
-        HStack(spacing: 8) {
-          Text(event.displayEmoji ?? "📅")
-            .font(.caption)
-
-          Text(event.displayTitle)
-            .font(.caption)
-            .lineLimit(1)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Spacer()
-
-          Text(event.timeText)
-            .font(.caption2)
-            .foregroundStyle(Color.pmtext.secondary)
-        }
-        .padding(.leading, 40)
-        .padding(.trailing, 16)
-        .padding(.vertical, 4)
+    VStack(spacing: 8) {
+      ForEach(Array(group.events.prefix(5)), id: \.id) { event in
+        CalendarEventCardRow(event: event)
       }
-
-      if group.eventCount > 3 {
-        Text("외 \(group.eventCount - 3)개")
-          .font(.caption2)
+      if group.eventCount > 5 {
+        Text("외 \(group.eventCount - 5)개")
+          .font(.caption)
           .foregroundStyle(Color.pmtext.secondary)
-          .padding(.leading, 40)
-          .padding(.top, 2)
-          .padding(.bottom, 8)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 4)
       }
     }
+    .padding(.horizontal, 12)
+    .padding(.bottom, 12)
     .transition(.opacity.combined(with: .move(edge: .top)))
   }
+}
+
+// MARK: - CalendarEventCardRow
+
+private struct CalendarEventCardRow: SwiftUI.View {
+  let event: CalendarEvent
+
+  var body: some SwiftUI.View {
+    HStack(alignment: .top, spacing: 10) {
+      Text(event.displayEmoji ?? "📅")
+        .font(.system(size: 28))
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text(event.displayTitle)
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(Color.pmtext.primary)
+          .lineLimit(1)
+
+        HStack(spacing: 4) {
+          Image(systemName: "clock")
+            .font(.caption2)
+          Text(event.timeText)
+            .font(.caption)
+        }
+        .foregroundStyle(Color.pmtext.secondary)
+
+        if let location = event.location, !location.isEmpty {
+          HStack(spacing: 4) {
+            Image(systemName: "location.fill")
+              .font(.caption2)
+            Text(location)
+              .font(.caption)
+              .lineLimit(1)
+          }
+          .foregroundStyle(Color.pmtext.secondary)
+        }
+      }
+
+      Spacer()
+    }
+    .padding(10)
+    .background(Color.pmsurface.glass.opacity(0.2))
+    .clipShape(RoundedRectangle(cornerRadius: 10))
+  }
+}
+
+// MARK: - Previews
+
+#Preview("Idle") {
+  AppEntry.CalendarImport.View(
+    store: Store(
+      initialState: AppEntry.CalendarImport.State(nickname: "성원")
+    ) {
+      AppEntry.CalendarImport()
+    }
+  )
+}
+
+#Preview("Selecting") {
+  let events: [CalendarEvent] = [
+    CalendarEvent(id: "1", title: "🍽️ 점심 약속", startDate: Date(), endDate: Date().addingTimeInterval(3600), location: "강남역", isAllDay: false, calendarName: "업무", calendarColorHex: "#1E90FF"),
+    CalendarEvent(id: "2", title: "📝 회의", startDate: Date().addingTimeInterval(7200), endDate: Date().addingTimeInterval(10800), location: nil, isAllDay: false, calendarName: "업무", calendarColorHex: "#1E90FF"),
+    CalendarEvent(id: "3", title: "🎂 생일 파티", startDate: Date().addingTimeInterval(86400), endDate: Date().addingTimeInterval(90000), location: "이태원", isAllDay: false, calendarName: "개인", calendarColorHex: "#32CD32"),
+    CalendarEvent(id: "4", title: "운동", startDate: Date().addingTimeInterval(172800), endDate: Date().addingTimeInterval(176400), location: nil, isAllDay: false, calendarName: "개인", calendarColorHex: "#32CD32"),
+    CalendarEvent(id: "5", title: "가족 모임", startDate: Date().addingTimeInterval(259200), endDate: Date().addingTimeInterval(262800), location: "집", isAllDay: false, calendarName: "가족", calendarColorHex: "#FF4500"),
+  ]
+  let groups = CalendarGroup.groupBy(events)
+
+  AppEntry.CalendarImport.View(
+    store: Store(
+      initialState: {
+        var state = AppEntry.CalendarImport.State(nickname: "성원")
+        state.phase = .selecting
+        state.calendarGroups = groups
+        state.selectedCalendarNames = Set(groups.map(\.calendarName))
+        return state
+      }()
+    ) {
+      AppEntry.CalendarImport()
+    }
+  )
+}
+
+#Preview("Uploading") {
+  AppEntry.CalendarImport.View(
+    store: Store(
+      initialState: {
+        var state = AppEntry.CalendarImport.State(nickname: "성원")
+        state.phase = .uploading
+        state.importProgress = 7
+        state.importTotal = 15
+        return state
+      }()
+    ) {
+      AppEntry.CalendarImport()
+    }
+  )
+}
+
+#Preview("Success") {
+  AppEntry.CalendarImport.View(
+    store: Store(
+      initialState: {
+        var state = AppEntry.CalendarImport.State(nickname: "성원")
+        state.phase = .success(CalendarImportResult(totalImported: 23, thisWeekCount: 5))
+        return state
+      }()
+    ) {
+      AppEntry.CalendarImport()
+    }
+  )
 }

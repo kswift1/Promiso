@@ -322,6 +322,10 @@ extension EventKitClient: DependencyKey {
                 return false
               }
             }
+            // 생일 캘린더 제외
+            if event.calendar?.type == .birthday {
+              return false
+            }
             return true
           }
           .map { $0.toCalendarEvent() }

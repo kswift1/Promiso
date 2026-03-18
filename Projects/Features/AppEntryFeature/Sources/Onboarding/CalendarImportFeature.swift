@@ -30,16 +30,13 @@ extension AppEntry {
         case scanning
         case selecting
         case uploading
+        case success(CalendarImportResult)
         case completed(CalendarImportResult)
       }
 
       var selectedEventCount: Int {
         calendarGroups.filter { selectedCalendarNames.contains($0.calendarName) }
           .reduce(0) { $0 + $1.eventCount }
-      }
-
-      var isAllSelected: Bool {
-        !calendarGroups.isEmpty && selectedCalendarNames.count == calendarGroups.count
       }
 
       public init(nickname: String) {
@@ -61,8 +58,8 @@ extension AppEntry {
         case laterTapped
         case calendarToggled(String)
         case calendarExpandToggled(String)
-        case selectAllToggled
         case confirmImportTapped
+        case startTapped
       }
 
       @CasePathable
@@ -72,6 +69,7 @@ extension AppEntry {
         case importCompleted(CalendarImportResult)
         case importFailed
         case uploadProgressUpdated(Int)
+        case showSuccess(CalendarImportResult)
       }
 
       public enum DelegateAction: Equatable, Sendable {
@@ -114,14 +112,6 @@ extension AppEntry {
               state.expandedCalendarNames.remove(name)
             } else {
               state.expandedCalendarNames.insert(name)
-            }
-            return .none
-
-          case .selectAllToggled:
-            if state.isAllSelected {
-              state.selectedCalendarNames.removeAll()
-            } else {
-              state.selectedCalendarNames = Set(state.calendarGroups.map(\.calendarName))
             }
             return .none
 
@@ -177,6 +167,13 @@ extension AppEntry {
               let result = CalendarImportResult(totalImported: successCount, thisWeekCount: thisWeekCount)
               await send(.internal(.importCompleted(result)))
             }
+
+          case .startTapped:
+            if case .success(let result) = state.phase {
+              state.phase = .completed(result)
+              return .send(.delegate(.completed(result)))
+            }
+            return .none
           }
 
         case .internal(let internalAction):
@@ -216,8 +213,14 @@ extension AppEntry {
             return .none
 
           case .importCompleted(let result):
-            state.phase = .completed(result)
-            return .send(.delegate(.completed(result)))
+            return .run { send in
+              try? await Task.sleep(for: .seconds(2))
+              await send(.internal(.showSuccess(result)))
+            }
+
+          case .showSuccess(let result):
+            state.phase = .success(result)
+            return .none
 
           case .importFailed:
             return .send(.delegate(.completed(nil)))
