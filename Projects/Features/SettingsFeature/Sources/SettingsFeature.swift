@@ -5,6 +5,7 @@
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import ProPlanFeature
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -74,19 +75,24 @@ extension Settings {
       public var toastMessage: ToastMessage?
       /// 네비게이션 경로
       public var path = StackState<Path.State>()
+      /// Pro Plan 시트 표시 상태
+      @Presents public var proPlan: ProPlan.Feature.State?
       /// 프로필 이미지 상세 보기 표시 여부
       public var showImageDetail: Bool = false
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
-      /// 약속 탭 기본 모드 (group/own)
-      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      /// 일정 탭 기본 모드 (group/own)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) public var defaultScheduleTabMode: String = "group"
+      /// 구독 상태 (RootTab에서 전달)
+      public var subscriptionStatus: SubscriptionStatus = .none
 
       /// State를 위한 기본 initializer
       public init(
         currentUser: Shared<UserPrivateModel>,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
-        isEditingProfile: Bool = false
+        isEditingProfile: Bool = false,
+        subscriptionStatus: SubscriptionStatus = .none
       ) {
         self._currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
@@ -98,6 +104,7 @@ extension Settings {
         self.isSavingProfile = false
         self.errorMessage = nil
         self.toastMessage = nil
+        self.subscriptionStatus = subscriptionStatus
       }
     }
 
@@ -107,16 +114,20 @@ extension Settings {
     public enum Path {
       case accountInfo(AccountInfo.Feature)
       case dateTimeSettings(DateTimeSettings.Feature)
-      case promiseTabModeSettings(PromiseTabModeSettings.Feature)
+      case tabSettings(TabSettings.Feature)
+      case conflictThresholdSettings(ConflictThresholdSettings.Feature)
       case themeSettings(ThemeSettings.Feature)
+      case languageSettings(LanguageSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
+      case briefingSettings(BriefingSettings.Feature)
       case support(Support.Feature)
       case faq(FAQ.Feature)
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
+      case proPlanManage(ProPlan.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -142,6 +153,7 @@ extension Settings {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
+      case proPlan(PresentationAction<ProPlan.Feature.Action>)
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
@@ -159,18 +171,26 @@ extension Settings {
       case accountInfoTapped
       /// 날짜 시간 표시 탭
       case dateTimeSettingsTapped
-      /// 약속 탭 기본 모드 탭
-      case promiseTabModeSettingsTapped
+      /// 탭 설정 탭
+      case tabSettingsTapped
+      /// 일정 충돌 감지 설정 탭
+      case conflictThresholdSettingsTapped
       /// 화면 모드 탭
       case themeSettingsTapped
+      /// 언어 설정 탭
+      case languageSettingsTapped
       /// 알림 설정 탭
       case notificationSettingsTapped
       /// 캘린더 설정 탭
       case calendarSettingsTapped
+      /// 브리핑 설정 탭
+      case briefingSettingsTapped
       /// 지원 탭
       case supportTapped
       /// 약관 및 정책 탭
       case legalInfoTapped
+      /// 프로 플랜 탭
+      case proPlanTapped
       /// 앱 정보 탭
       case appInfoTapped
       #if DEBUG
@@ -195,8 +215,8 @@ extension Settings {
       case profileImageTapped
       /// 프로필 이미지 상세 닫기
       case imageDetailDismissed
-      /// 약속 탭 기본 모드 변경
-      case defaultPromiseTabModeChanged(String)
+      /// 일정 탭 기본 모드 변경
+      case defaultScheduleTabModeChanged(String)
       /// 토스트 닫힘
       case toastDismissed
     }
@@ -224,6 +244,8 @@ extension Settings {
     public enum Delegate: Equatable, Sendable {
       /// 로그아웃 완료됨 (부모에서 화면 전환 처리)
       case didLogout
+      /// 구독 상태 변경됨 (ProPlan에서 전달)
+      case subscriptionStatusChanged(SubscriptionStatus)
     }
 
     // MARK: - Reducer Body
@@ -268,7 +290,7 @@ extension Settings {
             return .none
 
           case .accountInfoTapped:
-            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
+            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser, subscriptionStatus: state.subscriptionStatus)))
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -277,12 +299,22 @@ extension Settings {
             state.path.append(.dateTimeSettings(DateTimeSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
-          case .promiseTabModeSettingsTapped:
-            state.path.append(.promiseTabModeSettings(PromiseTabModeSettings.Feature.State()))
+          case .tabSettingsTapped:
+            state.path.append(.tabSettings(TabSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .conflictThresholdSettingsTapped:
+            state.path.append(.conflictThresholdSettings(
+              ConflictThresholdSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
             return .run { _ in await hapticFeedback.selection() }
 
           case .themeSettingsTapped:
             state.path.append(.themeSettings(ThemeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .languageSettingsTapped:
+            state.path.append(.languageSettings(LanguageSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .notificationSettingsTapped:
@@ -295,6 +327,12 @@ extension Settings {
             state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
+          case .briefingSettingsTapped:
+            state.path.append(.briefingSettings(
+              BriefingSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+            ))
+            return .run { _ in await hapticFeedback.selection() }
+
           case .supportTapped:
             state.path.append(.support(Support.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
@@ -302,6 +340,16 @@ extension Settings {
           case .legalInfoTapped:
             state.path.append(.legalInfo(LegalInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
+
+          case .proPlanTapped:
+            if state.subscriptionStatus.isPro {
+              state.path.append(.proPlanManage(ProPlan.Feature.State(subscriptionStatus: state.subscriptionStatus)))
+            } else {
+              state.proPlan = ProPlan.Feature.State()
+            }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
 
           case .appInfoTapped:
             state.path.append(.appInfo(AppInfo.Feature.State()))
@@ -330,15 +378,15 @@ extension Settings {
             state.editedNickname = nickname
             // 닉네임 유효성 검사
             if nickname.isEmpty {
-              state.nicknameValidation = .invalid("닉네임을 입력해주세요")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameRequired)
               return .none
             }
             if nickname.count < 2 {
-              state.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooShort)
               return .none
             }
             if nickname.count > 20 {
-              state.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooLong)
               return .none
             }
             // 현재 닉네임과 동일하면 검사 생략
@@ -353,7 +401,7 @@ extension Settings {
                 let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
                 await send(.internal(.nicknameCheckResult(isAvailable)))
               } catch {
-                await send(.internal(.nicknameCheckFailed(error.localizedDescription)))
+                await send(.internal(.nicknameCheckFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
             .debounce(id: CancelID.nicknameCheck, for: .milliseconds(500), scheduler: DispatchQueue.main)
@@ -388,7 +436,7 @@ extension Settings {
                 let updatedUser = try await userProfileClient.getPrivateProfile(.me)
                 await send(.internal(.profileSaveCompleted(updatedUser)))
               } catch {
-                await send(.internal(.profileSaveFailed(error.localizedDescription)))
+                await send(.internal(.profileSaveFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -411,8 +459,8 @@ extension Settings {
             state.showImageDetail = false
             return .none
 
-          case .defaultPromiseTabModeChanged(let mode):
-            state.$defaultPromiseTabMode.withLock { $0 = mode }
+          case .defaultScheduleTabModeChanged(let mode):
+            state.$defaultScheduleTabMode.withLock { $0 = mode }
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -420,6 +468,7 @@ extension Settings {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
           }
 
         // MARK: - Internal Actions
@@ -434,11 +483,11 @@ extension Settings {
 
           case .logoutFailed(let error):
             state.isLoading = false
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = error.localizedMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "로그아웃에 실패했어요",
-              subtitle: error.localizedDescription,
+              title: LocalizedStrings.Error.logoutFailed,
+              subtitle: error.localizedMessage,
               position: .top
             )
             return .run { _ in
@@ -468,13 +517,14 @@ extension Settings {
             state.errorMessage = errorMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "프로필 저장에 실패했어요",
+              title: LocalizedStrings.Error.profileSaveFailed,
               subtitle: errorMessage,
               position: .top
             )
             return .run { _ in
               await hapticFeedback.error()
             }
+
           }
 
         // MARK: - Delegate Actions
@@ -512,6 +562,20 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .conflictThresholdSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
+        case .path(.element(_, action: .briefingSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .proPlanRequested:
+            state.proPlan = ProPlan.Feature.State()
+            return .none
+          }
+
         case .path(.element(_, action: .support(.delegate(let delegate)))):
           switch delegate {
           case .navigateToFAQ:
@@ -543,11 +607,73 @@ extension Settings {
             return .none
           }
 
+        case .proPlan(.presented(.delegate(let delegate))):
+          switch delegate {
+          case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
+            return .send(.delegate(.subscriptionStatusChanged(status)))
+
+          case .dismissRequested:
+            state.proPlan = nil
+            return .none
+
+          case .navigateToProSetting:
+            // sheet에서는 설정 바로가기 미지원
+            return .none
+          }
+
+        case .proPlan:
+          return .none
+
+        case .path(.element(_, action: .proPlanManage(.delegate(let delegate)))):
+          switch delegate {
+          case .subscriptionStatusChanged(let status):
+            syncSubscriptionStatus(status, state: &state)
+            return .send(.delegate(.subscriptionStatusChanged(status)))
+          case .dismissRequested:
+            return .none
+          case .navigateToProSetting(let destination):
+            switch destination {
+            case .conflictThreshold:
+              state.path.append(.conflictThresholdSettings(
+                ConflictThresholdSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+              ))
+            case .briefing:
+              state.path.append(.briefingSettings(
+                BriefingSettings.Feature.State(isPro: state.subscriptionStatus.isPro)
+              ))
+            }
+            return .run { _ in await hapticFeedback.selection() }
+          }
+
         case .path:
           return .none
         }
       }
       .forEach(\.path, action: \.path)
+      .ifLet(\.$proPlan, action: \.proPlan) {
+        ProPlan.Feature()
+      }
+    }
+
+    private func syncSubscriptionStatus(_ status: SubscriptionStatus, state: inout State) {
+      state.subscriptionStatus = status
+
+      for id in state.path.ids {
+        if case .conflictThresholdSettings(var conflictState) = state.path[id: id] {
+          conflictState.isPro = status.isPro
+          if status.isPro {
+            conflictState.isEnabled = true
+          }
+          state.path[id: id] = .conflictThresholdSettings(conflictState)
+          continue
+        }
+
+        if case .briefingSettings(var briefingState) = state.path[id: id] {
+          briefingState.isPro = status.isPro
+          state.path[id: id] = .briefingSettings(briefingState)
+        }
+      }
     }
   }
 
@@ -571,16 +697,22 @@ extension Settings {
           AccountInfo.RootView(store: accountInfoStore)
         case .dateTimeSettings(let store):
           DateTimeSettings.RootView(store: store)
-        case .promiseTabModeSettings(let store):
-          PromiseTabModeSettings.RootView(store: store)
+        case .tabSettings(let store):
+          TabSettings.RootView(store: store)
+        case .conflictThresholdSettings(let store):
+          ConflictThresholdSettings.RootView(store: store)
         case .themeSettings(let store):
           ThemeSettings.RootView(store: store)
+        case .languageSettings(let store):
+          LanguageSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
           GroupNotificationDetail.RootView(store: store)
         case .calendarSettings(let store):
           CalendarSettings.RootView(store: store)
+        case .briefingSettings(let store):
+          BriefingSettings.RootView(store: store)
         case .support(let store):
           Support.RootView(store: store)
         case .faq(let store):
@@ -591,11 +723,18 @@ extension Settings {
           PolicyView.RootView(store: store)
         case .appInfo(let store):
           AppInfo.RootView(store: store)
+        case .proPlanManage(let store):
+          ProPlan.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)
         #endif
         }
+      }
+      .sheet(
+        item: $store.scope(state: \.proPlan, action: \.proPlan)
+      ) { proPlanStore in
+        ProPlan.RootView(store: proPlanStore)
       }
       .toast(Binding(
         get: { store.toastMessage },
@@ -622,713 +761,13 @@ public enum SettingsError: Error, Equatable, LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .logoutFailed:
-      return "로그아웃에 실패했습니다. 다시 시도해주세요."
+      return LocalizedStrings.SettingsStrings.logoutFailed
     case .userNotFound:
-      return "사용자 정보를 찾을 수 없습니다."
+      return LocalizedStrings.SettingsStrings.userNotFound
     case .imageLoadFailed:
-      return "이미지를 불러오는데 실패했습니다."
+      return LocalizedStrings.SettingsStrings.imageLoadFailed
     case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
-    }
-  }
-}
-
-// MARK: - DateTimeSettings Namespace
-
-public enum DateTimeSettings {}
-
-// MARK: - DateTimeSettings Feature
-
-extension DateTimeSettings {
-
-  @Reducer
-  public struct Feature {
-    @Dependency(\.hapticFeedback) var hapticFeedback
-    @Dependency(\.notificationCenter) var notificationCenter
-
-    public init() {}
-
-    @ObservableState
-    public struct State: Equatable {
-      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
-      /// 선택된 값 (임시)
-      var selectedValue: Bool = false
-      /// 재시작 확인 Alert 표시 여부
-      var showRestartAlert: Bool = false
-
-      /// 변경사항이 있는지
-      var hasChanges: Bool {
-        selectedValue != use24HourFormat
-      }
-
-      public init() {}
-    }
-
-    public enum Action: Equatable, Sendable {
-      case view(View)
-    }
-
-    public enum View: Equatable, Sendable {
-      case onAppear
-      case formatSelected(Bool)
-      case saveChanges
-      case restartConfirmed
-      case restartCancelled
-    }
-
-    public var body: some ReducerOf<Self> {
-      Reduce { state, action in
-        switch action {
-        case .view(let viewAction):
-          switch viewAction {
-          case .onAppear:
-            state.selectedValue = state.use24HourFormat
-            return .none
-
-          case .formatSelected(let value):
-            state.selectedValue = value
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
-          case .saveChanges:
-            state.showRestartAlert = true
-            return .run { _ in
-              await hapticFeedback.medium()
-            }
-
-          case .restartConfirmed:
-            state.showRestartAlert = false
-            state.$use24HourFormat.withLock { $0 = state.selectedValue }
-            KoreanDateFormatters.use24HourFormat = state.selectedValue
-            return .run { [notificationCenter] _ in
-              await hapticFeedback.success()
-              // 앱 재시작 요청 Notification 발송
-              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-            }
-
-          case .restartCancelled:
-            state.showRestartAlert = false
-            return .none
-          }
-        }
-      }
-    }
-  }
-
-  // MARK: - Root View
-
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
-
-    public var body: some View {
-      ScrollView {
-        VStack(spacing: 16) {
-          timeFormatSection
-          exampleCardSection
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 24)
-      }
-      .auroraBackground()
-      .navigationTitle("날짜 시간 표시")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
-          if store.hasChanges {
-            Button("변경") {
-              store.send(.view(.saveChanges))
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-      }
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
-      .alert("앱 재시작", isPresented: Binding(
-        get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.restartCancelled)) } }
-      )) {
-        Button("취소", role: .cancel) {
-          store.send(.view(.restartCancelled))
-        }
-        Button("재시작") {
-          store.send(.view(.restartConfirmed))
-        }
-      } message: {
-        Text("시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
-      }
-    }
-
-    private var timeFormatSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("시간 표시 형식")
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          formatRow(is24Hour: false, title: "12시간 형식", description: "예: 오후 2:30")
-          Divider()
-            .padding(.leading, 48)
-          formatRow(is24Hour: true, title: "24시간 형식", description: "예: 14:30")
-        }
-        .adaptiveGlassCard()
-
-        Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-      }
-    }
-
-    private func formatRow(is24Hour: Bool, title: String, description: String) -> some View {
-      Button {
-        store.send(.view(.formatSelected(is24Hour)))
-      } label: {
-        HStack(spacing: 12) {
-          Image(systemName: "clock")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 20)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Text(description)
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-
-          Spacer()
-
-          if store.selectedValue == is24Hour {
-            Image(systemName: "checkmark")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-    }
-
-    private var exampleCardSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        ExamplePromiseCard(use24Hour: store.selectedValue)
-
-        Text("실제 약속 카드는 위와 같이 표시됩니다.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-      }
-    }
-  }
-
-  // MARK: - Example Promise Card
-
-  private struct ExamplePromiseCard: View {
-    let use24Hour: Bool
-
-    private var timeString: String {
-      if use24Hour {
-        return "14:30 - 16:30"
-      } else {
-        return "오후 2:30 - 오후 4:30"
-      }
-    }
-
-    private var dateString: String {
-      "2월 15일 (토)"
-    }
-
-    var body: some View {
-      VStack(alignment: .leading, spacing: 14) {
-        // Main Content
-        HStack(alignment: .top, spacing: 12) {
-          Text("🍽️")
-            .font(.system(size: 44))
-
-          VStack(alignment: .leading, spacing: 10) {
-            Text("팀 회식")
-              .font(.system(size: 19, weight: .bold))
-              .foregroundColor(.primary)
-
-            VStack(alignment: .leading, spacing: 6) {
-              // Date & Time
-              HStack(spacing: 4) {
-                Text("⏰")
-                  .font(.system(size: 14))
-                Text("\(dateString) \(timeString)")
-                  .font(.system(size: 14, weight: .medium))
-              }
-              .foregroundColor(.primary)
-
-              // Location
-              HStack(spacing: 4) {
-                Text("📍")
-                  .font(.system(size: 14))
-                Text("강남역 3번 출구")
-                  .font(.system(size: 14, weight: .medium))
-              }
-              .foregroundColor(.primary)
-            }
-          }
-
-          Spacer()
-        }
-      }
-      .padding(16)
-      .adaptiveGlassCard()
-    }
-  }
-}
-
-// MARK: - ThemeSettings Namespace
-
-public enum ThemeSettings {}
-
-// MARK: - ThemeSettings Feature
-
-extension ThemeSettings {
-
-  @Reducer
-  public struct Feature {
-    @Dependency(\.hapticFeedback) var hapticFeedback
-    @Dependency(\.notificationCenter) var notificationCenter
-
-    public init() {}
-
-    @ObservableState
-    public struct State: Equatable {
-      @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) public var themeMode: String = AppConstants.ThemeMode.system.rawValue
-      /// 재시작 확인 Alert 표시 여부
-      var showRestartAlert: Bool = false
-      /// 변경하려는 값 (Alert 확인 시 적용)
-      var pendingValue: AppConstants.ThemeMode?
-
-      public init() {}
-    }
-
-    public enum Action: Equatable, Sendable {
-      case view(View)
-    }
-
-    public enum View: Equatable, Sendable {
-      case onAppear
-      case themeModeChanged(AppConstants.ThemeMode)
-      case restartConfirmed
-      case restartCancelled
-    }
-
-    public var body: some ReducerOf<Self> {
-      Reduce { state, action in
-        switch action {
-        case .view(let viewAction):
-          switch viewAction {
-          case .onAppear:
-            return .none
-
-          case .themeModeChanged(let mode):
-            // 값이 변경된 경우에만 Alert 표시
-            guard mode.rawValue != state.themeMode else { return .none }
-            state.pendingValue = mode
-            state.showRestartAlert = true
-            return .run { _ in
-              await hapticFeedback.medium()
-            }
-
-          case .restartConfirmed:
-            state.showRestartAlert = false
-            guard let newMode = state.pendingValue else { return .none }
-            state.$themeMode.withLock { $0 = newMode.rawValue }
-            state.pendingValue = nil
-            return .run { [notificationCenter] _ in
-              await hapticFeedback.success()
-              // 앱 재시작 요청 Notification 발송
-              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-            }
-
-          case .restartCancelled:
-            state.showRestartAlert = false
-            state.pendingValue = nil
-            return .none
-          }
-        }
-      }
-    }
-  }
-
-  // MARK: - Root View
-
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
-
-    private var currentMode: AppConstants.ThemeMode {
-      AppConstants.ThemeMode(rawValue: store.themeMode) ?? .system
-    }
-
-    public var body: some View {
-      ScrollView {
-        VStack(spacing: 16) {
-          themeModeSection
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 24)
-      }
-      .auroraBackground()
-      .navigationTitle("화면 모드")
-      .navigationBarTitleDisplayMode(.inline)
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
-      .alert("앱 재시작", isPresented: Binding(
-        get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.restartCancelled)) } }
-      )) {
-        Button("취소", role: .cancel) {
-          store.send(.view(.restartCancelled))
-        }
-        Button("재시작") {
-          store.send(.view(.restartConfirmed))
-        }
-      } message: {
-        Text("화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
-      }
-    }
-
-    private var themeModeSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("화면 모드 설정")
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          ForEach(AppConstants.ThemeMode.allCases, id: \.rawValue) { mode in
-            themeModeRow(mode: mode)
-            if mode != AppConstants.ThemeMode.allCases.last {
-              Divider()
-                .padding(.leading, 48)
-            }
-          }
-        }
-        .adaptiveGlassCard()
-
-        Text("앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-      }
-    }
-
-    private func themeModeRow(mode: AppConstants.ThemeMode) -> some View {
-      Button {
-        store.send(.view(.themeModeChanged(mode)))
-      } label: {
-        HStack(spacing: 12) {
-          Image(systemName: iconName(for: mode))
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 20)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(mode.displayName)
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Text(description(for: mode))
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-
-          Spacer()
-
-          if currentMode == mode {
-            Image(systemName: "checkmark")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-    }
-
-    private func iconName(for mode: AppConstants.ThemeMode) -> String {
-      switch mode {
-      case .system: return "iphone"
-      case .light: return "sun.max.fill"
-      case .dark: return "moon.fill"
-      }
-    }
-
-    private func description(for mode: AppConstants.ThemeMode) -> String {
-      switch mode {
-      case .system: return "기기 설정에 따라 자동 변경"
-      case .light: return "항상 밝은 화면으로 표시"
-      case .dark: return "항상 어두운 화면으로 표시"
-      }
-    }
-  }
-}
-
-// MARK: - PromiseTabModeSettings Namespace
-
-public enum PromiseTabModeSettings {}
-
-// MARK: - PromiseTabModeSettings Feature
-
-extension PromiseTabModeSettings {
-
-  @Reducer
-  public struct Feature {
-    @Dependency(\.hapticFeedback) var hapticFeedback
-
-    public init() {}
-
-    @ObservableState
-    public struct State: Equatable {
-      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
-
-      public init() {}
-    }
-
-    public enum Action: Equatable, Sendable {
-      case view(View)
-    }
-
-    public enum View: Equatable, Sendable {
-      case onAppear
-      case tabModeChanged(String)
-    }
-
-    public var body: some ReducerOf<Self> {
-      Reduce { state, action in
-        switch action {
-        case .view(let viewAction):
-          switch viewAction {
-          case .onAppear:
-            return .none
-
-          case .tabModeChanged(let mode):
-            state.$defaultPromiseTabMode.withLock { $0 = mode }
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // MARK: - Root View
-
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
-
-    public var body: some View {
-      ScrollView {
-        VStack(spacing: 16) {
-          tabModeSection
-          tabBarPreviewSection
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 24)
-      }
-      .auroraBackground()
-      .navigationTitle("약속 탭 기본 모드")
-      .navigationBarTitleDisplayMode(.inline)
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
-    }
-
-    private var tabModeSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("기본 모드")
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          tabModeRow(mode: "group", icon: "person.3.fill", title: "그룹", description: "그룹 약속을 기본으로 표시")
-          Divider()
-            .padding(.leading, 48)
-          tabModeRow(mode: "own", icon: "person.fill", title: "개인", description: "개인 일정을 기본으로 표시")
-        }
-        .adaptiveGlassCard()
-
-        Text("약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-      }
-    }
-
-    private func tabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
-      Button {
-        store.send(.view(.tabModeChanged(mode)))
-      } label: {
-        HStack(spacing: 12) {
-          Image(systemName: icon)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 20)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Text(description)
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-
-          Spacer()
-
-          if store.defaultPromiseTabMode == mode {
-            Image(systemName: "checkmark")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-    }
-
-    private var tabBarPreviewSection: some View {
-      VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
-          .font(.system(size: 16, weight: .semibold))
-          .padding(.horizontal, 4)
-
-        TabBarPreview(selectedMode: store.defaultPromiseTabMode)
-          .adaptiveGlassCard()
-
-        Text("실제 탭바는 위와 같이 표시됩니다.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
-      }
-    }
-  }
-
-  // MARK: - TabBarPreview
-
-  private struct TabBarPreview: View {
-    let selectedMode: String
-
-    var body: some View {
-      if #available(iOS 26.0, *) {
-        ios26TabBarPreview
-      } else {
-        fallbackTabBarPreview
-      }
-    }
-
-    @available(iOS 26.0, *)
-    private var ios26TabBarPreview: some View {
-      HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
-        TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
-          isSelected: true
-        )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
-      }
-      .padding(8)
-      .background(
-        RoundedRectangle(cornerRadius: 24)
-          .fill(.regularMaterial.opacity(0.7))
-      )
-      .frame(height: 76)
-    }
-
-    private var fallbackTabBarPreview: some View {
-      HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
-        TabItemView(
-          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
-          isSelected: true
-        )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
-      }
-      .padding(8)
-      .background(
-        RoundedRectangle(cornerRadius: 24)
-          .fill(Color.white.opacity(0.1))
-      )
-      .frame(height: 76)
-    }
-  }
-
-  // MARK: - TabItemView
-
-  private struct TabItemView: View {
-    let icon: String
-    let label: String
-    let isSelected: Bool
-
-    var body: some View {
-      VStack(spacing: 4) {
-        Image(systemName: icon)
-          .font(.system(size: 22, weight: .medium))
-          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
-
-        Text(label)
-          .font(.system(size: 11, weight: .medium))
-          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 8)
-      .background(
-        Group {
-          if isSelected {
-            if #available(iOS 26.0, *) {
-              Capsule()
-                .fill(.ultraThinMaterial)
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-            } else {
-              Capsule()
-                .fill(Color.white.opacity(0.2))
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-            }
-          }
-        }
-      )
+      return LocalizedStrings.SettingsStrings.unknownError
     }
   }
 }

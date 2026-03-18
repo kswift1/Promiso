@@ -24,6 +24,15 @@ public struct LocalNotificationClient: Sendable {
   /// 여러 ID의 로컬 알림 일괄 취소
   public var cancelAll: @Sendable (_ ids: [String]) async -> Void
 
+  /// 반복 알림 예약 (UNCalendarNotificationTrigger repeats: true)
+  public var scheduleRepeating: @Sendable (
+    _ id: String,
+    _ title: String,
+    _ body: String,
+    _ dateComponents: DateComponents,
+    _ userInfo: [String: String]
+  ) async throws -> Void
+
   /// 현재 예약된 알림 ID 목록 조회
   public var pendingIds: @Sendable () async -> [String] = { [] }
 }
@@ -37,6 +46,7 @@ extension LocalNotificationClient: TestDependencyKey {
     schedule: { _, _, _, _, _ in },
     cancel: { _ in },
     cancelAll: { _ in },
+    scheduleRepeating: { _, _, _, _, _ in },
     pendingIds: { [] }
   )
 }
@@ -96,6 +106,23 @@ extension LocalNotificationClient: DependencyKey {
       UNUserNotificationCenter.current()
         .removePendingNotificationRequests(withIdentifiers: ids)
       AppLogger.notification.info("⏰ [LocalNotification] 알림 일괄 취소: \(ids.count)개")
+    },
+
+    scheduleRepeating: { id, title, body, components, userInfo in
+      let content = UNMutableNotificationContent()
+      content.title = title
+      content.body = body
+      content.sound = .default
+      content.userInfo = userInfo.mapValues { $0 as Any }
+
+      let trigger = UNCalendarNotificationTrigger(
+        dateMatching: components,
+        repeats: true
+      )
+
+      let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+      try await UNUserNotificationCenter.current().add(request)
+      AppLogger.notification.info("⏰ [LocalNotification] 반복 알림 예약 완료: \(id)")
     },
 
     pendingIds: {

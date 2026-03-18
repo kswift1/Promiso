@@ -22,14 +22,16 @@ let promisoDev = Target.target(
   entitlements: .file(path: "PromisoDev.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
-    .target(name: "PromiseWidgetExtension-Dev")
+    .target(name: "ScheduleWidgetExtension-Dev")
   ],
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.dev"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Automatic")
+      "CODE_SIGN_STYLE": .string("Automatic"),
+      "DEEPLINK_SCHEME": .string("promiso-dev"),
+      "DEEPLINK_WEB_HOST": .string("dev.promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
@@ -50,14 +52,16 @@ let promisoStage = Target.target(
   entitlements: .file(path: "PromisoStage.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
-    .target(name: "PromiseWidgetExtension-Stage")
+    .target(name: "ScheduleWidgetExtension-Stage")
   ],
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "DEEPLINK_SCHEME": .string("promiso-stage"),
+      "DEEPLINK_WEB_HOST": .string("stage.promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", settings: [
@@ -84,13 +88,15 @@ let promisoProd = Target.target(
   entitlements: .file(path: "Promiso.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
-    .target(name: "PromiseWidgetExtension")
+    .target(name: "ScheduleWidgetExtension")
   ],
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "DEEPLINK_SCHEME": .string("promiso"),
+      "DEEPLINK_WEB_HOST": .string("promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", settings: [
@@ -115,6 +121,9 @@ let liveActivityDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -139,6 +148,9 @@ let liveActivityStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -175,6 +187,9 @@ let liveActivityProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -203,20 +218,23 @@ let liveActivityProd = Target.target(
   )
 )
 
-let promiseWidgetDev = Target.target(
-  name: "PromiseWidgetExtension-Dev",
+let scheduleWidgetDev = Target.target(
+  name: "ScheduleWidgetExtension-Dev",
   destinations: .iOS,
   product: .appExtension,
   bundleId: "com.promiso.dev.promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget-Dev.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget-Dev.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -227,20 +245,23 @@ let promiseWidgetDev = Target.target(
   ])
 )
 
-let promiseWidgetStage = Target.target(
-  name: "PromiseWidgetExtension-Stage",
+let scheduleWidgetStage = Target.target(
+  name: "ScheduleWidgetExtension-Stage",
   destinations: .iOS,
   product: .appExtension,
   bundleId: "com.promiso.stage.promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget-Stage.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget-Stage.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -263,20 +284,23 @@ let promiseWidgetStage = Target.target(
   )
 )
 
-let promiseWidgetProd = Target.target(
-  name: "PromiseWidgetExtension",
+let scheduleWidgetProd = Target.target(
+  name: "ScheduleWidgetExtension",
   destinations: .iOS,
   product: .appExtension,
   bundleId: "\(AppConfig.bundleId).promisewidget",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
   ]),
-  sources: ["Extensions/PromiseWidget/Sources/**"],
-  entitlements: .file(path: "Extensions/PromiseWidget/PromiseWidget.entitlements"),
+  sources: ["Extensions/ScheduleWidget/Sources/**"],
+  entitlements: .file(path: "Extensions/ScheduleWidget/ScheduleWidget.entitlements"),
   dependencies: [
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
@@ -315,14 +339,59 @@ let environment: String = {
 let targets: [Target] = {
   switch environment {
   case "dev":
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev]
   case "stage":
-    return [promisoStage, liveActivityStage, promiseWidgetStage]
+    return [promisoStage, liveActivityStage, scheduleWidgetStage]
   case "prod":
-    return [promisoProd, liveActivityProd, promiseWidgetProd]
+    return [promisoProd, liveActivityProd, scheduleWidgetProd]
   default:
     // 잘못된 값이 들어오면 dev로 fallback
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev]
+  }
+}()
+
+// MARK: - Schemes (StoreKit Configuration 포함)
+
+let schemes: [Scheme] = {
+  switch environment {
+  case "dev":
+    return [
+      Scheme.scheme(
+        name: "PromisoDev",
+        shared: true,
+        buildAction: .buildAction(targets: [.target("PromisoDev")]),
+        runAction: .runAction(
+          configuration: .debug,
+          options: .options(
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan-Dev.storekit")
+          )
+        )
+      )
+    ]
+  case "stage":
+    return [
+      Scheme.scheme(
+        name: "PromisoStage",
+        shared: true,
+        buildAction: .buildAction(targets: [.target("PromisoStage")]),
+        runAction: .runAction(
+          configuration: .debug
+        )
+      )
+    ]
+  case "prod":
+    return [
+      Scheme.scheme(
+        name: AppConfig.name,
+        shared: true,
+        buildAction: .buildAction(targets: [.target(AppConfig.name)]),
+        runAction: .runAction(
+          configuration: .debug
+        )
+      )
+    ]
+  default:
+    return []
   }
 }()
 
@@ -330,11 +399,13 @@ let targets: [Target] = {
 
 let project = Project(
   name: AppConfig.name,
+  options: .options(developmentRegion: "ko"),
   settings: .settings(
     configurations: [
       .debug(name: "Debug"),
       .release(name: "Release")
     ]
   ),
-  targets: targets
+  targets: targets,
+  schemes: schemes
 )

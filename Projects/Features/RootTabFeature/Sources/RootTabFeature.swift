@@ -18,47 +18,54 @@ import SharedFeature
 // NotificationCenter를 사용하여 TCA Reducer → SwiftUI View로 이벤트 전달
 
 extension Notification.Name {
-  /// 딥링크로 LivePromiseDetail 열기 요청 (TCA Reducer → View)
+  /// 딥링크로 LiveScheduleDetail 열기 요청 (TCA Reducer → View)
   /// - 탭으로 열 때: @State 직접 토글 → zoom transition 동작
   /// - 딥링크로 열 때: Notification 수신 → @State 토글 → zoom transition 보존
-  static let openLivePromiseDetailFromDeeplink = Notification.Name("openLivePromiseDetailFromDeeplink")
+  static let openLiveScheduleDetailFromDeeplink = Notification.Name("openLiveScheduleDetailFromDeeplink")
 }
 
 public enum Tab: Equatable, Hashable {
   case home
-  case promise(PromiseTabMode = .group)
+  case schedule(ScheduleTabMode = .group)
   case calendar
   case settings
 
-  public enum PromiseTabMode: String, Equatable, Hashable, Sendable {
-    case group = "그룹"
-    case own = "개인"
+  public enum ScheduleTabMode: String, Equatable, Hashable, Sendable {
+    case group = "group"
+    case own = "own"
+
+    var displayTitle: String {
+      switch self {
+      case .group: return LocalizedStrings.RootTab.tabModeGroup
+      case .own: return LocalizedStrings.RootTab.tabModePersonal
+      }
+    }
   }
 
-  var isPromise: Bool {
-    if case .promise = self { return true }
+  var isSchedule: Bool {
+    if case .schedule = self { return true }
     return false
   }
 
-  var promiseMode: PromiseTabMode? {
-    if case .promise(let mode) = self { return mode }
+  var scheduleMode: ScheduleTabMode? {
+    if case .schedule(let mode) = self { return mode }
     return nil
   }
 
   var label: String {
     switch self {
-    case .home: return "홈"
-    case .promise(let mode): return mode.rawValue
-    case .calendar: return "캘린더"
-    case .settings: return "설정"
+    case .home: return LocalizedStrings.TabBar.home
+    case .schedule(let mode): return mode.displayTitle
+    case .calendar: return LocalizedStrings.TabBar.calendar
+    case .settings: return LocalizedStrings.TabBar.settings
     }
   }
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
-    case .promise(.group): return "person.3.fill"
-    case .promise(.own): return "person.fill"
+    case .schedule(.group): return "person.3.fill"
+    case .schedule(.own): return "person.fill"
     case .calendar: return "calendar"
     case .settings: return "gearshape.fill"
     }
@@ -69,8 +76,8 @@ public enum Tab: Equatable, Hashable {
     switch self {
     case .home, .settings:
       return [.bounce]
-    case .promise, .calendar:
-      // Promise 모드 토글 시 회전 + 바운스
+    case .schedule, .calendar:
+      // Schedule 모드 토글 시 회전 + 바운스
       return [.wiggle.up]
     }
   }
@@ -96,9 +103,14 @@ extension RootTab {
     @Dependency(\.liveActivityClient) var liveActivityClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
-    @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.subscriptionClient) var subscriptionClient
+
+    private enum CancelID: Hashable {
+      case subscriptionStatus
+    }
 
     public init() {}
 
@@ -107,8 +119,14 @@ extension RootTab {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
 
-      /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
-      var promiseMode: Tab.PromiseTabMode
+      /// Schedule 탭의 현재 모드 (탭 전환 시에도 유지)
+      var scheduleMode: Tab.ScheduleTabMode
+
+      /// 최초 onAppear에서 캘린더 동기화가 예약되었는지 추적
+      var hasInitialCalendarSyncBeenScheduled: Bool = false
+
+      /// 캘린더 동기화 실행 중 상태
+      var isCalendarSyncInFlight: Bool = false
 
       /// Home Main State
       var home: Home.Feature.State
@@ -128,25 +146,44 @@ extension RootTab {
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
-      /// LivePromise State (약속 추적 바) - nil이면 숨김
-      var livePromise: LivePromise.Feature.State?
+      /// 테마 모드 (system/light/dark) — 설정 변경 시 preferredColorScheme 자동 갱신
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) var themeMode: String = AppConstants.ThemeMode.system.rawValue
 
-      /// LivePromise 상세 뷰 Presentation
-      @Presents var livePromiseDetail: LivePromise.Detail.State?
+      /// 선호 언어 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) var preferredLanguage: String = ""
+
+      /// 24시간 형식 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) var use24HourFormat: Bool = false
+
+      /// LiveSchedule State (일정 추적 바) - nil이면 숨김
+      var liveSchedule: LiveSchedule.Feature.State?
+
+      /// LiveSchedule 상세 뷰 Presentation
+      @Presents var liveScheduleDetail: LiveSchedule.Detail.State?
 
       /// Widget "직접 입력" 딥링크 pending 플래그
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정,
-      /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
+      /// activityUpdateReceived에서 liveSchedule 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
+
+      /// 현재 구독 상태 (앱 레벨 모니터링)
+      var subscriptionStatus: SubscriptionStatus = .none
+      /// LiveSchedule 상세 딥링크 pending 플래그
+      /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정
+      var pendingLiveScheduleDetailRequest: Bool = false
+
+      /// 일정 탭 기본 모드 (Settings에서 설정)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
-        // UserDefaults에서 약속 탭 기본 모드 읽기
-        let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
-        self.promiseMode = savedMode == "own" ? .own : .group
+        // @Shared appStorage에서 일정 탭 기본 모드 읽기
+        self.scheduleMode = _defaultScheduleTabMode.wrappedValue == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
-        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
+        let savedCalendarMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultCalendarDisplayMode)
+          .flatMap { CalendarDisplayMode(rawValue: $0) } ?? .month
+        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser, displayMode: savedCalendarMode)
         self.settings = Settings.Feature.State(currentUser: currentUser)
         self.personalMode = PersonalMode.Feature.State(currentUser: currentUser)
       }
@@ -168,26 +205,30 @@ extension RootTab {
       case settings(Settings.Feature.Action)
       /// Personal Mode 액션
       case personalMode(PersonalMode.Feature.Action)
-      /// LivePromise 액션
-      case livePromise(LivePromise.Feature.Action)
-      /// LivePromise 상세 뷰 액션
-      case livePromiseDetail(PresentationAction<LivePromise.Detail.Action>)
+      /// LiveSchedule 액션
+      case liveSchedule(LiveSchedule.Feature.Action)
+      /// LiveSchedule 상세 뷰 액션
+      case liveScheduleDetail(PresentationAction<LiveSchedule.Detail.Action>)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
       case openJoinGroupWithCode(String)
       /// 그룹 탭 딥링크 처리
       case handleGroupDeeplink(GroupMain.Deeplink)
-      /// Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+      /// Widget "직접 입력" 버튼 → LiveScheduleExpandedView + ETA 시트 열기
       case openLiveActivityETASheet
-      /// LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
-      case openLivePromiseDetail
-      /// Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
-      case openCreatePromiseIfPossible
+      /// LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      case openLiveScheduleDetail
+      /// Widget "일정 만들기" 버튼 → 그룹 탭 이동 + 일정 생성 (그룹 있을 때만)
+      case openCreateScheduleIfPossible
       /// Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
       case openPersonalEventDetail(eventId: String)
       /// 온보딩에서 그룹 생성 열기
       case openCreateGroup
+      /// 딥링크에서 ProPlan 화면 열기
+      case openProPlan
+      /// Scene phase 변경 (포그라운드 복귀 시 구독 상태 갱신)
+      case scenePhaseChanged(ScenePhase)
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -214,6 +255,14 @@ extension RootTab {
       case openETASheetAfterDelay
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
+      /// 구독 상태 모니터링 시작 (StoreKit + Firestore 통합)
+      case observeSubscriptionStatus
+      /// 구독 상태 변경 수신
+      case subscriptionStatusChanged(SubscriptionStatus)
+      /// 포그라운드 복귀 시 구독 상태 1회 갱신
+      case refreshSubscriptionStatus
+      /// 캘린더 동기화 완료 처리
+      case syncCalendarFinished(success: Bool)
     }
 
     @CasePathable
@@ -246,13 +295,20 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          return .merge(
+          var effects: [Effect<Action>] = [
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
-            .send(.internal(.syncCalendar))
-          )
+            .send(.internal(.syncCalendar)),
+            .send(.internal(.observeSubscriptionStatus))
+          ]
+
+          if !state.hasInitialCalendarSyncBeenScheduled {
+            effects.append(.send(.internal(.syncCalendar)))
+          }
+
+          return .merge(effects)
 
         case .tabSelected(let tab):
           let previousTab = state.selectedTab
@@ -261,14 +317,18 @@ extension RootTab {
           let hapticEffect: Effect<Action> = .run { _ in await hapticFeedback.buttonTap() }
 
           guard tab != previousTab else {
-            // Promise 탭 재선택 시 모드 토글
-            if case .promise = tab {
-              let newMode: Tab.PromiseTabMode = state.promiseMode == .group ? .own : .group
-              state.promiseMode = newMode
-              state.selectedTab = .promise(newMode)
+            // Schedule 탭 재선택 시 모드 토글
+            if case .schedule = tab {
+              let newMode: Tab.ScheduleTabMode = state.scheduleMode == .group ? .own : .group
+              state.scheduleMode = newMode
+              state.selectedTab = .schedule(newMode)
               if newMode == .own {
                 return .merge(hapticEffect, .send(.personalMode(.view(.onAppear))))
               }
+            }
+            // Calendar 탭 재선택 시 모드 순환
+            if case .calendar = tab {
+              return .merge(hapticEffect, .send(.calendar(.view(.toggleDisplayMode))))
             }
             return hapticEffect
           }
@@ -283,32 +343,48 @@ extension RootTab {
             effects.append(.send(.calendar(.view(.refresh))))
           case .settings:
             // Analytics 이벤트 로깅
-            analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
-          case .promise:
-            break
+            analyticsClient.log(.settingsOpened)
+          case .schedule:
+            if state.scheduleMode == .group {
+              effects.append(.send(.groupMain(.view(.tabReturned))))
+            }
           }
 
           return .merge(effects)
 
-        case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
-          // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
+        case .home(.delegate(.navigateToGroupWithSchedule(let groupId, let scheduleId))):
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
+          // 그룹 선택 후 응답 필요 필터로 해당 일정 하이라이트
           return .send(.groupMain(.view(.handleDeeplink(
-            .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
+            .scheduleInList(scheduleId: scheduleId, groupId: groupId, filter: .needResponse)
           ))))
 
-        case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
+        case .home(.delegate(.navigateToSchedule(_, let groupId))):
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
           }
           return .none
 
-        case .home(.delegate(.navigateToAllPromises)):
-          // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
+        case .home(.delegate(.navigateToAllSchedules)):
+          // TODO: 모든 일정 보기 화면으로 이동 (추후 구현)
           return .none
+
+        case .home(.delegate(.navigateToCreateSchedule)):
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
+          return .send(.groupMain(.view(.openCreateScheduleIfPossible)))
+        case .home(.delegate(.createScheduleWithExtractedInfo(let info))):
+          // 그룹 탭으로 전환 → CreateSchedule 열기 (추출 정보 pre-fill)
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
+          return .send(.groupMain(.view(.openCreateScheduleWithExtractedInfo(info))))
+
+        case .home(.delegate(.proPlanRequested)):
+          state.selectedTab = .settings
+          return .send(.settings(.view(.proPlanTapped)))
 
         case .home:
           return .none
@@ -317,17 +393,17 @@ extension RootTab {
           return .none
 
         case .groupMain(.view(.switchToPersonalMode)):
-          state.promiseMode = .own
-          state.selectedTab = .promise(.own)
+          state.scheduleMode = .own
+          state.selectedTab = .schedule(.own)
           return .send(.personalMode(.view(.onAppear)))
 
         case .groupMain:
           return .none
 
         case .personalMode(.view(.switchToGroupMode)):
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
-          return .none
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
+          return .send(.groupMain(.view(.tabReturned)))
 
         case .personalMode:
           return .none
@@ -335,19 +411,22 @@ extension RootTab {
         case .settings(.delegate(.didLogout)):
           return .send(.delegate(.logoutRequested))
 
+        case .settings(.delegate(.subscriptionStatusChanged(let status))):
+          return applySubscriptionStatus(status, state: &state)
+
         case .settings:
           return .none
 
-        case .livePromise(.delegate(.showDetail)):
+        case .liveSchedule(.delegate(.showDetail)):
           // CompactView 탭 → 상세 뷰 표시 (같은 @Shared 전달)
-          guard let livePromise = state.livePromise else { return .none }
-          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+          guard let liveSchedule = state.liveSchedule else { return .none }
+          state.liveScheduleDetail = LiveSchedule.Detail.State(data: liveSchedule.$data)
           return .none
 
-        case .livePromise:
+        case .liveSchedule:
           return .none
 
-        case .livePromiseDetail(.presented(.delegate(.updateETA(let minutes)))):
+        case .liveScheduleDetail(.presented(.delegate(.updateETA(let minutes)))):
           // ExpandedView 시트에서 ETA 변경 → 서버 API 호출 → APNs Broadcast
           guard let attributes = liveActivityClient.currentAttributes(),
                 let currentState = liveActivityClient.currentState() else {
@@ -374,71 +453,75 @@ extension RootTab {
           AppLogger.liveActivity.info("ETA 업데이트 요청: channelId=\(channelId), minutes=\(minutes)")
 
           // 서버 API 호출 → APNs Broadcast로 모든 참가자(나 포함) 업데이트
-          return .run { [promiseClient] _ in
+          return .run { [scheduleClient] _ in
             do {
-              try await promiseClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
+              try await scheduleClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
               AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
             } catch {
               AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")
             }
           }
 
-        case .livePromiseDetail:
+        case .liveScheduleDetail:
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
 
         case .handleGroupDeeplink(let deeplink):
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
         case .openLiveActivityETASheet:
-          guard let livePromise = state.livePromise else {
+          guard let liveSchedule = state.liveSchedule else {
             // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
             state.pendingETASheetRequest = true
             return .none
           }
-          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+          state.liveScheduleDetail = LiveSchedule.Detail.State(data: liveSchedule.$data)
           // 딜레이 후 ETA 시트 열기 (fullScreenCover 애니메이션 완료 대기)
           return .run { send in
             // View에 presentation 요청
-            NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
+            NotificationCenter.default.post(name: .openLiveScheduleDetailFromDeeplink, object: nil)
             try? await Task.sleep(for: .milliseconds(400))
             await send(.internal(.openETASheetAfterDelay))
           }
 
-        case .openLivePromiseDetail:
-          guard let livePromise = state.livePromise else {
+        case .openLiveScheduleDetail:
+          guard let liveSchedule = state.liveSchedule else {
             // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
-            // ETA 시트 없이 열리므로 pendingETASheetRequest는 false 유지
+            state.pendingLiveScheduleDetailRequest = true
             return .none
           }
-          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+          state.liveScheduleDetail = LiveSchedule.Detail.State(data: liveSchedule.$data)
           // View에 presentation 요청
           return .run { _ in
-            NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
+            NotificationCenter.default.post(name: .openLiveScheduleDetailFromDeeplink, object: nil)
           }
 
-        case .openCreatePromiseIfPossible:
-          // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
-          return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
+        case .openCreateScheduleIfPossible:
+          // 그룹 탭으로 이동 후 그룹 유무에 따라 CreateSchedule 열기
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
+          return .send(.groupMain(.view(.openCreateScheduleIfPossible)))
 
         case .openPersonalEventDetail(let eventId):
-          state.promiseMode = .own
-          state.selectedTab = .promise(.own)
+          state.scheduleMode = .own
+          state.selectedTab = .schedule(.own)
           return .send(.personalMode(.view(.openEventFromDeeplink(eventId: eventId))))
 
         case .openCreateGroup:
           // 그룹 탭으로 이동 후 그룹 생성 열기
-          state.promiseMode = .group
-          state.selectedTab = .promise(.group)
+          state.scheduleMode = .group
+          state.selectedTab = .schedule(.group)
           return .send(.groupMain(.view(.createGroup)))
+
+        case .openProPlan:
+          state.selectedTab = .settings
+          return .send(.settings(.view(.proPlanTapped)))
 
         case .internal(let internalAction):
           switch internalAction {
@@ -488,7 +571,7 @@ extension RootTab {
 
           case .activityUpdateReceived(let update):
             if update.isActive, let attributes = update.attributes {
-              let data = LivePromise.Data(
+              let data = LiveSchedule.Data(
                 emoji: attributes.emoji,
                 title: attributes.title,
                 location: attributes.location,
@@ -501,15 +584,18 @@ extension RootTab {
                 groupName: attributes.groupName,
                 groupImageUrl: attributes.groupImageUrl
               )
-              state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
+              state.liveSchedule = LiveSchedule.Feature.State(data: Shared(value: data))
 
               // pending ETA 시트 요청 처리 (Cold start 시 딥링크가 먼저 도착한 경우)
               var effects: [Effect<Action>] = [
-                .send(.groupMain(.internal(.liveActivityChanged(promiseId: attributes.promiseId))))
+                .send(.groupMain(.internal(.liveActivityChanged(scheduleId: attributes.scheduleId))))
               ]
               if state.pendingETASheetRequest {
                 state.pendingETASheetRequest = false
                 effects.append(.send(.openLiveActivityETASheet))
+              } else if state.pendingLiveScheduleDetailRequest {
+                state.pendingLiveScheduleDetailRequest = false
+                effects.append(.send(.openLiveScheduleDetail))
               }
 
               // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)
@@ -519,9 +605,9 @@ extension RootTab {
 
               return .merge(effects)
             } else if !update.isActive {
-              if state.livePromise != nil {
-                state.livePromise = nil
-                return .send(.groupMain(.internal(.liveActivityChanged(promiseId: nil))))
+              if state.liveSchedule != nil {
+                state.liveSchedule = nil
+                return .send(.groupMain(.internal(.liveActivityChanged(scheduleId: nil))))
               }
             }
             return .none
@@ -538,16 +624,19 @@ extension RootTab {
 
           case .activityStateChanged(let stateValue):
             if stateValue == .dismissed || stateValue == .ended {
-              state.livePromise = nil
-              return .send(.groupMain(.internal(.liveActivityChanged(promiseId: nil))))
+              state.liveSchedule = nil
+              return .send(.groupMain(.internal(.liveActivityChanged(scheduleId: nil))))
             }
             return .none
 
           case .openETASheetAfterDelay:
-            state.livePromiseDetail?.isETASheetPresented = true
+            state.liveScheduleDetail?.isETASheetPresented = true
             return .none
 
           case .syncCalendar:
+            guard !state.isCalendarSyncInFlight else { return .none }
+            state.isCalendarSyncInFlight = true
+
             // 앱 시작 시 캘린더 동기화 (백그라운드)
             let enabledGroupIds = Set(
               state.currentUser.groups
@@ -557,40 +646,93 @@ extension RootTab {
             let personalSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
             )
-            return .merge(
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 그룹 약속 동기화
-                AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
-                do {
-                  let result = try await calendarSyncClient.sync(enabledGroupIds)
-                  AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+            return .run(priority: .utility) { [calendarSyncClient] send in
+              let allSucceeded = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+                group.addTask {
+                  do {
+                    let result = try await calendarSyncClient.sync(enabledGroupIds)
+                    AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+                    return true
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+                    return false
+                  }
                 }
-              },
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 개인 일정 동기화
-                do {
-                  let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
-                  AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+
+                group.addTask {
+                  do {
+                    let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
+                    AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
+                    return true
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+                    return false
+                  }
                 }
+
+                return await group.reduce(true) { $0 && $1 }
               }
-            )
+              await send(.internal(.syncCalendarFinished(success: allSucceeded)))
+            }
+
+          case .syncCalendarFinished(let success):
+            state.isCalendarSyncInFlight = false
+            if success {
+              state.hasInitialCalendarSyncBeenScheduled = true
+            }
+            return .none
+
+          case .observeSubscriptionStatus:
+            return .run { [subscriptionClient] send in
+              if let status = try? await subscriptionClient.fetchStatus() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+              for await status in subscriptionClient.unifiedStatusStream() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+            }
+            .cancellable(id: CancelID.subscriptionStatus, cancelInFlight: true)
+
+          case .subscriptionStatusChanged(let status):
+            return applySubscriptionStatus(status, state: &state)
+
+          case .refreshSubscriptionStatus:
+            return .run { [subscriptionClient] send in
+              if let status = try? await subscriptionClient.fetchStatus() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+            }
 
           }
+
+        case .scenePhaseChanged(let phase):
+          if phase == .active {
+            return .send(.internal(.refreshSubscriptionStatus))
+          }
+          return .none
 
         case .delegate:
           return .none
         }
       }
-      .ifLet(\.livePromise, action: \.livePromise) {
-        LivePromise.Feature()
+      .ifLet(\.liveSchedule, action: \.liveSchedule) {
+        LiveSchedule.Feature()
       }
-      .ifLet(\.$livePromiseDetail, action: \.livePromiseDetail) {
-        LivePromise.Detail()
+      .ifLet(\.$liveScheduleDetail, action: \.liveScheduleDetail) {
+        LiveSchedule.Detail()
       }
+    }
+
+    private func applySubscriptionStatus(
+      _ status: SubscriptionStatus,
+      state: inout State
+    ) -> Effect<Action> {
+      state.subscriptionStatus = status
+      state.settings.subscriptionStatus = status
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro = false
+      $isPro.withLock { $0 = status.isPro }
+      analyticsClient.setSubscriptionTier(status)
+      return .none
     }
   }
 }
@@ -608,7 +750,8 @@ extension RootTab {
     // @State를 직접 토글해야 합니다. TCA의 Binding(get:set:)이나 onChange 동기화로는
     // SwiftUI transition 타이밍이 맞지 않아 zoom 애니메이션이 동작하지 않습니다.
     // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
-    @State private var expandLivePromise: Bool = false
+    @State private var expandLiveSchedule: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Tab Animation State
     /// 탭 아이콘 애니메이션을 위한 UIImageView 캐시
@@ -616,7 +759,7 @@ extension RootTab {
 
     // MARK: - Constants
 
-    private let livePromiseTransitionID = "LIVE_PROMISE_TRANSITION"
+    private let liveScheduleTransitionID = "LIVE_PROMISE_TRANSITION"
     private let tabBarHeight = AppConstants.UI.tabBarHeight
     private let compactViewBottomSpacing = AppConstants.UI.compactViewBottomSpacing
     private let compactViewCornerRadius = AppConstants.UI.compactViewCornerRadius
@@ -631,8 +774,7 @@ extension RootTab {
 
     /// 현재 설정된 테마 모드를 ColorScheme으로 변환
     private var preferredColorScheme: ColorScheme? {
-      let themeMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) ?? AppConstants.ThemeMode.system.rawValue
-      switch AppConstants.ThemeMode(rawValue: themeMode) ?? .system {
+      switch AppConstants.ThemeMode(rawValue: store.themeMode) ?? .system {
       case .system: return nil
       case .light: return .light
       case .dark: return .dark
@@ -640,28 +782,32 @@ extension RootTab {
     }
 
     public var body: some View {
-      tabViewWithLivePromise
+      tabViewWithLiveSchedule
         .tint(Color.pmbrand.primary)
         .preferredColorScheme(preferredColorScheme)
+        .id("\(store.preferredLanguage)_\(store.use24HourFormat)")
         .onAppear { store.send(.onAppear) }
-        .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
+        .onChange(of: scenePhase) { _, newPhase in
+          store.send(.scenePhaseChanged(newPhase))
+        }
+        .fullScreenCover(isPresented: $expandLiveSchedule, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리
-          store.send(.livePromiseDetail(.dismiss))
+          store.send(.liveScheduleDetail(.dismiss))
         }) {
-          if let detailStore = store.scope(state: \.livePromiseDetail, action: \.livePromiseDetail.presented) {
-            LivePromise.ExpandedView(
+          if let detailStore = store.scope(state: \.liveScheduleDetail, action: \.liveScheduleDetail.presented) {
+            LiveSchedule.ExpandedView(
               store: detailStore,
               animation: animation,
-              transitionID: livePromiseTransitionID
+              transitionID: liveScheduleTransitionID
             )
           }
         }
-        // 딥링크로 LivePromiseDetail 열기 요청 수신
+        // 딥링크로 LiveScheduleDetail 열기 요청 수신
         // ⚠️ onChange/task(id:)로 TCA 상태를 관찰하면 zoom transition이 깨짐
         // NotificationCenter를 사용하여 TCA → View 단방향 이벤트 전달
-        .onReceive(NotificationCenter.default.publisher(for: .openLivePromiseDetailFromDeeplink)) { _ in
-          if !expandLivePromise {
-            expandLivePromise = true
+        .onReceive(NotificationCenter.default.publisher(for: .openLiveScheduleDetailFromDeeplink)) { _ in
+          if !expandLiveSchedule {
+            expandLiveSchedule = true
           }
         }
     }
@@ -671,24 +817,24 @@ extension RootTab {
     private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
         tabContentView(for: .home)
-          .tabItem { Label("홈", systemImage: "house.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.home, systemImage: "house.fill") }
           .tag(Tab.home)
 
-        tabContentView(for: .promise(store.promiseMode))
+        tabContentView(for: .schedule(store.scheduleMode))
           .tabItem {
             Label(
-              Tab.promise(store.promiseMode).label,
-              systemImage: Tab.promise(store.promiseMode).iconName
+              Tab.schedule(store.scheduleMode).label,
+              systemImage: Tab.schedule(store.scheduleMode).iconName
             )
           }
-          .tag(Tab.promise(store.promiseMode))
+          .tag(Tab.schedule(store.scheduleMode))
 
         tabContentView(for: .calendar)
-          .tabItem { Label("캘린더", systemImage: "calendar") }
+          .tabItem { Label(LocalizedStrings.TabBar.calendar, systemImage: store.calendar.displayMode.iconName) }
           .tag(Tab.calendar)
 
         tabContentView(for: .settings)
-          .tabItem { Label("설정", systemImage: "gearshape.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.settings, systemImage: "gearshape.fill") }
           .tag(Tab.settings)
       }
       .tabViewStyle(.tabBarOnly)
@@ -704,10 +850,10 @@ extension RootTab {
       }
     }
 
-    // MARK: - TabView with LivePromise
+    // MARK: - TabView with LiveSchedule
 
     @ViewBuilder
-    private var tabViewWithLivePromise: some View {
+    private var tabViewWithLiveSchedule: some View {
       if #available(iOS 26.1, *) {
         tabViewWithBottomAccessoryNew
       } else if #available(iOS 26.0, *) {
@@ -722,14 +868,14 @@ extension RootTab {
     private var tabViewWithBottomAccessoryNew: some View {
       tabView
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory(isEnabled: store.livePromise != nil) {
-          if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
-            LivePromise.CompactView(store: livePromiseStore)
-              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+        .tabViewBottomAccessory(isEnabled: store.liveSchedule != nil) {
+          if let liveScheduleStore = store.scope(state: \.liveSchedule, action: \.liveSchedule) {
+            LiveSchedule.CompactView(store: liveScheduleStore)
+              .matchedTransitionSource(id: liveScheduleTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                store.send(.livePromise(.view(.tapped)))  // TCA 상태 생성
-                expandLivePromise = true  // transition용 직접 토글
+                store.send(.liveSchedule(.view(.tapped)))  // TCA 상태 생성
+                expandLiveSchedule = true  // transition용 직접 토글
               }
           }
         }
@@ -738,16 +884,16 @@ extension RootTab {
     @available(iOS 26.0, *)
     @ViewBuilder
     private var tabViewWithBottomAccessoryLegacy: some View {
-      if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
+      if let liveScheduleStore = store.scope(state: \.liveSchedule, action: \.liveSchedule) {
         tabView
           .tabBarMinimizeBehavior(.onScrollDown)
           .tabViewBottomAccessory {
-            LivePromise.CompactView(store: livePromiseStore)
-              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+            LiveSchedule.CompactView(store: liveScheduleStore)
+              .matchedTransitionSource(id: liveScheduleTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                store.send(.livePromise(.view(.tapped)))
-                expandLivePromise = true
+                store.send(.liveSchedule(.view(.tapped)))
+                expandLiveSchedule = true
               }
           }
       } else {
@@ -758,15 +904,15 @@ extension RootTab {
     private var tabViewWithOverlay: some View {
       tabView
         .overlay(alignment: .bottom) {
-          if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
-            LivePromise.CompactView(store: livePromiseStore)
+          if let liveScheduleStore = store.scope(state: \.liveSchedule, action: \.liveSchedule) {
+            LiveSchedule.CompactView(store: liveScheduleStore)
               .padding(.vertical, compactViewVerticalPadding)
               .background(.ultraThinMaterial, in: .rect(cornerRadius: compactViewCornerRadius))
-              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+              .matchedTransitionSource(id: liveScheduleTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                store.send(.livePromise(.view(.tapped)))
-                expandLivePromise = true
+                store.send(.liveSchedule(.view(.tapped)))
+                expandLiveSchedule = true
               }
               .offset(y: -(tabBarHeight + compactViewBottomSpacing))
               .padding(.horizontal, compactViewPadding)
@@ -798,7 +944,7 @@ extension RootTab {
           )
         )
 
-      case .promise(let mode):
+      case .schedule(let mode):
         NavigationStack {
           switch mode {
           case .group:
@@ -876,8 +1022,8 @@ fileprivate struct ExtractTabImageViews: UIViewRepresentable {
 
     var dict: [Tab: UIImageView] = [:]
 
-    // 탭 순서에 맞춰 이미지뷰 매핑 (promise 탭은 인덱스 1)
-    let tabs: [Tab] = [.home, .promise(.group), .calendar, .settings]
+    // 탭 순서에 맞춰 이미지뷰 매핑 (schedule 탭은 인덱스 1)
+    let tabs: [Tab] = [.home, .schedule(.group), .calendar, .settings]
 
     for (index, tab) in tabs.enumerated() {
       if index < imageViews.count {
@@ -888,17 +1034,17 @@ fileprivate struct ExtractTabImageViews: UIViewRepresentable {
 
         if let imageView = matchedView {
           dict[tab] = imageView
-          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
-          if case .promise = tab {
-            dict[.promise(.own)] = imageView
+          // schedule 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .schedule = tab {
+            dict[.schedule(.own)] = imageView
           }
         } else if index < imageViews.count {
           // fallback: 순서로 매칭
           let imageView = imageViews[index]
           dict[tab] = imageView
-          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
-          if case .promise = tab {
-            dict[.promise(.own)] = imageView
+          // schedule 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .schedule = tab {
+            dict[.schedule(.own)] = imageView
           }
         }
       }

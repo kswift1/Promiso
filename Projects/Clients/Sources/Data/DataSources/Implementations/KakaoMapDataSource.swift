@@ -64,16 +64,7 @@ final class KakaoMapDataSource: Sendable {
 
 // MARK: - Error
 
-enum MapDataSourceError: Error, LocalizedError {
+enum MapDataSourceError: Error {
   case invalidResponse
   case httpError(statusCode: Int)
-
-  var errorDescription: String? {
-    switch self {
-    case .invalidResponse:
-      return "응답을 처리할 수 없습니다"
-    case .httpError(let code):
-      return "서버 오류 (\(code))"
-    }
-  }
 }

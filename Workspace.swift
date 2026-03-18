@@ -6,5 +6,8 @@ let workspace = Workspace(
   projects: [
     "Projects/App",   // 앱
     "Projects/**"     // Features/Clients/Shared/Extensions 전체
-  ]
+  ],
+  generationOptions: .options(
+    lastXcodeUpgradeCheck: Version(26, 2, 0)
+  )
 )

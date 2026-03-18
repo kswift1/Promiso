@@ -1,0 +1,280 @@
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Divider,
+  Grid,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import {useQuery} from "@tanstack/react-query";
+import {FormEvent, useState} from "react";
+import {AdminAuditLog, getAdminAuditLogs} from "../api/admin";
+
+const defaultAuditLogFilters = {
+  action: "",
+  actorId: "",
+  targetType: "",
+  targetId: "",
+  limit: 50,
+};
+
+function formatJson(value: unknown): string {
+  if (value == null) {
+    return "null";
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+export function AuditLogsPage() {
+  const [filters, setFilters] = useState(defaultAuditLogFilters);
+  const [submittedFilters, setSubmittedFilters] = useState(
+    defaultAuditLogFilters
+  );
+  const logsQuery = useQuery<AdminAuditLog[]>({
+    queryKey: ["admin-audit-logs", submittedFilters],
+    queryFn: () => getAdminAuditLogs(submittedFilters),
+  });
+  const errorMessage = logsQuery.error instanceof Error ?
+    logsQuery.error.message :
+    logsQuery.isError ?
+      "감사 로그를 불러오지 못했습니다." :
+      null;
+  const logs = logsQuery.data ?? [];
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmittedFilters({
+      action: filters.action.trim(),
+      actorId: filters.actorId.trim(),
+      targetType: filters.targetType.trim(),
+      targetId: filters.targetId.trim(),
+      limit: filters.limit,
+    });
+  };
+
+  return (
+    <Stack spacing={3}>
+      <Stack
+        direction={{xs: "column", sm: "row"}}
+        justifyContent="space-between"
+        spacing={2}
+      >
+        <Stack spacing={1}>
+          <Typography variant="h4">감사 로그</Typography>
+          <Typography color="text.secondary">
+            위험한 액션은 모두 기록되고 추적 가능해야 합니다.
+          </Typography>
+        </Stack>
+
+        <Button
+          variant="outlined"
+          onClick={() => void logsQuery.refetch()}
+          disabled={logsQuery.isRefetching}
+        >
+          {logsQuery.isRefetching ? "새로고침 중..." : "새로고침"}
+        </Button>
+      </Stack>
+
+      <Card elevation={0}>
+        <CardContent>
+          <Stack component="form" spacing={2} onSubmit={handleSubmit}>
+            <Alert severity="info">
+              모든 필터는 정확 일치 기준입니다. 비워 두면 최근 로그부터
+              조회합니다.
+            </Alert>
+
+            <Grid container spacing={2}>
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="동작"
+                  placeholder="update_release_controls"
+                  value={filters.action}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      action: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="수행자 ID"
+                  placeholder="admin-user"
+                  value={filters.actorId}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      actorId: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="대상 유형"
+                  placeholder="user / remote_config"
+                  value={filters.targetType}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      targetType: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 6}}>
+                <TextField
+                  label="대상 ID"
+                  placeholder="user-a"
+                  value={filters.targetId}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      targetId: event.target.value,
+                    }))
+                  }
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{xs: 12, md: 4}}>
+                <TextField
+                  select
+                  label="조회 수"
+                  value={String(filters.limit)}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      limit: Number(event.target.value),
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="25">25</MenuItem>
+                  <MenuItem value="50">50</MenuItem>
+                  <MenuItem value="100">100</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+
+            <Stack direction="row" spacing={1}>
+              <Button type="submit" variant="contained">
+                필터 적용
+              </Button>
+              <Button
+                type="button"
+                variant="text"
+                onClick={() => {
+                  setFilters(defaultAuditLogFilters);
+                  setSubmittedFilters(defaultAuditLogFilters);
+                }}
+              >
+                초기화
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
+      {logsQuery.isPending ? (
+        <Card elevation={0}>
+          <CardContent>
+            <Stack
+              alignItems="center"
+              justifyContent="center"
+              minHeight={240}
+            >
+              <CircularProgress size={28} />
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : logs.length === 0 ? (
+        <Alert severity="info">
+          조건에 맞는 감사 로그가 없습니다.
+        </Alert>
+      ) : (
+        <Stack spacing={2}>
+          {logs.map((log) => (
+            <Card key={log.id} elevation={0}>
+              <CardContent>
+                <Stack spacing={1.5}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="subtitle1">
+                      {log.action ?? "-"}
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      수행자 {log.actorId ?? "-"}
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      대상 {log.targetType ?? "-"} / {log.targetId ?? "-"}
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      생성 시각 {log.createdAt ?? "-"}
+                    </Typography>
+                  </Stack>
+
+                  <Divider />
+
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2">이전</Typography>
+                    <Typography
+                      component="pre"
+                      sx={{
+                        bgcolor: "rgba(15, 23, 42, 0.04)",
+                        borderRadius: 2,
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                        m: 0,
+                        overflowX: "auto",
+                        p: 2,
+                      }}
+                    >
+                      {formatJson(log.before)}
+                    </Typography>
+                  </Stack>
+
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2">이후</Typography>
+                    <Typography
+                      component="pre"
+                      sx={{
+                        bgcolor: "rgba(15, 23, 42, 0.04)",
+                        borderRadius: 2,
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                        m: 0,
+                        overflowX: "auto",
+                        p: 2,
+                      }}
+                    >
+                      {formatJson(log.after)}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}

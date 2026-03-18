@@ -18,3 +18,8 @@
 @_exported import GoogleSignInSwift
 @_exported import Lottie
 @_exported import KakaoMapsSDK
+@_exported import KakaoSDKCommon
+@_exported import KakaoSDKShare
+// KakaoSDKTemplate은 Content 타입이 ViewModifier.Content와 충돌하므로
+// @_exported하지 않고 KakaoShareClient.swift에서만 직접 import
+

@@ -308,7 +308,7 @@ struct AppEntryFeatureTests {
   @Test("profileCheckResponse 기존 사용자면 메인 전환 및 pending 딥링크 처리")
   func profileCheck_existingUser_routesToMainAndProcessesPendingDeeplink() async {
     var state = AppEntry.Feature.State()
-    state.pendingDeeplink = .livePromise(promiseId: "p-1")
+    state.pendingDeeplink = .liveSchedule(scheduleId: "p-1")
     state.splash = .visible
 
     let user = makeUser(id: "user-main", nickname: "기존유저")
@@ -329,7 +329,7 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("profileCheckResponse 신규 사용자면 profile setup으로 전환")
@@ -398,7 +398,7 @@ struct AppEntryFeatureTests {
   func notificationPermissionChecked_authorized_routesMainAndPendingDeeplink() async {
     let user = makeUser(id: "permission-ok", nickname: "권한완료")
     var state = AppEntry.Feature.State()
-    state.pendingDeeplink = .livePromise(promiseId: "live-1")
+    state.pendingDeeplink = .liveSchedule(scheduleId: "live-1")
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -414,7 +414,7 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("notificationPermissionChecked 미허용 시 온보딩 표시")
@@ -498,17 +498,20 @@ struct AppEntryFeatureTests {
     }
   }
 
-  @Test("onboardingIntro.delegate.completed → notificationPermission 표시")
-  func onboardingIntroCompleted_showsNotificationPermission() async {
+  @Test("onboardingIntro.delegate.introCompleted → auth 화면으로 전환")
+  func onboardingIntroCompleted_showsAuth() async {
     var state = AppEntry.Feature.State()
     state.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
+    } withDependencies: {
+      $0.userDefaultsClient.setBool = { _, _ in }
     }
 
-    await store.send(.destination(.presented(.onboardingIntro(.delegate(.completed))))) {
-      $0.notificationPermission = NotificationPermission.Feature.State()
+    await store.send(.destination(.presented(.onboardingIntro(.delegate(.introCompleted))))) {
+      $0.isFullOnboarding = true
+      $0.destination = .auth(AuthFeature.Auth.Feature.State())
     }
   }
 
@@ -574,56 +577,6 @@ struct AppEntryFeatureTests {
     #expect(store.state.destinationType == .main)
   }
 
-  @Test("onboardingStart.delegate.enterInviteCode → joinGroup 딥링크 + 메인 전환")
-  func onboardingStartEnterInviteCode_transitionsToMainWithJoinGroup() async {
-    let user = makeUser(id: "invite-code", nickname: "초대코드")
-    var state = AppEntry.Feature.State()
-    state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "초대코드"))
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
-      $0.analyticsClient.setUserID = { _ in }
-      $0.analyticsClient.setUserProperty = { _, _ in }
-      $0.analyticsClient.logEvent = { _, _ in }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.destination(.presented(.onboardingStart(.delegate(.enterInviteCode))))) {
-      $0.pendingUserForMain = nil
-      $0.pendingDeeplink = .joinGroup(inviteCode: "")
-    }
-    await store.receive(\.internal.transitionToMain)
-    #expect(store.state.destinationType == .main)
-  }
-
-  @Test("onboardingStart.delegate.createGroup → 메인 전환 + openCreateGroup")
-  func onboardingStartCreateGroup_transitionsToMainAndOpensCreateGroup() async {
-    let user = makeUser(id: "create-group", nickname: "그룹생성")
-    var state = AppEntry.Feature.State()
-    state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "그룹생성"))
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
-      $0.analyticsClient.setUserID = { _ in }
-      $0.analyticsClient.setUserProperty = { _, _ in }
-      $0.analyticsClient.logEvent = { _, _ in }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.destination(.presented(.onboardingStart(.delegate(.createGroup))))) {
-      $0.pendingUserForMain = nil
-    }
-    await store.receive(\.internal.transitionToMain)
-    #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openCreateGroup)
-  }
-
   // MARK: - Logout 테스트
 
   @Test("logoutRequested delegate 수신 시 auth로 전환")
@@ -664,69 +617,6 @@ struct AppEntryFeatureTests {
     await store.send(.destination(.presented(.main(.delegate(.logoutRequested))))) {
       $0.destination = .auth(AuthFeature.Auth.Feature.State())
     }
-  }
-
-  // MARK: - App Restart 테스트
-
-  @Test("appRestartRequested 시 상태 초기화 후 sessionCheck 시작")
-  func appRestartRequested_resetsStateAndStartsSessionCheck() async {
-    let firstUser = makeUser(id: "first-user", nickname: "기존")
-    let secondUser = makeUser(id: "second-user", nickname: "대기")
-    var state = makeMainState(user: firstUser)
-    state.splash = .hidden
-    state.pendingDeeplink = .group(groupId: "g-1")
-    state.pendingUserForMain = secondUser
-    state.providerProfileImageURL = URL(string: "https://example.com/temp.png")
-    state.notificationPermission = NotificationPermission.Feature.State()
-
-    let originalFormat = KoreanDateFormatters.use24HourFormat
-    KoreanDateFormatters.use24HourFormat = false
-    defer { KoreanDateFormatters.use24HourFormat = originalFormat }
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.userDefaultsClient.boolForKey = { _ in true }
-      $0.authClient.isAuthenticated = { false }
-    }
-
-    await store.send(.internal(.appRestartRequested)) {
-      $0.splash = .visible
-      $0.destination = nil
-      $0.pendingDeeplink = nil
-      $0.pendingUserForMain = nil
-      $0.providerProfileImageURL = nil
-      $0.notificationPermission = nil
-    }
-    #expect(KoreanDateFormatters.use24HourFormat == true)
-
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
-      $0.splash = .animatingOut
-    }
-  }
-
-  @Test("subscribeAppRestart 구독 중 재시작 알림 수신 시 appRestartRequested 전달")
-  func subscribeAppRestart_receivesRestartNotification() async {
-    let store = TestStore(initialState: AppEntry.Feature.State()) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.userDefaultsClient.boolForKey = { _ in true }
-      $0.authClient.isAuthenticated = { false }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.internal(.subscribeAppRestart))
-    await Task.yield()
-
-    NotificationCenter.default.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-
-    await store.receive(\.internal.appRestartRequested)
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.sessionCheckResponse)
-
-    await store.send(.internal(.cancelSubscriptions))
   }
 
   // MARK: - FCM Token 저장 테스트
@@ -830,11 +720,11 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "p-1") }
     }
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!))) {
-      $0.pendingDeeplink = .livePromise(promiseId: "p-1")
+      $0.pendingDeeplink = .liveSchedule(scheduleId: "p-1")
     }
   }
 
@@ -856,12 +746,12 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+      $0.deeplinkClient.parseURL = { _ in .liveSchedule(scheduleId: "p-1") }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!)))
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLiveScheduleDetail)
   }
 
   @Test("pushNotificationTapped 시 메인 아니면 pendingDeeplink에 저장")
@@ -940,9 +830,9 @@ private extension AppEntryFeatureTests {
     await store.receive(\.internal.startSessionCheck)
     await store.receive(\.internal.subscribeFCMToken)
     await store.receive(\.internal.subscribePushNotificationTap)
-    await store.receive(\.internal.subscribeAppRestart)
     await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
+      $0.isFullOnboarding = true
+      $0.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
       $0.splash = .animatingOut
     }
     await store.send(.internal(.cancelSubscriptions))

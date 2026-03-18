@@ -33,18 +33,9 @@ public struct AppConfigClient: Sendable {
 
 // MARK: - Error
 
-public enum AppConfigClientError: Error, LocalizedError {
+public enum AppConfigClientError: Error {
   case fetchFailed(String)
   case invalidVersion(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .fetchFailed(let message):
-      return "앱 설정을 불러오는데 실패했습니다: \(message)"
-    case .invalidVersion(let version):
-      return "유효하지 않은 버전 형식입니다: \(version)"
-    }
-  }
 }
 
 // MARK: - Remote Config Keys

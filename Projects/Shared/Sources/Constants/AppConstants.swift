@@ -130,6 +130,32 @@ public enum AppConstants {
     #endif
   }
 
+  // MARK: - Deeplink
+
+  /// 딥링크 설정 (환경별 xcconfig에서 주입)
+  public enum Deeplink {
+    /// URL 스킴 (dev: promiso-dev, stage: promiso-stage, prod: promiso)
+    public static var scheme: String {
+      Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_SCHEME") as? String ?? "promiso"
+    }
+
+    /// 웹 호스트 (dev: dev.promiso.app, stage: stage.promiso.app, prod: promiso.app)
+    public static var webHost: String {
+      Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_WEB_HOST") as? String ?? "promiso.app"
+    }
+
+    /// 딥링크 URL 생성 (예: promiso-dev://join/ABC123)
+    public static func url(path: String) -> URL? {
+      URL(string: "\(scheme)://\(path)")
+    }
+  }
+
+  // MARK: - External URLs
+
+  public enum ExternalURLs {
+    public static let kakaoMapSearchBase = "https://map.kakao.com/?q="
+  }
+
   // MARK: - UI Constants
 
   public enum UI {
@@ -170,9 +196,9 @@ public enum AppConstants {
 
     public var displayName: String {
       switch self {
-      case .system: return "시스템 설정 따르기"
-      case .light: return "라이트 모드"
-      case .dark: return "다크 모드"
+      case .system: return LocalizedStrings.ThemeMode.system
+      case .light: return LocalizedStrings.ThemeMode.light
+      case .dark: return LocalizedStrings.ThemeMode.dark
       }
     }
   }
@@ -188,16 +214,39 @@ public enum AppConstants {
     public static let use24HourFormat = "promisoUse24HourFormat"
     /// 선호하는 테마 모드 (system/light/dark)
     public static let preferredThemeMode = "promisoPreferredThemeMode"
-    /// 캘린더 이벤트 매핑 (promiseId → eventIdentifier)
+    /// 캘린더 동기화 idempotency를 위한 해시 캐시
+    public static let calendarSyncWriteFingerprints = "promisoCalendarSyncWriteFingerprints"
+    /// 캘린더 이벤트 매핑 (scheduleId → eventIdentifier)
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
-    /// 약속 탭 기본 모드 (group/own)
-    public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
+    /// 일정 탭 기본 모드 (group/own)
+    public static let defaultScheduleTabMode = "promisoDefaultScheduleTabMode"
+    /// 선호하는 앱 언어 (ko/en, nil이면 시스템 기본)
+    public static let preferredLanguage = "promisoPreferredLanguage"
     /// 개인 일정 캘린더 동기화 활성화 여부
     public static let personalCalendarSync = "promisoPersonalCalendarSync"
     /// 앱 소개 온보딩 완료 여부
     public static let hasCompletedOnboarding = "promisoHasCompletedOnboarding"
+    /// 캘린더 시작 요일 (true: 월요일, false: 일요일, 기본값: true)
+    public static let calendarStartOnMonday = "promisoCalendarStartOnMonday"
+    /// 캘린더 권한 배너 다시 보지 않기
+    public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
+    /// 브리핑 스타일 (friendly/humorous/concise/motivational/calm)
+    public static let briefingStyle = "promisoBriefingStyle"
+    /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
+    public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
+  }
+
+  // MARK: - Calendar Helpers
+
+  /// 캘린더 시작 요일이 월요일인지 (기본값: true)
+  public static var isCalendarStartOnMonday: Bool {
+    let ud = Foundation.UserDefaults.standard
+    if ud.object(forKey: AppConstants.UserDefaults.calendarStartOnMonday) == nil {
+      return true  // 기본값: 월요일 시작
+    }
+    return ud.bool(forKey: AppConstants.UserDefaults.calendarStartOnMonday)
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)
@@ -207,6 +256,8 @@ public enum AppConstants {
     public static let groupMembersCache = "groupMembersCache"
     /// 그룹 캘린더 동기화 설정 캐시 (groupId → calendarSync)
     public static let groupCalendarSyncCache = "groupCalendarSyncCache"
+    /// Pro 구독 상태
+    public static let isPro = "isPro"
   }
 
   // MARK: - Notification Names
@@ -214,10 +265,8 @@ public enum AppConstants {
   public enum Notifications {
     /// FCM 토큰 수신 시 발송 (userInfo: ["token": String])
     public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
-    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
+    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "scheduleId": String?, "groupId": String?])
     public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
-    /// 앱 재시작 요청 (설정 변경 등으로 인해 앱 상태 리셋 필요 시)
-    public static let appRestartRequested = NSNotification.Name("AppRestartRequested")
   }
 
   // MARK: - Image Cache

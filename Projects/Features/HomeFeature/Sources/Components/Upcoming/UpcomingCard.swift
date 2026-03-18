@@ -9,6 +9,8 @@ import ResourceKit
 struct UpcomingDateCard: View {
   let date: Date
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
+  let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   var body: some View {
@@ -20,17 +22,24 @@ struct UpcomingDateCard: View {
       VStack(spacing: 0) {
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
           switch item {
-          case .promise(let promise):
-            UpcomingPromiseRow(
-              promise: promise,
+          case .schedule(let schedule):
+            UpcomingScheduleRow(
+              schedule: schedule,
+              weather: weatherCache[schedule.id],
+              isPro: isPro,
               onTap: { onItemTap(item) }
             )
 
           case .personalEvent(let event):
             UpcomingPersonalEventRow(
               event: event,
+              weather: weatherCache[event.id],
+              isPro: isPro,
               onTap: { onItemTap(item) }
             )
+
+          case .recurringPersonalEvent:
+            EmptyView()
           }
 
           // 마지막 아이템이 아니면 Divider
@@ -71,19 +80,19 @@ struct UpcomingDateCard: View {
   // MARK: - Computed Properties
 
   private var monthString: String {
-    KoreanDateFormatters.month.string(from: date)
+    LocalizedDateFormatters.month.string(from: date)
   }
 
   private var dayString: String {
-    KoreanDateFormatters.day.string(from: date)
+    LocalizedDateFormatters.day.string(from: date)
   }
 
   private var weekdayString: String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private var weekdayColor: Color {
-    let weekday = Calendar.current.component(.weekday, from: date)
+    let weekday = Calendar.scheduleDisplay.component(.weekday, from: date)
     switch weekday {
     case 1: return .red      // 일요일
     case 7: return .blue     // 토요일
@@ -92,32 +101,47 @@ struct UpcomingDateCard: View {
   }
 }
 
-// MARK: - Upcoming Promise Row
+// MARK: - Upcoming Schedule Row
 
-/// 카드 내부의 개별 약속 행
-private struct UpcomingPromiseRow: View {
-  let promise: PromiseModel
+/// 카드 내부의 개별 일정 행
+private struct UpcomingScheduleRow: View {
+  let schedule: ScheduleModel
+  let weather: WeatherInfo?
+  let isPro: Bool
   let onTap: () -> Void
 
   var body: some View {
     Button(action: onTap) {
       HStack(spacing: 8) {
-        // 약속 정보
+        // 일정 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
-            Text(promise.displayEmoji)
+            Text(schedule.displayEmoji)
               .font(.pmBody)
 
-            Text(promise.title)
+            Text(schedule.title)
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: schedule.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: schedule.startAt, to: schedule.endAt),
+                referenceTimeText: schedule.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: schedule.startAt)
+              )
+            } else if shouldShowWeatherSkeleton {
+              WeatherBadgeLoadingPlaceholder()
+            }
           }
 
           // 시간 + 장소
           HStack(spacing: 12) {
-            // 시간
             HStack(spacing: 3) {
               ResourceKitAsset.clockIcon.swiftUIImage
                 .resizable()
@@ -128,8 +152,7 @@ private struct UpcomingPromiseRow: View {
                 .font(.pmCaption)
             }
 
-            // 장소
-            if let location = promise.location {
+            if let location = schedule.location {
               HStack(spacing: 3) {
                 ResourceKitAsset.locationIcon.swiftUIImage
                   .resizable()
@@ -166,17 +189,17 @@ private struct UpcomingPromiseRow: View {
     HStack(spacing: 4) {
       // 그룹 아이콘
       GroupThumbnailView(
-        imageUrl: promise.group?.imageUrl,
-        name: promise.group?.name ?? "",
+        imageUrl: schedule.group?.imageUrl,
+        name: schedule.group?.name ?? "",
         size: 14
       )
 
       // 그룹명 · 참여자
-      if let groupName = promise.group?.name {
-        Text("\(groupName) · \(promise.votes.accepted.count)명 참여 확정")
+      if let groupName = schedule.group?.name {
+        Text(LocalizedStrings.Home.groupParticipants(groupName, schedule.votes.accepted.count))
           .font(.pmCaption)
       } else {
-        Text("\(promise.votes.accepted.count)명 참여 확정")
+        Text(LocalizedStrings.Home.participantsConfirmed(schedule.votes.accepted.count))
           .font(.pmCaption)
       }
     }
@@ -186,7 +209,19 @@ private struct UpcomingPromiseRow: View {
   // MARK: - Computed Properties
 
   private var timeString: String {
-    promise.startAt.formattedTime
+    schedule.startAt.formattedTime
+  }
+
+  private var shouldShowWeatherSkeleton: Bool {
+    guard isPro else { return false }
+    guard weather == nil else { return false }
+    guard let location = schedule.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return schedule.startAt >= now && schedule.startAt < maxDate
   }
 }
 
@@ -195,6 +230,8 @@ private struct UpcomingPromiseRow: View {
 /// 카드 내부의 개별 개인 일정 행
 private struct UpcomingPersonalEventRow: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
+  let isPro: Bool
   let onTap: () -> Void
 
   var body: some View {
@@ -202,7 +239,7 @@ private struct UpcomingPersonalEventRow: View {
       HStack(spacing: 8) {
         // 일정 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
             Text(event.displayEmoji)
               .font(.pmBody)
@@ -211,6 +248,20 @@ private struct UpcomingPersonalEventRow: View {
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: event.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
+                referenceTimeText: event.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: event.startAt)
+              )
+            } else if shouldShowWeatherSkeleton {
+              WeatherBadgeLoadingPlaceholder()
+            }
           }
 
           // 시간 + 장소
@@ -247,7 +298,7 @@ private struct UpcomingPersonalEventRow: View {
             Image(systemName: "person.fill")
               .font(.system(size: 10))
 
-            Text("개인 일정")
+            Text(LocalizedStrings.Common.personalEvent)
               .font(.pmCaption)
           }
           .foregroundStyle(.secondary)
@@ -270,17 +321,42 @@ private struct UpcomingPersonalEventRow: View {
   private var timeString: String {
     event.startAt.formattedTime
   }
+
+  private var shouldShowWeatherSkeleton: Bool {
+    guard isPro else { return false }
+    guard weather == nil else { return false }
+    guard let location = event.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return event.startAt >= now && event.startAt < maxDate
+  }
+}
+
+private struct WeatherBadgeLoadingPlaceholder: View {
+  var body: some View {
+    Capsule()
+      .fill(Color.pmgray.n200.opacity(0.6))
+      .frame(width: 46, height: 24)
+      .overlay(
+        Capsule()
+          .stroke(Color.pmgray.n300.opacity(0.5), lineWidth: 1)
+      )
+      .shimmer()
+  }
 }
 
 // MARK: - Preview
 
 #Preview {
   VStack(spacing: 10) {
-    // 같은 날짜에 약속 + 개인 일정 혼합
+    // 같은 날짜에 일정 + 개인 일정 혼합
     UpcomingDateCard(
       date: Date().addingTimeInterval(86400),
       items: [
-        .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
+        .schedule(ScheduleModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
         .personalEvent(PersonalEventModel.mock(
           id: "pe-1",
           title: "치과 예약",
@@ -288,8 +364,10 @@ private struct UpcomingPersonalEventRow: View {
           startAt: Date().addingTimeInterval(86400 + 3600),
           location: LocationInfoModel(name: "서울치과")
         )),
-        .promise(PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200)))
+        .schedule(ScheduleModel.mock(id: "3", title: "저녁 일정", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
+      weatherCache: [:],
+      isPro: true,
       onItemTap: { _ in }
     )
 
@@ -304,6 +382,8 @@ private struct UpcomingPersonalEventRow: View {
           startAt: Date().addingTimeInterval(172800)
         ))
       ],
+      weatherCache: [:],
+      isPro: true,
       onItemTap: { _ in }
     )
   }

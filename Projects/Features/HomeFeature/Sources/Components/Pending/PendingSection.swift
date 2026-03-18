@@ -1,12 +1,14 @@
 import SwiftUI
+import Clients
 import PromisoShared
 
 // MARK: - Pending Section
 
-/// 응답 필요 섹션 - 투표가 필요한 약속들
+/// 응답 필요 섹션 - 투표가 필요한 일정들
 struct PendingSection: View {
-  let promises: [PromiseModel]
-  let onPromiseTap: (PromiseModel) -> Void
+  let schedules: [ScheduleModel]
+  let groupMembersCache: [String: [UserPublicModel]]
+  let onScheduleTap: (ScheduleModel) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -16,10 +18,11 @@ struct PendingSection: View {
       // 카드들 (가로 스크롤)
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 14) {
-          ForEach(promises) { promise in
+          ForEach(schedules) { schedule in
             PendingCard(
-              promise: promise,
-              onTap: { onPromiseTap(promise) }
+              schedule: schedule,
+              totalMembers: groupMembersCache[schedule.groupId]?.count ?? schedule.minimumParticipants,
+              onTap: { onScheduleTap(schedule) }
             )
           }
         }
@@ -34,13 +37,13 @@ struct PendingSection: View {
 
   private var sectionHeader: some View {
     HStack(spacing: 8) {
-      Text("응답 필요")
+      Text(LocalizedStrings.Home.needResponse)
         .font(.headline)
         .foregroundStyle(.primary)
 
       // 배지
-      if !promises.isEmpty {
-        Text("\(promises.count)")
+      if !schedules.isEmpty {
+        Text("\(schedules.count)")
           .font(.caption)
           .fontWeight(.bold)
           .foregroundStyle(.white)
@@ -60,11 +63,12 @@ struct PendingSection: View {
 
 #Preview {
   PendingSection(
-    promises: [
-      PromiseModel.mock(id: "1", title: "저녁 모임"),
-      PromiseModel.mock(id: "2", title: "주말 약속")
+    schedules: [
+      ScheduleModel.mock(id: "1", title: "저녁 모임"),
+      ScheduleModel.mock(id: "2", title: "주말 일정")
     ],
-    onPromiseTap: { _ in }
+    groupMembersCache: [:],
+    onScheduleTap: { _ in }
   )
   .padding()
   .auroraBackground()

@@ -2,11 +2,11 @@
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
 
 import Clients
-import Lottie
+import CreateScheduleFeature
 import NotificationCenterFeature
 import PromisoShared
-import ResourceKit
 import SharedFeature
+import UIKit
 
 // MARK: - Feature Namespace
 
@@ -21,11 +21,31 @@ extension Home {
 
   @Reducer
   public struct Feature {
-    @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.personalEventClient) var personalEventClient
-
+    @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.locationClient) var locationClient
+    @Dependency(\.openURL) var openURL
+    @Dependency(\.holidayClient) var holidayClient
+    @Dependency(\.briefingClient) var briefingClient
+    @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.transportationClient) var transportationClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
     public init() {}
+
+    // MARK: - CancelID
+
+    private enum CancelID: Hashable {
+      case weatherFetch
+      case overlayWeatherFetch
+      case overlayScheduleFetch(Date)
+      case overlayPersonalEventFetch(Date)
+      case briefingFetch
+      case transportationFetch
+    }
 
     // MARK: - State
 
@@ -40,14 +60,44 @@ extension Home {
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
       // MARK: Data (직접 쿼리 기반)
-      /// 홈 약속 데이터 (Firestore 직접 쿼리)
-      var promisesState: LoadingState<[PromiseModel]> = .idle
+      /// 홈 일정 데이터 (Firestore 직접 쿼리)
+      var schedulesState: LoadingState<[ScheduleModel]> = .idle
 
       /// 개인 일정 데이터
       var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
 
+      /// 반복 개인 일정 데이터
+      var recurringEventsState: LoadingState<[RecurringPersonalEventModel]> = .idle
+
+      /// 날씨 캐시 (scheduleId → WeatherInfo)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
+
+      /// Pro 구독 여부
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
+
+      /// 브리핑 상태
+      var briefingState: LoadingState<BriefingResult> = .idle
+      /// 브리핑 생성 날짜 (같은 날 중복 방지)
+      var briefingGeneratedDate: Date? = nil
+      /// 브리핑 상세 펼침 여부
+      var isBriefingExpanded: Bool = false
+      /// 브리핑이 업데이트된 상태인지 (promptKey 변경으로 재생성됨)
+      var isBriefingUpdated: Bool = false
+
+      // MARK: Permission
+      /// 알림 권한 상태
+      var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
+      /// 위치 권한 상태
+      var locationAuthStatus: LocationAuthorizationStatus = .notDetermined
+
+      /// 알림 권한 거부 여부
+      var isNotificationDenied: Bool { notificationAuthStatus == .denied }
+      /// 위치 권한 거부 여부
+      var isLocationDenied: Bool { locationAuthStatus == .denied }
 
       // MARK: Filter
       /// 선택된 그룹 ID (nil = 전체)
@@ -62,13 +112,97 @@ extension Home {
       /// 화면 상단/하단 토스트 메시지
       var toastMessage: ToastMessage?
 
+      // MARK: Calendar Overlay
+      /// 캘린더 오버레이 표시 여부
+      var showCalendarOverlay: Bool = false
+      /// 오버레이 캘린더 현재 월
+      var overlayCalendarMonth: Date = Date()
+      /// 오버레이 캘린더 선택 날짜
+      var overlaySelectedDate: Date = Date()
+      /// 오버레이 날씨 상태
+      var overlayWeatherState: OverlayWeatherState = .needsPermission
+      /// 오버레이 날씨 기준 위치 텍스트
+      var overlayWeatherLocationText: String? = nil
+      /// 오버레이 날씨 전체 정보 (시간별 예보 포함)
+      var overlayWeatherInfo: WeatherInfo? = nil
+      /// 오버레이 캘린더 표시 모드
+      var overlayCalendarMode: CalendarMode = .monthly
+      /// 오버레이 월별 일정 캐시 (키: 월 시작일)
+      var overlaySchedulesByMonth: [Date: [ScheduleModel]] = [:]
+      /// 이미 로드된 오버레이 월 (중복 요청 방지)
+      var overlayLoadedMonths: Set<Date> = []
+      /// 현재 로딩 중인 오버레이 월
+      var overlayLoadingMonths: Set<Date> = []
+      /// 오버레이 월별 개인 일정 캐시 (키: 월 시작일)
+      var overlayPersonalEventsByMonth: [Date: [PersonalEventModel]] = [:]
+      /// 이미 로드된 오버레이 개인 일정 월 (중복 요청 방지)
+      var overlayLoadedPersonalEventMonths: Set<Date> = []
+      /// 현재 로딩 중인 오버레이 개인 일정 월
+      var overlayLoadingPersonalEventMonths: Set<Date> = []
+      /// 오버레이 Feature 진입 전 캘린더 모드 (뒤로가기 시 복귀용)
+      var overlayCalendarModeBeforeFeature: CalendarMode?
+      /// 공휴일 맵 (날짜 → 공휴일 이름)
+      var overlayHolidaysByDate: [Date: String] = [:]
+      /// 로드된 공휴일 연도
+      var overlayLoadedHolidayYears: Set<Int> = []
+
+      /// 개인 일정 생성 모달
+      @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 반복 개인 일정 생성 모달
+      @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
+      /// 그룹 일정 생성 모달
+      @Presents var createSchedule: CreateSchedule.Feature.State?
+
+      /// 오버레이 내 일정 상세 (일정 + 개인 일정 통합)
+      var overlayScheduleDetail: OverlayScheduleDetail.Feature.State?
+      /// 오버레이 내 일정 생성
+      var overlayCreateSchedule: CreateSchedule.Feature.State?
+
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
 
+      // MARK: Departure Alert
+      /// 출발 알림 설정 시트 대상 일정 (일정 또는 개인 일정)
+      var departureAlertItem: HomeModels.ScheduleItem? = nil
+      /// 교통 데이터 로딩 상태
+      var departureTransportData: LoadingState<HomeModels.DepartureTransportData> = .idle
+      /// 출발 알림 설정된 일정 (ScheduleItem.id → 알림 정보)
+      var departureAlerts: [String: HomeModels.DepartureAlertInfo] = [:]
+      /// 역지오코딩된 출발지명
+      var departureLocationName: String? = nil
+      /// 직전 일정 장소 정보 (출발지 선택 제안용)
+      var previousScheduleLocation: HomeModels.PreviousScheduleLocation? = nil
+      /// 현재 선택된 출발지
+      var departureOrigin: HomeModels.DepartureOrigin = .currentLocation
+      /// 현재 위치 좌표 (출발지 변경 시 재사용)
+      var currentLocationCoordinate: Coordinate? = nil
+
       // MARK: Navigation
-      /// 네비게이션 경로 (약속 상세)
+      /// 네비게이션 경로 (일정 상세)
       var path = StackState<Path.State>()
+
+      /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷
+      struct HomeContentSnapshot: Equatable {
+        let todaySchedules: [ScheduleModel]
+        let todayScheduleItems: [HomeModels.ScheduleItem]
+        let pendingSchedules: [ScheduleModel]
+        let upcomingSchedules: [ScheduleModel]
+        let upcomingScheduleItems: [HomeModels.ScheduleItem]
+        let upcomingRecurringSummaries: [HomeModels.RecurringEventSummary]
+
+        static let empty = Self(
+          todaySchedules: [],
+          todayScheduleItems: [],
+          pendingSchedules: [],
+          upcomingSchedules: [],
+          upcomingScheduleItems: [],
+          upcomingRecurringSummaries: []
+        )
+      }
+
+      /// 액션 처리 시점에 계산해 보관하는 홈 스냅샷
+      var homeContentSnapshot: HomeContentSnapshot = .empty
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -79,9 +213,11 @@ extension Home {
 
     @Reducer(state: .equatable)
     public enum Path {
-      case promiseDetail(PromiseDetail.Feature)
+      case scheduleDetail(ScheduleDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
+      case recurringPersonalEventDetail(RecurringPersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
+      case transportDetail(TransportDetail.Feature)
     }
 
     // MARK: - Action
@@ -92,19 +228,23 @@ extension Home {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
-
+      case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
+      case createSchedule(PresentationAction<CreateSchedule.Feature.Action>)
+      case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
+      case overlayCreateSchedule(CreateSchedule.Feature.Action)
       @CasePathable
       public enum View: Sendable {
         /// 화면 나타남
         case onAppear
         /// Pull to refresh
         case refreshTriggered
-        /// 오늘 일정 약속 카드 탭
-        case todayPromiseTapped(PromiseModel)
-        /// 응답 필요 약속 카드 탭 (그룹 탭으로 이동)
-        case pendingPromiseTapped(PromiseModel)
-        /// 다가오는 약속 카드 탭
-        case upcomingPromiseTapped(PromiseModel)
+        /// 오늘 일정 일정 카드 탭
+        case todayScheduleTapped(ScheduleModel)
+        /// 응답 필요 일정 카드 탭 (그룹 탭으로 이동)
+        case pendingScheduleTapped(ScheduleModel)
+        /// 다가오는 일정 카드 탭
+        case upcomingScheduleTapped(ScheduleModel)
         /// "전체 보기" 버튼 탭
         case seeAllUpcomingTapped
         /// 그룹 필터 변경
@@ -121,36 +261,150 @@ extension Home {
         case refreshNotificationBadge
         /// 개인 일정 카드 탭
         case personalEventTapped(PersonalEventModel)
+        /// 반복 개인 일정 인스턴스 카드 탭
+        case recurringPersonalEventTapped(ExpandedEventInstance)
         /// 토스트 닫힘
         case toastDismissed
+        /// 브리핑 카드 탭 (expand/collapse)
+        case briefingCardTapped
+        /// 브리핑 새로고침
+        case refreshBriefingTapped
+        /// 알림 설정 열기 (권한 안내 배너에서)
+        case openNotificationSettingsTapped
+        /// 위치 설정 열기 (권한 안내 배너에서)
+        case openLocationSettingsTapped
+        /// 브리핑 오류 제보
+        case reportBriefingErrorTapped
+        /// 브리핑 Pro 업그레이드 CTA 탭
+        case briefingProUpgradeTapped
+        /// 캘린더 오버레이 열기
+        case calendarOverlayOpened
+        /// 캘린더 오버레이 닫기
+        case calendarOverlayClosed
+        /// 오버레이 캘린더 날짜 선택
+        case overlayDateSelected(Date)
+        /// 오버레이 캘린더 이전 월
+        case overlayPreviousMonth
+        /// 오버레이 캘린더 다음 월
+        case overlayNextMonth
+        /// 오버레이 날씨 카드 탭 (권한 요청)
+        case overlayWeatherCardTapped
+        /// 오버레이 월간 뷰로 복귀
+        case overlayBackToMonth
+        /// 오버레이 일간 상세에서 일정 탭
+        case overlayScheduleItemTapped(HomeModels.ScheduleItem)
+        /// 오버레이 개인 일정 추가 (context menu)
+        case overlayCreatePersonalEventTapped(Date)
+        /// 오버레이 일정 만들기 (context menu)
+        case overlayCreateScheduleTapped
+        /// 오버레이 일정 상세에서 뒤로가기
+        case overlayScheduleDetailBackTapped
+        /// 오버레이 일정 생성에서 뒤로가기
+        case overlayCreateScheduleBackTapped
+        /// 출발 알림 버튼 탭
+        case departureAlertTapped(HomeModels.ScheduleItem)
+        /// 출발 알림 시트 닫기
+        case departureAlertSheetDismissed
+        /// 교통수단 선택 확정 (알림 설정): selection + bufferMinutes
+        case departureAlertConfirmed(HomeModels.TransportSelection, Int)
+        /// 출발 알림 상세 화면 탭
+        case departureAlertDetailTapped
+        /// 출발 알림 취소
+        case departureAlertCancelTapped(String)
+        /// 출발 알림 재시도
+        case departureAlertRetryTapped
+        /// 출발지 변경 (현재 위치 ↔ 직전 일정 장소)
+        case departureOriginChanged(HomeModels.DepartureOrigin)
+        /// 출발 알림 시트에서 설정으로 이동
+        case departureAlertOpenSettingsTapped
+        /// 다가오는 일정 빈 상태에서 개인 일정 생성 탭
+        case emptyCreatePersonalEventTapped
+        /// 다가오는 일정 빈 상태에서 그룹 일정 생성 탭
+        case emptyCreateScheduleTapped
+        /// 반복 일정 빈 상태에서 반복 일정 생성 탭
+        case emptyCreateRecurringEventTapped
+        /// 반복 일정 요약 항목 탭 (상세 화면)
+        case recurringSummaryTapped(HomeModels.RecurringEventSummary)
       }
 
       @CasePathable
       public enum Internal: Sendable {
-        /// 홈 약속 조회 (Firestore 직접 쿼리)
-        case fetchPromises
-        /// 홈 약속 응답
-        case promisesResponse(Result<[PromiseModel], Error>)
+        /// 홈 일정 조회 (Firestore 직접 쿼리)
+        case fetchSchedules
+        /// 홈 일정 응답
+        case schedulesResponse(Result<[ScheduleModel], Error>)
         /// 개인 일정 조회
         case fetchPersonalEvents
         /// 개인 일정 응답
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        /// 반복 개인 일정 조회
+        case fetchRecurringEvents
+        /// 반복 개인 일정 응답
+        case recurringEventsResponse(Result<[RecurringPersonalEventModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
         /// 안 읽은 알림 개수 조회
         case fetchUnreadNotificationCount
         /// 안 읽은 알림 개수 응답
         case unreadNotificationCountResponse(Result<Int, Error>)
+        /// 날씨 정보 조회
+        case fetchWeather
+        /// 날씨 정보 배치 응답 (scheduleId → WeatherInfo)
+        case weatherBatchResponse([String: WeatherInfo])
+        /// 오버레이 현재 위치 날씨 조회
+        case fetchOverlayWeather
+        /// 오버레이 날씨 응답
+        case overlayWeatherResponse(Result<WeatherInfo, Error>, String?)
+        /// 오버레이 월별 일정 조회
+        case fetchOverlaySchedules(month: Date)
+        /// 오버레이 월별 일정 응답
+        case overlaySchedulesResponse(month: Date, Result<[ScheduleModel], Error>)
+        /// 오버레이 인접 데이터 프리페치 (일정 + 개인 일정 통합)
+        case prefetchOverlayAdjacentData
+        /// 오버레이 월별 개인 일정 조회
+        case fetchOverlayPersonalEvents(month: Date)
+        /// 오버레이 월별 개인 일정 응답
+        case overlayPersonalEventsResponse(month: Date, Result<[PersonalEventModel], Error>)
+        /// 오버레이 일정 상세 state 정리 (전환 애니메이션 완료 후)
+        case clearOverlayScheduleDetail
+        /// 오버레이 공휴일 조회
+        case fetchOverlayHolidays(year: Int)
+        /// 오버레이 공휴일 응답
+        case overlayHolidaysResponse(year: Int, Result<[PublicHoliday], Error>)
+        /// 브리핑 생성 트리거
+        case fetchBriefing(forceRefresh: Bool = false)
+        /// 브리핑 응답
+        case briefingResponse(Result<BriefingResult, Error>)
+        /// 권한 상태 확인
+        case checkPermissions
+        /// 권한 상태 확인 결과
+        case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
+        /// 교통 정보 응답
+        case transportationResponse(String, Result<TransportationResult, Error>, Set<AvailableTransport> = [.transit, .car])
+        /// 출발 알림 스케줄 완료
+        case departureAlertScheduled(HomeModels.DepartureAlertInfo)
+        /// 출발 알림 설정 실행 (TransportSelection → DepartureAlertInfo 변환 후 스케줄)
+        case scheduleAlertForSelection(HomeModels.TransportSelection, Int)
+        /// 출발지 역지오코딩 결과
+        case departureLocationResolved(String?)
+        /// 현재 위치 좌표 저장
+        case currentLocationStored(Coordinate)
       }
 
       @CasePathable
       public enum Delegate: Sendable {
-        /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
-        case navigateToPromise(promiseId: String, groupId: String)
-        /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
-        case navigateToGroupWithPromise(groupId: String, promiseId: String)
-        /// 모든 약속 보기 화면으로 네비게이션
-        case navigateToAllPromises
+        /// 일정 상세로 네비게이션 (legacy - 그룹 탭 이동용)
+        case navigateToSchedule(scheduleId: String, groupId: String)
+        /// 그룹 탭의 특정 일정으로 네비게이션 (응답 필요 카드에서)
+        case navigateToGroupWithSchedule(groupId: String, scheduleId: String)
+        /// 모든 일정 보기 화면으로 네비게이션
+        case navigateToAllSchedules
+        /// 오버레이에서 일정 만들기 요청 (→ RootTab → GroupMain)
+        case navigateToCreateSchedule
+        /// 빠른 일정 생성 요청 (추출 정보 → CreateSchedule pre-fill)
+        case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
+        /// Pro 플랜 업그레이드 요청
+        case proPlanRequested
       }
     }
 
@@ -162,51 +416,73 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 첫 로드 표시
+            // 첫 로드: 출발 알림 복원
             if !state.hasLoadedOnce {
-              state.hasLoadedOnce = true
+              state.departureAlerts = Self.loadDepartureAlerts(userDefaultsClient: userDefaultsClient)
             }
-            // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
+            state.refreshHomeContentSnapshot()
+
+            // 오버레이가 열려 있고 denied/needsPermission 상태면 권한 재체크
+            var weatherEffect: Effect<Action> = .none
+            if state.showCalendarOverlay {
+              let authStatus = locationClient.authorizationStatus()
+              switch authStatus {
+              case .authorized where state.overlayWeatherState == .denied
+                || state.overlayWeatherState == .needsPermission:
+                state.overlayWeatherState = .loading
+                weatherEffect = .send(.internal(.fetchOverlayWeather))
+              case .denied where state.overlayWeatherState != .denied:
+                state.overlayWeatherState = .denied
+              default:
+                break
+              }
+            }
+
+            // Firestore에서 직접 쿼리 (일정 + 개인 일정 + 반복 개인 일정 병렬)
             return .merge(
-              .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              weatherEffect,
+              .send(.internal(.fetchSchedules)),
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents)),
+              .send(.internal(.checkPermissions))
             )
 
           case .refreshTriggered:
             // Pull-to-refresh도 동일하게 쿼리
             return .merge(
-              .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchPersonalEvents))
+              .send(.internal(.fetchSchedules)),
+              .send(.internal(.fetchPersonalEvents)),
+              .send(.internal(.fetchRecurringEvents))
             )
 
-          case .todayPromiseTapped(let promise):
+          case .todayScheduleTapped(let schedule):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: groupMembers
             )))
             return .none
 
-          case .pendingPromiseTapped(let promise):
-            return .send(.delegate(.navigateToGroupWithPromise(
-              groupId: promise.groupId,
-              promiseId: promise.id
+          case .pendingScheduleTapped(let schedule):
+            return .send(.delegate(.navigateToGroupWithSchedule(
+              groupId: schedule.groupId,
+              scheduleId: schedule.id
             )))
 
-          case .upcomingPromiseTapped(let promise):
+          case .upcomingScheduleTapped(let schedule):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
               currentUserId: state.currentUser.userId,
               groupMembers: groupMembers
             )))
             return .none
 
           case .seeAllUpcomingTapped:
-            return .send(.delegate(.navigateToAllPromises))
+            return .send(.delegate(.navigateToAllSchedules))
 
           case .groupFilterChanged(let groupId):
             state.selectedGroupId = groupId
@@ -236,47 +512,651 @@ extension Home {
             state.path.append(.personalEventDetail(.init(event: event)))
             return .none
 
+          case .recurringPersonalEventTapped(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
+            return .none
+
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          case .briefingCardTapped:
+            state.isBriefingExpanded.toggle()
+            return .none
+
+          case .briefingProUpgradeTapped:
+            return .send(.delegate(.proPlanRequested))
+
+          case .refreshBriefingTapped:
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
+            state.isBriefingExpanded = false
+            state.isBriefingUpdated = false
+            return .send(.internal(.fetchBriefing()))
+
+          case .openNotificationSettingsTapped:
+            return .run { [notificationClient] _ in
+              await notificationClient.openNotificationSettings()
+            }
+
+          case .openLocationSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
+
+          case .reportBriefingErrorTapped:
+            let briefing = state.briefingState.value
+            let generatedDate = state.briefingGeneratedDate
+            let notificationDenied = state.isNotificationDenied
+            let locationDenied = state.isLocationDenied
+            let userId = state.currentUser.userId
+
+            AppLogger.briefing.info("🚨 [오류제보] uid=\(userId), summary=\(briefing?.summary ?? "nil"), detail=\(briefing?.detail ?? "nil"), generatedAt=\(generatedDate?.ISO8601Format() ?? "nil"), notifDenied=\(notificationDenied), locDenied=\(locationDenied)")
+
+            // 강제 새로고침
+            state.briefingState = .loading
+            state.briefingGeneratedDate = nil
+            state.isBriefingUpdated = false
+
+            return .merge(
+              .run { [openURL] _ in
+                let placeholder = "-"
+                let generatedAtText = generatedDate?.formatted(date: .abbreviated, time: .shortened) ?? placeholder
+                let summaryText = {
+                  guard let summary = briefing?.summary, !summary.isEmpty else { return placeholder }
+                  return summary
+                }()
+                let detailText = {
+                  guard let detail = briefing?.detail, !detail.isEmpty else { return placeholder }
+                  return detail
+                }()
+                let subject = LocalizedStrings.Home.briefingReportMailSubject
+                let body = LocalizedStrings.Home.briefingReportMailBody(
+                  userId,
+                  generatedAtText,
+                  summaryText,
+                  detailText,
+                  notificationDenied ? "false" : "true",
+                  locationDenied ? "false" : "true",
+                  TimeZone.current.identifier,
+                  LocaleManager.appLocale.identifier
+                )
+
+                let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+                if let mailURL = URL(string: "mailto:promiso.app@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)") {
+                  await openURL(mailURL)
+                }
+              },
+              .send(.internal(.fetchBriefing(forceRefresh: true)))
+            )
+
+          case .calendarOverlayOpened:
+            state.overlayCalendarMonth = Date()
+            state.overlaySelectedDate = Date()
+            state.showCalendarOverlay = true
+
+            let currentMonth = Date().startOfMonth
+
+            // 위치 권한 동기 체크
+            let authStatus = locationClient.authorizationStatus()
+            let weatherEffect: Effect<Action>
+            switch authStatus {
+            case .authorized:
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .loading
+              weatherEffect = .send(.internal(.fetchOverlayWeather))
+            case .notDetermined:
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .needsPermission
+              weatherEffect = .none
+            case .denied:
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .denied
+              weatherEffect = .none
+            }
+
+            // 공휴일 로드 (현재 연도 + 인접 연도)
+            let today = Date()
+            let calendar = Calendar.current
+            let currentYear = calendar.component(.year, from: today)
+            var holidayEffects: [Effect<Action>] = []
+            for year in [currentYear - 1, currentYear, currentYear + 1] {
+              if !state.overlayLoadedHolidayYears.contains(year) {
+                holidayEffects.append(.send(.internal(.fetchOverlayHolidays(year: year))))
+              }
+            }
+
+            return .merge(
+              [
+                weatherEffect,
+                .send(.internal(.fetchOverlaySchedules(month: currentMonth))),
+                .send(.internal(.fetchOverlayPersonalEvents(month: currentMonth)))
+              ] + holidayEffects
+            )
+
+          case .calendarOverlayClosed:
+            state.showCalendarOverlay = false
+            state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
+            state.overlayCalendarMode = .monthly
+            state.overlayCalendarModeBeforeFeature = nil
+            state.overlayScheduleDetail = nil
+            state.overlayCreateSchedule = nil
+            state.overlaySchedulesByMonth.removeAll()
+            state.overlayLoadedMonths.removeAll()
+            state.overlayPersonalEventsByMonth.removeAll()
+            state.overlayLoadedPersonalEventMonths.removeAll()
+            state.overlayHolidaysByDate.removeAll()
+            state.overlayLoadedHolidayYears.removeAll()
+            return .cancel(id: CancelID.overlayWeatherFetch)
+
+          case .overlayDateSelected(let date):
+            state.overlaySelectedDate = date
+            let calendar = Calendar.scheduleDisplay
+            var effects: [Effect<Action>] = []
+            if !calendar.isDate(date, equalTo: state.overlayCalendarMonth, toGranularity: .month) {
+              state.overlayCalendarMonth = date
+              effects.append(.send(.internal(.fetchOverlaySchedules(month: date))))
+              effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: date))))
+            }
+            if state.overlayCalendarMode == .monthly {
+              state.overlayCalendarMode = .weekly
+            }
+            return effects.isEmpty ? .none : .merge(effects)
+
+          case .overlayPreviousMonth:
+            if let prev = Calendar.scheduleDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
+              state.overlayCalendarMonth = prev
+            }
+            return .merge(
+              .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth))),
+              .send(.internal(.fetchOverlayPersonalEvents(month: state.overlayCalendarMonth)))
+            )
+
+          case .overlayNextMonth:
+            if let next = Calendar.scheduleDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
+              state.overlayCalendarMonth = next
+            }
+            return .merge(
+              .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth))),
+              .send(.internal(.fetchOverlayPersonalEvents(month: state.overlayCalendarMonth)))
+            )
+
+          case .overlayWeatherCardTapped:
+            // loaded 상태: 날씨 상세 보기
+            if case .loaded = state.overlayWeatherState {
+              state.overlayCalendarMode = .weatherDetail
+              return .none
+            }
+            if state.overlayWeatherState == .denied {
+              return .run { [openURL] _ in
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                  await openURL(url)
+                }
+              }
+            }
+            // needsPermission: OS 다이얼로그 표시 중에는 상태 유지, 결과에 따라 전환
+            let isFirstRequest = state.overlayWeatherState == .needsPermission
+            if !isFirstRequest {
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .loading
+            }
+            return .send(.internal(.fetchOverlayWeather))
+
+          case .overlayBackToMonth:
+            state.overlayCalendarMode = .monthly
+            return .none
+
+          case .overlayScheduleItemTapped(let item):
+            switch item {
+            case .schedule(let schedule):
+              let groupMembers = state.groupMembersCache[schedule.groupId]
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId,
+                groupMembers: groupMembers
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .scheduleDetail
+              return .none
+            case .personalEvent:
+              // 개인 일정도 오버레이 내에서 인라인 표시
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .scheduleDetail
+              return .none
+            case .recurringPersonalEvent:
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .scheduleDetail
+              return .none
+            }
+
+          case .overlayCreatePersonalEventTapped(let date):
+            // 오버레이 닫기
+            state.showCalendarOverlay = false
+            state.overlayCalendarMode = .monthly
+            state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
+            // 개인 일정 생성 모달 열기 (선택 날짜로 초기화)
+            let calendar = Calendar.scheduleDisplay
+            let components = calendar.dateComponents([.hour, .minute], from: date)
+            let isTimePrecise = (components.hour ?? 0) != 0 || (components.minute ?? 0) != 0
+            let startAt: Date
+            if isTimePrecise {
+              startAt = date
+            } else {
+              startAt = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date
+            }
+            state.createPersonalEvent = CreatePersonalEvent.Feature.State(
+              event: PersonalEventModel(startAt: startAt)
+            )
+            return .cancel(id: CancelID.overlayWeatherFetch)
+
+          case .overlayCreateScheduleTapped:
+            // 오버레이 내에서 일정 생성 인라인 표시
+            state.overlayCreateSchedule = CreateSchedule.Feature.State(
+              groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
+              currentUserId: state.currentUser.userId
+            )
+            state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+            state.overlayCalendarMode = .scheduleCreate
+            return .none
+
+          case .overlayScheduleDetailBackTapped:
+            // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
+            state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+            state.overlayCalendarModeBeforeFeature = nil
+            return .run { send in
+              try await Task.sleep(for: .milliseconds(500))
+              await send(.internal(.clearOverlayScheduleDetail))
+            }
+
+          case .overlayCreateScheduleBackTapped:
+            state.overlayCreateSchedule = nil
+            state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+            state.overlayCalendarModeBeforeFeature = nil
+            return .none
+
+          case .departureAlertTapped(let item):
+            guard state.isPro else {
+              return .send(.delegate(.proPlanRequested))
+            }
+            guard let location = item.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            state.departureAlertItem = item
+            state.departureTransportData = .loading
+
+            // 직전 일정 찾기 (같은 날, 대상보다 이른 것 중 가장 가까운 것)
+            let todayItems = state.homeContentSnapshot.todayScheduleItems
+            let previousItem = todayItems
+              .filter { $0.startAt < item.startAt && $0.id != item.id }
+              .last(where: { schedule in
+                guard let loc = schedule.location,
+                      loc.latitude != nil,
+                      loc.longitude != nil else { return false }
+                return true
+              })
+            if let prev = previousItem,
+               let prevLoc = prev.location,
+               let prevLat = prevLoc.latitude,
+               let prevLng = prevLoc.longitude {
+              let prevInfo = HomeModels.PreviousScheduleLocation(
+                name: prev.title,
+                locationName: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+              state.previousScheduleLocation = prevInfo
+              // 직전 일정이 있으면 디폴트 출발지로 설정
+              state.departureOrigin = .previousSchedule(
+                name: prevLoc.name,
+                latitude: prevLat,
+                longitude: prevLng
+              )
+            } else {
+              state.previousScheduleLocation = nil
+              state.departureOrigin = .currentLocation
+            }
+
+            let scheduleItemId = item.id
+            let userId = state.currentUser.userId
+            let usePreviousOrigin = state.previousScheduleLocation
+            return .run { [locationClient, transportationClient, userSettingsClient] send in
+              // 현재 위치와 설정을 병렬로 조회
+              async let locationTask: Coordinate = {
+                do {
+                  // 권한 거부 시 liveUpdates() 스트림이 멈추므로 타임아웃 + 권한 재체크
+                  let location = try await withThrowingTaskGroup(of: Coordinate.self) { group in
+                    group.addTask {
+                      try await locationClient.getCurrentLocation()
+                    }
+                    group.addTask {
+                      // 권한 다이얼로그 대기 후 거부 감지 (최대 10초 타임아웃)
+                      try await Task.sleep(for: .seconds(1))
+                      for _ in 0..<18 { // 0.5초 * 18 = 9초
+                        let status = locationClient.authorizationStatus()
+                        if status == .denied {
+                          throw LocationClientError.denied
+                        }
+                        if status == .authorized {
+                          // getCurrentLocation 태스크가 위치를 반환할 때까지 대기
+                          try await Task.sleep(for: .seconds(10))
+                          throw LocationClientError.unavailable
+                        }
+                        try await Task.sleep(for: .milliseconds(500))
+                      }
+                      // 타임아웃
+                      throw LocationClientError.unavailable
+                    }
+                    guard let result = try await group.next() else {
+                      throw LocationClientError.unavailable
+                    }
+                    group.cancelAll()
+                    return result
+                  }
+                  return location
+                } catch {
+                  // 직전 일정이 있으면 현재 위치 실패해도 진행 가능
+                  if usePreviousOrigin == nil {
+                    throw error
+                  }
+                  // 현재 위치 없이 진행
+                  return Coordinate(latitude: 0, longitude: 0)
+                }
+              }()
+
+              async let settingsTask: Set<AvailableTransport> = {
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(userId)
+                  return settings.availableTransports
+                } catch {
+                  return [.transit, .car]
+                }
+              }()
+
+              let currentLocation: Coordinate
+              do {
+                currentLocation = try await locationTask
+                AppLogger.home.debug("📍 [DepartureAlert] 위치 조회 성공 — (\(currentLocation.latitude), \(currentLocation.longitude))")
+              } catch {
+                AppLogger.home.debug("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
+                await send(.internal(.transportationResponse(
+                  scheduleItemId,
+                  .failure(LocationClientError.denied)
+                )))
+                return
+              }
+
+              let availableTransports = await settingsTask
+
+              // 현재 위치 저장 (0,0이 아닌 경우만)
+              if currentLocation.latitude != 0 || currentLocation.longitude != 0 {
+                let locationName = try? await locationClient.reverseGeocode(currentLocation)
+                await send(.internal(.departureLocationResolved(locationName)))
+                await send(.internal(.currentLocationStored(currentLocation)))
+              }
+
+              // 출발 좌표 결정: 직전 일정 있으면 그 좌표, 없으면 현재 위치
+              let fromLat: Double
+              let fromLng: Double
+              if let prev = usePreviousOrigin {
+                fromLat = prev.latitude
+                fromLng = prev.longitude
+              } else {
+                fromLat = currentLocation.latitude
+                fromLng = currentLocation.longitude
+              }
+
+              AppLogger.home.debug("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  fromLat, fromLng,
+                  lat, lng
+                )
+              }
+              switch result {
+              case .success(let data):
+                AppLogger.home.debug("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
+              case .failure(let error):
+                AppLogger.home.debug("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertRetryTapped:
+            guard let item = state.departureAlertItem else { return .none }
+            // 위치 권한 거부 상태에서 출발 좌표가 없으면 재시도 의미 없음 (설정 유도)
+            if state.isLocationDenied
+              && state.currentLocationCoordinate == nil
+              && state.previousScheduleLocation == nil {
+              return .none
+            }
+            if state.currentLocationCoordinate != nil {
+              // 좌표가 있으면 현재 origin 기준 재시도
+              return .send(.view(.departureOriginChanged(state.departureOrigin)))
+            } else {
+              // 좌표가 없으면 전체 재시도 (위치 권한 등)
+              return .send(.view(.departureAlertTapped(item)))
+            }
+
+          case .departureAlertSheetDismissed:
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            state.departureLocationName = nil
+            state.previousScheduleLocation = nil
+            state.departureOrigin = .currentLocation
+            state.currentLocationCoordinate = nil
+            return .cancel(id: CancelID.transportationFetch)
+
+          case .departureAlertConfirmed(let selection, let bufferMinutes):
+            return .send(.internal(.scheduleAlertForSelection(selection, bufferMinutes)))
+
+          case .departureAlertDetailTapped:
+            guard let item = state.departureAlertItem,
+                  let data = state.departureTransportData.value else {
+              return .none
+            }
+            // 시트 닫고 NavigationStack으로 push
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            // 출발지 좌표 결정
+            let originCoordinate: Coordinate? = switch state.departureOrigin {
+            case .currentLocation:
+              state.currentLocationCoordinate
+            case .previousSchedule:
+              state.previousScheduleLocation.map {
+                Coordinate(latitude: $0.latitude, longitude: $0.longitude)
+              }
+            }
+            let originName: String? = switch state.departureOrigin {
+            case .currentLocation:
+              state.departureLocationName
+            case .previousSchedule:
+              state.previousScheduleLocation?.locationName
+            }
+            // 도착지 좌표
+            guard let location = item.location,
+                  let destLat = location.latitude,
+                  let destLng = location.longitude else {
+              return .none
+            }
+            let destCoord = Coordinate(latitude: destLat, longitude: destLng)
+            let destName = location.name
+
+            state.path.append(.transportDetail(.init(
+              scheduleItemId: item.id,
+              scheduleTitle: item.title,
+              scheduleEmoji: item.displayEmoji,
+              scheduleStartAt: item.startAt,
+              transportData: data,
+              originCoordinate: originCoordinate,
+              originName: originName,
+              destinationCoordinate: destCoord,
+              destinationName: destName
+            )))
+            return .cancel(id: CancelID.transportationFetch)
+
+          case .departureAlertCancelTapped(let scheduleItemId):
+            state.departureAlerts[scheduleItemId] = nil
+            let alertsAfterCancel = state.departureAlerts
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            return .run { [localNotificationClient, userDefaultsClient] _ in
+              Self.saveDepartureAlerts(alertsAfterCancel, userDefaultsClient: userDefaultsClient)
+              await localNotificationClient.cancel(notificationId)
+            }
+
+          case .departureOriginChanged(let origin):
+            guard let item = state.departureAlertItem,
+                  let location = item.location,
+                  let toLat = location.latitude,
+                  let toLng = location.longitude else {
+              return .none
+            }
+            state.departureOrigin = origin
+
+            let fromLat: Double
+            let fromLng: Double
+
+            switch origin {
+            case .currentLocation:
+              guard let coord = state.currentLocationCoordinate else {
+                // 위치 권한 없어서 좌표가 없으면 에러 표시
+                state.departureTransportData = .failed(LocationClientError.denied)
+                return .none
+              }
+              fromLat = coord.latitude
+              fromLng = coord.longitude
+            case .previousSchedule(_, let latitude, let longitude):
+              fromLat = latitude
+              fromLng = longitude
+            }
+
+            state.departureTransportData = .loading
+            let scheduleItemId = item.id
+            let userId = state.currentUser.userId
+
+            return .run { [transportationClient, userSettingsClient] send in
+              let availableTransports: Set<AvailableTransport>
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                availableTransports = settings.availableTransports
+              } catch {
+                availableTransports = [.transit, .car]
+              }
+
+              let result = await Result {
+                try await transportationClient.getTransportation(
+                  fromLat, fromLng,
+                  toLat, toLng
+                )
+              }
+              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+            }
+            .cancellable(id: CancelID.transportationFetch)
+
+          case .departureAlertOpenSettingsTapped:
+            return .run { [openURL] _ in
+              if let url = URL(string: UIApplication.openSettingsURLString) {
+                await openURL(url)
+              }
+            }
+
+          case .emptyCreatePersonalEventTapped:
+            let startAt = Date().addingTimeInterval(60 * 60)
+            state.createPersonalEvent = CreatePersonalEvent.Feature.State(
+              event: PersonalEventModel(startAt: startAt)
+            )
+            return .none
+
+          case .emptyCreateScheduleTapped:
+            state.createSchedule = CreateSchedule.Feature.State(
+              groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
+              currentUserId: state.currentUser.userId
+            )
+            return .none
+
+          case .emptyCreateRecurringEventTapped:
+            state.createRecurringEvent = CreateRecurringPersonalEvent.Feature.State()
+            return .none
+
+          case .recurringSummaryTapped(let summary):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == summary.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring
+              )))
+            }
             return .none
 
           }
 
         case .internal(let internalAction):
           switch internalAction {
-          case .fetchPromises:
+          case .fetchSchedules:
             // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
-            if state.promisesState.value == nil {
-              state.promisesState = .loading
+            if state.schedulesState.value == nil {
+              state.schedulesState = .loading
             }
 
             // 그룹이 없으면 빈 배열 반환
-            let groupIds = state.currentUser.groups.map(\.id)
+            var seenGroupIds = Set<String>()
+            let groupIds = state.currentUser.groups.compactMap { groupInfo in
+              seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
+            }
             guard !groupIds.isEmpty else {
-              state.promisesState = .loaded([])
-              return .none
+              state.schedulesState = .loaded([])
+              state.refreshHomeContentSnapshot()
+              return .merge(
+                .send(.internal(.fetchUnreadNotificationCount)),
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing()))
+              )
             }
 
-            return .run { [promiseClient] send in
+            return .run { [scheduleClient] send in
               do {
-                let promises = try await promiseClient.getHomePromises(groupIds, 10)
-                await send(.internal(.promisesResponse(.success(promises))))
+                let schedules = try await scheduleClient.getHomeSchedules(groupIds, 10)
+                await send(.internal(.schedulesResponse(.success(schedules))))
               } catch {
-                await send(.internal(.promisesResponse(.failure(error))))
+                await send(.internal(.schedulesResponse(.failure(error))))
               }
             }
 
-          case .promisesResponse(let result):
+          case .schedulesResponse(let result):
             switch result {
-            case .success(let promises):
+            case .success(let schedules):
               // 그룹 정보 매핑 (UserGroupInfo → GroupModel 변환)
-              let groupsDict = Dictionary(
-                uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) }
-              )
-              let promisesWithGroup = promises.map { promise in
-                var mutablePromise = promise
-                if let groupInfo = groupsDict[promise.groupId] {
-                  mutablePromise.group = GroupModel(
+              var groupsDict: [String: UserGroupInfo] = [:]
+              for groupInfo in state.currentUser.groups {
+                groupsDict[groupInfo.id] = groupInfo
+              }
+              let schedulesWithGroup = schedules.map { schedule in
+                var mutableSchedule = schedule
+                if let groupInfo = groupsDict[schedule.groupId] {
+                  mutableSchedule.group = GroupModel(
                     id: groupInfo.id,
                     name: groupInfo.name,
                     imageUrl: groupInfo.imageUrl,
@@ -285,21 +1165,27 @@ extension Home {
                     createdBy: ""
                   )
                 }
-                return mutablePromise
+                return mutableSchedule
               }
-              state.promisesState = .loaded(promisesWithGroup)
+              state.schedulesState = .loaded(schedulesWithGroup)
+              state.refreshHomeContentSnapshot()
 
-              // 위젯 캐시 업데이트 (확정된 약속만)
-              WidgetDataManager.savePromises(
-                promisesWithGroup.filter(\.isConfirmed).toWidgetData()
+              // 위젯 캐시 업데이트 (확정된 일정만)
+              WidgetDataManager.saveSchedules(
+                schedulesWithGroup.filter(\.isConfirmed).toWidgetData()
               )
               WidgetDataManager.reloadWidgets()
 
-              // 약속 로드 성공 시 알림 개수도 조회
-              return .send(.internal(.fetchUnreadNotificationCount))
+              // 일정 로드 성공 시 알림 개수 + 날씨 + 브리핑 조회
+              return .merge(
+                .send(.internal(.fetchUnreadNotificationCount)),
+                .send(.internal(.fetchWeather)),
+                .send(.internal(.fetchBriefing()))
+              )
 
             case .failure(let error):
-              state.promisesState = .failed(error)
+              state.schedulesState = .failed(error)
+              state.refreshHomeContentSnapshot()
             }
             return .none
 
@@ -317,11 +1203,41 @@ extension Home {
             switch result {
             case .success(let events):
               state.personalEventsState = .loaded(events)
+              state.refreshHomeContentSnapshot()
               WidgetDataManager.savePersonalEvents(events.toWidgetData())
               WidgetDataManager.reloadWidgets()
+              // 개인 일정 날씨도 조회 (이미 캐시된 항목은 스킵)
+              return .send(.internal(.fetchWeather))
             case .failure:
-              // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
-              state.personalEventsState = .loaded([])
+              // 개인 일정 실패 시 기존 데이터 유지 (이미 로드된 데이터가 있으면 보존)
+              if !state.personalEventsState.isLoaded {
+                state.personalEventsState = .loaded([])
+              }
+              state.refreshHomeContentSnapshot()
+            }
+            return .none
+
+          case .fetchRecurringEvents:
+            return .run { [recurringPersonalEventClient] send in
+              do {
+                let events = try await recurringPersonalEventClient.getAllEvents()
+                await send(.internal(.recurringEventsResponse(.success(events))))
+              } catch {
+                await send(.internal(.recurringEventsResponse(.failure(error))))
+              }
+            }
+
+          case .recurringEventsResponse(let result):
+            switch result {
+            case .success(let events):
+              state.recurringEventsState = .loaded(events)
+              state.refreshHomeContentSnapshot()
+              return .none
+            case .failure:
+              if !state.recurringEventsState.isLoaded {
+                state.recurringEventsState = .loaded([])
+              }
+              state.refreshHomeContentSnapshot()
             }
             return .none
 
@@ -343,31 +1259,778 @@ extension Home {
           case .unreadNotificationCountResponse(let result):
             if case .success(let count) = result {
               state.unreadNotificationCount = count
-              // 시스템 배지도 동기화
-              return .run { [notificationClient] _ in
-                await notificationClient.setBadgeCount(count)
+            }
+            return .none
+
+          case .fetchWeather:
+            guard state.isPro else { return .none }
+            let cachedIds = state.weatherCache
+            let schedules = state.allSchedules.filter { schedule in
+              let hasLat = schedule.location?.latitude != nil
+              let hasLng = schedule.location?.longitude != nil
+              let notPast = !schedule.isPast
+              let notCached = cachedIds[schedule.id] == nil
+              return hasLat && hasLng && notPast && notCached
+            }
+            let events = (state.personalEventsState.value ?? []).filter { event in
+              event.location?.latitude != nil &&
+              event.location?.longitude != nil &&
+              cachedIds[event.id] == nil
+            }
+
+            // 예보 범위(10일) 밖 필터링 (단기 5일 + 중기 10일)
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+
+            struct LocationKey: Hashable, Sendable {
+              let lat: Double
+              let lng: Double
+              let hour: Int
+            }
+
+            struct WeatherFetchTarget: Sendable {
+              let lat: Double
+              let lng: Double
+              let date: Date
+              var scheduleIds: [String]
+            }
+
+            var targetsByKey: [LocationKey: WeatherFetchTarget] = [:]
+
+            func upsertTarget(
+              scheduleId: String,
+              lat: Double,
+              lng: Double,
+              date: Date
+            ) {
+              let hour = Calendar.scheduleDisplay.component(.hour, from: date)
+              let key = LocationKey(
+                lat: (lat * 100).rounded() / 100,
+                lng: (lng * 100).rounded() / 100,
+                hour: hour
+              )
+
+              if var existing = targetsByKey[key] {
+                if !existing.scheduleIds.contains(scheduleId) {
+                  existing.scheduleIds.append(scheduleId)
+                  targetsByKey[key] = existing
+                }
+                return
+              }
+
+              targetsByKey[key] = WeatherFetchTarget(
+                lat: lat,
+                lng: lng,
+                date: date,
+                scheduleIds: [scheduleId]
+              )
+            }
+
+            for schedule in schedules where schedule.startAt < maxDate {
+              guard let lat = schedule.location?.latitude,
+                    let lng = schedule.location?.longitude else { continue }
+              upsertTarget(
+                scheduleId: schedule.id,
+                lat: lat,
+                lng: lng,
+                date: schedule.startAt
+              )
+            }
+
+            for event in events where event.startAt < maxDate {
+              guard let lat = event.location?.latitude,
+                    let lng = event.location?.longitude else { continue }
+              upsertTarget(
+                scheduleId: event.id,
+                lat: lat,
+                lng: lng,
+                date: event.startAt
+              )
+            }
+
+            let targets = Array(targetsByKey.values)
+            guard !targets.isEmpty else { return .none }
+
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+
+              await withTaskGroup(of: (WeatherFetchTarget, WeatherInfo?).self) { group in
+                for target in targets {
+                  group.addTask {
+                    do {
+                      let info = try await weatherClient.getWeather(
+                        target.lat,
+                        target.lng,
+                        target.date
+                      )
+                      return (target, info)
+                    } catch {
+                      return (target, nil)
+                    }
+                  }
+                }
+
+                for await (target, info) in group {
+                  guard let info else { continue }
+                  for scheduleId in target.scheduleIds {
+                    updates[scheduleId] = info
+                  }
+                }
+              }
+
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            guard !updates.isEmpty else { return .none }
+            state.$weatherCache.withLock { cache in
+              for (scheduleId, info) in updates {
+                if cache[scheduleId] != info {
+                  cache[scheduleId] = info
+                }
               }
             }
             return .none
+
+          case .fetchOverlayWeather:
+            return .run { [locationClient, weatherClient] send in
+              do {
+                // getCurrentLocation() 호출 후 권한 거부 시 스트림이 멈추므로 타임아웃 + 권한 재체크
+                let location = try await withThrowingTaskGroup(of: Coordinate.self) { group in
+                  group.addTask {
+                    try await locationClient.getCurrentLocation()
+                  }
+                  group.addTask {
+                    // 권한 다이얼로그 대기 후 거부 감지 (최대 10초 타임아웃)
+                    try await Task.sleep(for: .seconds(1))
+                    for _ in 0..<18 { // 0.5초 * 18 = 9초
+                      let status = locationClient.authorizationStatus()
+                      if status == .denied {
+                        throw LocationClientError.denied
+                      }
+                      if status == .authorized {
+                        // getCurrentLocation 태스크가 위치를 반환할 때까지 대기
+                        try await Task.sleep(for: .seconds(10))
+                        throw LocationClientError.unavailable
+                      }
+                      try await Task.sleep(for: .milliseconds(500))
+                    }
+                    // 타임아웃
+                    throw LocationClientError.unavailable
+                  }
+                  guard let result = try await group.next() else {
+                    throw LocationClientError.unavailable
+                  }
+                  group.cancelAll()
+                  return result
+                }
+                async let weather = weatherClient.getWeather(
+                  location.latitude, location.longitude, Date()
+                )
+                async let locationText: String? = {
+                  do {
+                    return try await locationClient.reverseGeocode(location)
+                  } catch {
+                    return nil
+                  }
+                }()
+
+                let info = try await weather
+                let address = await locationText
+                await send(.internal(.overlayWeatherResponse(.success(info), address)))
+              } catch {
+                await send(.internal(.overlayWeatherResponse(.failure(error), nil)))
+              }
+            }
+            .cancellable(id: CancelID.overlayWeatherFetch)
+
+          case .overlayWeatherResponse(let result, let locationText):
+            switch result {
+            case .success(let info):
+              if let forecast = info.current ?? info.hourlyForecasts.first {
+                state.overlayWeatherState = .loaded(forecast)
+                state.overlayWeatherLocationText = locationText
+                state.overlayWeatherInfo = info
+              } else {
+                state.overlayWeatherState = .failed
+                state.overlayWeatherLocationText = nil
+                state.overlayWeatherInfo = nil
+              }
+            case .failure:
+              let authStatus = locationClient.authorizationStatus()
+              if authStatus == .denied {
+                state.overlayWeatherState = .denied
+              } else {
+                state.overlayWeatherState = .failed
+              }
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherInfo = nil
+            }
+            return .none
+
+          case .fetchOverlaySchedules(let month):
+            let monthStart = month.startOfMonth
+            guard !state.overlayLoadedMonths.contains(monthStart) else { return .none }
+            state.overlayLoadedMonths.insert(monthStart)
+            state.overlayLoadingMonths.insert(monthStart)
+
+            var seenGroupIds = Set<String>()
+            let groupIds = state.currentUser.groups.compactMap { groupInfo in
+              seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
+            }
+            guard !groupIds.isEmpty else {
+              state.overlaySchedulesByMonth[monthStart] = []
+              state.overlayLoadingMonths.remove(monthStart)
+              return .none
+            }
+
+            let calendar = Calendar.current
+            let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+
+            return .merge(
+              .run { [scheduleClient] send in
+                do {
+                  let schedules = try await scheduleClient.getSchedulesByDateRange(groupIds, monthStart, endDate)
+                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .success(schedules))))
+                } catch {
+                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .failure(error))))
+                }
+              }
+              .cancellable(id: CancelID.overlayScheduleFetch(monthStart), cancelInFlight: true),
+              .send(.internal(.prefetchOverlayAdjacentData))
+            )
+
+          case .overlaySchedulesResponse(let month, let result):
+            state.overlayLoadingMonths.remove(month)
+            switch result {
+            case .success(let schedules):
+              var groupsDict: [String: UserGroupInfo] = [:]
+              for groupInfo in state.currentUser.groups {
+                groupsDict[groupInfo.id] = groupInfo
+              }
+              let schedulesWithGroup = schedules.map { schedule in
+                var mutableSchedule = schedule
+                if let groupInfo = groupsDict[schedule.groupId] {
+                  mutableSchedule.group = GroupModel(
+                    id: groupInfo.id,
+                    name: groupInfo.name,
+                    imageUrl: groupInfo.imageUrl,
+                    maxMembers: 0,
+                    inviteCode: "",
+                    createdBy: ""
+                  )
+                }
+                return mutableSchedule
+              }
+              state.overlaySchedulesByMonth[month] = schedulesWithGroup
+            case .failure:
+              state.overlayLoadedMonths.remove(month)
+            }
+            return .none
+
+          case .prefetchOverlayAdjacentData:
+            let calendar = Calendar.current
+            let currentMonth = state.overlayCalendarMonth.startOfMonth
+
+            var effects: [Effect<Action>] = []
+            for monthOffset in [-1, 1] {
+              guard let adjacentMonth = calendar.date(byAdding: .month, value: monthOffset, to: currentMonth)?.startOfMonth else { continue }
+
+              if !state.overlayLoadedMonths.contains(adjacentMonth) {
+                effects.append(.send(.internal(.fetchOverlaySchedules(month: adjacentMonth))))
+              }
+              if !state.overlayLoadedPersonalEventMonths.contains(adjacentMonth) {
+                effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: adjacentMonth))))
+              }
+            }
+            return effects.isEmpty ? .none : .merge(effects)
+
+          case .fetchOverlayPersonalEvents(let month):
+            let monthStart = month.startOfMonth
+            guard !state.overlayLoadedPersonalEventMonths.contains(monthStart) else { return .none }
+            state.overlayLoadedPersonalEventMonths.insert(monthStart)
+            state.overlayLoadingPersonalEventMonths.insert(monthStart)
+
+            let calendar = Calendar.current
+            let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+
+            return .merge(
+              .run { [personalEventClient] send in
+                do {
+                  let events = try await personalEventClient.getEventsByDateRange(monthStart, endDate)
+                  await send(.internal(.overlayPersonalEventsResponse(month: monthStart, .success(events))))
+                } catch {
+                  await send(.internal(.overlayPersonalEventsResponse(month: monthStart, .failure(error))))
+                }
+              }
+              .cancellable(id: CancelID.overlayPersonalEventFetch(monthStart), cancelInFlight: true),
+              .send(.internal(.prefetchOverlayAdjacentData))
+            )
+
+          case .overlayPersonalEventsResponse(let month, let result):
+            state.overlayLoadingPersonalEventMonths.remove(month)
+            switch result {
+            case .success(let events):
+              state.overlayPersonalEventsByMonth[month] = events
+            case .failure:
+              state.overlayLoadedPersonalEventMonths.remove(month)
+            }
+            return .none
+
+          case .clearOverlayScheduleDetail:
+            state.overlayScheduleDetail = nil
+            return .none
+
+          case .fetchOverlayHolidays(let year):
+            guard !state.overlayLoadedHolidayYears.contains(year) else { return .none }
+            return .run { [holidayClient] send in
+              do {
+                let holidays = try await holidayClient.fetchHolidays(year)
+                await send(.internal(.overlayHolidaysResponse(year: year, .success(holidays))))
+              } catch {
+                await send(.internal(.overlayHolidaysResponse(year: year, .failure(error))))
+              }
+            }
+
+          case .overlayHolidaysResponse(let year, let result):
+            switch result {
+            case .success(let holidays):
+              state.overlayLoadedHolidayYears.insert(year)
+              let calendar = Calendar.current
+              for holiday in holidays {
+                let dateKey = calendar.startOfDay(for: holiday.date)
+                state.overlayHolidaysByDate[dateKey] = holiday.localName
+              }
+            case .failure:
+              // 공휴일 로드 실패 시 조용히 무시
+              break
+            }
+            return .none
+
+          case .fetchBriefing(let forceRefresh):
+            // 기존 브리핑이 없거나 강제 새로고침일 때만 로딩 표시 (탭 전환 시 깜빡임 방지)
+            if !state.briefingState.isLoaded || forceRefresh {
+              state.briefingState = .loading
+            }
+            return .run { [locationClient, briefingClient, forceRefresh] send in
+              let input = await Self.buildBriefingInput(
+                locationClient: locationClient,
+                forceRefresh: forceRefresh
+              )
+
+              do {
+                let briefing = try await briefingClient.generate(input)
+                AppLogger.briefing.debug("✅ 브리핑 생성 완료 - 요약: \(briefing.summary)")
+                await send(.internal(.briefingResponse(.success(briefing))))
+              } catch {
+                AppLogger.briefing.error("❌ 브리핑 생성 실패: \(error)")
+                await send(.internal(.briefingResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.briefingFetch, cancelInFlight: true)
+
+          case .briefingResponse(let result):
+            switch result {
+            case .success(let briefingResult):
+              state.briefingState = .loaded(briefingResult)
+              state.briefingGeneratedDate = Date()
+              state.isBriefingUpdated = briefingResult.isUpdated
+            case .failure(let error):
+              state.briefingState = .failed(error as? BriefingClientError ?? .networkError)
+              state.isBriefingUpdated = false
+            }
+            return .none
+
+          case .checkPermissions:
+            return .run { [notificationClient, locationClient] send in
+              let notificationStatus = await notificationClient.getAuthorizationStatus()
+              let locationStatus = locationClient.authorizationStatus()
+              await send(.internal(.permissionsChecked(
+                notification: notificationStatus,
+                location: locationStatus
+              )))
+            }
+
+          case .permissionsChecked(let notificationStatus, let locationStatus):
+            state.notificationAuthStatus = notificationStatus
+            state.locationAuthStatus = locationStatus
+            return .none
+
+          case .transportationResponse(let scheduleItemId, let result, let availableTransports):
+            guard let item = state.departureAlertItem,
+                  item.id == scheduleItemId else {
+              return .none
+            }
+            switch result {
+            case .success(let transportation):
+              let itemStartAt = item.startAt
+
+              // 자동차 (buffer=0 기준 출발시간)
+              let drivingOption: HomeModels.TransportOption?
+              if let driving = transportation.driving {
+                let departureTime = itemStartAt.addingTimeInterval(-Double(driving.duration * 60))
+                var info: String? = nil
+                if driving.toll > 0 {
+                  let tollAmount = Decimal(driving.toll).formatted(.currency(code: "KRW"))
+                  info = LocalizedStrings.Home.transportTollAmount(tollAmount)
+                }
+                drivingOption = .init(
+                  type: .driving,
+                  durationMinutes: driving.duration,
+                  departureTime: departureTime,
+                  additionalInfo: info,
+                  distanceMeters: driving.distance,
+                  routePoints: driving.routePoints
+                )
+              } else {
+                drivingOption = nil
+              }
+
+              // 대중교통 경로 배열 변환 (buffer=0 기준 출발시간)
+              let transitRoutes: [HomeModels.TransitRouteOption] = transportation.transitRoutes.enumerated().map { index, route in
+                let departureTime = itemStartAt.addingTimeInterval(-Double(route.totalTime * 60))
+                let subPaths = route.subPaths.map { subPath -> HomeModels.TransportSubPath in
+                  let laneName: String?
+                  let laneColor: String?
+                  if let firstLane = subPath.lanes.first {
+                    laneName = firstLane.name ?? firstLane.busNo
+                    if subPath.trafficType == 1 {
+                      laneColor = Self.subwayColor(code: firstLane.subwayCode)
+                    } else if subPath.trafficType == 2 {
+                      laneColor = Self.busColor(type: firstLane.busType)
+                    } else {
+                      laneColor = nil
+                    }
+                  } else {
+                    laneName = nil
+                    laneColor = nil
+                  }
+                  return HomeModels.TransportSubPath(
+                    trafficType: subPath.trafficType,
+                    sectionTime: subPath.sectionTime,
+                    distance: subPath.distance,
+                    startName: subPath.startName,
+                    endName: subPath.endName,
+                    stationCount: subPath.stationCount,
+                    laneName: laneName,
+                    laneColor: laneColor,
+                    way: subPath.way,
+                    endExitNo: subPath.endExitNo,
+                    passStopCoords: subPath.passStopCoords
+                  )
+                }
+                return HomeModels.TransitRouteOption(
+                  id: index,
+                  totalTime: route.totalTime,
+                  payment: route.payment,
+                  busTransitCount: route.busTransitCount,
+                  subwayTransitCount: route.subwayTransitCount,
+                  pathType: route.pathType,
+                  departureTime: departureTime,
+                  subPaths: subPaths
+                )
+              }
+
+              // 도보 (buffer=0 기준 출발시간)
+              let walkDepartureTime = itemStartAt.addingTimeInterval(-Double(transportation.walkingMinutes * 60))
+              let walkingOption = HomeModels.TransportOption(
+                type: .walking,
+                durationMinutes: transportation.walkingMinutes,
+                departureTime: walkDepartureTime,
+                distanceMeters: transportation.walkingDistanceMeters
+              )
+
+              let transportData = HomeModels.DepartureTransportData(
+                driving: drivingOption,
+                transitRoutes: HomeModels.DepartureTransportData.categorizeTransitRoutes(transitRoutes),
+                walking: walkingOption,
+                availableTransports: availableTransports
+              )
+              state.departureTransportData = .loaded(transportData)
+
+            case .failure(let error):
+              state.departureTransportData = .failed(error)
+              // 시트가 열려 있으면 인라인 에러로 표시하므로 토스트 불필요
+              if state.departureAlertItem == nil {
+                if error is LocationClientError {
+                  state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.Home.departureLocationPermissionRequired)
+                } else {
+                  state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.Home.departureTransportLoadFailed)
+                }
+              }
+            }
+            return .none
+
+          case .scheduleAlertForSelection(let selection, let bufferMinutes):
+            guard let item = state.departureAlertItem,
+                  let data = state.departureTransportData.value else {
+              return .none
+            }
+            let scheduleItemId = item.id
+            let durationMinutes: Int
+            let rawDepartureTime: Date
+            let transportType: HomeModels.TransportType
+            switch selection {
+            case .driving:
+              guard let opt = data.driving else { return .none }
+              durationMinutes = opt.durationMinutes
+              rawDepartureTime = opt.departureTime
+              transportType = .driving
+            case .transit(let index):
+              guard let route = data.transitRoutes.first(where: { $0.id == index }) else { return .none }
+              durationMinutes = route.totalTime
+              rawDepartureTime = route.departureTime
+              transportType = .transit
+            case .walking:
+              durationMinutes = data.walking.durationMinutes
+              rawDepartureTime = data.walking.departureTime
+              transportType = .walking
+            }
+            // buffer 적용한 실제 알림 트리거 시간
+            let departureTime = rawDepartureTime.addingTimeInterval(-Double(bufferMinutes * 60))
+            let alertInfo = HomeModels.DepartureAlertInfo(
+              scheduleItemId: scheduleItemId,
+              selectedTransport: transportType,
+              durationMinutes: durationMinutes,
+              departureTime: departureTime
+            )
+            state.departureAlerts[scheduleItemId] = alertInfo
+            let alertsAfterSchedule = state.departureAlerts
+            state.departureAlertItem = nil
+            state.departureTransportData = .idle
+            let notificationId = "departure_alert_\(scheduleItemId)"
+            let timeText = item.startAt.formattedTime
+            let transport = transportType.displayName
+
+            typealias NotificationTemplate = (
+              title: (String) -> String,
+              body: (String, String, Int, Int) -> String
+            )
+
+            let templates: [NotificationTemplate] = [
+              (
+                title: { LocalizedStrings.Home.departureNotificationTitleSoon($0) },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? LocalizedStrings.Home.departureNotificationBodySoonWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodySoon(time, trans, duration)
+                }
+              ),
+              (
+                title: { LocalizedStrings.Home.departureNotificationTitleNow($0) },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? LocalizedStrings.Home.departureNotificationBodyNowWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodyNow(time, trans, duration)
+                }
+              ),
+              (
+                title: { LocalizedStrings.Home.departureNotificationTitleReady($0) },
+                body: { time, trans, duration, buffer in
+                  buffer > 0
+                    ? LocalizedStrings.Home.departureNotificationBodyReadyWithBuffer(time, trans, duration, buffer)
+                    : LocalizedStrings.Home.departureNotificationBodyReady(time, trans, duration)
+                }
+              ),
+            ]
+
+            // swiftlint:disable:next force_unwrapping
+            let template = templates.randomElement()!
+            let title = template.title(item.title)
+            let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
+            let triggerDate = departureTime
+            return .run { [localNotificationClient, userDefaultsClient] send in
+              Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
+              do {
+                try await localNotificationClient.schedule(
+                  notificationId, title, body, triggerDate,
+                  ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+                )
+              } catch {
+                // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+              }
+              await send(.internal(.departureAlertScheduled(alertInfo)))
+            }
+
+          case .departureAlertScheduled:
+            state.toastMessage = ToastMessage(type: .success, title: LocalizedStrings.Home.departureAlertScheduled)
+            return .none
+
+          case .departureLocationResolved(let name):
+            state.departureLocationName = name
+            return .none
+
+          case .currentLocationStored(let coordinate):
+            state.currentLocationCoordinate = coordinate
+            return .none
+
           }
+
+        case .createPersonalEvent(.presented(.delegate(.eventCreated))):
+          state.createPersonalEvent = nil
+          return .send(.internal(.fetchPersonalEvents))
+
+        case .createPersonalEvent(.presented(.delegate(.dismiss))):
+          state.createPersonalEvent = nil
+          return .none
+
+        case .createPersonalEvent:
+          return .none
+
+        // MARK: - CreateRecurringEvent Delegate
+
+        case .createRecurringEvent(.presented(.delegate(.eventCreated))),
+             .createRecurringEvent(.presented(.delegate(.eventUpdated(_)))):
+          state.createRecurringEvent = nil
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .createRecurringEvent(.presented(.delegate(.dismiss))):
+          state.createRecurringEvent = nil
+          return .none
+
+        case .createRecurringEvent:
+          return .none
+
+        // MARK: - CreateSchedule (Sheet) Delegate
+
+        case .createSchedule(.presented(.delegate(.scheduleCreated(_)))):
+          state.createSchedule = nil
+          return .send(.internal(.fetchSchedules))
+
+        case .createSchedule(.presented(.delegate(.dismiss))):
+          state.createSchedule = nil
+          return .none
+
+        case .createSchedule(.presented(.delegate(.createGroupRequested))):
+          state.createSchedule = nil
+          return .send(.delegate(.navigateToCreateSchedule))
+
+        case .createSchedule:
+          return .none
+
+        // MARK: - Overlay Schedule Detail Actions
+
+        case .overlayScheduleDetail(.delegate(.dismiss)):
+          // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          return .run { send in
+            try await Task.sleep(for: .milliseconds(500))
+            await send(.internal(.clearOverlayScheduleDetail))
+          }
+
+        case .overlayScheduleDetail(.delegate(.openFullDetail(let item))):
+          state.overlayScheduleDetail = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          state.showCalendarOverlay = false
+          state.overlayWeatherState = .needsPermission
+          state.overlayWeatherLocationText = nil
+          state.overlayWeatherInfo = nil
+          switch item {
+          case .schedule(let schedule):
+            let groupMembers = state.groupMembersCache[schedule.groupId]
+            state.path.append(.scheduleDetail(.init(
+              schedule: schedule,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
+            )))
+          case .personalEvent(let event):
+            state.path.append(.personalEventDetail(.init(event: event)))
+          case .recurringPersonalEvent(let instance):
+            if let events = state.recurringEventsState.value,
+               let recurring = events.first(where: { $0.id == instance.recurringEventId }) {
+              state.path.append(.recurringPersonalEventDetail(.init(
+                recurringEvent: recurring,
+                selectedInstance: instance
+              )))
+            }
+          }
+          return .cancel(id: CancelID.overlayWeatherFetch)
+
+        case .overlayScheduleDetail(.delegate(.scheduleResponseUpdated(let schedule))):
+          // 오버레이 캐시 업데이트
+          let monthKey = schedule.startAt.startOfMonth
+          if let index = state.overlaySchedulesByMonth[monthKey]?.firstIndex(where: { $0.id == schedule.id }) {
+            state.overlaySchedulesByMonth[monthKey]?[index] = schedule
+          }
+          // 홈 일정 목록도 업데이트
+          if case .loaded(var schedules) = state.schedulesState,
+             let index = schedules.firstIndex(where: { $0.id == schedule.id }) {
+            schedules[index] = schedule
+            state.schedulesState = .loaded(schedules)
+            state.refreshHomeContentSnapshot()
+          }
+          return .none
+
+        case .overlayScheduleDetail:
+          return .none
+
+        // MARK: - Overlay Create Schedule Actions
+
+        case .overlayCreateSchedule(.delegate(.scheduleCreated)):
+          state.overlayCreateSchedule = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          // 일정이 어느 월에 생성되었을지 모르므로 전체 캐시 무효화
+          state.overlayLoadedMonths.removeAll()
+          state.overlaySchedulesByMonth.removeAll()
+          let month = state.overlaySelectedDate.startOfMonth
+          return .merge(
+            .send(.internal(.fetchSchedules)),
+            .send(.internal(.fetchOverlaySchedules(month: month)))
+          )
+
+        case .overlayCreateSchedule(.delegate(.dismiss)):
+          state.overlayCreateSchedule = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          return .none
+
+        case .overlayCreateSchedule(.delegate(.createGroupRequested)):
+          // 그룹 생성은 오버레이에서 불가 → 오버레이 닫고 기존 플로우로 위임
+          state.overlayCreateSchedule = nil
+          state.overlayCalendarModeBeforeFeature = nil
+          state.showCalendarOverlay = false
+          state.overlayCalendarMode = .monthly
+          return .merge(
+            .cancel(id: CancelID.overlayWeatherFetch),
+            .send(.delegate(.navigateToCreateSchedule))
+          )
+
+        case .overlayCreateSchedule:
+          return .none
 
         case .delegate:
           return .none
 
         // MARK: - Path Actions
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.dismiss)))):
           _ = state.path.popLast()
           return .none
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleDeleted)))):
           _ = state.path.popLast()
-          // 삭제 후 다시 조회
-          return .send(.internal(.fetchPromises))
+          // 오버레이 캐시 무효화
+          let deletedMonth = state.overlaySelectedDate.startOfMonth
+          state.overlayLoadedMonths.remove(deletedMonth)
+          state.overlaySchedulesByMonth.removeValue(forKey: deletedMonth)
+          return .merge(
+            .send(.internal(.fetchSchedules)),
+            state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: deletedMonth))) : .none
+          )
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
-          // 수정 후 다시 조회
-          return .send(.internal(.fetchPromises))
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated)))):
+          // 오버레이 캐시 무효화
+          let updatedMonth = state.overlaySelectedDate.startOfMonth
+          state.overlayLoadedMonths.remove(updatedMonth)
+          state.overlaySchedulesByMonth.removeValue(forKey: updatedMonth)
+          return .merge(
+            .send(.internal(.fetchSchedules)),
+            state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: updatedMonth))) : .none
+          )
 
         // MARK: - PersonalEventDetail Path Actions
 
@@ -378,388 +2041,281 @@ extension Home {
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
           return .send(.internal(.fetchPersonalEvents))
 
+        // MARK: - RecurringPersonalEventDetail Path Actions
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
+        case .path(.element(id: _, action: .recurringPersonalEventDetail(.delegate(.eventUpdated)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchRecurringEvents))
+
         // MARK: - NotificationCenter Path Actions
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.dismiss)))):
           _ = state.path.popLast()
-          return .none
+          return .send(.internal(.fetchUnreadNotificationCount))
 
-        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToPromise(let promiseId, let groupId))))):
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToSchedule(let scheduleId, let groupId))))):
           _ = state.path.popLast()
-          return .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+          return .send(.delegate(.navigateToSchedule(scheduleId: scheduleId, groupId: groupId)))
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToGroup(let groupId))))):
           _ = state.path.popLast()
-          return .send(.delegate(.navigateToGroupWithPromise(groupId: groupId, promiseId: "")))
+          return .send(.delegate(.navigateToGroupWithSchedule(groupId: groupId, scheduleId: "")))
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.refreshBadgeCount)))):
+          return .send(.internal(.fetchUnreadNotificationCount))
+
+        // MARK: - TransportDetail Path Actions
+
+        case .path(.element(id: let id, action: .transportDetail(.delegate(.alertRequested(let selection, let bufferMinutes))))):
+          guard let detailState = state.path[id: id],
+                case .transportDetail(let tdState) = detailState else {
+            return .none
+          }
+          let transportData = tdState.transportData
+          let scheduleItemId = tdState.scheduleItemId
+          let scheduleTitle = tdState.scheduleTitle
+          let scheduleStartAt = tdState.scheduleStartAt
+          let durationMinutes: Int
+          let rawDepartureTime: Date
+          let transportType: HomeModels.TransportType
+          switch selection {
+          case .driving:
+            guard let opt = transportData.driving else { return .none }
+            durationMinutes = opt.durationMinutes
+            rawDepartureTime = opt.departureTime
+            transportType = .driving
+          case .transit(let index):
+            guard let route = transportData.transitRoutes.first(where: { $0.id == index }) else { return .none }
+            durationMinutes = route.totalTime
+            rawDepartureTime = route.departureTime
+            transportType = .transit
+          case .walking:
+            durationMinutes = transportData.walking.durationMinutes
+            rawDepartureTime = transportData.walking.departureTime
+            transportType = .walking
+          }
+          let departureTime = rawDepartureTime.addingTimeInterval(-Double(bufferMinutes * 60))
+          let alertInfo = HomeModels.DepartureAlertInfo(
+            scheduleItemId: scheduleItemId,
+            selectedTransport: transportType,
+            durationMinutes: durationMinutes,
+            departureTime: departureTime
+          )
+          state.departureAlerts[scheduleItemId] = alertInfo
+          let alertsAfterSchedule = state.departureAlerts
+          let notificationId = "departure_alert_\(scheduleItemId)"
+          let timeText = scheduleStartAt.formattedTime
+          let transport = transportType.displayName
+
+          typealias NotificationTemplate = (
+            title: (String) -> String,
+            body: (String, String, Int, Int) -> String
+          )
+
+          let templates: [NotificationTemplate] = [
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleSoon($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodySoonWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodySoon(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleNow($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyNowWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyNow(time, trans, duration)
+              }
+            ),
+            (
+              title: { LocalizedStrings.Home.departureNotificationTitleReady($0) },
+              body: { time, trans, duration, buffer in
+                buffer > 0
+                  ? LocalizedStrings.Home.departureNotificationBodyReadyWithBuffer(time, trans, duration, buffer)
+                  : LocalizedStrings.Home.departureNotificationBodyReady(time, trans, duration)
+              }
+            ),
+          ]
+
+          guard let template = templates.randomElement() else { return .none }
+          let title = template.title(scheduleTitle)
+          let body = template.body(timeText, transport, durationMinutes, bufferMinutes)
+          let triggerDate = departureTime
+          return .run { [localNotificationClient, userDefaultsClient] send in
+            Self.saveDepartureAlerts(alertsAfterSchedule, userDefaultsClient: userDefaultsClient)
+            do {
+              try await localNotificationClient.schedule(
+                notificationId, title, body, triggerDate,
+                ["type": "departure_alert", "scheduleItemId": scheduleItemId]
+              )
+            } catch {
+              // 알림 스케줄 실패해도 출발시간 표시를 위해 상태는 유지
+            }
+            await send(.internal(.departureAlertScheduled(alertInfo)))
+          }
 
         case .path:
           return .none
         }
       }
       .forEach(\.path, action: \.path)
-    }
-  }
-}
-
-// MARK: - State Computed Properties
-
-extension Home.Feature.State {
-  /// 전체 약속 (nil이면 빈 배열)
-  var allPromises: [PromiseModel] {
-    promisesState.value ?? []
-  }
-
-  /// 전체 개인 일정 (nil이면 빈 배열)
-  private var allPersonalEvents: [PersonalEventModel] {
-    personalEventsState.value ?? []
-  }
-
-  /// 오늘 날짜 범위 (KST 기준)
-  private var todayRange: (start: Date, end: Date) {
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
-    let startOfDay = calendar.startOfDay(for: Date())
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-    return (startOfDay, endOfDay)
-  }
-
-  /// 오늘의 확정 약속 (오늘 + 확정) - criticalZoneData 등에서 사용
-  var todayPromises: [PromiseModel] {
-    let (startOfDay, endOfDay) = todayRange
-    return allPromises
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
-  }
-
-  /// 오늘의 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬)
-  var todayScheduleItems: [HomeModels.ScheduleItem] {
-    let (startOfDay, endOfDay) = todayRange
-    let promiseItems = allPromises
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
-      .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = allPersonalEvents
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
-      .map { HomeModels.ScheduleItem.personalEvent($0) }
-    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
-  }
-
-  /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)
-  var pendingPromises: [PromiseModel] {
-    let userId = currentUser.userId
-    return allPromises
-      .filter { $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed }
-      .sorted { lhs, rhs in
-        let lhsDeadline = lhs.votes.until ?? .distantFuture
-        let rhsDeadline = rhs.votes.until ?? .distantFuture
-        return lhsDeadline < rhsDeadline
+      .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
+        CreatePersonalEvent.Feature()
       }
-      .prefix(5)
-      .map { $0 }
-  }
-
-  /// 다가오는 확정 약속 (내일 이후 + 확정 + 내가 수락, 최대 10개)
-  var upcomingPromises: [PromiseModel] {
-    let (_, endOfDay) = todayRange
-    let userId = currentUser.userId
-    return allPromises
-      .filter {
-        $0.startAt >= endOfDay &&
-        $0.isConfirmed &&
-        $0.myVoteStatus(userId: userId) == .accepted
+      .ifLet(\.$createRecurringEvent, action: \.createRecurringEvent) {
+        CreateRecurringPersonalEvent.Feature()
       }
-      .prefix(10)
-      .map { $0 }
-  }
-
-  /// 다가오는 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬, 최대 10개)
-  var upcomingScheduleItems: [HomeModels.ScheduleItem] {
-    let (_, endOfDay) = todayRange
-    let userId = currentUser.userId
-    let promiseItems = allPromises
-      .filter {
-        $0.startAt >= endOfDay &&
-        $0.isConfirmed &&
-        $0.myVoteStatus(userId: userId) == .accepted
+      .ifLet(\.$createSchedule, action: \.createSchedule) {
+        CreateSchedule.Feature()
       }
-      .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = allPersonalEvents
-      .filter { $0.startAt >= endOfDay }
-      .map { HomeModels.ScheduleItem.personalEvent($0) }
-    return (promiseItems + eventItems)
-      .sorted { $0.startAt < $1.startAt }
-      .prefix(10)
-      .map { $0 }
-  }
-
-  /// 필터링된 약속 (id 기반 안전)
-  var filteredPromises: [PromiseModel] {
-    var promises = allPromises
-
-    // 그룹 필터 적용
-    if let groupId = selectedGroupId {
-      promises = promises.filter { $0.groupId == groupId }
-    }
-
-    // 상태 필터 적용
-    switch selectedStatusFilter {
-    case .needResponse:
-      promises = promises.filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+      .ifLet(\.overlayScheduleDetail, action: \.overlayScheduleDetail) {
+        OverlayScheduleDetail.Feature()
       }
-    case .confirmed:
-      promises = promises.filter { $0.isConfirmed && !$0.isPast }
-    case .inProgress:
-      promises = promises.filter {
-        !$0.isConfirmed && !$0.isVotingClosed
+      .ifLet(\.overlayCreateSchedule, action: \.overlayCreateSchedule) {
+        CreateSchedule.Feature()
       }
-    case .all:
-      promises = promises.filter { !$0.isPast }
+
     }
 
-    return promises
-  }
+    // MARK: - Departure Alert Persistence
 
-  /// Overview 데이터
-  var overviewData: HomeModels.OverviewData {
-    let nextPromise = todayPromises
-      .filter { $0.startAt > Date() }
-      .first
+    private static let departureAlertsKey = "departure_alerts_v1"
 
-    return HomeModels.OverviewData(
-      todayCount: todayScheduleItems.count,
-      nextPromise: nextPromise,
-      needResponseCount: pendingPromises.count
-    )
-  }
+    /// 출발 알림 만료 유지 시간 (초)
+    private static let departureAlertRetentionInterval: TimeInterval = 3600
 
-  /// Critical Zone 데이터 (실시간 계산 필요)
-  var criticalZoneData: HomeModels.CriticalZoneData? {
-    let now = Date()
-
-    // todayPromises에서 실시간 상태 계산
-    if let livePromise = todayPromises.first(where: { $0.isRealtimeShareable }) {
-      return HomeModels.CriticalZoneData(reason: .liveActivity, promise: livePromise)
-    }
-
-    if let ongoingPromise = todayPromises.first(where: { $0.isOngoing }) {
-      return HomeModels.CriticalZoneData(reason: .inProgress, promise: ongoingPromise)
-    }
-
-    if let soonPromise = todayPromises.first(where: {
-      let interval = $0.startAt.timeIntervalSince(now)
-      return interval > 0 && interval <= 1800
-    }) {
-      return HomeModels.CriticalZoneData(reason: .departureSoon, promise: soonPromise)
-    }
-
-    return nil
-  }
-
-  /// Timeline 데이터 (날짜별 그룹화)
-  var timelineData: [HomeModels.TimelineSection] {
-    let grouped = Dictionary(grouping: filteredPromises) { promise in
-      Calendar.current.startOfDay(for: promise.startAt)
-    }
-
-    return grouped
-      .sorted { $0.key < $1.key }
-      .map { day, promises in
-        HomeModels.TimelineSection(
-          day: day,
-          promises: promises.sorted { $0.startAt < $1.startAt }
+    private static func saveDepartureAlerts(
+      _ alerts: [String: HomeModels.DepartureAlertInfo],
+      userDefaultsClient: UserDefaultsClient
+    ) {
+      // 만료된 알림 제거 후 저장
+      let activeAlerts = alerts.filter {
+        $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+      }
+      do {
+        let data = try JSONEncoder().encode(activeAlerts)
+        userDefaultsClient.setString(
+          data.base64EncodedString(),
+          departureAlertsKey
         )
-      }
-  }
-
-  /// 사용 가능한 그룹 목록
-  var availableGroups: [HomeModels.GroupInfo] {
-    currentUser.groups.map { HomeModels.GroupInfo(id: $0.id, name: $0.name) }
-  }
-
-  /// 로딩 중 여부
-  var isLoading: Bool {
-    promisesState.isLoading
-  }
-
-  /// 응답 필요 개수 (배지용)
-  var pendingResponseCount: Int {
-    pendingPromises.count
-  }
-}
-
-// MARK: - Root View
-
-extension Home {
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
-    @Environment(\.scenePhase) private var scenePhase
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
-
-    public var body: some View {
-      NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-        ScrollView {
-          LazyVStack(spacing: 20) {
-            if store.isLoading && !store.hasLoadedOnce {
-              loadingView
-            } else if let error = store.promisesState.error {
-              errorView(error: error)
-            } else {
-              // 오늘의 일정 카드
-              TodayScheduleCard(
-                items: store.todayScheduleItems,
-                onItemTap: { item in
-                  switch item {
-                  case .promise(let p):
-                    store.send(.view(.todayPromiseTapped(p)))
-                  case .personalEvent(let e):
-                    store.send(.view(.personalEventTapped(e)))
-                  }
-                }
-              )
-              .padding(.horizontal, 16)
-
-              // 응답 필요 섹션 (있을 때만 표시)
-              if !store.pendingPromises.isEmpty {
-                PendingSection(
-                  promises: store.pendingPromises,
-                  onPromiseTap: { promise in
-                    store.send(.view(.pendingPromiseTapped(promise)))
-                  }
-                )
-                .padding(.horizontal, 16)
-              }
-
-              // 다가오는 일정 섹션
-              UpcomingSection(
-                items: store.upcomingScheduleItems,
-                onItemTap: { item in
-                  switch item {
-                  case .promise(let p):
-                    store.send(.view(.upcomingPromiseTapped(p)))
-                  case .personalEvent(let e):
-                    store.send(.view(.personalEventTapped(e)))
-                  }
-                },
-                onSeeAllTap: {
-                  store.send(.view(.seeAllUpcomingTapped))
-                }
-              )
-              .padding(.horizontal, 16)
-            }
-
-            // 하단 여백 (FAB 및 탭바 공간)
-            Color.clear
-              .frame(height: 100)
-          }
-          .padding(.top, 8)
-        }
-        .refreshable {
-          store.send(.view(.refreshTriggered))
-        }
-        .auroraBackground()
-        .toast(Binding(
-          get: { store.toastMessage },
-          set: { _ in store.send(.view(.toastDismissed)) }
-        ))
-        .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            NotificationButton(
-              badgeCount: store.unreadNotificationCount,
-              action: {
-                store.send(.view(.notificationButtonTapped))
-              }
-            )
-            .id(store.unreadNotificationCount)
-          }
-        }
-        .onAppear {
-          store.send(.view(.onAppear))
-        }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-          // background → active 시 다시 로드
-          if oldPhase == .background && newPhase == .active {
-            store.send(.view(.onAppear))
-          }
-        }
-      } destination: { store in
-        switch store.case {
-        case .promiseDetail(let detailStore):
-          PromiseDetail.RootView(store: detailStore)
-        case .personalEventDetail(let personalEventDetailStore):
-          PersonalEventDetail.RootView(store: personalEventDetailStore)
-        case .notificationCenter(let notificationStore):
-          NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
-        }
+      } catch {
+        AppLogger.home.error("Failed to encode departure alerts for persistence: \(error)")
       }
     }
 
-    // MARK: - Loading View
-
-    @ViewBuilder
-    private var loadingView: some View {
-      VStack(spacing: 16) {
-        // 오늘의 일정 스켈레톤
-        RoundedRectangle(cornerRadius: 20)
-          .fill(Color(.systemGray6))
-          .frame(height: 200)
-          .shimmer()
-
-        // 응답 필요 스켈레톤
-        VStack(alignment: .leading, spacing: 12) {
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color(.systemGray6))
-            .frame(width: 100, height: 24)
-
-          HStack(spacing: 12) {
-            ForEach(0..<2, id: \.self) { _ in
-              RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemGray6))
-                .frame(width: 160, height: 140)
-            }
-          }
-        }
-
-        // 다가오는 약속 스켈레톤
-        VStack(alignment: .leading, spacing: 12) {
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color(.systemGray6))
-            .frame(width: 120, height: 24)
-
-          ForEach(0..<3, id: \.self) { _ in
-            RoundedRectangle(cornerRadius: 14)
-              .fill(Color(.systemGray6))
-              .frame(height: 80)
-          }
-        }
+    private static func loadDepartureAlerts(
+      userDefaultsClient: UserDefaultsClient
+    ) -> [String: HomeModels.DepartureAlertInfo] {
+      guard let base64 = userDefaultsClient.stringForKey(departureAlertsKey),
+            let data = Data(base64Encoded: base64) else {
+        return [:]
       }
-      .padding(.horizontal, 16)
-      .shimmer()
+      do {
+        let alerts = try JSONDecoder().decode([String: HomeModels.DepartureAlertInfo].self, from: data)
+        // 만료된 알림 제거
+        return alerts.filter {
+          $0.value.departureTime > Date().addingTimeInterval(-departureAlertRetentionInterval)
+        }
+      } catch {
+        AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
+        return [:]
+      }
     }
 
-    // MARK: - Error View
+    // MARK: - Briefing Helpers
 
-    @ViewBuilder
-    private func errorView(error: Error) -> some View {
-      VStack(spacing: 16) {
-        Image(systemName: "exclamationmark.triangle")
-          .font(.system(size: 40))
-          .foregroundStyle(.secondary)
+    private static func buildBriefingInput(
+      locationClient: LocationClient,
+      forceRefresh: Bool
+    ) async -> BriefingInput {
+      var location: BriefingInput.BriefingLocation?
 
-        Text(error.localizedDescription)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-
-        Button("다시 시도") {
-          store.send(.view(.refreshTriggered))
+      if locationClient.authorizationStatus() == .authorized {
+        do {
+          let coordinate = try await locationClient.getCurrentLocation()
+          let locationText = try await locationClient.reverseGeocode(coordinate)
+          location = BriefingInput.BriefingLocation(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            title: locationText
+          )
+        } catch {
+          // 위치 실패 시 무시하고 진행
         }
-        .buttonStyle(.bordered)
       }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 60)
-      .padding(.horizontal, 24)
+
+      let input = BriefingInput(
+        timezone: TimeZone.current.identifier,
+        language: AppLanguage.resolved.rawValue,
+        location: location,
+        forceRefresh: forceRefresh
+      )
+
+      AppLogger.briefing.debug("📋 브리핑 요청: timezone=\(input.timezone), location=\(location?.title ?? "없음"), forceRefresh=\(forceRefresh)")
+
+      return input
+    }
+
+    // MARK: - 지하철 호선 색상
+
+    private static func busColor(type: Int?) -> String? {
+      guard let type else { return nil }
+      switch type {
+      case 1: return "#53B332"   // 일반 (초록)
+      case 2: return "#E60012"   // 좌석 (빨강)
+      case 3: return "#53B332"   // 마을 (초록)
+      case 4: return "#E60012"   // 직행좌석 (빨강)
+      case 5: return "#8B4513"   // 공항
+      case 6: return "#003087"   // 간선급행 (파랑)
+      case 10: return "#53B332"  // 외곽 (초록)
+      case 11: return "#003087"  // 간선 (파랑)
+      case 12: return "#53B332"  // 지선 (초록)
+      case 13: return "#53B332"  // 순환 (초록)
+      case 14: return "#E60012"  // 광역 (빨강)
+      case 15: return "#E60012"  // 급행 (빨강)
+      case 16: return "#F99D1C"  // 경기 일반 (노랑)
+      case 20: return "#003087"  // 인천 간선 (파랑)
+      case 22: return "#E60012"  // 인천 광역 (빨강)
+      case 26: return "#53B332"  // 인천 지선 (초록)
+      default: return "#53B332"  // 기본 초록
+      }
+    }
+
+    private static func subwayColor(code: Int?) -> String? {
+      guard let code else { return nil }
+      switch code {
+      case 1: return "#0052A4"   // 1호선
+      case 2: return "#00A84D"   // 2호선
+      case 3: return "#EF7C1C"   // 3호선
+      case 4: return "#00A4E3"   // 4호선
+      case 5: return "#996CAC"   // 5호선
+      case 6: return "#CD7C2F"   // 6호선
+      case 7: return "#747F00"   // 7호선
+      case 8: return "#E6186C"   // 8호선
+      case 9: return "#BDB092"   // 9호선
+      case 100: return "#7CA1D3" // 분당선
+      case 101: return "#F5A200" // 공항철도
+      case 102: return "#32A1C8" // 자기부상
+      case 104: return "#EB8B00" // 경의중앙선
+      case 107: return "#C4C73D" // 에버라인
+      case 108: return "#A71E31" // 경춘선
+      case 109: return "#F5A200" // 신분당선
+      case 110: return "#A4D80B" // 의정부경전철
+      case 112: return "#6789CA" // 경강선
+      case 113: return "#003DA5" // 우이신설선
+      case 114: return "#E0861A" // 서해선
+      case 115: return "#8B50A4" // 김포골드라인
+      case 116: return "#C6C100" // 수인분당선
+      case 117: return "#004E6F" // 신림선
+      case 118: return "#71B5E4" // GTX-A
+      default: return nil
+      }
     }
   }
 }

@@ -11,12 +11,13 @@ struct CalendarFeatureTests {
   func initialState_hasCorrectDefaults() {
     let state = makeState(key: "initial")
 
-    #expect(state.displayMode == .week)
-    #expect(state.isLoadingPromises == false)
+    #expect(state.displayMode == .month)
+    #expect(state.isLoadingSchedules == false)
     #expect(state.isTransitioning == false)
     #expect(state.calendarPermissionStatus == .notDetermined)
-    #expect(state.calendarEvents.isEmpty)
-    #expect(state.cachedPromisesByMonth.isEmpty)
+    #expect(state.cachedCalendarEventsByMonth.isEmpty)
+    #expect(state.loadedCalendarEventMonths.isEmpty)
+    #expect(state.cachedSchedulesByMonth.isEmpty)
     #expect(state.loadedMonths.isEmpty)
   }
 
@@ -30,6 +31,8 @@ struct CalendarFeatureTests {
     await store.send(.view(.onAppear))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.receive(\.internal.fetchSettings)
+    await store.receive(\.internal.fetchRecurringEvents)
     await store.finish()
   }
 
@@ -46,13 +49,34 @@ struct CalendarFeatureTests {
 
   // MARK: - 디스플레이 모드 전환 테스트
 
-  @Test("toggleDisplayMode 시 주간에서 월간으로 전환 후 transition 종료")
-  func toggleDisplayMode_weekToMonth_completesTransition() async {
+  @Test("toggleDisplayMode 시 월간→월간확장→주간→월간 순환 전환")
+  func toggleDisplayMode_cyclesThroughAllModes() async {
     var state = makeState(key: "toggle-mode")
     state.loadedMonths.insert(state.selectedDate.startOfMonth)
+    state.loadedPersonalEventMonths.insert(state.selectedDate.startOfMonth)
 
     let store = makeStore(state: state)
 
+    // month → monthExpanded
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
+    }
+    await store.receive(\.internal.transitionCompleted, timeout: 5_000_000_000) {
+      $0.isTransitioning = false
+    }
+
+    // monthExpanded → week
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .week
+      $0.currentWeekStart = $0.selectedDate.startOfWeek
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+
+    // week → month
     await store.send(.view(.toggleDisplayMode)) {
       $0.isTransitioning = true
       $0.displayMode = .month
@@ -62,20 +86,41 @@ struct CalendarFeatureTests {
     }
   }
 
+  @Test("setDisplayMode 시 직접 모드 지정")
+  func setDisplayMode_directlyChangesMode() async {
+    var state = makeState(key: "set-mode")
+    state.loadedMonths.insert(state.selectedDate.startOfMonth)
+    state.loadedPersonalEventMonths.insert(state.selectedDate.startOfMonth)
+
+    let store = makeStore(state: state)
+
+    // week → monthExpanded 직접 지정
+    await store.send(.view(.setDisplayMode(.monthExpanded))) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+  }
+
   // MARK: - 날짜 선택 / 이동 테스트
 
-  @Test("selectDate 시 월이 바뀌면 fetchPromisesForMonth 트리거")
-  func selectDate_whenMonthChanges_sendsFetchPromisesForMonth() async {
+  @Test("selectDate 시 월이 바뀌면 fetchSchedulesForMonth 및 fetchPersonalEventsForMonth 트리거")
+  func selectDate_whenMonthChanges_sendsFetchSchedulesForMonth() async {
     let january = makeDate(year: 2026, month: 1, day: 15)
     let february = makeDate(year: 2026, month: 2, day: 3)
 
     let state = makeState(key: "select-date-month-change", selectedDate: january)
     let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
+      // month 모드에서는 currentWeekStart/currentMonth 직접 업데이트 안 함 (monthPageChanged가 담당)
     }
-    await store.receive(\.internal.fetchPromisesForMonth)
+    await store.receive(\.internal.fetchSchedulesForMonth)
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
   }
 
   @Test("moveToToday 시 selectedDate/currentWeekStart/currentMonth 동기화")
@@ -96,6 +141,23 @@ struct CalendarFeatureTests {
     #expect(Calendar.current.isDate(store.state.currentMonth, inSameDayAs: store.state.selectedDate.startOfMonth))
   }
 
+  @Test("weekRowIndex는 월요일 시작 설정을 반영한다")
+  func weekRowIndex_respectsMondayStartSetting() {
+    let currentMonth = makeDate(year: 2026, month: 3, day: 1)
+    let selectedDate = makeDate(year: 2026, month: 3, day: 7)
+
+    #expect(CalendarFeature.weekRowIndex(
+      currentMonth: currentMonth,
+      selectedDate: selectedDate,
+      startOnMonday: true
+    ) == 1)
+    #expect(CalendarFeature.weekRowIndex(
+      currentMonth: currentMonth,
+      selectedDate: selectedDate,
+      startOnMonday: false
+    ) == 0)
+  }
+
   @Test("resetScroll 시 scrolledID 초기화")
   func resetScroll_clearsScrolledID() async {
     var state = makeState(key: "reset-scroll")
@@ -108,50 +170,109 @@ struct CalendarFeatureTests {
     }
   }
 
-  // MARK: - 약속 데이터 로드 테스트
+  @Test("월간 리스트는 타입과 무관하게 날짜 기준으로 통합 정렬")
+  func compactDayRowItems_sortsAcrossScheduleTypes() {
+    let date = makeDate(year: 2026, month: 3, day: 6)
+    let overnightTrip = makePersonalEvent(
+      id: "personal-trip",
+      title: "출장",
+      startAt: makeDate(year: 2026, month: 3, day: 3, hour: 10, minute: 25),
+      endAt: makeDate(year: 2026, month: 3, day: 7, hour: 11, minute: 25)
+    )
+    let earlySchedule = makeSchedule(
+      id: "schedule-early",
+      groupId: "group-1",
+      startAt: makeDate(year: 2026, month: 3, day: 6, hour: 4, minute: 43)
+    )
+    let lateSchedule = makeSchedule(
+      id: "schedule-late",
+      groupId: "group-1",
+      startAt: makeDate(year: 2026, month: 3, day: 6, hour: 6, minute: 50)
+    )
 
-  @Test("loadInitialData 시 캐시 초기화 후 현재 월 약속 로드")
-  func loadInitialData_withGroups_clearsCacheAndLoadsCurrentMonth() async {
+    let items = CompactDayRowItem.sortedItems(
+      for: date,
+      schedules: [lateSchedule, earlySchedule],
+      calendarEvents: [],
+      personalEvents: [overnightTrip]
+    )
+
+    #expect(items == [
+      .personalEvent(overnightTrip),
+      .schedule(earlySchedule),
+      .schedule(lateSchedule)
+    ])
+  }
+
+  @Test("월간 리스트는 일정이 없어도 해당 월의 모든 날짜를 노출한다")
+  func sectionDates_inMonthMode_includesEveryDayOfMonth() {
+    let selectedDate = makeDate(year: 2026, month: 2, day: 15)
+    let state = makeState(key: "month-section-dates", selectedDate: selectedDate)
+
+    let sectionDates = state.sectionDates
+    let calendar = Calendar.current
+
+    #expect(sectionDates.count == 28)
+    #expect(calendar.isDate(sectionDates.first ?? .distantPast, inSameDayAs: makeDate(year: 2026, month: 2, day: 1)))
+    #expect(calendar.isDate(sectionDates.last ?? .distantPast, inSameDayAs: makeDate(year: 2026, month: 2, day: 28)))
+  }
+
+  // MARK: - 일정 데이터 로드 테스트
+
+  @Test("loadInitialData 시 현재 월만 선택적 무효화 후 일정 로드")
+  func loadInitialData_withGroups_selectivelyInvalidatesAndLoadsCurrentMonth() async {
     let selectedDate = makeDate(year: 2026, month: 1, day: 20)
     let monthStart = selectedDate.startOfMonth
     let staleMonth = makeDate(year: 2025, month: 12, day: 1).startOfMonth
-    let recorder = PromiseRangeRecorder()
+    let staleSchedule = makeSchedule(id: "stale", groupId: "group-1", startAt: staleMonth)
+    let recorder = ScheduleRangeRecorder()
 
     var state = makeState(
       user: makeCurrentUser(groups: [makeGroupInfo(id: "group-1")]),
       key: "load-initial-data",
       selectedDate: selectedDate
     )
-    state.cachedPromisesByMonth[staleMonth] = [makePromise(id: "stale", groupId: "group-1", startAt: staleMonth)]
+    state.cachedSchedulesByMonth[staleMonth] = [staleSchedule]
     state.loadedMonths.insert(staleMonth)
+    state.loadedPersonalEventMonths.insert(staleMonth)
 
-    let loadedPromise = makePromise(id: "loaded-1", groupId: "group-1", startAt: selectedDate)
+    let loadedSchedule = makeSchedule(id: "loaded-1", groupId: "group-1", startAt: selectedDate)
     let store = makeStore(state: state) {
-      $0.promiseClient.getPromisesByDateRange = { groupIds, startDate, endDate in
+      $0.scheduleClient.getSchedulesByDateRange = { groupIds, startDate, endDate in
         await recorder.record(groupIds: groupIds, startDate: startDate, endDate: endDate)
-        return [loadedPromise]
+        return [loadedSchedule]
       }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
+    // 현재 월(2026-01)의 loadedMonths 항목만 제거, staleMonth(2025-12) 캐시는 유지됨
     await store.send(.internal(.loadInitialData)) {
-      $0.cachedPromisesByMonth = [:]
-      $0.loadedMonths = []
+      // loadedMonths에서 현재 월만 제거 (staleMonth는 그대로)
+      $0.loadedMonths = [staleMonth]
     }
-    await store.receive(\.internal.fetchPromisesForMonth)
-    await store.receive(\.internal.promisesResponseForMonth)
+    // 동기 액션: 현재 월 fetch → 프리페치 → 인접 월 fetch
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
+    await store.receive(\.internal.fetchSchedulesForMonth)
+    await store.receive(\.internal.prefetchAdjacentMonths)
+    await store.receive(\.internal.fetchSchedulesForMonth)
+    await store.receive(\.internal.fetchPersonalEventsForMonth)
+    // 비동기 응답 (순서 비결정적) — 모든 pending 응답 소비
+    await store.skipReceivedActions(strict: false)
 
     let requests = await recorder.values()
-    #expect(requests.count == 1)
+    // 현재 월(2026-01) + 프리페치 다음 월(2026-02), staleMonth(2025-12)는 이미 로드됨
+    #expect(requests.count == 2)
     #expect(requests.first?.groupIds == ["group-1"])
     #expect(requests.first?.startDate == monthStart)
     #expect(store.state.loadedMonths.contains(monthStart))
-    #expect(store.state.cachedPromisesByMonth[monthStart]?.count == 1)
-    #expect(store.state.isLoadingPromises == false)
+    // staleMonth 캐시는 삭제되지 않음
+    #expect(store.state.cachedSchedulesByMonth[staleMonth]?.count == 1)
+    #expect(store.state.cachedSchedulesByMonth[monthStart]?.count == 1)
+    #expect(store.state.isLoadingSchedules == false)
   }
 
-  @Test("fetchPromisesForMonth 이미 로드된 월이면 API 호출 스킵")
-  func fetchPromisesForMonth_whenAlreadyLoaded_skipsRequest() async {
+  @Test("fetchSchedulesForMonth 이미 로드된 월이면 API 호출 스킵")
+  func fetchSchedulesForMonth_whenAlreadyLoaded_skipsRequest() async {
     let month = makeDate(year: 2026, month: 2, day: 1).startOfMonth
     let recorder = CallCounter()
 
@@ -163,15 +284,15 @@ struct CalendarFeatureTests {
     state.loadedMonths.insert(month)
 
     let store = makeStore(state: state) {
-      $0.promiseClient.getPromisesByDateRange = { _, _, _ in
+      $0.scheduleClient.getSchedulesByDateRange = { _, _, _ in
         await recorder.increment()
         return []
       }
     }
 
-    await store.send(.internal(.fetchPromisesForMonth(month)))
+    await store.send(.internal(.fetchSchedulesForMonth(month)))
     #expect(await recorder.value() == 0)
-    #expect(store.state.isLoadingPromises == false)
+    #expect(store.state.isLoadingSchedules == false)
   }
 
   // MARK: - 캘린더 권한 테스트
@@ -179,6 +300,7 @@ struct CalendarFeatureTests {
   @Test("checkCalendarPermission fullAccess면 이벤트 로드")
   func checkCalendarPermission_fullAccess_fetchesEvents() async {
     let selectedDate = makeDate(year: 2026, month: 4, day: 10)
+    let monthStart = selectedDate.startOfMonth
     let events = [
       makeCalendarEvent(
         id: "event-1",
@@ -196,15 +318,17 @@ struct CalendarFeatureTests {
     await store.send(.internal(.checkCalendarPermission)) {
       $0.calendarPermissionStatus = .fullAccess
     }
-    await store.receive(\.internal.fetchCalendarEvents)
-    await store.receive(\.internal.calendarEventsResponse)
+    await store.receive(\.internal.fetchCalendarEventsForMonth)
+    await store.receive(\.internal.calendarEventsResponseForMonth)
 
-    #expect(store.state.calendarEvents == events)
-    #expect(store.state.isLoadingCalendarEvents == false)
+    #expect(store.state.cachedCalendarEventsByMonth[monthStart] == events)
+    #expect(store.state.loadedCalendarEventMonths.contains(monthStart))
   }
 
   @Test("requestCalendarPermission 허용 시 상태 업데이트 후 이벤트 로드")
   func requestCalendarPermission_granted_updatesStatusAndLoadsEvents() async {
+    let selectedDate = makeDate(year: 2026, month: 1, day: 15)
+    let monthStart = selectedDate.startOfMonth
     let events = [
       makeCalendarEvent(
         id: "event-2",
@@ -213,7 +337,7 @@ struct CalendarFeatureTests {
       )
     ]
 
-    let store = makeStore(state: makeState(key: "request-permission")) {
+    let store = makeStore(state: makeState(key: "request-permission", selectedDate: selectedDate)) {
       $0.eventKitClient.requestAccess = { true }
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.fetchEvents = { _, _ in events }
@@ -222,11 +346,11 @@ struct CalendarFeatureTests {
 
     await store.send(.view(.requestCalendarPermission))
     await store.receive(\.internal.calendarPermissionResponse)
-    await store.receive(\.internal.fetchCalendarEvents)
-    await store.receive(\.internal.calendarEventsResponse)
+    await store.receive(\.internal.fetchCalendarEventsForMonth)
+    await store.receive(\.internal.calendarEventsResponseForMonth)
 
     #expect(store.state.calendarPermissionStatus == .fullAccess)
-    #expect(store.state.calendarEvents == events)
+    #expect(store.state.cachedCalendarEventsByMonth[monthStart] == events)
   }
 
   @Test("requestCalendarPermission 거부 시 denied 상태")
@@ -241,7 +365,7 @@ struct CalendarFeatureTests {
     await store.receive(\.internal.calendarPermissionResponse)
 
     #expect(store.state.calendarPermissionStatus == .denied)
-    #expect(store.state.calendarEvents.isEmpty)
+    #expect(store.state.cachedCalendarEventsByMonth.isEmpty)
   }
 
   // MARK: - 배너 / 네비게이션 테스트
@@ -255,18 +379,18 @@ struct CalendarFeatureTests {
     }
   }
 
-  @Test("promiseTapped 시 PromiseDetail 경로 추가")
-  func promiseTapped_pushesPromiseDetailPath() async {
-    let promise = makePromise(
-      id: "promise-1",
+  @Test("scheduleTapped 시 ScheduleDetail 경로 추가")
+  func scheduleTapped_pushesScheduleDetailPath() async {
+    let schedule = makeSchedule(
+      id: "schedule-1",
       groupId: "group-1",
       startAt: makeDate(year: 2026, month: 6, day: 15)
     )
 
-    let store = makeStore(state: makeState(key: "promise-tapped"))
+    let store = makeStore(state: makeState(key: "schedule-tapped"))
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.promiseTapped(promise)))
+    await store.send(.view(.scheduleTapped(schedule)))
 
     #expect(store.state.path.count == 1)
   }
@@ -285,26 +409,98 @@ struct CalendarFeatureTests {
     }
   }
 
-  @Test("calendarEventsResponse 실패 시 이벤트 초기화")
-  func calendarEventsResponse_failure_clearsEvents() async {
+  @Test("calendarEventsResponseForMonth 실패 시 기존 이벤트 유지")
+  func calendarEventsResponseForMonth_failure_preservesExistingEvents() async {
     enum TestError: Error { case failed }
 
+    let month = makeDate(year: 2026, month: 1, day: 1).startOfMonth
+    let existingEvent = makeCalendarEvent(
+      id: "old-event",
+      startDate: makeDate(year: 2026, month: 1, day: 1),
+      endDate: makeDate(year: 2026, month: 1, day: 1, hour: 1)
+    )
+
     var state = makeState(key: "events-failure")
-    state.isLoadingCalendarEvents = true
-    state.calendarEvents = [
-      makeCalendarEvent(
-        id: "old-event",
-        startDate: makeDate(year: 2026, month: 1, day: 1),
-        endDate: makeDate(year: 2026, month: 1, day: 1, hour: 1)
-      )
-    ]
+    state.cachedCalendarEventsByMonth[month] = [existingEvent]
+    state.loadedCalendarEventMonths.insert(month)
 
     let store = makeStore(state: state)
 
-    await store.send(.internal(.calendarEventsResponse(.failure(TestError.failed)))) {
-      $0.isLoadingCalendarEvents = false
-      $0.calendarEvents = []
-    }
+    // 실패 시 캐시 그대로 유지 (loadedCalendarEventMonths에 추가 안 됨 → 재시도 가능)
+    let otherMonth = makeDate(year: 2026, month: 2, day: 1).startOfMonth
+    await store.send(.internal(.calendarEventsResponseForMonth(month: otherMonth, .failure(TestError.failed))))
+
+    // 기존 캐시 유지
+    #expect(store.state.cachedCalendarEventsByMonth[month] == [existingEvent])
+    // 실패한 월은 loadedCalendarEventMonths에 없음 (재시도 가능)
+    #expect(!store.state.loadedCalendarEventMonths.contains(otherMonth))
+  }
+
+  // MARK: - 과거 시간 일정 생성 차단 테스트
+
+  @Test("pastTimeBlocked 액션 시 경고 토스트 메시지 설정")
+  func pastTimeBlocked_setsWarningToastMessage() async {
+    let store = makeStore(state: makeState(key: "past-time-blocked"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.pastTimeBlocked))
+
+    #expect(store.state.toastMessage?.type == .warning)
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Calendar.cannotCreatePastSchedule)
+  }
+
+  @Test("dayLongPressCreatePersonalEvent 과거 날짜 시 pastTimeBlocked 트리거")
+  func dayLongPressCreatePersonalEvent_pastDate_triggersPastTimeBlocked() async {
+    let pastDate = makeDate(year: 2024, month: 1, day: 1)
+    let store = makeStore(state: makeState(key: "past-personal"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePersonalEvent(pastDate)))
+    await store.receive(\.view.pastTimeBlocked)
+
+    // 개인 일정 생성 화면이 열리지 않음
+    #expect(store.state.editPersonalEvent == nil)
+    #expect(store.state.toastMessage?.type == .warning)
+  }
+
+  @Test("dayLongPressCreateSchedule 과거 날짜 시 pastTimeBlocked 트리거")
+  func dayLongPressCreateSchedule_pastDate_triggersPastTimeBlocked() async {
+    let pastDate = makeDate(year: 2024, month: 1, day: 1)
+    let store = makeStore(state: makeState(key: "past-schedule"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreateSchedule(pastDate)))
+    await store.receive(\.view.pastTimeBlocked)
+
+    // 일정 생성 화면이 열리지 않음
+    #expect(store.state.createSchedule == nil)
+    #expect(store.state.toastMessage?.type == .warning)
+  }
+
+  @Test("dayLongPressCreatePersonalEvent 미래 날짜 시 createPersonalEventFromTimeline 전달")
+  func dayLongPressCreatePersonalEvent_futureDate_createsPersonalEvent() async {
+    let futureDate = makeDate(year: 2028, month: 6, day: 15)
+    let store = makeStore(state: makeState(key: "future-personal"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePersonalEvent(futureDate)))
+    await store.receive(\.view.createPersonalEventFromTimeline)
+
+    // 개인 일정 생성 화면이 열림
+    #expect(store.state.editPersonalEvent != nil)
+  }
+
+  @Test("dayLongPressCreateSchedule 미래 날짜 시 createScheduleFromTimeline 전달")
+  func dayLongPressCreateSchedule_futureDate_createsSchedule() async {
+    let futureDate = makeDate(year: 2028, month: 6, day: 15)
+    let store = makeStore(state: makeState(key: "future-schedule"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreateSchedule(futureDate)))
+    await store.receive(\.view.createScheduleFromTimeline)
+
+    // 일정 생성 화면이 열림
+    #expect(store.state.createSchedule != nil)
   }
 }
 
@@ -318,7 +514,7 @@ private extension CalendarFeatureTests {
     func value() -> Int { count }
   }
 
-  actor PromiseRangeRecorder {
+  actor ScheduleRangeRecorder {
     struct Request: Equatable {
       var groupIds: [String]
       var startDate: Date
@@ -378,14 +574,14 @@ private extension CalendarFeatureTests {
     return CalendarFeature.Feature.State(currentUser: $currentUser, selectedDate: selectedDate)
   }
 
-  func makePromise(
+  func makeSchedule(
     id: String,
     groupId: String,
     startAt: Date
-  ) -> PromiseModel {
-    PromiseModel.mock(
+  ) -> ScheduleModel {
+    ScheduleModel.mock(
       id: id,
-      title: "테스트 약속",
+      title: "테스트 일정",
       hostId: "host-1",
       groupId: groupId,
       startAt: startAt
@@ -406,6 +602,20 @@ private extension CalendarFeatureTests {
       isAllDay: false,
       calendarName: "테스트",
       calendarColorHex: "#007AFF"
+    )
+  }
+
+  func makePersonalEvent(
+    id: String,
+    title: String = "개인 일정",
+    startAt: Date,
+    endAt: Date? = nil
+  ) -> PersonalEventModel {
+    PersonalEventModel.mock(
+      id: id,
+      title: title,
+      startAt: startAt,
+      endAt: endAt
     )
   }
 
@@ -430,7 +640,14 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.authorizationStatus = { .notDetermined }
     deps.eventKitClient.requestAccess = { false }
     deps.eventKitClient.fetchEvents = { _, _ in [] }
-    deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
+    deps.scheduleClient.getSchedulesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
+    deps.personalEventClient.getEventsByDateRange = { _, _ in [] }
+    deps.recurringPersonalEventClient.getAllEvents = { [] }
+    deps.userSettingsClient.fetchSettings = { _ in
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
+    }
+    deps.userDefaultsClient.setString = { _, _ in }
+    deps.userDefaultsClient.stringForKey = { _ in nil }
   }
 }

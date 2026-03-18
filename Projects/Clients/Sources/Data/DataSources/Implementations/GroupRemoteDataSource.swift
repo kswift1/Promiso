@@ -5,21 +5,10 @@ import FirebaseStorage
 import PromisoShared
 
 /// 그룹 원격 데이터 소스 에러
-public enum GroupRemoteDataSourceError: Error, LocalizedError {
+public enum GroupRemoteDataSourceError: Error {
   case invalidFunctionResponse
   case invalidRequestData
   case imageUploadFailed
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidFunctionResponse:
-      return "서버 응답이 올바르지 않아요. 잠시 후 다시 시도해주세요."
-    case .invalidRequestData:
-      return "요청 데이터가 올바르지 않아요."
-    case .imageUploadFailed:
-      return "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
-    }
-  }
 }
 
 // MARK: - Firebase 상수
@@ -43,7 +32,7 @@ private enum FirebaseConstants {
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
-public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
+public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
@@ -139,7 +128,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// 사용자가 속한 그룹 목록 조회
   /// Map 방식: users/{userId}.groups에서 groupId 목록을 가져온 후 상세 조회
   public func fetchGroups(userId: String) async throws -> [GroupModel] {
-    let userDoc = try await db.environmentCollection("users")
+    let userDoc = try await db.collection("users")
       .document(userId)
       .getDocument()
 
@@ -162,7 +151,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
 
   /// 단일 그룹 상세 조회
   public func fetchGroup(groupId: String) async throws -> GroupModel {
-    let groupRef = db.environmentCollection("groups").document(groupId)
+    let groupRef = db.collection("groups").document(groupId)
     let groupSnapshot = try await groupRef.getDocument()
     guard groupSnapshot.exists else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
@@ -175,8 +164,10 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
     try await withThrowingTaskGroup(of: GroupModel?.self) { group in
       for groupId in ids {
-        group.addTask { [db] in
-          let groupRef = db.environmentCollection("groups").document(groupId)
+        group.addTask {
+          // Task 내부에서 Firestore 인스턴스를 생성해 non-Sendable 캡처를 피한다.
+          let firestore = Firestore.firestore()
+          let groupRef = firestore.collection("groups").document(groupId)
           let groupSnapshot = try await groupRef.getDocument()
           guard groupSnapshot.exists else { return nil }
 
@@ -186,6 +177,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       }
 
       var groups: [GroupModel] = []
+      groups.reserveCapacity(ids.count)
+
       for try await groupModel in group {
         if let groupModel {
           groups.append(groupModel)
@@ -199,7 +192,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// 네비게이션용 그룹 요약 목록 조회
   /// Map 방식으로 변경: N회 읽기 → 1회 읽기로 비용 절감
   public func fetchGroupSummaries(userId: String) async throws -> [UserGroupInfo] {
-    let userDoc = try await db.environmentCollection("users")
+    let userDoc = try await db.collection("users")
       .document(userId)
       .getDocument()
 
@@ -242,6 +235,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
 
     let description = data["description"] as? String
     let imageUrl = data["imageUrl"] as? String
+    let memberCount = data["memberCount"] as? Int
     let membersData = data["members"] as? [[String: Any]] ?? []
     let members = membersData.compactMap(parseMemberPreview(_:))
 
@@ -259,7 +253,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       updatedAt: Date()
     )
 
-    return GroupPreviewModel(group: group, members: members)
+    return GroupPreviewModel(group: group, members: members, memberCount: memberCount)
   }
 
   /// 초대 코드로 그룹 참여
@@ -377,7 +371,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     userId: String,
     settings: GroupNotificationSettings
   ) async throws {
-    let userRef = db.environmentCollection("users").document(userId)
+    let userRef = db.collection("users").document(userId)
     try await userRef.setData(
       [
         "groups": [
@@ -389,6 +383,19 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       ],
       merge: true
     )
+  }
+
+  /// 그룹 색상 업데이트 (개인별)
+  public func updateGroupColor(
+    groupId: String,
+    userId: String,
+    color: GroupColor?
+  ) async throws {
+    let userRef = db.collection("users").document(userId)
+    let colorValue: Any = color?.rawValue ?? FieldValue.delete()
+    try await userRef.updateData([
+      "groups.\(groupId).groupColor": colorValue
+    ])
   }
 
   /// 그룹 배지 클리어 (Fire & Forget)
@@ -502,9 +509,10 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     let nickname = data["nickname"] as? String ?? name
 
     let profileImage: ProfileImage?
-    if let remoteImage = parseRemoteImage(data["profileImage"]),
-       remoteImage.type == .externalURL {
-      profileImage = ProfileImage(url: remoteImage.url, thumbUrl: nil, updatedAt: Date())
+    if let profileData = data["profileImage"] as? [String: Any],
+       let url = profileData["url"] as? String, !url.isEmpty {
+      let thumbUrl = profileData["thumbUrl"] as? String
+      profileImage = ProfileImage(url: url, thumbUrl: thumbUrl, updatedAt: Date())
     } else {
       profileImage = nil
     }
@@ -550,6 +558,8 @@ private extension UserGroupInfo {
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
     let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
+    let groupColorString = data["groupColor"] as? String
+    let groupColor = groupColorString.flatMap { GroupColor(rawValue: $0) }
 
     self.init(
       id: id,
@@ -558,7 +568,8 @@ private extension UserGroupInfo {
       joinedAt: joinedAt,
       notifications: notifications,
       hasNewActivity: hasNewActivity,
-      imageUrl: imageUrl
+      imageUrl: imageUrl,
+      groupColor: groupColor
     )
   }
 }
@@ -577,12 +588,12 @@ private func parseNotificationSettings(
 
   guard let map = value as? [String: Any] else { return nil }
   let enabled = map["enabled"] as? Bool ?? true
-  let promise = parseNotificationMap(map["promise"])
+  let schedule = parseNotificationMap(map["schedule"])
   let group = parseNotificationMap(map["group"])
   let calendarSync = map["calendarSync"] as? Bool ?? true
   return GroupNotificationSettings(
     enabled: enabled,
-    promise: promise,
+    schedule: schedule,
     group: group,
     calendarSync: calendarSync
   )

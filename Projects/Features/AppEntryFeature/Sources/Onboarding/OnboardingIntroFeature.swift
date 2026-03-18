@@ -1,10 +1,11 @@
 // MARK: - OnboardingIntroFeature.swift
 
+import Clients
 import ComposableArchitecture
 
 extension AppEntry {
 
-  // MARK: - Onboarding Intro (Screens 1-5)
+  // MARK: - Onboarding Intro (Screens 1-7)
 
   @Reducer
   public struct OnboardingIntro {
@@ -22,10 +23,10 @@ extension AppEntry {
 
       enum Screen: Int, CaseIterable, Equatable {
         case cinematicHero = 0
-        case problemEmpathy = 1
-        case benefitVote = 2
+        case benefitConfirm = 1
+        case benefitLive = 2
         case benefitHome = 3
-        case benefitLive = 4
+        case benefitPro = 4
       }
 
       var isFirstScreen: Bool {
@@ -63,8 +64,9 @@ extension AppEntry {
         case screenInteractionCompleted
       }
 
-      public enum DelegateAction: Sendable {
-        case completed
+      @CasePathable
+      public enum DelegateAction: Equatable, Sendable {
+        case introCompleted
       }
     }
 
@@ -76,18 +78,17 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .nextTapped:
+            guard !state.isLastScreen else {
+              return .send(.delegate(.introCompleted))
+            }
             state.isAnimationComplete = false
             state.isNextButtonEnabled = true
             state.isGoingBack = false
-            if state.isLastScreen {
-              return .send(.delegate(.completed))
-            } else {
-              let nextIndex = state.currentScreen.rawValue + 1
-              if let nextScreen = State.Screen(rawValue: nextIndex) {
-                state.currentScreen = nextScreen
-              }
-              return .none
+            let nextIndex = state.currentScreen.rawValue + 1
+            if let nextScreen = State.Screen(rawValue: nextIndex) {
+              state.currentScreen = nextScreen
             }
+            return .none
 
           case .backTapped:
             guard !state.isFirstScreen else { return .none }
@@ -101,7 +102,7 @@ extension AppEntry {
             return .none
 
           case .skipTapped:
-            return .send(.delegate(.completed))
+            return .send(.delegate(.introCompleted))
 
           case .screenAnimationCompleted:
             state.isAnimationComplete = true

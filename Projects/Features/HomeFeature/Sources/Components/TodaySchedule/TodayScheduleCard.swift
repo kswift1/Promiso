@@ -5,12 +5,39 @@ import ResourceKit
 
 // MARK: - Today Schedule Card
 
-/// 오늘의 일정 카드 - 확정된 오늘 약속과 개인 일정을 타임라인으로 표시
+/// 오늘의 일정 카드 - 확정된 오늘 일정과 개인 일정을 타임라인으로 표시
 struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
+  let departureAlerts: [String: HomeModels.DepartureAlertInfo]
+  let groupColorMap: [String: Color]
+  let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertTap: (HomeModels.ScheduleItem) -> Void
+  let onDepartureAlertCancel: (String) -> Void
 
-  @State private var isExpanded: Bool = true
+  @State private var isExpanded: Bool
+
+  init(
+    items: [HomeModels.ScheduleItem],
+    weatherCache: [String: WeatherInfo],
+    departureAlerts: [String: HomeModels.DepartureAlertInfo],
+    groupColorMap: [String: Color],
+    isPro: Bool,
+    onItemTap: @escaping (HomeModels.ScheduleItem) -> Void,
+    onDepartureAlertTap: @escaping (HomeModels.ScheduleItem) -> Void,
+    onDepartureAlertCancel: @escaping (String) -> Void
+  ) {
+    self.items = items
+    self.weatherCache = weatherCache
+    self.departureAlerts = departureAlerts
+    self.groupColorMap = groupColorMap
+    self.isPro = isPro
+    self.onItemTap = onItemTap
+    self.onDepartureAlertTap = onDepartureAlertTap
+    self.onDepartureAlertCancel = onDepartureAlertCancel
+    self._isExpanded = State(initialValue: !items.isEmpty)
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -52,21 +79,15 @@ struct TodayScheduleCard: View {
 
   private var cardHeader: some View {
     HStack(spacing: 8) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text("오늘의 일정")
-          .font(.pmHeadline)
-          .foregroundStyle(.primary)
-
-        Text(todayDateString)
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
-      }
+      Text(LocalizedStrings.Home.todaySchedule)
+        .font(.pmHeadline)
+        .foregroundStyle(.primary)
 
       Spacer()
 
       // 일정 개수 (배경 없음)
       if !items.isEmpty {
-        Text("\(items.count)개")
+        Text(LocalizedStrings.Home.itemCount(items.count))
           .font(.pmSubheadlineMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }
@@ -89,26 +110,34 @@ struct TodayScheduleCard: View {
       ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
         // 현재 시간 마커 삽입 (이 일정 전에 표시해야 하는 경우)
         if currentTimePosition == .beforeIndex(index) {
-          CurrentTimeMarkerView(nextPromiseStartAt: item.startAt)
-        }
-
-        switch item {
-        case .promise(let promise):
-          TimelineItemView(
-            promise: promise,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            onTap: { onItemTap(item) }
-          )
-
-        case .personalEvent(let event):
-          PersonalEventTimelineItemView(
-            event: event,
-            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
-            onTap: { onItemTap(item) }
+          CurrentTimeMarkerView(
+            nextScheduleStartAt: item.startAt,
+            showsTopLine: index != 0
           )
         }
+
+        let weather: WeatherInfo? = {
+          if case .schedule(let p) = item { return weatherCache[p.id] }
+          return nil
+        }()
+
+        let groupColor: Color? = {
+          if case .schedule(let p) = item { return groupColorMap[p.groupId] }
+          return nil
+        }()
+
+        TimelineItemView(
+          item: item,
+          isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
+          isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+          weather: weather,
+          groupColor: groupColor,
+          departureAlert: departureAlerts[item.id],
+          isPro: isPro,
+          onTap: { onItemTap(item) },
+          onDepartureAlertTap: { onDepartureAlertTap(item) },
+          onDepartureAlertCancel: { onDepartureAlertCancel(item.id) }
+        )
 
         // 모든 일정 종료 후 완료 메시지
         if index == sortedItems.count - 1 && currentTimePosition == .afterAll {
@@ -163,11 +192,6 @@ struct TodayScheduleCard: View {
     return .insideItem
   }
 
-  // MARK: - Computed Properties
-
-  private var todayDateString: String {
-    KoreanDateFormatters.monthDayWeekday.string(from: Date())
-  }
 }
 
 // MARK: - Preview
@@ -175,7 +199,7 @@ struct TodayScheduleCard: View {
 #Preview("일정 있음") {
   TodayScheduleCard(
     items: [
-      .promise(PromiseModel.mock(
+      .schedule(ScheduleModel.mock(
         id: "1",
         title: "점심 모임",
         startAt: Date().addingTimeInterval(3600)
@@ -187,13 +211,19 @@ struct TodayScheduleCard: View {
         startAt: Date().addingTimeInterval(1800),
         endAt: Date().addingTimeInterval(5400)
       )),
-      .promise(PromiseModel.mock(
+      .schedule(ScheduleModel.mock(
         id: "2",
         title: "카페 미팅",
         startAt: Date().addingTimeInterval(7200)
       ))
     ],
-    onItemTap: { _ in }
+    weatherCache: [:],
+    departureAlerts: [:],
+    groupColorMap: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -202,7 +232,13 @@ struct TodayScheduleCard: View {
 #Preview("일정 없음") {
   TodayScheduleCard(
     items: [],
-    onItemTap: { _ in }
+    weatherCache: [:],
+    departureAlerts: [:],
+    groupColorMap: [:],
+    isPro: false,
+    onItemTap: { _ in },
+    onDepartureAlertTap: { _ in },
+    onDepartureAlertCancel: { _ in }
   )
   .padding()
   .auroraBackground()

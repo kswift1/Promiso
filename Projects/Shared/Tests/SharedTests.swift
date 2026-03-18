@@ -7,7 +7,7 @@
 //  ## 테스트 대상
 //  - `PromisoShared/Sources/Models/FAQModel.swift`
 //  - `PromisoShared/Sources/Models/GroupSortOption.swift`
-//  - `PromisoShared/Sources/Models/RespondPromiseResult.swift`
+//  - `PromisoShared/Sources/Models/RespondScheduleResult.swift`
 //  - `PromisoShared/Sources/Models/GroupNotificationPreferences.swift`
 //  - `PromisoShared/Sources/Common/LoadingState.swift`
 //
@@ -137,11 +137,11 @@ struct GroupSortOptionTests {
     #expect(GroupSortOption.SortType.custom.icon.isNotEmpty)
   }
 
-  @Test("SortType의 rawValue가 한글")
+  @Test("SortType의 rawValue가 영문 키")
   func sortTypeRawValue() {
-    #expect(GroupSortOption.SortType.joined.rawValue == "가입일")
-    #expect(GroupSortOption.SortType.name.rawValue == "가나다")
-    #expect(GroupSortOption.SortType.custom.rawValue == "직접 설정")
+    #expect(GroupSortOption.SortType.joined.rawValue == "joined")
+    #expect(GroupSortOption.SortType.name.rawValue == "name")
+    #expect(GroupSortOption.SortType.custom.rawValue == "custom")
   }
 
   @Test("Codable: joinedRecent 인코딩/디코딩")
@@ -343,27 +343,27 @@ struct LoadingStateTests {
   }
 }
 
-// MARK: - RespondPromiseResult 테스트
+// MARK: - RespondScheduleResult 테스트
 
-@Suite("RespondPromiseResult 테스트")
-struct RespondPromiseResultTests {
+@Suite("RespondScheduleResult 테스트")
+struct RespondScheduleResultTests {
 
-  @Test("기본 초기화 (confirmedPromise nil)")
-  func initWithoutConfirmedPromise() {
-    let result = RespondPromiseResult(
-      promiseId: "p1",
+  @Test("기본 초기화 (confirmedSchedule nil)")
+  func initWithoutConfirmedSchedule() {
+    let result = RespondScheduleResult(
+      scheduleId: "p1",
       status: "accepted",
       isConfirmed: false
     )
-    #expect(result.promiseId == "p1")
+    #expect(result.scheduleId == "p1")
     #expect(result.status == "accepted")
     #expect(result.isConfirmed == false)
-    #expect(result.confirmedPromise == nil)
+    #expect(result.confirmedSchedule == nil)
   }
 
-  @Test("confirmedPromise 포함 초기화")
-  func initWithConfirmedPromise() {
-    let promise = CalendarSyncPromise(
+  @Test("confirmedSchedule 포함 초기화")
+  func initWithConfirmedSchedule() {
+    let schedule = CalendarSyncSchedule(
       id: "p1",
       title: "테스트",
       emoji: "📅",
@@ -372,26 +372,26 @@ struct RespondPromiseResultTests {
       location: nil,
       groupId: "g1"
     )
-    let result = RespondPromiseResult(
-      promiseId: "p1",
+    let result = RespondScheduleResult(
+      scheduleId: "p1",
       status: "accepted",
       isConfirmed: true,
-      confirmedPromise: promise
+      confirmedSchedule: schedule
     )
     #expect(result.isConfirmed == true)
-    #expect(result.confirmedPromise != nil)
-    #expect(result.confirmedPromise?.title == "테스트")
+    #expect(result.confirmedSchedule != nil)
+    #expect(result.confirmedSchedule?.title == "테스트")
   }
 
   @Test("Equatable 동작 확인")
   func equatable() {
-    let result1 = RespondPromiseResult(
-      promiseId: "p1",
+    let result1 = RespondScheduleResult(
+      scheduleId: "p1",
       status: "accepted",
       isConfirmed: true
     )
-    let result2 = RespondPromiseResult(
-      promiseId: "p1",
+    let result2 = RespondScheduleResult(
+      scheduleId: "p1",
       status: "accepted",
       isConfirmed: true
     )
@@ -406,19 +406,19 @@ struct GroupNotificationPreferencesTests {
 
   @Test("GroupNotificationPreferenceKey category 매핑")
   func preferenceKeyCategory() {
-    #expect(GroupNotificationPreferenceKey.promiseInvitation.category == .promise)
-    #expect(GroupNotificationPreferenceKey.promiseConfirmed.category == .promise)
-    #expect(GroupNotificationPreferenceKey.promiseCancelled.category == .promise)
-    #expect(GroupNotificationPreferenceKey.promiseUpdated.category == .promise)
+    #expect(GroupNotificationPreferenceKey.scheduleInvitation.category == .schedule)
+    #expect(GroupNotificationPreferenceKey.scheduleConfirmed.category == .schedule)
+    #expect(GroupNotificationPreferenceKey.scheduleCancelled.category == .schedule)
+    #expect(GroupNotificationPreferenceKey.scheduleUpdated.category == .schedule)
     #expect(GroupNotificationPreferenceKey.groupUpdate.category == .group)
   }
 
   @Test("GroupNotificationPreferenceKey storageKey 매핑")
   func preferenceKeyStorageKey() {
-    #expect(GroupNotificationPreferenceKey.promiseInvitation.storageKey == "invitation")
-    #expect(GroupNotificationPreferenceKey.promiseConfirmed.storageKey == "confirmed")
-    #expect(GroupNotificationPreferenceKey.promiseCancelled.storageKey == "cancelled")
-    #expect(GroupNotificationPreferenceKey.promiseUpdated.storageKey == "updated")
+    #expect(GroupNotificationPreferenceKey.scheduleInvitation.storageKey == "invitation")
+    #expect(GroupNotificationPreferenceKey.scheduleConfirmed.storageKey == "confirmed")
+    #expect(GroupNotificationPreferenceKey.scheduleCancelled.storageKey == "cancelled")
+    #expect(GroupNotificationPreferenceKey.scheduleUpdated.storageKey == "updated")
     #expect(GroupNotificationPreferenceKey.groupUpdate.storageKey == "update")
   }
 
@@ -431,7 +431,7 @@ struct GroupNotificationPreferencesTests {
 
   @Test("GroupNotificationPreferenceKey subtitle: groupUpdate만 값 있음")
   func preferenceKeySubtitle() {
-    #expect(GroupNotificationPreferenceKey.promiseInvitation.subtitle == nil)
+    #expect(GroupNotificationPreferenceKey.scheduleInvitation.subtitle == nil)
     #expect(GroupNotificationPreferenceKey.groupUpdate.subtitle != nil)
   }
 
@@ -440,19 +440,19 @@ struct GroupNotificationPreferencesTests {
     let settings = GroupNotificationSettings()
     #expect(settings.enabled == true)
     #expect(settings.calendarSync == true)
-    // 기본 promise 설정이 포함되어 있어야 함
-    #expect(settings.promise["invitation"] == true)
-    #expect(settings.promise["confirmed"] == true)
+    // 기본 schedule 설정이 포함되어 있어야 함
+    #expect(settings.schedule["invitation"] == true)
+    #expect(settings.schedule["confirmed"] == true)
     #expect(settings.group["update"] == true)
   }
 
   @Test("GroupNotificationSettings value(for:) 동작")
   func settingsValueForKey() {
     var settings = GroupNotificationSettings()
-    #expect(settings.value(for: .promiseInvitation) == true)
+    #expect(settings.value(for: .scheduleInvitation) == true)
 
-    settings.setValue(false, for: .promiseInvitation)
-    #expect(settings.value(for: .promiseInvitation) == false)
+    settings.setValue(false, for: .scheduleInvitation)
+    #expect(settings.value(for: .scheduleInvitation) == false)
   }
 
   @Test("GroupNotificationSettings setValue 동작")
@@ -461,8 +461,8 @@ struct GroupNotificationPreferencesTests {
     settings.setValue(false, for: .groupUpdate)
     #expect(settings.group["update"] == false)
 
-    settings.setValue(false, for: .promiseCancelled)
-    #expect(settings.promise["cancelled"] == false)
+    settings.setValue(false, for: .scheduleCancelled)
+    #expect(settings.schedule["cancelled"] == false)
   }
 
   @Test("GroupNotificationSettings asDictionary 변환")
@@ -471,7 +471,7 @@ struct GroupNotificationPreferencesTests {
     let dict = settings.asDictionary
     #expect(dict["enabled"] as? Bool == true)
     #expect(dict["calendarSync"] as? Bool == true)
-    #expect(dict["promise"] != nil)
+    #expect(dict["schedule"] != nil)
     #expect(dict["group"] != nil)
   }
 
@@ -487,32 +487,32 @@ struct GroupNotificationPreferencesTests {
 
   @Test("GroupNotificationPreferences value(for:in:): nil settings는 true 반환")
   func value_nilSettingsReturnsDefault() {
-    let value = GroupNotificationPreferences.value(for: .promiseInvitation, in: nil)
+    let value = GroupNotificationPreferences.value(for: .scheduleInvitation, in: nil)
     #expect(value == true)
   }
 
   @Test("GroupNotificationSettings Codable 인코딩/디코딩")
   func settingsCodable() throws {
     var settings = GroupNotificationSettings()
-    settings.setValue(false, for: .promiseInvitation)
+    settings.setValue(false, for: .scheduleInvitation)
     settings.calendarSync = false
 
     let data = try JSONEncoder().encode(settings)
     let decoded = try JSONDecoder().decode(GroupNotificationSettings.self, from: data)
-    #expect(decoded.value(for: .promiseInvitation) == false)
+    #expect(decoded.value(for: .scheduleInvitation) == false)
     #expect(decoded.calendarSync == false)
     #expect(decoded.enabled == true)
   }
 
-  @Test("[N1] 약속 알림 기본 설정은 6종")
-  func n1_defaultPromise_hasSixKeys() {
-    let defaults = GroupNotificationPreferences.defaultPromise
+  @Test("[N1] 일정 알림 기본 설정은 6종")
+  func n1_defaultSchedule_hasSixKeys() {
+    let defaults = GroupNotificationPreferences.defaultSchedule
     #expect(defaults.count == 6)
   }
 
-  @Test("[N1] 약속 알림 키 세트 검증")
-  func n1_defaultPromise_hasExpectedKeys() {
-    let defaults = GroupNotificationPreferences.defaultPromise
+  @Test("[N1] 일정 알림 키 세트 검증")
+  func n1_defaultSchedule_hasExpectedKeys() {
+    let defaults = GroupNotificationPreferences.defaultSchedule
     let expectedKeys: Set<String> = [
       "invitation", "reminder", "confirmed",
       "cancelled", "updated", "attendanceResponse",

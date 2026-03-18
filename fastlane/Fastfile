@@ -3,6 +3,21 @@
 
 default_platform(:ios)
 
+DEFAULT_CHANGELOG_DEV = "Dev 빌드 - 개발 환경 테스트용 빌드입니다."
+DEFAULT_CHANGELOG_STAGE = "Stage 테스트 빌드 - 스테이지 환경 테스트용 빌드입니다."
+DEFAULT_CHANGELOG_PROD = "프로덕션 빌드 - 심사 제출 및 배포용 빌드입니다."
+MIN_CHANGELOG_LENGTH = 10
+
+def validated_changelog(text, default)
+  stripped_text = text.to_s.strip
+  if stripped_text.length < MIN_CHANGELOG_LENGTH
+    UI.important("⚠️ Changelog 텍스트가 너무 짧아 기본값을 사용합니다: #{default}")
+    default
+  else
+    stripped_text
+  end
+end
+
 platform :ios do
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 설정
@@ -60,7 +75,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "Dev 빌드"
+    changelog_text = validated_changelog(ENV["CHANGELOG"], DEFAULT_CHANGELOG_DEV)
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
@@ -132,7 +147,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "Stage 테스트 빌드"
+    changelog_text = validated_changelog(ENV["CHANGELOG"], DEFAULT_CHANGELOG_STAGE)
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
@@ -141,6 +156,7 @@ platform :ios do
     upload_to_testflight(
       app_identifier: "com.promiso.stage",
       skip_waiting_for_build_processing: true,
+      reject_build_waiting_for_review: true,
       distribute_external: true,
       groups: ["Stage Testers"],
       notify_external_testers: true,
@@ -214,7 +230,7 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
-    changelog_text = ENV["CHANGELOG"] || "프로덕션 빌드"
+    changelog_text = validated_changelog(ENV["CHANGELOG"], DEFAULT_CHANGELOG_PROD)
     UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     UI.message("📝 CHANGELOG 환경변수:")
     UI.message(changelog_text)
@@ -223,6 +239,7 @@ platform :ios do
     upload_to_testflight(
       app_identifier: "com.promiso",
       skip_waiting_for_build_processing: false,
+      reject_build_waiting_for_review: true,
       distribute_external: true,
       groups: ["Production Testers"],
       notify_external_testers: true,

@@ -3,10 +3,11 @@
 
 import SwiftUI
 import Clients
+import PromisoShared
 
 // MARK: - Calendar Event Card View
 
-/// 시스템 캘린더 이벤트 카드 (약속 카드와 시각적으로 구분)
+/// 시스템 캘린더 이벤트 카드 (일정 카드와 시각적으로 구분)
 struct CalendarEventCardView: View {
   let event: CalendarEvent
   let onTap: () -> Void
@@ -70,62 +71,87 @@ struct CalendarEventCardView: View {
 
 // MARK: - Personal Event Card View
 
-/// 개인 일정 카드 (약속/시스템 캘린더와 시각적으로 구분)
+/// 개인 일정 카드 (일정/시스템 캘린더와 시각적으로 구분)
 struct PersonalEventCardView: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
+
+  init(
+    event: PersonalEventModel,
+    weather: WeatherInfo? = nil,
+    onTap: @escaping () -> Void
+  ) {
+    self.event = event
+    self.weather = weather
+    self.onTap = onTap
+  }
 
   var body: some View {
     Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 인디고 인디케이터
-        RoundedRectangle(cornerRadius: 2)
-          .fill(Color.pmindigo.n500)
-          .frame(width: 4)
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 12) {
+          // 인디고 인디케이터
+          RoundedRectangle(cornerRadius: 2)
+            .fill(Color.pmindigo.n500)
+            .frame(width: 4)
 
-        // 메인 콘텐츠
-        VStack(alignment: .leading, spacing: 8) {
-          // 상단: 시간 + 개인 일정 라벨
-          HStack(spacing: 6) {
-            Text(event.timeText)
-              .font(.system(size: 14, weight: .medium))
-              .foregroundColor(.secondary)
+          // 메인 콘텐츠
+          VStack(alignment: .leading, spacing: 8) {
+            // 상단: 시간 + 개인 일정 라벨
+            HStack(spacing: 6) {
+              Text(event.timeText)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
 
-            Text("·")
-              .foregroundColor(.secondary.opacity(0.5))
+              Text("·")
+                .foregroundColor(.secondary.opacity(0.5))
 
-            Text("개인 일정")
-              .font(.system(size: 13, weight: .medium))
-              .foregroundColor(Color.pmindigo.n500)
+              Text(LocalizedStrings.Common.personalEvent)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Color.pmindigo.n500)
 
-            Spacer()
-          }
+              Spacer()
+            }
 
-          // 이모지 + 제목
-          HStack(spacing: 8) {
-            Text(event.displayEmoji)
-              .font(.system(size: 18))
+            // 이모지 + 제목
+            HStack(spacing: 8) {
+              Text(event.displayEmoji)
+                .font(.system(size: 18))
 
-            Text(event.title)
-              .font(.system(size: 16, weight: .semibold))
-              .foregroundColor(.primary)
-              .lineLimit(1)
-          }
-
-          // 위치 (있는 경우)
-          if let location = event.location {
-            HStack(spacing: 4) {
-              Image(systemName: "location.fill")
-                .font(.system(size: 10))
-              Text(location.name)
-                .font(.system(size: 13))
+              Text(event.title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.primary)
                 .lineLimit(1)
             }
-            .foregroundColor(.secondary.opacity(0.8))
+
+            // 위치 (있는 경우)
+            if let location = event.location {
+              HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 10))
+                Text(location.name)
+                  .font(.system(size: 13))
+                  .lineLimit(1)
+              }
+              .foregroundColor(.secondary.opacity(0.8))
+            }
           }
+
+          Spacer()
         }
 
-        Spacer()
+        // 날씨
+        if let weather = weather,
+           let forecast = weather.forecast(for: event.startAt) {
+          WeatherCardStrip(
+            forecast: forecast,
+            rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
+            referenceTimeText: event.startAt.formattedMonthDayTime,
+            forecastSource: weather.forecastSource(for: event.startAt)
+          )
+          .padding(.top, 8)
+        }
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 10)
@@ -154,9 +180,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.plus",
         iconColor: Color.pmindigo.n500,
-        title: "시스템 캘린더 연동",
-        message: "시스템 캘린더 일정을 함께 표시하세요",
-        buttonLabel: "연동하기",
+        title: LocalizedStrings.Calendar.syncCalendarTitle,
+        message: LocalizedStrings.Calendar.syncCalendarSubtitle,
+        buttonLabel: LocalizedStrings.Calendar.syncAction,
         buttonColor: Color.pmindigo.n500,
         buttonAction: onRequestPermission
       )
@@ -164,9 +190,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.exclamationmark",
         iconColor: Color.pmpurple.n400,
-        title: "읽기 권한 필요",
-        message: "시스템 캘린더를 읽으려면 전체 액세스가 필요해요",
-        buttonLabel: "설정",
+        title: LocalizedStrings.Calendar.readAccessTitle,
+        message: LocalizedStrings.Calendar.readAccessSubtitle,
+        buttonLabel: LocalizedStrings.Common.settings,
         buttonColor: Color.pmpurple.n500,
         buttonAction: onOpenSettings
       )
@@ -174,9 +200,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.exclamationmark",
         iconColor: Color.pmpurple.n600,
-        title: "캘린더 권한 필요",
-        message: "시스템 캘린더 접근을 위해선 권한이 필요해요",
-        buttonLabel: "설정",
+        title: LocalizedStrings.Calendar.calendarPermissionTitle,
+        message: LocalizedStrings.Calendar.calendarPermissionSubtitle,
+        buttonLabel: LocalizedStrings.Common.settings,
         buttonColor: Color.pmpurple.n600,
         buttonAction: onOpenSettings
       )
@@ -234,7 +260,7 @@ struct CalendarPermissionBanner: View {
           HStack(spacing: 4) {
             Image(systemName: dontShowAgain ? "checkmark.square.fill" : "square")
               .font(.system(size: 12))
-            Text("다시 보지 않기")
+            Text(LocalizedStrings.Calendar.doNotShowAgain)
               .font(.system(size: 11))
           }
           .foregroundColor(.secondary)
@@ -268,7 +294,7 @@ struct CalendarPermissionBanner: View {
     CalendarEventCardView(
       event: CalendarEvent(
         id: "2",
-        title: "점심 약속",
+        title: "점심 일정",
         startDate: Date(),
         endDate: Date().addingTimeInterval(3600),
         location: nil,

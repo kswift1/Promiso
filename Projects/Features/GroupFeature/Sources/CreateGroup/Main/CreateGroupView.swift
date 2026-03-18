@@ -28,23 +28,36 @@ extension CreateGroup {
             inputView
 
           case .success(let result):
-            CreateGroupSuccessView(result: result) {
-              store.send(.view(.successAcknowledged))
-            }
+            CreateGroupSuccessView(
+              result: result,
+              photoData: store.photoData,
+              selectedGroupColor: store.selectedGroupColor,
+              isKakaoSharing: store.isKakaoSharing,
+              onKakaoShareTapped: {
+                store.send(.view(.kakaoInviteShareTapped))
+              },
+              onConfirm: {
+                store.send(.view(.successAcknowledged))
+              }
+            )
 
           case .settings(let result):
             CreateGroupSettingsView(
               groupName: result.name,
+              photoData: store.photoData,
+              isJoining: false,
               notificationEnabled: store.notificationEnabled,
               calendarSyncEnabled: store.calendarSyncEnabled,
               notificationAuthStatus: store.notificationAuthStatus,
               calendarAuthStatus: store.calendarAuthStatus,
               isSaving: store.isSavingSettings,
               showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+              selectedGroupColor: store.selectedGroupColor,
+              existingGroupColorMap: store.existingGroupColorMap,
               onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
               onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+              onGroupColorSelected: { store.send(.view(.groupColorSelected($0))) },
               onComplete: { store.send(.view(.settingsCompleted)) },
-              onSkip: { store.send(.view(.settingsSkipped)) },
               onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
               onAppear: { store.send(.view(.settingsAppeared)) }
             )
@@ -64,11 +77,15 @@ extension CreateGroup {
           }
         }
       }
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.createGroup.rawValue,
+        class: "CreateGroupView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }
       .alert(
-        "그룹 생성에 실패했어요",
+        LocalizedStrings.CreateGroup.creationFailedTitle,
         isPresented: Binding(
           get: { store.creationError != nil },
           set: { isPresented in
@@ -78,12 +95,12 @@ extension CreateGroup {
           }
         ),
         actions: {
-          Button("확인", role: .cancel) {
+          Button(LocalizedStrings.Common.ok, role: .cancel) {
             store.send(.view(.errorAlertDismissed))
           }
         },
         message: {
-          Text(store.creationError ?? "잠시 후 다시 시도해주세요.")
+          Text(store.creationError ?? LocalizedStrings.CreateGroup.creationFailedDefault)
         }
       )
       .auroraBackground()
@@ -92,10 +109,8 @@ extension CreateGroup {
     private var navigationTitle: String {
       switch store.step {
       case .input:
-        return "그룹 만들기"
-      case .success:
-        return ""
-      case .settings:
+        return LocalizedStrings.CreateGroup.title
+      case .success, .settings:
         return ""
       }
     }
@@ -148,24 +163,20 @@ extension CreateGroup {
       .onTapGesture {
         dismissKeyboard()
       }
+      .keyboardDismissToolbar()
       .safeAreaInset(edge: .bottom) {
-        BottomButton(
-          isInputValid: store.isValid,
-          isLoading: store.isCreating,
-          action: { store.send(.view(.createGroupTapped)) }
-        )
+        if focusedField == nil {
+          BottomButton(
+            isInputValid: store.isValid,
+            isLoading: store.isCreating,
+            action: { store.send(.view(.createGroupTapped)) }
+          )
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
       }
+      .animation(.easeInOut(duration: 0.25), value: focusedField)
     }
   }
-}
-
-private func dismissKeyboard() {
-  UIApplication.shared.sendAction(
-    #selector(UIResponder.resignFirstResponder),
-    to: nil,
-    from: nil,
-    for: nil
-  )
 }
 
 // MARK: - Photo Upload Section
@@ -176,7 +187,7 @@ private struct PhotoUploadSection: View {
   
   var body: some View {
     VStack(spacing: 12) {
-      Text("그룹 사진")
+      Text(LocalizedStrings.CreateGroup.groupPhoto)
         .font(.system(size: 16, weight: .semibold))
         .foregroundColor(.primary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,7 +222,7 @@ private struct PhotosPickerButton: View {
                 Image(systemName: "camera.fill")
                   .font(.system(size: 28))
                   .foregroundColor(.secondary)
-                Text("사진 추가")
+                Text(LocalizedStrings.CreateGroup.addPhoto)
                   .font(.system(size: 13))
                   .foregroundColor(.secondary)
               }
@@ -233,7 +244,7 @@ private struct GroupNameSection: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack {
-        Text("그룹 이름")
+        Text(LocalizedStrings.CreateGroup.groupName)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.primary)
 
@@ -244,7 +255,7 @@ private struct GroupNameSection: View {
           .foregroundColor(characterCount >= 2 ? .secondary : .red)
       }
 
-      TextField("그룹 이름을 입력하세요", text: $groupName)
+      TextField(LocalizedStrings.CreateGroup.groupNamePlaceholder, text: $groupName)
         .textFieldStyle(.plain)
         .padding(12)
         .background(Color(.systemBackground))
@@ -257,12 +268,12 @@ private struct GroupNameSection: View {
 
       VStack(alignment: .leading, spacing: 4) {
         if characterCount > 0 && characterCount < 2 {
-          Text("최소 2자 이상 입력해주세요")
+          Text(LocalizedStrings.CreateGroup.groupNameMinLength)
             .font(.system(size: 12))
             .foregroundColor(.red)
         }
 
-        Label("그룹 이름은 생성 후 변경할 수 없습니다", systemImage: "info.circle")
+        Label(LocalizedStrings.CreateGroup.groupNameCannotChange, systemImage: "info.circle")
           .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
@@ -282,7 +293,7 @@ private struct GroupDescriptionSection: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack {
-        Text("그룹 설명")
+        Text(LocalizedStrings.CreateGroup.groupDescription)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.primary)
 
@@ -293,7 +304,7 @@ private struct GroupDescriptionSection: View {
           .foregroundColor(.secondary)
       }
 
-      TextField("그룹 설명을 입력하세요 (선택)", text: $groupDescription, axis: .vertical)
+      TextField(LocalizedStrings.CreateGroup.groupDescriptionPlaceholder, text: $groupDescription, axis: .vertical)
         .lineLimit(2, reservesSpace: true)
         .textFieldStyle(.plain)
         .padding(12)
@@ -315,7 +326,7 @@ private struct MaxMembersSection: View {
   
   var body: some View {
     HStack {
-      Text("최대 인원")
+      Text(LocalizedStrings.CreateGroup.maxMembers)
         .font(.system(size: 16, weight: .semibold))
         .foregroundColor(.primary)
       
@@ -342,7 +353,7 @@ private struct BottomButton: View {
   var body: some View {
     VStack(spacing: 8) {
       GlassActionButton(
-        title: isLoading ? "만드는 중..." : "그룹 만들기",
+        title: isLoading ? LocalizedStrings.CreateGroup.creating : LocalizedStrings.CreateGroup.createButton,
         isPrimary: true,
         isVisible: true,
         isEnabled: isInputValid && !isLoading,
@@ -356,7 +367,7 @@ private struct BottomButton: View {
         }
       }
       
-      Text("그룹을 만들면 자동으로 관리자가 됩니다")
+      Text(LocalizedStrings.CreateGroup.adminHint)
         .font(.system(size: 12))
         .foregroundColor(.secondary)
     }

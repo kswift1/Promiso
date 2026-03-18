@@ -26,7 +26,7 @@ extension NotificationCenter {
         contentView
       }
       .auroraBackground()
-      .navigationTitle("알림")
+      .navigationTitle(LocalizedStrings.Notification.title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         // 모두 읽음 버튼
@@ -35,7 +35,7 @@ extension NotificationCenter {
             Button {
               store.send(.view(.markAllAsReadTapped))
             } label: {
-              Text("모두 읽음")
+              Text(LocalizedStrings.Notification.markAllAsRead)
                 .font(.subheadline)
                 .foregroundStyle(Color.pmindigo.n500)
             }
@@ -75,7 +75,7 @@ extension NotificationCenter {
       HStack(spacing: 8) {
         ForEach(NotificationFilter.allCases, id: \.self) { filter in
           FilterChip(
-            title: filter.rawValue,
+            title: filter.displayTitle,
             isSelected: store.filter == filter,
             action: {
               store.send(.view(.filterChanged(filter)))
@@ -162,7 +162,7 @@ extension NotificationCenter {
               .font(.system(size: 24))
               .foregroundStyle(store.isAllSelected ? Color.pmindigo.n500 : Color.pmgray.n300)
 
-            Text("전체 선택")
+            Text(LocalizedStrings.Notification.selectAll)
               .font(.subheadline.weight(.medium))
               .foregroundStyle(Color.pmgray.n700)
           }
@@ -171,7 +171,7 @@ extension NotificationCenter {
 
         // 선택 개수
         if store.selectedCount > 0 {
-          Text("\(store.selectedCount)개 선택됨")
+          Text(LocalizedStrings.Notification.selectedCount(store.selectedCount))
             .font(.caption)
             .foregroundStyle(Color.pmgray.n500)
         }
@@ -190,7 +190,7 @@ extension NotificationCenter {
               Image(systemName: "trash")
                 .font(.system(size: 14))
             }
-            Text("삭제")
+            Text(LocalizedStrings.Common.delete)
               .font(.subheadline.weight(.medium))
           }
           .foregroundStyle(store.selectedCount > 0 ? Color.pmerror.n500 : Color.pmgray.n400)
@@ -253,11 +253,11 @@ extension NotificationCenter {
           .font(.system(size: 48))
           .foregroundStyle(Color.pmgray.n300)
 
-        Text("알림이 없어요")
+        Text(LocalizedStrings.Notification.emptyTitle)
           .font(.headline)
           .foregroundStyle(Color.pmgray.n500)
 
-        Text("새로운 약속이나 그룹 소식이 있으면\n여기서 알려드릴게요")
+        Text(LocalizedStrings.Notification.emptySubtitle)
           .font(.subheadline)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)
@@ -278,11 +278,11 @@ extension NotificationCenter {
           .font(.system(size: 48))
           .foregroundStyle(Color.pmerror.n500)
 
-        Text("알림을 불러올 수 없어요")
+        Text(LocalizedStrings.Notification.loadFailed)
           .font(.headline)
           .foregroundStyle(Color.pmgray.n500)
 
-        Text(error.localizedDescription)
+        Text((error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
           .font(.subheadline)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)
@@ -290,7 +290,7 @@ extension NotificationCenter {
         Button {
           store.send(.view(.refreshTriggered))
         } label: {
-          Text("다시 시도")
+          Text(LocalizedStrings.Common.retry)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(Color.pmindigo.n500)
             .padding(.horizontal, 24)
@@ -308,6 +308,17 @@ extension NotificationCenter {
         Spacer()
       }
       .padding()
+    }
+  }
+}
+
+// MARK: - NotificationFilter + Localized Title
+
+extension NotificationFilter {
+  var displayTitle: String {
+    switch self {
+    case .all: return LocalizedStrings.Notification.filterAll
+    case .unread: return LocalizedStrings.Notification.filterUnread
     }
   }
 }

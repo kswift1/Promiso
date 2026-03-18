@@ -65,6 +65,10 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds;
 
+      // 본인이 수락한 약속 읽기 가능 (일정 충돌 감지용)
+      allow read: if request.auth != null &&
+                     request.auth.uid in resource.data.votes.accepted;
+
       // 그룹 멤버만 약속 생성 가능
       allow create: if request.auth != null &&
                        request.auth.uid in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.memberIds;
@@ -81,6 +85,41 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                        request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'updatedAt']);
+    }
+
+    // Subscriptions - 서버 관리 구독 상태 (Cloud Functions에서만 쓰기)
+    match /subscriptions/{userId} {
+      // 본인 구독 상태만 읽기 가능
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
+      allow write: if false;
+    }
+
+    // Subscription Owners - 서버 전용 소유권 인덱스
+    match /subscriptionOwners/{originalTransactionId} {
+      allow read, write: if false;
+    }
+
+    // Entitlements - 서버 관리 Pro 판정 read model (구독 + 오버라이드 합산)
+    match /entitlements/{userId} {
+      // 본인 Pro 상태만 읽기 가능
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
+      allow write: if false;
+    }
+
+    // Entitlement Overrides - 서버 관리 Pro 권한 오버라이드 (쿠폰/관리자 부여)
+    match /entitlementOverrides/{userId} {
+      // 본인 오버라이드 상태만 읽기 가능
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
+      allow write: if false;
     }
 
     // 그 외 모든 경로 차단

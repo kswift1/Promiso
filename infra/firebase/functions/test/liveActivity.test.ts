@@ -40,6 +40,9 @@ jest.mock('firebase-functions/params', () => ({
       value: () => secrets[name] || 'test-secret-value',
     };
   }),
+  defineString: jest.fn((name: string, options?: {default?: string}) => ({
+    value: () => options?.default ?? '',
+  })),
 }));
 
 // HTTP/2 mock
@@ -57,6 +60,14 @@ const mockHttp2Request = {
 
 jest.mock('http2', () => ({
   connect: jest.fn(() => mockHttp2Client),
+  constants: {
+    HTTP2_HEADER_AUTHORITY: ':authority',
+    HTTP2_HEADER_METHOD: ':method',
+    HTTP2_HEADER_PATH: ':path',
+    HTTP2_HEADER_SCHEME: ':scheme',
+    HTTP2_HEADER_STATUS: ':status',
+    HTTP2_METHOD_POST: 'POST',
+  },
 }));
 
 // Firebase Functions (getFunctions) mock
@@ -101,6 +112,7 @@ function createMockDocument(exists: boolean, data?: Record<string, unknown>): an
 function createMockTimestamp(date: Date = new Date()): any {
   return {
     toDate: () => date,
+    toMillis: () => date.getTime(),
     seconds: Math.floor(date.getTime() / 1000),
     nanoseconds: 0,
   };
@@ -110,6 +122,14 @@ function createMockTimestamp(date: Date = new Date()): any {
  * HTTP/2 성공 응답 시뮬레이션
  */
 function simulateHttp2Success(statusCode: number = 200, headers: Record<string, string> = {}) {
+  simulateHttp2Sequence([{ statusCode, headers }]);
+}
+
+function simulateHttp2Sequence(
+  responses: Array<{statusCode: number; headers?: Record<string, string>; body?: string}>
+) {
+  let responseIndex = 0;
+
   mockHttp2Client.on.mockImplementation((event: string, _callback: Function) => {
     if (event === 'error') {
       // No error
@@ -118,13 +138,21 @@ function simulateHttp2Success(statusCode: number = 200, headers: Record<string, 
   });
 
   mockHttp2Client.request.mockImplementation(() => {
+    const response =
+      responses[Math.min(responseIndex, responses.length - 1)] ||
+      { statusCode: 200, headers: {}, body: '' };
+    responseIndex += 1;
+
     mockHttp2Request.on.mockImplementation((event: string, callback: Function) => {
       if (event === 'response') {
-        const responseHeaders = { ':status': statusCode, ...headers };
+        const responseHeaders = {
+          ':status': response.statusCode,
+          ...(response.headers || {}),
+        };
         setTimeout(() => callback(responseHeaders), 0);
       }
       if (event === 'data') {
-        setTimeout(() => callback(''), 10);
+        setTimeout(() => callback(response.body || ''), 10);
       }
       if (event === 'end') {
         setTimeout(() => callback(), 20);
@@ -766,6 +794,8 @@ describe('widgetUpdateETA', () => {
 describe('executeLiveActivityStart', () => {
   let executeLiveActivityStart: any;
   let mockFirestore: any;
+  let mockPromiseRef: any;
+  const scheduleVersion = 'schedule-v1';
 
   const mockPromiseData = {
     groupId: 'test-group-id',
@@ -777,6 +807,11 @@ describe('executeLiveActivityStart', () => {
     votes: { accepted: ['host-user-id', 'member1'] },
     minimumParticipants: 2,
     trackingStartMinutesBefore: 30,
+    liveActivitySchedule: {
+      scheduled: true,
+      started: false,
+      version: scheduleVersion,
+    },
   };
 
   const mockGroupData = {
@@ -796,15 +831,18 @@ describe('executeLiveActivityStart', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    mockPromiseRef = {
+      get: jest.fn().mockResolvedValue(
+        createMockDocument(true, mockPromiseData) as any
+      ),
+      update: jest.fn().mockResolvedValue(undefined as any),
+    };
+
     mockFirestore = {
       collection: jest.fn((name: string) => {
         if (name === 'promises') {
           return {
-            doc: jest.fn().mockReturnValue({
-              get: jest.fn().mockResolvedValue(
-                createMockDocument(true, mockPromiseData) as any
-              ),
-            }),
+            doc: jest.fn().mockReturnValue(mockPromiseRef),
           };
         }
         if (name === 'groups') {
@@ -854,7 +892,7 @@ describe('executeLiveActivityStart', () => {
   describe.skip('정상 케이스', () => {
     it('예약된 시간에 LiveActivity를 시작한다', async () => {
       const taskData = {
-        data: { promiseId: 'test-promise-id' },
+        data: { promiseId: 'test-promise-id', scheduleVersion },
       };
 
       // Cloud Task handler는 run 메서드
@@ -883,7 +921,7 @@ describe('executeLiveActivityStart', () => {
       });
 
       const taskData = {
-        data: { promiseId: 'test-promise-id' },
+        data: { promiseId: 'test-promise-id', scheduleVersion },
       };
 
       const handler = executeLiveActivityStart.run;
@@ -904,7 +942,7 @@ describe('executeLiveActivityStart', () => {
       });
 
       const taskData = {
-        data: { promiseId: 'nonexistent-promise' },
+        data: { promiseId: 'nonexistent-promise', scheduleVersion },
       };
 
       const handler = executeLiveActivityStart.run;
@@ -922,13 +960,85 @@ describe('executeLiveActivityStart', () => {
       ] as any);
 
       const taskData = {
-        data: { promiseId: 'test-promise-id' },
+        data: { promiseId: 'test-promise-id', scheduleVersion },
       };
 
       const handler = executeLiveActivityStart.run;
       if (handler) {
         await expect(handler(taskData)).resolves.not.toThrow();
       }
+    });
+  });
+
+  describe.skip('started 롤백', () => {
+    it('채널 생성 실패 시 started를 false로 롤백한다', async () => {
+      simulateHttp2Success(500);
+
+      const taskData = {
+        data: { promiseId: 'test-promise-id', scheduleVersion },
+      };
+
+      const handler = executeLiveActivityStart.run;
+      if (handler) {
+        await expect(handler(taskData)).resolves.not.toThrow();
+      }
+
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(1, {
+        'liveActivitySchedule.started': true,
+      });
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(2, {
+        'liveActivitySchedule.started': false,
+      });
+      expect(mockTaskQueue.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('토큰이 없으면 started를 false로 롤백한다', async () => {
+      mockFirestore.getAll = jest.fn().mockResolvedValue([
+        { exists: true, id: 'host-user-id', data: () => ({ nickname: '호스트', devices: {} }) },
+        { exists: true, id: 'member1', data: () => ({ nickname: '멤버', devices: {} }) },
+      ] as any);
+
+      const taskData = {
+        data: { promiseId: 'test-promise-id', scheduleVersion },
+      };
+
+      const handler = executeLiveActivityStart.run;
+      if (handler) {
+        await expect(handler(taskData)).resolves.not.toThrow();
+      }
+
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(1, {
+        'liveActivitySchedule.started': true,
+      });
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(2, {
+        'liveActivitySchedule.started': false,
+      });
+      expect(mockTaskQueue.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('Push to Start가 전부 실패하면 started를 false로 롤백한다', async () => {
+      simulateHttp2Sequence([
+        { statusCode: 201, headers: { 'apns-channel-id': 'ch-new-channel' } },
+        { statusCode: 500 },
+        { statusCode: 500 },
+      ]);
+
+      const taskData = {
+        data: { promiseId: 'test-promise-id', scheduleVersion },
+      };
+
+      const handler = executeLiveActivityStart.run;
+      if (handler) {
+        await expect(handler(taskData)).resolves.not.toThrow();
+      }
+
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(1, {
+        'liveActivitySchedule.started': true,
+      });
+      expect(mockPromiseRef.update).toHaveBeenNthCalledWith(2, {
+        'liveActivitySchedule.started': false,
+      });
+      expect(mockTaskQueue.enqueue).not.toHaveBeenCalled();
     });
   });
 });
@@ -1052,7 +1162,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         expect(mockTaskQueue.enqueue).toHaveBeenCalled();
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: true,
+            liveActivitySchedule: expect.objectContaining({ scheduled: true }),
           })
         );
       }
@@ -1089,8 +1199,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         await handler(event);
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: false,
-            liveActivityScheduledAt: null,
+            liveActivitySchedule: null,
           })
         );
       }
@@ -1127,7 +1236,7 @@ describe('onPromiseConfirmedScheduleLiveActivity', () => {
         await handler(event);
         expect(mockPromiseRef.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            liveActivityScheduled: false,
+            liveActivitySchedule: null,
           })
         );
       }
@@ -1279,7 +1388,7 @@ describe('Edge Cases', () => {
               votes: { accepted: ['user1', 'user2'] },
               minimumParticipants: 2,
               trackingStartMinutesBefore: 30,
-              liveActivityScheduled: true, // 이미 스케줄됨
+              liveActivitySchedule: { scheduled: true }, // 이미 스케줄됨
               startAt: createMockTimestamp(new Date(Date.now() + 7200000)),
             }),
           },
@@ -1288,7 +1397,7 @@ describe('Edge Cases', () => {
               votes: { accepted: ['user1', 'user2', 'user3'] }, // 멤버만 추가
               minimumParticipants: 2,
               trackingStartMinutesBefore: 30, // 같은 값
-              liveActivityScheduled: true,
+              liveActivitySchedule: { scheduled: true },
               startAt: createMockTimestamp(new Date(Date.now() + 7200000)),
             }),
           },

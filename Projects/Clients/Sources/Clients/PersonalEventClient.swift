@@ -26,19 +26,19 @@ public enum PersonalEventClientError: Error, Equatable {
   public var localizedDescription: String {
     switch self {
     case .networkError:
-      return "네트워크 연결을 확인해주세요"
+      return LocalizedStrings.Error.networkError
     case .unauthorized:
-      return "로그인이 필요합니다"
+      return LocalizedStrings.Error.userAuthRequired
     case .notFound:
-      return "일정을 찾을 수 없습니다"
+      return LocalizedStrings.Error.notFoundError
     case .serverError:
-      return "서버 오류가 발생했습니다"
+      return LocalizedStrings.Error.serverError
     case .invalidData(let message):
-      return message ?? "잘못된 데이터입니다"
+      return message ?? LocalizedStrings.Error.validationError
     case .forbidden:
-      return "권한이 없습니다"
+      return LocalizedStrings.Error.permissionError
     case .unknown(let message):
-      return message ?? "알 수 없는 오류가 발생했습니다"
+      return message ?? LocalizedStrings.Error.unknownError
     }
   }
 
@@ -78,11 +78,17 @@ public struct PersonalEventClient: Sendable {
   /// 활성 일정 조회
   public var getActiveEvents: @Sendable (_ limit: Int) async throws -> [PersonalEventModel]
 
+  /// 진행 중인 일정 조회
+  public var getOngoingEvents: @Sendable (_ limit: Int) async throws -> [PersonalEventModel]
+
   /// 과거 일정 조회 (커서 기반 페이징)
   public var getPastEvents: @Sendable (_ limit: Int, _ lastStartAt: Date?) async throws -> [PersonalEventModel]
 
   /// 활성 일정 실시간 구독
-  public var subscribeToActiveEvents: @Sendable (_ limit: Int) -> AsyncStream<[PersonalEventModel]> = { _ in AsyncStream { _ in } }
+  public var subscribeToActiveEvents: @Sendable (_ limit: Int) async -> AsyncStream<[PersonalEventModel]> = { _ in AsyncStream { _ in } }
+
+  /// 날짜 범위로 개인 일정 조회 (일정 충돌 감지용)
+  public var getEventsByDateRange: @Sendable (_ startDate: Date, _ endDate: Date) async throws -> [PersonalEventModel]
 }
 
 // MARK: - Test & Preview Values
@@ -109,6 +115,10 @@ extension PersonalEventClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel.activeExamples
     },
+    getOngoingEvents: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return []
+    },
     getPastEvents: { _, _ in
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel.pastExamples
@@ -120,6 +130,10 @@ extension PersonalEventClient: TestDependencyKey {
           continuation.yield(PersonalEventModel.activeExamples)
         }
       }
+    },
+    getEventsByDateRange: { _, _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return []
     }
   )
 }
@@ -142,7 +156,7 @@ extension PersonalEventClient: DependencyKey {
     return PersonalEventClient(
       createEvent: { event in
         guard !event.title.isEmpty else {
-          throw PersonalEventClientError.invalidData("제목이 비어있습니다")
+          throw PersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
 
         do {
@@ -179,6 +193,13 @@ extension PersonalEventClient: DependencyKey {
           throw PersonalEventClientError(from: error)
         }
       },
+      getOngoingEvents: { limit in
+        do {
+          return try await dataSource.getOngoingEvents(limit: limit)
+        } catch {
+          throw PersonalEventClientError(from: error)
+        }
+      },
       getPastEvents: { limit, lastStartAt in
         do {
           return try await dataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
@@ -187,7 +208,14 @@ extension PersonalEventClient: DependencyKey {
         }
       },
       subscribeToActiveEvents: { limit in
-        dataSource.subscribeToActiveEvents(limit: limit)
+        await dataSource.subscribeToActiveEvents(limit: limit)
+      },
+      getEventsByDateRange: { startDate, endDate in
+        do {
+          return try await dataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
+        } catch {
+          throw PersonalEventClientError(from: error)
+        }
       }
     )
   }()

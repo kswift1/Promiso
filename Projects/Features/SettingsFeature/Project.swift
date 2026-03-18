@@ -5,6 +5,7 @@ private let feature: Feature = .settings
 
 let project = Project(
   name: feature.fullName,
+  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)
@@ -18,8 +19,10 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
+        .project(target: "SharedFeature", path: "../SharedFeature"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
-        .project(target: "ExternalDependency", path: "../../ExternalDependency")
+        .project(target: "ExternalDependency", path: "../../ExternalDependency"),
+        .project(target: "ProPlanFeature", path: "../ProPlanFeature")
       ],
       settings: .standard()
     ),
@@ -33,7 +36,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "SettingsFeature")
+        .target(name: "SettingsFeature"),
+        .project(target: "PromisoShared", path: "../../Shared")
       ],
       settings: .standard()
     ),

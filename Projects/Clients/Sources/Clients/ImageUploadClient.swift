@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import FirebaseStorage
 import Foundation
+import PromisoShared
 
 // MARK: - Error
 
@@ -12,11 +13,11 @@ public enum ImageUploadError: Error, Equatable, Sendable {
   public var localizedDescription: String {
     switch self {
     case .compressionFailed:
-      return "이미지 압축에 실패했습니다"
+      return LocalizedStrings.Error.imageCompressionFailed
     case .uploadFailed(let message):
-      return "이미지 업로드 실패: \(message)"
+      return LocalizedStrings.Error.imageUploadFailed(message)
     case .allFailed:
-      return "모든 이미지 업로드에 실패했습니다"
+      return LocalizedStrings.Error.imageUploadAllFailed
     }
   }
 }
@@ -28,7 +29,7 @@ public struct ImageUploadClient: Sendable {
   /// 다중 이미지 업로드 (압축 + 병렬 업로드, 순서 보장)
   /// - Parameters:
   ///   - images: 업로드할 이미지 Data 배열
-  ///   - basePath: Storage 기본 경로 (e.g. "promise_images/{id}")
+  ///   - basePath: Storage 기본 경로 (e.g. "schedule_images/{id}")
   /// - Returns: 업로드된 이미지 download URL 배열 (순서 보장)
   public var uploadImages: @Sendable (
     _ images: [Data],

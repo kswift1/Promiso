@@ -26,7 +26,7 @@ import {
   APNS_BUNDLE_ID,
 } from "../config";
 import {getCurrentEnvironment} from "../utils/firestore";
-import {sendPushNotificationInternal} from "./notifications.js";
+import {sendPushNotificationInternal} from "./notifications";
 
 /**
  * APNs 환경 결정
@@ -741,25 +741,63 @@ export const executeLiveActivityStart = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId, scheduledAt} = req.data;
-    console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
+    const {promiseId, scheduledAt, scheduleVersion} = req.data;
+    console.log(
+      `⏰ Scheduled LiveActivity start: ${promiseId}` +
+      ` (scheduledAt: ${scheduledAt})`
+    );
 
     const db = admin.firestore();
     const promisesCollection = db.collection("promises");
     const usersCollection = db.collection("users");
 
-    // 1. 약속 정보 조회
-    const promiseDoc = await promisesCollection.doc(promiseId).get();
-    if (!promiseDoc.exists) {
-      console.warn(`Promise not found: ${promiseId}`);
+    // 1. 트랜잭션으로 약속 정보 조회 + started 플래그 원자적 선점
+    const promiseRef = promisesCollection.doc(promiseId);
+    const promiseData = await db.runTransaction(async (transaction) => {
+      const promiseDoc = await transaction.get(promiseRef);
+      if (!promiseDoc.exists) {
+        console.warn(`Promise not found: ${promiseId}`);
+        return null;
+      }
+
+      const data = promiseDoc.data();
+      if (!data) {
+        console.warn(`Promise data is empty: ${promiseId}`);
+        return null;
+      }
+
+      // stale task 감지: 버전이 다르면 스킵
+      const schedule = data.liveActivitySchedule;
+      const storedVersion = schedule?.version as
+        string | undefined;
+      if (!scheduleVersion || storedVersion !== scheduleVersion) {
+        console.log(
+          "⏭️ Stale LiveActivity task (version mismatch)," +
+          ` skipping: ${promiseId}`
+        );
+        return null;
+      }
+
+      // 이미 시작된 LiveActivity가 있으면 스킵 (재시도 중복 방지)
+      if (data.liveActivitySchedule?.started === true) {
+        console.log(
+          `⏭️ LiveActivity already started, skipping: ${promiseId}`
+        );
+        return null;
+      }
+
+      // started 플래그 원자적 선점
+      transaction.update(promiseRef, {
+        "liveActivitySchedule.started": true,
+      });
+
+      return data;
+    });
+
+    if (!promiseData) {
       return;
     }
 
-    const promiseData = promiseDoc.data();
-    if (!promiseData) {
-      console.warn(`Promise data is empty: ${promiseId}`);
-      return;
-    }
     const hostId = promiseData.hostId as string;
     const groupId = promiseData.groupId as string;
     const emoji = promiseData.emoji as string || "📌";
@@ -770,21 +808,6 @@ export const executeLiveActivityStart = onTaskDispatched<
     const minParticipants = promiseData.minimumParticipants as number || 2;
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
-
-    // stale task 감지: 예약 시간이 다르면 스킵
-    const scheduledAtTs =
-      promiseData.liveActivityScheduledAt as
-        admin.firestore.Timestamp;
-    const storedScheduledAt = scheduledAtTs
-      ?.toDate()
-      .toISOString();
-
-    if (!scheduledAt || storedScheduledAt !== scheduledAt) {
-      console.log(
-        `⏭️ Stale LiveActivity task, skipping: ${promiseId}`
-      );
-      return;
-    }
 
     // 2. 그룹 정보 조회
     const groupsCollection = db.collection("groups");
@@ -852,7 +875,14 @@ export const executeLiveActivityStart = onTaskDispatched<
       }
     }
 
-    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+    const rollbackStarted = async (reason: string) => {
+      await promiseRef.update({
+        "liveActivitySchedule.started": false,
+      });
+      console.log(`↩️ LiveActivity started rollback: ${promiseId} (${reason})`);
+    };
+
+    // 6. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = isAPNsProduction();
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
@@ -862,6 +892,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       console.log(`✅ APNs channel created: ${channelId}`);
     } else {
       console.error(`❌ Channel creation failed: ${channelResult.error}`);
+      await rollbackStarted("channel creation failed");
       // 채널 없이는 Broadcast 불가 → Push to Start 중단
       console.error(`⚠️ Aborting Push to Start: ${promiseId}`);
       return;
@@ -872,6 +903,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     // 6. 토큰 검증
     if (allTokens.length === 0) {
       console.log(`📭 No Push to Start tokens for: ${promiseId}`);
+      await rollbackStarted("no push-to-start tokens");
       return;
     }
 
@@ -937,6 +969,12 @@ export const executeLiveActivityStart = onTaskDispatched<
       `⏰ Scheduled LiveActivity started (Broadcast channel: ${channelId}): ` +
       `${successCount}/${failureCount}`
     );
+
+    if (successCount === 0) {
+      await rollbackStarted("no successful push-to-start delivery");
+      console.error(`⚠️ Aborting post-start tasks: ${promiseId}`);
+      return;
+    }
 
     // 8. 종료 Task 예약 (30분)
     const endMinutes = 30;
@@ -1087,12 +1125,22 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     const trackingEnabledOnConfirmed =
       isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
 
+    // 이미 시작된 LiveActivity가 있으면 재스케줄 차단
+    const alreadyStarted =
+      after.liveActivitySchedule?.started === true;
+    if (alreadyStarted) {
+      console.log(
+        "⏭️ LiveActivity already started, " +
+        `skip reschedule: ${promiseId}`
+      );
+      return;
+    }
+
     // 확정 → 미확정: 예약 상태 리셋 (다시 확정 시 새로 예약되도록)
     if (justUnconfirmed) {
       const db = admin.firestore();
       await db.collection("promises").doc(promiseId).update({
-        liveActivityScheduled: false,
-        liveActivityScheduledAt: null,
+        liveActivitySchedule: null,
       });
       console.log(`🔄 LiveActivity schedule reset (unconfirmed): ${promiseId}`);
       return;
@@ -1104,8 +1152,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     if (trackingDisabled) {
       const db = admin.firestore();
       await db.collection("promises").doc(promiseId).update({
-        liveActivityScheduled: false,
-        liveActivityScheduledAt: null,
+        liveActivitySchedule: null,
       });
       console.log(
         `🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`
@@ -1149,7 +1196,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     }
 
     // 이미 예약되었고 trackingMinutes가 변경되지 않았으면 스킵
-    const wasAlreadyScheduled = after.liveActivityScheduled === true;
+    const wasAlreadyScheduled = after.liveActivitySchedule?.scheduled === true;
     if (wasAlreadyScheduled && !trackingMinutesChanged) {
       console.log(`📅 Already scheduled (no change): ${promiseId}`);
       return;
@@ -1173,8 +1220,9 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
     );
 
+    const scheduleVersion = crypto.randomUUID();
     await queue.enqueue(
-      {promiseId, scheduledAt: scheduleTime.toISOString()},
+      {promiseId, scheduledAt: scheduleTime.toISOString(), scheduleVersion},
       {scheduleDelaySeconds: delaySeconds}
     );
 
@@ -1182,8 +1230,12 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     const db = admin.firestore();
     const promisesCollection = db.collection("promises");
     await promisesCollection.doc(promiseId).update({
-      liveActivityScheduled: true,
-      liveActivityScheduledAt: scheduleTime,
+      liveActivitySchedule: {
+        scheduled: true,
+        started: false,
+        scheduledAt: scheduleTime,
+        version: scheduleVersion,
+      },
     });
 
     const isImmediate = delaySeconds === 0;

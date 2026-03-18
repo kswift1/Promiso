@@ -15,6 +15,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 | `promise_cancelled` | 약속 무산 | `onPromiseVotesUpdated` | ✅ |
 | `promise_updated` | 약속 수정 | `onPromiseInfoUpdated` | ✅ |
 | `promise_reminder` | 약속 리마인더 | Cloud Tasks | ❌ TODO |
+| `location_sharing_reminder` | 실시간 공유 넛지 | `executeETASharingNudge` | ✅ |
 | `group_update` | 그룹 업데이트 | `onGroupMemberJoined` / `updateGroup` | ✅ |
 | `group_invitation` | 그룹 초대 | - | ❌ |
 | `attendance_response` | 참석 응답 | - | ❌ |
@@ -144,7 +145,20 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 ---
 
-### 2. 첫 도착 (updateETA)
+### 2. location_sharing_reminder (ETA 공유 넛지)
+
+| 항목 | 값 |
+|------|-----|
+| **트리거** | `executeETASharingNudge` |
+| **조건** | LiveActivity 시작 후 `trackingMinutes / 2` 경과 |
+| **Title** | `⏰ {약속제목} {남은분}분 전!` |
+| **Body** | `잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!` |
+| **수신자** | 수락한 참가자 전원 |
+| **비고** | 약속당 1회만 발송, 별도 알림 설정 없음 |
+
+---
+
+### 3. 첫 도착 (updateETA)
 
 | 항목 | 값 |
 |------|-----|
@@ -155,7 +169,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 ---
 
-### 3. 모두 도착 (updateETA)
+### 4. 모두 도착 (updateETA)
 
 | 항목 | 값 |
 |------|-----|
@@ -163,7 +177,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 | **Title** | `✅ 모두 도착!` |
 | **Body** | `모든 멤버들이 도착했어요! 잠시 후 종료됩니다` |
 | **수신자** | 채널 구독자 전원 (Broadcast) |
-| **추가 동작** | End Task 예약 (stage: 1분, prod: 5분) |
+| **추가 동작** | End Task 예약 (dev: 1분, stage: 3분, prod: 5분) |
 
 ---
 
@@ -188,6 +202,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 | `promise_updated` | 약속 상세 |
 | `promise_reminder` | 약속 상세 |
 | `attendance_response` | 약속 상세 |
+| `location_sharing_reminder` | 약속 상세 |
 | `group_invitation` | 그룹 상세 |
 | `group_update` | 그룹 상세 |
 | `system` | 이동 없음 |

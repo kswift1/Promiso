@@ -64,6 +64,8 @@ tags:
     description: LiveActivity (실시간 위치 공유) 관련 API
   - name: Notification
     description: 푸시 알림 관련 API
+  - name: Widget
+    description: 위젯 스냅샷 및 Widget Token 관련 API
   - name: Emoji
     description: 이모지 생성 API
 
@@ -608,6 +610,7 @@ paths:
     post:
       tags:
         - Group
+      security: []
       summary: 그룹 미리보기
       description: |
         초대 코드로 그룹 정보를 미리 확인합니다.
@@ -1762,6 +1765,7 @@ paths:
     post:
       tags:
         - LiveActivity
+      security: []
       summary: Widget 전용 ETA 업데이트
       description: |
         Widget Extension에서 ETA를 업데이트합니다.
@@ -1819,7 +1823,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 missingFields:
                   value:
@@ -1832,7 +1836,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 missingUserId:
                   value:
@@ -1845,13 +1849,239 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FunctionsError'
               examples:
                 methodNotAllowed:
                   value:
                     error:
                       code: method-not-allowed
                       message: Method not allowed
+
+  # ========================================
+  # Widget
+  # ========================================
+
+  /generateWidgetToken:
+    post:
+      tags:
+        - Widget
+      summary: Widget Token 발급
+      description: |
+        앱에서 Widget 전용 장기 토큰을 발급합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **용도**: Widget Extension이 Firebase SDK 없이 스냅샷 API를 호출하기 위한 토큰
+      operationId: generateWidgetToken
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/GenerateWidgetTokenRequest'
+            examples:
+              basic:
+                summary: Widget Token 발급
+                value:
+                  data:
+                    deviceId: "device-uuid-1234"
+
+      responses:
+        '200':
+          description: Widget Token 발급 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/GenerateWidgetTokenResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      widgetToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      expiresAt: 1770940800
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                missingDeviceId:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: deviceId는 필수입니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /getWidgetSnapshot:
+    post:
+      tags:
+        - Widget
+      summary: 위젯 스냅샷 조회
+      description: |
+        앱에서 Firebase Authentication 토큰으로 위젯 스냅샷을 조회합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **내부 동작**: Firestore에서 그룹 약속과 개인 일정을 직접 조회해 정렬 후 반환
+      operationId: getWidgetSnapshot
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  additionalProperties: false
+            examples:
+              empty:
+                summary: 파라미터 없음
+                value:
+                  data: {}
+
+      responses:
+        '200':
+          description: 위젯 스냅샷 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/WidgetSnapshotDocument'
+              examples:
+                success:
+                  value:
+                    result:
+                      next:
+                        id: "promise123"
+                        title: "점심 약속"
+                        emoji: "🍜"
+                        startAt: "2026-02-01T12:00:00+09:00"
+                        endAt: null
+                        location: "강남역 2번 출구"
+                        groupId: "group456"
+                        groupName: "대학 동기"
+                        groupImageUrl: null
+                        isConfirmed: true
+                        minimumParticipants: 2
+                        votes:
+                          accepted: ["user123", "user456"]
+                          declined: []
+                        myVoteStatus: voted
+                        votingDeadline: "2026-02-01T10:00:00+09:00"
+                      today: []
+                      upcoming: []
+                      meta:
+                        todayCount: 0
+                        upcomingCount: 0
+                        updatedAt: "2026-02-01T10:30:00+09:00"
+                        version: 1
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /getWidgetSnapshotWithToken:
+    post:
+      tags:
+        - Widget
+      security: []
+      summary: Widget Token으로 위젯 스냅샷 조회
+      description: |
+        Widget Extension에서 Widget Token으로 위젯 스냅샷을 조회합니다.
+
+        **인증 필수**: `Authorization: Bearer <widgetToken>`
+        **내부 동작**: Widget Token 검증 후 Firestore를 직접 조회해 스냅샷 응답 생성
+      operationId: getWidgetSnapshotWithToken
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Widget Token Bearer 헤더
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/GetWidgetSnapshotWithTokenRequest'
+            examples:
+              withDeviceId:
+                summary: deviceId 검증 포함
+                value:
+                  data:
+                    deviceId: "device-uuid-1234"
+
+      responses:
+        '200':
+          description: 위젯 스냅샷 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/WidgetSnapshotDocument'
+
+        '401':
+          description: Widget Token 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetTokenHttpErrorResponse'
+              examples:
+                missingAuthHeader:
+                  value:
+                    error: Missing or invalid Authorization header
+                deviceMismatch:
+                  value:
+                    error: Device mismatch
+                    error_code: DEVICE_MISMATCH
+                tokenRevoked:
+                  value:
+                    error: Token revoked
+                    error_code: TOKEN_REVOKED
+
+        '405':
+          description: 메서드 허용되지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetTokenHttpErrorResponse'
+              examples:
+                methodNotAllowed:
+                  value:
+                    error: Method not allowed
+
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetTokenHttpErrorResponse'
+              examples:
+                internal:
+                  value:
+                    error: Internal server error
 
   # ========================================
   # Emoji
@@ -2020,12 +2250,24 @@ components:
         - title
         - emoji
         - startAt
+        - endAt
+        - location
         - groupId
+        - groupName
+        - groupImageUrl
         - isConfirmed
         - minimumParticipants
-        - participantCount
+        - votes
         - myVoteStatus
+        - votingDeadline
       properties:
+        type:
+          type: string
+          enum:
+            - promise
+            - personal
+          description: 일정 타입 (생략 시 promise)
+          example: promise
         id:
           type: string
           description: 약속 ID
@@ -2056,12 +2298,12 @@ components:
           example: 강남역 2번 출구
         groupId:
           type: string
-          description: 그룹 ID
+          description: 그룹 ID (개인 일정은 빈 문자열)
           example: group456
         groupName:
           type: string
           nullable: true
-          description: 그룹 이름
+          description: 그룹 이름 (개인 일정은 null)
           example: 대학 동기
         groupImageUrl:
           type: string
@@ -2077,10 +2319,8 @@ components:
           type: integer
           description: 최소 확정 인원
           example: 2
-        participantCount:
-          type: integer
-          description: 참여 확정 인원
-          example: 3
+        votes:
+          $ref: '#/components/schemas/SnapshotVotes'
         myVoteStatus:
           type: string
           enum:
@@ -2098,7 +2338,7 @@ components:
 
     WidgetSnapshotDocument:
       type: object
-      description: Widget용 스냅샷 문서
+      description: Widget용 스냅샷 응답
       required:
         - next
         - today
@@ -2106,6 +2346,7 @@ components:
         - meta
       properties:
         next:
+          type: object
           allOf:
             - $ref: '#/components/schemas/SnapshotPromise'
           nullable: true
@@ -2114,14 +2355,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SnapshotPromise'
-          description: Medium 위젯용 오늘 약속 (최대 5개)
+          description: Medium 위젯용 오늘 약속 (최대 6개)
         upcoming:
           type: array
           items:
             $ref: '#/components/schemas/SnapshotPromise'
-          description: Large 위젯용 다가오는 약속 (최대 7개)
+          description: Large 위젯용 다가오는 약속 (최대 9개)
         meta:
           $ref: '#/components/schemas/WidgetSnapshotMeta'
+
+    SnapshotVotes:
+      type: object
+      required:
+        - accepted
+        - declined
+      properties:
+        accepted:
+          type: array
+          items:
+            type: string
+          description: 참여 확정 사용자 ID 목록
+          example: ["user123", "user456"]
+        declined:
+          type: array
+          items:
+            type: string
+          description: 불참 사용자 ID 목록
+          example: ["user789"]
 
     WidgetSnapshotMeta:
       type: object
@@ -2133,11 +2393,11 @@ components:
       properties:
         todayCount:
           type: integer
-          description: 오늘 약속 개수
+          description: 오늘 약속 반환 개수
           example: 2
         upcomingCount:
           type: integer
-          description: 다가오는 약속 개수
+          description: 다가오는 약속 반환 개수
           example: 5
         updatedAt:
           type: string
@@ -2149,100 +2409,56 @@ components:
           description: 스키마 버전
           example: 1
 
-    HomeSnapshotDocument:
+    GenerateWidgetTokenRequest:
       type: object
-      description: Home용 스냅샷 문서
       required:
-        - todayPromises
-        - pendingPromises
-        - upcomingPromises
-        - groups
-        - meta
+        - deviceId
       properties:
-        todayPromises:
-          type: array
-          items:
-            $ref: '#/components/schemas/SnapshotPromise'
-          description: 오늘 확정 약속 (최대 5개)
-        pendingPromises:
-          type: array
-          items:
-            $ref: '#/components/schemas/SnapshotPromise'
-          description: 응답 필요 약속 (최대 5개, 마감 임박순)
-        upcomingPromises:
-          type: array
-          items:
-            $ref: '#/components/schemas/SnapshotPromise'
-          description: 다가오는 확정 약속 (최대 10개)
-        groups:
-          type: array
-          items:
-            $ref: '#/components/schemas/HomeSnapshotGroup'
-          description: 그룹별 요약 정보
-        meta:
-          $ref: '#/components/schemas/HomeSnapshotMeta'
+        deviceId:
+          type: string
+          minLength: 1
+          description: 위젯 토큰을 바인딩할 디바이스 ID
+          example: "device-uuid-1234"
 
-    HomeSnapshotGroup:
+    GenerateWidgetTokenResponse:
       type: object
       required:
-        - id
-        - name
+        - widgetToken
+        - expiresAt
       properties:
-        id:
+        widgetToken:
           type: string
-          description: 그룹 ID
-          example: group456
-        name:
-          type: string
-          description: 그룹 이름
-          example: 대학 동기
-        emoji:
-          type: string
-          nullable: true
-          description: 그룹 이모지
-          example: "🎓"
-        imageUrl:
-          type: string
-          format: uri
-          nullable: true
-          description: 그룹 이미지 URL
-          example: https://storage.googleapis.com/.../group.jpg
-        nextPromise:
-          allOf:
-            - $ref: '#/components/schemas/SnapshotPromise'
-          nullable: true
-          description: 다음 약속
+          description: Widget 전용 JWT
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresAt:
+          type: integer
+          format: int64
+          description: 만료 시각 Unix timestamp (seconds)
+          example: 1770940800
 
-    HomeSnapshotMeta:
+    GetWidgetSnapshotWithTokenRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          nullable: true
+          description: 토큰 바인딩 검증용 디바이스 ID
+          example: "device-uuid-1234"
+
+    WidgetTokenHttpErrorResponse:
       type: object
       required:
-        - todayCount
-        - pendingCount
-        - upcomingCount
-        - updatedAt
-        - version
+        - error
       properties:
-        todayCount:
-          type: integer
-          description: 오늘 약속 개수
-          example: 1
-        pendingCount:
-          type: integer
-          description: 응답 필요 약속 개수
-          example: 2
-        upcomingCount:
-          type: integer
-          description: 다가오는 약속 개수
-          example: 5
-        updatedAt:
+        error:
           type: string
-          format: date-time
-          description: 마지막 갱신 시간
-          example: "2026-02-01T10:30:00+09:00"
-        version:
-          type: integer
-          description: 스키마 버전
-          example: 1
+          description: HTTP 오류 메시지
+          example: Missing or invalid Authorization header
+        error_code:
+          type: string
+          nullable: true
+          description: 세부 오류 코드
+          example: TOKEN_REVOKED
 
     # ========================================
     # User
@@ -3227,16 +3443,24 @@ components:
           nullable: true
           description: LiveActivity 시작 시간 (약속 N분 전)
           example: 30
-        liveActivityScheduled:
-          type: boolean
+        liveActivitySchedule:
+          type: object
           nullable: true
-          description: LiveActivity 예약 완료 여부
-          example: false
-        liveActivityScheduledAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: LiveActivity 예약 시각
+          description: LiveActivity 스케줄링 상태
+          properties:
+            scheduled:
+              type: boolean
+              description: 예약 완료 여부
+            started:
+              type: boolean
+              description: Push to Start 전송 성공 후 시작 처리 여부
+            scheduledAt:
+              type: string
+              format: date-time
+              description: 예약 시각
+            version:
+              type: string
+              description: 스케줄 버전 UUID (stale 감지용)
         createdAt:
           type: string
           format: date-time
@@ -3513,6 +3737,7 @@ components:
         - group_invitation
         - group_update
         - attendance_response
+        - location_sharing_reminder
         - system
       example: promise_invitation
 
@@ -3913,6 +4138,7 @@ components:
                 - already-exists
                 - resource-exhausted
                 - failed-precondition
+                - method-not-allowed
                 - internal
                 - unavailable
                 - deadline-exceeded

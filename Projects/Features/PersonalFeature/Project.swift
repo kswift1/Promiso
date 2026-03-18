@@ -5,6 +5,7 @@ private let feature: Feature = .personal
 
 let project = Project(
   name: feature.fullName,
+  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)
@@ -19,6 +20,7 @@ let project = Project(
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "SharedFeature", path: "../SharedFeature"),
+        .project(target: "CreateScheduleFeature", path: "../CreateScheduleFeature"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],

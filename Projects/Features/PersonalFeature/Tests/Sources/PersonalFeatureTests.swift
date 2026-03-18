@@ -15,6 +15,7 @@
 import Testing
 import ComposableArchitecture
 import Clients
+import CreateScheduleFeature
 import SharedFeature
 @testable import PersonalFeature
 

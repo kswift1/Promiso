@@ -97,7 +97,7 @@ extension Auth {
           case .appleAuthorizationResult(.success(let authorization)):
             guard let nonce = state.pendingAppleLoginNonce else {
               state.isLoading = false
-              state.errorMessage = "로그인 요청에 실패했습니다. 다시 시도해주세요."
+              state.errorMessage = LocalizedStrings.Auth.loginRequestFailed
               return .none
             }
             return .run { send in
@@ -112,21 +112,21 @@ extension Auth {
               }
             }
             
-          case .appleAuthorizationResult(.failure(let error)):
+          case .appleAuthorizationResult(.failure):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = LocalizedStrings.Error.authInvalidAppleCredential
             return .none
-            
+
           case .authResponse(.success):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
             return .none
-            
+
           case .authResponse(.failure(let error)):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = error.localizedMessage
             return .none
           }
           
@@ -215,12 +215,12 @@ extension Auth {
                 animated: animated,
                 lines: [
                   .init(
-                    text: "약속을",
+                    text: LocalizedStrings.Auth.heroSchedulesWord,
                     font: .system(size: 48, weight: .black),
                     style: AnyShapeStyle(Color.pmtext.primary)
                   ),
                   .init(
-                    text: "더 특별하게.",
+                    text: LocalizedStrings.Auth.heroMoreSpecial,
                     font: .system(size: 48, weight: .black),
                     style: AnyShapeStyle(
                       LinearGradient(
@@ -234,12 +234,12 @@ extension Auth {
                     )
                   ),
                   .init(
-                    text: "소중한 순간들을",
+                    text: LocalizedStrings.Auth.heroPreciousMoments,
                     font: .system(size: 18, weight: .medium),
                     style: AnyShapeStyle(Color.pmtext.secondary)
                   ),
                   .init(
-                    text: "Promiso와 함께하세요.",
+                    text: LocalizedStrings.Auth.heroWithPromiso,
                     font: .system(size: 18, weight: .medium),
                     style: AnyShapeStyle(Color.pmtext.secondary)
                   )
@@ -352,8 +352,8 @@ extension Auth {
     let onGoogleLogin: () -> Void
     
     var body: some View {
-      VStack(spacing: 20) {
-        Text("CONTINUE WITH")
+        VStack(spacing: 20) {
+        Text(LocalizedStrings.Auth.continueWith)
           .font(.system(size: 14, weight: .medium))
           .tracking(2)
           .foregroundColor(.secondary)
@@ -363,7 +363,7 @@ extension Auth {
           HStack(spacing: 12) {
             Image(systemName: "apple.logo")
               .font(.system(size: 20, weight: .medium))
-            Text("Apple로 계속하기")
+            Text(LocalizedStrings.Auth.continueWithApple)
               .font(.system(size: 16, weight: .semibold))
           }
           .foregroundColor(.white)
@@ -380,7 +380,7 @@ extension Auth {
             ResourceKitAsset.googleLogo.swiftUIImage
               .resizable()
               .frame(width: 20, height: 20)
-            Text("Google로 계속하기")
+            Text(LocalizedStrings.Auth.continueWithGoogle)
               .font(.system(size: 16, weight: .semibold))
           }
           .foregroundColor(.primary)
@@ -511,5 +511,22 @@ extension Auth {
       animated: true
     )
     .preferredColorScheme(.light)
+  }
+}
+
+// MARK: - AuthClientError Localization
+
+extension AuthClientError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidCredentials: return LocalizedStrings.Error.authInvalidCredentials
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
+    case .network: return LocalizedStrings.Error.authNetwork
+    case .invalidAppleCredential: return LocalizedStrings.Error.authInvalidAppleCredential
+    case .missingIdentityToken: return LocalizedStrings.Error.authMissingIdentityToken
+    case .providerUnavailable: return LocalizedStrings.Error.authProviderUnavailable
+    case .isGroupHost: return LocalizedStrings.Error.authIsGroupHost
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
   }
 }

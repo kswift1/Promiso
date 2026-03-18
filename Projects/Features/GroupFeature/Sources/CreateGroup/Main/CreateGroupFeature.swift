@@ -28,6 +28,8 @@ extension CreateGroup {
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     public init() {}
 
@@ -56,11 +58,16 @@ extension CreateGroup {
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
+      var isKakaoSharing: Bool = false
 
       // Settings (그룹 생성 후 초기 설정)
       var notificationEnabled: Bool = true
       var calendarSyncEnabled: Bool = true
       var isSavingSettings: Bool = false
+
+      // Group Color (초기 설정)
+      var selectedGroupColor: GroupColor? = .purple
+      var existingGroupColorMap: [GroupColor: String]
 
       // Notification Permission
       var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
@@ -71,6 +78,11 @@ extension CreateGroup {
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
+        self.existingGroupColorMap = currentUser.groups.reduce(into: [:]) { result, info in
+          if let color = info.groupColor {
+            result[color] = info.name
+          }
+        }
       }
 
       // Validation
@@ -113,11 +125,12 @@ extension CreateGroup {
         case errorAlertDismissed
         // Success
         case successAcknowledged
+        case kakaoInviteShareTapped
         // Settings
         case notificationToggled(Bool)
         case calendarSyncToggled(Bool)
+        case groupColorSelected(GroupColor?)
         case settingsCompleted
-        case settingsSkipped
         case settingsAppeared
         // Calendar Permission Info Alert
         case calendarPermissionInfoAlertDismissed
@@ -132,12 +145,14 @@ extension CreateGroup {
         case notificationPermissionResponse(Bool)
         case calendarAuthStatusChecked(CalendarAuthorizationStatus)
         case calendarPermissionResponse(Bool)
+        case kakaoInviteShareResult(KakaoShareResult)
       }
 
       @CasePathable
       public enum Delegate: Sendable {
         case dismiss
         case groupCreated(id: String)
+        case groupCreatedAndCreateSchedule(id: String)
       }
     }
 
@@ -189,20 +204,44 @@ extension CreateGroup {
             state.creationError = nil
             return .none
 
+          case .kakaoInviteShareTapped:
+            guard case .success(let result) = state.step else { return .none }
+            state.isKakaoSharing = true
+            let groupID = result.id
+            let groupName = result.name
+            let inviteCode = result.inviteCode
+            let maxMembers = state.maxMembers.rawValue
+            let inviterName = state.currentUser.nickname
+            return .run { [analyticsClient, kakaoShareClient, hapticFeedback] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.log(
+                .groupInviteLinkShared(
+                  groupID: groupID,
+                  groupName: groupName,
+                  shareMethod: .kakao
+                )
+              )
+              let shareResult = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                1,
+                maxMembers,
+                nil,
+                inviterName,
+                []
+              )
+              await send(.internal(.kakaoInviteShareResult(shareResult)))
+            }
+
           case .successAcknowledged:
             guard case .success(let result) = state.step else { return .none }
-            state.step = .settings(result)
-            // 알림 및 캘린더 권한 상태 확인
-            return .merge(
-              .run { send in
-                let status = await notificationClient.getAuthorizationStatus()
-                await send(.internal(.notificationAuthStatusChecked(status)))
-              },
-              .run { send in
-                let status = eventKitClient.authorizationStatus()
-                await send(.internal(.calendarAuthStatusChecked(status)))
-              }
+            analyticsClient.log(
+              .groupCreated(
+                groupID: result.id,
+                groupName: result.name
+              )
             )
+            return .send(.delegate(.groupCreatedAndCreateSchedule(id: result.id)))
 
           case .notificationToggled(let enabled):
             // OFF로 전환할 때는 권한 체크 불필요
@@ -269,6 +308,12 @@ extension CreateGroup {
             state.showCalendarPermissionInfoAlert = false
             return .none
 
+          case .groupColorSelected(let color):
+            state.selectedGroupColor = color
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.selection()
+            }
+
           case .settingsAppeared:
             // 설정에서 돌아왔을 때 권한 상태 새로고침
             return .merge(
@@ -289,9 +334,13 @@ extension CreateGroup {
               enabled: state.notificationEnabled,
               calendarSync: state.calendarSyncEnabled
             )
+            let selectedColor = state.selectedGroupColor
             return .run { [groupId = result.id] send in
               do {
                 try await groupClient.updateGroupNotificationSettings(groupId, settings)
+                if let color = selectedColor {
+                  try await groupClient.updateGroupColor(groupId, color)
+                }
                 await send(.internal(.saveSettingsResponse(.success(()))))
               } catch {
                 await send(.internal(.saveSettingsResponse(.failure(error))))
@@ -299,16 +348,6 @@ extension CreateGroup {
             }
             .cancellable(id: CancelID.saveSettings, cancelInFlight: true)
 
-          case .settingsSkipped:
-            guard case .settings(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
-            )
-            return .send(.delegate(.groupCreated(id: result.id)))
           }
 
         case .internal(let internalAction):
@@ -319,26 +358,30 @@ extension CreateGroup {
 
           case .createGroupResponse(.success(let result)):
             state.isCreating = false
-            state.step = .success(result)
-            return .none
+            state.step = .settings(result)
+            // 알림 및 캘린더 권한 상태 확인
+            return .merge(
+              .run { send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationAuthStatusChecked(status)))
+              },
+              .run { send in
+                let status = eventKitClient.authorizationStatus()
+                await send(.internal(.calendarAuthStatusChecked(status)))
+              }
+            )
 
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
-            state.creationError = error.localizedDescription
+            state.creationError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
             // .failure의 경우에도 그룹 생성은 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
-            )
-            return .send(.delegate(.groupCreated(id: result.id)))
+            state.step = .success(result)
+            return .none
 
           case .notificationAuthStatusChecked(let status):
             let previousStatus = state.notificationAuthStatus
@@ -394,6 +437,17 @@ extension CreateGroup {
               state.showCalendarPermissionInfoAlert = true
             }
             return .none
+
+          case .kakaoInviteShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
           }
 
         case .binding:
@@ -424,7 +478,7 @@ public enum MaxMembers: Int, CaseIterable, Equatable, Sendable {
   case ten = 10
 
   var displayText: String {
-    "\(rawValue)명"
+    LocalizedStrings.CreateGroup.membersCount(rawValue)
   }
 }
 

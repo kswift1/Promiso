@@ -16,13 +16,6 @@ jest.mock('@google/generative-ai', () => ({
   })),
 }));
 
-// Secret mock
-jest.mock('firebase-functions/params', () => ({
-  defineSecret: jest.fn(() => ({
-    value: () => 'test-gemini-key',
-  })),
-}));
-
 describe('generateEmoji', () => {
   let generateEmoji: any;
 

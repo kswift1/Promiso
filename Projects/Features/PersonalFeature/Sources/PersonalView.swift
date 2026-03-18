@@ -1,7 +1,9 @@
-import SwiftUI
+import Clients
 import ComposableArchitecture
+import CreateScheduleFeature
 import PromisoShared
 import SharedFeature
+import SwiftUI
 
 extension PersonalMode {
   public struct RootView: View {
@@ -40,7 +42,17 @@ extension PersonalMode {
       .sheet(
         item: $store.scope(state: \.createEvent, action: \.createEvent)
       ) { createEventStore in
-        CreatePersonalEvent.RootView(store: createEventStore)
+        CreatePersonalEvent.RootView(
+          store: createEventStore,
+          dismissButtonVisibility: .hiddenForCreateMode
+        )
+          .presentationDetents([.large, .medium])
+          .presentationDragIndicator(.visible)
+      }
+      .sheet(
+        item: $store.scope(state: \.createRecurringEvent, action: \.createRecurringEvent)
+      ) { createRecurringStore in
+        CreateRecurringPersonalEvent.RootView(store: createRecurringStore)
           .presentationDetents([.large, .medium])
           .presentationDragIndicator(.visible)
       }
@@ -49,18 +61,22 @@ extension PersonalMode {
       ) { detailStore in
         PersonalEventDetail.RootView(store: detailStore)
       }
+      .navigationDestination(
+        item: $store.scope(state: \.recurringEventDetail, action: \.recurringEventDetail)
+      ) { detailStore in
+        RecurringPersonalEventDetail.RootView(store: detailStore)
+      }
     }
 
     // MARK: - Header
 
-    private var defaultMode: PromiseMode {
-      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
-      return saved == "own" ? .personal : .group
+    private var defaultMode: ScheduleMode {
+      store.defaultScheduleTabMode == "own" ? .personal : .group
     }
 
     @ViewBuilder
     private var headerSection: some View {
-      PromiseTabHeader(
+      ScheduleTabHeader(
         selectedMode: .personal,
         defaultMode: defaultMode
       ) { mode in
@@ -93,6 +109,9 @@ extension PersonalMode {
       if store.selectedFilter == .past {
         return !store.pastEventsState.isLoaded && !store.pastEventsState.isFailed
       }
+      if store.selectedFilter == .recurring {
+        return !store.recurringEventsState.isLoaded && !store.recurringEventsState.isFailed
+      }
       return !store.eventsState.isLoaded && !store.eventsState.isFailed
     }
 
@@ -100,20 +119,35 @@ extension PersonalMode {
       if store.selectedFilter == .past {
         return store.pastEventsState.error
       }
+      if store.selectedFilter == .recurring {
+        return store.recurringEventsState.error
+      }
       return store.eventsState.error
     }
 
     @ViewBuilder
     private var contentView: some View {
       Group {
-        if isLoading {
-          loadingView
-        } else if let error = currentError {
-          errorView(error: error)
-        } else if store.filteredEvents.isEmpty {
-          emptyView
+        if store.selectedFilter == .recurring {
+          if isLoading {
+            loadingView
+          } else if let error = currentError {
+            errorView(error: error)
+          } else if (store.recurringEventsState.value ?? []).isEmpty {
+            emptyView
+          } else {
+            recurringEventListView
+          }
         } else {
-          eventListView
+          if isLoading {
+            loadingView
+          } else if let error = currentError {
+            errorView(error: error)
+          } else if store.filteredEvents.isEmpty {
+            emptyView
+          } else {
+            eventListView
+          }
         }
       }
       .animation(.snappy, value: store.selectedFilter)
@@ -163,19 +197,22 @@ extension PersonalMode {
       case .future: return "🗓️"
       case .all: return "📭"
       case .past: return "🕐"
+      case .recurring: return "🔄"
       }
     }
 
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
       case .today:
-        return "오늘 일정이 없어요\n여유로운 하루를 보내세요"
+        return LocalizedStrings.Personal.emptyToday
       case .future:
-        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyFuture
       case .all:
-        return "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyAll
       case .past:
-        return "지난 일정이 없어요"
+        return LocalizedStrings.Personal.emptyPast
+      case .recurring:
+        return LocalizedStrings.Personal.emptyRecurring
       }
     }
 
@@ -190,12 +227,12 @@ extension PersonalMode {
             .font(.system(size: 50))
             .foregroundStyle(.secondary)
 
-          Text(error.localizedDescription)
+          Text(LocalizedStrings.Error.unknownError)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
 
-          Button("다시 시도") {
+          Button(LocalizedStrings.Common.retry) {
             store.send(.view(.refreshEvents))
           }
           .buttonStyle(.bordered)
@@ -213,11 +250,24 @@ extension PersonalMode {
     @ViewBuilder
     private var eventListView: some View {
       List {
-        ForEach(store.groupedEvents, id: \.date) { section in
+        ForEach(store.groupedEvents, id: \.day) { section in
           Section {
             ForEach(section.events) { event in
               PersonalEventCard(
                 event: event,
+                weather: store.weatherByEventId[event.id],
+                conflicts: (store.conflictsByEventId[event.id] ?? []).map { conflict in
+                  ConflictInfo(
+                    title: conflict.title,
+                    overlapMinutes: conflict.overlapMinutes,
+                    gapMinutes: conflict.gapMinutes,
+                    startAt: conflict.startAt,
+                    endAt: conflict.endAt,
+                    emoji: conflict.emoji,
+                    severity: conflict.severity == .confirmed ? .confirmed : .pending
+                  )
+                },
+                isCheckingConflicts: store.conflictCheckingIds.contains(event.id),
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },
@@ -233,14 +283,14 @@ extension PersonalMode {
                 Button(role: .destructive) {
                   store.send(.view(.deleteEvent(event)))
                 } label: {
-                  Label("삭제", systemImage: "trash")
+                  Label(LocalizedStrings.Common.delete, systemImage: "trash")
                 }
                 .tint(.red)
 
                 Button {
                   store.send(.view(.editEvent(event)))
                 } label: {
-                  Label("수정", systemImage: "pencil")
+                  Label(LocalizedStrings.Common.edit, systemImage: "pencil")
                 }
               }
               .listRowSeparator(.hidden)
@@ -248,7 +298,7 @@ extension PersonalMode {
               .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
             }
           } header: {
-            dateSectionHeader(section.date)
+            dateSectionHeader(section.title)
           }
           .listSectionSeparator(.hidden)
         }
@@ -265,6 +315,60 @@ extension PersonalMode {
         store.send(.view(.refreshEvents))
       }
       .animation(.snappy, value: store.eventListAnimationKey)
+    }
+
+    @ViewBuilder
+    private var recurringEventListView: some View {
+      let recurringEvents = store.recurringEventsState.value ?? []
+      List {
+        ForEach(recurringEvents) { event in
+          RecurringEventRuleCard(event: event) {
+            store.send(.view(.recurringEventTapped(event)))
+          }
+          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+              store.send(.view(.deleteRecurringEvent(event)))
+            } label: {
+              Label(LocalizedStrings.Common.delete, systemImage: "trash")
+            }
+            .tint(.red)
+
+            Button {
+              store.send(.view(.editRecurringEvent(event)))
+            } label: {
+              Label(LocalizedStrings.Common.edit, systemImage: "pencil")
+            }
+          }
+          .contextMenu {
+            Button {
+              store.send(.view(.recurringEventTapped(event)))
+            } label: {
+              Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
+            }
+            Button {
+              store.send(.view(.editRecurringEvent(event)))
+            } label: {
+              Label(LocalizedStrings.Common.edit, systemImage: "pencil")
+            }
+            Button(role: .destructive) {
+              store.send(.view(.deleteRecurringEvent(event)))
+            } label: {
+              Label(LocalizedStrings.Common.delete, systemImage: "trash")
+            }
+          }
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        }
+
+        // FAB 공간 확보
+        Color.clear
+          .frame(height: 80)
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
+      }
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
     }
 
     @ViewBuilder
@@ -285,8 +389,18 @@ extension PersonalMode {
 
     @ViewBuilder
     private var fabButton: some View {
-      Button {
-        store.send(.view(.createNewEventTapped))
+      Menu {
+        Button {
+          store.send(.view(.createOneTimeEventTapped))
+        } label: {
+          Label(LocalizedStrings.Personal.addPersonalEvent, systemImage: "calendar.badge.plus")
+        }
+
+        Button {
+          store.send(.view(.createRecurringEventTapped))
+        } label: {
+          Label(LocalizedStrings.Personal.addRecurringEvent, systemImage: "repeat")
+        }
       } label: {
         ZStack {
           Circle()
@@ -302,6 +416,80 @@ extension PersonalMode {
       .padding(.trailing, 16)
       .padding(.bottom, 16)
     }
+  }
+}
+
+// MARK: - Recurring Event Rule Card
+
+private struct RecurringEventRuleCard: View {
+  let event: RecurringPersonalEventModel
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      HStack(alignment: .top, spacing: 12) {
+        Text(event.displayEmoji)
+          .font(.system(size: 44))
+
+        VStack(alignment: .leading, spacing: 10) {
+          HStack(alignment: .top) {
+            Text(event.title)
+              .font(.system(size: 19, weight: .bold))
+              .foregroundStyle(.primary)
+            Spacer()
+            // 반복 규칙 배지
+            HStack(spacing: 4) {
+              Image(systemName: "repeat")
+                .font(.system(size: 12, weight: .semibold))
+              Text(event.recurrence.displayText)
+                .font(.system(size: 12, weight: .semibold))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.teal.opacity(0.1))
+            .foregroundStyle(.teal)
+            .clipShape(Capsule())
+          }
+
+          VStack(alignment: .leading, spacing: 6) {
+            // 시간
+            HStack(spacing: 4) {
+              Text("⏰")
+                .font(.system(size: 14))
+              Text(event.timeText + (event.endTimeText.map { " ~ \($0)" } ?? ""))
+                .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(.primary)
+
+            // 장소
+            if let location = event.location {
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
+                Text(location.name)
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundStyle(.primary)
+            }
+
+            // 알림
+            if event.reminderMinutesBefore != nil {
+              HStack(spacing: 4) {
+                Image(systemName: "bell.fill")
+                  .font(.system(size: 12))
+                Text(LocalizedStrings.Personal.reminderConfigured)
+                  .font(.system(size: 13, weight: .medium))
+              }
+              .foregroundStyle(.secondary)
+            }
+          }
+        }
+      }
+      .padding(16)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .adaptiveGlassCard()
   }
 }
 

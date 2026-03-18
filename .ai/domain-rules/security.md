@@ -17,6 +17,8 @@
 | S7 | `promises/{promiseId}` | 그룹 멤버만 | 조건부 | `uid in groups/{groupId}.memberIds` |
 | S8 | `promises` votes 수정 | — | 그룹 멤버 | `votes` + `updatedAt` 필드만 변경 가능 |
 | S9 | `notifications/{userId}/**` | 본인만 | 제한적 | 생성: 불가(Functions만), 수정: `isRead`/`readAt` 필드만 |
+| S10a | `entitlements/{userId}` | 본인만 | 서버만 | `auth.uid == userId`, 쓰기 Cloud Functions 전용 |
+| S10b | `entitlementOverrides/{userId}` | 본인만 | 서버만 | `auth.uid == userId`, 쓰기 Cloud Functions 전용 |
 | S10 | 기타 모든 경로 | 차단 | 차단 | `allow read, write: if false` |
 
 ---

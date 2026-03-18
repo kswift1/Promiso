@@ -62,13 +62,6 @@ public struct GlassActionButton: View {
             .interactive(),
           in: .rect(cornerRadius: 14)
         )
-        .shadow(
-          color: isPrimary
-          ? Color(red: 0.6, green: 0.4, blue: 0.9).opacity(0.28)
-          : Color.black.opacity(0.1),
-          radius: 12,
-          y: 6
-        )
     }
     .buttonStyle(.plain)
     .disabled(!isEnabled)

@@ -224,24 +224,11 @@ extension NotificationClient: DependencyKey {
 
 // MARK: - Error
 
-public enum NotificationClientError: Error, Equatable, LocalizedError {
+public enum NotificationClientError: Error, Equatable {
   case authenticationRequired
   case tokenNotFound
   case saveFailed
   case deleteFailed
-
-  public var errorDescription: String? {
-    switch self {
-    case .authenticationRequired:
-      return "로그인이 필요합니다."
-    case .tokenNotFound:
-      return "FCM 토큰을 찾을 수 없습니다."
-    case .saveFailed:
-      return "토큰 저장에 실패했습니다."
-    case .deleteFailed:
-      return "토큰 삭제에 실패했습니다."
-    }
-  }
 }
 
 // MARK: - Dependency Registration

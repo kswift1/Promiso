@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import ResourceKit
@@ -13,17 +14,17 @@ extension NotificationPermission {
     @Environment(\.scenePhase) private var scenePhase
 
     private let notifications: [(title: String, body: String)] = [
-      ("새 약속 도착 📩", "민수님이 대학 동기 모임을 제안했어요. 확인해주세요!"),
-      ("대학 동기 모임 약속 확정! 🎉", "1월 25일 오후 6시에 만나요!"),
-      ("새 멤버 합류 👋", "예은님이 대학 동기에 들어왔어요"),
-      ("대학 동기 모임 변경 📝", "약속 정보가 수정됐어요. 확인해주세요!"),
+      (LocalizedStrings.Shared.notificationPreviewTitle, LocalizedStrings.Shared.notificationPreviewBody),
+      (LocalizedStrings.Shared.notificationPreviewTitle, LocalizedStrings.Shared.notificationPreviewBody),
+      (LocalizedStrings.Shared.notificationPreviewTitle, LocalizedStrings.Shared.notificationPreviewBody),
+      (LocalizedStrings.Shared.notificationPreviewTitle, LocalizedStrings.Shared.notificationPreviewBody),
     ]
 
     private let benefits: [String] = [
-      "약속 초대",
-      "확정 알림",
-      "멤버 합류",
-      "약속 변경",
+      LocalizedStrings.Shared.benefitInvite,
+      LocalizedStrings.Shared.benefitConfirm,
+      LocalizedStrings.Shared.benefitMember,
+      LocalizedStrings.Shared.benefitChange,
     ]
 
     public init(store: StoreOf<Feature>) {
@@ -39,7 +40,7 @@ extension NotificationPermission {
         // 하단 컨텐츠
         VStack(spacing: 16) {
           // 타이틀
-          Text("약속을 놓치지 않으려면\n알림을 켜주세요")
+          Text(LocalizedStrings.Shared.notificationTitle)
             .font(.title3.bold())
             .multilineTextAlignment(.center)
             .foregroundStyle(Color.pmtext.primary)
@@ -54,6 +55,8 @@ extension NotificationPermission {
                 Text(benefit)
                   .font(.system(size: 13, weight: .medium))
                   .foregroundStyle(Color.pmtext.secondary)
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.85)
               }
               .padding(.horizontal, 10)
               .padding(.vertical, 6)
@@ -86,6 +89,10 @@ extension NotificationPermission {
         .padding(.bottom, UIScreen.main.bounds.height < 700 ? 20 : 40)
       }
       .auroraBackground()
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.notificationPermission.rawValue,
+        class: "NotificationPermissionView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -195,7 +202,7 @@ extension NotificationPermission {
 
             Spacer(minLength: 0)
 
-            Text("지금")
+            Text(LocalizedStrings.Shared.now)
               .font(.caption2)
               .fontWeight(.medium)
               .foregroundStyle(.gray)
@@ -225,22 +232,26 @@ extension NotificationPermission {
     // MARK: - Animation
 
     private func loopAnimation() async {
-      try? await Task.sleep(for: .seconds(0.5))
+      do {
+        try await Task.sleep(for: .seconds(0.5))
 
-      withAnimation(.smooth(duration: 1)) {
-        animateNotification = true
+        withAnimation(.smooth(duration: 1)) {
+          animateNotification = true
+        }
+
+        try await Task.sleep(for: .seconds(4))
+
+        withAnimation(.smooth(duration: 1)) {
+          animateNotification = false
+        }
+
+        guard loopContinues else { return }
+        try await Task.sleep(for: .seconds(1.3))
+        currentNotificationIndex = (currentNotificationIndex + 1) % notifications.count
+        await loopAnimation()
+      } catch {
+        // Task 취소 시 안전하게 종료
       }
-
-      try? await Task.sleep(for: .seconds(4))
-
-      withAnimation(.smooth(duration: 1)) {
-        animateNotification = false
-      }
-
-      guard loopContinues else { return }
-      try? await Task.sleep(for: .seconds(1.3))
-      currentNotificationIndex = (currentNotificationIndex + 1) % notifications.count
-      await loopAnimation()
     }
 
     // MARK: - Colors

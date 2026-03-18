@@ -12,7 +12,6 @@ import SwiftUI
 // MARK: - Feature Namespace
 
 public enum AppEntry {}
-extension AppEntry.Feature.State: Sendable {}
 extension AppEntry.Feature.Destination.State: Equatable {}
 
 // MARK: - Feature Implementation
@@ -105,7 +104,6 @@ extension AppEntry {
     private enum SubscriptionCancelID {
       case fcmToken
       case pushNotificationTap
-      case appRestart
     }
     
     @CasePathable
@@ -125,8 +123,6 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
-      case subscribeAppRestart
-      case appRestartRequested
       case cancelSubscriptions
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
@@ -208,8 +204,7 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap)),
-              .send(.internal(.subscribeAppRestart))
+              .send(.internal(.subscribePushNotificationTap))
             )
 
           case .startSessionCheck:
@@ -222,14 +217,8 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              // 온보딩 인트로 완료 여부에 따라 분기
-              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
-              if !hasCompletedOnboarding {
-                state.isFullOnboarding = true
-                state.destination = .onboardingIntro(OnboardingIntro.State())
-              } else {
-                state.destination = .auth(Auth.Feature.State())
-              }
+              state.isFullOnboarding = true
+              state.destination = .onboardingIntro(OnboardingIntro.State())
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -262,8 +251,9 @@ extension AppEntry {
             return .none
 
           case .checkNotificationPermission(let userModel):
-            return .run { send in
+            return .run { [analyticsClient] send in
               let status = await notificationClient.getAuthorizationStatus()
+              analyticsClient.setNotificationPermissionStatus(status)
               let isAuthorized = status == .authorized
               await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
             }
@@ -321,46 +311,32 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
 
-          case .subscribeAppRestart:
-            return .publisher {
-              NotificationCenter.default
-                .publisher(for: AppConstants.Notifications.appRestartRequested)
-                .map { _ in Action.internal(.appRestartRequested) }
-            }
-            .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
-
-          case .appRestartRequested:
-            // 앱 상태 리셋 - Splash부터 다시 시작
-            state.reset()
-
-            // 시간 포맷 다시 로드
-            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
-              AppConstants.UserDefaults.use24HourFormat
-            )
-
-            // 테마 모드는 RootTab에서 preferredColorScheme으로 자동 적용됨
-            // (UserDefaults.preferredThemeMode 값을 직접 읽음)
-
-            return .send(.internal(.startSessionCheck))
-
           case .cancelSubscriptions:
             return .merge(
               .cancel(id: SubscriptionCancelID.fcmToken),
-              .cancel(id: SubscriptionCancelID.pushNotificationTap),
-              .cancel(id: SubscriptionCancelID.appRestart)
+              .cancel(id: SubscriptionCancelID.pushNotificationTap)
             )
 
           case .transitionToMain(let userModel, let isSignup):
             WidgetDataManager.saveUserId(userModel.id)
             clarityClient.setUser(userModel.id, userModel.nickname)
+            let providerIdentifier = userModel.provider.providerTypeIdentifier
+            let personalCalendarSyncEnabled = UserDefaults.standard.bool(
+              forKey: AppConstants.UserDefaults.personalCalendarSync
+            )
             analyticsClient.setUserID(userModel.id)
-            analyticsClient.setUserProperty(userModel.nickname, "nickname")
-
-            if isSignup {
-              analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
-            } else {
-              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
-            }
+            analyticsClient.setUserProperty(userModel.nickname, .nickname)
+            analyticsClient.setUserProperty(providerIdentifier, .authProvider)
+            analyticsClient.setGroupMembershipProperties(userModel.groups)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: personalCalendarSyncEnabled,
+              groups: userModel.groups
+            )
+            analyticsClient.log(
+              isSignup
+                ? .userSignup(loginMethod: providerIdentifier)
+                : .userLogin(loginMethod: providerIdentifier)
+            )
 
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
 
@@ -383,11 +359,14 @@ extension AppEntry {
               }
             }
 
+            var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
+
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
-              return .merge(routeDeeplink(deeplink), cacheEffect, .send(.internal(.requestFCMToken)))
+              effects.append(routeDeeplink(deeplink))
             }
-            return .merge(cacheEffect, .send(.internal(.requestFCMToken)))
+
+            return .merge(effects)
 
           case .requestFCMToken:
             return .run { send in
@@ -403,9 +382,11 @@ extension AppEntry {
             return .send(.internal(.fcmTokenReceived(token)))
           }
 
-        case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
-          // 인트로 완료 → 알림 권한 요청 (플래그는 알림 권한 완료 후 저장)
-          state.notificationPermission = NotificationPermission.Feature.State()
+        case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
+          // 온보딩 완료 플래그 저장
+          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
+          state.isFullOnboarding = true
+          state.destination = .auth(Auth.Feature.State())
           return .none
 
         case .destination(.presented(.onboardingStart(.delegate(.completed)))):
@@ -416,32 +397,12 @@ extension AppEntry {
           }
           return .none
 
-        case .destination(.presented(.onboardingStart(.delegate(.enterInviteCode)))):
-          // "입력하러가기" → 메인 + 그룹 참여 열기
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            state.pendingDeeplink = .joinGroup(inviteCode: "")
-            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-          }
-          return .none
-
-        case .destination(.presented(.onboardingStart(.delegate(.createGroup)))):
-          // "그룹 생성하기" → 메인 + 그룹 생성 열기
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            return .concatenate(
-              .send(.internal(.transitionToMain(userModel, isSignup: true))),
-              .send(.destination(.presented(.main(.openCreateGroup))))
-            )
-          }
-          return .none
-
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
           state.providerProfileImageURL = providerProfileImageURL
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
-          analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
+          analyticsClient.log(.profileSetupCompleted)
           if state.isFullOnboarding {
             // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
             state.pendingUserForMain = userModel
@@ -455,14 +416,12 @@ extension AppEntry {
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
           state.notificationPermission = nil
-          // 온보딩 완료 플래그 저장 (인트로 + 알림 권한까지 완료)
-          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           if let userModel = state.pendingUserForMain {
-            // 기존 플로우: 프로필 설정 후 알림 권한 → 메인 전환
+            // 프로필 설정 후 알림 권한 → 메인 전환
             state.pendingUserForMain = nil
             return .send(.internal(.transitionToMain(userModel, isSignup: true)))
           } else {
-            // 풀 온보딩 플로우: 인트로 후 알림 권한 → 로그인 화면
+            // 비-온보딩 경로에서 알림 권한 → 로그인 화면
             state.destination = .auth(Auth.Feature.State())
           }
           return .none
@@ -483,6 +442,13 @@ extension AppEntry {
 
             // Analytics 유저 정보 제거
             analyticsClient.setUserID(nil)
+            analyticsClient.setUserProperty(nil, .nickname)
+            analyticsClient.setUserProperty(nil, .authProvider)
+            analyticsClient.setUserProperty(nil, .subscriptionTier)
+            analyticsClient.setUserProperty(nil, .notificationPermissionStatus)
+            analyticsClient.setUserProperty(nil, .hasGroup)
+            analyticsClient.setUserProperty(nil, .groupCountBucket)
+            analyticsClient.setUserProperty(nil, .calendarSyncEnabled)
 
             do {
               try await notificationClient.deleteFCMToken()
@@ -538,15 +504,15 @@ extension AppEntry {
     // MARK: - Alert Strings
 
     private enum AlertStrings {
-      static let forceUpdateTitle = "업데이트 필요"
-      static let recommendUpdateTitle = "새 버전 안내"
+      static let forceUpdateTitle = LocalizedStrings.AppEntry.forceUpdateTitle
+      static let recommendUpdateTitle = LocalizedStrings.AppEntry.recommendUpdateTitle
 
       static func forceUpdateMessage(current: String, required: String) -> String {
-        "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+        LocalizedStrings.AppEntry.forceUpdateMessage(current, required)
       }
 
       static func recommendUpdateMessage(current: String, recommended: String) -> String {
-        "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
+        LocalizedStrings.AppEntry.recommendUpdateMessage(current, recommended)
       }
     }
 
@@ -579,11 +545,11 @@ extension AppEntry {
         ),
         presenting: store.updateAlert
       ) { alertState in
-        Button("업데이트") {
+        Button(LocalizedStrings.AppEntry.updateAction) {
           store.send(.updateAlert(.updateTapped))
         }
         if case .recommendUpdate = alertState {
-          Button("나중에", role: .cancel) {
+          Button(LocalizedStrings.AppEntry.updateLater, role: .cancel) {
             store.send(.updateAlert(.laterTapped))
           }
         }
@@ -652,7 +618,7 @@ extension AppEntry {
       if store.splash != .hidden {
         SplashView(
           config: .init(forceHideLogo: false),
-          logo: { ResourceKitAsset.fingerPromise.swiftUIImage },
+          logo: { ResourceKitAsset.fingerSchedule.swiftUIImage },
           animateOut: store.splash == .animatingOut,
           isCompleted: {
             store.send(.view(.splashAnimationCompleted))
@@ -709,8 +675,8 @@ extension AppEntry.Feature {
   /// DeeplinkDestination을 RootTab으로 라우팅하는 Effect 생성
   private func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
     switch destination {
-    case .promise(let promiseId, let groupId):
-      let groupDeeplink = GroupMain.Deeplink.promise(promiseId: promiseId, groupId: groupId)
+    case .schedule(let scheduleId, let groupId):
+      let groupDeeplink = GroupMain.Deeplink.schedule(scheduleId: scheduleId, groupId: groupId)
       return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
 
     case .group(let groupId):
@@ -721,20 +687,23 @@ extension AppEntry.Feature {
       return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
 
     case .liveActivityETA:
-      // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+      // Widget "직접 입력" 버튼 → LiveScheduleExpandedView + ETA 시트 열기
       return .send(.destination(.presented(.main(.openLiveActivityETASheet))))
 
-    case .livePromise:
-      // LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
-      return .send(.destination(.presented(.main(.openLivePromiseDetail))))
+    case .liveSchedule:
+      // LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
 
     case .create:
-      // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
-      return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
+      // Widget "일정 만들기" 버튼 → 그룹 탭 이동 + 일정 생성 (그룹 있을 때만)
+      return .send(.destination(.presented(.main(.openCreateScheduleIfPossible))))
 
     case .personalEvent(let eventId):
       // Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
       return .send(.destination(.presented(.main(.openPersonalEventDetail(eventId: eventId)))))
+
+    case .proPlan:
+      return .send(.destination(.presented(.main(.openProPlan))))
     }
   }
 

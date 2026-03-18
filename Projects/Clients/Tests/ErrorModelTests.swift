@@ -11,7 +11,6 @@
 //  ## 테스트 목적
 //  - AppError: localizedDescription, errorDescription, 초기화 방식 검증
 //  - UserProfileError: 각 케이스별 errorDescription 한글 메시지 검증
-//  - UserPlan: displayName 검증
 //  - UserSettings: 기본값 검증
 //  - ProviderInfo: 초기화, 속성 검증
 //
@@ -72,68 +71,10 @@ struct AppErrorTests {
 @Suite("UserProfileError 테스트")
 struct UserProfileErrorTests {
 
-  @Test("invalidData 에러 메시지")
-  func invalidData_errorDescription() {
-    let error = UserProfileError.invalidData
-    #expect(error.errorDescription == "프로필 데이터 형식이 올바르지 않습니다.")
-  }
-
-  @Test("userNotFound 에러 메시지")
-  func userNotFound_errorDescription() {
-    let error = UserProfileError.userNotFound
-    #expect(error.errorDescription == "사용자를 찾을 수 없습니다.")
-  }
-
-  @Test("uploadFailed 에러 메시지")
-  func uploadFailed_errorDescription() {
-    let error = UserProfileError.uploadFailed
-    #expect(error.errorDescription == "프로필 업로드에 실패했습니다.")
-  }
-
-  @Test("networkError 에러 메시지")
-  func networkError_errorDescription() {
-    let error = UserProfileError.networkError
-    #expect(error.errorDescription == "네트워크 연결을 확인해주세요.")
-  }
-
-  @Test("authenticationRequired 에러 메시지")
-  func authenticationRequired_errorDescription() {
-    let error = UserProfileError.authenticationRequired
-    #expect(error.errorDescription == "로그인이 필요합니다.")
-  }
-
-  @Test("permissionDenied 에러 메시지")
-  func permissionDenied_errorDescription() {
-    let error = UserProfileError.permissionDenied
-    #expect(error.errorDescription == "권한이 없습니다.")
-  }
-
   @Test("UserProfileError는 Equatable 비교 가능")
   func equatable_sameCases_areEqual() {
     #expect(UserProfileError.invalidData == UserProfileError.invalidData)
     #expect(UserProfileError.userNotFound != UserProfileError.networkError)
-  }
-}
-
-// MARK: - UserPlan 테스트
-
-@Suite("UserPlan 테스트")
-struct UserPlanTests {
-
-  @Test("free 플랜 displayName은 '무료'")
-  func free_displayName() {
-    #expect(UserPlan.free.displayName == "무료")
-  }
-
-  @Test("pro 플랜 displayName은 '프로'")
-  func pro_displayName() {
-    #expect(UserPlan.pro.displayName == "프로")
-  }
-
-  @Test("UserPlan rawValue 올바름")
-  func rawValues() {
-    #expect(UserPlan.free.rawValue == "free")
-    #expect(UserPlan.pro.rawValue == "pro")
   }
 }
 
@@ -146,17 +87,14 @@ struct UserSettingsTests {
   func defaultSettings_haveCorrectValues() {
     let settings = UserSettings.default
     #expect(settings.notificationEnabled == true)
-    #expect(settings.plan == .free)
   }
 
   @Test("커스텀 초기화")
   func customInit_setsProperties() {
     let settings = UserSettings(
-      notificationEnabled: false,
-      plan: .pro
+      notificationEnabled: false
     )
     #expect(settings.notificationEnabled == false)
-    #expect(settings.plan == .pro)
   }
 }
 

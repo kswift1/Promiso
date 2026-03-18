@@ -103,3 +103,93 @@ export {getFAQs} from "./functions/faq";
 // ============================================================================
 export {searchPlaces} from "./functions/kakaoMap";
 
+// ============================================================================
+// Weather Functions (기상청 API 프록시)
+// ============================================================================
+export {getWeather} from "./functions/weather";
+
+// ============================================================================
+// Briefing Functions (하루 브리핑)
+// ============================================================================
+export {generateBriefing} from "./functions/briefing";
+
+// ============================================================================
+// Briefing Scheduler Functions (브리핑 알림 스케줄러)
+// ============================================================================
+export {
+  scheduledBriefingDispatch,
+  executeBriefingNotification,
+} from "./functions/briefingScheduler";
+export {
+  onUserSettingsSyncBriefingSubscription,
+  onEntitlementSyncBriefingSubscription,
+} from "./functions/briefingSubscriptionProjection";
+
+// ============================================================================
+// Subscription Functions (구독 서버 검증)
+// ============================================================================
+export {
+  verifyPurchase,
+  appleServerNotification,
+} from "./functions/subscription";
+export {
+  onSubscriptionWriteNotifySlack,
+} from "./functions/subscriptionNotification";
+
+// ============================================================================
+// Admin Functions (운영 콘솔)
+// ============================================================================
+export {
+  getAdminSession,
+  getAdminDashboardSummary,
+  getAdminAnalyticsSummary,
+  getAdminAuditLogs,
+  getAdminPushJobs,
+  getAdminUsers,
+  createAdminUser,
+  updateAdminUser,
+  previewAdminPushAudience,
+  getAdminUserSummary,
+  getAdminUserTimeline,
+  getAdminReleaseControls,
+  scheduleAdminPush,
+  cancelAdminPushJob,
+  dispatchScheduledAdminPushes,
+  grantEntitlementOverride,
+  revokeEntitlementOverride,
+  sendAdminPush,
+  updateAdminReleaseControls,
+  getAdminProPlanDashboard,
+  createCoupon,
+  getAdminCoupons,
+  expireCoupon,
+} from "./functions/admin";
+
+// ============================================================================
+// Coupon Functions (사용자 쿠폰 사용)
+// ============================================================================
+export {redeemCoupon} from "./functions/coupon";
+// Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
+// ============================================================================
+export {
+  checkScheduleConflicts,
+  onPromiseCreatedSlot,
+  onPromiseUpdatedSlot,
+  onPromiseDeletedSlot,
+  onPersonalEventCreatedSlot,
+  onPersonalEventUpdatedSlot,
+  onPersonalEventDeletedSlot,
+} from "./functions/scheduleConflicts";
+
+// ============================================================================
+// Transportation Functions (교통 정보 조회)
+// ============================================================================
+export {getTransportation} from "./functions/transportation";
+
+// ============================================================================
+// Entitlement Read Model Functions (Pro 권한 통합 read model)
+// ============================================================================
+export {
+  onSubscriptionWriteSyncEntitlement,
+  onEntitlementOverrideWriteSyncEntitlement,
+} from "./functions/entitlements";

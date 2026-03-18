@@ -14,7 +14,7 @@ private enum FirebaseConstants {
 // MARK: - Data Source
 
 /// Firebase Firestore를 통한 알림 관련 데이터 관리
-public final class NotificationRemoteDataSource: @unchecked Sendable {
+public actor NotificationRemoteDataSource {
   private let db: Firestore
 
   /// 현재 디바이스 ID (앱 설치 시 생성되는 고유 ID)
@@ -39,12 +39,13 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   ///   - userId: 사용자 ID
   ///   - token: FCM 토큰
   public func saveFCMToken(userId: String, token: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
+    let platform = await MainActor.run { UIDevice.current.systemName.lowercased() }
 
     let deviceData: [String: Any] = [
       "fcmToken": token,
-      "platform": UIDevice.current.systemName.lowercased(),
+      "platform": platform,
       "lastActiveAt": FieldValue.serverTimestamp(),
       "createdAt": FieldValue.serverTimestamp()
     ]
@@ -63,7 +64,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// FCM 토큰 삭제 (현재 디바이스)
   /// - Parameter userId: 사용자 ID
   public func deleteFCMToken(userId: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     // 현재 디바이스의 토큰만 삭제
@@ -79,7 +80,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   ///   - userId: 사용자 ID
   ///   - token: FCM 토큰
   public func updateFCMToken(userId: String, token: String) async throws {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     try await userRef.updateData([
@@ -94,7 +95,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// - Parameter userId: 사용자 ID
   /// - Returns: FCM 토큰 (없으면 nil)
   public func getFCMToken(userId: String) async throws -> String? {
-    let usersCollection = db.environmentCollection("users")
+    let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 
     let document = try await userRef.getDocument()
@@ -147,7 +148,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     limit: Int,
     lastCreatedAt: Date?
   ) async throws -> [NotificationModel] {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     var query: Query = notificationsCollection
       .whereField("userId", isEqualTo: userId)
@@ -179,7 +180,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
           type: NotificationCategory(rawValue: dto.type.rawValue) ?? .system,
           title: dto.title,
           body: dto.body,
-          promiseId: dto.promiseId,
+          scheduleId: dto.scheduleId,
           groupId: dto.groupId,
           relatedUserId: dto.relatedUserId,
           isRead: dto.isRead,
@@ -200,7 +201,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// - Parameter userId: 사용자 ID
   /// - Returns: 안 읽은 알림 개수
   public func getUnreadCount(userId: String) async throws -> Int {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     let query = notificationsCollection
       .whereField("userId", isEqualTo: userId)
@@ -218,7 +219,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// 알림 읽음 처리
   /// - Parameter notificationId: 알림 ID
   public func markAsRead(notificationId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
     let notificationRef = notificationsCollection.document(notificationId)
 
     try await notificationRef.updateData([
@@ -232,7 +233,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// 전체 알림 읽음 처리
   /// - Parameter userId: 사용자 ID
   public func markAllAsRead(userId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     // 안 읽은 알림만 조회
     let query = notificationsCollection
@@ -273,7 +274,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   public func deleteNotifications(notificationIds: [String]) async throws {
     guard !notificationIds.isEmpty else { return }
 
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     // 배치 삭제 (500개 제한)
     let batch = db.batch()
@@ -290,7 +291,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   /// 전체 알림 삭제
   /// - Parameter userId: 사용자 ID
   public func deleteAllNotifications(userId: String) async throws {
-    let notificationsCollection = db.environmentCollection("notifications")
+    let notificationsCollection = db.collection("notifications")
 
     let query = notificationsCollection
       .whereField("userId", isEqualTo: userId)
@@ -319,4 +320,3 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     AppLogger.notification.debug("전체 알림 삭제 (\(documents.count)개, userId: \(userId))")
   }
 }
-

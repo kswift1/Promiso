@@ -7,20 +7,22 @@ import PromisoShared
 
 /// 딥링크 목적지
 public enum DeeplinkDestination: Equatable, Sendable {
-  /// 약속 상세 화면
-  case promise(promiseId: String, groupId: String)
+  /// 일정 상세 화면
+  case schedule(scheduleId: String, groupId: String)
   /// 그룹 상세 화면
   case group(groupId: String)
   /// 그룹 참여 (초대 코드)
   case joinGroup(inviteCode: String)
   /// LiveActivity ETA 변경 시트 (Widget에서 "직접 입력" 버튼)
-  case liveActivityETA(promiseId: String)
-  /// LivePromise 상세 화면 (LiveActivity 탭 시 ETA 시트 없이 열기)
-  case livePromise(promiseId: String)
-  /// 약속 만들기 화면 (Widget에서 "약속 만들기" 버튼)
+  case liveActivityETA(scheduleId: String)
+  /// LiveSchedule 상세 화면 (LiveActivity 탭 시 ETA 시트 없이 열기)
+  case liveSchedule(scheduleId: String)
+  /// 일정 만들기 화면 (Widget에서 "일정 만들기" 버튼)
   case create
   /// 개인 일정 (Widget에서 탭 시 개인 모드 탭으로 이동 + 상세 push)
   case personalEvent(eventId: String)
+  /// 프로 플랜 화면 (마케팅/푸시에서 Paywall로 직접 진입)
+  case proPlan
 }
 
 // MARK: - Client
@@ -35,7 +37,7 @@ public struct DeeplinkClient: Sendable {
   public var parseURL: @Sendable (_ url: URL) -> DeeplinkDestination?
 
   /// 푸시 알림 userInfo에서 딥링크 목적지 파싱
-  /// - Parameter userInfo: FCM payload ([type, promiseId?, groupId?, relatedUserId?])
+  /// - Parameter userInfo: FCM payload ([type, scheduleId?, groupId?, relatedUserId?])
   /// - Returns: 파싱된 목적지 (파싱 실패 시 nil)
   public var parseNotification: @Sendable (_ userInfo: [AnyHashable: Any]) -> DeeplinkDestination?
 }
@@ -49,10 +51,10 @@ extension DeeplinkClient: TestDependencyKey {
     parseNotification: { _ in nil }
   )
 
-  public static let testValue = Self(
-    pushNotificationTapStream: unimplemented("\(Self.self).pushNotificationTapStream"),
-    parseURL: unimplemented("\(Self.self).parseURL", placeholder: nil),
-    parseNotification: unimplemented("\(Self.self).parseNotification", placeholder: nil)
+  public static let testValue: Self = Self(
+    pushNotificationTapStream: { AsyncStream { _ in } },
+    parseURL: { _ in nil },
+    parseNotification: { _ in nil }
   )
 }
 
@@ -92,7 +94,7 @@ extension DeeplinkClient: DependencyKey {
   /// FCM userInfo 파싱 (내부 헬퍼)
   ///
   /// NotificationType별 필수 필드:
-  /// - promiseAndGroup: promiseId + groupId 필요 → .promise
+  /// - scheduleAndGroup: scheduleId + groupId 필요 → .schedule
   /// - groupOnly: groupId만 필요 → .group
   /// - none: 딥링크 불필요 (system 등) → nil
   ///
@@ -100,19 +102,19 @@ extension DeeplinkClient: DependencyKey {
   private static func parseUserInfo(_ userInfo: [AnyHashable: Any]) -> DeeplinkDestination? {
     // 1. type 추출 및 NotificationType 변환
     guard let typeString = userInfo["type"] as? String,
-          let type = NotificationType(rawValue: typeString) else {
+          let type = NotificationType.fromWireValue(typeString) else {
       return nil
     }
 
     // 2. 필드 추출
-    let promiseId = userInfo["promiseId"] as? String
+    let scheduleId = (userInfo["scheduleId"] as? String) ?? (userInfo["promiseId"] as? String)
     let groupId = userInfo["groupId"] as? String
 
     // 3. deeplinkGuide에 따라 검증 및 변환
     switch type.deeplinkGuide {
-    case .promiseAndGroup:
-      guard let promiseId, let groupId else { return nil }
-      return .promise(promiseId: promiseId, groupId: groupId)
+    case .scheduleAndGroup:
+      guard let scheduleId, let groupId else { return nil }
+      return .schedule(scheduleId: scheduleId, groupId: groupId)
 
     case .groupOnly:
       guard let groupId else { return nil }

@@ -1,4 +1,5 @@
 import Testing
+import PromisoShared
 @testable import AppEntryFeature
 
 @Suite("AppEntry.ProfileSetup 테스트")
@@ -73,7 +74,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
     }
   }
 
@@ -83,7 +84,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "12자 이하로 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooLong(12)
     }
   }
 
@@ -93,7 +94,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "닉네임 중복 확인을 완료해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckRequired
     }
   }
 
@@ -106,7 +107,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "닉네임 중복 확인을 완료해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckRequired
     }
   }
 
@@ -234,7 +235,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged(""))) {
       $0.nickname = ""
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
       $0.isNicknameAvailable = nil
       $0.isCheckingNickname = false
     }
@@ -247,7 +248,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("a"))) {
       $0.nickname = "a"
-      $0.nicknameError = "2자 이상 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooShort(2)
     }
   }
 
@@ -258,7 +259,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("가나다라마바사아자차카타마"))) {
       $0.nickname = "가나다라마바사아자차카타마"
-      $0.nicknameError = "12자 이하로 입력해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTooLong(12)
     }
   }
 
@@ -269,7 +270,7 @@ struct ProfileSetupTests {
     }
     await store.send(.view(.nicknameChanged("테 스터"))) {
       $0.nickname = "테 스터"
-      $0.nicknameError = "닉네임엔 공백을 넣을 수 없어요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameContainsWhitespace
     }
   }
 
@@ -317,7 +318,7 @@ struct ProfileSetupTests {
     await store.send(.internal(.nicknameAvailabilityResponse(.success(false)))) {
       $0.isCheckingNickname = false
       $0.isNicknameAvailable = false
-      $0.nicknameError = "이미 사용 중인 닉네임이에요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTaken
     }
   }
 
@@ -333,7 +334,7 @@ struct ProfileSetupTests {
     await store.send(.internal(.nicknameAvailabilityResponse(.failure(error)))) {
       $0.isCheckingNickname = false
       $0.isNicknameAvailable = nil
-      $0.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckFailed
     }
   }
 

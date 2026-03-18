@@ -28,6 +28,7 @@ extension JoinGroup {
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     public init() {}
 
@@ -59,6 +60,10 @@ extension JoinGroup {
       var calendarSyncEnabled: Bool = true
       var isSavingSettings: Bool = false
 
+      // Group Color (초기 설정)
+      var selectedGroupColor: GroupColor? = .purple
+      var existingGroupColorMap: [GroupColor: String]
+
       // Notification Permission
       var notificationAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
@@ -72,6 +77,11 @@ extension JoinGroup {
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
+        self.existingGroupColorMap = currentUser.groups.reduce(into: [:]) { result, info in
+          if let color = info.groupColor {
+            result[color] = info.name
+          }
+        }
       }
 
       // Validation
@@ -113,8 +123,8 @@ extension JoinGroup {
         // Settings
         case notificationToggled(Bool)
         case calendarSyncToggled(Bool)
+        case groupColorSelected(GroupColor?)
         case settingsCompleted
-        case settingsSkipped
         case settingsAppeared
         // Calendar Permission Info Alert
         case calendarPermissionInfoAlertDismissed
@@ -275,6 +285,12 @@ extension JoinGroup {
             state.showCalendarPermissionInfoAlert = false
             return .none
 
+          case .groupColorSelected(let color):
+            state.selectedGroupColor = color
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.selection()
+            }
+
           case .settingsAppeared:
             // 설정에서 돌아왔을 때 권한 상태 새로고침
             return .merge(
@@ -295,26 +311,19 @@ extension JoinGroup {
               enabled: state.notificationEnabled,
               calendarSync: state.calendarSyncEnabled
             )
+            let selectedColor = state.selectedGroupColor
             return .run { [groupId = group.id] send in
               do {
                 try await groupClient.updateGroupNotificationSettings(groupId, settings)
+                if let color = selectedColor {
+                  try await groupClient.updateGroupColor(groupId, color)
+                }
                 await send(.internal(.saveSettingsResponse(.success(()))))
               } catch {
                 await send(.internal(.saveSettingsResponse(.failure(error))))
               }
             }
             .cancellable(id: CancelID.saveSettings, cancelInFlight: true)
-
-          case .settingsSkipped:
-            guard case .settings(let group) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupJoined,
-              [
-                AnalyticsClient.ParameterKey.groupID: group.id,
-                AnalyticsClient.ParameterKey.groupName: group.name
-              ]
-            )
-            return .send(.delegate(.groupJoined(group)))
 
           case .memberImageTapped(let member):
             state.selectedMemberForImage = member
@@ -339,7 +348,7 @@ extension JoinGroup {
 
           case .previewGroupResponse(.failure(let error)):
             state.isLoadingPreview = false
-            state.previewError = error.localizedDescription
+            state.previewError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .joinGroupResponse(.success(let group)):
@@ -359,19 +368,18 @@ extension JoinGroup {
 
           case .joinGroupResponse(.failure(let error)):
             state.isJoining = false
-            state.joinError = error.localizedDescription
+            state.joinError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
             // .failure의 경우에도 그룹 참여는 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let group) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupJoined,
-              [
-                AnalyticsClient.ParameterKey.groupID: group.id,
-                AnalyticsClient.ParameterKey.groupName: group.name
-              ]
+            analyticsClient.log(
+              .groupJoined(
+                groupID: group.id,
+                groupName: group.name
+              )
             )
             return .send(.delegate(.groupJoined(group)))
 
@@ -441,6 +449,20 @@ extension JoinGroup {
           return .none
         }
       }
+    }
+  }
+}
+
+// MARK: - GroupClientError Localization
+
+extension GroupClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.authInvalidCredentials
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .unknown: return LocalizedStrings.Error.unknownError
     }
   }
 }

@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Clients
+import PromisoShared
 
 public enum NotificationPermission {}
 
@@ -12,7 +13,7 @@ extension NotificationPermission {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var config: Config
       var allowInteractiveDismiss: Bool
       var authorizationStatus: NotificationAuthorizationStatus = .notDetermined
@@ -25,9 +26,9 @@ extension NotificationPermission {
       var primaryButtonTitle: String {
         switch authorizationStatus {
         case .authorized:
-          return "완료"
+          return LocalizedStrings.Common.done
         case .denied:
-          return "설정으로 이동"
+          return LocalizedStrings.Shared.goToSettings
         default:
           return config.primaryButtonTitle
         }
@@ -63,12 +64,12 @@ extension NotificationPermission {
       }
 
       public static let `default` = Config(
-        title: "알림을 켜고\n약속을 놓치지 마세요",
-        content: "새로운 약속 초대, 응답 현황, 약속 확정 알림을\n실시간으로 받아보세요.",
-        notificationTitle: "약속 확정! 🎉",
-        notificationContent: "점심 약속 확정! 1월 25일 오후 1시에 만나요",
-        primaryButtonTitle: "알림 허용",
-        secondaryButtonTitle: "나중에 하기"
+        title: LocalizedStrings.Shared.permissionTitle,
+        content: LocalizedStrings.Shared.notificationSubtitle,
+        notificationTitle: LocalizedStrings.Shared.notificationPreviewTitle,
+        notificationContent: LocalizedStrings.Shared.notificationPreviewBody,
+        primaryButtonTitle: LocalizedStrings.Shared.allowNotification,
+        secondaryButtonTitle: LocalizedStrings.Common.laterAction
       )
     }
 
@@ -123,7 +124,7 @@ extension NotificationPermission {
 
             default:
               // Analytics 이벤트 로깅
-              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionRequested, nil)
+              analyticsClient.log(.notificationPermissionRequested)
 
               // 바로 시스템 권한 요청 알럿 표시
               return .run { send in
@@ -143,17 +144,23 @@ extension NotificationPermission {
         case .internal(let internalAction):
           switch internalAction {
           case .authorizationStatusLoaded(let status):
+            let previousStatus = state.authorizationStatus
             state.authorizationStatus = status
-            // 권한 상태만 업데이트하고 화면은 유지 (사용자가 버튼을 눌러야 dismiss)
+            analyticsClient.setNotificationPermissionStatus(status)
+            // 설정에서 돌아와 권한이 부여된 경우 자동으로 닫기
+            if previousStatus == .denied && status.isGranted {
+              return .merge(
+                .send(.delegate(.permissionChanged(isGranted: true))),
+                .send(.delegate(.dismissed))
+              )
+            }
             return .none
 
           case .permissionRequestCompleted(let granted):
             state.authorizationStatus = granted ? .authorized : .denied
+            analyticsClient.setNotificationPermissionStatus(state.authorizationStatus)
 
-            // Analytics 이벤트 로깅 (허용된 경우만)
-            if granted {
-              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionGranted, nil)
-            }
+            analyticsClient.log(granted ? .notificationPermissionGranted : .notificationPermissionDenied)
 
             // 권한 요청 완료 → 결과 전달 후 화면 닫기
             return .merge(

@@ -19,12 +19,12 @@ extension LiveActivityTest {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var isLiveActivityActive: Bool = false
       var activityId: String?
       var statusMessage: String = ""
-      var currentContentState: PromiseActivityAttributes.ContentState?
-      var currentAttributes: PromiseActivityAttributes?
+      var currentContentState: ScheduleActivityAttributes.ContentState?
+      var currentAttributes: ScheduleActivityAttributes?
 
       public init() {}
     }
@@ -49,10 +49,10 @@ extension LiveActivityTest {
       }
 
       public enum Internal: Sendable, Equatable {
-        case activityStarted(String, PromiseActivityAttributes, PromiseActivityAttributes.ContentState)
+        case activityStarted(String, ScheduleActivityAttributes, ScheduleActivityAttributes.ContentState)
         case activityEnded
         case activityFailed(String)
-        case activityUpdated(PromiseActivityAttributes.ContentState)
+        case activityUpdated(ScheduleActivityAttributes.ContentState)
       }
     }
 
@@ -74,36 +74,36 @@ extension LiveActivityTest {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            if let activity = Activity<PromiseActivityAttributes>.activities.first {
+            if let activity = Activity<ScheduleActivityAttributes>.activities.first {
               state.isLiveActivityActive = true
               state.activityId = activity.id
               state.currentAttributes = activity.attributes
               state.currentContentState = activity.content.state
-              state.statusMessage = "기존 활동: \(activity.id.prefix(8))..."
+              state.statusMessage = "\(LocalizedStrings.SettingsStrings.existingActivity)\(activity.id.prefix(8))..."
             }
             return .none
 
           case .startLiveActivityTapped:
             guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-              state.statusMessage = "라이브액티비티 비활성화됨"
+              state.statusMessage = LocalizedStrings.SettingsStrings.liveActivityDisabled
               return .none
             }
 
             let cachedFiles = LiveActivityImageStore.listCachedFiles()
-            AppLogger.liveActivity.debug("캐시된 파일: \(cachedFiles)")
+            AppLogger.liveActivity.debug("\(LocalizedStrings.SettingsStrings.cachedFiles)\(cachedFiles)")
 
-            let attributes = PromiseActivityAttributes(
-              promiseId: "mock-\(UUID().uuidString.prefix(8))",
+            let attributes = ScheduleActivityAttributes(
+              scheduleId: "mock-\(UUID().uuidString.prefix(8))",
               currentUserId: Self.mockUserId1,
               emoji: "🍜",
-              title: "점심 모임",
-              location: "강남역 11번 출구",
+              title: LocalizedStrings.SettingsStrings.mockMeeting,
+              location: LocalizedStrings.SettingsStrings.mockLocation,
               latitude: 37.498095,
               longitude: 127.027610,
               scheduledTime: Date().addingTimeInterval(1800)
             )
 
-            let initialState = PromiseActivityAttributes.ContentState(
+            let initialState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: 30,
               participants: Self.mockParticipants
             )
@@ -117,13 +117,13 @@ extension LiveActivityTest {
                 )
                 await send(.internal(.activityStarted(activity.id, attributes, initialState)))
               } catch {
-                await send(.internal(.activityFailed(error.localizedDescription)))
+                await send(.internal(.activityFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
           case .endLiveActivityTapped:
             return .run { send in
-              for activity in Activity<PromiseActivityAttributes>.activities {
+              for activity in Activity<ScheduleActivityAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
               }
               await send(.internal(.activityEnded))
@@ -134,12 +134,12 @@ extension LiveActivityTest {
                   let currentState = state.currentContentState else { return .none }
 
             let updatedState = currentState.updating(participantId: id, estimatedArrivalMinutes: eta)
-            let etaText = eta.map { $0 == 0 ? "도착" : "\($0)분" } ?? "대기"
+            let etaText = eta.map { $0 == 0 ? LocalizedStrings.SettingsStrings.arrived : "\($0)\(LocalizedStrings.SettingsStrings.minutes)" } ?? LocalizedStrings.SettingsStrings.waiting
             state.statusMessage = "\(id.prefix(8)) → \(etaText)"
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -148,13 +148,13 @@ extension LiveActivityTest {
             }
 
           case .allWaitingTapped:
-            return updateAllParticipants(state: &state, eta: nil, message: "모두 → 대기")
+            return updateAllParticipants(state: &state, eta: nil, message: LocalizedStrings.SettingsStrings.allToWaiting)
 
           case .allDepartedTapped:
-            return updateAllParticipants(state: &state, eta: 15, message: "모두 → 15분")
+            return updateAllParticipants(state: &state, eta: 15, message: LocalizedStrings.SettingsStrings.allTo15Min)
 
           case .allArrivedTapped:
-            return updateAllParticipants(state: &state, eta: 0, message: "모두 → 도착")
+            return updateAllParticipants(state: &state, eta: 0, message: LocalizedStrings.SettingsStrings.allToArrived)
 
           case .groupingTestTapped:
             guard let activityId = state.activityId,
@@ -170,15 +170,15 @@ extension LiveActivityTest {
               }
               participants[i] = participants[i].with(estimatedArrivalMinutes: eta)
             }
-            let updatedState = PromiseActivityAttributes.ContentState(
+            let updatedState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: currentState.trackingDurationMinutes,
               participants: participants
             )
-            state.statusMessage = "그룹화 테스트"
+            state.statusMessage = LocalizedStrings.SettingsStrings.groupingTest
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -190,7 +190,7 @@ extension LiveActivityTest {
             guard let activityId = state.activityId,
                   state.currentContentState != nil else { return .none }
 
-            state.statusMessage = "순차 도착 시작..."
+            state.statusMessage = LocalizedStrings.SettingsStrings.sequentialArrivalStarting
 
             return .run { send in
               let userIds = [Self.mockUserId1, Self.mockUserId2, Self.mockUserId3, Self.mockUserId4]
@@ -199,7 +199,7 @@ extension LiveActivityTest {
               for (index, userId) in userIds.enumerated() {
                 try? await Task.sleep(for: .seconds(1.5))
 
-                if let activity = Activity<PromiseActivityAttributes>.activities
+                if let activity = Activity<ScheduleActivityAttributes>.activities
                   .first(where: { $0.id == activityId })
                 {
                   let currentState = activity.content.state
@@ -220,15 +220,15 @@ extension LiveActivityTest {
             for i in participants.indices {
               participants[i] = participants[i].with(estimatedArrivalMinutes: etas[i])
             }
-            let updatedState = PromiseActivityAttributes.ContentState(
+            let updatedState = ScheduleActivityAttributes.ContentState(
               trackingDurationMinutes: currentState.trackingDurationMinutes,
               participants: participants
             )
-            state.statusMessage = "혼합 상태"
+            state.statusMessage = LocalizedStrings.SettingsStrings.mixedStatus
 
             return .run { send in
               try? await Task.sleep(for: .seconds(1))
-              if let activity = Activity<PromiseActivityAttributes>.activities
+              if let activity = Activity<ScheduleActivityAttributes>.activities
                 .first(where: { $0.id == activityId })
               {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -244,7 +244,7 @@ extension LiveActivityTest {
             state.currentAttributes = attributes
             state.currentContentState = contentState
             state.isLiveActivityActive = true
-            state.statusMessage = "시작됨: \(id.prefix(8))..."
+            state.statusMessage = "\(LocalizedStrings.SettingsStrings.started)\(id.prefix(8))..."
             return .none
 
           case .activityEnded:
@@ -252,11 +252,11 @@ extension LiveActivityTest {
             state.activityId = nil
             state.currentAttributes = nil
             state.currentContentState = nil
-            state.statusMessage = "종료됨"
+            state.statusMessage = LocalizedStrings.SettingsStrings.ended
             return .none
 
           case .activityFailed(let error):
-            state.statusMessage = "실패: \(error)"
+            state.statusMessage = "\(LocalizedStrings.SettingsStrings.failed)\(error)"
             return .none
 
           case .activityUpdated(let contentState):
@@ -275,7 +275,7 @@ extension LiveActivityTest {
       for i in participants.indices {
         participants[i] = participants[i].with(estimatedArrivalMinutes: eta)
       }
-      let updatedState = PromiseActivityAttributes.ContentState(
+      let updatedState = ScheduleActivityAttributes.ContentState(
         trackingDurationMinutes: currentState.trackingDurationMinutes,
         participants: participants
       )
@@ -283,7 +283,7 @@ extension LiveActivityTest {
 
       return .run { send in
         try? await Task.sleep(for: .seconds(1))
-        if let activity = Activity<PromiseActivityAttributes>.activities
+        if let activity = Activity<ScheduleActivityAttributes>.activities
           .first(where: { $0.id == activityId })
         {
           await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -315,7 +315,7 @@ extension LiveActivityTest {
         }
         .padding(16)
       }
-      .navigationTitle("LiveActivity 테스트")
+      .navigationTitle(LocalizedStrings.SettingsStrings.liveActivityTestTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -325,11 +325,11 @@ extension LiveActivityTest {
     private var liveActivitySection: some View {
       VStack(spacing: 12) {
         HStack {
-          Text("🧪 라이브액티비티 테스트")
+          Text(LocalizedStrings.SettingsStrings.liveActivityTestHeader)
             .font(.headline)
           Spacer()
           if store.isLiveActivityActive {
-            Text("활성")
+            Text(LocalizedStrings.SettingsStrings.active)
               .font(.caption)
               .fontWeight(.semibold)
               .foregroundStyle(.white)
@@ -367,40 +367,40 @@ extension LiveActivityTest {
 
     private var activeControlsSection: some View {
       VStack(spacing: 12) {
-        Text("개별 ETA 설정")
+        Text(LocalizedStrings.SettingsStrings.individualETASettings)
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(.secondary)
 
         VStack(spacing: 6) {
-          participantETARow(name: "나", id: Self.mockUserId1)
-          participantETARow(name: "민수", id: Self.mockUserId2)
-          participantETARow(name: "지현", id: Self.mockUserId3)
-          participantETARow(name: "서연", id: Self.mockUserId4)
+          participantETARow(name: LocalizedStrings.SettingsStrings.me, id: Self.mockUserId1)
+          participantETARow(name: LocalizedStrings.SettingsStrings.mockNameMinsu, id: Self.mockUserId2)
+          participantETARow(name: LocalizedStrings.SettingsStrings.mockNameJihyun, id: Self.mockUserId3)
+          participantETARow(name: LocalizedStrings.SettingsStrings.mockNameSeoyeon, id: Self.mockUserId4)
         }
 
         Divider().padding(.vertical, 4)
 
-        Text("시나리오 테스트")
+        Text(LocalizedStrings.SettingsStrings.scenarioTest)
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(.secondary)
 
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-          scenarioButton(title: "모두 대기", color: .gray) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.allWaiting, color: .gray) {
             store.send(.view(.allWaitingTapped))
           }
-          scenarioButton(title: "모두 출발(15분)", color: .indigo) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.allDeparted15Min, color: .indigo) {
             store.send(.view(.allDepartedTapped))
           }
-          scenarioButton(title: "모두 도착", color: .green) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.allArrived, color: .green) {
             store.send(.view(.allArrivedTapped))
           }
-          scenarioButton(title: "그룹화 테스트", color: .orange) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.groupingTest, color: .orange) {
             store.send(.view(.groupingTestTapped))
           }
-          scenarioButton(title: "순차 도착", color: .blue) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.sequentialArrival, color: .blue) {
             store.send(.view(.sequentialArrivalTapped))
           }
-          scenarioButton(title: "혼합 상태", color: .purple) {
+          scenarioButton(title: LocalizedStrings.SettingsStrings.mixedStatus, color: .purple) {
             store.send(.view(.mixedStatusTapped))
           }
         }
@@ -412,7 +412,7 @@ extension LiveActivityTest {
         } label: {
           HStack(spacing: 8) {
             Image(systemName: "stop.circle.fill")
-            Text("라이브액티비티 종료")
+            Text(LocalizedStrings.SettingsStrings.endLiveActivity)
           }
           .font(.system(size: 14, weight: .semibold))
           .frame(maxWidth: .infinity)
@@ -431,7 +431,7 @@ extension LiveActivityTest {
         } label: {
           HStack(spacing: 8) {
             Image(systemName: "play.circle.fill")
-            Text("목 라이브액티비티 시작")
+            Text(LocalizedStrings.SettingsStrings.startMockLiveActivity)
           }
           .font(.system(size: 16, weight: .semibold))
           .frame(maxWidth: .infinity)
@@ -441,7 +441,7 @@ extension LiveActivityTest {
           .clipShape(RoundedRectangle(cornerRadius: 12))
         }
 
-        Text("30분 후 약속, 4명 참가자 목 데이터로 시작")
+        Text(LocalizedStrings.SettingsStrings.mockDescription)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
       }
@@ -449,27 +449,27 @@ extension LiveActivityTest {
 
     private var debugInfoSection: some View {
       VStack(alignment: .leading, spacing: 12) {
-        Text("디버그 정보")
+        Text(LocalizedStrings.SettingsStrings.debugInfo)
           .font(.headline)
 
         VStack(spacing: 8) {
-          debugRow(label: "Activity ID", value: store.activityId ?? "-")
+          debugRow(label: LocalizedStrings.SettingsStrings.activityId, value: store.activityId ?? "-")
           debugRow(
-            label: "활성 액티비티 수",
-            value: "\(Activity<PromiseActivityAttributes>.activities.count)")
+            label: LocalizedStrings.SettingsStrings.activeActivityCount,
+            value: "\(Activity<ScheduleActivityAttributes>.activities.count)")
 
           if let attributes = store.currentAttributes {
-            debugRow(label: "장소", value: attributes.location ?? "-")
+            debugRow(label: LocalizedStrings.SettingsStrings.location, value: attributes.location ?? "-")
             if let lat = attributes.latitude, let lng = attributes.longitude {
-              debugRow(label: "좌표", value: String(format: "%.4f, %.4f", lat, lng))
+              debugRow(label: LocalizedStrings.SettingsStrings.coordinates, value: String(format: "%.4f, %.4f", lat, lng))
             } else {
-              debugRow(label: "좌표", value: "-")
+              debugRow(label: LocalizedStrings.SettingsStrings.coordinates, value: "-")
             }
           }
 
           if let state = store.currentContentState {
-            debugRow(label: "추적 시간", value: "\(state.trackingDurationMinutes)분")
-            debugRow(label: "참가자 수", value: "\(state.participants.count)명")
+            debugRow(label: LocalizedStrings.SettingsStrings.trackingTime, value: "\(state.trackingDurationMinutes)\(LocalizedStrings.SettingsStrings.minutes)")
+            debugRow(label: LocalizedStrings.SettingsStrings.participantCount, value: "\(state.participants.count)")
           }
         }
       }
@@ -502,12 +502,12 @@ extension LiveActivityTest {
 
     private var etaOptions: [(label: String, value: Int?, color: Color)] {
       [
-        ("대기", nil, .gray),
-        ("30분", 30, .orange),
-        ("15분", 15, .yellow),
-        ("10분", 10, .blue),
-        ("5분", 5, .indigo),
-        ("도착", 0, .green),
+        (LocalizedStrings.SettingsStrings.waiting, nil, .gray),
+        (LocalizedStrings.SettingsStrings.eta30Min, 30, .orange),
+        (LocalizedStrings.SettingsStrings.eta15Min, 15, .yellow),
+        (LocalizedStrings.SettingsStrings.eta10Min, 10, .blue),
+        (LocalizedStrings.SettingsStrings.eta5Min, 5, .indigo),
+        (LocalizedStrings.SettingsStrings.arrived, 0, .green),
       ]
     }
 

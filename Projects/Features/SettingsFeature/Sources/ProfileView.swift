@@ -18,9 +18,34 @@ extension Settings {
   /// .auroraBackground()와 Glass Effect 카드를 사용한 디자인
   public struct ProfileView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var currentBenefitIndex = 0
+    @State private var benefitTimer: Timer?
 
     public init(store: StoreOf<Feature>) {
       self.store = store
+    }
+
+    // MARK: - Pro Benefit Rotation
+
+    private let proBenefits: [(icon: String, text: String)] = [
+      ("🕐", "출발 시간 자동 계산"),
+      ("🌤️", "약속 날씨 미리 확인"),
+      ("⚠️", "겹치는 일정 미리 알림"),
+      ("📋", "오늘 일정 한 번에 정리")
+    ]
+
+    private func startBenefitRotation() {
+      guard benefitTimer == nil else { return }
+      benefitTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
+        withAnimation(.easeInOut(duration: 0.4)) {
+          currentBenefitIndex = (currentBenefitIndex + 1) % proBenefits.count
+        }
+      }
+    }
+
+    private func stopBenefitRotation() {
+      benefitTimer?.invalidate()
+      benefitTimer = nil
     }
 
     #if DEBUG
@@ -39,16 +64,56 @@ extension Settings {
       ScrollView {
         VStack(spacing: 16) {
           // MARK: - 프로필 섹션
-          Button {
-            store.send(.view(.accountInfoTapped))
-          } label: {
-            profileHeaderRow
+          profileHeaderRow
+
+          // MARK: - 프로 플랜 섹션 (미가입자만 표시)
+          if !store.subscriptionStatus.isPro {
+            Button {
+              store.send(.view(.proPlanTapped))
+            } label: {
+              VStack(alignment: .leading, spacing: 8) {
+                // 1줄: ProBadge + 서브카피 + chevron
+                HStack(spacing: 8) {
+                  ProBadge()
+                  Text("일정 그 이후를 챙겨드려요")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                  Spacer()
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+
+                // 2줄: 순환 혜택
+                HStack(spacing: 6) {
+                  Text(proBenefits[currentBenefitIndex].icon)
+                    .font(.system(size: 14))
+
+                  Text(proBenefits[currentBenefitIndex].text)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.pmtext.primary)
+                }
+                .id(currentBenefitIndex)
+                .transition(.asymmetric(
+                  insertion: .opacity.combined(with: .move(edge: .bottom)),
+                  removal: .opacity.combined(with: .move(edge: .top))
+                ))
+                .clipped()
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .adaptiveGlassCard()
+            .onAppear { startBenefitRotation() }
+            .onDisappear { stopBenefitRotation() }
+
           }
-          .buttonStyle(.plain)
 
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("앱 설정")
+            Text(LocalizedStrings.SettingsStrings.appSettings)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
@@ -62,7 +127,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("날짜 시간 표시")
+                  Text(LocalizedStrings.SettingsStrings.dateTimeDisplay)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -90,7 +155,63 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("화면 모드")
+                  Text(LocalizedStrings.SettingsStrings.themeMode)
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
+                store.send(.view(.languageSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "globe")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
+
+                  Text(LocalizedStrings.SettingsStrings.language)
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
+                store.send(.view(.tabSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "square.grid.2x2.fill")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
+
+                  Text(LocalizedStrings.SettingsStrings.tabSettingsMenu)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -118,7 +239,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("알림 설정")
+                  Text(LocalizedStrings.SettingsStrings.notifications)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -146,7 +267,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("캘린더 설정")
+                  Text(LocalizedStrings.SettingsStrings.calendarSettings)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -166,17 +287,49 @@ extension Settings {
                 .background(Color.white.opacity(0.12))
 
               Button {
-                store.send(.view(.promiseTabModeSettingsTapped))
+                store.send(.view(.conflictThresholdSettingsTapped))
               } label: {
                 HStack(spacing: 16) {
-                  Image(systemName: "person.2.fill")
+                  Image(systemName: "exclamationmark.triangle")
                     .font(.body)
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("약속 탭 기본 모드")
+                  Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
+
+                  ProBadge()
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
+                store.send(.view(.briefingSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "sparkles")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
+
+                  Text(LocalizedStrings.SettingsStrings.briefingSettingsTitle)
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  ProBadge()
 
                   Spacer()
 
@@ -203,7 +356,7 @@ extension Settings {
                 .foregroundStyle(Color.pmindigo.n500)
                 .frame(width: 24, height: 24)
 
-              Text("지원")
+              Text(LocalizedStrings.SettingsStrings.support)
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 
@@ -222,7 +375,7 @@ extension Settings {
 
           // MARK: - 정보 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("정보")
+            Text(LocalizedStrings.SettingsStrings.info)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
@@ -236,7 +389,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("약관 및 정책")
+                  Text(LocalizedStrings.SettingsStrings.termsAndPolicies)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -264,7 +417,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("앱 정보")
+                  Text(LocalizedStrings.SettingsStrings.appInfo)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -287,7 +440,7 @@ extension Settings {
           // MARK: - 개발자 섹션 (Dev/Stage only)
           if isDeveloperMenuEnabled {
             VStack(alignment: .leading, spacing: 10) {
-              Text("개발자")
+              Text(LocalizedStrings.SettingsStrings.developer)
                 .font(.system(size: 16, weight: .semibold))
                 .padding(.horizontal, 4)
 
@@ -300,7 +453,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("개발자 설정")
+                  Text(LocalizedStrings.SettingsStrings.developerSettings)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -325,7 +478,8 @@ extension Settings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("설정")
+      .toolbarBackground(.hidden, for: .navigationBar)
+      .navigationTitle(LocalizedStrings.SettingsStrings.title)
       .navigationBarTitleDisplayMode(.large)
       .sheet(
         isPresented: Binding(
@@ -372,7 +526,7 @@ extension Settings {
             .scaleEffect(1.2)
             .tint(.white)
 
-          Text("로그아웃 중...")
+          Text(LocalizedStrings.SettingsStrings.loggingOut)
             .font(.body)
             .foregroundStyle(.white)
         }
@@ -384,37 +538,70 @@ extension Settings {
     // MARK: - Profile Header Row
 
     private var profileHeaderRow: some View {
-      HStack(spacing: 16) {
-        // 프로필 아바타 (60px)
-        ProfileAvatarView(
-          profileImageUrl: store.currentUser.profileImageUrl,
-          displayName: store.currentUser.nickname,
-          isCurrentUser: true,
-          size: 60,
-          borderWidth: 2,
-          onTap: {
-            store.send(.view(.profileImageTapped))
+      VStack(spacing: 0) {
+        // 프로필 영역 → 계정 정보
+        Button {
+          store.send(.view(.accountInfoTapped))
+        } label: {
+          HStack(spacing: 16) {
+            ProfileAvatarView(
+              profileImageUrl: store.currentUser.profileImageUrl,
+              displayName: store.currentUser.nickname,
+              isCurrentUser: true,
+              size: 60,
+              borderWidth: 2,
+              onTap: {
+                store.send(.view(.profileImageTapped))
+              }
+            )
+
+            Text(store.currentUser.nickname)
+              .font(.title3)
+              .fontWeight(.semibold)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+              .font(.caption)
+              .foregroundStyle(Color.pmgray.n400)
           }
-        )
-
-        // 닉네임
-        VStack(alignment: .leading, spacing: 4) {
-          Text(store.currentUser.nickname)
-            .font(.title3)
-            .fontWeight(.semibold)
-            .foregroundStyle(Color.pmtext.primary)
+          .padding(.vertical, 16)
+          .padding(.horizontal, 16)
+          .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
 
-        Spacer()
+        // 플랜 정보 영역 → Pro 관리 (가입자만)
+        if store.subscriptionStatus.isPro {
+          Divider()
+            .background(Color.white.opacity(0.12))
 
-        // 네비게이션 화살표
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundStyle(Color.pmgray.n400)
+          Button {
+            store.send(.view(.proPlanTapped))
+          } label: {
+            HStack(spacing: 8) {
+              ProBadge()
+
+              if let planName = store.subscriptionStatus.planDisplayName {
+                Text(LocalizedStrings.ProPlan.activePlan(planName))
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Spacer()
+
+              Text(LocalizedStrings.ProPlan.manageAction)
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        }
       }
-      .padding(.vertical, 16)
-      .padding(.horizontal, 16)
-      .contentShape(Rectangle())
       .adaptiveGlassCard()
     }
 

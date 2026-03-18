@@ -66,6 +66,32 @@ Xcode 빌드 시 사용
 
 ## 초기 설정 방법
 
+### 가장 먼저: `make setup` (권장)
+
+새로 clone한 뒤에는 아래 명령을 기본 진입점으로 사용합니다.
+
+```bash
+git clone https://github.com/kswift1/promiso.git
+cd promiso
+
+# 실제 xcconfig까지 같이 받으려면 먼저 설정
+export NOTION_API_KEY="YOUR_NOTION_API_KEY"
+
+make setup
+```
+
+`make setup`은 `tuist install`, `Config/*.xcconfig` 준비, Functions 의존성 설치, `tuist generate`, Git hooks 설치를 한 번에 수행합니다.
+
+이미 실제 `Config/*.xcconfig`가 있고 일부만 복구하려면 `make setup`보다 아래 명령을 사용합니다.
+
+```bash
+make ensure-config
+```
+
+`make ensure-config`는 누락된 xcconfig만 보완하고, `NOTION_API_KEY` 또는 `.env`가 있으면 자동 생성도 시도합니다.
+
+---
+
 ### 방법 1: Notion 동기화 (팀 협업, 추천) ⭐
 
 **전제 조건**: 팀에서 Notion API Key 받기

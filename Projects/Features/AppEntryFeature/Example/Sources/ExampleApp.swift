@@ -51,7 +51,7 @@ private struct ExampleContentView: View {
       dependencies.authClient = .previewValue
       dependencies.userProfileClient = .previewValue
       dependencies.groupClient = .previewValue
-      dependencies.promiseClient = .previewValue
+      dependencies.scheduleClient = .previewValue
     }
     
     AppEntry.RootView(store: store)

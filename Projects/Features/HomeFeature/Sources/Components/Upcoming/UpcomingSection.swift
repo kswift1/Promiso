@@ -5,11 +5,21 @@ import ResourceKit
 
 // MARK: - Upcoming Section
 
-/// 다가오는 일정 섹션 - 확정된 미래 약속과 개인 일정
+/// 다가오는 일정 섹션 - 확정된 미래 일정과 개인 일정
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
+  let isPro: Bool
+  let recurringSummaries: [HomeModels.RecurringEventSummary]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
+  let onCreatePersonalEventTap: () -> Void
+  let onCreateScheduleTap: () -> Void
+  let onCreateRecurringEventTap: () -> Void
+  let onRecurringSummaryTap: (HomeModels.RecurringEventSummary) -> Void
+
+  @State private var isRecurringExpanded = false
+  @State private var showCreateOptions = false
 
   /// 표시할 최대 개수
   private let maxDisplayCount = 5
@@ -20,17 +30,26 @@ struct UpcomingSection: View {
       sectionHeader
 
       // 카드들 (날짜별 그룹)
-      if items.isEmpty {
-        emptyState
-      } else {
-        VStack(spacing: 10) {
+      VStack(spacing: 10) {
+        if items.isEmpty {
+          emptyState
+        } else {
           ForEach(groupedByDate, id: \.date) { group in
             UpcomingDateCard(
               date: group.date,
               items: group.items,
+              weatherCache: weatherCache,
+              isPro: isPro,
               onItemTap: onItemTap
             )
           }
+        }
+
+        // 반복 일정 요약
+        if recurringSummaries.isEmpty {
+          recurringEmptyState
+        } else {
+          recurringEventsBadge
         }
       }
     }
@@ -40,7 +59,7 @@ struct UpcomingSection: View {
 
   private var sectionHeader: some View {
     HStack {
-      Text("다가오는 일정")
+      Text(LocalizedStrings.Home.upcomingSchedule)
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
@@ -50,7 +69,7 @@ struct UpcomingSection: View {
       if items.count > maxDisplayCount {
         Button(action: onSeeAllTap) {
           HStack(spacing: 2) {
-            Text("전체")
+            Text(LocalizedStrings.Common.all)
               .font(.pmSubheadline)
 
             Image(systemName: "chevron.right")
@@ -63,36 +82,181 @@ struct UpcomingSection: View {
     }
   }
 
+  // MARK: - Recurring Events Badge
+
+  private var recurringEventsBadge: some View {
+    VStack(spacing: 0) {
+      // 헤더
+      HStack(spacing: 6) {
+        // 펼침/접힘 영역
+        Button {
+          withAnimation(.easeInOut(duration: 0.2)) {
+            isRecurringExpanded.toggle()
+          }
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: "arrow.trianglehead.2.counterclockwise")
+              .font(.pmCaption)
+              .foregroundStyle(Color.pmindigo.n500)
+
+            Text(LocalizedStrings.Home.recurringCount(recurringSummaries.count))
+              .font(.pmCaption)
+              .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+              .font(.system(size: 10, weight: .medium))
+              .foregroundStyle(.tertiary)
+              .rotationEffect(.degrees(isRecurringExpanded ? 90 : 0))
+          }
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+
+        // 추가 버튼
+        Button {
+          onCreateRecurringEventTap()
+        } label: {
+          Text(LocalizedStrings.Common.add)
+            .font(.pmCaption)
+            .foregroundStyle(Color.pmindigo.n500)
+            .padding(4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 10)
+
+      // 펼침 시 종류별 목록
+      if isRecurringExpanded {
+        VStack(spacing: 0) {
+          Divider()
+            .padding(.horizontal, 14)
+
+          ForEach(recurringSummaries) { summary in
+            Button {
+              onRecurringSummaryTap(summary)
+            } label: {
+              HStack(spacing: 8) {
+                Text(summary.emoji)
+                  .font(.pmCaption)
+
+                Text(summary.title)
+                  .font(.pmCaption)
+                  .foregroundStyle(.primary)
+                  .lineLimit(1)
+
+                Text("·")
+                  .font(.pmCaption)
+                  .foregroundStyle(.tertiary)
+
+                Text(summary.recurrenceText)
+                  .font(.pmCaption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
+
+                Spacer()
+              }
+              .padding(.horizontal, 14)
+              .padding(.vertical, 8)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if summary.id != recurringSummaries.last?.id {
+              Divider()
+                .padding(.horizontal, 14)
+            }
+          }
+        }
+      }
+    }
+    .background(Color.pmindigo.n500.opacity(0.03))
+    .adaptiveGlassCard(cornerRadius: 10)
+  }
+
+  // MARK: - Recurring Empty State
+
+  private var recurringEmptyState: some View {
+    Button {
+      onCreateRecurringEventTap()
+    } label: {
+      HStack(spacing: 14) {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500.opacity(0.1))
+            .frame(width: 48, height: 48)
+
+          Image(systemName: "arrow.trianglehead.2.counterclockwise")
+            .font(.pmTitle3)
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(LocalizedStrings.Home.noRecurringTitle)
+            .font(.pmSubheadlineSemibold)
+            .foregroundStyle(.primary)
+
+          Text(LocalizedStrings.Home.noRecurringSubtitle)
+            .font(.pmCaption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
+      }
+      .padding(14)
+      .adaptiveGlassCard(cornerRadius: 14)
+    }
+    .buttonStyle(.plain)
+  }
+
   // MARK: - Empty State
 
   private var emptyState: some View {
-    HStack(spacing: 14) {
-      // 캘린더 아이콘
-      ZStack {
-        Circle()
-          .fill(Color.pmindigo.n500.opacity(0.1))
-          .frame(width: 48, height: 48)
+    Button {
+      showCreateOptions = true
+    } label: {
+      HStack(spacing: 14) {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500.opacity(0.1))
+            .frame(width: 48, height: 48)
 
-        Image(systemName: "calendar.badge.clock")
-          .font(.pmTitle3)
-          .foregroundStyle(Color.pmindigo.n500)
+          Image(systemName: "calendar.badge.clock")
+            .font(.pmTitle3)
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(LocalizedStrings.Home.noUpcomingTitle)
+            .font(.pmSubheadlineSemibold)
+            .foregroundStyle(.primary)
+
+          Text(LocalizedStrings.Home.noUpcomingSubtitle)
+            .font(.pmCaption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
       }
-
-      // 텍스트
-      VStack(alignment: .leading, spacing: 2) {
-        Text("예정된 일정이 없어요")
-          .font(.pmSubheadlineSemibold)
-          .foregroundStyle(.primary)
-
-        Text("새로운 약속이나 일정을 만들어보세요")
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
-      }
-
-      Spacer()
+      .padding(14)
+      .adaptiveGlassCard(cornerRadius: 14)
     }
-    .padding(14)
-    .adaptiveGlassCard(cornerRadius: 14)
+    .buttonStyle(.plain)
+    .confirmationDialog(
+      LocalizedStrings.Home.createScheduleDialogTitle,
+      isPresented: $showCreateOptions,
+      titleVisibility: .visible
+    ) {
+      Button(LocalizedStrings.Home.createPersonalEvent) {
+        onCreatePersonalEventTap()
+      }
+      Button(LocalizedStrings.Home.createGroupSchedule) {
+        onCreateScheduleTap()
+      }
+    }
   }
 
   // MARK: - Computed Properties
@@ -103,7 +267,7 @@ struct UpcomingSection: View {
 
   /// 날짜별로 그룹화된 일정
   private var groupedByDate: [DateGroup] {
-    let calendar = Calendar.current
+    let calendar = Calendar.scheduleDisplay
     var groups: [Date: [HomeModels.ScheduleItem]] = [:]
 
     for item in displayedItems {
@@ -126,21 +290,29 @@ private struct DateGroup {
 
 // MARK: - Preview
 
-#Preview("일정 있음") {
+#Preview("일정 + 반복") {
   UpcomingSection(
     items: [
-      .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
+      .schedule(ScheduleModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
       .personalEvent(PersonalEventModel.mock(
         id: "pe-1",
         title: "치과 예약",
         emoji: "🦷",
         startAt: Date().addingTimeInterval(90000)
       )),
-      .promise(PromiseModel.mock(id: "2", title: "저녁 식사", startAt: Date().addingTimeInterval(172800))),
-      .promise(PromiseModel.mock(id: "3", title: "영화 관람", startAt: Date().addingTimeInterval(259200)))
+    ],
+    weatherCache: [:],
+    isPro: true,
+    recurringSummaries: [
+      .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
+      .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
     ],
     onItemTap: { _ in },
-    onSeeAllTap: {}
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
   )
   .padding()
   .auroraBackground()
@@ -149,8 +321,36 @@ private struct DateGroup {
 #Preview("일정 없음") {
   UpcomingSection(
     items: [],
+    weatherCache: [:],
+    isPro: true,
+    recurringSummaries: [],  // 두 emptyState 모두 표시
     onItemTap: { _ in },
-    onSeeAllTap: {}
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
+  )
+  .padding()
+  .auroraBackground()
+}
+
+#Preview("반복 일정만") {
+  UpcomingSection(
+    items: [],
+    weatherCache: [:],
+    isPro: true,
+    recurringSummaries: [
+      .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
+      .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
+      .init(recurringEventId: "r3", title: "영어 수업", emoji: "📚", recurrenceText: "매주 화, 목", nextInstanceDate: Date().addingTimeInterval(259200)),
+    ],
+    onItemTap: { _ in },
+    onSeeAllTap: {},
+    onCreatePersonalEventTap: {},
+    onCreateScheduleTap: {},
+    onCreateRecurringEventTap: {},
+    onRecurringSummaryTap: { _ in }
   )
   .padding()
   .auroraBackground()

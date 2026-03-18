@@ -4,22 +4,31 @@ import PromisoShared
 // MARK: - Personal Event Card
 
 /// 개인 일정 카드 컴포넌트
-/// - PromiseCard와 동일한 VStack 레이아웃 패턴
+/// - ScheduleCard와 동일한 VStack 레이아웃 패턴
 /// - Glass Effect 적용 (iOS 26 fallback 포함)
 /// - 상태별 배지 표시 (진행 중/오늘/다가오는/지난)
 public struct PersonalEventCard: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
+  let conflicts: [ConflictInfo]
+  let isCheckingConflicts: Bool
   let onTap: () -> Void
   let onEdit: () -> Void
   let onDelete: () -> Void
 
   public init(
     event: PersonalEventModel,
+    weather: WeatherInfo? = nil,
+    conflicts: [ConflictInfo] = [],
+    isCheckingConflicts: Bool = false,
     onTap: @escaping () -> Void,
     onEdit: @escaping () -> Void,
     onDelete: @escaping () -> Void
   ) {
     self.event = event
+    self.weather = weather
+    self.conflicts = conflicts
+    self.isCheckingConflicts = isCheckingConflicts
     self.onTap = onTap
     self.onEdit = onEdit
     self.onDelete = onDelete
@@ -37,6 +46,17 @@ public struct PersonalEventCard: View {
         if event.reminderMinutesBefore != nil {
           bottomSection
         }
+
+        // PRO 혜택 (날씨 + 충돌 통합)
+        ProBenefitCardView(
+          weather: weather,
+          eventStartAt: event.startAt,
+          eventEndAt: event.endAt,
+          conflicts: conflicts,
+          isCheckingConflicts: isCheckingConflicts,
+          eventTitle: event.title,
+          eventEmoji: event.emoji
+        )
       }
       .padding(16)
       .contentShape(Rectangle())
@@ -45,15 +65,15 @@ public struct PersonalEventCard: View {
     .adaptiveGlassCard()
     .contextMenu {
       Button(action: onTap) {
-        Label("상세 보기", systemImage: "info.circle")
+        Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
       }
 
       Button(action: onEdit) {
-        Label("수정", systemImage: "pencil")
+        Label(LocalizedStrings.Common.edit, systemImage: "pencil")
       }
 
       Button(role: .destructive, action: onDelete) {
-        Label("삭제", systemImage: "trash")
+        Label(LocalizedStrings.Common.delete, systemImage: "trash")
       }
     }
   }
@@ -111,7 +131,7 @@ public struct PersonalEventCard: View {
             HStack(spacing: 4) {
               Text("📷")
                 .font(.system(size: 14))
-              Text("사진 \(event.imageUrls.count)장")
+              Text(LocalizedStrings.Personal.photoCount(event.imageUrls.count))
                 .font(.system(size: 14, weight: .medium))
             }
             .foregroundStyle(.secondary)
@@ -131,7 +151,7 @@ public struct PersonalEventCard: View {
         HStack(spacing: 4) {
           Image(systemName: isReminderSent ? "checkmark.circle.fill" : "bell.fill")
             .font(.system(size: 12))
-          Text(isReminderSent ? "알림 완료" : reminderText(minutes))
+          Text(isReminderSent ? LocalizedStrings.Personal.reminderSent : reminderText(minutes))
             .font(.system(size: 13, weight: .medium))
         }
         .foregroundStyle(isReminderSent ? .green : .secondary)
@@ -144,13 +164,22 @@ public struct PersonalEventCard: View {
   // MARK: - Helper
 
   private func reminderText(_ minutes: Int) -> String {
-    if minutes == 0 { return "이벤트 시점 알림" }
-    if minutes >= 10080 && minutes % (1440 * 7) == 0 {
-      return "\(minutes / (1440 * 7))주 전 알림"
+    let minutesPerHour = 60
+    let minutesPerDay = 24 * minutesPerHour
+    let minutesPerWeek = 7 * minutesPerDay
+
+    switch minutes {
+    case 0:
+      return LocalizedStrings.Personal.reminderAtEvent
+    case let value where value >= minutesPerWeek && value % minutesPerWeek == 0:
+      return LocalizedStrings.Personal.reminderWeeks(value / minutesPerWeek)
+    case let value where value >= minutesPerDay:
+      return LocalizedStrings.Personal.reminderDays(value / minutesPerDay)
+    case let value where value >= minutesPerHour:
+      return LocalizedStrings.Personal.reminderHours(value / minutesPerHour)
+    default:
+      return LocalizedStrings.Personal.reminderMinutes(minutes)
     }
-    if minutes >= 1440 { return "\(minutes / 1440)일 전 알림" }
-    if minutes >= 60 { return "\(minutes / 60)시간 전 알림" }
-    return "\(minutes)분 전 알림"
   }
 }
 
@@ -175,11 +204,11 @@ private struct PersonalEventStatusBadge: View {
   }
 
   private var statusText: String {
-    if event.isOngoing { return "진행 중" }
-    if event.isPast { return "종료" }
+    if event.isOngoing { return LocalizedStrings.Schedule.ongoing }
+    if event.isPast { return LocalizedStrings.Personal.statusEnded }
     let calendar = Calendar.current
-    if calendar.isDateInToday(event.startAt) { return "오늘" }
-    return "예정"
+    if calendar.isDateInToday(event.startAt) { return LocalizedStrings.Personal.statusToday }
+    return LocalizedStrings.Personal.statusUpcoming
   }
 
   private var iconName: String {

@@ -5,7 +5,7 @@ import PromisoShared
 // MARK: - Data Source
 
 /// Firestore를 통한 사용자 설정 데이터 관리
-public final class UserSettingsRemoteDataSource: @unchecked Sendable {
+public actor UserSettingsRemoteDataSource {
   private let db: Firestore
 
   public init(db: Firestore = Firestore.firestore()) {
@@ -14,7 +14,7 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
 
   /// 설정 문서 참조
   private func settingsRef(userId: String) -> DocumentReference {
-    db.environmentCollection("users")
+    db.collection("users")
       .document(userId)
       .collection("settings")
       .document("main")
@@ -32,13 +32,55 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
 
     let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
     let groupSortOption = GroupSortOption.read(from: data["groupSortOption"] as? [String: Any])
-    let plan = UserPlan(rawValue: data["plan"] as? String ?? "") ?? .free
+    let proSettings = data["proSettings"] as? [String: Any]
+    let conflictDetectionThreshold = proSettings?["conflictDetectionThresholdMinute"] as? Int ?? 0
+    let briefingMap = proSettings?["briefing"] as? [String: Any]
+    let briefingStyle = BriefingStyle(rawValue: briefingMap?["style"] as? String ?? "") ?? .friendly
+    let briefingNotificationHour = briefingMap?["notificationHour"] as? Int
+    let availableTransports: Set<AvailableTransport> = {
+      // 새 형식 우선
+      if let transportArray = briefingMap?["availableTransports"] as? [String] {
+        let transports = Set(transportArray.compactMap { AvailableTransport(rawValue: $0) })
+        return transports.isEmpty ? [.transit, .car] : transports
+      }
+      // 하위 호환: 기존 preferredTransport 문자열 마이그레이션
+      let legacy = briefingMap?["preferredTransport"] as? String ?? ""
+      switch legacy {
+      case "transit": return [.transit]
+      case "car": return [.car]
+      default: return [.transit, .car]
+      }
+    }()
+
+    let briefingDefaultLocation: LocationInfoModel? = {
+      guard let loc = briefingMap?["defaultLocation"] as? [String: Any],
+            let name = loc["name"] as? String else { return nil }
+      return LocationInfoModel(
+        name: name,
+        address: loc["address"] as? String,
+        latitude: loc["latitude"] as? Double,
+        longitude: loc["longitude"] as? Double
+      )
+    }()
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
       groupSortOption: groupSortOption,
-      plan: plan
+      conflictDetectionThreshold: conflictDetectionThreshold,
+      briefingStyle: briefingStyle,
+      briefingNotificationHour: briefingNotificationHour,
+      availableTransports: availableTransports,
+      briefingDefaultLocation: briefingDefaultLocation
     )
+  }
+
+  /// Pro 설정 존재 여부 확인
+  public func hasProSettings(userId: String) async throws -> Bool {
+    let document = try await settingsRef(userId: userId).getDocument()
+    guard document.exists, let data = document.data() else {
+      return false
+    }
+    return data["proSettings"] != nil
   }
 
   /// 그룹 정렬 옵션 업데이트
@@ -49,11 +91,74 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
     )
   }
 
-  /// 사용자 플랜 업데이트
-  public func updatePlan(userId: String, plan: UserPlan) async throws {
-    try await settingsRef(userId: userId).setData(
-      ["plan": plan.rawValue],
-      merge: true
-    )
+  /// 일정 충돌 감지 임계값 업데이트
+  public func updateConflictDetectionThreshold(userId: String, threshold: Int) async throws {
+    try await settingsRef(userId: userId).updateData([
+      "proSettings.conflictDetectionThresholdMinute": threshold,
+    ])
+  }
+
+  /// 브리핑 스타일 업데이트
+  public func updateBriefingStyle(userId: String, style: BriefingStyle) async throws {
+    try await settingsRef(userId: userId).updateData([
+      "proSettings.briefing.style": style.rawValue,
+    ])
+  }
+
+  /// 이용 가능 교통수단 업데이트
+  public func updateAvailableTransports(userId: String, transports: Set<AvailableTransport>) async throws {
+    try await settingsRef(userId: userId).updateData([
+      "proSettings.briefing.availableTransports": transports.map(\.rawValue).sorted(),
+    ])
+  }
+
+  /// Pro 가입 시 기본 설정값 초기화
+  public func initializeProDefaults(userId: String) async throws {
+    try await settingsRef(userId: userId).setData([
+      "proSettings": [
+        "conflictDetectionThresholdMinute": 0,
+        "briefing": [
+          "style": BriefingStyle.friendly.rawValue,
+          "notificationHour": 8,
+          "timezone": TimeZone.current.identifier,
+          "language": AppLanguage.resolved.rawValue,
+          "availableTransports": AvailableTransport.allCases.map(\.rawValue),
+        ]
+      ]
+    ], merge: true)
+  }
+
+  /// 브리핑 기본 위치 업데이트
+  public func updateBriefingDefaultLocation(userId: String, location: LocationInfoModel?) async throws {
+    if let location {
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address { locationData["address"] = address }
+      if let lat = location.latitude { locationData["latitude"] = lat }
+      if let lng = location.longitude { locationData["longitude"] = lng }
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.defaultLocation": locationData,
+      ])
+    } else {
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.defaultLocation": FieldValue.delete(),
+      ])
+    }
+  }
+
+  /// 브리핑 알림 시간 업데이트
+  public func updateBriefingNotificationHour(userId: String, hour: Int?) async throws {
+    if let hour {
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.notificationHour": hour,
+        "proSettings.briefing.timezone": TimeZone.current.identifier,
+        "proSettings.briefing.language": AppLanguage.resolved.rawValue,
+      ])
+    } else {
+      try await settingsRef(userId: userId).updateData([
+        "proSettings.briefing.notificationHour": FieldValue.delete(),
+        "proSettings.briefing.timezone": FieldValue.delete(),
+        "proSettings.briefing.language": FieldValue.delete(),
+      ])
+    }
   }
 }

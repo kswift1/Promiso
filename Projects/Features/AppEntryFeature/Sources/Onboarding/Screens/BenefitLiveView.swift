@@ -1,5 +1,5 @@
 // MARK: - BenefitLiveView.swift
-// Screen 5: Benefit 3 - "지금 어디야?" 안 물어도 되는 약속
+// Screen 5: Benefit 3 - "지금 어디야?" 안 물어도 되는 일정
 
 import Lottie
 import PromisoShared
@@ -90,11 +90,11 @@ struct BenefitLiveView: View {
 
       // 카피
       VStack(spacing: 6) {
-        Text("오고 있는지, 물어보지 않아도 돼요")
+        Text("약속 당일엔, 이런 것까지")
           .font(.title3.bold())
           .foregroundStyle(Color.pmtext.primary)
           .minimumScaleFactor(0.8)
-        Text("각자 상태만 공유하면,\n잠금화면에서도 모두의 상황이 보여요.")
+        Text("각자 상태만 공유하면\n잠금화면에서도 확인돼요")
           .font(.subheadline)
           .foregroundStyle(Color.pmtext.secondary)
           .minimumScaleFactor(0.8)
@@ -210,7 +210,7 @@ struct BenefitLiveView: View {
         Text("대학 동기 모임")
           .font(.system(size: 15, weight: .bold))
           .foregroundStyle(.white)
-        Text("약속 시간까지 15분 남았어요")
+        Text("일정 시간까지 15분 남았어요")
           .font(.system(size: 12))
           .foregroundStyle(.white.opacity(0.6))
       }

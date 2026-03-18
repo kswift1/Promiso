@@ -20,15 +20,42 @@ struct DeeplinkNotificationParserTests {
 
   private let parser = DeeplinkClient.liveValue.parseNotification
 
-  @Test("promise 관련 타입은 promiseId+groupId 필요")
-  func parse_promiseTypes_requirePromiseAndGroup() {
+  @Test("schedule 관련 타입은 scheduleId+groupId 필요")
+  func parse_scheduleTypes_requireScheduleAndGroup() {
+    let types = [
+      "schedule_invitation",
+      "schedule_reminder",
+      "schedule_confirmed",
+      "schedule_cancelled",
+      "schedule_updated",
+      "attendance_response",
+      "location_sharing_reminder",
+    ]
+
+    for type in types {
+      let result = parser([
+        "type": type,
+        "scheduleId": "p1",
+        "groupId": "g1",
+      ])
+      #expect(result == .schedule(scheduleId: "p1", groupId: "g1"))
+
+      let missingSchedule = parser([
+        "type": type,
+        "groupId": "g1",
+      ])
+      #expect(missingSchedule == nil)
+    }
+  }
+
+  @Test("legacy promise payload도 schedule 딥링크로 파싱")
+  func parse_legacyPromisePayload_isSupported() {
     let types = [
       "promise_invitation",
       "promise_reminder",
       "promise_confirmed",
       "promise_cancelled",
       "promise_updated",
-      "attendance_response",
     ]
 
     for type in types {
@@ -37,13 +64,7 @@ struct DeeplinkNotificationParserTests {
         "promiseId": "p1",
         "groupId": "g1",
       ])
-      #expect(result == .promise(promiseId: "p1", groupId: "g1"))
-
-      let missingPromise = parser([
-        "type": type,
-        "groupId": "g1",
-      ])
-      #expect(missingPromise == nil)
+      #expect(result == .schedule(scheduleId: "p1", groupId: "g1"))
     }
   }
 

@@ -18,11 +18,11 @@ extension BottomAccessoryInfo {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var isEnabled: Bool
 
       public init() {
-        self.isEnabled = UserDefaults.standard.bool(forKey: "dev.livePromise.enabled")
+        self.isEnabled = UserDefaults.standard.bool(forKey: "dev.liveSchedule.enabled")
       }
     }
 
@@ -41,7 +41,7 @@ extension BottomAccessoryInfo {
         switch action {
         case let .view(.toggleChanged(isEnabled)):
           state.isEnabled = isEnabled
-          UserDefaults.standard.set(isEnabled, forKey: "dev.livePromise.enabled")
+          UserDefaults.standard.set(isEnabled, forKey: "dev.liveSchedule.enabled")
           return .none
         }
       }
@@ -62,12 +62,12 @@ extension BottomAccessoryInfo {
         VStack(spacing: 16) {
           // Toggle 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Toggle("LivePromise 표시", isOn: $store.isEnabled.sending(\.view.toggleChanged))
+            Toggle(LocalizedStrings.SettingsStrings.liveScheduleDisplay, isOn: $store.isEnabled.sending(\.view.toggleChanged))
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
               .adaptiveGlassCard()
 
-            Text("TabBar 하단에 실시간 약속 추적 바를 표시합니다.")
+            Text(LocalizedStrings.SettingsStrings.liveScheduleDescription)
               .font(.system(size: 12))
               .foregroundStyle(Color.pmtext.secondary)
               .padding(.horizontal, 4)
@@ -75,13 +75,13 @@ extension BottomAccessoryInfo {
 
           // 디바이스 정보 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("디바이스 정보")
+            Text(LocalizedStrings.SettingsStrings.deviceInfo)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
               HStack {
-                Text("현재 API 모드")
+                Text(LocalizedStrings.SettingsStrings.currentAPIMode)
                 Spacer()
                 Text(currentModeName)
                   .foregroundStyle(.secondary)
@@ -93,7 +93,7 @@ extension BottomAccessoryInfo {
                 .background(Color.white.opacity(0.12))
 
               HStack {
-                Text("iOS 버전")
+                Text(LocalizedStrings.SettingsStrings.iosVersion)
                 Spacer()
                 Text(UIDevice.current.systemVersion)
                   .foregroundStyle(.secondary)
@@ -109,7 +109,7 @@ extension BottomAccessoryInfo {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("LivePromise 설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.liveScheduleSettings)
       .navigationBarTitleDisplayMode(.inline)
     }
 

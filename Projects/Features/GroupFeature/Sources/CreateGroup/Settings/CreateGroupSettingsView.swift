@@ -13,16 +13,20 @@ struct CreateGroupSettingsView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let groupName: String
+  let photoData: Data?
+  let isJoining: Bool
   let notificationEnabled: Bool
   let calendarSyncEnabled: Bool
   let notificationAuthStatus: NotificationAuthorizationStatus
   let calendarAuthStatus: CalendarAuthorizationStatus
   let isSaving: Bool
   let showCalendarPermissionInfoAlert: Bool
+  let selectedGroupColor: GroupColor?
+  let existingGroupColorMap: [GroupColor: String]
   let onNotificationToggle: (Bool) -> Void
   let onCalendarSyncToggle: (Bool) -> Void
+  let onGroupColorSelected: (GroupColor?) -> Void
   let onComplete: () -> Void
-  let onSkip: () -> Void
   let onCalendarPermissionInfoAlertDismiss: () -> Void
   let onAppear: () -> Void
 
@@ -30,10 +34,10 @@ struct CreateGroupSettingsView: View {
     ScrollView {
       VStack(spacing: 32) {
         Spacer()
-          .frame(height: 20)
+          .frame(height: 8)
 
-        // Header
-        headerSection
+        // Group Color (with thumbnail)
+        groupColorSection
 
         // Settings
         settingsSection
@@ -46,6 +50,8 @@ struct CreateGroupSettingsView: View {
     .safeAreaInset(edge: .bottom) {
       bottomButtons
     }
+    .navigationTitle(LocalizedStrings.GroupSettings.personalSettings)
+    .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
     .onAppear {
       onAppear()
@@ -57,77 +63,74 @@ struct CreateGroupSettingsView: View {
       }
     }
     .alert(
-      "캘린더 권한 안내",
+      LocalizedStrings.GroupSettings.calendarPermissionTitle,
       isPresented: .constant(showCalendarPermissionInfoAlert),
       actions: {
-        Button("확인") {
+        Button(LocalizedStrings.Common.ok) {
           onCalendarPermissionInfoAlertDismiss()
         }
       },
       message: {
-        Text("설정이 저장되었습니다.\n캘린더 동기화를 사용하려면 나중에 시스템 설정에서 캘린더 권한을 허용해주세요.")
+        Text(LocalizedStrings.GroupSettings.calendarPermissionMessage)
       }
     )
   }
 
-  // MARK: - Header Section
+  // MARK: - Group Thumbnail
 
-  private var headerSection: some View {
-    VStack(spacing: 16) {
-      ZStack {
+  private var groupThumbnail: some View {
+    ZStack {
+      if let photoData, let uiImage = UIImage(data: photoData) {
+        Image(uiImage: uiImage)
+          .resizable()
+          .scaledToFill()
+          .frame(width: 72, height: 72)
+          .clipShape(Circle())
+      } else {
         Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.pmindigo.n200.opacity(0.3), Color.pmaurora.purple.opacity(0.2)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .frame(width: 100, height: 100)
-
-        Image(systemName: "gearshape.2.fill")
-          .font(.system(size: 44))
-          .foregroundStyle(
-            LinearGradient(
-              colors: [Color.pmindigo.n500, Color.pmaurora.purple],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-      }
-
-      VStack(spacing: 8) {
-        Text("'\(groupName)' 알림 설정")
-          .font(.title2.bold())
-
-        Text("이 그룹의 알림과 캘린더 동기화를\n설정해주세요")
-          .font(.body)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .lineSpacing(4)
+          .fill(Color.pmindigo.n100.opacity(0.5))
+          .frame(width: 72, height: 72)
+          .overlay {
+            Image(systemName: "person.3.fill")
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
       }
     }
+    .overlay(
+      Circle()
+        .strokeBorder(
+          (selectedGroupColor ?? .purple).color,
+          lineWidth: 3
+        )
+        .frame(width: 72, height: 72)
+    )
   }
 
   // MARK: - Settings Section
 
   private var settingsSection: some View {
-    VStack(spacing: 16) {
+    VStack(alignment: .leading, spacing: 16) {
+      // 통합 헤더
+      VStack(alignment: .leading, spacing: 4) {
+        Text(LocalizedStrings.GroupSettings.notificationSectionTitle)
+          .font(.system(size: 16, weight: .semibold))
+
+        Text(LocalizedStrings.GroupSettings.notificationSectionSubtitle)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
       // 알림 설정
       notificationSettingRow
 
       Divider()
-        .padding(.horizontal, 16)
 
       // 캘린더 동기화 설정
       calendarSettingRow
     }
     .padding(20)
-    .background(
-      RoundedRectangle(cornerRadius: 20)
-        .fill(Color(.systemBackground))
-        .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-    )
+    .staticGlassBackground(cornerRadius: 20)
   }
 
   private var notificationSettingRow: some View {
@@ -155,7 +158,7 @@ struct CreateGroupSettingsView: View {
       }
 
       VStack(alignment: .leading, spacing: 4) {
-        Text("푸시 알림")
+        Text(LocalizedStrings.GroupSettings.pushNotification)
           .font(.headline)
 
         Text(notificationSubtitle)
@@ -176,9 +179,9 @@ struct CreateGroupSettingsView: View {
 
   private var notificationSubtitle: String {
     if notificationAuthStatus == .denied {
-      return "권한 없음 - 토글 시 설정으로 이동"
+      return LocalizedStrings.GroupSettings.notificationDenied
     }
-    return "새로운 약속 초대, 일정 변경, 리마인더를 알려드려요"
+    return LocalizedStrings.GroupSettings.notificationDescription
   }
 
   private var notificationSubtitleColor: Color {
@@ -214,7 +217,7 @@ struct CreateGroupSettingsView: View {
 
       VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 6) {
-          Text("캘린더 동기화")
+          Text(LocalizedStrings.GroupSettings.calendarSync)
             .font(.headline)
 
           if !calendarAuthStatus.canWriteEvents && calendarSyncEnabled {
@@ -242,10 +245,10 @@ struct CreateGroupSettingsView: View {
     switch calendarAuthStatus {
     case .denied, .restricted:
       return calendarSyncEnabled
-        ? "권한 없음 - 설정에서 허용하면 동기화가 시작돼요"
-        : "권한 없음 - 토글 ON 후 설정에서 허용 필요"
+        ? LocalizedStrings.GroupSettings.calendarDeniedSyncOn
+        : LocalizedStrings.GroupSettings.calendarDeniedSyncOff
     case .writeOnly, .fullAccess, .authorized, .notDetermined:
-      return "확정된 약속을 기기 캘린더에 자동으로 추가해요"
+      return LocalizedStrings.GroupSettings.calendarDescription
     }
   }
 
@@ -264,6 +267,108 @@ struct CreateGroupSettingsView: View {
       .foregroundStyle(.orange)
   }
 
+  // MARK: - Group Color Section
+
+  private var groupColorSection: some View {
+    VStack(spacing: 16) {
+      // 그룹 썸네일
+      groupThumbnail
+
+      // 섹션 헤더
+      VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 8) {
+          Image(systemName: "paintpalette.fill")
+            .font(.system(size: 16))
+            .foregroundStyle(
+              LinearGradient(
+                colors: [Color.pmindigo.n500, Color.pmaurora.purple],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+          Text(LocalizedStrings.GroupSettings.groupColorSectionTitle)
+            .font(.system(size: 16, weight: .semibold))
+        }
+
+        Text(LocalizedStrings.GroupSettings.groupColorSectionSubtitle)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      // 색상 그리드 (4열)
+      let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+      ]
+
+      LazyVGrid(columns: columns, alignment: .center, spacing: 12) {
+        ForEach(GroupColor.allCases, id: \.self) { color in
+          groupColorCell(color)
+        }
+      }
+    }
+    .padding(20)
+    .staticGlassBackground(cornerRadius: 20)
+  }
+
+  private func groupColorCell(_ color: GroupColor) -> some View {
+    let isSelected = selectedGroupColor == color
+    let usedByGroupName = existingGroupColorMap[color]
+
+    return Button {
+      if isSelected {
+        onGroupColorSelected(nil)
+      } else {
+        onGroupColorSelected(color)
+      }
+    } label: {
+      VStack(spacing: 4) {
+        ZStack {
+          Circle()
+            .fill(color.color)
+            .frame(width: 44, height: 44)
+
+          if isSelected {
+            Circle()
+              .strokeBorder(.white, lineWidth: 3)
+              .frame(width: 44, height: 44)
+
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .bold))
+              .foregroundStyle(.white)
+          }
+
+          if usedByGroupName != nil && !isSelected {
+            Circle()
+              .fill(.black.opacity(0.3))
+              .frame(width: 44, height: 44)
+          }
+        }
+
+        Text(color.displayName)
+          .font(.system(size: 10))
+          .foregroundStyle(isSelected ? .primary : .secondary)
+          .lineLimit(1)
+
+        // 항상 공간 확보하여 줄 정렬 유지
+        if let groupName = usedByGroupName {
+          Text(LocalizedStrings.GroupSettings.groupColorUsedBy(groupName))
+            .font(.system(size: 8))
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+        } else {
+          Text(" ")
+            .font(.system(size: 8))
+        }
+      }
+      .frame(maxHeight: .infinity, alignment: .top)
+    }
+    .buttonStyle(.plain)
+  }
+
   // MARK: - Bottom Buttons
 
   private var bottomButtons: some View {
@@ -274,7 +379,7 @@ struct CreateGroupSettingsView: View {
             ProgressView()
               .tint(.white)
           }
-          Text(isSaving ? "저장 중..." : "설정 완료")
+          Text(isSaving ? LocalizedStrings.GroupSettings.saving : (isJoining ? LocalizedStrings.GroupSettings.joinGroupComplete : LocalizedStrings.GroupSettings.createGroupComplete))
             .font(.headline)
         }
         .frame(maxWidth: .infinity)
@@ -291,19 +396,25 @@ struct CreateGroupSettingsView: View {
       }
       .disabled(isSaving)
 
-      Button(action: onSkip) {
-        Text("건너뛰기")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-      .disabled(isSaving)
-
-      Text("나중에 그룹 설정에서 변경할 수 있어요")
+      Text(LocalizedStrings.GroupSettings.changeableHint)
         .font(.caption)
         .foregroundStyle(.tertiary)
     }
     .padding(.horizontal, 24)
-    .padding(.vertical, 16)
+    .padding(.top, 16)
+    .padding(.bottom, 16)
+    .background(
+      LinearGradient(
+        stops: [
+          .init(color: Color(.systemBackground).opacity(0), location: 0),
+          .init(color: Color(.systemBackground).opacity(0.8), location: 0.15),
+          .init(color: Color(.systemBackground), location: 0.3),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea(.container, edges: .bottom)
+    )
   }
 }
 
@@ -313,16 +424,20 @@ struct CreateGroupSettingsView: View {
   NavigationStack {
     CreateGroupSettingsView(
       groupName: "대학 친구들",
+      photoData: nil,
+      isJoining: false,
       notificationEnabled: true,
       calendarSyncEnabled: true,
       notificationAuthStatus: .authorized,
       calendarAuthStatus: .writeOnly,
       isSaving: false,
       showCalendarPermissionInfoAlert: false,
+      selectedGroupColor: .purple,
+      existingGroupColorMap: [.blue: "회사", .green: "동아리"],
       onNotificationToggle: { _ in },
       onCalendarSyncToggle: { _ in },
+      onGroupColorSelected: { _ in },
       onComplete: {},
-      onSkip: {},
       onCalendarPermissionInfoAlertDismiss: {},
       onAppear: {}
     )

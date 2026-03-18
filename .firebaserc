@@ -4,5 +4,22 @@
     "dev": "promiso-dev",
     "stage": "promiso-stage",
     "prod": "promiso-prod"
-  }
+  },
+  "targets": {
+    "promiso-stage": {
+      "hosting": {
+        "admin-console": [
+          "promiso-stage-admin"
+        ]
+      }
+    },
+    "promiso-prod": {
+      "hosting": {
+        "admin-console": [
+          "promiso-prod-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

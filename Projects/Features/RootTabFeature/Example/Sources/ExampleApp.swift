@@ -42,7 +42,7 @@ private struct ExampleContentView: View {
   var body: some View {
     List {
       Section("RootTab Feature") {
-        NavigationLink("RootTab with Promise") {
+        NavigationLink("RootTab with Schedule") {
           defaultExample
         }
       }
@@ -60,7 +60,7 @@ private struct ExampleContentView: View {
       dependencies.authClient = .previewValue
       dependencies.userProfileClient = .previewValue
       dependencies.groupClient = .previewValue
-      dependencies.promiseClient = .previewValue
+      dependencies.scheduleClient = .previewValue
     }
 
     RootTab.RootView(store: store)
@@ -76,7 +76,7 @@ private struct ExampleContentView: View {
     dependencies.authClient = .previewValue
     dependencies.userProfileClient = .previewValue
     dependencies.groupClient = .previewValue
-    dependencies.promiseClient = .previewValue
+    dependencies.scheduleClient = .previewValue
   }
 
   RootTab.RootView(store: store)

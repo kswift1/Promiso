@@ -24,29 +24,29 @@ import Testing
 @Suite("NotificationCategory iconName 테스트")
 struct NotificationCategoryIconTests {
 
-  @Test("promiseInvitation 아이콘은 envelope.fill")
-  func promiseInvitation_iconName() {
-    #expect(NotificationCategory.promiseInvitation.iconName == "envelope.fill")
+  @Test("scheduleInvitation 아이콘은 envelope.fill")
+  func scheduleInvitation_iconName() {
+    #expect(NotificationCategory.scheduleInvitation.iconName == "envelope.fill")
   }
 
-  @Test("promiseReminder 아이콘은 bell.fill")
-  func promiseReminder_iconName() {
-    #expect(NotificationCategory.promiseReminder.iconName == "bell.fill")
+  @Test("scheduleReminder 아이콘은 bell.fill")
+  func scheduleReminder_iconName() {
+    #expect(NotificationCategory.scheduleReminder.iconName == "bell.fill")
   }
 
-  @Test("promiseConfirmed 아이콘은 checkmark.circle.fill")
-  func promiseConfirmed_iconName() {
-    #expect(NotificationCategory.promiseConfirmed.iconName == "checkmark.circle.fill")
+  @Test("scheduleConfirmed 아이콘은 checkmark.circle.fill")
+  func scheduleConfirmed_iconName() {
+    #expect(NotificationCategory.scheduleConfirmed.iconName == "checkmark.circle.fill")
   }
 
-  @Test("promiseCancelled 아이콘은 xmark.circle.fill")
-  func promiseCancelled_iconName() {
-    #expect(NotificationCategory.promiseCancelled.iconName == "xmark.circle.fill")
+  @Test("scheduleCancelled 아이콘은 xmark.circle.fill")
+  func scheduleCancelled_iconName() {
+    #expect(NotificationCategory.scheduleCancelled.iconName == "xmark.circle.fill")
   }
 
-  @Test("promiseUpdated 아이콘은 pencil.circle.fill")
-  func promiseUpdated_iconName() {
-    #expect(NotificationCategory.promiseUpdated.iconName == "pencil.circle.fill")
+  @Test("scheduleUpdated 아이콘은 pencil.circle.fill")
+  func scheduleUpdated_iconName() {
+    #expect(NotificationCategory.scheduleUpdated.iconName == "pencil.circle.fill")
   }
 
   @Test("groupInvitation 아이콘은 person.badge.plus.fill")
@@ -64,6 +64,11 @@ struct NotificationCategoryIconTests {
     #expect(NotificationCategory.attendanceResponse.iconName == "hand.raised.fill")
   }
 
+  @Test("locationSharingReminder 아이콘은 location.circle.fill")
+  func locationSharingReminder_iconName() {
+    #expect(NotificationCategory.locationSharingReminder.iconName == "location.circle.fill")
+  }
+
   @Test("system 아이콘은 info.circle.fill")
   func system_iconName() {
     #expect(NotificationCategory.system.iconName == "info.circle.fill")
@@ -77,14 +82,15 @@ struct NotificationCategoryColorTests {
 
   @Test("각 카테고리별 색상 이름이 올바름")
   func allCategories_haveCorrectColorNames() {
-    #expect(NotificationCategory.promiseInvitation.iconColorName == "pmindigo")
-    #expect(NotificationCategory.promiseReminder.iconColorName == "pmorange")
-    #expect(NotificationCategory.promiseConfirmed.iconColorName == "pmgreen")
-    #expect(NotificationCategory.promiseCancelled.iconColorName == "pmred")
-    #expect(NotificationCategory.promiseUpdated.iconColorName == "pmblue")
+    #expect(NotificationCategory.scheduleInvitation.iconColorName == "pmindigo")
+    #expect(NotificationCategory.scheduleReminder.iconColorName == "pmorange")
+    #expect(NotificationCategory.scheduleConfirmed.iconColorName == "pmgreen")
+    #expect(NotificationCategory.scheduleCancelled.iconColorName == "pmred")
+    #expect(NotificationCategory.scheduleUpdated.iconColorName == "pmblue")
     #expect(NotificationCategory.groupInvitation.iconColorName == "pmpurple")
     #expect(NotificationCategory.groupUpdate.iconColorName == "pmteal")
     #expect(NotificationCategory.attendanceResponse.iconColorName == "pmyellow")
+    #expect(NotificationCategory.locationSharingReminder.iconColorName == "pmblue")
     #expect(NotificationCategory.system.iconColorName == "pmgray")
   }
 }
@@ -94,37 +100,38 @@ struct NotificationCategoryColorTests {
 @Suite("NotificationCategory 딥링크 테스트")
 struct NotificationCategoryDeeplinkTests {
 
-  @Test("약속 관련 카테고리는 promise 딥링크 생성")
-  func promiseCategories_returnPromiseDeeplink() {
-    let promiseCategories: [NotificationCategory] = [
-      .promiseInvitation, .promiseReminder, .promiseConfirmed,
-      .promiseCancelled, .promiseUpdated, .attendanceResponse
+  @Test("일정 관련 카테고리는 schedule 딥링크 생성")
+  func scheduleCategories_returnScheduleDeeplink() {
+    let scheduleCategories: [NotificationCategory] = [
+      .scheduleInvitation, .scheduleReminder, .scheduleConfirmed,
+      .scheduleCancelled, .scheduleUpdated, .attendanceResponse,
+      .locationSharingReminder
     ]
 
-    for category in promiseCategories {
-      let deeplink = category.deeplink(promiseId: "p1", groupId: "g1")
-      if case .promise(let pid, let gid) = deeplink {
+    for category in scheduleCategories {
+      let deeplink = category.deeplink(scheduleId: "p1", groupId: "g1")
+      if case .schedule(let pid, let gid) = deeplink {
         #expect(pid == "p1")
         #expect(gid == "g1")
       } else {
-        Issue.record("카테고리 \(category)가 promise 딥링크를 반환하지 않음")
+        Issue.record("카테고리 \(category)가 schedule 딥링크를 반환하지 않음")
       }
     }
   }
 
-  @Test("약속 관련 카테고리에서 promiseId 없으면 none")
-  func promiseCategory_withNilPromiseId_returnsNone() {
-    let deeplink = NotificationCategory.promiseInvitation.deeplink(promiseId: nil, groupId: "g1")
+  @Test("일정 관련 카테고리에서 scheduleId 없으면 none")
+  func scheduleCategory_withNilScheduleId_returnsNone() {
+    let deeplink = NotificationCategory.scheduleInvitation.deeplink(scheduleId: nil, groupId: "g1")
     if case .none = deeplink {
       // 정상
     } else {
-      Issue.record("promiseId가 nil인데 none이 아님")
+      Issue.record("scheduleId가 nil인데 none이 아님")
     }
   }
 
-  @Test("약속 관련 카테고리에서 groupId 없으면 none")
-  func promiseCategory_withNilGroupId_returnsNone() {
-    let deeplink = NotificationCategory.promiseReminder.deeplink(promiseId: "p1", groupId: nil)
+  @Test("일정 관련 카테고리에서 groupId 없으면 none")
+  func scheduleCategory_withNilGroupId_returnsNone() {
+    let deeplink = NotificationCategory.scheduleReminder.deeplink(scheduleId: "p1", groupId: nil)
     if case .none = deeplink {
       // 정상
     } else {
@@ -137,7 +144,7 @@ struct NotificationCategoryDeeplinkTests {
     let groupCategories: [NotificationCategory] = [.groupInvitation, .groupUpdate]
 
     for category in groupCategories {
-      let deeplink = category.deeplink(promiseId: nil, groupId: "g1")
+      let deeplink = category.deeplink(scheduleId: nil, groupId: "g1")
       if case .group(let gid) = deeplink {
         #expect(gid == "g1")
       } else {
@@ -148,7 +155,7 @@ struct NotificationCategoryDeeplinkTests {
 
   @Test("그룹 관련 카테고리에서 groupId 없으면 none")
   func groupCategory_withNilGroupId_returnsNone() {
-    let deeplink = NotificationCategory.groupInvitation.deeplink(promiseId: nil, groupId: nil)
+    let deeplink = NotificationCategory.groupInvitation.deeplink(scheduleId: nil, groupId: nil)
     if case .none = deeplink {
       // 정상
     } else {
@@ -158,7 +165,7 @@ struct NotificationCategoryDeeplinkTests {
 
   @Test("system 카테고리는 항상 none 딥링크")
   func systemCategory_alwaysReturnsNone() {
-    let deeplink = NotificationCategory.system.deeplink(promiseId: "p1", groupId: "g1")
+    let deeplink = NotificationCategory.system.deeplink(scheduleId: "p1", groupId: "g1")
     if case .none = deeplink {
       // 정상
     } else {
@@ -178,18 +185,18 @@ struct NotificationModelPropertyTests {
     #expect(notification.id == "noti-123")
   }
 
-  @Test("deeplinkType이 promiseId, groupId 기반으로 생성됨")
-  func deeplinkType_usesPromiseAndGroupId() {
+  @Test("deeplinkType이 scheduleId, groupId 기반으로 생성됨")
+  func deeplinkType_usesScheduleAndGroupId() {
     let notification = TestFactories.makeNotification(
-      type: .promiseInvitation,
-      promiseId: "promise-1",
+      type: .scheduleInvitation,
+      scheduleId: "schedule-1",
       groupId: "group-1"
     )
-    if case .promise(let pid, let gid) = notification.deeplinkType {
-      #expect(pid == "promise-1")
+    if case .schedule(let pid, let gid) = notification.deeplinkType {
+      #expect(pid == "schedule-1")
       #expect(gid == "group-1")
     } else {
-      Issue.record("promise 딥링크가 아님")
+      Issue.record("schedule 딥링크가 아님")
     }
   }
 
@@ -197,7 +204,7 @@ struct NotificationModelPropertyTests {
   func deeplinkType_forSystemNotification_isNone() {
     let notification = TestFactories.makeNotification(
       type: .system,
-      promiseId: "p1",
+      scheduleId: "p1",
       groupId: "g1"
     )
     if case .none = notification.deeplinkType {
@@ -227,14 +234,15 @@ struct NotificationCategoryRawValueTests {
 
   @Test("각 카테고리의 rawValue가 올바른 snake_case 문자열")
   func rawValues_areCorrectSnakeCase() {
-    #expect(NotificationCategory.promiseInvitation.rawValue == "promise_invitation")
-    #expect(NotificationCategory.promiseReminder.rawValue == "promise_reminder")
-    #expect(NotificationCategory.promiseConfirmed.rawValue == "promise_confirmed")
-    #expect(NotificationCategory.promiseCancelled.rawValue == "promise_cancelled")
-    #expect(NotificationCategory.promiseUpdated.rawValue == "promise_updated")
+    #expect(NotificationCategory.scheduleInvitation.rawValue == "schedule_invitation")
+    #expect(NotificationCategory.scheduleReminder.rawValue == "schedule_reminder")
+    #expect(NotificationCategory.scheduleConfirmed.rawValue == "schedule_confirmed")
+    #expect(NotificationCategory.scheduleCancelled.rawValue == "schedule_cancelled")
+    #expect(NotificationCategory.scheduleUpdated.rawValue == "schedule_updated")
     #expect(NotificationCategory.groupInvitation.rawValue == "group_invitation")
     #expect(NotificationCategory.groupUpdate.rawValue == "group_update")
     #expect(NotificationCategory.attendanceResponse.rawValue == "attendance_response")
+    #expect(NotificationCategory.locationSharingReminder.rawValue == "location_sharing_reminder")
     #expect(NotificationCategory.system.rawValue == "system")
   }
 }
@@ -246,8 +254,8 @@ struct NotificationFilterTests {
 
   @Test("NotificationFilter rawValue 확인")
   func rawValues() {
-    #expect(NotificationFilter.all.rawValue == "전체")
-    #expect(NotificationFilter.unread.rawValue == "안 읽음")
+    #expect(NotificationFilter.all.rawValue == "all")
+    #expect(NotificationFilter.unread.rawValue == "unread")
   }
 
   @Test("NotificationFilter allCases에 2개 포함")

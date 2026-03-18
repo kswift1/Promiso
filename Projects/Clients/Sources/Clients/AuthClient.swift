@@ -11,7 +11,7 @@ import UIKit
 
 // MARK: - Error
 
-public enum AuthClientError: Error, Equatable, LocalizedError {
+public enum AuthClientError: Error, Equatable {
   case invalidCredentials
   case alreadyExists
   case network
@@ -20,27 +20,6 @@ public enum AuthClientError: Error, Equatable, LocalizedError {
   case providerUnavailable
   case isGroupHost
   case unknown
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidCredentials:
-      return "이메일 또는 비밀번호가 올바르지 않습니다."
-    case .alreadyExists:
-      return "이미 가입된 계정입니다."
-    case .network:
-      return "네트워크 연결을 확인해주세요."
-    case .invalidAppleCredential:
-      return "애플 인증 정보를 가져오지 못했습니다."
-    case .missingIdentityToken:
-      return "애플 인증 토큰을 가져오지 못했습니다."
-    case .providerUnavailable:
-      return "해당 로그인 제공자를 사용할 수 없습니다."
-    case .isGroupHost:
-      return "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요."
-    case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
-    }
-  }
 }
 
 // MARK: - Models
@@ -379,7 +358,7 @@ extension AuthClient: DependencyKey {
           return true
         } catch let error as NSError {
           if error.domain == NSURLErrorDomain {
-            await session.login(with: nil)
+            // 네트워크 에러 시 기존 세션 유지 (nil로 덮어쓰지 않음)
             return true
           }
 
@@ -460,11 +439,7 @@ extension AuthClient: DependencyKey {
         do {
           let token = try await user.getIDToken()
           WidgetAuthTokenStore.save(token: token, userId: user.uid)
-        } catch {
-          #if DEBUG
-          print("[AuthClient] Widget 토큰 갱신 실패: \(error)")
-          #endif
-        }
+        } catch {}
       },
       clearWidgetAuthToken: {
         WidgetAuthTokenStore.clear()
@@ -472,24 +447,15 @@ extension AuthClient: DependencyKey {
       },
       requestWidgetToken: {
         // Widget 전용 Long-lived Token 발급 요청
-        guard Auth.auth().currentUser != nil else {
-          #if DEBUG
-          print("[AuthClient] Widget Token 발급 실패: 로그인 안 됨")
-          #endif
-          return
-        }
-
-        // 이미 유효한 토큰이 있으면 스킵 (만료 7일 전까지)
-        if WidgetTokenStore.isTokenValid() {
-          #if DEBUG
-          print("[AuthClient] Widget Token 유효함 - 갱신 스킵")
-          #endif
+        guard Auth.auth().currentUser != nil, !WidgetTokenStore.isTokenValid() else {
           return
         }
 
         do {
           let functions = DefaultFunctionsProvider().functions
-          let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+          let deviceId = await MainActor.run {
+            UIDevice.current.identifierForVendor?.uuidString
+          } ?? UUID().uuidString
 
           let result = try await functions
             .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
@@ -498,23 +464,12 @@ extension AuthClient: DependencyKey {
           guard let data = result.data as? [String: Any],
                 let widgetToken = data["widgetToken"] as? String,
                 let expiresAt = data["expiresAt"] as? Int else {
-            #if DEBUG
-            print("[AuthClient] Widget Token 응답 파싱 실패")
-            #endif
             return
           }
 
           // App Group에 저장
           WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
-
-          #if DEBUG
-          print("[AuthClient] Widget Token 발급 완료 (만료: \(Date(timeIntervalSince1970: TimeInterval(expiresAt))))")
-          #endif
-        } catch {
-          #if DEBUG
-          print("[AuthClient] Widget Token 발급 실패: \(error)")
-          #endif
-        }
+        } catch {}
       },
       deleteAccount: {
         // 회원 탈퇴 - Firebase Function 호출
@@ -537,13 +492,6 @@ extension AuthClient: DependencyKey {
           WidgetAuthTokenStore.clear()
           WidgetTokenStore.clear()
         } catch let error as NSError {
-          #if DEBUG
-          print("[AuthClient] 회원 탈퇴 실패: \(error)")
-          print("[AuthClient] Error domain: \(error.domain), code: \(error.code)")
-          print("[AuthClient] FunctionsErrorDomain: \(FunctionsErrorDomain)")
-          print("[AuthClient] failedPrecondition rawValue: \(FunctionsErrorCode.failedPrecondition.rawValue)")
-          #endif
-
           // Firebase Functions 에러 코드 확인
           if error.domain == FunctionsErrorDomain {
             // "failed-precondition" = 그룹 호스트인 경우
@@ -581,10 +529,6 @@ private enum WidgetAuthTokenStore {
     if let projectId = FirebaseApp.app()?.options.projectID {
       defaults.set(projectId, forKey: LiveActivityIntentKey.firebaseProjectIdKey)
     }
-
-    #if DEBUG
-    print("[WidgetAuthTokenStore] 토큰 저장 완료 (만료: \(expiry), APNs: \(apnsEnvironment))")
-    #endif
   }
 
   static func clear() {
@@ -593,10 +537,6 @@ private enum WidgetAuthTokenStore {
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenKey)
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenExpiryKey)
     defaults.removeObject(forKey: LiveActivityIntentKey.apnsEnvironmentKey)
-
-    #if DEBUG
-    print("[WidgetAuthTokenStore] 토큰 삭제 완료")
-    #endif
   }
 }
 
@@ -615,10 +555,6 @@ private enum WidgetTokenStore {
 
     defaults.set(token, forKey: LiveActivityIntentKey.widgetTokenKey)
     defaults.set(expiryDate, forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
-
-    #if DEBUG
-    print("[WidgetTokenStore] Widget Token 저장 완료 (만료: \(expiryDate))")
-    #endif
   }
 
   /// Widget Token이 유효한지 확인 (만료 7일 전까지 유효)
@@ -640,10 +576,6 @@ private enum WidgetTokenStore {
 
     defaults.removeObject(forKey: LiveActivityIntentKey.widgetTokenKey)
     defaults.removeObject(forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
-
-    #if DEBUG
-    print("[WidgetTokenStore] Widget Token 삭제 완료")
-    #endif
   }
 }
 

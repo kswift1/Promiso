@@ -120,8 +120,8 @@ struct CreateGroupReducerTests {
     }
   }
 
-  @Test("createGroupResponse 성공 시 success step으로 이동")
-  func createGroupResponse_success_movesToSuccessStep() async {
+  @Test("createGroupResponse 성공 시 settings step으로 이동")
+  func createGroupResponse_success_movesToSettingsStep() async {
     let user = makeCurrentUser()
     var state = CreateGroup.Feature.State(currentUser: user)
     state.isCreating = true
@@ -134,11 +134,15 @@ struct CreateGroupReducerTests {
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
+    } withDependencies: {
+      $0.notificationClient.getAuthorizationStatus = { .authorized }
+      $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
+    store.exhaustivity = .off
 
     await store.send(.internal(.createGroupResponse(.success(result)))) {
       $0.isCreating = false
-      $0.step = .success(result)
+      $0.step = .settings(result)
     }
   }
 
@@ -148,7 +152,7 @@ struct CreateGroupReducerTests {
     var state = CreateGroup.Feature.State(currentUser: user)
     state.isCreating = true
 
-    let testError = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "생성 실패"])
+    let testError = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
@@ -156,14 +160,14 @@ struct CreateGroupReducerTests {
 
     await store.send(.internal(.createGroupResponse(.failure(testError)))) {
       $0.isCreating = false
-      $0.creationError = testError.localizedDescription
+      $0.creationError = testError.localizedMessage
     }
   }
 
   // MARK: - successAcknowledged 테스트
 
-  @Test("성공 확인 시 settings 단계로 이동")
-  func successAcknowledged_movesToSettingsStep() async {
+  @Test("성공 확인 시 delegate.groupCreated 전달")
+  func successAcknowledged_sendsGroupCreatedDelegate() async {
     let user = makeCurrentUser()
     let result = GroupCreationResultModel(
       id: "group-new",
@@ -176,37 +180,11 @@ struct CreateGroupReducerTests {
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
     } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .fullAccess }
-    }
-    store.exhaustivity = .off
-
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(result)
-    }
-  }
-
-  // MARK: - settingsSkipped 테스트
-
-  @Test("설정 건너뛰기 시 delegate.groupCreated 전달")
-  func settingsSkipped_sendsGroupCreatedDelegate() async {
-    let user = makeCurrentUser()
-    let result = GroupCreationResultModel(
-      id: "group-new",
-      name: "테스트 그룹",
-      inviteCode: "ABC123"
-    )
-    var state = CreateGroup.Feature.State(currentUser: user)
-    state.step = .settings(result)
-
-    let store = TestStore(initialState: state) {
-      CreateGroup.Feature()
-    } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
     }
 
-    await store.send(.view(.settingsSkipped))
-    await store.receive(\.delegate.groupCreated) {
+    await store.send(.view(.successAcknowledged))
+    await store.receive(\.delegate.groupCreatedAndCreateSchedule) {
       $0.step = .input
     }
   }

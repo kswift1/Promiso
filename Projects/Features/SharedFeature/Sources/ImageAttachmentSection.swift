@@ -5,7 +5,7 @@ import PromisoShared
 
 // MARK: - Image Attachment Section
 
-/// 이미지 첨부 섹션 (약속/개인 일정 생성·수정에서 공유 사용)
+/// 이미지 첨부 섹션 (일정/개인 일정 생성·수정에서 공유 사용)
 public struct ImageAttachmentSection: View {
   let existingImageUrls: [String]
   let localImages: [Data]
@@ -50,7 +50,7 @@ public struct ImageAttachmentSection: View {
           .foregroundStyle(Color.pmindigo.n500)
           .frame(width: 24)
 
-        Text("사진")
+        Text(LocalizedStrings.Common.photo)
           .font(.body)
           .foregroundStyle(Color.pmtext.primary)
 
@@ -93,7 +93,7 @@ public struct ImageAttachmentSection: View {
         HStack(spacing: 8) {
           ProgressView()
             .scaleEffect(0.8)
-          Text("이미지 업로드 중...")
+          Text(LocalizedStrings.Shared.imageUploading)
             .font(.system(size: 13))
             .foregroundStyle(Color.pmtext.secondary)
         }

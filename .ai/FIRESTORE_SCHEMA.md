@@ -9,7 +9,6 @@
      - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
      - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
      - [1-3. cache/widgetSnapshot](#1-3-usersuseridcachewidgetsnapshot-서브컬렉션)
-     - [1-4. cache/homeSnapshot](#1-4-usersuseridcachehomesnapshot-서브컬렉션)
      - [1-5. groups (Map)](#1-5-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
@@ -18,6 +17,11 @@
    - [4. notifications](#4-notifications-컬렉션)
    - [5. liveActivities](#5-liveactivities-컬렉션)
    - [6. personalEvents](#6-personalevents-서브컬렉션)
+   - [7. recurringEvents](#7-recurringevents-서브컬렉션)
+   - [8. subscriptions](#8-subscriptions-컬렉션)
+   - [9. subscriptionOwners](#9-subscriptionowners-컬렉션)
+   - [10. briefingSubscriptions](#10-briefingsubscriptions-컬렉션)
+   - [11. entitlements](#11-entitlements-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -52,8 +56,10 @@ Firestore Root
 │     │  └─ main                    # 고정 문서 ID
 │     ├─ settings/                  # 설정 정보 (서브컬렉션)
 │     │  └─ main                    # 고정 문서 ID
-│     └─ cache/                     # 캐시 데이터 (서브컬렉션)
-│        └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
+│     ├─ cache/                     # 캐시 데이터 (서브컬렉션)
+│     │  └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
+│     └─ recurringEvents/           # 반복 개인 일정 (서브컬렉션)
+│        └─ {eventId}/              # 반복 일정 문서 (규칙 기반)
 │
 ├─ groups/                          # 그룹 정보
 │  └─ {groupId}/                    # 그룹 문서
@@ -72,8 +78,20 @@ Firestore Root
 │  └─ {promiseId}/                  # 약속별 LiveActivity 상태
 │     └─ participants (Array)       # 참가자별 ETA 상태
 │
-└─ personalEvents/                  # 개인 일정 정보
-   └─ {eventId}/                    # 개인 일정 문서
+├─ personalEvents/                  # 개인 일정 정보
+│  └─ {eventId}/                    # 개인 일정 문서
+│
+├─ subscriptions/                   # 사용자별 현재 구독 상태 SSOT (서버 관리)
+│  └─ {userId}/                     # 사용자 구독 상태 문서
+│
+├─ subscriptionOwners/              # App Store 원본 트랜잭션 소유권 인덱스
+│  └─ {originalTransactionId}/      # 구매 소유자 문서
+│
+├─ entitlements/                    # Pro 판정 read model (구독 + 오버라이드 합산, 서버 관리)
+│  └─ {userId}/                     # 최종 Pro 여부 및 근거 문서
+│
+└─ briefingSubscriptions/           # 브리핑 알림 발송 projection (서버 관리)
+   └─ {userId}/                     # 다음 dispatch 시각과 브리핑 설정
 ```
 
 ---
@@ -294,26 +312,28 @@ Firestore를 직접 쿼리하여 반환합니다.
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
 | `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 |
-| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 3개) |
-| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 4개) |
+| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 6개) |
+| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 9개) |
 | `meta` | SnapshotMeta | ✅ | 메타데이터 |
 
 #### 📦 WidgetPromise 구조 (SnapshotPromise 공용)
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
+| `type` | String | ❌ | 일정 타입 (`promise` \| `personal`, 생략 시 `promise`) |
 | `id` | String | ✅ | 약속 ID |
 | `title` | String | ✅ | 약속 제목 |
 | `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
 | `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
 | `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
 | `location` | String \| null | ❌ | 장소명 |
-| `groupId` | String | ✅ | 그룹 ID |
-| `groupName` | String \| null | ❌ | 그룹 이름 |
+| `groupId` | String | ✅ | 그룹 ID (개인 일정은 빈 문자열) |
+| `groupName` | String \| null | ❌ | 그룹 이름 (개인 일정은 null) |
 | `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
 | `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
 | `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
-| `participantCount` | Number | ✅ | 참여 확정 인원 |
+| `votes.accepted` | Array<String> | ✅ | 참여 확정 사용자 ID 목록 |
+| `votes.declined` | Array<String> | ✅ | 불참 사용자 ID 목록 |
 | `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
 | `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
 
@@ -343,6 +363,7 @@ Firestore를 직접 쿼리하여 반환합니다.
 ```json
 {
   "next": {
+    "type": "promise",
     "id": "promise123",
     "title": "점심 약속",
     "emoji": "🍜",
@@ -352,7 +373,10 @@ Firestore를 직접 쿼리하여 반환합니다.
     "groupId": "group456",
     "groupName": "대학 동기",
     "isConfirmed": false,
-    "participantCount": 2,
+    "votes": {
+      "accepted": ["user_kim123", "user_lee456"],
+      "declined": []
+    },
     "myVoteStatus": "pending"
   },
   "today": [
@@ -396,153 +420,7 @@ Firestore를 직접 쿼리하여 반환합니다.
 
 ---
 
-### 1-4. users/{userId}/cache/homeSnapshot (서브컬렉션)
-
-> ⚠️ **Deprecated**: 홈화면은 이제 직접 쿼리 방식으로 변경됨 (2026-02)
-> 이 캐시 문서는 더 이상 사용되지 않습니다.
-
-홈화면 데이터는 iOS 앱에서 Firestore를 직접 쿼리하여 가져옵니다.
-
-#### 📊 홈화면 쿼리 방식
-
-| 시점 | 설명 |
-|------|------|
-| `onAppear` | 홈화면 진입 시 |
-| `background → foreground` | 앱이 다시 활성화될 때 |
-
-#### 📊 쿼리 조건
-
-```swift
-// getHomePromises (PromiseClient)
-.whereField("groupId", in: groupIds)  // 10개씩 청크
-.whereField("startAt", isGreaterThanOrEqualTo: now)
-.order(by: "startAt")
-.limit(to: 10)
-```
-
-#### 📊 클라이언트 분류 (HomeFeature)
-
-| 분류 | 조건 |
-|------|------|
-| `todayPromises` | 오늘 날짜 + 확정된 약속 (최대 5개) |
-| `pendingPromises` | 미응답 상태 + 마감 임박순 (최대 5개) |
-| `upcomingPromises` | 내일 이후 + 확정된 약속 (최대 10개) |
-
-#### ~~기존 필드 구조 (Deprecated)~~
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `todayPromises` | Array<SnapshotPromise> | ✅ | 오늘 확정된 약속 (최대 5개) |
-| `pendingPromises` | Array<SnapshotPromise> | ✅ | 응답 필요 약속 (최대 5개, 마감 임박순) |
-| `upcomingPromises` | Array<SnapshotPromise> | ✅ | 다가오는 확정 약속 (최대 10개) |
-| `groups` | Array<HomeSnapshotGroup> | ✅ | 그룹별 요약 정보 |
-| `meta` | HomeSnapshotMeta | ✅ | 메타데이터 |
-
-#### 📦 SnapshotPromise 구조 (Widget/Home 공용)
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `id` | String | ✅ | 약속 ID |
-| `title` | String | ✅ | 약속 제목 |
-| `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
-| `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
-| `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
-| `location` | String \| null | ❌ | 장소명 |
-| `groupId` | String | ✅ | 그룹 ID |
-| `groupName` | String \| null | ❌ | 그룹 이름 |
-| `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
-| `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
-| `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
-| `participantCount` | Number | ✅ | 참여 확정 인원 |
-| `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
-| `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
-
-#### 📦 HomeSnapshotGroup 구조
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `id` | String | ✅ | 그룹 ID |
-| `name` | String | ✅ | 그룹 이름 |
-| `emoji` | String \| null | ❌ | 그룹 이모지 |
-| `imageUrl` | String \| null | ❌ | 그룹 이미지 URL |
-| `nextPromise` | SnapshotPromise \| null | ❌ | 다음 약속 |
-
-#### 📦 HomeSnapshotMeta 구조
-
-| 필드명 | 타입 | 필수 | 설명 |
-|--------|------|------|------|
-| `todayCount` | Number | ✅ | 오늘 약속 개수 |
-| `pendingCount` | Number | ✅ | 응답 필요 약속 개수 |
-| `upcomingCount` | Number | ✅ | 다가오는 약속 개수 |
-| `updatedAt` | String | ✅ | 마지막 갱신 시간 (ISO 8601) |
-| `version` | Number | ✅ | 스키마 버전 (현재 1) |
-
-#### 📝 예시 데이터
-
-```json
-{
-  "todayPromises": [
-    {
-      "id": "promise123",
-      "title": "점심 약속",
-      "emoji": "🍜",
-      "startAt": "2026-02-01T12:00:00+09:00",
-      "endAt": null,
-      "location": "강남역 2번 출구",
-      "groupId": "group456",
-      "groupName": "대학 동기",
-      "groupImageUrl": null,
-      "isConfirmed": true,
-      "minimumParticipants": 2,
-      "participantCount": 3,
-      "myVoteStatus": "voted",
-      "votingDeadline": "2026-02-01T10:00:00+09:00"
-    }
-  ],
-  "pendingPromises": [
-    {
-      "id": "promise789",
-      "title": "주말 모임",
-      "emoji": "🎉",
-      "startAt": "2026-02-03T18:00:00+09:00",
-      "groupId": "group456",
-      "groupName": "대학 동기",
-      "isConfirmed": false,
-      "minimumParticipants": 3,
-      "participantCount": 1,
-      "myVoteStatus": "pending",
-      "votingDeadline": "2026-02-02T18:00:00+09:00"
-    }
-  ],
-  "upcomingPromises": [],
-  "groups": [
-    {
-      "id": "group456",
-      "name": "대학 동기",
-      "emoji": null,
-      "imageUrl": null,
-      "nextPromise": { ... }
-    }
-  ],
-  "meta": {
-    "todayCount": 1,
-    "pendingCount": 1,
-    "upcomingCount": 0,
-    "updatedAt": "2026-02-01T10:30:00+09:00",
-    "version": 1
-  }
-}
-```
-
-#### 💡 설계 의도
-
-- **실시간성**: 화면 진입 시 항상 최신 데이터
-- **단순화**: Trigger 없이 직접 쿼리
-- **클라이언트 분류**: 서버 부하 감소, 유연한 UI 대응
-
----
-
-### 1-5. users/{userId}.groups (Map)
+### 1-4. users/{userId}.groups (Map)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
@@ -790,8 +668,7 @@ promises/{promiseId}
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
 | `trackingStartMinutesBefore` | Number | ❌ | null | LiveActivity 시작 시간 (약속 N분 전) |
-| `liveActivityScheduled` | Boolean | ❌ | false | LiveActivity 예약 완료 여부 |
-| `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
+| `liveActivitySchedule` | Map | ❌ | null | LiveActivity 예약/시작 상태 (`scheduled`, `started`, `scheduledAt`, `version`) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 
@@ -1007,6 +884,7 @@ notifications/{notificationId}
 | `group_invitation` | 그룹 초대 | 새 그룹에 초대됨 |
 | `group_update` | 그룹 업데이트 | 그룹 정보 변경 (새 멤버 참여 등) |
 | `attendance_response` | 응답 변경 | 다른 멤버의 참석 응답 |
+| `location_sharing_reminder` | 실시간 공유 넛지 | ETA 공유 유도 알림 |
 | `system` | 시스템 | 시스템 알림 |
 
 #### 📝 예시 데이터
@@ -1174,6 +1052,292 @@ db.collection("users").document(userId).collection("personalEvents")
   .order(by: "startAt")
   .getDocuments()
 ```
+
+---
+
+### 7. recurringEvents (서브컬렉션)
+
+반복 개인 일정의 **규칙**을 저장합니다. 개별 인스턴스는 저장하지 않고, 클라이언트에서 규칙 기반으로 계산합니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/recurringEvents/{eventId}
+```
+
+#### 🔑 문서 ID
+
+- Firestore 자동 생성 ID 사용
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 기본값 | 설명 |
+|--------|------|------|--------|------|
+| `title` | String | ✅ | - | 일정 제목 |
+| `emoji` | String | ❌ | null | 대표 이모지 (AI 자동 생성) |
+| `description` | String | ❌ | null | 일정 설명 |
+| `startTime` | Map | ✅ | - | 시작 시각 (아래 참조) |
+| `startTime.hour` | Number | ✅ | - | 시 (0~23) |
+| `startTime.minute` | Number | ✅ | - | 분 (0~59) |
+| `endTime` | Map | ❌ | null | 종료 시각 (아래 참조) |
+| `endTime.hour` | Number | ✅* | - | 시 (0~23) |
+| `endTime.minute` | Number | ✅* | - | 분 (0~59) |
+| `location` | Map | ❌ | null | 장소 정보 (personalEvents와 동일) |
+| `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위) |
+| `recurrence` | Map | ✅ | - | 반복 규칙 (아래 참조) |
+| `recurrence.frequency` | String | ✅ | - | 반복 주기 (`daily`\|`weekly`\|`monthly`) |
+| `recurrence.daysOfWeek` | Array<Number> | ❌ | null | 반복 요일 (1=일~7=토, weekly용) |
+| `recurrence.dayOfMonth` | Number | ❌ | null | 반복 일자 (1~31, monthly용) |
+| `recurrence.seriesEndDate` | Timestamp | ❌ | null | 반복 종료일 (null=무기한) |
+| `seriesStartDate` | Timestamp | ✅ | - | 반복 시작일 |
+| `excludedDates` | Array<String> | ❌ | null | 취소된 날짜 목록 ("yyyy-MM-dd") |
+| `overrides` | Map<String, Override> | ❌ | null | 날짜별 개별 수정 (아래 참조) |
+| `createdAt` | Timestamp | ✅ | - | 생성 시각 |
+| `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
+
+#### 📦 Override 구조 (overrides Map의 Value)
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `title` | String | ❌ | 변경된 제목 (null이면 원본 유지) |
+| `startTime` | Map | ❌ | 변경된 시작 시각 |
+| `endTime` | Map | ❌ | 변경된 종료 시각 |
+| `location` | Map | ❌ | 변경된 장소 |
+| `isCancelled` | Boolean | ❌ | 이 날 취소 여부 |
+
+#### 📝 예시 데이터
+
+```json
+// 경로: users/sFeDJwqJbqScbSUp4Jz54MDlnFv1/recurringEvents/xYz9Abc123
+{
+  "title": "헬스장",
+  "emoji": "🏋️",
+  "description": null,
+  "startTime": { "hour": 19, "minute": 0 },
+  "endTime": { "hour": 20, "minute": 0 },
+  "location": {
+    "name": "강남 피트니스",
+    "address": "서울 강남구 역삼동 123",
+    "latitude": 37.4967,
+    "longitude": 127.0276
+  },
+  "reminderMinutesBefore": 30,
+  "recurrence": {
+    "frequency": "weekly",
+    "daysOfWeek": [2, 4, 6],
+    "dayOfMonth": null,
+    "seriesEndDate": null
+  },
+  "seriesStartDate": "2026-03-01T00:00:00+09:00",  // Firestore Timestamp (서버에서 자동 변환)
+  "excludedDates": ["2026-03-17"],
+  "overrides": {
+    "2026-03-24": {
+      "startTime": { "hour": 20, "minute": 0 },
+      "isCancelled": false
+    }
+  },
+  "createdAt": "2026-03-01T10:00:00+09:00",
+  "updatedAt": "2026-03-10T15:00:00+09:00"
+}
+```
+
+#### 💡 설계 의도
+
+- **규칙 기반**: 인스턴스를 미리 생성하지 않고 규칙만 저장 → 문서 수 최소화 (만 명 기준 ~30,000개 vs 수백만 개)
+- **클라이언트 계산**: 캘린더/홈에서 날짜 범위 조회 시 클라이언트가 규칙 → 인스턴스 확장 (한 달 최대 31개 계산, 성능 부담 없음)
+- **예외 처리**: excludedDates/overrides로 "이 날만 취소/수정" 지원, 추가 문서 불필요
+  - `excludedDates`: 단순 취소 전용 (날짜 문자열 배열로 빠른 조회)
+  - `overrides.isCancelled`: 취소 + 수정 이력 보존 (시간/장소 변경 후 취소 등 복합 케이스)
+- **보안**: 기존 `users/{userId}/{subcollection}/{docId}` 와일드카드 규칙으로 자동 보호
+- **쿼리 효율성**: 문서 수가 적으므로 전체 조회(`getAllEvents`)로 충분
+
+---
+
+### 8. subscriptions (컬렉션)
+
+사용자별 현재 구독 상태를 저장합니다. App Store 검증 결과의 SSOT이며,
+클라이언트는 본인 문서를 읽기만 하고 쓰기는 Cloud Functions에서만 수행합니다.
+
+#### 📍 문서 경로
+
+```
+subscriptions/{userId}
+```
+
+#### 🔑 문서 ID
+
+- `{userId}` = Firebase Auth UID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `status` | String | ✅ | 현재 구독 상태 (`none` \| `subscribed` \| `lifetime` \| `expired` \| `gracePeriod` \| `revoked`) |
+| `productId` | String \| null | ✅ | 현재 상태를 만든 App Store 상품 ID |
+| `originalTransactionId` | String \| null | ✅ | App Store 원본 트랜잭션 ID |
+| `expirationDate` | String \| null | ✅ | 만료 시각 (ISO 8601, lifetime은 null) |
+| `purchaseDate` | String \| null | ✅ | 구매 시각 (ISO 8601) |
+| `latestAppStoreSignedDate` | Number \| null | ❌ | 마지막으로 반영한 App Store `signedDate` (millisecond timestamp, stale replay 차단용) |
+| `latestTransactionId` | String \| null | ❌ | 마지막으로 반영한 App Store transaction ID |
+| `lastNotificationType` | String \| null | ❌ | 마지막으로 반영한 App Store Server Notification 타입 |
+| `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "status": "subscribed",
+  "productId": "com.promiso.pro.yearly",
+  "originalTransactionId": "1000002500001234",
+  "expirationDate": "2026-04-12T03:15:24.000Z",
+  "purchaseDate": "2025-04-12T03:15:24.000Z",
+  "latestAppStoreSignedDate": 1773218124000,
+  "latestTransactionId": "1000002500005678",
+  "lastNotificationType": "DID_RENEW",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 🔄 갱신 흐름
+
+| 갱신 주체 | 설명 |
+|-----------|------|
+| `verifyPurchase` | 구매 직후 signed transaction을 검증하고 초기 상태를 저장 |
+| `appleServerNotification` | 갱신 / 만료 / 환불 / grace period 상태를 반영 |
+
+#### 💡 설계 의도
+
+- **SSOT**: 구독 현재 상태는 항상 `subscriptions/{userId}` 한 문서로 조회
+- **정합성**: `signedRenewalInfo`를 활용해 `gracePeriod` / billing retry를 반영
+- **재전송 방어**: `latestAppStoreSignedDate`보다 오래된 이벤트는 무시
+- **클라이언트 단순화**: iOS는 문서 읽기/리스닝만 수행하고 서버가 상태를 계산
+
+---
+
+### 9. subscriptionOwners (컬렉션)
+
+App Store `originalTransactionId`와 Firebase 사용자 간 1:1 소유권을 저장하는
+서버 전용 인덱스입니다. 같은 결제를 다른 Firebase 계정에 재연결하는 것을 막고,
+Apple 웹훅이 어떤 사용자 문서를 갱신해야 하는지 찾는 데 사용합니다.
+
+#### 📍 문서 경로
+
+```
+subscriptionOwners/{originalTransactionId}
+```
+
+#### 🔑 문서 ID
+
+- `{originalTransactionId}` = App Store 원본 트랜잭션 ID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `userId` | String | ✅ | 구매를 소유한 Firebase Auth UID |
+| `productId` | String | ✅ | 마지막으로 검증된 상품 ID |
+| `createdAt` | Timestamp | ✅ | 최초 소유권 바인딩 시각 |
+| `updatedAt` | Timestamp | ✅ | 마지막 검증 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "userId": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
+  "productId": "com.promiso.pro.yearly",
+  "createdAt": "<Timestamp>",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 💡 설계 의도
+
+- **소유권 고정**: 같은 `originalTransactionId`는 하나의 Firebase 사용자에게만 연결
+- **웹훅 라우팅**: Apple Notification에서 사용자 문서를 찾는 인덱스로 사용
+- **보안**: Firestore Rules에서 클라이언트 read/write를 모두 차단
+
+---
+
+### 11. entitlements 컬렉션
+
+> **Pro 판정 read model** — `subscriptions`와 `entitlementOverrides`를 합산한 단일 조회 문서
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|:----:|------|
+| `hasPro` | Boolean | ✅ | 최종 Pro 여부 |
+| `source` | String | ✅ | Pro 근거: `"subscription"` \| `"override"` \| `"none"` |
+| `subscriptionStatus` | String \| null | ✅ | `subscriptions`에서 온 raw 상태 |
+| `overrideActive` | Boolean | ✅ | `entitlementOverrides` 활성 여부 |
+| `overrideExpiresAt` | String \| null | ✅ | override 만료 시점 (ISO 8601) |
+| `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
+
+#### 갱신 트리거
+
+- `subscriptions/{uid}` onWrite → `reconcileEntitlement(uid)`
+- `entitlementOverrides/{uid}` onWrite → `reconcileEntitlement(uid)`
+
+#### 보안 규칙
+
+- 읽기: 본인만 (`auth.uid == userId`)
+- 쓰기: Cloud Functions (Admin SDK) 전용
+
+---
+
+### 10. briefingSubscriptions (컬렉션)
+
+브리핑 알림 발송 대상을 위한 서버 전용 projection 컬렉션입니다.
+`users/{userId}/settings/main`의 브리핑 설정과
+`subscriptions/{userId}` / `entitlementOverrides/{userId}` 상태를 합쳐,
+현재 발송 가능한 사용자와 다음 dispatch 시각만 비정규화합니다.
+
+#### 📍 문서 경로
+
+```
+briefingSubscriptions/{userId}
+```
+
+#### 🔑 문서 ID
+
+- `{userId}` = Firebase Auth UID
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `notificationHour` | Number | ✅ | 사용자 로컬 브리핑 알림 시각 (0~23) |
+| `timezone` | String | ✅ | IANA 타임존 식별자 |
+| `language` | String | ✅ | 브리핑 언어 코드 |
+| `style` | String | ✅ | 브리핑 스타일 |
+| `nextDispatchAt` | Timestamp | ✅ | 다음 스케줄러 enqueue 시각 (UTC) |
+| `updatedAt` | Timestamp | ✅ | projection 마지막 갱신 시각 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "notificationHour": 8,
+  "timezone": "Asia/Seoul",
+  "language": "ko",
+  "style": "friendly",
+  "nextDispatchAt": "<Timestamp>",
+  "updatedAt": "<Timestamp>"
+}
+```
+
+#### 🔄 갱신 흐름
+
+| 갱신 주체 | 설명 |
+|-----------|------|
+| `onUserSettingsSyncBriefingSubscription` | 브리핑 설정 변경 시 projection 재계산 |
+| `onSubscriptionSyncBriefingSubscription` | 구독 상태 변경 시 projection 재계산 |
+| `onEntitlementOverrideSyncBriefingSubscription` | override 변경 시 projection 재계산 |
+| `backfillBriefingSubscriptions` | 기존 유저 projection 일괄 생성 |
+
+#### 💡 설계 의도
+
+- **비용 절감**: 매시간 전체 `settings`를 스캔하지 않고 due 대상만 조회
+- **권한 정합성**: `subscriptions/{userId}`를 권한 SSOT로 사용
+- **안전성**: stale `proSettings`가 남아 있어도 발송 대상에 포함되지 않음
 
 ---
 
@@ -1511,16 +1675,13 @@ service cloud.firestore {
 |  |  | - Firestore Trigger 기반 자동 갱신 아키텍처 |  |
 |  |  | - myVoteStatus 필드 추가 (pending/voted/declined) |  |
 |  |  | - 우선순위 정렬: pending → unconfirmed → time |  |
-| 1.8 | 2026-02-01 | Home Snapshot 스키마 추가 | Claude |
-|  |  | - users/{userId}/cache/homeSnapshot 서브컬렉션 추가 |  |
-|  |  | - todayPromises, pendingPromises, upcomingPromises 분류 |  |
+| 1.8 | 2026-02-01 | SnapshotPromise 타입 확장 | Claude |
 |  |  | - SnapshotPromise에 minimumParticipants, groupImageUrl, votingDeadline 추가 |  |
-|  |  | - HomeSnapshotGroup 구조 추가 (그룹별 다음 약속) |  |
 |  |  | - Widget/Home 공용 SnapshotPromise 타입 통합 |  |
 | 1.9 | 2026-02-03 | 홈/위젯 스냅샷 → 직접 쿼리 전환 | Claude |
 |  |  | - promises 컬렉션에 `isConfirmed` 필드 추가 (비정규화) |  |
 |  |  | - widgetSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
-|  |  | - homeSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
+|  |  | - homeSnapshot 캐시 제거 (직접 쿼리로 전환) |  |
 |  |  | - Firestore Trigger 제거 (onPromiseWriteUpdateSnapshot 등) |  |
 |  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
 | 2.0 | 2026-02-07 | personalEvents 컬렉션 추가 | Claude |
@@ -1529,6 +1690,18 @@ service cloud.firestore {
 |  |  | - userId는 경로에 내포 (문서 필드에서 제거) |  |
 |  |  | - 기존 users 서브컬렉션 와일드카드 Security Rules로 보호 |  |
 |  |  | - 복합 인덱스 불필요 (startAt 단일 필드 자동 인덱스) |  |
+| 2.1 | 2026-03-10 | recurringEvents 서브컬렉션 추가 | Claude |
+|  |  | - users/{userId}/recurringEvents 서브컬렉션 추가 (반복 개인 일정) |  |
+|  |  | - 규칙 기반 저장: recurrence(frequency, daysOfWeek, dayOfMonth, seriesEndDate) |  |
+|  |  | - 시간: startTime(hour, minute) + endTime(hour, minute) (Date가 아닌 시/분 저장) |  |
+|  |  | - endTime이 startTime보다 이전이면 다음 날로 해석 (자정 넘기는 일정 지원) |  |
+|  |  | - 예외 처리: excludedDates(취소), overrides(개별 수정) |  |
+|  |  | - 인스턴스는 클라이언트에서 계산 (RecurringEventExpander) |  |
+| 2.2 | 2026-03-13 | 구독 서버 스키마 문서화 | Codex |
+|  |  | - `subscriptions/{userId}` 컬렉션 추가 |  |
+|  |  | - `subscriptionOwners/{originalTransactionId}` 컬렉션 추가 |  |
+|  |  | - stale replay 방지 필드 (`latestAppStoreSignedDate`) 문서화 |  |
+|  |  | - App Store Notification 추적 필드 (`latestTransactionId`, `lastNotificationType`) 문서화 |  |
 
 ---
 
@@ -1539,3 +1712,8 @@ service cloud.firestore {
 - `reminders` 기능 도입 시 스키마 확정
 - 실시간 위치 공유 (arrivalSharing) 스키마 설계
 - `location.placeId` 필드 추가 (Kakao Place ID)
+
+---
+
+*마지막 업데이트: 2026-03-13*
+- 구독 서버 스키마 (`subscriptions`, `subscriptionOwners`) 문서화

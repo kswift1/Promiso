@@ -1,10 +1,10 @@
 import Foundation
 import PromisoShared
 
-// MARK: - PersonalEventModel -> WidgetPromiseData 변환
+// MARK: - PersonalEventModel -> WidgetScheduleData 변환
 
-extension WidgetPromiseData {
-  /// PersonalEventModel에서 WidgetPromiseData(type: .personal) 생성
+extension WidgetScheduleData {
+  /// PersonalEventModel에서 WidgetScheduleData(type: .personal) 생성
   public init(from model: PersonalEventModel) {
     self.init(
       type: .personal,
@@ -19,8 +19,8 @@ extension WidgetPromiseData {
 }
 
 extension Array where Element == PersonalEventModel {
-  /// PersonalEventModel 배열을 WidgetPromiseData 배열로 변환
-  public func toWidgetData() -> [WidgetPromiseData] {
-    self.map { WidgetPromiseData(from: $0) }
+  /// PersonalEventModel 배열을 WidgetScheduleData 배열로 변환
+  public func toWidgetData() -> [WidgetScheduleData] {
+    self.map { WidgetScheduleData(from: $0) }
   }
 }

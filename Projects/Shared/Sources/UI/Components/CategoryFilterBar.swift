@@ -174,8 +174,8 @@ public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
   return PreviewWrapper()
 }
 
-#Preview("약속 필터") {
-  enum PromiseFilter: String, CategoryFilterItem, CaseIterable {
+#Preview("일정 필터") {
+  enum ScheduleFilter: String, CategoryFilterItem, CaseIterable {
     case needResponse = "응답 필요"
     case responded = "응답 완료"
     case confirmed = "확정"
@@ -203,7 +203,7 @@ public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
   }
 
   struct PreviewWrapper: View {
-    @State private var selection: PromiseFilter = .all
+    @State private var selection: ScheduleFilter = .all
 
     var body: some View {
       VStack(spacing: 24) {

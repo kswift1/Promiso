@@ -5,7 +5,7 @@
 Promiso 앱에서 수집하는 Firebase Analytics 이벤트 목록입니다.
 이 문서는 앱의 핵심 비즈니스 메트릭과 사용자 행동을 추적하기 위한 이벤트를 정의합니다.
 
-**최종 업데이트**: 2026-02-04
+**최종 업데이트**: 2026-03-12
 **Analytics SDK**: FirebaseAnalytics 12.3.0
 
 ---
@@ -18,38 +18,70 @@ Promiso 앱에서 수집하는 Firebase Analytics 이벤트 목록입니다.
 
 | 이벤트 이름 | 설명 | 파라미터 | Feature | 코드 위치 |
 |------------|------|----------|---------|----------|
-| `user_signup` | 회원가입 완료 (프로필 설정 완료 후) | - | AppEntryFeature | AppEntryFeature.swift:355 |
-| `user_login` | 로그인 (기존 사용자) | - | AppEntryFeature | AppEntryFeature.swift:234 |
+| `user_signup` | 회원가입 완료 (프로필 설정 완료 후) | `login_method` | AppEntryFeature | AppEntryFeature.swift |
+| `user_login` | 로그인 (기존 사용자) | `login_method` | AppEntryFeature | AppEntryFeature.swift |
 | `group_created` | 그룹 생성 완료 | `group_id`, `group_name` | CreateGroupFeature | CreateGroupFeature.swift:327 |
 | `group_joined` | 그룹 가입 완료 | `group_id`, `group_name` | JoinGroupFeature | JoinGroupFeature.swift:362 |
-| `promise_created` | 약속 생성 완료 | `promise_id`, `promise_title` | CreatePromiseFeature | CreatePromiseFeature.swift:415 |
-| `promise_response_yes` | 약속 "가능" 응답 | `promise_id`, `promise_title` | PromiseDetailFeature | PromiseDetailFeature.swift:301 |
-| `promise_response_no` | 약속 "불가능" 응답 | `promise_id`, `promise_title` | PromiseDetailFeature | PromiseDetailFeature.swift:308 |
+| `schedule_created` | 일정 생성 완료 | `schedule_id`, `schedule_title` | CreateScheduleFeature | CreateScheduleFeature.swift |
+| `schedule_response_yes` | 일정 "가능" 응답 | `schedule_id`, `schedule_title` | SharedFeature | ScheduleDetailFeature.swift |
+| `schedule_response_no` | 일정 "불가능" 응답 | `schedule_id`, `schedule_title` | SharedFeature | ScheduleDetailFeature.swift |
 
 ---
 
-### 📱 사용자 행동 이벤트 (3개)
+### 📱 사용자 행동 이벤트 (5개)
 
 사용자의 앱 사용 패턴을 이해하기 위한 이벤트입니다.
 
 | 이벤트 이름 | 설명 | 파라미터 | Feature | 코드 위치 |
 |------------|------|----------|---------|----------|
-| `profile_setup_completed` | 프로필 설정 완료 | - | AppEntryFeature | AppEntryFeature.swift:349 |
-| `group_invite_shared` | 그룹 초대 코드 공유 (초대 시트 열림) | `group_id`, `group_name` | GroupSettingsFeature | GroupSettingsFeature.swift:359 |
+| `profile_setup_completed` | 프로필 설정 완료 | - | AppEntryFeature | AppEntryFeature.swift |
+| `group_invite_shared` | 그룹 초대 진입 (기존 대시보드 호환용, 초대 시트 열림) | `group_id`, `group_name` | GroupFeature | GroupSettingsFeature.swift / GroupMainFeature.swift |
+| `group_invite_link_shared` | 그룹 초대 링크 실제 공유 시도 | `group_id`, `group_name`, `share_method`, `schedule_count?` | GroupFeature / CreateGroupFeature | GroupSettingsFeature.swift / GroupMainFeature.swift / CreateGroupFeature.swift |
+| `schedule_share_sheet_opened` | 일정 공유 시트 열림 | `schedule_id`, `schedule_title` | GroupFeature / SharedFeature | GroupMainFeature.swift / ScheduleDetailFeature.swift |
+| `schedule_link_shared` | 일정 링크 실제 공유 시도 | `schedule_id`, `schedule_title`, `share_method` | GroupFeature / SharedFeature | GroupMainFeature.swift / ScheduleDetailFeature.swift |
 | `settings_opened` | 설정 화면 열림 (설정 탭 선택) | - | RootTabFeature | RootTabFeature.swift:219 |
 
 ---
 
-### 🔔 알림 권한 이벤트 (2개)
+### 💳 Pro Plan 이벤트 (4개)
+
+Paywall 진입과 주요 CTA 상호작용을 추적하는 이벤트입니다.
+
+| 이벤트 이름 | 설명 | 파라미터 | Feature | 코드 위치 |
+|------------|------|----------|---------|----------|
+| `paywall_open` | Paywall 화면 노출 | `has_intro_offer` | ProPlanFeature | PaywallView.swift |
+| `paywall_purchase` | Paywall 구매 CTA 탭 | `product_id` | ProPlanFeature | ProPlanFeature.swift |
+| `paywall_restore` | Paywall 복원 버튼 탭 | - | ProPlanFeature | ProPlanFeature.swift |
+| `paywall_close` | Paywall 화면 종료 | - | ProPlanFeature | PaywallView.swift |
+
+---
+
+### 🔔 알림 권한 이벤트 (3개)
 
 알림 권한 요청 및 결과를 추적하는 이벤트입니다.
 
 | 이벤트 이름 | 설명 | 파라미터 | Feature | 코드 위치 |
 |------------|------|----------|---------|----------|
-| `notification_permission_requested` | 알림 권한 요청 시작 | - | NotificationPermissionFeature | NotificationPermissionFeature.swift:122 |
-| `notification_permission_granted` | 알림 권한 허용됨 | - | NotificationPermissionFeature | NotificationPermissionFeature.swift:148 |
+| `notification_permission_requested` | 알림 권한 요청 시작 | - | NotificationPermissionFeature | NotificationPermissionFeature.swift |
+| `notification_permission_granted` | 알림 권한 허용됨 | - | NotificationPermissionFeature | NotificationPermissionFeature.swift |
+| `notification_permission_denied` | 알림 권한 거부됨 | - | NotificationPermissionFeature | NotificationPermissionFeature.swift |
 
-> **참고**: 알림 권한 거부는 별도 이벤트로 추적하지 않습니다.
+---
+
+### 🖥️ 화면 이벤트
+
+주요 루트 화면은 Firebase 표준 `screen_view` 이벤트로 수동 추적합니다.
+
+| screen_name | 화면 |
+|------------|------|
+| `notification_permission` | 알림 권한 화면 |
+| `create_group` | 그룹 생성 화면 |
+| `join_group` | 그룹 참여 화면 |
+| `group_main` | 그룹 메인 화면 |
+| `group_settings` | 그룹 설정 화면 |
+| `create_schedule` | 일정 생성 화면 |
+| `schedule_detail` | 일정 상세 화면 |
+| `paywall` | Paywall 화면 |
 
 ---
 
@@ -61,16 +93,21 @@ Firebase Analytics는 기본적으로 다음 정보를 자동 수집합니다:
 - 사용자 ID (`setUserID`)
 - 디바이스 정보 (OS 버전, 기기 모델)
 - 앱 버전
-- 화면 이름 (자동 수집)
+- 화면 이름 (`screen_view` 수동 로깅)
 
 ### 커스텀 파라미터
 
 | 파라미터 키 | 타입 | 설명 | 예시 값 | 사용 이벤트 |
 |-----------|------|------|---------|-----------|
-| `group_id` | String | 그룹 고유 ID | "abc123xyz" | `group_created`, `group_joined`, `group_invite_shared` |
-| `group_name` | String | 그룹 이름 | "우리 동아리" | `group_created`, `group_joined`, `group_invite_shared` |
-| `promise_id` | String | 약속 고유 ID | "promise456" | `promise_created`, `promise_response_yes`, `promise_response_no` |
-| `promise_title` | String | 약속 제목 | "점심 약속" | `promise_created`, `promise_response_yes`, `promise_response_no` |
+| `group_id` | String | 그룹 고유 ID | "abc123xyz" | `group_created`, `group_joined`, `group_invite_shared`, `group_invite_link_shared` |
+| `group_name` | String | 그룹 이름 | "우리 동아리" | `group_created`, `group_joined`, `group_invite_shared`, `group_invite_link_shared` |
+| `schedule_id` | String | 일정 고유 ID | "schedule456" | `schedule_created`, `schedule_response_yes`, `schedule_response_no`, `schedule_share_sheet_opened`, `schedule_link_shared` |
+| `schedule_title` | String | 일정 제목 | "점심 약속" | `schedule_created`, `schedule_response_yes`, `schedule_response_no`, `schedule_share_sheet_opened`, `schedule_link_shared` |
+| `login_method` | String | 로그인 제공자 | "apple", "google" | `user_signup`, `user_login` |
+| `share_method` | String | 공유 채널 | "kakao", "system" | `group_invite_link_shared`, `schedule_link_shared` |
+| `schedule_count` | Int | 공유 카드에 포함된 일정 수 | 3 | `group_invite_link_shared` |
+| `product_id` | String | 선택한 구독 상품 ID | "promiso.pro.yearly" | `paywall_purchase` |
+| `has_intro_offer` | Bool | 무료 체험 대상 여부 | true | `paywall_open` |
 
 ---
 
@@ -80,11 +117,26 @@ Firebase Analytics에 설정되는 사용자 속성입니다.
 
 | 속성 이름 | 타입 | 설명 | 설정 시점 | 코드 위치 |
 |---------|------|------|----------|----------|
-| `nickname` | String | 사용자 닉네임 | 로그인/회원가입 시 | AppEntryFeature.swift:235, 356 |
+| `nickname` | String | 사용자 닉네임 | 로그인/회원가입 시 | AppEntryFeature.swift |
+| `auth_provider` | String | 인증 제공자 | 로그인/회원가입 시 | AppEntryFeature.swift |
+| `subscription_tier` | String | 무료/Pro 구독 상태 | 구독 상태 변경 시 | RootTabFeature.swift |
+| `notification_permission_status` | String | 시스템 알림 권한 상태 | 권한 온보딩/설정 진입 시 | NotificationPermissionFeature.swift / NotificationSettingsFeature.swift / AppEntryFeature.swift |
+| `has_group` | String | 그룹 가입 여부 | 로그인 시, 그룹 목록 갱신 시 | AppEntryFeature.swift / GroupMainFeature.swift |
+| `group_count_bucket` | String | 그룹 수 버킷 | 로그인 시, 그룹 목록 갱신 시 | AppEntryFeature.swift / GroupMainFeature.swift |
+| `calendar_sync_enabled` | String | 개인 또는 그룹 캘린더 동기화가 하나라도 켜져 있는지 | 로그인 시, 그룹 목록 갱신 시, 캘린더 설정 변경 시 | AppEntryFeature.swift / GroupMainFeature.swift / CalendarSettingsFeature.swift |
+
+값 가이드:
+- `auth_provider`: `apple`, `google`
+- `subscription_tier`: `free`, `pro`
+- `notification_permission_status`: `not_determined`, `denied`, `authorized`, `provisional`, `ephemeral`
+- `has_group`: `true`, `false`
+- `group_count_bucket`: `0`, `1`, `2_4`, `5_plus`
+- `calendar_sync_enabled`: `true`, `false`
 
 **유저 ID 관리**:
 - 로그인 시: `analyticsClient.setUserID(userModel.id)` 호출
 - 로그아웃 시: `analyticsClient.setUserID(nil)` 호출
+- 로그아웃 시 위 유저 속성도 모두 `nil`로 초기화
 
 ---
 
@@ -94,22 +146,18 @@ Firebase Analytics에 설정되는 사용자 속성입니다.
 
 ```swift
 // 파라미터 없는 이벤트
-analyticsClient.logEvent(
-  AnalyticsClient.EventName.userLogin,
-  nil
-)
+analyticsClient.log(.notificationPermissionGranted)
 ```
 
 ### 2. 파라미터 포함 이벤트
 
 ```swift
 // 그룹 생성 이벤트
-analyticsClient.logEvent(
-  AnalyticsClient.EventName.groupCreated,
-  [
-    AnalyticsClient.ParameterKey.groupID: "abc123",
-    AnalyticsClient.ParameterKey.groupName: "우리 그룹"
-  ]
+analyticsClient.log(
+  .groupCreated(
+    groupID: "abc123",
+    groupName: "우리 그룹"
+  )
 )
 ```
 
@@ -118,10 +166,24 @@ analyticsClient.logEvent(
 ```swift
 // 로그인 시
 analyticsClient.setUserID(userModel.id)
-analyticsClient.setUserProperty(userModel.nickname, "nickname")
+analyticsClient.setUserProperty(userModel.nickname, .nickname)
+analyticsClient.setUserProperty("apple", .authProvider)
+analyticsClient.setGroupMembershipProperties(userModel.groups)
+analyticsClient.setCalendarSyncEnabled(
+  personalEnabled: true,
+  groups: userModel.groups
+)
+
+// 상태 변화 시
+analyticsClient.setSubscriptionTier(.lifetime)
+analyticsClient.setNotificationPermissionStatus(.authorized)
 
 // 로그아웃 시
 analyticsClient.setUserID(nil)
+analyticsClient.setUserProperty(nil, .nickname)
+analyticsClient.setUserProperty(nil, .authProvider)
+analyticsClient.setUserProperty(nil, .subscriptionTier)
+analyticsClient.setUserProperty(nil, .notificationPermissionStatus)
 ```
 
 ---
@@ -131,9 +193,8 @@ analyticsClient.setUserID(nil)
 ### 1. 실시간 이벤트 확인 (DebugView)
 
 ```bash
-# iOS 시뮬레이터 또는 실제 기기에서 디버그 모드 활성화
-adb shell setprop debug.firebase.analytics.app <PACKAGE_NAME>  # Android
 # iOS는 Xcode 스킴에서 -FIRDebugEnabled 플래그 추가
+# 또는 환경변수 PROMISO_ANALYTICS_DEBUG=1 설정
 ```
 
 Firebase Console > Analytics > DebugView에서 실시간 이벤트 확인 가능
@@ -148,8 +209,8 @@ Firebase Console > Analytics > 이벤트
 
 추천 퍼널:
 ```
-회원가입 → 그룹 가입 → 약속 생성 → 약속 응답
-user_signup → group_joined → promise_created → promise_response_yes/no
+회원가입 → 그룹 가입 → 일정 생성 → 일정 응답
+user_signup → group_joined → schedule_created → schedule_response_yes/no
 ```
 
 ---
@@ -167,7 +228,7 @@ user_signup → group_joined → promise_created → promise_response_yes/no
 ✅ 좋은 예시:
 - user_signup
 - group_created
-- promise_response_yes
+- schedule_response_yes
 
 ❌ 나쁜 예시:
 - signup (주체 불명확)
@@ -179,17 +240,19 @@ user_signup → group_joined → promise_created → promise_response_yes/no
 
 ## 디버그 모드 설정
 
-### Debug 빌드에서 Analytics 비활성화
+### Debug 빌드에서 Analytics 기본 비활성화
 
 **AppDelegate.swift**:
 ```swift
 func configureAnalytics() {
   #if DEBUG
-  Analytics.setAnalyticsCollectionEnabled(false)
-  AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+  let isDebugAnalyticsEnabled =
+    ProcessInfo.processInfo.arguments.contains("-FIRDebugEnabled")
+    || ProcessInfo.processInfo.environment["PROMISO_ANALYTICS_DEBUG"] == "1"
+
+  Analytics.setAnalyticsCollectionEnabled(isDebugAnalyticsEnabled)
   #else
   Analytics.setAnalyticsCollectionEnabled(true)
-  AppLogger.general.debug("Firebase Analytics enabled")
   #endif
 }
 ```

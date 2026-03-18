@@ -9,14 +9,14 @@ import ResourceKit
 
 /// 잠금화면 라이브액티비티 배너 뷰
 struct LockScreenBannerView: View {
-  let context: ActivityViewContext<PromiseActivityAttributes>
+  let context: ActivityViewContext<ScheduleActivityAttributes>
 
-  private var state: PromiseActivityAttributes.ContentState { context.state }
-  private var attrs: PromiseActivityAttributes { context.attributes }
+  private var state: ScheduleActivityAttributes.ContentState { context.state }
+  private var attrs: ScheduleActivityAttributes { context.attributes }
 
   private var trackingDuration: Int { state.trackingDurationMinutes }
-  private var amPm: String { Calendar.current.component(.hour, from: attrs.scheduledTime) >= 12 ? "PM" : "AM" }
-  private var timeText: String { attrs.scheduledTime.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()) }
+  private var amPm: String { LocalizedDateFormatters.amPm.string(from: attrs.scheduledTime) }
+  private var timeText: String { LocalizedDateFormatters.time12Hour.string(from: attrs.scheduledTime) }
 
   /// 현재 사용자의 ETA
   private var myETA: Int? {
@@ -49,7 +49,7 @@ struct LockScreenBannerView: View {
 
   private var headerSection: some View {
     HStack {
-      // 왼쪽: 약속 정보
+      // 왼쪽: 일정 정보
       VStack(alignment: .leading, spacing: 6) {
         Text("\(attrs.emoji) \(attrs.title)")
           .font(.subheadline.weight(.bold))
@@ -69,16 +69,18 @@ struct LockScreenBannerView: View {
 
       Spacer()
 
-      // 오른쪽: 약속 시간
+      // 오른쪽: 일정 시간
       VStack(alignment: .trailing, spacing: 2) {
-        Text("약속 시간")
+        Text(LocalizedStrings.LiveSchedule.scheduleTime)
           .font(.caption2)
           .foregroundStyle(.white.opacity(0.6))
 
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-          Text(amPm)
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.6))
+          if !amPm.isEmpty {
+            Text(amPm)
+              .font(.system(size: 12, weight: .medium, design: .monospaced))
+              .foregroundStyle(.white.opacity(0.6))
+          }
 
           Text(timeText)
             .font(.system(size: 18, weight: .bold, design: .monospaced))
@@ -100,12 +102,12 @@ struct LockScreenBannerView: View {
     HStack(spacing: 8) {
       // 라벨 (고정 너비 - 가장 긴 케이스 "도착까지" 기준: )
       VStack(alignment: .leading, spacing: 2) {
-        Text(myETA == 0 ? "도착" : "도착까지")
+        Text(myETA == 0 ? LocalizedStrings.LiveSchedule.etaArrived : LocalizedStrings.LiveSchedule.minutesUntilArrival)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.white.opacity(0.4))
 
         if isCustomETA, let eta = myETA {
-          Text("\(eta)분")
+          Text(LocalizedStrings.LiveSchedule.etaMinutes(eta))
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(.white.opacity(0.8))
         }
@@ -126,10 +128,10 @@ struct LockScreenBannerView: View {
 // TODO: n분 버튼 커스텀 가능하게 추후 구현
 struct ETASegmentedControl: View {
   let selectedMinutes: Int?
-  let context: ActivityViewContext<PromiseActivityAttributes>
+  let context: ActivityViewContext<ScheduleActivityAttributes>
 
-  private var attrs: PromiseActivityAttributes { context.attributes }
-  private var state: PromiseActivityAttributes.ContentState { context.state }
+  private var attrs: ScheduleActivityAttributes { context.attributes }
+  private var state: ScheduleActivityAttributes.ContentState { context.state }
 
   /// participants를 JSON 문자열로 인코딩
   private var participantsJSON: String {
@@ -141,9 +143,9 @@ struct ETASegmentedControl: View {
   }
 
   private let etaOptions: [(title: String, minutes: Int)] = [
-    ("완료", 0),
-    ("5분", 5),
-    ("10분", 10)
+    (LocalizedStrings.LiveSchedule.etaArrived, 0),
+    (LocalizedStrings.LiveSchedule.etaMinutes(5), 5),
+    (LocalizedStrings.LiveSchedule.etaMinutes(10), 10)
   ]
 
   var body: some View {
@@ -192,9 +194,9 @@ struct ETASegmentedControl: View {
       }
 
       // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
-      if let url = URL(string: "promiso://promise/\(attrs.promiseId)/eta") {
+      if let url = AppConstants.Deeplink.url(path: "schedule/\(attrs.scheduleId)/eta") {
         Link(destination: url) {
-          Text("직접 입력")
+          Text(LocalizedStrings.LiveSchedule.manualInput)
             .font(.system(size: 11, weight: .medium))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

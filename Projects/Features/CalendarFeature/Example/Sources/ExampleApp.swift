@@ -46,9 +46,9 @@ private struct ExampleContentView: View {
           Group {
             Text("• 주간/월간 뷰 토글")
             Text("• 날짜 선택 및 스와이프 이동")
-            Text("• 약속 상태별 컬러 표시")
+            Text("• 일정 상태별 컬러 표시")
             Text("• 오늘 날짜로 빠른 이동")
-            Text("• 약속 카드 탭 인터랙션")
+            Text("• 일정 카드 탭 인터랙션")
           }
           .font(.caption)
           .foregroundColor(.secondary)
@@ -56,7 +56,7 @@ private struct ExampleContentView: View {
         .padding(.vertical, 4)
       }
 
-      Section("약속 상태 컬러") {
+      Section("일정 상태 컬러") {
         HStack {
           statusDot(color: .yellow)
           Text("응답 대기 (Proposed)")

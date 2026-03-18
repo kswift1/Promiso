@@ -5,7 +5,7 @@ import PromisoShared
 // MARK: - Personal Event Model
 
 /// 개인 일정 도메인 모델
-public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
+public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, RangedEvent {
   // MARK: - 기본 정보
   public var id: String
   public var title: String
@@ -154,38 +154,27 @@ extension PersonalEventModel {
   /// 종료 시간 텍스트 (예: "오후 5:00" 또는 다음날이면 "1월 28일 오전 1:00")
   public var endTimeText: String? {
     guard let endAt = endAt else { return nil }
-    return KoreanDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
-  }
-
-  /// 시간 범위 텍스트 (예: "오후 2:00 ~ 오후 5:00" 또는 "오후 2:00 ~ 1월 28일 오전 1:00")
-  public var timeRangeText: String {
-    if let endTimeText = endTimeText {
-      return "\(timeText) ~ \(endTimeText)"
-    }
-    return timeText
+    return LocalizedDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
   }
 
   /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.scheduleDisplay
     if calendar.isDateInToday(startAt) {
-      return "오늘"
+      return LocalizedStrings.DateFormat.today
     }
     if calendar.isDateInTomorrow(startAt) {
-      return "내일"
+      return LocalizedStrings.DateFormat.tomorrow
     }
     if calendar.isDateInYesterday(startAt) {
-      return "어제"
+      return LocalizedStrings.DateFormat.yesterday
     }
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일"
-    return formatter.string(from: startAt)
+    return LocalizedDateFormatters.monthDayString(from: startAt)
   }
 
   /// 위치 텍스트 (없으면 기본값)
   public var locationText: String {
-    location?.name ?? "장소 미정"
+    location?.name ?? LocalizedStrings.Common.noLocation
   }
 }
 
@@ -234,7 +223,7 @@ extension PersonalEventModel {
 // MARK: - Calendar Sync Properties
 
 extension PersonalEventModel {
-  /// 캘린더 sync용 콘텐츠 해시 (CalendarSyncPromise 패턴과 동일)
+  /// 캘린더 sync용 콘텐츠 해시 (CalendarSyncSchedule 패턴과 동일)
   public var contentHash: String {
     let startTimestamp = Int(startAt.timeIntervalSince1970)
     let endTimestamp = endAt.map { Int($0.timeIntervalSince1970) } ?? 0
@@ -276,15 +265,15 @@ extension PersonalEventModel {
     guard let minutes = reminderMinutesBefore else { return "" }
     switch minutes {
     case 0:
-      return "지금 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsNow
     case let m where m >= 10080 && m % (1440 * 7) == 0:
-      return "\(m / (1440 * 7))주 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInWeeks(m / (1440 * 7))
     case let m where m >= 1440:
-      return "\(m / 1440)일 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInDays(m / 1440)
     case let m where m >= 60:
-      return "\(m / 60)시간 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInHours(m / 60)
     default:
-      return "\(minutes)분 후 시작하는 일정입니다"
+      return LocalizedStrings.Personal.notificationStartsInMinutes(minutes)
     }
   }
 }
@@ -337,7 +326,7 @@ extension PersonalEventModel {
     // 5. 과거 일정
     PersonalEventModel(
       id: "event-past-1",
-      title: "점심 약속",
+      title: "점심 일정",
       emoji: "🍜",
       startAt: Date().addingTimeInterval(-7200),
       endAt: Date().addingTimeInterval(-3600),

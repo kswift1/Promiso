@@ -7,18 +7,17 @@ description: 새로운 화면 생성 (Feature + UI 디자인 포함)
 
 새로운 화면을 생성합니다. Feature 생성과 함께 UI 디자인도 포함됩니다.
 
+> 먼저 `.ai/AI_WORKFLOW.md`를 읽고 따른다. 이 파일은 작업별 규칙만 정의한다.
+
 ## 실행 순서
 
-1. **feature-generator** 에이전트로 Feature 코드 생성
+1. **implementer** 에이전트로 Feature + View 코드 생성
+   - Feature: TCA Reducer (Namespace 패턴)
+   - View: iOS 26 Glass Effect + Aurora Background + Fallback
 
-2. **ui-designer** 에이전트로 View 코드 작성
-   - iOS 26 Glass Effect 적용
-   - 앱 디자인 톤 & 무드 준수
-   - Fallback 구현
+2. **test-writer** 에이전트로 테스트 코드 생성
 
-3. **test-writer** 에이전트로 테스트 코드 생성
-
-4. **code-reviewer** 에이전트로 전체 검토
+3. **reviewer** 에이전트로 전체 검토
 
 ## 생성 위치
 

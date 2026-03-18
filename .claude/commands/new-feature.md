@@ -7,16 +7,18 @@ description: 새로운 TCA Feature 생성 (Reducer + View + Tests)
 
 새로운 TCA Feature를 생성합니다.
 
+> 먼저 `.ai/AI_WORKFLOW.md`를 읽고 따른다. 이 파일은 작업별 규칙만 정의한다.
+
 ## 실행 순서
 
-1. **feature-generator** 에이전트로 Feature 코드 생성
+1. **implementer** 에이전트로 Feature 코드 생성
    - `{Name}Feature.swift` (State, Action, Reducer)
    - `{Name}View.swift` (SwiftUI View)
 
 2. **test-writer** 에이전트로 테스트 코드 생성
    - `{Name}FeatureTests.swift`
 
-3. **code-reviewer** 에이전트로 생성된 코드 검토
+3. **reviewer** 에이전트로 생성된 코드 검토
 
 ## 생성 위치
 

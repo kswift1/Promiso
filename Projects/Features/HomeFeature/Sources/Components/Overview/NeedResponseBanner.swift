@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 struct NeedResponseBanner: View {
   let count: Int
@@ -12,12 +13,12 @@ struct NeedResponseBanner: View {
           .foregroundStyle(.white)
 
         VStack(alignment: .leading, spacing: 2) {
-          Text("응답이 필요해요")
+          Text(LocalizedStrings.Home.responseNeeded)
             .font(.subheadline)
             .fontWeight(.semibold)
             .foregroundStyle(.white)
 
-          Text("응답할 약속 \(count)개")
+          Text(LocalizedStrings.Home.schedulesToRespond(count))
             .font(.caption)
             .foregroundStyle(.white.opacity(0.9))
         }
@@ -46,17 +47,11 @@ struct NeedResponseBanner: View {
 
 #Preview {
   VStack(spacing: 16) {
-    NeedResponseBanner(count: 3) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 3) { }
 
-    NeedResponseBanner(count: 1) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 1) { }
 
-    NeedResponseBanner(count: 10) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 10) { }
   }
   .padding()
   .auroraBackground()

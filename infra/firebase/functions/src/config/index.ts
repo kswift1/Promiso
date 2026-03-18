@@ -3,7 +3,7 @@
  */
 import * as admin from "firebase-admin";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {defineSecret} from "firebase-functions/params";
+import {defineSecret, defineString} from "firebase-functions/params";
 import {
   logEnvironmentInfo,
   getCurrentEnvironment,
@@ -34,6 +34,32 @@ export const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 // Slack Webhook 시크릿 (가입 알림용)
 export const SLACK_WEBHOOK_URL = defineSecret("SLACK_WEBHOOK_URL");
+
+// 기상청 공공데이터 API 시크릿
+export const KMA_API_KEY = defineSecret("KMA_API_KEY");
+
+// ODsay Lab API 시크릿 (대중교통 경로)
+export const ODSAY_API_KEY = defineSecret("ODSAY_API_KEY");
+
+// Kakao REST API 시크릿 (장소 검색 + Mobility)
+export const KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
+
+// Analytics 조회 설정
+export const GA4_PROPERTY_ID = defineString("GA4_PROPERTY_ID", {
+  default: "",
+});
+export const ANALYTICS_BIGQUERY_PROJECT_ID = defineString(
+  "ANALYTICS_BIGQUERY_PROJECT_ID",
+  {default: ""}
+);
+export const ANALYTICS_BIGQUERY_DATASET_ID = defineString(
+  "ANALYTICS_BIGQUERY_DATASET_ID",
+  {default: ""}
+);
+export const ANALYTICS_BIGQUERY_LOCATION = defineString(
+  "ANALYTICS_BIGQUERY_LOCATION",
+  {default: ""}
+);
 
 // APNs 호스트 설정
 export const APNS_HOST_PRODUCTION = "api.push.apple.com";
@@ -70,7 +96,24 @@ function getAPNsBundleId(): string {
   }
 }
 
-export const APNS_BUNDLE_ID = getAPNsBundleId();
+export const APP_STORE_BUNDLE_ID = getAPNsBundleId();
+
+/**
+ * App Store Connect appAppleId (프로덕션 검증용)
+ *
+ * @remarks
+ * Sandbox 환경에서는 SignedDataVerifier에 appAppleId가 필요하지 않다.
+ */
+export const APP_STORE_APPLE_ID = getCurrentEnvironment() ===
+  FirestoreEnvironment.Release ?
+  1625074042 :
+  undefined;
+
+export const APNS_BUNDLE_ID = APP_STORE_BUNDLE_ID;
+
+// App Store Server Notification 시크릿 (향후 사용)
+// export const APP_STORE_SHARED_SECRET =
+//   defineSecret("APP_STORE_SHARED_SECRET");
 
 // Firebase Admin 인스턴스 export
 export {admin};

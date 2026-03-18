@@ -102,7 +102,6 @@ public struct GlassExpandableMenu<Content: View, Label: View>: View, Animatable 
       anchor: scaleAnchor
     )
     .offset(y: offset * blurProgress)
-    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
   }
 
   // MARK: - Fallback (iOS 25 이하)
@@ -270,7 +269,7 @@ private struct GlassExpandableMenuPreview: View {
         progress: progress
       ) {
         VStack(alignment: .leading, spacing: 0) {
-          ForEach(["새 약속", "그룹 만들기", "그룹 참여"], id: \.self) { title in
+          ForEach(["새 일정", "그룹 만들기", "그룹 참여"], id: \.self) { title in
             Button {
               withAnimation(animationType.animation) {
                 progress = 0

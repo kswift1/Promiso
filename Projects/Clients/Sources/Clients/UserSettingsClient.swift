@@ -10,11 +10,29 @@ public struct UserSettingsClient: Sendable {
   /// 사용자 설정 조회
   public var fetchSettings: @Sendable (_ userId: String) async throws -> UserSettings
 
+  /// Pro 설정 존재 여부 확인
+  public var hasProSettings: @Sendable (_ userId: String) async throws -> Bool
+
   /// 그룹 정렬 옵션 업데이트
   public var updateGroupSortOption: @Sendable (_ userId: String, _ option: GroupSortOption) async throws -> Void
 
-  /// 사용자 플랜 업데이트
-  public var updatePlan: @Sendable (_ userId: String, _ plan: UserPlan) async throws -> Void
+  /// 일정 충돌 감지 임계값 업데이트
+  public var updateConflictDetectionThreshold: @Sendable (_ userId: String, _ threshold: Int) async throws -> Void
+
+  /// 브리핑 스타일 업데이트
+  public var updateBriefingStyle: @Sendable (_ userId: String, _ style: BriefingStyle) async throws -> Void
+
+  /// 브리핑 알림 시간 업데이트
+  public var updateBriefingNotificationHour: @Sendable (_ userId: String, _ hour: Int?) async throws -> Void
+
+  /// 이용 가능 교통수단 업데이트
+  public var updateAvailableTransports: @Sendable (_ userId: String, _ transports: Set<AvailableTransport>) async throws -> Void
+
+  /// 브리핑 기본 위치 업데이트
+  public var updateBriefingDefaultLocation: @Sendable (_ userId: String, _ location: LocationInfoModel?) async throws -> Void
+
+  /// Pro 가입 시 기본 설정값 초기화
+  public var initializeProDefaults: @Sendable (_ userId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -22,11 +40,17 @@ public struct UserSettingsClient: Sendable {
 extension UserSettingsClient: TestDependencyKey {
   public static let testValue = Self(
     fetchSettings: unimplemented(
-      "\\(Self.self).fetchSettings",
-      placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+      "\(Self.self).fetchSettings",
+      placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     ),
-    updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
-    updatePlan: unimplemented("\\(Self.self).updatePlan")
+    hasProSettings: unimplemented("\(Self.self).hasProSettings", placeholder: false),
+    updateGroupSortOption: unimplemented("\(Self.self).updateGroupSortOption"),
+    updateConflictDetectionThreshold: unimplemented("\(Self.self).updateConflictDetectionThreshold"),
+    updateBriefingStyle: unimplemented("\(Self.self).updateBriefingStyle"),
+    updateBriefingNotificationHour: unimplemented("\(Self.self).updateBriefingNotificationHour"),
+    updateAvailableTransports: unimplemented("\(Self.self).updateAvailableTransports"),
+    updateBriefingDefaultLocation: unimplemented("\(Self.self).updateBriefingDefaultLocation"),
+    initializeProDefaults: unimplemented("\(Self.self).initializeProDefaults")
   )
 
   public static let previewValue = Self(
@@ -34,15 +58,33 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.3))
       return UserSettings(
         notificationEnabled: true,
-        groupSortOption: .joinedRecent,
-        plan: .free
+        groupSortOption: .joinedRecent
       )
+    },
+    hasProSettings: { _ in
+      try await Task.sleep(for: .seconds(0.1))
+      return false
     },
     updateGroupSortOption: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
-    updatePlan: { _, _ in
+    updateConflictDetectionThreshold: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingStyle: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingNotificationHour: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateAvailableTransports: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateBriefingDefaultLocation: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    initializeProDefaults: { _ in
+      try await Task.sleep(for: .seconds(0.3))
     }
   )
 }
@@ -66,11 +108,29 @@ extension UserSettingsClient: DependencyKey {
       fetchSettings: { userId in
         try await dataSource.fetchSettings(userId: userId)
       },
+      hasProSettings: { userId in
+        try await dataSource.hasProSettings(userId: userId)
+      },
       updateGroupSortOption: { userId, option in
         try await dataSource.updateGroupSortOption(userId: userId, option: option)
       },
-      updatePlan: { userId, plan in
-        try await dataSource.updatePlan(userId: userId, plan: plan)
+      updateConflictDetectionThreshold: { userId, threshold in
+        try await dataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
+      },
+      updateBriefingStyle: { userId, style in
+        try await dataSource.updateBriefingStyle(userId: userId, style: style)
+      },
+      updateBriefingNotificationHour: { userId, hour in
+        try await dataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
+      },
+      updateAvailableTransports: { userId, transports in
+        try await dataSource.updateAvailableTransports(userId: userId, transports: transports)
+      },
+      updateBriefingDefaultLocation: { userId, location in
+        try await dataSource.updateBriefingDefaultLocation(userId: userId, location: location)
+      },
+      initializeProDefaults: { userId in
+        try await dataSource.initializeProDefaults(userId: userId)
       }
     )
   }()

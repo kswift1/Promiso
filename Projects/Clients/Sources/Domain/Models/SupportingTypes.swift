@@ -1,10 +1,33 @@
 import Foundation
 import FirebaseFirestore
+import PromisoShared
 
-// MARK: - Promise Votes Model
+// MARK: - Ranged Event
+
+/// 시작/종료 시간을 가진 이벤트의 공통 인터페이스
+public protocol RangedEvent {
+  var startAt: Date { get }
+  var endAt: Date? { get }
+  var timeText: String { get }
+}
+
+extension RangedEvent {
+  /// 시간 범위 텍스트 (같은 날: "14:00 ~ 16:00", 다른 날: "1월 27일 14:00 ~ 1월 28일 16:00")
+  public var timeRangeText: String {
+    guard let endAt = endAt else { return timeText }
+    let calendar = Calendar.current
+    if calendar.isDate(startAt, inSameDayAs: endAt) {
+      return "\(timeText) ~ \(endAt.formattedTime)"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startAt)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endAt))"
+    }
+  }
+}
+
+// MARK: - Schedule Votes Model
 
 /// 투표 정보 (votes Map)
-public struct PromiseVotesModel: Hashable, Codable, Equatable, Sendable {
+public struct ScheduleVotesModel: Hashable, Codable, Equatable, Sendable {
   /// 참여 확정한 userId 목록
   public let accepted: [String]
   /// 참여 불가한 userId 목록
@@ -60,26 +83,6 @@ public enum VoteStatus: String, Codable, Equatable, Sendable {
   case declined  // 참여 불가
 }
 
-// MARK: - Location Info Model
-
-public struct LocationInfoModel: Hashable, Codable, Equatable, Sendable {
-  public let name: String
-  public let address: String?
-  public let latitude: Double?
-  public let longitude: Double?
-  
-  public init(
-    name: String,
-    address: String? = nil,
-    latitude: Double? = nil,
-    longitude: Double? = nil
-  ) {
-    self.name = name
-    self.address = address
-    self.latitude = latitude
-    self.longitude = longitude
-  }
-}
 
 // MARK: - Proposal
 
@@ -89,7 +92,7 @@ public struct Proposal: Hashable, Codable, Equatable {
   public let description: String?
   public let fromUserId: String
   public let toUserId: String
-  public let promiseId: String?
+  public let scheduleId: String?
   public let status: ProposalStatus
   public let createdAt: Date
   public let updatedAt: Date
@@ -100,7 +103,7 @@ public struct Proposal: Hashable, Codable, Equatable {
     description: String? = nil,
     fromUserId: String,
     toUserId: String,
-    promiseId: String? = nil,
+    scheduleId: String? = nil,
     status: ProposalStatus,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -110,7 +113,7 @@ public struct Proposal: Hashable, Codable, Equatable {
     self.description = description
     self.fromUserId = fromUserId
     self.toUserId = toUserId
-    self.promiseId = promiseId
+    self.scheduleId = scheduleId
     self.status = status
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -126,7 +129,7 @@ public enum ProposalStatus: String, CaseIterable, Codable {
 
 // MARK: - DTO -> Model 변환
 
-extension PromiseVotesModel {
+extension ScheduleVotesModel {
   /// DTO에서 Model 생성
   public init(dto: VotesDTO) {
     self.init(

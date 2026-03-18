@@ -28,25 +28,145 @@ struct CinematicHeroView: View {
 
     static func random() -> CardSet {
       let confirmedOptions: [(info: CardInfo, count: String)] = [
-        (CardInfo(emoji: "🎬", title: "대학 동기 모임", detail: "영화 보고 저녁!", location: "CGV 강남"), "4/4"),
-        (CardInfo(emoji: "🍖", title: "회식", detail: "분기 마무리 회식", location: "강남 고깃집"), "5/5"),
-        (CardInfo(emoji: "⚽️", title: "풋살 모임", detail: "이번 주 매치", location: "잠실 풋살장"), "6/6"),
-        (CardInfo(emoji: "🎤", title: "노래방 번개", detail: "스트레스 해소!", location: "홍대 코인노래방"), "3/3"),
-        (CardInfo(emoji: "🍻", title: "금요 치맥", detail: "한 주 고생했다", location: "을지로 호프집"), "4/4"),
+        (
+          CardInfo(
+            emoji: "🎬",
+            title: "대학 동기 모임",
+            detail: "영화 보고 저녁!",
+            location: "CGV 강남"
+          ),
+          "4/4"
+        ),
+        (
+          CardInfo(
+            emoji: "🍖",
+            title: "회식",
+            detail: "분기 마무리 회식",
+            location: "강남 고깃집"
+          ),
+          "5/5"
+        ),
+        (
+          CardInfo(
+            emoji: "⚽️",
+            title: "풋살 모임",
+            detail: "이번 주 매치",
+            location: "잠실 풋살장"
+          ),
+          "6/6"
+        ),
+        (
+          CardInfo(
+            emoji: "🎤",
+            title: "노래방 번개",
+            detail: "스트레스 해소!",
+            location: "홍대 코인노래방"
+          ),
+          "3/3"
+        ),
+        (
+          CardInfo(
+            emoji: "🍻",
+            title: "금요 치맥",
+            detail: "한 주 고생했다",
+            location: "을지로 호프집"
+          ),
+          "4/4"
+        ),
       ]
       let upcomingOptions: [(info: CardInfo, time: String)] = [
-        (CardInfo(emoji: "🎂", title: "엄마 생신 저녁", detail: "선물 준비 완료", location: "한정식집"), "내일 오후 6시"),
-        (CardInfo(emoji: "☕️", title: "카페 스터디", detail: "중간고사 대비", location: "스타벅스 역삼점"), "토요일 오전 10시"),
-        (CardInfo(emoji: "🏔️", title: "등산 모임", detail: "북한산 코스", location: "북한산 입구"), "일요일 오전 7시"),
-        (CardInfo(emoji: "🎾", title: "테니스 레슨", detail: "초급반 3회차", location: "올림픽공원"), "수요일 오후 7시"),
-        (CardInfo(emoji: "🍜", title: "점심 약속", detail: "오랜만에 만남", location: "광화문 맛집"), "오늘 낮 12시"),
+        (
+          CardInfo(
+            emoji: "🎂",
+            title: "엄마 생신 저녁",
+            detail: "선물 준비 완료",
+            location: "한정식집"
+          ),
+          "내일 오후 6시"
+        ),
+        (
+          CardInfo(
+            emoji: "☕️",
+            title: "카페 스터디",
+            detail: "중간고사 대비",
+            location: "스타벅스 역삼점"
+          ),
+          "토요일 오전 10시"
+        ),
+        (
+          CardInfo(
+            emoji: "🏔️",
+            title: "등산 모임",
+            detail: "북한산 코스",
+            location: "북한산 입구"
+          ),
+          "일요일 오전 7시"
+        ),
+        (
+          CardInfo(
+            emoji: "🎾",
+            title: "테니스 레슨",
+            detail: "초급반 3회차",
+            location: "올림픽공원"
+          ),
+          "수요일 오후 7시"
+        ),
+        (
+          CardInfo(
+            emoji: "🍜",
+            title: "점심 일정",
+            detail: "오랜만에 만남",
+            location: "광화문 맛집"
+          ),
+          "오늘 낮 12시"
+        ),
       ]
       let personalOptions: [(info: CardInfo, time: String)] = [
-        (CardInfo(emoji: "📚", title: "토익 시험", detail: "목표 900점", location: "서울대 시험장"), "오후 2시"),
-        (CardInfo(emoji: "💇", title: "미용실 예약", detail: "커트 + 염색", location: "헤어살롱"), "오후 3시"),
-        (CardInfo(emoji: "🏥", title: "건강검진", detail: "연례 종합검진", location: "서울병원"), "오전 9시"),
-        (CardInfo(emoji: "🦷", title: "치과 예약", detail: "스케일링", location: "연세치과"), "오후 4시"),
-        (CardInfo(emoji: "🏋️", title: "PT 수업", detail: "하체 운동 Day", location: "피트니스센터"), "오후 7시"),
+        (
+          CardInfo(
+            emoji: "📚",
+            title: "토익 시험",
+            detail: "목표 900점",
+            location: "서울대 시험장"
+          ),
+          "오후 2시"
+        ),
+        (
+          CardInfo(
+            emoji: "💇",
+            title: "미용실 예약",
+            detail: "커트 + 염색",
+            location: "헤어살롱"
+          ),
+          "오후 3시"
+        ),
+        (
+          CardInfo(
+            emoji: "🏥",
+            title: "건강검진",
+            detail: "연례 종합검진",
+            location: "서울병원"
+          ),
+          "오전 9시"
+        ),
+        (
+          CardInfo(
+            emoji: "🦷",
+            title: "치과 예약",
+            detail: "스케일링",
+            location: "연세치과"
+          ),
+          "오후 4시"
+        ),
+        (
+          CardInfo(
+            emoji: "🏋️",
+            title: "PT 수업",
+            detail: "하체 운동 Day",
+            location: "피트니스센터"
+          ),
+          "오후 7시"
+        ),
       ]
 
       return CardSet(
@@ -112,25 +232,25 @@ struct CinematicHeroView: View {
   private var messagesView: some View {
     VStack(spacing: 16) {
       messageBubble(
-        text: "토요일 되는 사람? 🙋",
+        text: "토요일 고기 먹으러 가자 💬",
         alignment: .leading,
         rotation: -3,
         visible: visibleBubbles >= 1
       )
       messageBubble(
-        text: "나 7시 이후만 돼",
+        text: "3/15 스터디 강남역 2시 📝",
         alignment: .trailing,
         rotation: 2,
         visible: visibleBubbles >= 2
       )
       messageBubble(
-        text: "읽씹...",
+        text: "치과 오후 3시 📅",
         alignment: .leading,
         rotation: -1,
         visible: visibleBubbles >= 3
       )
       messageBubble(
-        text: "결국 어떻게 된거야?",
+        text: "이거 언제였더라...? 🤷",
         alignment: .trailing,
         rotation: 1.5,
         visible: visibleBubbles >= 4
@@ -169,8 +289,8 @@ struct CinematicHeroView: View {
 
   private var organizedCardsView: some View {
     VStack(spacing: 10) {
-      // 1. 전원 확정 약속
-      promiseCard(
+      // 1. 전원 확정 일정
+      scheduleCard(
         info: cardSet.confirmed.info,
         groupName: "대학 동기",
         participantCount: cardSet.confirmed.count,
@@ -178,17 +298,22 @@ struct CinematicHeroView: View {
       )
       .cascadeIn(visible: visibleCards >= 1)
 
-      // 2. 확정 대기 약속
-      promiseCard(
-        info: CardInfo(emoji: "🍟", title: "감튀 파티", detail: "케첩 필수 지참", location: "맥도날드"),
+      // 2. 확정 대기 일정
+      scheduleCard(
+        info: CardInfo(
+          emoji: "🍟",
+          title: "감튀 파티",
+          detail: "케첩 필수 지참",
+          location: "맥도날드"
+        ),
         groupName: "감튀 그룹",
         participantCount: "3/4",
         badge: .pending("1명 남음")
       )
       .cascadeIn(visible: visibleCards >= 2)
 
-      // 3. 예정 약속
-      promiseCard(
+      // 3. 예정 일정
+      scheduleCard(
         info: cardSet.upcoming.info,
         groupName: nil,
         participantCount: nil,
@@ -211,7 +336,7 @@ struct CinematicHeroView: View {
     case time(String)
   }
 
-  private func promiseCard(
+  private func scheduleCard(
     info: CardInfo,
     groupName: String?,
     participantCount: String?,
@@ -363,7 +488,7 @@ struct CinematicHeroView: View {
 
   private var taglineView: some View {
     VStack(spacing: 8) {
-      Text("흩어진 약속,")
+      Text("흩어진 일정,")
         .font(.title2.bold())
         .foregroundStyle(Color.pmtext.primary)
       Text("이제 Promiso가 챙길게요")

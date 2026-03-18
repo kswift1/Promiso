@@ -1,5 +1,5 @@
 // MARK: - OnboardingStartFeature.swift
-// 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 약속
+// 온보딩 완료 → 시작하기
 
 import ComposableArchitecture
 
@@ -29,14 +29,10 @@ extension AppEntry {
 
       @CasePathable
       public enum ViewAction: Sendable {
-        case createGroupTapped
-        case enterInviteCodeTapped
-        case personalScheduleTapped
+        case startTapped
       }
 
       public enum DelegateAction: Sendable {
-        case createGroup
-        case enterInviteCode
         case completed
       }
     }
@@ -48,11 +44,7 @@ extension AppEntry {
         switch action {
         case .view(let viewAction):
           switch viewAction {
-          case .createGroupTapped:
-            return .send(.delegate(.createGroup))
-          case .enterInviteCodeTapped:
-            return .send(.delegate(.enterInviteCode))
-          case .personalScheduleTapped:
+          case .startTapped:
             return .send(.delegate(.completed))
           }
 

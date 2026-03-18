@@ -111,16 +111,20 @@ extension NotificationCenter {
         case markAllAsReadCompleted(Result<Void, Error>)
         /// 삭제 완료
         case deleteCompleted(deletedIds: [String], Result<Void, Error>)
+        /// 시스템 배지 클리어
+        case clearBadge
       }
 
       @CasePathable
       public enum Delegate: Sendable {
-        /// 약속 상세로 이동
-        case navigateToPromise(promiseId: String, groupId: String)
+        /// 일정 상세로 이동
+        case navigateToSchedule(scheduleId: String, groupId: String)
         /// 그룹 상세로 이동
         case navigateToGroup(groupId: String)
         /// 닫기
         case dismiss
+        /// 뱃지 카운트 갱신 요청
+        case refreshBadgeCount
       }
     }
 
@@ -136,7 +140,10 @@ extension NotificationCenter {
             guard !state.hasLoadedOnce else { return .none }
             state.hasLoadedOnce = true
             state.notificationsState = .loading
-            return .send(.internal(.fetchNotifications(isRefresh: true)))
+            return .merge(
+              .send(.internal(.fetchNotifications(isRefresh: true))),
+              .send(.internal(.clearBadge))
+            )
 
           case .refreshTriggered:
             return .send(.internal(.fetchNotifications(isRefresh: true)))
@@ -169,8 +176,8 @@ extension NotificationCenter {
             // 딥링크 이동
             let navigateEffect: Effect<Action>
             switch notification.deeplinkType {
-            case .promise(let promiseId, let groupId):
-              navigateEffect = .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+            case .schedule(let scheduleId, let groupId):
+              navigateEffect = .send(.delegate(.navigateToSchedule(scheduleId: scheduleId, groupId: groupId)))
             case .group(let groupId):
               navigateEffect = .send(.delegate(.navigateToGroup(groupId: groupId)))
             case .none:
@@ -318,7 +325,7 @@ extension NotificationCenter {
                 type: notifications[index].type,
                 title: notifications[index].title,
                 body: notifications[index].body,
-                promiseId: notifications[index].promiseId,
+                scheduleId: notifications[index].scheduleId,
                 groupId: notifications[index].groupId,
                 relatedUserId: notifications[index].relatedUserId,
                 isRead: true,
@@ -327,6 +334,7 @@ extension NotificationCenter {
               )
               notifications[index] = updated
               state.notificationsState = .loaded(notifications)
+              return .send(.delegate(.refreshBadgeCount))
             }
             return .none
 
@@ -342,7 +350,7 @@ extension NotificationCenter {
                     type: notification.type,
                     title: notification.title,
                     body: notification.body,
-                    promiseId: notification.promiseId,
+                    scheduleId: notification.scheduleId,
                     groupId: notification.groupId,
                     relatedUserId: notification.relatedUserId,
                     isRead: true,
@@ -352,15 +360,17 @@ extension NotificationCenter {
                 }
                 state.notificationsState = .loaded(notifications)
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "읽음 처리에 실패했어요",
-                subtitle: error.localizedDescription,
+                title: LocalizedStrings.Error.markAsReadFailed,
+                subtitle: message,
                 position: .top
               )
+              return .none
             }
-            return .none
 
           case .deleteCompleted(let deletedIds, let result):
             state.isDeleting = false
@@ -372,15 +382,22 @@ extension NotificationCenter {
                 state.selectedNotificationIds = []
                 state.isEditMode = false
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "알림 삭제에 실패했어요",
-                subtitle: error.localizedDescription,
+                title: LocalizedStrings.Error.notificationDeleteFailed,
+                subtitle: message,
                 position: .top
               )
+              return .none
             }
-            return .none
+
+          case .clearBadge:
+            return .run { [notificationClient] _ in
+              await notificationClient.setBadgeCount(0)
+            }
           }
 
         // MARK: - Delegate Actions
@@ -436,5 +453,18 @@ extension NotificationCenter.Feature.State {
   /// 선택 개수
   var selectedCount: Int {
     selectedNotificationIds.count
+  }
+}
+
+// MARK: - NotificationClientError Localization
+
+extension NotificationClientError {
+  var localizedMessage: String {
+    switch self {
+    case .authenticationRequired: return LocalizedStrings.Error.notificationAuthRequired
+    case .tokenNotFound: return LocalizedStrings.Error.notificationTokenNotFound
+    case .saveFailed: return LocalizedStrings.Error.notificationSaveFailed
+    case .deleteFailed: return LocalizedStrings.Error.notificationDeleteFailed
+    }
   }
 }

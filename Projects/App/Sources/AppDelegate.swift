@@ -21,6 +21,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     configureAnalytics()
     configureCrashlytics()
     configureClaritySDK()
+    configureKakaoSDK()
     configureKakaoMapsSDK()
     configureRemoteNotifications(application)
 
@@ -60,6 +61,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
   }
 
+  // MARK: - Kakao SDK (Share)
+  private func configureKakaoSDK() {
+    guard let kakaoAppKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String else {
+      AppLogger.general.error("Kakao Native App Key not found in Info.plist")
+      return
+    }
+    KakaoSDK.initSDK(appKey: kakaoAppKey)
+    AppLogger.general.debug("Kakao SDK initialized")
+  }
+
   // MARK: - Kakao Maps SDK
   private func configureKakaoMapsSDK() {
     guard let kakaoAppKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String else {
@@ -73,9 +84,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   // MARK: - Firebase Analytics
   private func configureAnalytics() {
     #if DEBUG
-    // Debug 빌드에서는 Analytics 비활성화 (선택사항)
-    Analytics.setAnalyticsCollectionEnabled(false)
-    AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    let processInfo = ProcessInfo.processInfo
+    let isDebugAnalyticsEnabled =
+      processInfo.arguments.contains("-FIRDebugEnabled")
+      || processInfo.environment["PROMISO_ANALYTICS_DEBUG"] == "1"
+
+    Analytics.setAnalyticsCollectionEnabled(isDebugAnalyticsEnabled)
+    if isDebugAnalyticsEnabled {
+      AppLogger.general.debug("Firebase Analytics enabled for DEBUG build")
+    } else {
+      AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    }
     #else
     // Release 빌드에서는 Analytics 활성화
     Analytics.setAnalyticsCollectionEnabled(true)

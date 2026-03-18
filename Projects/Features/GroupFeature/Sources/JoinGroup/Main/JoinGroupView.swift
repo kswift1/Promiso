@@ -21,21 +21,26 @@ extension JoinGroup {
           PreviewView(
             store: store,
             group: preview.group,
-            members: preview.members
+            members: preview.members,
+            memberCount: preview.memberCount
           )
         case .settings(let group):
           CreateGroupSettingsView(
             groupName: group.name,
+            photoData: nil,
+            isJoining: true,
             notificationEnabled: store.notificationEnabled,
             calendarSyncEnabled: store.calendarSyncEnabled,
             notificationAuthStatus: store.notificationAuthStatus,
             calendarAuthStatus: store.calendarAuthStatus,
             isSaving: store.isSavingSettings,
             showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+            selectedGroupColor: store.selectedGroupColor,
+            existingGroupColorMap: store.existingGroupColorMap,
             onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
             onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+            onGroupColorSelected: { store.send(.view(.groupColorSelected($0))) },
             onComplete: { store.send(.view(.settingsCompleted)) },
-            onSkip: { store.send(.view(.settingsSkipped)) },
             onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
             onAppear: { store.send(.view(.settingsAppeared)) }
           )
@@ -44,14 +49,18 @@ extension JoinGroup {
       .auroraBackground()
       .navigationTitle(navigationTitle)
       .navigationBarTitleDisplayMode(.inline)
+      .analyticsScreen(
+        name: AnalyticsClient.ScreenName.joinGroup.rawValue,
+        class: "JoinGroupView"
+      )
       .onAppear {
         store.send(.view(.onAppear))
       }
       .alert(
-        "오류",
+        LocalizedStrings.Common.error,
         isPresented: .constant(store.previewError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.previewErrorAlertDismissed))
           }
         },
@@ -62,10 +71,10 @@ extension JoinGroup {
         }
       )
       .alert(
-        "참여 실패",
+        LocalizedStrings.JoinGroup.joinFailed,
         isPresented: .constant(store.joinError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.joinErrorAlertDismissed))
           }
         },
@@ -80,9 +89,9 @@ extension JoinGroup {
     private var navigationTitle: String {
       switch store.step {
       case .enterCode, .preview:
-        return "그룹 참여"
+        return LocalizedStrings.JoinGroup.title
       case .settings:
-        return "초기 설정"
+        return LocalizedStrings.JoinGroup.initialSettings
       }
     }
   }
@@ -109,13 +118,18 @@ private struct EnterCodeView: View {
       Spacer()
       
       // Next Button
-      nextButton
-        .padding(.horizontal, 24)
-        .padding(.bottom, 32)
+      if !isCodeFieldFocused {
+        nextButton
+          .padding(.horizontal, 24)
+          .padding(.bottom, 32)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+      }
     }
+    .animation(.easeInOut(duration: 0.25), value: isCodeFieldFocused)
     .onAppear {
       isCodeFieldFocused = true
     }
+    .keyboardDismissToolbar()
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
         Button {
@@ -135,32 +149,20 @@ private struct EnterCodeView: View {
       // Icon
       ZStack {
         Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .fill(Color.pmindigo.n100.opacity(0.5))
           .frame(width: 80, height: 80)
-        
+
         Image(systemName: "link.circle.fill")
           .font(.system(size: 40))
-          .foregroundStyle(
-            LinearGradient(
-              colors: [.blue, .purple],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .foregroundStyle(Color.pmindigo.n500)
       }
       
       // Title & Description
       VStack(spacing: 8) {
-        Text("초대 코드 입력")
+        Text(LocalizedStrings.JoinGroup.enterInviteCode)
           .font(.title2.bold())
-        
-        Text("6자리 초대 코드를\n입력해주세요")
+
+        Text(LocalizedStrings.JoinGroup.enterCodeDescription)
           .font(.body)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
@@ -220,7 +222,7 @@ private struct EnterCodeView: View {
             isCodeFieldFocused = true
           }
         } label: {
-          Label("붙여넣기", systemImage: "doc.on.clipboard")
+          Label(LocalizedStrings.JoinGroup.paste, systemImage: "doc.on.clipboard")
         }
       }
 
@@ -228,7 +230,7 @@ private struct EnterCodeView: View {
         Button {
           UIPasteboard.general.string = store.inviteCode
         } label: {
-          Label("복사", systemImage: "doc.on.doc")
+          Label(LocalizedStrings.JoinGroup.copy, systemImage: "doc.on.doc")
         }
       }
     }
@@ -251,7 +253,7 @@ private struct EnterCodeView: View {
         .strokeBorder(
           store.inviteCode.count == index && isCodeFieldFocused
           ? LinearGradient(
-            colors: [.blue, .purple],
+            colors: [Color.pmindigo.n500],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
           )
@@ -296,24 +298,16 @@ private struct EnterCodeView: View {
             .font(.system(size: 18))
         }
         
-        Text(store.isLoadingPreview ? "확인 중..." : "다음")
+        Text(store.isLoadingPreview ? LocalizedStrings.JoinGroup.checking : LocalizedStrings.Common.next)
           .font(.headline)
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: store.canProceedToPreview
-          ? [.blue, .purple]
-          : [Color(.systemGray4)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(store.canProceedToPreview ? Color.pmindigo.n500 : Color(.systemGray4))
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .shadow(
-        color: store.canProceedToPreview ? .blue.opacity(0.3) : .clear,
+        color: store.canProceedToPreview ? Color.pmindigo.n500.opacity(0.2) : .clear,
         radius: 12,
         x: 0,
         y: 6
@@ -331,6 +325,7 @@ private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
   let members: [UserPublicModel]
+  let memberCount: Int
 
   var body: some View {
     VStack(spacing: 0) {
@@ -345,7 +340,7 @@ private struct PreviewView: View {
             // Description
             if let description = group.description, !description.isEmpty {
               VStack(alignment: .leading, spacing: 8) {
-                Label("소개", systemImage: "text.alignleft")
+                Label(LocalizedStrings.ManageGroup.introduction, systemImage: "text.alignleft")
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
 
@@ -360,8 +355,8 @@ private struct PreviewView: View {
             HStack(spacing: 24) {
               statItem(
                 icon: "person.2.fill",
-                label: "현재 인원",
-                value: "\(group.memberIds.count)"
+                label: LocalizedStrings.ManageGroup.currentMembers,
+                value: "\(memberCount)"
               )
 
               Divider()
@@ -369,28 +364,26 @@ private struct PreviewView: View {
 
               statItem(
                 icon: "person.3.fill",
-                label: "최대 인원",
+                label: LocalizedStrings.ManageGroup.maxMembers,
                 value: "\(group.maxMembers)"
               )
             }
             .frame(maxWidth: .infinity)
           }
           .padding(20)
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 20))
-          .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+          .staticGlassBackground(cornerRadius: 20)
 
           // Members Section
           if !members.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
               HStack {
-                Label("멤버", systemImage: "person.2")
+                Label(LocalizedStrings.Group.members, systemImage: "person.2")
                   .font(.headline)
                   .foregroundStyle(.primary)
 
                 Spacer()
 
-                Text("\(members.count)명")
+                Text(LocalizedStrings.ManageGroup.membersCount(members.count))
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
               }
@@ -398,9 +391,7 @@ private struct PreviewView: View {
               memberGridView
             }
             .padding(20)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+            .staticGlassBackground(cornerRadius: 20)
           }
 
           Spacer()
@@ -484,13 +475,7 @@ private struct PreviewView: View {
     VStack(spacing: 8) {
       Image(systemName: icon)
         .font(.system(size: 24))
-        .foregroundStyle(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
+        .foregroundStyle(Color.pmindigo.n500)
 
       Text(value)
         .font(.system(size: 28, weight: .bold))
@@ -548,22 +533,16 @@ private struct PreviewView: View {
             .font(.system(size: 20))
         }
 
-        Text(store.isJoining ? "참여 중..." : "그룹 참여하기")
+        Text(store.isJoining ? LocalizedStrings.JoinGroup.joining : LocalizedStrings.JoinGroup.joinButton)
           .font(.system(size: 18, weight: .semibold))
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: store.canJoin ? [.blue, .purple] : [Color(.systemGray4)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(store.canJoin ? Color.pmindigo.n500 : Color(.systemGray4))
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .shadow(
-        color: store.canJoin ? .blue.opacity(0.3) : .clear,
+        color: store.canJoin ? Color.pmindigo.n500.opacity(0.2) : .clear,
         radius: 12,
         x: 0,
         y: 6
@@ -592,14 +571,7 @@ private struct MemberGridItem: View {
       )
       .overlay(
         Circle()
-          .strokeBorder(
-            LinearGradient(
-              colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            ),
-            lineWidth: 2
-          )
+          .strokeBorder(Color.pmindigo.n200, lineWidth: 2)
       )
 
       Text(member.nickname)
@@ -631,7 +603,7 @@ private struct OverflowGridItem: View {
           .strokeBorder(Color(.systemGray4), lineWidth: 2)
       )
 
-      Text("더보기")
+      Text(LocalizedStrings.JoinGroup.seeMore)
         .font(.caption)
         .foregroundStyle(.secondary)
     }
@@ -649,13 +621,7 @@ private struct GroupImageView: View {
   var body: some View {
     ZStack {
       Circle()
-        .fill(
-          LinearGradient(
-            colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
+        .fill(Color.pmindigo.n100.opacity(0.5))
         .frame(width: 120, height: 120)
 
       if let uiImage = loadedImage {
@@ -673,27 +639,14 @@ private struct GroupImageView: View {
         // 이미지 없음 - system image 표시
         Image(systemName: "person.2.circle.fill")
           .font(.system(size: 60))
-          .foregroundStyle(
-            LinearGradient(
-              colors: [.blue.opacity(0.7), .purple.opacity(0.5)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
+          .foregroundStyle(Color.pmindigo.n500)
       }
     }
     .overlay(
       Circle()
-        .strokeBorder(
-          LinearGradient(
-            colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          ),
-          lineWidth: 3
-        )
+        .strokeBorder(Color.pmindigo.n200, lineWidth: 3)
     )
-    .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .shadow(color: Color.pmindigo.n500.opacity(0.15), radius: 16, x: 0, y: 8)
     .contentShape(Circle())
     .onTapGesture {
       onTap?()
@@ -715,7 +668,7 @@ private struct GroupImageView: View {
       let request = ImageRequest(url: url)
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
-      print("Failed to load image: \(error)")
+      AppLogger.general.warning("JoinGroup image load failed: \(error.localizedDescription)")
       // 에러 발생 시 system image 표시 (loadedImage가 nil이므로 자동으로 표시됨)
     }
   }

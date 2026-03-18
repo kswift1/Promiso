@@ -14,6 +14,7 @@ import Testing
 import ComposableArchitecture
 import Clients
 import Sharing
+import PromisoShared
 @testable import SettingsFeature
 
 // MARK: - SettingsFeature Tests
@@ -133,7 +134,7 @@ struct SettingsFeatureTests {
 
     await store.send(.view(.nicknameChanged(""))) {
       $0.editedNickname = ""
-      $0.nicknameValidation = .invalid("닉네임을 입력해주세요")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameRequired)
     }
   }
 
@@ -151,7 +152,7 @@ struct SettingsFeatureTests {
 
     await store.send(.view(.nicknameChanged("A"))) {
       $0.editedNickname = "A"
-      $0.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooShort)
     }
   }
 
@@ -259,7 +260,7 @@ struct SettingsFeatureTests {
     }
     await store.receive(\.internal.logoutFailed) {
       $0.isLoading = false
-      $0.errorMessage = AuthClientError.unknown.localizedDescription
+      $0.errorMessage = LocalizedStrings.Error.unknownError
     }
   }
 
@@ -280,7 +281,7 @@ struct SettingsFeatureTests {
     let longName = String(repeating: "가", count: 21)
     await store.send(.view(.nicknameChanged(longName))) {
       $0.editedNickname = longName
-      $0.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooLong)
     }
   }
 
@@ -414,7 +415,7 @@ struct SettingsFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "프로필 저장에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.profileSaveFailed)
     #expect(store.state.toastMessage?.subtitle == "저장 실패")
     #expect(store.state.toastMessage?.position == .top)
   }

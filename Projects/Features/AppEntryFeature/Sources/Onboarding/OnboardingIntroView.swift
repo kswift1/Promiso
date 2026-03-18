@@ -15,11 +15,9 @@ extension AppEntry.OnboardingIntro {
 
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
-        // 현재 화면 콘텐츠
         screenContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        // 하단: 페이지 인디케이터 + CTA
         bottomSection
       }
       .auroraBackground()
@@ -36,22 +34,22 @@ extension AppEntry.OnboardingIntro {
           CinematicHeroView(
             onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
           )
-        case .problemEmpathy:
-          ProblemEmpathyView(
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
-          )
-        case .benefitVote:
-          BenefitVoteView(
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
-          )
-        case .benefitHome:
-          BenefitHomeView(
+        case .benefitConfirm:
+          BenefitConfirmView(
             onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
           )
         case .benefitLive:
           BenefitLiveView(
             onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) },
             onInteractionComplete: { store.send(.view(.screenInteractionCompleted)) }
+          )
+        case .benefitHome:
+          BenefitHomeView(
+            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
+          )
+        case .benefitPro:
+          BenefitProView(
+            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
           )
         }
       }
@@ -103,6 +101,5 @@ extension AppEntry.OnboardingIntro {
       .padding(.horizontal, 24)
       .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
     }
-
   }
 }

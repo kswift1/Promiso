@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 struct GroupDetailView: View {
   let group: CurrentGroup
@@ -22,19 +23,19 @@ struct GroupDetailView: View {
               StatItem(
                 icon: "person.2.fill",
                 value: "\(group.members.count)",
-                label: "멤버"
+                label: LocalizedStrings.GroupComponents.members
               )
 
               StatItem(
                 icon: "calendar.badge.clock",
                 value: "\(group.activeCount)",
-                label: "진행중"
+                label: LocalizedStrings.GroupComponents.active
               )
 
               StatItem(
                 icon: "clock.fill",
                 value: "\(group.pendingCount)",
-                label: "대기"
+                label: LocalizedStrings.GroupComponents.pending
               )
             }
           }
@@ -45,21 +46,21 @@ struct GroupDetailView: View {
 
           // Settings Section
           VStack(alignment: .leading, spacing: 16) {
-            Text("설정")
+            Text(LocalizedStrings.Common.settings)
               .font(.system(size: 18, weight: .bold))
               .padding(.horizontal, 16)
 
             VStack(spacing: 12) {
               SettingRow(
                 icon: "bell.fill",
-                title: "알림",
+                title: LocalizedStrings.GroupComponents.notification,
                 isOn: group.notifications,
                 onToggle: onToggleNotifications
               )
 
               SettingRow(
                 icon: "gearshape.fill",
-                title: "그룹 설정",
+                title: LocalizedStrings.GroupComponents.groupSettings,
                 action: onSettings
               )
             }
@@ -71,7 +72,7 @@ struct GroupDetailView: View {
 
           // Members Section
           VStack(alignment: .leading, spacing: 16) {
-            Text("멤버 (\(group.members.count))")
+            Text(LocalizedStrings.GroupComponents.membersCount(group.members.count))
               .font(.system(size: 18, weight: .bold))
               .padding(.horizontal, 16)
 
@@ -185,7 +186,7 @@ private struct MemberRow: View {
             .font(.system(size: 16, weight: .semibold))
 
           if member.isMe {
-            Text("나")
+            Text(LocalizedStrings.GroupComponents.me)
               .font(.system(size: 12, weight: .semibold))
               .foregroundColor(.blue)
               .padding(.horizontal, 8)

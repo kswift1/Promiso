@@ -56,6 +56,9 @@ cd Promiso
 make setup  # mise 신뢰 + 의존성 설치 + 프로젝트 생성
 ```
 
+`make setup`은 `tuist install`, `Config/*.xcconfig` 준비, Functions 의존성 설치, `tuist generate`, Git hooks 설치를 한 번에 수행합니다.
+실제 xcconfig까지 같이 받으려면 실행 전에 `NOTION_API_KEY`를 설정하세요. 이미 설정 파일이 있고 일부만 복구할 때는 `make ensure-config`를 사용합니다.
+
 ### 3. 환경 설정 (Secret Config)
 
 ```bash

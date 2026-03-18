@@ -8,11 +8,7 @@
  * @ios LocationPickerFeature - 약속 생성 시 장소 검색에서 호출
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {REGION} from "../config";
-import {defineSecret} from "firebase-functions/params";
-
-// Kakao REST API 키 (Secret Manager에서 관리)
-const KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
+import {REGION, KAKAO_REST_API_KEY} from "../config";
 
 /**
  * 장소 검색 요청

@@ -5,7 +5,8 @@ import PromisoShared
 
 /// 일정 사이 빈 시간에 현재 위치를 표시하는 마커
 struct CurrentTimeMarkerView: View {
-  let nextPromiseStartAt: Date
+  let nextScheduleStartAt: Date
+  let showsTopLine: Bool
 
   @State private var currentTime = Date()
 
@@ -47,7 +48,7 @@ struct CurrentTimeMarkerView: View {
     VStack(spacing: 0) {
       // 상단 라인 (TimelineItemView와 동일)
       Rectangle()
-        .fill(Color.pmindigo.n300.opacity(0.5))
+        .fill(showsTopLine ? Color.pmindigo.n300.opacity(0.5) : Color.clear)
         .frame(width: 2, height: 10)
 
       // 현재 위치 dot (강조)
@@ -67,6 +68,7 @@ struct CurrentTimeMarkerView: View {
         .frame(maxHeight: .infinity)
     }
     .frame(width: 16)
+    .frame(maxHeight: .infinity, alignment: .top)
   }
 
   // MARK: - Current Time Label
@@ -81,8 +83,8 @@ struct CurrentTimeMarkerView: View {
 
   private var nextScheduleInfo: some View {
     VStack(alignment: .leading, spacing: 2) {
-      let remaining = remainingTimeString(until: nextPromiseStartAt)
-      Text("다음 일정까지")
+      let remaining = remainingTimeString(until: nextScheduleStartAt)
+      Text(LocalizedStrings.Home.nextScheduleUntil)
         .font(.pmCaption)
         .foregroundStyle(.secondary)
 
@@ -97,15 +99,15 @@ struct CurrentTimeMarkerView: View {
   private func remainingTimeString(until date: Date) -> String {
     let interval = date.timeIntervalSince(currentTime)
 
-    guard interval > 0 else { return "곧 시작" }
+    guard interval > 0 else { return LocalizedStrings.Home.startingSoon }
 
     let hours = Int(interval) / 3600
     let minutes = (Int(interval) % 3600) / 60
 
     if hours > 0 {
-      return "\(hours)시간 \(minutes)분"
+      return LocalizedStrings.Home.hoursMinutes(hours, minutes)
     } else {
-      return "\(minutes)분"
+      return LocalizedStrings.Home.minutesOnly(minutes)
     }
   }
 }
@@ -115,7 +117,8 @@ struct CurrentTimeMarkerView: View {
 #Preview {
   VStack(spacing: 0) {
     CurrentTimeMarkerView(
-      nextPromiseStartAt: Date().addingTimeInterval(4 * 3600)
+      nextScheduleStartAt: Date().addingTimeInterval(4 * 3600),
+      showsTopLine: false
     )
   }
   .padding()

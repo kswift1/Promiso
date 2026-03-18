@@ -5,7 +5,7 @@ import PromisoShared
 
 /// PersonalEvent 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 /// 경로: users/{userId}/personalEvents/{eventId}
-public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
+public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
   private let subcollectionName: String
   private var db: Firestore { firestore.db }
@@ -24,10 +24,10 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
   private func eventsCollection() throws -> CollectionReference {
     guard let currentUserId = Auth.auth().currentUser?.uid else {
       throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
+        NSLocalizedDescriptionKey: LocalizedStrings.Error.userAuthRequired
       ])
     }
-    return db.environmentCollection("users")
+    return db.collection("users")
       .document(currentUserId)
       .collection(subcollectionName)
   }
@@ -40,7 +40,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     let dto = PersonalEventDTO(model: event)
     let docRef = collection.document()
 
-    try await docRef.setData(from: dto)
+    try docRef.setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 생성 성공: \(docRef.documentID)")
 
     return docRef.documentID
@@ -54,7 +54,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     updatedEvent.updatedAt = Date()
     let dto = PersonalEventDTO(model: updatedEvent)
 
-    try await collection.document(event.id).setData(from: dto)
+    try collection.document(event.id).setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 업데이트 성공: \(event.id)")
   }
 
@@ -106,12 +106,41 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
+      .filter { $0.isPast }
+  }
+
+  /// 진행 중인 일정 조회 (startAt < 오늘이지만 endAt >= 오늘인 일정)
+  public func getOngoingEvents(limit: Int) async throws -> [PersonalEventModel] {
+    let collection = try eventsCollection()
+    let startOfToday = Calendar.current.startOfDay(for: Date())
+
+    let query = collection
+      .whereField("endAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
+      .order(by: "endAt")
+      .limit(to: limit)
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
+      .filter { $0.isOngoing }
+  }
+
+  /// 날짜 범위로 개인 일정 조회 (일정 충돌 감지용)
+  public func getEventsByDateRange(startDate: Date, endDate: Date) async throws -> [PersonalEventModel] {
+    let collection = try eventsCollection()
+
+    let query = collection
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+      .whereField("startAt", isLessThan: Timestamp(date: endDate))
+      .order(by: "startAt")
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
   }
 
   // MARK: - Real-time Listener
 
   /// 활성 일정 실시간 구독 (과거 일정 제외)
-  public func subscribeToActiveEvents(limit: Int) -> AsyncStream<[PersonalEventModel]> {
+  public func subscribeToActiveEvents(limit: Int) async -> AsyncStream<[PersonalEventModel]> {
     AppLogger.personal.debug("📅 [PersonalEvent] subscribeToActiveEvents 호출")
 
     return AsyncStream { continuation in
@@ -124,7 +153,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
       AppLogger.personal.debug("📅 [PersonalEvent] AsyncStream 생성됨")
 
-      let collection = db.environmentCollection("users")
+      let collection = db.collection("users")
         .document(currentUserId)
         .collection(subcollectionName)
 

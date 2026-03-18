@@ -28,13 +28,14 @@ extension CalendarSettings {
     @Dependency(\.groupClient) private var groupClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.calendarSyncClient) private var calendarSyncClient
+    @Dependency(\.analyticsClient) private var analyticsClient
 
     public init() {}
 
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public var authorizationStatus: CalendarAuthorizationStatus
       public var isRequestingAccess: Bool
       public var groups: [UserGroupInfo]
@@ -133,6 +134,10 @@ extension CalendarSettings {
         case .view(.personalCalendarSyncToggled(let enabled)):
           state.personalCalendarSyncEnabled = enabled
           UserDefaults.standard.set(enabled, forKey: AppConstants.UserDefaults.personalCalendarSync)
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: enabled,
+            groups: state.groups
+          )
           return .run { [calendarSyncClient] send in
             await hapticFeedback.selection()
             if enabled {
@@ -153,21 +158,26 @@ extension CalendarSettings {
           var updatedGroup = state.groups[groupIndex]
           var settings = updatedGroup.notifications ?? GroupNotificationSettings()
           settings.calendarSync = enabled
+          let updatedSettings = settings
           updatedGroup = UserGroupInfo(
             id: updatedGroup.id,
             name: updatedGroup.name,
             role: updatedGroup.role,
             joinedAt: updatedGroup.joinedAt,
-            notifications: settings,
+            notifications: updatedSettings,
             hasNewActivity: updatedGroup.hasNewActivity,
             imageUrl: updatedGroup.imageUrl
           )
           state.groups[groupIndex] = updatedGroup
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: state.groups
+          )
 
           return .run { send in
             await hapticFeedback.selection()
             do {
-              try await groupClient.updateGroupNotificationSettings(groupId, settings)
+              try await groupClient.updateGroupNotificationSettings(groupId, updatedSettings)
               await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: true, previousValue: nil)))
             } catch {
               // 실패 시 이전 값으로 롤백
@@ -190,8 +200,8 @@ extension CalendarSettings {
           if !granted {
             state.toastMessage = ToastMessage(
               type: .warning,
-              title: "캘린더 접근 권한이 거부되었어요",
-              subtitle: "설정에서 권한을 변경할 수 있어요.",
+              title: LocalizedStrings.SettingsStrings.calendarAccess,
+              subtitle: LocalizedStrings.SettingsStrings.enableCalendarInSettings,
               position: .top
             )
           }
@@ -205,6 +215,10 @@ extension CalendarSettings {
 
         case .internal(.groupsUpdated(let groups)):
           state.groups = groups
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: groups
+          )
           return .none
 
         case .internal(.groupSettingsUpdateCompleted(let groupId, let success, let previousValue)):
@@ -227,10 +241,14 @@ extension CalendarSettings {
             )
             state.groups[groupIndex] = updatedGroup
           }
+          analyticsClient.setCalendarSyncEnabled(
+            personalEnabled: state.personalCalendarSyncEnabled,
+            groups: state.groups
+          )
           if !success {
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "그룹 캘린더 동기화 저장에 실패했어요",
+              title: LocalizedStrings.Error.calendarSyncSaveFailed,
               position: .top
             )
           }
@@ -279,7 +297,7 @@ extension CalendarSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("캘린더 설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.calendarSettingsTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -299,7 +317,7 @@ extension CalendarSettings {
 
     private var calendarAccessSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("캘린더 접근")
+        Text(LocalizedStrings.SettingsStrings.calendarAccess)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -312,7 +330,7 @@ extension CalendarSettings {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.pmindigo.n500)
 
-              Text("캘린더 연동")
+              Text(LocalizedStrings.SettingsStrings.calendarSync)
                 .foregroundStyle(.primary)
 
               Spacer()
@@ -337,12 +355,12 @@ extension CalendarSettings {
         .adaptiveGlassCard()
 
         if store.authorizationStatus == .denied {
-          Label("시스템 설정에서 캘린더 접근을 허용해주세요", systemImage: "exclamationmark.triangle")
+          Label(LocalizedStrings.SettingsStrings.enableCalendarInSettings, systemImage: "exclamationmark.triangle")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmerror.n500)
             .padding(.horizontal, 4)
         } else if store.authorizationStatus == .restricted {
-          Label("기기 설정에 의해 캘린더 접근이 제한되어 있습니다", systemImage: "exclamationmark.triangle")
+          Label(LocalizedStrings.SettingsStrings.calendarAccessRestricted, systemImage: "exclamationmark.triangle")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmwarning.n500)
             .padding(.horizontal, 4)
@@ -354,15 +372,15 @@ extension CalendarSettings {
 
     private var permissionDetailSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("권한 상세")
+        Text(LocalizedStrings.SettingsStrings.permissionDetails)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
           permissionRow(
             icon: "eye",
-            title: "읽기",
-            description: "달력 앱의 일정을 불러와 약속과 함께 표시합니다.",
+            title: LocalizedStrings.SettingsStrings.readPermission,
+            description: LocalizedStrings.SettingsStrings.readPermissionDescription,
             isGranted: store.authorizationStatus.canReadEvents
           )
 
@@ -371,14 +389,14 @@ extension CalendarSettings {
 
           permissionRow(
             icon: "pencil",
-            title: "쓰기",
-            description: "확정된 약속을 달력 앱에 추가합니다.",
+            title: LocalizedStrings.SettingsStrings.writePermission,
+            description: LocalizedStrings.SettingsStrings.writePermissionDescription,
             isGranted: store.authorizationStatus.canWriteEvents
           )
         }
         .adaptiveGlassCard()
 
-        Text("캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다.")
+        Text(LocalizedStrings.SettingsStrings.calendarPermissionHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -389,7 +407,7 @@ extension CalendarSettings {
 
     private var personalSyncSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("개인 일정")
+        Text(LocalizedStrings.SettingsStrings.personalSchedule)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -400,7 +418,7 @@ extension CalendarSettings {
               .foregroundStyle(Color.pmindigo.n500)
               .frame(width: 24)
 
-            Text("개인 일정 동기화")
+            Text(LocalizedStrings.SettingsStrings.personalScheduleSync)
               .foregroundStyle(.primary)
 
             Spacer()
@@ -417,7 +435,7 @@ extension CalendarSettings {
         }
         .adaptiveGlassCard()
 
-        Text("개인 일정을 달력 앱에 자동으로 추가합니다.")
+        Text(LocalizedStrings.SettingsStrings.personalScheduleSyncHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -428,7 +446,7 @@ extension CalendarSettings {
 
     private var groupSyncSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("그룹별 쓰기 권한")
+        Text(LocalizedStrings.SettingsStrings.groupWritePermissions)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -444,7 +462,7 @@ extension CalendarSettings {
         }
         .adaptiveGlassCard()
 
-        Text("그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다.")
+        Text(LocalizedStrings.SettingsStrings.groupWritePermissionsHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)

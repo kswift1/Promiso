@@ -31,6 +31,31 @@ public enum CalendarAuthorizationStatus: Equatable, Sendable {
       return false
     }
   }
+
+  /// UserDefaults 영속화용 키
+  public var persistKey: String {
+    switch self {
+    case .notDetermined: return "notDetermined"
+    case .restricted: return "restricted"
+    case .denied: return "denied"
+    case .fullAccess: return "fullAccess"
+    case .writeOnly: return "writeOnly"
+    case .authorized: return "authorized"
+    }
+  }
+
+  /// persistKey로부터 복원
+  public init?(persistKey: String) {
+    switch persistKey {
+    case "notDetermined": self = .notDetermined
+    case "restricted": self = .restricted
+    case "denied": self = .denied
+    case "fullAccess": self = .fullAccess
+    case "writeOnly": self = .writeOnly
+    case "authorized": self = .authorized
+    default: return nil
+    }
+  }
 }
 
 // MARK: - Calendar Event Model
@@ -71,14 +96,42 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
     Color(hex: calendarColorHex) ?? .gray
   }
 
+  /// 숫자·기호 이모지(#⃣, *⃣ 등)를 제외하고 그림 이모지만 필터링하기 위한 유니코드 스칼라 기준값
+  private static let pictorialEmojiThreshold: UInt32 = 0x238C
+
+  /// 제목에서 첫 번째 이모지를 추출, 없으면 nil
+  public var displayEmoji: String? {
+    for character in title {
+      if character.unicodeScalars.first?.properties.isEmoji == true,
+         character.unicodeScalars.first?.value ?? 0 > Self.pictorialEmojiThreshold {
+        return String(character)
+      }
+    }
+    return nil
+  }
+
+  /// 이모지를 제거한 제목 (첫 번째 이모지만 제거)
+  public var displayTitle: String {
+    guard let emoji = displayEmoji,
+          let range = title.range(of: emoji) else { return title }
+    return title
+      .replacingCharacters(in: range, with: "")
+      .trimmingCharacters(in: .whitespaces)
+  }
+
   public var timeText: String {
     if isAllDay {
-      return "종일"
+      return LocalizedStrings.Common.allDay
     }
 
-    let start = KoreanDateFormatters.time.string(from: startDate)
-    let end = KoreanDateFormatters.time.string(from: endDate)
-    return "\(start) - \(end)"
+    let calendar = Calendar.current
+    if calendar.isDate(startDate, inSameDayAs: endDate) {
+      let start = LocalizedDateFormatters.time.string(from: startDate)
+      let end = LocalizedDateFormatters.time.string(from: endDate)
+      return "\(start) ~ \(end)"
+    } else {
+      return "\(LocalizedDateFormatters.monthDayTimeString(from: startDate)) ~ \(LocalizedDateFormatters.monthDayTimeString(from: endDate))"
+    }
   }
 }
 
@@ -86,23 +139,23 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
 
 /// 캘린더에 새로 추가할 이벤트 정보
 public struct NewCalendarEvent: Equatable, Sendable {
-  public let promiseId: String
+  public let scheduleId: String
   public let title: String
   public let startDate: Date
   public let endDate: Date?
   public let location: String?
-  /// Promiso 식별 URL (promiso://promise/{id}?hash={hash})
+  /// Promiso 식별 URL (promiso://schedule/{id}?hash={hash})
   public let url: URL?
 
   public init(
-    promiseId: String,
+    scheduleId: String,
     title: String,
     startDate: Date,
     endDate: Date? = nil,
     location: String? = nil,
     url: URL? = nil
   ) {
-    self.promiseId = promiseId
+    self.scheduleId = scheduleId
     self.title = title
     self.startDate = startDate
     self.endDate = endDate
@@ -113,30 +166,13 @@ public struct NewCalendarEvent: Equatable, Sendable {
 
 // MARK: - Client Error
 
-public enum EventKitClientError: Error, Equatable, LocalizedError {
+public enum EventKitClientError: Error, Equatable {
   case accessDenied
   case accessRestricted
   case writeNotAllowed
   case saveFailed(String)
   case eventStoreError(String)
   case unknown(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .accessDenied:
-      return "캘린더 접근이 거부되었습니다. 설정에서 권한을 허용해주세요."
-    case .accessRestricted:
-      return "캘린더 접근이 제한되어 있습니다."
-    case .writeNotAllowed:
-      return "캘린더 쓰기 권한이 없습니다."
-    case .saveFailed(let message):
-      return "캘린더 저장 실패: \(message)"
-    case .eventStoreError(let message):
-      return "캘린더 오류: \(message)"
-    case .unknown(let message):
-      return "알 수 없는 오류: \(message)"
-    }
-  }
 }
 
 // MARK: - Client
@@ -155,7 +191,7 @@ public struct EventKitClient: Sendable {
     _ endDate: Date
   ) async throws -> [CalendarEvent]
 
-  /// 캘린더에 이벤트 추가 (약속 → 캘린더 동기화용)
+  /// 캘린더에 이벤트 추가 (일정 → 캘린더 동기화용)
   /// - Returns: 생성된 이벤트의 eventIdentifier
   public var addEvent: @Sendable (NewCalendarEvent) async throws -> String
 
@@ -169,8 +205,12 @@ public struct EventKitClient: Sendable {
   /// 캘린더 이벤트 삭제
   public var deleteEvent: @Sendable (_ eventIdentifier: String) async throws -> Void
 
-  /// Promiso 태그가 있는 이벤트 조회 (미래 이벤트만)
+  /// Promiso 태그가 있는 이벤트 조회 (오늘 시작~1년 후)
   public var getPromisoEvents: @Sendable () async throws -> [PromisoCalendarEvent]
+
+  /// 과거 Promiso 이벤트 중복 정리 (마이그레이션용)
+  /// - Returns: 삭제된 중복 이벤트 수
+  public var cleanupPastDuplicates: @Sendable (_ daysBack: Int) async throws -> Int
 
   /// 캘린더 변경 관찰 (이벤트 추가/수정/삭제 감지)
   public var observeChanges: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
@@ -200,7 +240,7 @@ extension EventKitClient: TestDependencyKey {
         ),
         CalendarEvent(
           id: "cal-2",
-          title: "점심 약속",
+          title: "점심 일정",
           startDate: calendar.date(bySettingHour: 12, minute: 30, second: 0, of: startDate) ?? startDate,
           endDate: calendar.date(bySettingHour: 13, minute: 30, second: 0, of: startDate) ?? startDate,
           location: nil,
@@ -211,25 +251,27 @@ extension EventKitClient: TestDependencyKey {
       ]
     },
     addEvent: { event in
-      return "preview-event-\(event.promiseId)"
+      return "preview-event-\(event.scheduleId)"
     },
     updateEvent: { _, _, _ in },
     deleteEvent: { _ in },
     getPromisoEvents: { [] },
+    cleanupPastDuplicates: { _ in 0 },
     observeChanges: { AsyncStream { _ in } },
     openSettings: { }
   )
 
-  public static let testValue = Self(
-    authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
-    requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
-    fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
-    addEvent: unimplemented("\(Self.self).addEvent", placeholder: ""),
-    updateEvent: unimplemented("\(Self.self).updateEvent"),
-    deleteEvent: unimplemented("\(Self.self).deleteEvent"),
-    getPromisoEvents: unimplemented("\(Self.self).getPromisoEvents", placeholder: []),
-    observeChanges: unimplemented("\(Self.self).observeChanges"),
-    openSettings: unimplemented("\(Self.self).openSettings")
+  public static let testValue: Self = Self(
+    authorizationStatus: { .notDetermined },
+    requestAccess: { false },
+    fetchEvents: { _, _ in [] },
+    addEvent: { _ in "" },
+    updateEvent: { _, _, _ in },
+    deleteEvent: { _ in },
+    getPromisoEvents: { [] },
+    cleanupPastDuplicates: { _ in 0 },
+    observeChanges: { AsyncStream { _ in } },
+    openSettings: { }
   )
 }
 
@@ -268,8 +310,20 @@ extension EventKitClient: DependencyKey {
         let events = eventStore.events(matching: predicate)
 
         // Promiso가 동기화한 이벤트 제외 (promiso:// URL 스킴)
+        // 공휴일 구독 캘린더 이벤트 제외 (Nager.Date API로 별도 표시)
         return events
-          .filter { PromisoCalendarTag.parse(from: $0.url) == nil }
+          .filter { event in
+            // Promiso 동기화 이벤트 제외
+            guard PromisoCalendarTag.parse(from: event.url) == nil else { return false }
+            // 공휴일 구독 캘린더 제외
+            if event.calendar?.type == .subscription {
+              let title = event.calendar?.title.lowercased() ?? ""
+              if title.contains("holiday") || title.contains("공휴일") {
+                return false
+              }
+            }
+            return true
+          }
           .map { $0.toCalendarEvent() }
       },
 
@@ -282,7 +336,7 @@ extension EventKitClient: DependencyKey {
 
         // 2. 기본 캘린더 확인
         guard let defaultCalendar = eventStore.defaultCalendarForNewEvents else {
-          throw EventKitClientError.saveFailed("기본 캘린더를 찾을 수 없습니다")
+          throw EventKitClientError.saveFailed(LocalizedStrings.Error.calendarSaveFailed)
         }
 
         // 3. EKEvent 생성
@@ -303,7 +357,7 @@ extension EventKitClient: DependencyKey {
 
         // 6. eventIdentifier 반환
         guard let eventIdentifier = event.eventIdentifier else {
-          throw EventKitClientError.saveFailed("이벤트 ID를 가져올 수 없습니다")
+          throw EventKitClientError.saveFailed(LocalizedStrings.Error.calendarSaveFailed)
         }
 
         return eventIdentifier
@@ -318,7 +372,7 @@ extension EventKitClient: DependencyKey {
 
         // 2. 기존 이벤트 조회
         guard let event = eventStore.event(withIdentifier: eventIdentifier) else {
-          throw EventKitClientError.eventStoreError("이벤트를 찾을 수 없습니다")
+          throw EventKitClientError.eventStoreError(LocalizedStrings.Error.calendarStoreError)
         }
 
         // 3. 쓰기 가능한 캘린더인지 확인
@@ -375,12 +429,13 @@ extension EventKitClient: DependencyKey {
           throw EventKitClientError.accessDenied
         }
 
-        // 2. 미래 1년간의 이벤트 조회
-        let now = Date()
-        let oneYearLater = Calendar.current.date(byAdding: .year, value: 1, to: now) ?? now
+        // 2. 오늘 시작~1년 후 이벤트 조회
+        // Firestore getActiveEvents(startAt >= startOfToday)와 동일 기준
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let oneYearLater = Calendar.current.date(byAdding: .year, value: 1, to: startOfToday) ?? startOfToday
 
         let predicate = eventStore.predicateForEvents(
-          withStart: now,
+          withStart: startOfToday,
           end: oneYearLater,
           calendars: nil
         )
@@ -396,12 +451,58 @@ extension EventKitClient: DependencyKey {
 
           return PromisoCalendarEvent(
             eventIdentifier: eventId,
-            promiseId: parsed.id,
+            scheduleId: parsed.id,
             contentHash: parsed.contentHash,
             userNotes: event.notes,
             isPersonal: parsed.isPersonal
           )
         }
+      },
+
+      cleanupPastDuplicates: { daysBack in
+        // 1. 읽기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canReadEvents else {
+          throw EventKitClientError.accessDenied
+        }
+
+        // 2. 과거 N일 ~ 오늘 시작 범위 검색
+        let now = Date()
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        guard let pastDate = Calendar.current.date(byAdding: .day, value: -daysBack, to: now) else {
+          return 0
+        }
+
+        let predicate = eventStore.predicateForEvents(
+          withStart: pastDate,
+          end: startOfToday,
+          calendars: nil
+        )
+        let events = eventStore.events(matching: predicate)
+
+        // 3. Promiso URL이 있는 이벤트를 scheduleId별로 그룹핑
+        var grouped: [String: [EKEvent]] = [:]
+        for event in events {
+          guard let parsed = PromisoCalendarTag.parse(from: event.url) else { continue }
+          let key = "\(parsed.id)-\(parsed.isPersonal)"
+          grouped[key, default: []].append(event)
+        }
+
+        // 4. 중복 삭제 (그룹별 첫 번째만 유지)
+        var deletedCount = 0
+        for (_, duplicateEvents) in grouped where duplicateEvents.count > 1 {
+          for event in duplicateEvents.dropFirst() {
+            guard event.calendar?.allowsContentModifications == true else { continue }
+            do {
+              try eventStore.remove(event, span: .thisEvent)
+              deletedCount += 1
+            } catch {
+              AppLogger.calendar.error("🧹 [Cleanup] 중복 삭제 실패: \(error.localizedDescription)")
+            }
+          }
+        }
+
+        return deletedCount
       },
 
       observeChanges: {
@@ -466,8 +567,8 @@ private extension EKAuthorizationStatus {
 // MARK: - Constants
 
 private enum EventKitConstants {
-  static let untitledEvent = "제목 없음"
-  static let defaultCalendarName = "캘린더"
+  static let untitledEvent = LocalizedStrings.Common.untitled
+  static let defaultCalendarName = LocalizedStrings.TabBar.calendar
   static let defaultColorHex = "#808080"
 }
 

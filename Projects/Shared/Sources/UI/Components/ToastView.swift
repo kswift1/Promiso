@@ -213,12 +213,6 @@ struct ToastModifier: ViewModifier {
         .regular.interactive(),
         in: .rect(cornerRadius: 14)
       )
-      .shadow(
-        color: .black.opacity(0.12),
-        radius: 12,
-        x: 0,
-        y: position == .top ? 4 : -4
-      )
   }
 
   private func fallbackToastView(for message: ToastMessage) -> some View {
@@ -390,7 +384,7 @@ private struct ToastPreviewContainer: View {
             toast = ToastMessage(
               type: .warning,
               title: "주의",
-              subtitle: "약속 시간이 30분 남았습니다.",
+              subtitle: "일정 시간이 30분 남았습니다.",
               position: position
             )
           } label: {
@@ -427,11 +421,7 @@ private struct ToastPreviewContainer: View {
               type: .error,
               title: "삭제되었습니다",
               action: ToastAction(title: "실행 취소") {
-                toast = ToastMessage(
-                  type: .success,
-                  title: "복원 완료",
-                  position: position
-                )
+                // Preview 전용 액션: 상태 캡처로 인한 Sendable 경고를 피하기 위해 no-op
               },
               position: position
             )

@@ -15,7 +15,7 @@ extension ManageGroup {
       public let group: GroupModel
       public let summary: UserGroupInfo?
       public let currentUserId: String
-      public let promises: [PromiseModel]
+      public let schedules: [ScheduleModel]
 
       // Members
       var membersState: LoadingState<[UserPublicModel]> = .idle
@@ -42,12 +42,12 @@ extension ManageGroup {
         summary: UserGroupInfo?,
         currentUserId: String,
         preloadedMembers: [UserPublicModel]? = nil,
-        promises: [PromiseModel] = []
+        schedules: [ScheduleModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
-        self.promises = promises
+        self.schedules = schedules
 
         // preloadedMembers가 있으면 초기 표시용으로 사용 (onAppear에서 새로 fetch함)
         if let preloadedMembers = preloadedMembers {
@@ -59,9 +59,9 @@ extension ManageGroup {
         group.createdBy == currentUserId
       }
 
-      /// 진행중인 약속 수 (과거 제외)
-      var activePromiseCount: Int {
-        promises.filter { !$0.isPast }.count
+      /// 진행중인 일정 수 (과거 제외)
+      var activeScheduleCount: Int {
+        schedules.filter { !$0.isPast }.count
       }
 
       /// 호스트 양도 가능 여부 (호스트이고 다른 멤버가 있을 때)
@@ -82,7 +82,7 @@ extension ManageGroup {
 
       public enum ViewAction: Sendable {
         case onAppear
-        case pastPromisesTapped
+        case pastSchedulesTapped
         case leaveGroupTapped
         case deleteGroupTapped
         case confirmLeave
@@ -113,7 +113,7 @@ extension ManageGroup {
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
-        case pastPromisesTapped
+        case pastSchedulesTapped
         case hostTransferred(newHostId: String)
       }
     }
@@ -129,8 +129,8 @@ extension ManageGroup {
             // 항상 최신 멤버 데이터를 fetch (호스트 양도 등 정확한 멤버 수 필요)
             return .send(.internal(.fetchMembers))
 
-          case .pastPromisesTapped:
-            return .send(.delegate(.pastPromisesTapped))
+          case .pastSchedulesTapped:
+            return .send(.delegate(.pastSchedulesTapped))
 
           case .leaveGroupTapped:
             // 리브 확인 alert는 View에서 처리
@@ -250,7 +250,7 @@ extension ManageGroup {
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
-            state.leaveError = error.localizedDescription
+            state.leaveError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .deleteGroupResponse(.success):
@@ -259,7 +259,7 @@ extension ManageGroup {
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
-            state.deleteError = error.localizedDescription
+            state.deleteError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .transferHostResponse(.success):
@@ -276,7 +276,7 @@ extension ManageGroup {
 
           case .transferHostResponse(.failure(let error)):
             state.isTransferringHost = false
-            state.transferError = error.localizedDescription
+            state.transferError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
           }
 
@@ -284,6 +284,23 @@ extension ManageGroup {
           return .none
         }
       }
+    }
+  }
+}
+
+// MARK: - AuthClientError Localization
+
+extension AuthClientError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidCredentials: return LocalizedStrings.Error.authInvalidCredentials
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
+    case .network: return LocalizedStrings.Error.authNetwork
+    case .invalidAppleCredential: return LocalizedStrings.Error.authInvalidAppleCredential
+    case .missingIdentityToken: return LocalizedStrings.Error.authMissingIdentityToken
+    case .providerUnavailable: return LocalizedStrings.Error.authProviderUnavailable
+    case .isGroupHost: return LocalizedStrings.Error.authIsGroupHost
+    case .unknown: return LocalizedStrings.Error.unknownError
     }
   }
 }

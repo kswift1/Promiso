@@ -109,6 +109,16 @@ jobs:
       # 4. Firebase 배포
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+      - name: Write Functions Env
+        working-directory: infra/firebase/functions
+        run: |
+          cat <<EOF > .env.${{ needs.setup.outputs.environment }}
+          GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
+          ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
+          ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}
+          ANALYTICS_BIGQUERY_LOCATION=${{ vars.ANALYTICS_BIGQUERY_LOCATION }}
+          EOF
+
       - name: Deploy Functions
         working-directory: infra/firebase
         env:

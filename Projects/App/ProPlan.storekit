@@ -1,0 +1,133 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "3759C9A6",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "39000",
+      "familyShareable" : false,
+      "internalID" : "6759592450",
+      "localizations" : [
+        {
+          "description" : "한 번 결제, 영구 사용",
+          "displayName" : "평생 프로",
+          "locale" : "ko"
+        }
+      ],
+      "productID" : "com.promiso.pro.lifetime",
+      "referenceName" : "Promiso Pro 평생",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6757733720",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "BAC795627G",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 793609025.17909706,
+    "_locale" : "ko",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "KOR",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21947112",
+      "localizations" : [
+
+      ],
+      "name" : "Promiso Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29000",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6759592175",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "intro_yearly_3d",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "매년 자동 갱신 (월 ₩2,417)",
+              "displayName" : "연간 프로",
+              "locale" : "ko"
+            }
+          ],
+          "productID" : "com.promiso.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Promiso Pro 연간",
+          "subscriptionGroupID" : "21947112",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3900",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6759592056",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "intro_monthly_3d",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "매월 자동 갱신",
+              "displayName" : "월간 프로",
+              "locale" : "ko"
+            }
+          ],
+          "productID" : "com.promiso.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Promiso Pro 월간",
+          "subscriptionGroupID" : "21947112",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -1,4 +1,5 @@
 import Testing
+import PromisoShared
 @testable import NotificationCenterFeature
 
 @Suite("NotificationCenter.Feature reducer 테스트")
@@ -10,10 +11,10 @@ struct NotificationCenterFeatureTests {
   private func makeNotification(
     id: String = "notif-1",
     userId: String = "test-user",
-    type: NotificationCategory = .promiseInvitation,
+    type: NotificationCategory = .scheduleInvitation,
     title: String = "테스트 알림",
     body: String = "알림 내용",
-    promiseId: String? = "promise-1",
+    scheduleId: String? = "schedule-1",
     groupId: String? = "group-1",
     isRead: Bool = false,
     createdAt: Date = Date()
@@ -24,7 +25,7 @@ struct NotificationCenterFeatureTests {
       type: type,
       title: title,
       body: body,
-      promiseId: promiseId,
+      scheduleId: scheduleId,
       groupId: groupId,
       isRead: isRead,
       createdAt: createdAt
@@ -58,6 +59,7 @@ struct NotificationCenterFeatureTests {
       NotificationCenter.Feature()
     } withDependencies: {
       $0.notificationClient.getNotifications = { _, _, _ in notifications }
+      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.onAppear)) {
@@ -66,6 +68,7 @@ struct NotificationCenterFeatureTests {
     }
 
     await store.receive(\.internal.fetchNotifications)
+    await store.receive(\.internal.clearBadge)
 
     await store.receive(\.internal.notificationsResponse) {
       $0.notificationsState = .loaded(notifications)
@@ -444,19 +447,19 @@ struct NotificationCenterFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "알림 삭제에 실패했어요")
-    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.notificationDeleteFailed)
+    #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
 
   // MARK: - notificationTapped 테스트
 
-  @Test("notificationTapped - 읽지 않은 약속 알림 탭 시 읽음 처리 + 약속 이동")
-  func notificationTapped_unreadPromise_marksReadAndNavigates() async {
+  @Test("notificationTapped - 읽지 않은 일정 알림 탭 시 읽음 처리 + 일정 이동")
+  func notificationTapped_unreadSchedule_marksReadAndNavigates() async {
     let notification = makeNotification(
       id: "notif-1",
-      type: .promiseInvitation,
-      promiseId: "promise-1",
+      type: .scheduleInvitation,
+      scheduleId: "schedule-1",
       groupId: "group-1",
       isRead: false
     )
@@ -473,16 +476,16 @@ struct NotificationCenterFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.notificationTapped(notification)))
-    await store.receive(\.delegate.navigateToPromise)
+    await store.receive(\.delegate.navigateToSchedule)
     await store.receive(\.internal.markAsReadCompleted)
   }
 
-  @Test("notificationTapped - 읽은 약속 알림 탭 시 약속 이동만")
-  func notificationTapped_readPromise_onlyNavigates() async {
+  @Test("notificationTapped - 읽은 일정 알림 탭 시 일정 이동만")
+  func notificationTapped_readSchedule_onlyNavigates() async {
     let notification = makeNotification(
       id: "notif-1",
-      type: .promiseInvitation,
-      promiseId: "promise-1",
+      type: .scheduleInvitation,
+      scheduleId: "schedule-1",
       groupId: "group-1",
       isRead: true
     )
@@ -494,7 +497,7 @@ struct NotificationCenterFeatureTests {
     }
 
     await store.send(.view(.notificationTapped(notification)))
-    await store.receive(\.delegate.navigateToPromise)
+    await store.receive(\.delegate.navigateToSchedule)
   }
 
   @Test("notificationTapped - 그룹 알림 탭 시 그룹 이동")
@@ -502,7 +505,7 @@ struct NotificationCenterFeatureTests {
     let notification = makeNotification(
       id: "notif-1",
       type: .groupInvitation,
-      promiseId: nil,
+      scheduleId: nil,
       groupId: "group-1",
       isRead: true
     )
@@ -705,8 +708,8 @@ struct NotificationCenterFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "읽음 처리에 실패했어요")
-    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.markAsReadFailed)
+    #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
 
