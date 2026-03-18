@@ -35,6 +35,8 @@ extension OverlayScheduleDetail {
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       public init(
         item: HomeModels.ScheduleItem,
         currentUserId: String,
@@ -221,6 +223,7 @@ extension OverlayScheduleDetail {
             return .none
 
           case .fetchWeather:
+            guard state.isPro else { return .none }
             guard
               let location = state.item.location,
               let lat = location.latitude,

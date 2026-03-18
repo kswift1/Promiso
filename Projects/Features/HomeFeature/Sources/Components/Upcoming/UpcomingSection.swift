@@ -9,6 +9,7 @@ import ResourceKit
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
+  let isPro: Bool
   let recurringSummaries: [HomeModels.RecurringEventSummary]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
@@ -38,6 +39,7 @@ struct UpcomingSection: View {
               date: group.date,
               items: group.items,
               weatherCache: weatherCache,
+              isPro: isPro,
               onItemTap: onItemTap
             )
           }
@@ -300,6 +302,7 @@ private struct DateGroup {
       )),
     ],
     weatherCache: [:],
+    isPro: true,
     recurringSummaries: [
       .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
       .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
@@ -319,6 +322,7 @@ private struct DateGroup {
   UpcomingSection(
     items: [],
     weatherCache: [:],
+    isPro: true,
     recurringSummaries: [],  // 두 emptyState 모두 표시
     onItemTap: { _ in },
     onSeeAllTap: {},
@@ -335,6 +339,7 @@ private struct DateGroup {
   UpcomingSection(
     items: [],
     weatherCache: [:],
+    isPro: true,
     recurringSummaries: [
       .init(recurringEventId: "r1", title: "출근", emoji: "🏢", recurrenceText: "매주 월, 화, 수, 목, 금", nextInstanceDate: Date().addingTimeInterval(86400)),
       .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),

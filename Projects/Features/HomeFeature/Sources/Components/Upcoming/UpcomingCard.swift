@@ -10,6 +10,7 @@ struct UpcomingDateCard: View {
   let date: Date
   let items: [HomeModels.ScheduleItem]
   let weatherCache: [String: WeatherInfo]
+  let isPro: Bool
   let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   var body: some View {
@@ -25,6 +26,7 @@ struct UpcomingDateCard: View {
             UpcomingScheduleRow(
               schedule: schedule,
               weather: weatherCache[schedule.id],
+              isPro: isPro,
               onTap: { onItemTap(item) }
             )
 
@@ -32,6 +34,7 @@ struct UpcomingDateCard: View {
             UpcomingPersonalEventRow(
               event: event,
               weather: weatherCache[event.id],
+              isPro: isPro,
               onTap: { onItemTap(item) }
             )
 
@@ -104,6 +107,7 @@ struct UpcomingDateCard: View {
 private struct UpcomingScheduleRow: View {
   let schedule: ScheduleModel
   let weather: WeatherInfo?
+  let isPro: Bool
   let onTap: () -> Void
 
   var body: some View {
@@ -209,6 +213,7 @@ private struct UpcomingScheduleRow: View {
   }
 
   private var shouldShowWeatherSkeleton: Bool {
+    guard isPro else { return false }
     guard weather == nil else { return false }
     guard let location = schedule.location,
           location.latitude != nil,
@@ -226,6 +231,7 @@ private struct UpcomingScheduleRow: View {
 private struct UpcomingPersonalEventRow: View {
   let event: PersonalEventModel
   let weather: WeatherInfo?
+  let isPro: Bool
   let onTap: () -> Void
 
   var body: some View {
@@ -317,6 +323,7 @@ private struct UpcomingPersonalEventRow: View {
   }
 
   private var shouldShowWeatherSkeleton: Bool {
+    guard isPro else { return false }
     guard weather == nil else { return false }
     guard let location = event.location,
           location.latitude != nil,
@@ -360,6 +367,7 @@ private struct WeatherBadgeLoadingPlaceholder: View {
         .schedule(ScheduleModel.mock(id: "3", title: "저녁 일정", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
       weatherCache: [:],
+      isPro: true,
       onItemTap: { _ in }
     )
 
@@ -375,6 +383,7 @@ private struct WeatherBadgeLoadingPlaceholder: View {
         ))
       ],
       weatherCache: [:],
+      isPro: true,
       onItemTap: { _ in }
     )
   }
