@@ -32,6 +32,8 @@ extension PersonalEventDetail {
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]
 
+      @Shared(.inMemory(AppConstants.SharedState.isPro)) var isPro: Bool = false
+
       @Presents var editEvent: CreatePersonalEvent.Feature.State?
       @Presents var deleteAlert: AlertState<Action.Alert>?
 
@@ -135,6 +137,7 @@ extension PersonalEventDetail {
             return .run { _ in await hapticFeedback.error() }
 
           case .fetchWeather:
+            guard state.isPro else { return .none }
             guard let lat = state.event.location?.latitude,
                   let lng = state.event.location?.longitude,
                   !state.event.isPast else {

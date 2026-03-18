@@ -520,6 +520,7 @@ struct TimelineItemView: View {
 
   /// 날씨 조회가 진행 중인 경우 스켈레톤 노출
   private func shouldShowWeatherSkeleton(_ schedule: ScheduleModel) -> Bool {
+    guard isPro else { return false }
     guard weather == nil else { return false }
     guard let location = schedule.location,
           location.latitude != nil,
