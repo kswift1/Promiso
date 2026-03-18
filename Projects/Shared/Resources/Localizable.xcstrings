@@ -19731,6 +19731,23 @@
         }
       }
     },
+    "proPlan.paywall.redeemOfferCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redeem Offer Code"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드 사용"
+          }
+        }
+      }
+    },
     "proPlan.paywall.restorePurchases": {
       "extractionState": "stale",
       "localizations": {

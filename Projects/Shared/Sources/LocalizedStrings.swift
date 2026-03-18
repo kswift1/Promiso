@@ -1895,6 +1895,7 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(days)")
     }
     public static var restorePurchases: String { String(localized: "proPlan.paywall.restorePurchases", bundle: bundle) }
+    public static var redeemOfferCode: String { String(localized: "proPlan.paywall.redeemOfferCode", bundle: bundle) }
     public static var legalTrialDisclaimer: String { String(localized: "proPlan.paywall.legal.trialDisclaimer", bundle: bundle) }
     public static var legalSubscriptionDisclaimer: String { String(localized: "proPlan.paywall.legal.subscriptionDisclaimer", bundle: bundle) }
     public static func legalTrialDynamic(_ days: Int, _ priceAndPeriod: String) -> String {
