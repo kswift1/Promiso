@@ -585,8 +585,11 @@ extension CalendarFeature {
       func filteredSchedules(for monthKey: Date) -> [ScheduleModel] {
         var schedules = cachedSchedulesByMonth[monthKey] ?? []
 
-        // 그룹 필터
-        schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        // 그룹 필터 (명시적으로 필터를 설정한 경우에만 적용)
+        let isGroupFilterCustomized = selectedGroupIds != Set(currentUser.groups.map(\.id))
+        if isGroupFilterCustomized {
+          schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        }
 
         // 상태 필터 (allIndividualFilters = 전체, 필터 안 함)
         if selectedStatusFilters != StatusFilter.allIndividualFilters {
