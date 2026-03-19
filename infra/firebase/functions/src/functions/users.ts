@@ -644,9 +644,76 @@ export const deleteUser = onCall<DeleteUserRequest>(
         }
       }
 
-      // 8. Firestore users/{userId} 삭제 (서브컬렉션 포함)
-      // 8-1. 서브컬렉션 삭제
-      const subcollections = ["auth", "settings", "cache"];
+      // 8. 루트 컬렉션 관련 데이터 삭제
+      // 8-1. notifications 삭제 (userId 기준 쿼리)
+      try {
+        const notificationsQuery = await db
+          .collection("notifications")
+          .where("userId", "==", userId)
+          .get();
+
+        if (!notificationsQuery.empty) {
+          const BATCH_SIZE = 500;
+          const notifDocs = notificationsQuery.docs;
+          for (let i = 0; i < notifDocs.length; i += BATCH_SIZE) {
+            const batch = db.batch();
+            const chunk = notifDocs.slice(i, i + BATCH_SIZE);
+            for (const doc of chunk) {
+              batch.delete(doc.ref);
+            }
+            await batch.commit();
+          }
+          console.log(`🗑️ ${notificationsQuery.size} notifications deleted`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to delete notifications: ${error}`);
+      }
+
+      // 8-2. liveActivities 삭제 (userId 기준 쿼리)
+      try {
+        const liveActivitiesQuery = await db
+          .collection("liveActivities")
+          .where("userId", "==", userId)
+          .get();
+
+        if (!liveActivitiesQuery.empty) {
+          const BATCH_SIZE = 500;
+          const laDocs = liveActivitiesQuery.docs;
+          for (let i = 0; i < laDocs.length; i += BATCH_SIZE) {
+            const batch = db.batch();
+            const chunk = laDocs.slice(i, i + BATCH_SIZE);
+            for (const doc of chunk) {
+              batch.delete(doc.ref);
+            }
+            await batch.commit();
+          }
+          console.log(`🗑️ ${liveActivitiesQuery.size} liveActivities deleted`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to delete liveActivities: ${error}`);
+      }
+
+      // 8-3. entitlements/{userId} 삭제
+      try {
+        await db.collection("entitlements").doc(userId).delete();
+        console.log(`🗑️ entitlements/${userId} deleted`);
+      } catch (error) {
+        console.error(`❌ Failed to delete entitlements: ${error}`);
+      }
+
+      // 8-4. briefingSubscriptions/{userId} 삭제
+      try {
+        await db.collection("briefingSubscriptions").doc(userId).delete();
+        console.log(`🗑️ briefingSubscriptions/${userId} deleted`);
+      } catch (error) {
+        console.error(`❌ Failed to delete briefingSubscriptions: ${error}`);
+      }
+
+      // 9. Firestore users/{userId} 삭제 (서브컬렉션 포함)
+      // 9-1. 서브컬렉션 삭제
+      const subcollections = [
+        "auth", "settings", "cache", "personalEvents", "recurringEvents",
+      ];
       for (const subcollection of subcollections) {
         const subcollectionRef = userRef.collection(subcollection);
         const docs = await subcollectionRef.listDocuments();
@@ -656,15 +723,15 @@ export const deleteUser = onCall<DeleteUserRequest>(
       }
       console.log("🗑️ Subcollections deleted");
 
-      // 8-2. 메인 문서 삭제
+      // 9-2. 메인 문서 삭제
       await userRef.delete();
       console.log(`🗑️ User document deleted: ${userId}`);
 
-      // 9. Firebase Auth 계정 삭제
+      // 10. Firebase Auth 계정 삭제
       await admin.auth().deleteUser(userId);
       console.log(`🗑️ Firebase Auth account deleted: ${userId}`);
 
-      // 10. 응답 반환
+      // 11. 응답 반환
       return {
         success: true,
       };
