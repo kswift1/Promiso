@@ -2,6 +2,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import CreateScheduleFeature
+import CreateGroupFeature
 import Foundation
 
 extension GroupMain {
@@ -407,7 +408,8 @@ extension GroupMain {
             state.createSchedule = CreateSchedule.Feature.State(
               schedule: schedule,
               groupSummaries: state.allGroupSummaries,
-              currentUserId: state.currentUser.userId
+              currentUserId: state.currentUser.userId,
+              currentUser: state.currentUser
             )
             return .none
 
@@ -614,6 +616,7 @@ extension GroupMain {
               schedule: schedule,
               groupSummaries: state.allGroupSummaries,
               currentUserId: state.currentUser.userId,
+              currentUser: state.currentUser,
               prefillInfo: info
             )
             return .none
@@ -1334,14 +1337,10 @@ extension GroupMain {
 
         case .createSchedule(.presented(.delegate(.scheduleCreated))):
           state.createSchedule = nil
-          return .none
+          return .send(.internal(.fetchGroupList))
 
-        case .createSchedule(.presented(.delegate(.createGroupRequested))):
-          state.createSchedule = nil
-          state.createGroup = CreateGroup.Feature.State(
-            currentUser: state.currentUser
-          )
-          return .none
+        case .createSchedule(.presented(.delegate(.groupCreated))):
+          return .send(.internal(.fetchGroupList))
 
         case .createSchedule:
           return .none

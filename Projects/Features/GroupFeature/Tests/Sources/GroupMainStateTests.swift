@@ -240,28 +240,6 @@ struct GroupMainStateTests {
     #expect(state.filterCounts[.confirmed] == 2)
   }
 
-  // MARK: - isOnboardingMode 테스트
-
-  @Test("그룹 없으면 온보딩 모드")
-  func isOnboardingMode_whenNoGroups_returnsTrue() {
-    @Shared(.inMemory("test-no-groups")) var currentUser = makeCurrentUser()
-    var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.allGroupSummaries = []
-
-    #expect(state.isOnboardingMode == true)
-  }
-
-  @Test("그룹 있으면 온보딩 모드 아님")
-  func isOnboardingMode_whenHasGroups_returnsFalse() {
-    @Shared(.inMemory("test-has-groups")) var currentUser = makeCurrentUser()
-    var state = GroupMain.Feature.State(currentUser: $currentUser)
-    state.allGroupSummaries = [
-      UserGroupInfo(id: "g1", name: "테스트 그룹")
-    ]
-
-    #expect(state.isOnboardingMode == false)
-  }
-
   // MARK: - groupBarItems 테스트
 
   @Test("그룹 목록을 GroupBarItem으로 변환")
@@ -282,15 +260,13 @@ struct GroupMainStateTests {
     #expect(state.groupBarItems[1].isSelected == false)
   }
 
-  @Test("그룹 없으면 온보딩 Mock 그룹 표시")
-  func groupBarItems_whenNoGroups_showsOnboardingItem() {
-    @Shared(.inMemory("test-onboarding")) var currentUser = makeCurrentUser()
+  @Test("그룹 없으면 빈 배열 반환")
+  func groupBarItems_whenNoGroups_returnsEmpty() {
+    @Shared(.inMemory("test-no-groups-bar")) var currentUser = makeCurrentUser()
     var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.allGroupSummaries = []
 
-    #expect(state.groupBarItems.count == 1)
-    #expect(state.groupBarItems[0].id == GroupMain.onboardingGroupId)
-    #expect(state.groupBarItems[0].name == LocalizedStrings.GroupMain.onboardingGroupName)
+    #expect(state.groupBarItems.isEmpty == true)
   }
 
   // MARK: - isPastFilterLoading 테스트

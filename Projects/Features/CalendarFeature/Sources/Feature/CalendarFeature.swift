@@ -585,8 +585,11 @@ extension CalendarFeature {
       func filteredSchedules(for monthKey: Date) -> [ScheduleModel] {
         var schedules = cachedSchedulesByMonth[monthKey] ?? []
 
-        // 그룹 필터
-        schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        // 그룹 필터 (명시적으로 필터를 설정한 경우에만 적용)
+        let isGroupFilterCustomized = selectedGroupIds != Set(currentUser.groups.map(\.id))
+        if isGroupFilterCustomized {
+          schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        }
 
         // 상태 필터 (allIndividualFilters = 전체, 필터 안 함)
         if selectedStatusFilters != StatusFilter.allIndividualFilters {
@@ -1016,14 +1019,13 @@ extension CalendarFeature {
 
       case .createSchedule(.presented(.delegate(.scheduleCreated))):
         state.createSchedule = nil
+        // 일정이 어느 월에 생성되었을지 모르므로 현재 보이는 월들 캐시 무효화
         let currentMonth = state.selectedDate.startOfMonth
+        state.loadedMonths.remove(currentMonth)
+        state.cachedSchedulesByMonth.removeValue(forKey: currentMonth)
         return .send(.internal(.fetchSchedulesForMonth(currentMonth)))
 
       case .createSchedule(.presented(.delegate(.dismiss))):
-        state.createSchedule = nil
-        return .none
-
-      case .createSchedule(.presented(.delegate(.createGroupRequested))):
         state.createSchedule = nil
         return .none
 
@@ -1375,6 +1377,13 @@ extension CalendarFeature {
       case .refresh:
         // 탭 전환 시 최신 데이터 로드
         AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
+        // 삭제된 그룹을 필터에서 제거
+        let currentGroupIds = Set(state.currentUser.groups.map(\.id))
+        state.selectedGroupIds = state.selectedGroupIds.intersection(currentGroupIds)
+        // 필터가 비게 되면 전체 선택으로 복원
+        if state.selectedGroupIds.isEmpty {
+          state.selectedGroupIds = currentGroupIds
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))

@@ -2,8 +2,8 @@ import SwiftUI
 import ComposableArchitecture
 import Clients
 import PromisoShared
-import ResourceKit
 import CreateScheduleFeature
+import CreateGroupFeature
 
 extension GroupMain {
   public struct RootView: View {
@@ -193,14 +193,7 @@ extension GroupMain {
           .padding(.top, 8)
 
         // 일정 리스트 (스와이프 지원)
-        if store.isOnboardingMode {
-          ScrollView {
-            onboardingCardsView
-          }
-          .refreshable {
-            store.send(.view(.refreshTriggered))
-          }
-        } else if isLoadingState {
+        if isLoadingState {
           // .idle 또는 .loading 상태
           ScrollView {
             loadingView
@@ -253,34 +246,32 @@ extension GroupMain {
 
     @ViewBuilder
     private var fabButton: some View {
-      if !store.isOnboardingMode {
-        Menu {
-          Button {
-            store.send(.view(.createNewSchedule))
-          } label: {
-            Label(LocalizedStrings.GroupMain.createSchedule, systemImage: "calendar.badge.plus")
-          }
-
-          Button {
-            store.send(.view(.groupSettingsTapped))
-          } label: {
-            Label(LocalizedStrings.GroupMain.groupSettings, systemImage: "gearshape")
-          }
+      Menu {
+        Button {
+          store.send(.view(.createNewSchedule))
         } label: {
-          ZStack {
-            Circle()
-              .fill(Color.pmindigo.n500)
-              .frame(width: 56, height: 56)
-              .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-
-            Image(systemName: "plus")
-              .font(.system(size: 24, weight: .semibold))
-              .foregroundStyle(.white)
-          }
+          Label(LocalizedStrings.GroupMain.createSchedule, systemImage: "calendar.badge.plus")
         }
-        .padding(.trailing, 16)
-        .padding(.bottom, 16)
+
+        Button {
+          store.send(.view(.groupSettingsTapped))
+        } label: {
+          Label(LocalizedStrings.GroupMain.groupSettings, systemImage: "gearshape")
+        }
+      } label: {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500)
+            .frame(width: 56, height: 56)
+            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+          Image(systemName: "plus")
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(.white)
+        }
       }
+      .padding(.trailing, 16)
+      .padding(.bottom, 16)
     }
 
     @ViewBuilder
@@ -316,31 +307,6 @@ extension GroupMain {
       .padding(.horizontal, 24)
     }
 
-
-    // MARK: - Onboarding Cards
-
-    @ViewBuilder
-    private var onboardingCardsView: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(GroupMain.OnboardingCard.allCases) { card in
-          OnboardingCardView(card: card) {
-            handleOnboardingCardTap(card)
-          }
-        }
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .padding(.bottom, 100)
-    }
-
-    private func handleOnboardingCardTap(_ card: GroupMain.OnboardingCard) {
-      switch card {
-      case .createGroup:
-        store.send(.view(.createGroup))
-      case .joinGroup:
-        store.send(.view(.joinGroup))
-      }
-    }
 
     @ViewBuilder
     private var filterSegment: some View {
@@ -654,6 +620,9 @@ extension GroupMain {
           .frame(maxWidth: .infinity)
         }
       }
+      .overlay(alignment: .bottomTrailing) {
+        fabButton
+      }
     }
 
   }
@@ -663,14 +632,9 @@ extension GroupMain {
 
 private extension GroupMain.Feature.State {
 
-  /// 속한 그룹이 없는 경우
-  private var hasNoGroups: Bool {
-    allGroupSummaries?.isEmpty == true && currentGroup == nil
-  }
-
-  /// 빈 그룹 화면 표시 여부 (온보딩 모드로 대체되어 항상 false)
+  /// 빈 그룹 화면 표시 여부 (그룹이 없을 때)
   var shouldShowEmptyGroupView: Bool {
-    false  // 온보딩 모드에서 groupDetailView 재사용
+    allGroupSummaries?.isEmpty == true
   }
 
   /// 특정 일정의 응답 상태 조회
@@ -678,68 +642,6 @@ private extension GroupMain.Feature.State {
     proposalResponding[scheduleId] ?? .idle
   }
 }
-
-// MARK: - Onboarding Card View
-
-private struct OnboardingCardView: View {
-  let card: GroupMain.OnboardingCard
-  let onTap: () -> Void
-
-  var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 14) {
-        // 헤더
-        HStack(spacing: 10) {
-          // 아이콘
-          iconView
-            .frame(width: 32, height: 32)
-
-          Text(card.title)
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.primary)
-
-          Spacer()
-
-          // 화살표
-          Image(systemName: "chevron.right")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.tertiary)
-        }
-
-        Divider()
-
-        // 설명
-        Text(card.subtitle)
-          .font(.system(size: 14))
-          .foregroundStyle(.secondary)
-          .lineLimit(2)
-      }
-      .padding(16)
-      .contentShape(Rectangle())
-      .adaptiveGlassCard()
-    }
-    .buttonStyle(.plain)
-  }
-
-  @ViewBuilder
-  private var iconView: some View {
-    if card == .createGroup {
-      ResourceKitAsset.fingerSchedule.swiftUIImage
-        .resizable()
-        .scaledToFit()
-    } else {
-      ZStack {
-        Circle()
-          .fill(card.color.opacity(0.15))
-
-        Image(systemName: card.icon)
-          .font(.system(size: 16))
-          .foregroundStyle(card.color)
-      }
-    }
-  }
-}
-
 
 // MARK: - SortSettingsSheetContent
 

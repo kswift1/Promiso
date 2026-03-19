@@ -2,6 +2,7 @@ import SwiftUI
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import CreateGroupFeature
 
 // MARK: - Step 1 Content View
 struct CreateScheduleStep1View: View {
@@ -73,6 +74,13 @@ struct CreateScheduleStep1View: View {
     ) { _ in
       if store.isEmojiLoading {
         isHourglassFlipped.toggle()
+      }
+    }
+    .sheet(
+      store: store.scope(state: \.$createGroup, action: \.createGroup)
+    ) { childStore in
+      NavigationStack {
+        CreateGroup.RootView(store: childStore)
       }
     }
   }
