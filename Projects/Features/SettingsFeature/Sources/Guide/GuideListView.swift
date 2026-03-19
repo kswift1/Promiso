@@ -79,8 +79,8 @@ extension Guide {
         calendarGuideView
       case .schedule:
         scheduleGuideView
-      default:
-        EmptyView()
+      case .home:
+        homeGuideView
       }
     }
 
@@ -98,6 +98,16 @@ extension Guide {
     private var calendarGuideView: some View {
       FeatureGuideView(
         items: FeatureGuideView.calendarGuideItems,
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
+    }
+
+    @ViewBuilder
+    private var homeGuideView: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.homeGuideItems,
         onComplete: {
           store.send(.view(.dismissGuide))
         }

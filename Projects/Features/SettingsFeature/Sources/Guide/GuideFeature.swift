@@ -65,7 +65,6 @@ public enum GuideTab: String, CaseIterable, Identifiable, Equatable, Sendable {
   case home
   case schedule
   case calendar
-  case settings
 
   public var id: String { rawValue }
 
@@ -74,23 +73,20 @@ public enum GuideTab: String, CaseIterable, Identifiable, Equatable, Sendable {
     case .home: LocalizedStrings.TabBar.home
     case .schedule: LocalizedStrings.TabBar.schedule
     case .calendar: LocalizedStrings.TabBar.calendar
-    case .settings: LocalizedStrings.TabBar.settings
     }
   }
 
   public var icon: String {
     switch self {
     case .home: "house.fill"
-    case .schedule: "list.bullet.rectangle.fill"
+    case .schedule: "person.3.fill"
     case .calendar: "calendar"
-    case .settings: "gearshape.fill"
     }
   }
 
   public var isAvailable: Bool {
     switch self {
-    case .calendar, .schedule: true
-    case .home, .settings: false  // 준비 중
+    case .calendar, .schedule, .home: true
     }
   }
 }

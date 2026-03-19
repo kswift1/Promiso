@@ -162,11 +162,37 @@ extension GroupMain {
     }
 
 
+    // MARK: - Group Header
+
+    private var defaultMode: ScheduleMode {
+      store.defaultScheduleTabMode == "own" ? .personal : .group
+    }
+
+    @ViewBuilder
+    private var groupHeaderSection: some View {
+      ScheduleTabHeader(
+        selectedMode: .group,
+        defaultMode: defaultMode,
+        onSettingsTapped: {
+          store.send(.view(.groupOverviewTapped))
+        }
+      ) { mode in
+        if mode == .personal {
+          store.send(.view(.switchToPersonalMode))
+        }
+      }
+    }
+
     // MARK: - New Group Detail View (섹션 기반)
 
     @ViewBuilder
     private var groupDetailView: some View {
       VStack(spacing: 0) {
+        // 헤더
+        groupHeaderSection
+          .padding(.horizontal, 16)
+          .padding(.top, 8)
+
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
@@ -559,6 +585,11 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailEmptyView: some View {
       ScrollView {
+        // 헤더
+        groupHeaderSection
+          .padding(.horizontal, 16)
+          .padding(.top, 8)
+
         // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
         GroupHorizontalBar(
           groups: store.groupBarItems,
