@@ -575,9 +575,8 @@ struct AppEntryFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.destination(.presented(.calendarImport(.delegate(.completed(result)))))) {
+    await store.send(.destination(.presented(.calendarImport(.delegate(.completed))))) {
       $0.pendingUserForMain = nil
-      $0.pendingCalendarImportResult = result
     }
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
