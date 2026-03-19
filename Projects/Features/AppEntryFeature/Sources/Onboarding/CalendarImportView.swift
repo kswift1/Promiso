@@ -18,6 +18,9 @@ extension AppEntry.CalendarImport {
     @SwiftUI.State private var cardsGathered: Bool = false
     @SwiftUI.State private var showContent: Bool = false
     @SwiftUI.State private var showButtons: Bool = false
+    @SwiftUI.State private var showResultEmoji: Bool = false
+    @SwiftUI.State private var showResultContent: Bool = false
+    @SwiftUI.State private var showResultButton: Bool = false
     private var isImporting: Bool {
       switch store.phase {
       case .requesting, .scanning: return true
@@ -38,6 +41,7 @@ extension AppEntry.CalendarImport {
           defaultLayoutView
         }
       }
+      .animation(.easeInOut(duration: 0.35), value: store.phase)
       .auroraBackground()
       .onAppear {
         if store.phase == .idle {
@@ -110,6 +114,8 @@ extension AppEntry.CalendarImport {
         idlePhaseView
       case .selecting, .uploading:
         selectingPhaseView
+      case .result(let resultType):
+        resultPhaseView(resultType)
       case .completed:
         EmptyView()
       }
@@ -217,6 +223,73 @@ extension AppEntry.CalendarImport {
       .staticGlassBackground(cornerRadius: 14)
     }
 
+    // MARK: - Result Phase
+
+    private func resultPhaseView(_ resultType: AppEntry.CalendarImport.State.ResultType) -> some SwiftUI.View {
+      VStack(spacing: 20) {
+        if showResultEmoji {
+          Text(resultEmoji(resultType))
+            .font(.system(size: 72))
+            .transition(.scale.combined(with: .opacity))
+        }
+        if showResultContent {
+          VStack(spacing: 10) {
+            Text(resultTitle(resultType))
+              .font(.largeTitle.bold())
+              .foregroundStyle(Color.pmtext.primary)
+              .multilineTextAlignment(.center)
+            Text(resultSubtitle(resultType))
+              .font(.title3)
+              .foregroundStyle(Color.pmtext.secondary)
+              .multilineTextAlignment(.center)
+              .lineSpacing(4)
+          }
+          .transition(.opacity.combined(with: .offset(y: 12)))
+        }
+      }
+      .padding(.horizontal, 40)
+      .task { await runResultAnimation() }
+    }
+
+    private func resultEmoji(_ resultType: AppEntry.CalendarImport.State.ResultType) -> String {
+      switch resultType {
+      case .noEvents: return "📅"
+      case .imported: return "🎉"
+      case .failed: return "😔"
+      }
+    }
+
+    private func resultTitle(_ resultType: AppEntry.CalendarImport.State.ResultType) -> String {
+      switch resultType {
+      case .noEvents: return "가져올 일정이 없어요"
+      case .imported(let n): return "\(n)개 가져왔어요!"
+      case .failed: return "가져오기에 실패했어요"
+      }
+    }
+
+    private func resultSubtitle(_ resultType: AppEntry.CalendarImport.State.ResultType) -> String {
+      switch resultType {
+      case .noEvents: return "새 약속을 만들면 바로 챙겨드릴게요"
+      case .imported: return "다가오는 약속을 미리 챙겨드릴게요"
+      case .failed: return "나중에 설정에서 다시 시도할 수 있어요"
+      }
+    }
+
+    private func runResultAnimation() async {
+      try? await Task.sleep(for: .seconds(0.3))
+      withAnimation(.spring(response: 0.7, dampingFraction: 0.6)) {
+        showResultEmoji = true
+      }
+      try? await Task.sleep(for: .seconds(0.5))
+      withAnimation(.easeOut(duration: 0.65)) {
+        showResultContent = true
+      }
+      try? await Task.sleep(for: .seconds(0.5))
+      withAnimation(.easeOut(duration: 0.55)) {
+        showResultButton = true
+      }
+    }
+
     // MARK: - Selecting Phase
 
     private var selectingPhaseView: some SwiftUI.View {
@@ -282,6 +355,15 @@ extension AppEntry.CalendarImport {
               .transition(.opacity.combined(with: .offset(y: 16)))
             }
           }
+        }
+      case .result:
+        if showResultButton {
+          GlassActionButton(
+            title: "시작하기",
+            isPrimary: true,
+            action: { store.send(.view(.startTapped)) }
+          )
+          .transition(.opacity.combined(with: .offset(y: 16)))
         }
       default:
         EmptyView()
@@ -495,6 +577,18 @@ private struct CalendarEventCard: SwiftUI.View {
     ) {
       AppEntry.CalendarImport()
     }
+  )
+}
+
+#Preview("Result - Imported") {
+  AppEntry.CalendarImport.View(
+    store: Store(
+      initialState: {
+        var state = AppEntry.CalendarImport.State(nickname: "성원")
+        state.phase = .result(.imported(8))
+        return state
+      }()
+    ) { AppEntry.CalendarImport() }
   )
 }
 

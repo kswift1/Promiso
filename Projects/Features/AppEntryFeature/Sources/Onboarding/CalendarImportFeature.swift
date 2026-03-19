@@ -24,13 +24,20 @@ extension AppEntry {
       var importProgress: Int = 0
       var importTotal: Int = 0
 
+      public enum ResultType: Equatable {
+        case noEvents
+        case imported(Int)
+        case failed
+      }
+
       public enum Phase: Equatable {
         case idle
         case requesting
         case scanning
         case selecting
         case uploading
-        case completed(CalendarImportResult)
+        case result(ResultType)
+        case completed
       }
 
       var selectedEventCount: Int {
@@ -58,6 +65,7 @@ extension AppEntry {
         case calendarExpandToggled(String)
         case eventToggled(String)
         case confirmImportTapped
+        case startTapped
       }
 
       @CasePathable
@@ -70,7 +78,7 @@ extension AppEntry {
       }
 
       public enum DelegateAction: Equatable, Sendable {
-        case completed(CalendarImportResult?)
+        case completed
       }
     }
 
@@ -94,7 +102,7 @@ extension AppEntry {
             }
 
           case .laterTapped:
-            return .send(.delegate(.completed(nil)))
+            return .send(.delegate(.completed))
 
           case .calendarToggled(let name):
             guard let group = state.calendarGroups.first(where: { $0.calendarName == name }) else { return .none }
@@ -123,13 +131,18 @@ extension AppEntry {
             }
             return .none
 
+          case .startTapped:
+            state.phase = .completed
+            return .send(.delegate(.completed))
+
           case .confirmImportTapped:
             let selectedEvents = state.calendarGroups
               .flatMap(\.events)
               .filter { state.selectedEventIds.contains($0.id) }
 
             guard !selectedEvents.isEmpty else {
-              return .send(.delegate(.completed(CalendarImportResult(totalImported: 0, thisWeekCount: 0))))
+              state.phase = .result(.noEvents)
+              return .none
             }
 
             state.phase = .uploading
@@ -182,7 +195,7 @@ extension AppEntry {
           switch internalAction {
           case .permissionResponse(let granted):
             guard granted else {
-              return .send(.delegate(.completed(nil)))
+              return .send(.delegate(.completed))
             }
 
             state.phase = .scanning
@@ -206,7 +219,8 @@ extension AppEntry {
             let groups = CalendarGroup.groupBy(filteredEvents)
 
             guard !groups.isEmpty else {
-              return .send(.delegate(.completed(CalendarImportResult(totalImported: 0, thisWeekCount: 0))))
+              state.phase = .result(.noEvents)
+              return .none
             }
 
             state.calendarGroups = groups
@@ -220,12 +234,16 @@ extension AppEntry {
             return .none
 
           case .importCompleted(let result):
-            state.phase = .completed(result)
-            return .send(.delegate(.completed(result)))
-
+            if result.totalImported > 0 {
+              state.phase = .result(.imported(result.totalImported))
+            } else {
+              state.phase = .result(.failed)
+            }
+            return .none
 
           case .importFailed:
-            return .send(.delegate(.completed(nil)))
+            state.phase = .result(.failed)
+            return .none
           }
 
         case .delegate:

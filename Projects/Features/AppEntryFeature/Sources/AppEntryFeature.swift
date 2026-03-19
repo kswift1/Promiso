@@ -56,9 +56,6 @@ extension AppEntry {
       /// 프로필 설정 완료 후 메인으로 이동할 사용자 정보
       var pendingUserForMain: UserPrivateModel?
 
-      /// 캘린더 임포트 결과 (메인 전환 후 Home에 전달)
-      var pendingCalendarImportResult: CalendarImportResult?
-
       /// 앱이 준비되기 전 수신된 딥링크 (메인 화면 전환 후 처리)
       var pendingDeeplink: DeeplinkDestination?
 
@@ -366,15 +363,11 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
-            // 캘린더 임포트 결과 → Home으로 전달
+            // 캘린더 임포트 결과 → Home으로 전달 (결과는 CalendarImport 화면에서 표시됨)
             if isSignup {
-              let importResult = state.pendingCalendarImportResult
-              state.pendingCalendarImportResult = nil
-              if importResult == nil {
-                effects.append(.send(.destination(.presented(
-                  .main(.showCalendarImportResult(nil))
-                ))))
-              }
+              effects.append(.send(.destination(.presented(
+                .main(.showCalendarImportResult(nil))
+              ))))
             }
 
             if let deeplink = state.pendingDeeplink {
@@ -420,10 +413,9 @@ extension AppEntry {
           state.destination = .auth(Auth.Feature.State())
           return .none
 
-        case .destination(.presented(.calendarImport(.delegate(.completed(let result))))):
+        case .destination(.presented(.calendarImport(.delegate(.completed)))):
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
-            state.pendingCalendarImportResult = result
             return .send(.internal(.transitionToMain(userModel, isSignup: true)))
           }
           return .none
