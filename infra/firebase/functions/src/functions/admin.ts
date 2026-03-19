@@ -70,6 +70,7 @@ import {
   ExpireCouponRequest,
   ExpireCouponResponse,
   AdminProPlanDashboard,
+  AdminOfferCodeRedemption,
   GetAdminProPlanDashboardResponse,
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
@@ -2641,6 +2642,7 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     couponsSnapshot,
     entitlementsSnapshot,
     prices,
+    offerCodeSnapshot,
   ] = await Promise.all([
     db.collection("users").get(),
     db.collection("subscriptions").get(),
@@ -2648,6 +2650,11 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     adminCol("coupons").get(),
     db.collection("entitlements").where("hasPro", "==", true).get(),
     getProPlanPrices(),
+    db.collection("subscriptions")
+      .where("lastOfferType", "==", 3)
+      .orderBy("updatedAt", "desc")
+      .limit(50)
+      .get(),
   ]);
 
   // Subscription breakdown by plan type
@@ -2743,6 +2750,15 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
       timestamp: d.updatedAt!,
     }));
 
+  // Offer code redemptions
+  const recentRedemptions: AdminOfferCodeRedemption[] =
+    offerCodeSnapshot.docs.map((doc) => ({
+      userId: doc.id,
+      offerIdentifier: doc.data().lastOfferIdentifier ?? "",
+      redeemedAt: doc.data().updatedAt?.toDate?.()?.toISOString() ?? "",
+      productId: doc.data().productId ?? null,
+    }));
+
   return {
     overview: {
       totalUsers,
@@ -2775,6 +2791,10 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
       expired: couponExpired,
     },
     recentActivities,
+    offerCodes: {
+      totalRedemptions: offerCodeSnapshot.size,
+      recentRedemptions,
+    },
   };
 }
 

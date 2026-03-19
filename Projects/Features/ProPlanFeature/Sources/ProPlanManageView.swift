@@ -78,7 +78,25 @@ extension ProPlan {
       } else if case .lifetime = store.subscriptionStatus, source != .coupon, source != .admin {
         lifetimeHeroCard
       } else {
-        subscriptionHeroCard
+        VStack(alignment: .leading, spacing: 8) {
+          subscriptionHeroCard
+
+          if source == .offerCode {
+            HStack(spacing: 6) {
+              Image(systemName: "tag.fill")
+                .font(.caption)
+                .foregroundStyle(Color.pmsuccess.n500)
+
+              Text("할인코드 적용")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.pmsuccess.n500)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.pmsuccess.n500.opacity(0.12), in: Capsule())
+          }
+        }
       }
     }
 
@@ -347,7 +365,7 @@ extension ProPlan {
 
       if case .subscribed(let productType, _) = store.subscriptionStatus,
          productType == .monthly,
-         source == .subscription || source == .none {
+         source == .subscription || source == .offerCode || source == .none {
         // 월간 → 연간 업셀
         if let discount = yearlyDiscount {
           monthlyToYearlyUpsellCard(discount: discount)
@@ -607,7 +625,7 @@ extension ProPlan {
 
     private var isSubscriptionSource: Bool {
       let source = store.entitlementInfo.source
-      return source == .subscription || source == .none
+      return source == .subscription || source == .offerCode || source == .none
     }
 
     private var subscriptionBadgeText: String? {
@@ -762,6 +780,31 @@ extension ProPlan {
             source: .coupon,
             overrideExpiresAt: Date().addingTimeInterval(15 * 24 * 3600),
             isInTrialPeriod: true
+          )
+          return state
+        }()
+      ) {
+        ProPlan.Feature()
+      }
+    )
+  }
+}
+
+#Preview("Manage - Offer Code") {
+  NavigationStack {
+    ProPlan.ProPlanManageView(
+      store: Store(
+        initialState: {
+          var state = ProPlan.Feature.State(
+            subscriptionStatus: .subscribed(
+              productType: .monthly,
+              expirationDate: Date().addingTimeInterval(25 * 24 * 3600)
+            )
+          )
+          state.entitlementInfo = ProEntitlementInfo(
+            source: .offerCode,
+            overrideExpiresAt: nil,
+            isInTrialPeriod: false
           )
           return state
         }()

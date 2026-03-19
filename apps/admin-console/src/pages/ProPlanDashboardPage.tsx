@@ -430,7 +430,76 @@ export function ProPlanDashboardPage() {
             </Grid>
           </Stack>
 
-          {/* 섹션 6: 최근 구독 활동 */}
+          {/* 섹션 6: Apple Offer Code 현황 */}
+          <Stack spacing={2}>
+            <Typography variant="h6">Apple Offer Code 현황</Typography>
+            <Grid container spacing={2}>
+              <Grid size={{xs: 12, sm: 6, md: 3}}>
+                <Card elevation={0} sx={{height: "100%"}}>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Typography color="text.secondary" variant="body2">
+                        총 사용 횟수
+                      </Typography>
+                      <Typography variant="h4">
+                        {dashboard.offerCodes.totalRedemptions}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+            <Card elevation={0}>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>사용자 ID</TableCell>
+                      <TableCell>Offer Identifier</TableCell>
+                      <TableCell>플랜</TableCell>
+                      <TableCell>시각</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {dashboard.offerCodes.recentRedemptions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center">
+                          <Typography color="text.secondary" variant="body2" sx={{py: 2}}>
+                            Offer Code 사용 내역이 없습니다.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      dashboard.offerCodes.recentRedemptions.map((redemption) => (
+                        <TableRow key={`${redemption.userId}-${redemption.redeemedAt}`}>
+                          <TableCell>
+                            <Typography variant="body2" sx={{fontFamily: "monospace", fontSize: 12}}>
+                              {redemption.userId.slice(0, 12)}…
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{fontFamily: "monospace", fontSize: 12}}>
+                              {redemption.offerIdentifier || "-"}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{getProductLabel(redemption.productId)}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {redemption.redeemedAt
+                                ? new Date(redemption.redeemedAt).toLocaleString("ko-KR")
+                                : "-"}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Card>
+          </Stack>
+
+          {/* 섹션 7: 최근 구독 활동 */}
           <Stack spacing={2}>
             <Typography variant="h6">최근 구독 활동</Typography>
             <Card elevation={0}>
