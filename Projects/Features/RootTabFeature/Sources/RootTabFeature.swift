@@ -944,23 +944,28 @@ extension RootTab {
           )
         )
 
-      case .schedule(let mode):
+      case .schedule:
         NavigationStack {
-          switch mode {
-          case .group:
-            GroupMain.RootView(
-              store: store.scope(
-                state: \.groupMain,
-                action: \.groupMain
+          VStack(spacing: 0) {
+            scheduleHeader
+              .padding(.horizontal, 16)
+              .padding(.top, 8)
+
+            if store.scheduleMode == .group {
+              GroupMain.RootView(
+                store: store.scope(
+                  state: \.groupMain,
+                  action: \.groupMain
+                )
               )
-            )
-          case .own:
-            PersonalMode.RootView(
-              store: store.scope(
-                state: \.personalMode,
-                action: \.personalMode
+            } else {
+              PersonalMode.RootView(
+                store: store.scope(
+                  state: \.personalMode,
+                  action: \.personalMode
+                )
               )
-            )
+            }
           }
         }
 
@@ -971,6 +976,28 @@ extension RootTab {
             action: \.settings
           )
         )
+      }
+    }
+
+    // MARK: - Schedule Header
+
+    @ViewBuilder
+    private var scheduleHeader: some View {
+      let mode = store.scheduleMode
+      let defaultMode: ScheduleMode = store.defaultScheduleTabMode == "own" ? .personal : .group
+
+      ScheduleTabHeader(
+        selectedMode: mode == .group ? .group : .personal,
+        defaultMode: defaultMode,
+        onSettingsTapped: mode == .group ? {
+          store.send(.groupMain(.view(.groupOverviewTapped)))
+        } : nil
+      ) { newMode in
+        if newMode == .personal {
+          store.send(.groupMain(.view(.switchToPersonalMode)))
+        } else if newMode == .group {
+          store.send(.personalMode(.view(.switchToGroupMode)))
+        }
       }
     }
   }

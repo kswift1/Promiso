@@ -152,6 +152,18 @@ public enum LocalizedStrings {
     public static var joinSuccess: String { String(localized: "schedule.success.join", bundle: bundle) }
     public static var leaveSuccess: String { String(localized: "schedule.success.leave", bundle: bundle) }
     public static var completeSuccess: String { String(localized: "schedule.success.complete", bundle: bundle) }
+
+    // Schedule Guide
+    public static var guideModeSwitchTitle: String { String(localized: "schedule.guide.modeSwitch.title", bundle: bundle) }
+    public static var guideModeSwitchSubtitle: String { String(localized: "schedule.guide.modeSwitch.subtitle", bundle: bundle) }
+    public static var guideGroupListTitle: String { String(localized: "schedule.guide.groupList.title", bundle: bundle) }
+    public static var guideGroupListSubtitle: String { String(localized: "schedule.guide.groupList.subtitle", bundle: bundle) }
+    public static var guideSwipeResponseTitle: String { String(localized: "schedule.guide.swipeResponse.title", bundle: bundle) }
+    public static var guideSwipeResponseSubtitle: String { String(localized: "schedule.guide.swipeResponse.subtitle", bundle: bundle) }
+    public static var guidePersonalTitle: String { String(localized: "schedule.guide.personal.title", bundle: bundle) }
+    public static var guidePersonalSubtitle: String { String(localized: "schedule.guide.personal.subtitle", bundle: bundle) }
+    public static var guideTooltip: String { String(localized: "schedule.guide.tooltip", bundle: bundle) }
+    public static var guideToastMessage: String { String(localized: "schedule.guide.toastMessage", bundle: bundle) }
   }
 
   // MARK: - Groups
@@ -1787,6 +1799,7 @@ public enum LocalizedStrings {
     public static var filterAll: String { String(localized: "personal.filter.all", bundle: bundle) }
     public static var filterPast: String { String(localized: "personal.filter.past", bundle: bundle) }
     public static var filterRecurring: String { String(localized: "personal.filter.recurring", bundle: bundle) }
+    public static var recurringEventsSummaryTitle: String { String(localized: "personal.recurringEvents.summaryTitle", bundle: bundle) }
     public static var notificationStartsNow: String { String(localized: "personal.event.notification.startsNow", bundle: bundle) }
     public static func notificationStartsInWeeks(_ weeks: Int) -> String {
       String(localized: "personal.event.notification.startsInWeeks", bundle: bundle)

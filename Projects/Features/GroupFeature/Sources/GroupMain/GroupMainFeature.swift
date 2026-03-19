@@ -12,6 +12,7 @@ extension GroupMain {
     case needResponseShake
     case conflictCheck
     case weatherFetch
+    case showGuide
   }
 
   /// ShakeEffect 타이밍 상수
@@ -31,6 +32,7 @@ extension GroupMain {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.scheduleClient) var scheduleClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
@@ -143,6 +145,8 @@ extension GroupMain {
       /// 충돌 감지 임계값 (분). -1이면 비활성화
       var conflictDetectionThreshold: Int = 0
 
+      var isShowingGuide: Bool = false
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
       }
@@ -217,6 +221,8 @@ extension GroupMain {
         case openCreateScheduleIfPossible  // Widget 딥링크: 그룹 있으면 일정 생성
         case openCreateScheduleWithExtractedInfo(ScheduleExtractedInfo)  // 퀵 일정: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
+        case showGuide
+        case dismissGuide
         case toastDismissed
         case tabReturned
         // Context Menu Actions
@@ -281,8 +287,18 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
-            // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
-            return .send(.internal(.fetchSettings))
+            // 최초 진입 시 가이드 표시 (1초 딜레이)
+            let shouldShowGuide = !userDefaultsClient.hasSeenScheduleGuide
+            return .merge(
+              .send(.internal(.fetchSettings)),
+              shouldShowGuide
+                ? .run { send in
+                    try await Task.sleep(for: .seconds(1))
+                    await send(.view(.showGuide))
+                  }
+                  .cancellable(id: CancelID.showGuide, cancelInFlight: true)
+                : .none
+            )
 
           case .tabReturned:
             // 탭 복귀 시 그룹 목록만 갱신 (일정은 실시간 리스너로 처리)
@@ -624,6 +640,24 @@ extension GroupMain {
           case .switchToPersonalMode:
             // RootTabFeature에서 처리
             return .none
+
+          case .showGuide:
+            state.isShowingGuide = true
+            return .none
+
+          case .dismissGuide:
+            state.isShowingGuide = false
+            let isFirstTime = !userDefaultsClient.hasSeenScheduleGuide
+            if isFirstTime {
+              state.toastMessage = ToastMessage(
+                type: .info,
+                title: LocalizedStrings.Schedule.guideToastMessage,
+                position: .top
+              )
+            }
+            return .run { _ in
+              userDefaultsClient.markScheduleGuideSeen()
+            }
 
           case .toastDismissed:
             state.toastMessage = nil
@@ -1327,6 +1361,7 @@ extension GroupMain {
               state.weatherByScheduleId[id] = info
             }
             return .none
+
 
           }
 

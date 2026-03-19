@@ -89,8 +89,8 @@ public enum GuideTab: String, CaseIterable, Identifiable, Equatable, Sendable {
 
   public var isAvailable: Bool {
     switch self {
-    case .calendar: true
-    case .home, .schedule, .settings: false  // 준비 중
+    case .calendar, .schedule: true
+    case .home, .settings: false  // 준비 중
     }
   }
 }

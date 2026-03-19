@@ -907,6 +907,8 @@ extension CalendarFeature {
       case fetchCalendarEventsForMonth(Date)
       case fetchPersonalEventsForMonth(Date)
       case fetchHolidays(Int)
+      case showGuide
+      case showGuideTooltip
     }
 
     // MARK: - Dependencies
@@ -1128,6 +1130,7 @@ extension CalendarFeature {
                 try await Task.sleep(for: .seconds(1))
                 await send(.view(.showGuide))
               }
+              .cancellable(id: CancelID.showGuide, cancelInFlight: true)
             : .none
         )
 
@@ -1660,13 +1663,16 @@ extension CalendarFeature {
       case .dismissGuide:
         state.isShowingGuide = false
         let isFirstTime = !userDefaultsClient.hasSeenCalendarGuide
+        guard isFirstTime else {
+          userDefaultsClient.markCalendarGuideSeen()
+          return .none
+        }
         return .run { send in
           userDefaultsClient.markCalendarGuideSeen()
-          if isFirstTime {
-            try await Task.sleep(for: .milliseconds(500))
-            await send(.internal(.showGuideTooltip), animation: .easeInOut)
-          }
+          try await Task.sleep(for: .milliseconds(500))
+          await send(.internal(.showGuideTooltip), animation: .easeInOut)
         }
+        .cancellable(id: CancelID.showGuideTooltip, cancelInFlight: true)
 
       }
     }
@@ -2020,6 +2026,7 @@ extension CalendarFeature {
           try await Task.sleep(for: .seconds(5))
           await send(.internal(.showGuideTooltip), animation: .easeOut)
         }
+        .cancellable(id: CancelID.showGuideTooltip, cancelInFlight: true)
       }
     }
 

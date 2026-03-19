@@ -2,6 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import ResourceKit
 import CreateScheduleFeature
 import CreateGroupFeature
 
@@ -124,6 +125,18 @@ extension GroupMain {
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
       )
+      .fullScreenCover(
+        isPresented: Binding(
+          get: { store.isShowingGuide },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.dismissGuide))
+            }
+          }
+        )
+      ) {
+        scheduleGuideContent
+      }
       .sheet(
         isPresented: Binding(
           get: { store.showGroupInviteSheet },
@@ -154,11 +167,6 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailView: some View {
       VStack(spacing: 0) {
-        // 헤더
-        groupHeaderSection
-          .padding(.horizontal, 16)
-          .padding(.top, 8)
-
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
@@ -190,7 +198,7 @@ extension GroupMain {
 
         // 필터 세그먼트
         filterSegment
-          .padding(.top, 8)
+          .padding(.top, 12)
 
         // 일정 리스트 (스와이프 지원)
         if isLoadingState {
@@ -221,25 +229,16 @@ extension GroupMain {
       }
     }
 
-    // MARK: - Group Header
-
-    private var defaultMode: ScheduleMode {
-      store.defaultScheduleTabMode == "own" ? .personal : .group
-    }
+    // MARK: - Schedule Guide Content
 
     @ViewBuilder
-    private var groupHeaderSection: some View {
-      ScheduleTabHeader(
-        selectedMode: .group,
-        defaultMode: defaultMode,
-        onSettingsTapped: {
-          store.send(.view(.groupOverviewTapped))
+    private var scheduleGuideContent: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.scheduleGuideItems,
+        onComplete: {
+          store.send(.view(.dismissGuide))
         }
-      ) { mode in
-        if mode == .personal {
-          store.send(.view(.switchToPersonalMode))
-        }
-      }
+      )
     }
 
     // MARK: - FAB
@@ -313,7 +312,11 @@ extension GroupMain {
       CategoryFilterBar(
         selection: Binding(
           get: { store.selectedFilter },
-          set: { store.send(.view(.filterChanged($0))) }
+          set: { newFilter in
+            withAnimation(.snappy) {
+              _ = store.send(.view(.filterChanged(newFilter)))
+            }
+          }
         ),
         counts: store.filterCounts
       )
@@ -556,11 +559,6 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailEmptyView: some View {
       ScrollView {
-        // 헤더
-        groupHeaderSection
-          .padding(.horizontal, 16)
-          .padding(.top, 8)
-
         // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
         GroupHorizontalBar(
           groups: store.groupBarItems,
@@ -593,7 +591,7 @@ extension GroupMain {
         VStack(spacing: 0) {
           // 필터 (비활성 상태로 유지)
           filterSegment
-            .padding(.vertical, 8)
+            .padding(.vertical, 12)
             .disabled(true)
             .opacity(0.5)
 
