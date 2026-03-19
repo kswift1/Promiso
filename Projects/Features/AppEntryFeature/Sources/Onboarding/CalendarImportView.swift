@@ -8,7 +8,7 @@ import Clients
 
 extension AppEntry.CalendarImport {
   public struct View: SwiftUI.View {
-    let store: StoreOf<AppEntry.CalendarImport>
+    @Bindable var store: StoreOf<AppEntry.CalendarImport>
 
     public init(store: StoreOf<AppEntry.CalendarImport>) {
       self.store = store
@@ -43,11 +43,9 @@ extension AppEntry.CalendarImport {
       }
       .animation(.easeInOut(duration: 0.35), value: store.phase)
       .auroraBackground()
-      .onAppear {
+      .task {
         if store.phase == .idle {
-          Task {
-            await runAnimationSequence()
-          }
+          await runAnimationSequence()
         }
       }
     }
@@ -59,7 +57,7 @@ extension AppEntry.CalendarImport {
         Spacer()
         buttonArea
           .padding(.horizontal, 24)
-          .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
+          .padding(.bottom, 32)
       }
     }
 
