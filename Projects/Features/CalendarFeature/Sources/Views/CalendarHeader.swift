@@ -145,7 +145,7 @@ struct WeekdayHeader: View {
 
 private struct GuideTooltip: View {
   var body: some View {
-    Text("언제든 다시 볼 수 있어요")
+    Text(LocalizedStrings.Calendar.guideTooltip)
       .font(.caption)
       .foregroundStyle(.white)
       .padding(.horizontal, 12)

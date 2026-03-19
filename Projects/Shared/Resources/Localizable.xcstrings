@@ -900,6 +900,227 @@
         }
       }
     },
+    "calendar.guide.filter.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter by group or status, and toggle personal events and iOS calendar events."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹별 · 상태별로 필터링하고, 개인 일정과 iOS 캘린더 이벤트 표시를 조절할 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.filter.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the events you want"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "원하는 일정만, 그대로"
+          }
+        }
+      }
+    },
+    "calendar.guide.modeSwitch.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly Timeline · Monthly List · Monthly Full — tap or long-press the header icon to switch."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주간 타임라인 · 월간 리스트 · 월간 전체, 헤더 아이콘을 탭하거나 길게 눌러 전환해요"
+          }
+        }
+      }
+    },
+    "calendar.guide.modeSwitch.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three ways to view your schedule"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세 가지 시선으로 일정을 봐요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthExpanded.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See all events at a glance. Tap an event bar for details, or tap a date to switch to weekly view."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정을 한눈에 파악해요. 일정 바를 탭하면 상세로, 날짜를 탭하면 주간 뷰로 전환돼요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthExpanded.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All events inside the calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "달력 안에서 모든 일정 확인"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthList.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View the calendar grid and event list together. Tap a date to scroll to its events."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상단 달력과 하단 일정 리스트를 함께 볼 수 있어요. 날짜를 탭하면 해당 일정으로 스크롤돼요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthList.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A whole month at a glance"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 달을 한눈에"
+          }
+        }
+      }
+    },
+    "calendar.guide.tooltip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can revisit this anytime"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언제든 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekCreate.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-tap or long-press an empty slot to place an event, then drag to adjust the time range."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "빈 시간대를 더블 탭하거나 꾹 눌러 일정을 배치하고, 드래그로 시간 범위를 조정할 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekCreate.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Here, let me place an event"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기, 일정 하나 놓을게요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekTimeline.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See your 24-hour schedule at a glance, and zoom in or out to expand or collapse time slots."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24시간 일정을 한눈에 확인하고, 줌인·줌아웃으로 시간대를 확대하거나 축소할 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekTimeline.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your day as a timeline"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하루를 타임라인으로"
+          }
+        }
+      }
+    },
     "calendar.filter.calendarEvents" : {
       "comment" : "시스템 캘린더 토글 라벨",
       "extractionState" : "manual",
@@ -2180,6 +2401,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "접기"
+          }
+        }
+      }
+    },
+    "common.comingSoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coming Soon"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "준비 중"
           }
         }
       }
@@ -25573,6 +25811,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "정보가 업데이트되었습니다"
+          }
+        }
+      }
+    },
+    "settings.guide" : {
+      "comment" : "가이드",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guide"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가이드"
           }
         }
       }

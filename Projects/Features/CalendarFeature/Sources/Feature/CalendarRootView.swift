@@ -149,42 +149,42 @@ extension CalendarFeature {
         items: [
           .init(
             id: 0,
-            title: "세 가지 시선으로 일정을 봐요",
-            subtitle: "주간 타임라인 · 월간 리스트 · 월간 전체, 헤더 아이콘을 탭하거나 길게 눌러 전환해요",
+            title: LocalizedStrings.Calendar.guideModeSwitchTitle,
+            subtitle: LocalizedStrings.Calendar.guideModeSwitchSubtitle,
             screenshot: ResourceKitAsset.guideCalendarModeSwitch.swiftUIImage,
             zoomScale: 1.5,
             zoomAnchor: .top
           ),
           .init(
             id: 1,
-            title: "하루를 타임라인으로",
-            subtitle: "24시간 일정을 한눈에 확인하고, 줌인·줌아웃으로 시간대를 확대하거나 축소할 수 있어요",
+            title: LocalizedStrings.Calendar.guideWeekTimelineTitle,
+            subtitle: LocalizedStrings.Calendar.guideWeekTimelineSubtitle,
             screenshot: ResourceKitAsset.guideCalendarWeekTimeline.swiftUIImage
           ),
           .init(
             id: 2,
-            title: "여기, 일정 하나 놓을게요",
-            subtitle: "빈 시간대를 더블 탭하거나 꾹 눌러 일정을 배치하고, 드래그로 시간 범위를 조정할 수 있어요",
+            title: LocalizedStrings.Calendar.guideWeekCreateTitle,
+            subtitle: LocalizedStrings.Calendar.guideWeekCreateSubtitle,
             screenshot: ResourceKitAsset.guideCalendarWeekCreate.swiftUIImage,
             zoomScale: 1.3,
             zoomAnchor: .center
           ),
           .init(
             id: 3,
-            title: "한 달을 한눈에",
-            subtitle: "상단 달력과 하단 일정 리스트를 함께 볼 수 있어요. 날짜를 탭하면 해당 일정으로 스크롤돼요",
+            title: LocalizedStrings.Calendar.guideMonthListTitle,
+            subtitle: LocalizedStrings.Calendar.guideMonthListSubtitle,
             screenshot: ResourceKitAsset.guideCalendarMonthList.swiftUIImage
           ),
           .init(
             id: 4,
-            title: "달력 안에서 모든 일정 확인",
-            subtitle: "일정을 한눈에 파악해요. 일정 바를 탭하면 상세로, 날짜를 탭하면 주간 뷰로 전환돼요",
+            title: LocalizedStrings.Calendar.guideMonthExpandedTitle,
+            subtitle: LocalizedStrings.Calendar.guideMonthExpandedSubtitle,
             screenshot: ResourceKitAsset.guideCalendarMonthExpanded.swiftUIImage
           ),
           .init(
             id: 5,
-            title: "원하는 일정만, 그대로",
-            subtitle: "그룹별 · 상태별로 필터링하고, 개인 일정과 iOS 캘린더 이벤트 표시를 조절할 수 있어요",
+            title: LocalizedStrings.Calendar.guideFilterTitle,
+            subtitle: LocalizedStrings.Calendar.guideFilterSubtitle,
             screenshot: ResourceKitAsset.guideCalendarFilter.swiftUIImage,
             zoomScale: 1.2,
             zoomAnchor: .bottom

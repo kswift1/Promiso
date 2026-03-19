@@ -71,10 +71,10 @@ public enum GuideTab: String, CaseIterable, Identifiable, Equatable, Sendable {
 
   public var title: String {
     switch self {
-    case .home: "홈"
-    case .schedule: "일정"
-    case .calendar: "캘린더"
-    case .settings: "설정"
+    case .home: LocalizedStrings.TabBar.home
+    case .schedule: LocalizedStrings.TabBar.schedule
+    case .calendar: LocalizedStrings.TabBar.calendar
+    case .settings: LocalizedStrings.TabBar.settings
     }
   }
 

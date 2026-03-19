@@ -277,7 +277,7 @@ public struct FeatureGuideView: View {
             currentIndex = min(currentIndex + 1, items.count - 1)
           }
         } label: {
-          Text(isLast ? "완료" : "다음")
+          Text(isLast ? LocalizedStrings.Common.done : LocalizedStrings.Common.next)
             .fontWeight(.medium)
             .contentTransition(.numericText())
             .padding(.vertical, 6)
@@ -292,7 +292,7 @@ public struct FeatureGuideView: View {
             currentIndex = min(currentIndex + 1, items.count - 1)
           }
         } label: {
-          Text(isLast ? "완료" : "다음")
+          Text(isLast ? LocalizedStrings.Common.done : LocalizedStrings.Common.next)
             .fontWeight(.medium)
             .contentTransition(.numericText())
             .frame(maxWidth: .infinity)

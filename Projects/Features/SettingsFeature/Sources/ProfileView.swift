@@ -357,7 +357,7 @@ extension Settings {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("가이드")
+                Text(LocalizedStrings.SettingsStrings.guide)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
