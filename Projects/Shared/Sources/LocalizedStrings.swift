@@ -1798,6 +1798,7 @@ public enum LocalizedStrings {
     public static var filterAll: String { String(localized: "personal.filter.all", bundle: bundle) }
     public static var filterPast: String { String(localized: "personal.filter.past", bundle: bundle) }
     public static var filterRecurring: String { String(localized: "personal.filter.recurring", bundle: bundle) }
+    public static var recurringEventsSummaryTitle: String { String(localized: "personal.recurringEvents.summaryTitle", bundle: bundle) }
     public static var notificationStartsNow: String { String(localized: "personal.event.notification.startsNow", bundle: bundle) }
     public static func notificationStartsInWeeks(_ weeks: Int) -> String {
       String(localized: "personal.event.notification.startsInWeeks", bundle: bundle)

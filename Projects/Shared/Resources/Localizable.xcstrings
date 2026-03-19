@@ -17378,6 +17378,17 @@
         }
       }
     },
+    "personal.recurringEvents.summaryTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "반복 일정"
+          }
+        }
+      }
+    },
     "personal.filter.today" : {
       "comment" : "필터 - 오늘",
       "extractionState" : "manual",

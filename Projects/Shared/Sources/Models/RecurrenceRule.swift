@@ -68,7 +68,15 @@ extension RecurrenceRule {
       return isKoreanLocale ? "매일" : "Every day"
     case .weekly:
       guard let days = daysOfWeek, !days.isEmpty else { return isKoreanLocale ? "매주" : "Every week" }
-      let dayNames = days.sorted().compactMap { Self.weekdayName(for: $0) }
+      let sorted = days.sorted()
+      // 평일(월~금) / 주말(토,일) 축약
+      if isKoreanLocale {
+        let weekdays: Set<Int> = [2, 3, 4, 5, 6]  // 월~금
+        let weekends: Set<Int> = [1, 7]             // 일, 토
+        if Set(sorted) == weekdays { return "매주 평일" }
+        if Set(sorted) == weekends { return "매주 주말" }
+      }
+      let dayNames = sorted.compactMap { Self.weekdayName(for: $0) }
       let joined = dayNames.joined(separator: ", ")
       return isKoreanLocale ? "매주 \(joined)" : "Every \(joined)"
     case .monthly:
