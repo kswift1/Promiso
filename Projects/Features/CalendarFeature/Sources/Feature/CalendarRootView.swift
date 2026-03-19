@@ -129,6 +129,71 @@ extension CalendarFeature {
         .onAppear {
           store.send(.view(.onAppear))
         }
+        .fullScreenCover(
+          isPresented: Binding(
+            get: { store.isShowingGuide },
+            set: { newValue in
+              if !newValue {
+                store.send(.view(.dismissGuide))
+              }
+            }
+          )
+        ) {
+          calendarGuideContent
+        }
+    }
+
+    @ViewBuilder
+    private var calendarGuideContent: some View {
+      FeatureGuideView(
+        items: [
+          .init(
+            id: 0,
+            title: LocalizedStrings.Calendar.guideModeSwitchTitle,
+            subtitle: LocalizedStrings.Calendar.guideModeSwitchSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarModeSwitch.swiftUIImage,
+            zoomScale: 1.5,
+            zoomAnchor: .top
+          ),
+          .init(
+            id: 1,
+            title: LocalizedStrings.Calendar.guideWeekTimelineTitle,
+            subtitle: LocalizedStrings.Calendar.guideWeekTimelineSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarWeekTimeline.swiftUIImage
+          ),
+          .init(
+            id: 2,
+            title: LocalizedStrings.Calendar.guideWeekCreateTitle,
+            subtitle: LocalizedStrings.Calendar.guideWeekCreateSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarWeekCreate.swiftUIImage,
+            zoomScale: 1.3,
+            zoomAnchor: .center
+          ),
+          .init(
+            id: 3,
+            title: LocalizedStrings.Calendar.guideMonthListTitle,
+            subtitle: LocalizedStrings.Calendar.guideMonthListSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarMonthList.swiftUIImage
+          ),
+          .init(
+            id: 4,
+            title: LocalizedStrings.Calendar.guideMonthExpandedTitle,
+            subtitle: LocalizedStrings.Calendar.guideMonthExpandedSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarMonthExpanded.swiftUIImage
+          ),
+          .init(
+            id: 5,
+            title: LocalizedStrings.Calendar.guideFilterTitle,
+            subtitle: LocalizedStrings.Calendar.guideFilterSubtitle,
+            screenshot: ResourceKitAsset.guideCalendarFilter.swiftUIImage,
+            zoomScale: 1.2,
+            zoomAnchor: .bottom
+          ),
+        ],
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
     }
 
     private var calendarWithEditCovers: some View {
@@ -160,6 +225,8 @@ extension CalendarFeature {
           displayMode: store.displayMode,
           isSelectedDateToday: store.isSelectedDateToday,
           isFilterActive: store.isFilterActive,
+          isShowingGuideTooltip: store.isShowingGuideTooltip,
+          onGuideTapped: { store.send(.view(.showGuide)) },
           onFilterTapped: { store.send(.view(.filterIconTapped)) },
           onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
           onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
@@ -454,7 +521,7 @@ extension CalendarFeature {
       let monthTitle = formatter.string(from: store.currentMonth)
 
       return HStack {
-        Text("\(monthTitle) \(LocalizedStrings.Schedule.title)")
+        Text("\(monthTitle) \(LocalizedStrings.Schedule.schedule)")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 

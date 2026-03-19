@@ -128,6 +128,7 @@ extension Settings {
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
       case proPlanManage(ProPlan.Feature)
+      case guide(Guide.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -219,6 +220,8 @@ extension Settings {
       case defaultScheduleTabModeChanged(String)
       /// 토스트 닫힘
       case toastDismissed
+      /// 설명서 탭
+      case guideTapped
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -468,6 +471,10 @@ extension Settings {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .guideTapped:
+            state.path.append(.guide(Guide.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
 
           }
 
@@ -725,6 +732,8 @@ extension Settings {
           AppInfo.RootView(store: store)
         case .proPlanManage(let store):
           ProPlan.RootView(store: store)
+        case .guide(let store):
+          Guide.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)
