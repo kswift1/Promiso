@@ -9030,6 +9030,168 @@
         }
       }
     },
+    "home.guide.calendarOverlay.subtitle" : {
+      "comment" : "홈 가이드 캘린더 오버레이 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the date at the top to open the calendar. Check the weather and your schedule at a glance."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상단 날짜를 탭하면 캘린더가 펼쳐져요. 날씨와 일정을 한눈에 살펴볼 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.calendarOverlay.title" : {
+      "comment" : "홈 가이드 캘린더 오버레이 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar, just a tap away"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭 한 번에 열리는 캘린더"
+          }
+        }
+      }
+    },
+    "home.guide.liveActivity.subtitle" : {
+      "comment" : "홈 가이드 라이브 액티비티 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As the time approaches, live location sharing begins. Check on the Lock Screen and Dynamic Island too. (iPhone 14 Pro and later)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속이 다가오면 실시간 위치 공유가 시작돼요. 잠금 화면과 다이나믹 아일랜드에서도 확인할 수 있어요 (iPhone 14 Pro 이상)"
+          }
+        }
+      }
+    },
+    "home.guide.liveActivity.title" : {
+      "comment" : "홈 가이드 라이브 액티비티 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Racing to the meetup, together"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "함께 달리는 약속 시간"
+          }
+        }
+      }
+    },
+    "home.guide.overview.subtitle" : {
+      "comment" : "홈 가이드 개요 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Briefing, today's schedule, pending responses, and upcoming plans — see your entire day from the Home tab."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "브리핑 · 오늘의 일정 · 응답 대기 · 다가오는 약속까지, 홈에서 하루의 모든 흐름을 확인할 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.overview.title" : {
+      "comment" : "홈 가이드 개요 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your day, at a glance"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하루의 흐름, 한눈에"
+          }
+        }
+      }
+    },
+    "home.guide.proFeatures.subtitle" : {
+      "comment" : "홈 가이드 Pro 기능 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check departure times by transit type and the weather forecast, and set departure alerts."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "교통수단별 출발 시간과 날씨를 미리 확인하고, 출발 알림까지 설정할 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.proFeatures.title" : {
+      "comment" : "홈 가이드 Pro 기능 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Departure and weather, ahead of time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출발도, 날씨도 미리"
+          }
+        }
+      }
+    },
+    "home.guide.tooltip" : {
+      "comment" : "홈 가이드 완료 후 토스트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can revisit this in Settings → Guide"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 → 가이드에서 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
     "home.briefing.notificationChip.am" : {
       "comment" : "브리핑 알림 시간 칩 오전 형식",
       "extractionState" : "manual",

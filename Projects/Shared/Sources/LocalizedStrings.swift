@@ -1284,6 +1284,17 @@ public enum LocalizedStrings {
       String(localized: "home.briefing.locationOffMessage", bundle: bundle)
     }
 
+    // Guide
+    public static var guideOverviewTitle: String { String(localized: "home.guide.overview.title", bundle: bundle) }
+    public static var guideOverviewSubtitle: String { String(localized: "home.guide.overview.subtitle", bundle: bundle) }
+    public static var guideCalendarOverlayTitle: String { String(localized: "home.guide.calendarOverlay.title", bundle: bundle) }
+    public static var guideCalendarOverlaySubtitle: String { String(localized: "home.guide.calendarOverlay.subtitle", bundle: bundle) }
+    public static var guideLiveActivityTitle: String { String(localized: "home.guide.liveActivity.title", bundle: bundle) }
+    public static var guideLiveActivitySubtitle: String { String(localized: "home.guide.liveActivity.subtitle", bundle: bundle) }
+    public static var guideProFeaturesTitle: String { String(localized: "home.guide.proFeatures.title", bundle: bundle) }
+    public static var guideProFeaturesSubtitle: String { String(localized: "home.guide.proFeatures.subtitle", bundle: bundle) }
+    public static var guideTooltip: String { String(localized: "home.guide.tooltip", bundle: bundle) }
+
     // Timeline
     public static var startLiveSharing: String { String(localized: "home.timeline.startLiveSharing", bundle: bundle) }
     public static var departurePrompt: String { String(localized: "home.timeline.departurePrompt", bundle: bundle) }

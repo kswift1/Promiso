@@ -113,6 +113,10 @@ extension Home {
       /// 화면 상단/하단 토스트 메시지
       var toastMessage: ToastMessage?
 
+      // MARK: Guide
+      /// 가이드 표시 여부
+      var isShowingGuide: Bool = false
+
       // MARK: Calendar Overlay
       /// 캘린더 오버레이 표시 여부
       var showCalendarOverlay: Bool = false
@@ -326,6 +330,10 @@ extension Home {
         case emptyCreateRecurringEventTapped
         /// 반복 일정 요약 항목 탭 (상세 화면)
         case recurringSummaryTapped(HomeModels.RecurringEventSummary)
+        /// 가이드 보기
+        case showGuide
+        /// 가이드 닫기
+        case dismissGuide
       }
 
       @CasePathable
@@ -442,12 +450,19 @@ extension Home {
             }
 
             // Firestore에서 직접 쿼리 (일정 + 개인 일정 + 반복 개인 일정 병렬)
+            let shouldShowGuide = !state.hasLoadedOnce && !userDefaultsClient.hasSeenHomeGuide
             return .merge(
               weatherEffect,
               .send(.internal(.fetchSchedules)),
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents)),
-              .send(.internal(.checkPermissions))
+              .send(.internal(.checkPermissions)),
+              shouldShowGuide
+                ? .run { send in
+                    try await Task.sleep(for: .seconds(1))
+                    await send(.view(.showGuide))
+                  }
+                : .none
             )
 
           case .refreshTriggered:
@@ -1114,6 +1129,24 @@ extension Home {
               )))
             }
             return .none
+
+          case .showGuide:
+            state.isShowingGuide = true
+            return .none
+
+          case .dismissGuide:
+            state.isShowingGuide = false
+            let isFirstTime = !userDefaultsClient.hasSeenHomeGuide
+            if isFirstTime {
+              state.toastMessage = ToastMessage(
+                type: .info,
+                title: LocalizedStrings.Home.guideTooltip,
+                position: .top
+              )
+            }
+            return .run { [userDefaultsClient] _ in
+              userDefaultsClient.markHomeGuideSeen()
+            }
 
           }
 
@@ -1883,6 +1916,7 @@ extension Home {
               )
             }
             return .none
+
 
           }
 
