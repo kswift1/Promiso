@@ -102,6 +102,8 @@ extension ProPlan {
       public var onboardingDefaultLocation: LocationInfoModel? = nil
       /// Apple Offer Code Redemption sheet 표시 여부
       public var showOfferCodeRedemption: Bool = false
+      /// Offer Code 사용 후 구독 상태 변경 대기 중 여부
+      public var isWaitingForOfferCode: Bool = false
       /// LocationPicker sheet
       @Presents public var locationPicker: LocationPicker.Feature.State?
       /// State를 위한 기본 initializer
@@ -501,6 +503,7 @@ extension ProPlan {
 
           case .offerCodeTapped:
             state.showOfferCodeRedemption = true
+            state.isWaitingForOfferCode = true
             return .none
 
           case .setOfferCodePresented(let isPresented):
@@ -603,6 +606,22 @@ extension ProPlan {
           case .statusUpdated(let status):
             let previousStatus = state.subscriptionStatus
             state.subscriptionStatus = status
+
+            // Offer Code로 Pro 전환 감지 → 축하 + 온보딩 진입
+            if state.isWaitingForOfferCode, !previousStatus.isPro, status.isPro {
+              state.isWaitingForOfferCode = false
+              state.showCelebration = true
+              state.showProOnboarding = true
+              state.isSettingUpDefaults = true
+              return .concatenate(
+                .run { _ in
+                  await hapticFeedback.success()
+                },
+                prepareProOnboarding(),
+                .send(.delegate(.subscriptionStatusChanged(status)))
+              )
+            }
+
             if previousStatus != status {
               return .send(.delegate(.subscriptionStatusChanged(status)))
             }
