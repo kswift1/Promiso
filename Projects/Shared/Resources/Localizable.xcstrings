@@ -20784,6 +20784,17 @@
         }
       }
     },
+    "schedule.guide.toastMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 → 가이드에서 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
     "schedule.join" : {
       "comment" : "일정 참가",
       "extractionState" : "manual",

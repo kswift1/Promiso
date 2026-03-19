@@ -163,6 +163,7 @@ public enum LocalizedStrings {
     public static var guidePersonalTitle: String { String(localized: "schedule.guide.personal.title", bundle: bundle) }
     public static var guidePersonalSubtitle: String { String(localized: "schedule.guide.personal.subtitle", bundle: bundle) }
     public static var guideTooltip: String { String(localized: "schedule.guide.tooltip", bundle: bundle) }
+    public static var guideToastMessage: String { String(localized: "schedule.guide.toastMessage", bundle: bundle) }
   }
 
   // MARK: - Groups

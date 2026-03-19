@@ -203,7 +203,7 @@ extension GroupMain {
 
         // 필터 세그먼트
         filterSegment
-          .padding(.top, 8)
+          .padding(.top, 12)
 
         // 일정 리스트 (스와이프 지원)
         if isLoadingState {
@@ -286,8 +286,6 @@ extension GroupMain {
       ScheduleTabHeader(
         selectedMode: .group,
         defaultMode: defaultMode,
-        isShowingGuideTooltip: store.isShowingGuideTooltip,
-        onGuideTapped: { store.send(.view(.showGuide)) },
         onSettingsTapped: {
           store.send(.view(.groupOverviewTapped))
         }
@@ -369,7 +367,11 @@ extension GroupMain {
       CategoryFilterBar(
         selection: Binding(
           get: { store.selectedFilter },
-          set: { store.send(.view(.filterChanged($0))) }
+          set: { newFilter in
+            withAnimation(.snappy) {
+              _ = store.send(.view(.filterChanged(newFilter)))
+            }
+          }
         ),
         counts: store.filterCounts
       )
@@ -649,7 +651,7 @@ extension GroupMain {
         VStack(spacing: 0) {
           // 필터 (비활성 상태로 유지)
           filterSegment
-            .padding(.vertical, 8)
+            .padding(.vertical, 12)
             .disabled(true)
             .opacity(0.5)
 

@@ -145,7 +145,6 @@ extension GroupMain {
       var conflictDetectionThreshold: Int = 0
 
       var isShowingGuide: Bool = false
-      var isShowingGuideTooltip: Bool = false
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -274,7 +273,6 @@ extension GroupMain {
         case conflictSettingsLoaded(Int)
         case fetchWeather([ScheduleModel])
         case weatherBatchResponse([String: WeatherInfo])
-        case showGuideTooltip
       }
     }
 
@@ -648,12 +646,15 @@ extension GroupMain {
           case .dismissGuide:
             state.isShowingGuide = false
             let isFirstTime = !userDefaultsClient.hasSeenScheduleGuide
-            return .run { send in
+            if isFirstTime {
+              state.toastMessage = ToastMessage(
+                type: .info,
+                title: LocalizedStrings.Schedule.guideToastMessage,
+                position: .top
+              )
+            }
+            return .run { _ in
               userDefaultsClient.markScheduleGuideSeen()
-              if isFirstTime {
-                try await Task.sleep(for: .milliseconds(500))
-                await send(.internal(.showGuideTooltip), animation: .easeInOut)
-              }
             }
 
           case .toastDismissed:
@@ -1359,18 +1360,6 @@ extension GroupMain {
             }
             return .none
 
-          case .showGuideTooltip:
-            if state.isShowingGuideTooltip {
-              // 5초 후 두 번째 호출: 숨기기
-              state.isShowingGuideTooltip = false
-              return .none
-            }
-            // 첫 호출: 표시 + 5초 후 자동 숨기기
-            state.isShowingGuideTooltip = true
-            return .run { send in
-              try await Task.sleep(for: .seconds(5))
-              await send(.internal(.showGuideTooltip), animation: .easeOut)
-            }
 
           }
 

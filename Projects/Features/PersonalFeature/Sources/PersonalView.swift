@@ -8,7 +8,7 @@ import SwiftUI
 extension PersonalMode {
   public struct RootView: View {
     @Bindable private var store: StoreOf<PersonalMode.Feature>
-    @State private var isRecurringSummaryExpanded = true
+    @State private var isRecurringSummaryExpanded = false
 
     public init(store: StoreOf<PersonalMode.Feature>) {
       self.store = store
@@ -261,22 +261,8 @@ extension PersonalMode {
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 8)
-    }
-
-    @ViewBuilder
-    private func recurringEventsSummarySection(_ recurringEvents: [RecurringPersonalEventModel]) -> some View {
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 10) {
-          ForEach(recurringEvents) { event in
-            RecurringEventChip(event: event) {
-              store.send(.view(.recurringEventTapped(event)))
-            }
-          }
-        }
-        .padding(.horizontal, 16)
-      }
+      .padding(.horizontal, 0)
+      .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -288,14 +274,18 @@ extension PersonalMode {
            !recurringEvents.isEmpty {
           Section {
             if isRecurringSummaryExpanded {
-              recurringEventsSummarySection(recurringEvents)
+              ForEach(recurringEvents) { event in
+                RecurringEventCard(event: event) {
+                  store.send(.view(.recurringEventTapped(event)))
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+              }
             }
           } header: {
             recurringEventsSummaryHeader(count: recurringEvents.count)
           }
-          .listRowSeparator(.hidden)
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         }
 
         ForEach(store.groupedEvents, id: \.day) { section in
@@ -414,41 +404,79 @@ extension PersonalMode {
   }
 }
 
-// MARK: - Recurring Event Chip
+// MARK: - Recurring Event Card
 
-private struct RecurringEventChip: View {
+private struct RecurringEventCard: View {
   let event: RecurringPersonalEventModel
   let onTap: () -> Void
 
   var body: some View {
     Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .top, spacing: 12) {
         Text(event.displayEmoji)
-          .font(.system(size: 24))
+          .font(.system(size: 44))
 
-        Text(event.title)
-          .font(.system(size: 14, weight: .bold))
-          .foregroundStyle(.primary)
-          .lineLimit(1)
+        VStack(alignment: .leading, spacing: 10) {
+          HStack(alignment: .top) {
+            Text(event.title)
+              .font(.system(size: 19, weight: .bold))
+              .foregroundStyle(.primary)
 
-        VStack(alignment: .leading, spacing: 2) {
-          Text(event.recurrence.displayText)
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+            Spacer()
 
-          Text(event.timeText + (event.endTimeText.map { " ~ \($0)" } ?? ""))
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+            // 반복 규칙 배지
+            HStack(spacing: 4) {
+              Image(systemName: "repeat")
+                .font(.system(size: 12, weight: .semibold))
+              Text(event.recurrence.displayText)
+                .font(.system(size: 12, weight: .semibold))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.teal.opacity(0.1))
+            .foregroundStyle(.teal)
+            .clipShape(Capsule())
+          }
+
+          VStack(alignment: .leading, spacing: 6) {
+            // 시간
+            HStack(spacing: 4) {
+              Text("⏰")
+                .font(.system(size: 14))
+              Text(event.timeText + (event.endTimeText.map { " ~ \($0)" } ?? ""))
+                .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(.primary)
+
+            // 장소
+            if let location = event.location {
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
+                Text(location.name)
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundStyle(.primary)
+            }
+
+            // 알림
+            if event.reminderMinutesBefore != nil {
+              HStack(spacing: 4) {
+                Image(systemName: "bell.fill")
+                  .font(.system(size: 12))
+                Text(LocalizedStrings.Personal.reminderConfigured)
+                  .font(.system(size: 13, weight: .medium))
+              }
+              .foregroundStyle(.secondary)
+            }
+          }
         }
       }
-      .padding(12)
-      .frame(minWidth: 100, alignment: .leading)
+      .padding(16)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    .adaptiveGlassCard()
   }
 }
 
