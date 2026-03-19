@@ -21,7 +21,7 @@ extension Guide {
         .padding(.horizontal, 16)
         .padding(.top, 16)
       }
-      .navigationTitle("설명서")
+      .navigationTitle("가이드")
       .navigationBarTitleDisplayMode(.large)
       .auroraBackground()
       .fullScreenCover(
