@@ -71,9 +71,9 @@ extension AppEntry.CalendarImport {
         VStack(spacing: 0) {
           LinearGradient(
             colors: [
-              Color(.systemBackground).opacity(0),
-              Color(.systemBackground).opacity(0.6),
-              Color(.systemBackground).opacity(0.95)
+              Color.pmsurface.glass.opacity(0),
+              Color.pmsurface.glass.opacity(0.6),
+              Color.pmsurface.glass.opacity(0.95)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -98,7 +98,7 @@ extension AppEntry.CalendarImport {
           }
           .padding(.horizontal, 24)
           .padding(.vertical, 16)
-          .background(Color(.systemBackground).opacity(0.95))
+          .background(Color.pmsurface.glass.opacity(0.95))
         }
       }
     }
@@ -414,10 +414,6 @@ private struct CalendarGroupRow: SwiftUI.View {
 
   private var allSelected: Bool {
     groupEventIds.isSubset(of: selectedEventIds)
-  }
-
-  private var someSelected: Bool {
-    !groupEventIds.isDisjoint(with: selectedEventIds)
   }
 
   var body: some SwiftUI.View {

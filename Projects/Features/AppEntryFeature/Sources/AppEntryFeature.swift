@@ -366,7 +366,7 @@ extension AppEntry {
             // 캘린더 임포트 결과 → Home으로 전달 (결과는 CalendarImport 화면에서 표시됨)
             if isSignup {
               effects.append(.send(.destination(.presented(
-                .main(.showCalendarImportResult(nil))
+                .main(.showCalendarImportResult)
               ))))
             }
 
@@ -391,17 +391,14 @@ extension AppEntry {
             return .send(.internal(.fcmTokenReceived(token)))
 
           case .personalEventsCheckCompleted(let hasEvents):
+            guard let userModel = state.pendingUserForMain else { return .none }
             if hasEvents {
-              if let userModel = state.pendingUserForMain {
-                state.pendingUserForMain = nil
-                return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-              }
+              state.pendingUserForMain = nil
+              return .send(.internal(.transitionToMain(userModel, isSignup: true)))
             } else {
-              if let userModel = state.pendingUserForMain {
-                state.destination = .calendarImport(
-                  AppEntry.CalendarImport.State(nickname: userModel.nickname)
-                )
-              }
+              state.destination = .calendarImport(
+                AppEntry.CalendarImport.State(nickname: userModel.nickname)
+              )
             }
             return .none
           }

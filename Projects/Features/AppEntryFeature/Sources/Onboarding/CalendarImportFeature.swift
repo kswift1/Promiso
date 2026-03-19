@@ -150,10 +150,6 @@ extension AppEntry {
             state.importProgress = 0
 
             return .run { send in
-              let calendar = Calendar.current
-              let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-              let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek) ?? Date()
-
               let batchSize = 10
               var successCount = 0
 
@@ -184,8 +180,7 @@ extension AppEntry {
                 await send(.internal(.uploadProgressUpdated(successCount)))
               }
 
-              let thisWeekCount = selectedEvents.filter { $0.startDate >= startOfWeek && $0.startDate < endOfWeek }.count
-              let result = CalendarImportResult(totalImported: successCount, thisWeekCount: thisWeekCount)
+              let result = CalendarImportResult(totalImported: successCount, thisWeekCount: 0)
               await send(.internal(.importCompleted(result)))
             }
 
@@ -257,7 +252,7 @@ extension AppEntry {
     private static func toPersonalEventModel(_ event: CalendarEvent) -> PersonalEventModel {
       let title = String(event.displayTitle.prefix(30))
       return PersonalEventModel(
-        id: UUID().uuidString,
+        id: event.id,
         title: title.isEmpty ? "일정" : title,
         emoji: event.displayEmoji,
         description: nil,
@@ -284,7 +279,13 @@ public struct CalendarGroup: Equatable, Identifiable, Sendable {
 
   public static func groupBy(_ events: [CalendarEvent]) -> [CalendarGroup] {
     Dictionary(grouping: events, by: \.calendarName)
-      .map { CalendarGroup(calendarName: $0.key, calendarColorHex: $0.value.first?.calendarColorHex ?? "#808080", events: $0.value.sorted { $0.startDate < $1.startDate }) }
+      .map { key, value in
+        CalendarGroup(
+          calendarName: key,
+          calendarColorHex: value.first?.calendarColorHex ?? "#808080",
+          events: value.sorted { $0.startDate < $1.startDate }
+        )
+      }
       .sorted { $0.eventCount > $1.eventCount }
   }
 }
