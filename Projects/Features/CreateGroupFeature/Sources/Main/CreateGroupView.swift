@@ -258,7 +258,7 @@ private struct GroupNameSection: View {
       TextField(LocalizedStrings.CreateGroup.groupNamePlaceholder, text: $groupName)
         .textFieldStyle(.plain)
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(8)
         .onChange(of: groupName) { _, newValue in
           if newValue.count > maxLength {
@@ -308,7 +308,7 @@ private struct GroupDescriptionSection: View {
         .lineLimit(2, reservesSpace: true)
         .textFieldStyle(.plain)
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(8)
         .onChange(of: groupDescription) { _, newValue in
           if newValue.count > maxLength {
@@ -338,7 +338,7 @@ private struct MaxMembersSection: View {
         }
       }
       .pickerStyle(.menu)
-      .tint(.blue)
+      .tint(Color.pmindigo.n500)
     }
   }
 }

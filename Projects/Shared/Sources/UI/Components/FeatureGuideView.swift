@@ -272,9 +272,12 @@ public struct FeatureGuideView: View {
       // Continue button
       if #available(iOS 26, *) {
         Button {
-          if isLast { onComplete() }
-          withAnimation(animation) {
-            currentIndex = min(currentIndex + 1, items.count - 1)
+          if isLast {
+            onComplete()
+          } else {
+            withAnimation(animation) {
+              currentIndex = min(currentIndex + 1, items.count - 1)
+            }
           }
         } label: {
           Text(isLast ? LocalizedStrings.Common.done : LocalizedStrings.Common.next)
@@ -287,9 +290,12 @@ public struct FeatureGuideView: View {
         .buttonSizing(.flexible)
       } else {
         Button {
-          if isLast { onComplete() }
-          withAnimation(animation) {
-            currentIndex = min(currentIndex + 1, items.count - 1)
+          if isLast {
+            onComplete()
+          } else {
+            withAnimation(animation) {
+              currentIndex = min(currentIndex + 1, items.count - 1)
+            }
           }
         } label: {
           Text(isLast ? LocalizedStrings.Common.done : LocalizedStrings.Common.next)
@@ -357,8 +363,94 @@ public struct FeatureGuideView: View {
     return actualCornerRadius * ratio
   }
 
-  var animation: Animation {
+  private var animation: Animation {
     .interpolatingSpring(duration: 0.65, bounce: 0, initialVelocity: 0)
+  }
+}
+
+// MARK: - Guide Items
+
+extension FeatureGuideView {
+  /// 일정 탭 온보딩 가이드 아이템 (GroupMainView, GuideListView 공유)
+  public static var scheduleGuideItems: [Item] {
+    [
+      .init(
+        id: 0,
+        title: LocalizedStrings.Schedule.guideModeSwitchTitle,
+        subtitle: LocalizedStrings.Schedule.guideModeSwitchSubtitle,
+        screenshot: ResourceKitAsset.guideScheduleModeSwitch.swiftUIImage,
+        zoomScale: 1.5,
+        zoomAnchor: .top
+      ),
+      .init(
+        id: 1,
+        title: LocalizedStrings.Schedule.guideGroupListTitle,
+        subtitle: LocalizedStrings.Schedule.guideGroupListSubtitle,
+        screenshot: ResourceKitAsset.guideScheduleGroupList.swiftUIImage
+      ),
+      .init(
+        id: 2,
+        title: LocalizedStrings.Schedule.guideSwipeResponseTitle,
+        subtitle: LocalizedStrings.Schedule.guideSwipeResponseSubtitle,
+        screenshot: ResourceKitAsset.guideScheduleSwipeResponse.swiftUIImage,
+        zoomScale: 1.3,
+        zoomAnchor: .center
+      ),
+      .init(
+        id: 3,
+        title: LocalizedStrings.Schedule.guidePersonalTitle,
+        subtitle: LocalizedStrings.Schedule.guidePersonalSubtitle,
+        screenshot: ResourceKitAsset.guideSchedulePersonal.swiftUIImage
+      ),
+    ]
+  }
+
+  /// 캘린더 탭 온보딩 가이드 아이템 (CalendarRootView, GuideListView 공유)
+  public static var calendarGuideItems: [Item] {
+    [
+      .init(
+        id: 0,
+        title: LocalizedStrings.Calendar.guideModeSwitchTitle,
+        subtitle: LocalizedStrings.Calendar.guideModeSwitchSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarModeSwitch.swiftUIImage,
+        zoomScale: 1.5,
+        zoomAnchor: .top
+      ),
+      .init(
+        id: 1,
+        title: LocalizedStrings.Calendar.guideWeekTimelineTitle,
+        subtitle: LocalizedStrings.Calendar.guideWeekTimelineSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarWeekTimeline.swiftUIImage
+      ),
+      .init(
+        id: 2,
+        title: LocalizedStrings.Calendar.guideWeekCreateTitle,
+        subtitle: LocalizedStrings.Calendar.guideWeekCreateSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarWeekCreate.swiftUIImage,
+        zoomScale: 1.3,
+        zoomAnchor: .center
+      ),
+      .init(
+        id: 3,
+        title: LocalizedStrings.Calendar.guideMonthListTitle,
+        subtitle: LocalizedStrings.Calendar.guideMonthListSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarMonthList.swiftUIImage
+      ),
+      .init(
+        id: 4,
+        title: LocalizedStrings.Calendar.guideMonthExpandedTitle,
+        subtitle: LocalizedStrings.Calendar.guideMonthExpandedSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarMonthExpanded.swiftUIImage
+      ),
+      .init(
+        id: 5,
+        title: LocalizedStrings.Calendar.guideFilterTitle,
+        subtitle: LocalizedStrings.Calendar.guideFilterSubtitle,
+        screenshot: ResourceKitAsset.guideCalendarFilter.swiftUIImage,
+        zoomScale: 1.2,
+        zoomAnchor: .bottom
+      ),
+    ]
   }
 }
 

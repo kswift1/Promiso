@@ -12,6 +12,7 @@ extension GroupMain {
     case needResponseShake
     case conflictCheck
     case weatherFetch
+    case showGuide
   }
 
   /// ShakeEffect 타이밍 상수
@@ -295,6 +296,7 @@ extension GroupMain {
                     try await Task.sleep(for: .seconds(1))
                     await send(.view(.showGuide))
                   }
+                  .cancellable(id: CancelID.showGuide, cancelInFlight: true)
                 : .none
             )
 

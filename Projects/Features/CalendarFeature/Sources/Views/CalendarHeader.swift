@@ -28,13 +28,13 @@ struct CalendarHeader: View {
         Button(action: onMovePrevious) {
           Image(systemName: "chevron.left")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(width: 28, height: 36)
         }
 
         Text(title)
           .font(.system(size: 18, weight: .bold).monospacedDigit())
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
           .fixedSize(horizontal: true, vertical: false)
           .contentTransition(.numericText())
           .animation(.spring(duration: 0.3), value: title)
@@ -42,7 +42,7 @@ struct CalendarHeader: View {
         Button(action: onMoveNext) {
           Image(systemName: "chevron.right")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(width: 28, height: 36)
         }
       }
@@ -67,7 +67,7 @@ struct CalendarHeader: View {
       Button(action: onGuideTapped) {
         Image(systemName: "questionmark.circle")
           .font(.system(size: 18))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
           .frame(width: 32, height: 36)
       }
       .overlay(alignment: .bottom) {
@@ -100,7 +100,7 @@ struct CalendarHeader: View {
       } label: {
         Image(systemName: displayMode.iconName)
           .font(.system(size: 18))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
           .frame(width: 32, height: 36)
           .contentShape(Rectangle())
       } primaryAction: {

@@ -87,36 +87,7 @@ extension Guide {
     @ViewBuilder
     private var scheduleGuideView: some View {
       FeatureGuideView(
-        items: [
-          .init(
-            id: 0,
-            title: LocalizedStrings.Schedule.guideModeSwitchTitle,
-            subtitle: LocalizedStrings.Schedule.guideModeSwitchSubtitle,
-            screenshot: ResourceKitAsset.guideScheduleModeSwitch.swiftUIImage,
-            zoomScale: 1.5,
-            zoomAnchor: .top
-          ),
-          .init(
-            id: 1,
-            title: LocalizedStrings.Schedule.guideGroupListTitle,
-            subtitle: LocalizedStrings.Schedule.guideGroupListSubtitle,
-            screenshot: ResourceKitAsset.guideScheduleGroupList.swiftUIImage
-          ),
-          .init(
-            id: 2,
-            title: LocalizedStrings.Schedule.guideSwipeResponseTitle,
-            subtitle: LocalizedStrings.Schedule.guideSwipeResponseSubtitle,
-            screenshot: ResourceKitAsset.guideScheduleSwipeResponse.swiftUIImage,
-            zoomScale: 1.3,
-            zoomAnchor: .center
-          ),
-          .init(
-            id: 3,
-            title: LocalizedStrings.Schedule.guidePersonalTitle,
-            subtitle: LocalizedStrings.Schedule.guidePersonalSubtitle,
-            screenshot: ResourceKitAsset.guideSchedulePersonal.swiftUIImage
-          ),
-        ],
+        items: FeatureGuideView.scheduleGuideItems,
         onComplete: {
           store.send(.view(.dismissGuide))
         }
@@ -126,50 +97,7 @@ extension Guide {
     @ViewBuilder
     private var calendarGuideView: some View {
       FeatureGuideView(
-        items: [
-          .init(
-            id: 0,
-            title: LocalizedStrings.Calendar.guideModeSwitchTitle,
-            subtitle: LocalizedStrings.Calendar.guideModeSwitchSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarModeSwitch.swiftUIImage,
-            zoomScale: 1.5,
-            zoomAnchor: .top
-          ),
-          .init(
-            id: 1,
-            title: LocalizedStrings.Calendar.guideWeekTimelineTitle,
-            subtitle: LocalizedStrings.Calendar.guideWeekTimelineSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarWeekTimeline.swiftUIImage
-          ),
-          .init(
-            id: 2,
-            title: LocalizedStrings.Calendar.guideWeekCreateTitle,
-            subtitle: LocalizedStrings.Calendar.guideWeekCreateSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarWeekCreate.swiftUIImage,
-            zoomScale: 1.3,
-            zoomAnchor: .center
-          ),
-          .init(
-            id: 3,
-            title: LocalizedStrings.Calendar.guideMonthListTitle,
-            subtitle: LocalizedStrings.Calendar.guideMonthListSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarMonthList.swiftUIImage
-          ),
-          .init(
-            id: 4,
-            title: LocalizedStrings.Calendar.guideMonthExpandedTitle,
-            subtitle: LocalizedStrings.Calendar.guideMonthExpandedSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarMonthExpanded.swiftUIImage
-          ),
-          .init(
-            id: 5,
-            title: LocalizedStrings.Calendar.guideFilterTitle,
-            subtitle: LocalizedStrings.Calendar.guideFilterSubtitle,
-            screenshot: ResourceKitAsset.guideCalendarFilter.swiftUIImage,
-            zoomScale: 1.2,
-            zoomAnchor: .bottom
-          ),
-        ],
+        items: FeatureGuideView.calendarGuideItems,
         onComplete: {
           store.send(.view(.dismissGuide))
         }
