@@ -16,11 +16,6 @@ extension PersonalMode {
 
     public var body: some View {
       VStack(spacing: 0) {
-        // 헤더
-        headerSection
-          .padding(.horizontal, 16)
-          .padding(.top, 8)
-
         // 필터
         filterSegment
           .padding(.top, 12)
@@ -66,24 +61,6 @@ extension PersonalMode {
         item: $store.scope(state: \.recurringEventDetail, action: \.recurringEventDetail)
       ) { detailStore in
         RecurringPersonalEventDetail.RootView(store: detailStore)
-      }
-    }
-
-    // MARK: - Header
-
-    private var defaultMode: ScheduleMode {
-      store.defaultScheduleTabMode == "own" ? .personal : .group
-    }
-
-    @ViewBuilder
-    private var headerSection: some View {
-      ScheduleTabHeader(
-        selectedMode: .personal,
-        defaultMode: defaultMode
-      ) { mode in
-        if mode == .group {
-          store.send(.view(.switchToGroupMode))
-        }
       }
     }
 

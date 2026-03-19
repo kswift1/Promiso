@@ -20688,6 +20688,12 @@
     "schedule.guide.groupList.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a group at the top and use filters to sort events by what you need to do"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20699,6 +20705,12 @@
     "schedule.guide.groupList.title" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View events by group"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20710,10 +20722,16 @@
     "schedule.guide.modeSwitch.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch between group and personal events\nby re-tapping the tab bar or the top segment\nYou can set the default mode in Settings → Tab Settings"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 일정과 개인 일정, 탭바를 다시 탭하거나 상단 세그먼트를 눌러 전환할 수 있어요 (설정-탭설정에서 디폴트 모드를 변경할 수 있어요)"
+            "value" : "그룹 일정과 개인 일정, 탭바를 다시 탭하거나\n상단 세그먼트를 눌러 전환할 수 있어요\n설정 → 탭설정에서 기본 모드를 변경할 수 있어요"
           }
         }
       }
@@ -20721,6 +20739,12 @@
     "schedule.guide.modeSwitch.title" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage events in two modes"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20732,6 +20756,12 @@
     "schedule.guide.personal.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add personal and recurring events, and filter by All · Today · Upcoming"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20743,6 +20773,12 @@
     "schedule.guide.personal.title" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage your own events"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20754,6 +20790,12 @@
     "schedule.guide.swipeResponse.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe right to accept, left to decline. You can also long-press"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20765,6 +20807,12 @@
     "schedule.guide.swipeResponse.title" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe to respond instantly"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20776,6 +20824,12 @@
     "schedule.guide.tooltip" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can revisit this anytime"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20787,6 +20841,12 @@
     "schedule.guide.toastMessage" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can revisit this in Settings → Guide"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",

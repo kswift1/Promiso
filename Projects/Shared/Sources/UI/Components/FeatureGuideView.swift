@@ -164,7 +164,7 @@ public struct FeatureGuideView: View {
 
               Text(item.subtitle)
                 .font(.callout)
-                .lineLimit(2)
+                .lineLimit(4)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.8))
             }
