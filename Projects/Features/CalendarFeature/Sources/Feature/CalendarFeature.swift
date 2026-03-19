@@ -1116,15 +1116,19 @@ extension CalendarFeature {
         if state.selectedGroupIds.isEmpty {
           state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         }
-        // 최초 진입 시 가이드 표시
-        if !userDefaultsClient.hasSeenCalendarGuide {
-          state.isShowingGuide = true
-        }
+        // 최초 진입 시 가이드 표시 (1초 딜레이)
+        let shouldShowGuide = !userDefaultsClient.hasSeenCalendarGuide
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData)),
           .send(.internal(.fetchSettings)),
-          .send(.internal(.fetchRecurringEvents))
+          .send(.internal(.fetchRecurringEvents)),
+          shouldShowGuide
+            ? .run { send in
+                try await Task.sleep(for: .seconds(1))
+                await send(.view(.showGuide))
+              }
+            : .none
         )
 
       case .toggleDisplayMode:
