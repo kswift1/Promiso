@@ -35,6 +35,7 @@ extension Home {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.eventKitClient) var eventKitClient
     public init() {}
 
     // MARK: - CancelID
@@ -178,6 +179,10 @@ extension Home {
       var departureOrigin: HomeModels.DepartureOrigin = .currentLocation
       /// 현재 위치 좌표 (출발지 변경 시 재사용)
       var currentLocationCoordinate: Coordinate? = nil
+
+      // MARK: - Calendar Import
+      /// 캘린더 임포트 배너 (스킵/거부 유저)
+      public var showCalendarImportBanner: Bool = false
 
       // MARK: Navigation
       /// 네비게이션 경로 (일정 상세)
@@ -326,6 +331,10 @@ extension Home {
         case emptyCreateRecurringEventTapped
         /// 반복 일정 요약 항목 탭 (상세 화면)
         case recurringSummaryTapped(HomeModels.RecurringEventSummary)
+        /// 캘린더 임포트 배너 탭
+        case calendarImportBannerTapped
+        /// 캘린더 임포트 배너 닫기
+        case calendarImportBannerDismissed
       }
 
       @CasePathable
@@ -1112,6 +1121,15 @@ extension Home {
                 recurringEvent: recurring
               )))
             }
+            return .none
+
+          case .calendarImportBannerTapped:
+            return .run { _ in
+              await eventKitClient.openSettings()
+            }
+
+          case .calendarImportBannerDismissed:
+            state.showCalendarImportBanner = false
             return .none
 
           }

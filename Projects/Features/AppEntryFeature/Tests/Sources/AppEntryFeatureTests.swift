@@ -532,10 +532,10 @@ struct AppEntryFeatureTests {
     }
   }
 
-  // MARK: - Profile + OnboardingStart 플로우
+  // MARK: - Profile + CalendarImport 플로우
 
-  @Test("profile.completed + isFullOnboarding=true → onboardingStart 표시")
-  func profileCompleted_fullOnboarding_showsOnboardingStart() async {
+  @Test("profile.completed + isFullOnboarding=true → 서버 체크 후 calendarImport 표시")
+  func profileCompleted_fullOnboarding_checksServerThenShowsCalendarImport() async {
     let user = makeUser(id: "full-onboarding-user", nickname: "풀온보딩")
     var state = AppEntry.Feature.State()
     state.destination = .profile(AppEntry.ProfileSetup.State())
@@ -545,20 +545,25 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
       $0.pendingUserForMain = user
-      $0.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "풀온보딩"))
+    }
+    await store.receive(\.internal.personalEventsCheckCompleted) {
+      $0.destination = .calendarImport(AppEntry.CalendarImport.State(nickname: "풀온보딩"))
     }
   }
 
-  @Test("onboardingStart.delegate.completed → pendingUser로 메인 전환")
-  func onboardingStartCompleted_transitionsToMain() async {
+  @Test("calendarImport.delegate.completed → pendingUser로 메인 전환")
+  func calendarImportCompleted_transitionsToMain() async {
     let user = makeUser(id: "start-completed", nickname: "시작완료")
+    let result = CalendarImportResult(totalImported: 5, thisWeekCount: 2)
     var state = AppEntry.Feature.State()
     state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "시작완료"))
+    state.destination = .calendarImport(AppEntry.CalendarImport.State(nickname: "시작완료"))
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -570,7 +575,7 @@ struct AppEntryFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.destination(.presented(.onboardingStart(.delegate(.completed))))) {
+    await store.send(.destination(.presented(.calendarImport(.delegate(.completed))))) {
       $0.pendingUserForMain = nil
     }
     await store.receive(\.internal.transitionToMain)

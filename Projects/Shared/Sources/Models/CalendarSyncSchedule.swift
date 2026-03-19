@@ -133,3 +133,16 @@ public enum PromisoCalendarTag {
     return components.url
   }
 }
+
+// MARK: - Multi-Environment URL Check
+
+extension PromisoCalendarTag {
+  /// 모든 환경의 Promiso URL인지 확인 (dev/stage/prod)
+  /// fetchEvents에서 모든 환경의 싱크 이벤트를 제외하기 위해 사용
+  private static let allSchemes: Set<String> = ["promiso", "promiso-dev", "promiso-stage"]
+
+  public static func isAnyPromisoURL(_ url: URL?) -> Bool {
+    guard let scheme = url?.scheme?.lowercased() else { return false }
+    return allSchemes.contains(scheme)
+  }
+}
