@@ -9073,13 +9073,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As the time approaches, live location sharing begins. Check on the Lock Screen and Dynamic Island too. (iPhone 14 Pro and later)"
+            "value" : "As the time approaches, live location sharing begins. Check on the Lock Screen and Dynamic Island (iPhone 14 Pro and later) too."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "약속이 다가오면 실시간 위치 공유가 시작돼요. 잠금 화면과 다이나믹 아일랜드에서도 확인할 수 있어요 (iPhone 14 Pro 이상)"
+            "value" : "약속이 다가오면 실시간 위치 공유가 시작돼요. 잠금 화면과 다이나믹 아일랜드(iPhone 14 Pro 이상)에서도 확인할 수 있어요"
           }
         }
       }
@@ -9145,13 +9145,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check departure times by transit type and the weather forecast, and set departure alerts."
+            "value" : "Check departure times by transit type and the weather forecast, and set departure alerts. Available with Promiso Pro."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "교통수단별 출발 시간과 날씨를 미리 확인하고, 출발 알림까지 설정할 수 있어요"
+            "value" : "교통수단별 출발 시간과 날씨를 미리 확인하고, 출발 알림까지 설정할 수 있어요. Promiso Pro에서 사용할 수 있어요"
           }
         }
       }
@@ -17543,6 +17543,12 @@
     "personal.recurringEvents.summaryTitle" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recurring Events"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20887,13 +20893,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Switch between group and personal events\nby re-tapping the tab bar or the top segment\nYou can set the default mode in Settings → Tab Settings"
+            "value" : "Switch between group and personal mode.\nRe-tap the tab at the bottom or switch at the top.\nYou can set the default mode in Settings → Tab Settings."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 일정과 개인 일정, 탭바를 다시 탭하거나\n상단 세그먼트를 눌러 전환할 수 있어요\n설정 → 탭설정에서 기본 모드를 변경할 수 있어요"
+            "value" : "그룹과 개인, 두 가지 모드를 전환할 수 있어요.\n하단 탭을 다시 탭하거나 상단에서 전환해보세요.\n설정 → 탭 설정에서 기본 모드를 변경할 수 있어요."
           }
         }
       }
