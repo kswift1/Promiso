@@ -77,9 +77,50 @@ extension Guide {
       switch tab {
       case .calendar:
         calendarGuideView
+      case .schedule:
+        scheduleGuideView
       default:
         EmptyView()
       }
+    }
+
+    @ViewBuilder
+    private var scheduleGuideView: some View {
+      FeatureGuideView(
+        items: [
+          .init(
+            id: 0,
+            title: LocalizedStrings.Schedule.guideModeSwitchTitle,
+            subtitle: LocalizedStrings.Schedule.guideModeSwitchSubtitle,
+            screenshot: ResourceKitAsset.guideScheduleModeSwitch.swiftUIImage,
+            zoomScale: 1.5,
+            zoomAnchor: .top
+          ),
+          .init(
+            id: 1,
+            title: LocalizedStrings.Schedule.guideGroupListTitle,
+            subtitle: LocalizedStrings.Schedule.guideGroupListSubtitle,
+            screenshot: ResourceKitAsset.guideScheduleGroupList.swiftUIImage
+          ),
+          .init(
+            id: 2,
+            title: LocalizedStrings.Schedule.guideSwipeResponseTitle,
+            subtitle: LocalizedStrings.Schedule.guideSwipeResponseSubtitle,
+            screenshot: ResourceKitAsset.guideScheduleSwipeResponse.swiftUIImage,
+            zoomScale: 1.3,
+            zoomAnchor: .center
+          ),
+          .init(
+            id: 3,
+            title: LocalizedStrings.Schedule.guidePersonalTitle,
+            subtitle: LocalizedStrings.Schedule.guidePersonalSubtitle,
+            screenshot: ResourceKitAsset.guideSchedulePersonal.swiftUIImage
+          ),
+        ],
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
     }
 
     @ViewBuilder

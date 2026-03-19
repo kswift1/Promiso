@@ -20674,6 +20674,105 @@
         }
       }
     },
+    "schedule.guide.groupList.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "상단에서 그룹을 선택하고, 필터로 내가 할 일 중심으로 일정을 구분할 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.groupList.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹별로 일정을 모아봐요"
+          }
+        }
+      }
+    },
+    "schedule.guide.modeSwitch.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 일정과 개인 일정, 탭바를 다시 탭하거나 상단 세그먼트를 눌러 전환할 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.modeSwitch.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "두 가지 모드로 일정을 관리해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.personal.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개인 일정과 반복 일정을 등록하고, 필터로 오늘 · 예정 · 반복 일정을 나눠 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.personal.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나만의 일정도 따로 관리해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.swipeResponse.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 카드를 오른쪽으로 밀어 수락, 왼쪽으로 밀어 거절할 수 있어요. 꾹 눌러서도 가능해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.swipeResponse.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "밀어서, 바로 응답해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.tooltip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언제든 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
     "schedule.join" : {
       "comment" : "일정 참가",
       "extractionState" : "manual",
