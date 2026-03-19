@@ -46,6 +46,7 @@ extension Home {
       case overlayPersonalEventFetch(Date)
       case briefingFetch
       case transportationFetch
+      case showGuide
     }
 
     // MARK: - State
@@ -462,6 +463,7 @@ extension Home {
                     try await Task.sleep(for: .seconds(1))
                     await send(.view(.showGuide))
                   }
+                  .cancellable(id: CancelID.showGuide, cancelInFlight: true)
                 : .none
             )
 

@@ -405,6 +405,40 @@ extension FeatureGuideView {
     ]
   }
 
+  /// 홈 탭 온보딩 가이드 아이템 (HomeRootView, GuideListView 공유)
+  public static var homeGuideItems: [Item] {
+    [
+      .init(
+        id: 0,
+        title: LocalizedStrings.Home.guideOverviewTitle,
+        subtitle: LocalizedStrings.Home.guideOverviewSubtitle,
+        screenshot: ResourceKitAsset.guideHomeOverview.swiftUIImage
+      ),
+      .init(
+        id: 1,
+        title: LocalizedStrings.Home.guideCalendarOverlayTitle,
+        subtitle: LocalizedStrings.Home.guideCalendarOverlaySubtitle,
+        screenshot: ResourceKitAsset.guideHomeCalendarOverlay.swiftUIImage,
+        zoomScale: 1.3,
+        zoomAnchor: .top
+      ),
+      .init(
+        id: 2,
+        title: LocalizedStrings.Home.guideLiveActivityTitle,
+        subtitle: LocalizedStrings.Home.guideLiveActivitySubtitle,
+        screenshot: ResourceKitAsset.guideHomeLiveActivity.swiftUIImage
+      ),
+      .init(
+        id: 3,
+        title: LocalizedStrings.Home.guideProFeaturesTitle,
+        subtitle: LocalizedStrings.Home.guideProFeaturesSubtitle,
+        screenshot: ResourceKitAsset.guideHomeProFeatures.swiftUIImage,
+        zoomScale: 1.2,
+        zoomAnchor: .center
+      ),
+    ]
+  }
+
   /// 캘린더 탭 온보딩 가이드 아이템 (CalendarRootView, GuideListView 공유)
   public static var calendarGuideItems: [Item] {
     [
