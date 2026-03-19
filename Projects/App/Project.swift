@@ -22,7 +22,7 @@ let crashlyticsScript = TargetScript.post(
   GSP_PATH="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/GoogleService-Info.plist"
 
   # Execute the upload-symbols script with the correct path
-  "${SRCROOT}/../../Tuist/.build/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" -gsp "$GSP_PATH" -p ios
+  "${SRCROOT}/../../Tuist/.build/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" -gsp "$GSP_PATH" -p ios "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
   """,
   name: "Firebase Crashlytics",
   inputPaths: [
