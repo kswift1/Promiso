@@ -12,7 +12,11 @@ func infoPlistWithDisplayName(_ displayName: String, environment: String = "prod
 
 let crashlyticsScript = TargetScript.post(
   script: """
-  "${SRCROOT}/../../Tuist/.build/checkouts/firebase-ios-sdk/Crashlytics/run"
+  # Find the correct GoogleService-Info.plist in the built app bundle
+  GSP_PATH="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/GoogleService-Info.plist"
+
+  # Execute the upload-symbols script with the correct path
+  "${SRCROOT}/../../Tuist/.build/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" -gsp "$GSP_PATH" -p ios
   """,
   name: "Firebase Crashlytics",
   inputPaths: [
