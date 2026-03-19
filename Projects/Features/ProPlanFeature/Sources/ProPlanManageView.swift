@@ -87,7 +87,7 @@ extension ProPlan {
                 .font(.caption)
                 .foregroundStyle(Color.pmsuccess.n500)
 
-              Text("할인코드 적용")
+              Text(LocalizedStrings.ProPlan.offerCodeApplied)
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(Color.pmsuccess.n500)

@@ -439,7 +439,7 @@ export function ProPlanDashboardPage() {
                   <CardContent>
                     <Stack spacing={1}>
                       <Typography color="text.secondary" variant="body2">
-                        총 사용 횟수
+                        최근 사용 건수
                       </Typography>
                       <Typography variant="h4">
                         {dashboard.offerCodes.totalRedemptions}
