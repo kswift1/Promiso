@@ -18593,35 +18593,35 @@
       }
     },
     "proPlan.onboarding.complete.subtitle": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You can change these settings anytime"
+            "value": "Everything's configured. You can change these anytime,\nso go ahead and get started."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정은 언제든 변경할 수 있어요"
+            "value": "모든 설정이 끝났어요. 언제든 바꿀 수 있으니\n편하게 시작해보세요."
           }
         }
       }
     },
     "proPlan.onboarding.complete.title": {
-      "extractionState": "stale",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setup complete!"
+            "value": "All set!"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정이 완료되었어요!"
+            "value": "준비 완료!"
           }
         }
       }
@@ -18741,6 +18741,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "약속을 잡을 때 겹치는 일정이 있으면\n미리 알려드려요"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.conflict.subtitleNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll alert you when a new plan overlaps with an existing one.\nSet how close is too close."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 약속이 기존 일정과 겹칠 때 바로 알려드려요.\n얼마나 가까우면 알릴지 기준을 정해주세요."
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.conflict.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll catch overlapping plans for you"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹치는 약속, 미리 잡아드릴게요"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingSettings.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When and where for your briefing?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리핑, 언제 어디서 받을까요?"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingSettings.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll send you a daily morning briefing.\nPick a time and your usual starting point."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "매일 아침 약속 브리핑을 보내드려요.\n받고 싶은 시간과 자주 출발하는 위치를 알려주세요."
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingStyle.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What kind of briefing suits you?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어떤 브리핑이 좋으세요?"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingStyle.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your transport and tone,\nand your perfect briefing is ready."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동수단과 말투를 고르면\n나에게 딱 맞는 브리핑이 완성돼요."
           }
         }
       }
