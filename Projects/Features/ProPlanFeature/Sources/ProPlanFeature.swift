@@ -504,7 +504,7 @@ extension ProPlan {
           case .offerCodeTapped:
             state.showOfferCodeRedemption = true
             state.isWaitingForOfferCode = true
-            return .none
+            return .run { _ in await hapticFeedback.selection() }
 
           case .setOfferCodePresented(let isPresented):
             state.showOfferCodeRedemption = isPresented
