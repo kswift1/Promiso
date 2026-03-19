@@ -18099,6 +18099,22 @@
         }
       }
     },
+    "proPlan.manage.offerCodeApplied": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offer Code Applied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "할인코드 적용"
+          }
+        }
+      }
+    },
     "proPlan.manage.plan": {
       "extractionState": "stale",
       "localizations": {

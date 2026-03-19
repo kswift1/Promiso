@@ -1845,6 +1845,7 @@ public enum LocalizedStrings {
     public static var proFeatures: String { String(localized: "proPlan.manage.features", bundle: bundle) }
     public static var manageAppleSubscription: String { String(localized: "proPlan.manage.appleSubscription", bundle: bundle) }
     public static var manageHelpText: String { String(localized: "proPlan.manage.helpText", bundle: bundle) }
+    public static var offerCodeApplied: String { String(localized: "proPlan.manage.offerCodeApplied", bundle: bundle) }
     public static var statusActive: String { String(localized: "proPlan.manage.status.active", bundle: bundle) }
     public static var statusLifetime: String { String(localized: "proPlan.manage.status.lifetime", bundle: bundle) }
     public static var statusGracePeriod: String { String(localized: "proPlan.manage.status.gracePeriod", bundle: bundle) }
