@@ -1843,6 +1843,13 @@ public enum LocalizedStrings {
 
   // MARK: - ProPlan
   public enum ProPlan {
+    // Banner
+    public static var bannerSubtitle: String { String(localized: "proPlan.banner.subtitle", bundle: bundle) }
+    public static var bannerBenefitDepartureTime: String { String(localized: "proPlan.banner.benefit.departureTime", bundle: bundle) }
+    public static var bannerBenefitWeather: String { String(localized: "proPlan.banner.benefit.weather", bundle: bundle) }
+    public static var bannerBenefitConflict: String { String(localized: "proPlan.banner.benefit.conflict", bundle: bundle) }
+    public static var bannerBenefitDailySummary: String { String(localized: "proPlan.banner.benefit.dailySummary", bundle: bundle) }
+
     public static var manageTitle: String { String(localized: "proPlan.manage.title", bundle: bundle) }
     public static var manageAction: String { String(localized: "proPlan.manage.action", bundle: bundle) }
     public static var subscriptionInfo: String { String(localized: "proPlan.manage.subscriptionInfo", bundle: bundle) }

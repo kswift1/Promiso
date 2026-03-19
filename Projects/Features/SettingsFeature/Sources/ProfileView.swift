@@ -27,12 +27,14 @@ extension Settings {
 
     // MARK: - Pro Benefit Rotation
 
-    private let proBenefits: [(icon: String, text: String)] = [
-      ("🕐", "출발 시간 자동 계산"),
-      ("🌤️", "약속 날씨 미리 확인"),
-      ("⚠️", "겹치는 일정 미리 알림"),
-      ("📋", "오늘 일정 한 번에 정리")
-    ]
+    private var proBenefits: [(icon: String, text: String)] {
+      [
+        ("🕐", LocalizedStrings.ProPlan.bannerBenefitDepartureTime),
+        ("🌤️", LocalizedStrings.ProPlan.bannerBenefitWeather),
+        ("⚠️", LocalizedStrings.ProPlan.bannerBenefitConflict),
+        ("📋", LocalizedStrings.ProPlan.bannerBenefitDailySummary),
+      ]
+    }
 
     private func startBenefitRotation() {
       guard benefitTimer == nil else { return }
@@ -75,7 +77,7 @@ extension Settings {
                 // 1줄: ProBadge + 서브카피 + chevron
                 HStack(spacing: 8) {
                   ProBadge()
-                  Text("일정 그 이후를 챙겨드려요")
+                  Text(LocalizedStrings.ProPlan.bannerSubtitle)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                   Spacer()
