@@ -1968,7 +1968,9 @@ public enum LocalizedStrings {
       String(localized: "proPlan.error.restoreNoPurchaseHistory", bundle: bundle)
     }
     public static var restoreFailed: String { String(localized: "proPlan.error.restoreFailed", bundle: bundle) }
+    public static var onboardingConflictTitle: String { String(localized: "proPlan.onboarding.conflict.title", bundle: bundle) }
     public static var onboardingConflictSubtitle: String { String(localized: "proPlan.onboarding.conflict.subtitle", bundle: bundle) }
+    public static var onboardingConflictSubtitleNew: String { String(localized: "proPlan.onboarding.conflict.subtitleNew", bundle: bundle) }
     public static var onboardingConflictDetected: String { String(localized: "proPlan.onboarding.conflict.detected", bundle: bundle) }
     public static var onboardingConflictExistingTitle: String { String(localized: "proPlan.onboarding.conflict.existingTitle", bundle: bundle) }
     public static var onboardingConflictExistingTime: String { String(localized: "proPlan.onboarding.conflict.existingTime", bundle: bundle) }
@@ -1976,6 +1978,10 @@ public enum LocalizedStrings {
     public static var onboardingConflictNewTime: String { String(localized: "proPlan.onboarding.conflict.newTime", bundle: bundle) }
     public static var onboardingConflictOverlap: String { String(localized: "proPlan.onboarding.conflict.overlap", bundle: bundle) }
     public static var onboardingBriefingSubtitle: String { String(localized: "proPlan.onboarding.briefing.subtitle", bundle: bundle) }
+    public static var onboardingBriefingSettingsTitle: String { String(localized: "proPlan.onboarding.briefingSettings.title", bundle: bundle) }
+    public static var onboardingBriefingSettingsSubtitle: String { String(localized: "proPlan.onboarding.briefingSettings.subtitle", bundle: bundle) }
+    public static var onboardingBriefingStyleTitle: String { String(localized: "proPlan.onboarding.briefingStyle.title", bundle: bundle) }
+    public static var onboardingBriefingStyleSubtitle: String { String(localized: "proPlan.onboarding.briefingStyle.subtitle", bundle: bundle) }
     public static var onboardingAlertAndTransport: String { String(localized: "proPlan.onboarding.alertAndTransport", bundle: bundle) }
     public static var onboardingMultipleSelectHint: String { String(localized: "proPlan.onboarding.multipleSelectHint", bundle: bundle) }
     public static var onboardingTodayBriefing: String { String(localized: "proPlan.onboarding.todayBriefing", bundle: bundle) }
