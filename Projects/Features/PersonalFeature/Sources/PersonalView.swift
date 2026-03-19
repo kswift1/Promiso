@@ -262,7 +262,7 @@ extension PersonalMode {
       }
       .buttonStyle(.plain)
       .padding(.horizontal, 0)
-      .padding(.vertical, 4)
+      .padding(.vertical, isRecurringSummaryExpanded ? 4 : 0)
     }
 
     @ViewBuilder
@@ -286,6 +286,7 @@ extension PersonalMode {
           } header: {
             recurringEventsSummaryHeader(count: recurringEvents.count)
           }
+          .listSectionSpacing(isRecurringSummaryExpanded ? 16 : 4)
         }
 
         ForEach(store.groupedEvents, id: \.day) { section in
