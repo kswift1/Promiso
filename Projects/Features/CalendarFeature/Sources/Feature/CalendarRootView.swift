@@ -129,6 +129,71 @@ extension CalendarFeature {
         .onAppear {
           store.send(.view(.onAppear))
         }
+        .fullScreenCover(
+          isPresented: Binding(
+            get: { store.isShowingGuide },
+            set: { newValue in
+              if !newValue {
+                store.send(.view(.dismissGuide))
+              }
+            }
+          )
+        ) {
+          calendarGuideContent
+        }
+    }
+
+    @ViewBuilder
+    private var calendarGuideContent: some View {
+      FeatureGuideView(
+        items: [
+          .init(
+            id: 0,
+            title: "세 가지 시선으로 일정을 봐요",
+            subtitle: "주간 타임라인 · 월간 리스트 · 월간 전체, 헤더 아이콘을 탭하거나 길게 눌러 전환해요",
+            screenshot: ResourceKitAsset.guideCalendarModeSwitch.swiftUIImage,
+            zoomScale: 1.5,
+            zoomAnchor: .top
+          ),
+          .init(
+            id: 1,
+            title: "하루를 타임라인으로",
+            subtitle: "24시간 일정을 한눈에 확인하고, 줌인·줌아웃으로 시간대를 확대하거나 축소할 수 있어요",
+            screenshot: ResourceKitAsset.guideCalendarWeekTimeline.swiftUIImage
+          ),
+          .init(
+            id: 2,
+            title: "여기, 일정 하나 놓을게요",
+            subtitle: "빈 시간대를 더블 탭하거나 꾹 눌러 일정을 배치하고, 드래그로 시간 범위를 조정할 수 있어요",
+            screenshot: ResourceKitAsset.guideCalendarWeekCreate.swiftUIImage,
+            zoomScale: 1.3,
+            zoomAnchor: .center
+          ),
+          .init(
+            id: 3,
+            title: "한 달을 한눈에",
+            subtitle: "상단 달력과 하단 일정 리스트를 함께 볼 수 있어요. 날짜를 탭하면 해당 일정으로 스크롤돼요",
+            screenshot: ResourceKitAsset.guideCalendarMonthList.swiftUIImage
+          ),
+          .init(
+            id: 4,
+            title: "달력 안에서 모든 일정 확인",
+            subtitle: "일정을 한눈에 파악해요. 일정 바를 탭하면 상세로, 날짜를 탭하면 주간 뷰로 전환돼요",
+            screenshot: ResourceKitAsset.guideCalendarMonthExpanded.swiftUIImage
+          ),
+          .init(
+            id: 5,
+            title: "원하는 일정만, 그대로",
+            subtitle: "그룹별 · 상태별로 필터링하고, 개인 일정과 iOS 캘린더 이벤트 표시를 조절할 수 있어요",
+            screenshot: ResourceKitAsset.guideCalendarFilter.swiftUIImage,
+            zoomScale: 1.2,
+            zoomAnchor: .bottom
+          ),
+        ],
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
     }
 
     private var calendarWithEditCovers: some View {
@@ -160,6 +225,8 @@ extension CalendarFeature {
           displayMode: store.displayMode,
           isSelectedDateToday: store.isSelectedDateToday,
           isFilterActive: store.isFilterActive,
+          isShowingGuideTooltip: store.isShowingGuideTooltip,
+          onGuideTapped: { store.send(.view(.showGuide)) },
           onFilterTapped: { store.send(.view(.filterIconTapped)) },
           onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
           onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
@@ -454,7 +521,7 @@ extension CalendarFeature {
       let monthTitle = formatter.string(from: store.currentMonth)
 
       return HStack {
-        Text("\(monthTitle) \(LocalizedStrings.Schedule.title)")
+        Text("\(monthTitle) \(LocalizedStrings.Schedule.schedule)")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 

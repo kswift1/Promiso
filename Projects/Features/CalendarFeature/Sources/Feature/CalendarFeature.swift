@@ -199,6 +199,10 @@ extension CalendarFeature {
       var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
+      /// 가이드 표시 여부
+      var isShowingGuide: Bool = false
+      /// 가이드 툴팁 표시 여부 (첫 온보딩 완료 후)
+      var isShowingGuideTooltip: Bool = false
 
       // MARK: - Computed Properties
 
@@ -856,6 +860,9 @@ extension CalendarFeature {
         case filterCalendarEventsToggled
         case filterReset
         case filterSheetDismissed
+        // 가이드
+        case showGuide
+        case dismissGuide
       }
 
       @CasePathable
@@ -887,6 +894,8 @@ extension CalendarFeature {
         case recurringEventsFailed
         // 공유
         case kakaoScheduleShareResult(KakaoShareResult)
+        // 가이드 툴팁
+        case showGuideTooltip
       }
 
     }
@@ -1106,6 +1115,10 @@ extension CalendarFeature {
         // 그룹 필터 초기화 (전체 선택)
         if state.selectedGroupIds.isEmpty {
           state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
+        }
+        // 최초 진입 시 가이드 표시
+        if !userDefaultsClient.hasSeenCalendarGuide {
+          state.isShowingGuide = true
         }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
@@ -1636,6 +1649,21 @@ extension CalendarFeature {
         state.isFilterSheetPresented = false
         return .none
 
+      case .showGuide:
+        state.isShowingGuide = true
+        return .none
+
+      case .dismissGuide:
+        state.isShowingGuide = false
+        let isFirstTime = !userDefaultsClient.hasSeenCalendarGuide
+        return .run { send in
+          userDefaultsClient.markCalendarGuideSeen()
+          if isFirstTime {
+            try await Task.sleep(for: .milliseconds(500))
+            await send(.internal(.showGuideTooltip), animation: .easeInOut)
+          }
+        }
+
       }
     }
 
@@ -1975,6 +2003,19 @@ extension CalendarFeature {
           break
         }
         return .none
+
+      case .showGuideTooltip:
+        if state.isShowingGuideTooltip {
+          // 5초 후 두 번째 호출: 숨기기
+          state.isShowingGuideTooltip = false
+          return .none
+        }
+        // 첫 호출: 표시 + 5초 후 자동 숨기기
+        state.isShowingGuideTooltip = true
+        return .run { send in
+          try await Task.sleep(for: .seconds(5))
+          await send(.internal(.showGuideTooltip), animation: .easeOut)
+        }
       }
     }
 

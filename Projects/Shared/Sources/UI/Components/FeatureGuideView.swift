@@ -58,7 +58,7 @@ public struct FeatureGuideView: View {
       VStack(spacing: 10) {
         textContentSection
         indicatorSection
-        continueButtonSection
+        buttonRow
       }
       .padding(.top, 20)
       .padding(.horizontal, 15)
@@ -67,7 +67,8 @@ public struct FeatureGuideView: View {
         variableGlassBlur(15)
       }
 
-      backButtonSection
+      // 닫기 버튼 (우측 상단)
+      closeButton
     }
     .preferredColorScheme(.dark)
   }
@@ -201,85 +202,108 @@ public struct FeatureGuideView: View {
     .padding(.bottom, 5)
   }
 
-  // MARK: - Continue Button
+  // MARK: - Close Button
 
   @ViewBuilder
-  private var continueButtonSection: some View {
-    let isLast = currentIndex == items.count - 1
-
+  private var closeButton: some View {
     if #available(iOS 26, *) {
       Button {
-        if isLast { onComplete() }
-        withAnimation(animation) {
-          currentIndex = min(currentIndex + 1, items.count - 1)
-        }
+        onComplete()
       } label: {
-        Text(isLast ? "시작하기" : "다음")
-          .fontWeight(.medium)
-          .contentTransition(.numericText())
-          .padding(.vertical, 6)
+        Image(systemName: "xmark")
+          .font(.body.weight(.medium))
       }
-      .tint(tint)
-      .buttonStyle(.glassProminent)
-      .buttonSizing(.flexible)
-      .padding(.horizontal, 30)
+      .buttonStyle(.glass)
+      .buttonBorderShape(.circle)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+      .padding(.trailing, 15)
+      .padding(.top, 5)
     } else {
       Button {
-        if isLast { onComplete() }
-        withAnimation(animation) {
-          currentIndex = min(currentIndex + 1, items.count - 1)
-        }
+        onComplete()
       } label: {
-        Text(isLast ? "시작하기" : "다음")
-          .fontWeight(.medium)
-          .contentTransition(.numericText())
-          .frame(maxWidth: .infinity)
-          .frame(height: 44)
-          .contentShape(Rectangle())
+        Image(systemName: "xmark")
+          .font(.body.weight(.medium))
+          .foregroundStyle(.white.opacity(0.7))
+          .frame(width: 36, height: 36)
+          .background(Color.white.opacity(0.15), in: Circle())
       }
-      .buttonStyle(.borderedProminent)
-      .tint(tint)
-      .padding(.horizontal, 30)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+      .padding(.trailing, 15)
+      .padding(.top, 5)
     }
   }
 
-  // MARK: - Back Button
+  // MARK: - Button Row (← 원형 + 다음)
 
   @ViewBuilder
-  private var backButtonSection: some View {
-    if currentIndex > 0 {
+  private var buttonRow: some View {
+    let isLast = currentIndex == items.count - 1
+
+    HStack(spacing: 12) {
+      // Back button (원형)
+      if currentIndex > 0 {
+        if #available(iOS 26, *) {
+          Button {
+            withAnimation(animation) {
+              currentIndex = max(currentIndex - 1, 0)
+            }
+          } label: {
+            Image(systemName: "chevron.left")
+              .font(.body.weight(.medium))
+          }
+          .buttonStyle(.glass)
+          .buttonBorderShape(.circle)
+        } else {
+          Button {
+            withAnimation(animation) {
+              currentIndex = max(currentIndex - 1, 0)
+            }
+          } label: {
+            Image(systemName: "chevron.left")
+              .font(.body.weight(.medium))
+              .foregroundStyle(.white.opacity(0.7))
+              .frame(width: 44, height: 44)
+              .background(Color.white.opacity(0.15), in: Circle())
+          }
+        }
+      }
+
+      // Continue button
       if #available(iOS 26, *) {
         Button {
+          if isLast { onComplete() }
           withAnimation(animation) {
-            currentIndex = max(currentIndex - 1, 0)
+            currentIndex = min(currentIndex + 1, items.count - 1)
           }
         } label: {
-          Image(systemName: "chevron.left")
-            .font(.title3)
-            .frame(width: 20, height: 30)
+          Text(isLast ? "완료" : "다음")
+            .fontWeight(.medium)
+            .contentTransition(.numericText())
+            .padding(.vertical, 6)
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.leading, 15)
-        .padding(.top, 5)
+        .tint(tint)
+        .buttonStyle(.glassProminent)
+        .buttonSizing(.flexible)
       } else {
         Button {
+          if isLast { onComplete() }
           withAnimation(animation) {
-            currentIndex = max(currentIndex - 1, 0)
+            currentIndex = min(currentIndex + 1, items.count - 1)
           }
         } label: {
-          Image(systemName: "chevron.left")
-            .font(.title3)
-            .foregroundStyle(.white.opacity(0.7))
-            .frame(width: 36, height: 36)
-            .background(Color.white.opacity(0.15), in: Circle())
+          Text(isLast ? "완료" : "다음")
+            .fontWeight(.medium)
+            .contentTransition(.numericText())
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.leading, 15)
-        .padding(.top, 5)
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
       }
     }
+    .padding(.horizontal, 20)
   }
 
   // MARK: - Variable Glass Blur
@@ -294,19 +318,21 @@ public struct FeatureGuideView: View {
         .glassEffect(.clear, in: .rect)
         .blur(radius: radius)
         .padding([.horizontal, .bottom], -radius * 2)
-        .padding(.top, -radius / 2)
+        .padding(.top, -radius / 2 - 10)
         .opacity(items[currentIndex].zoomScale > 1 ? 1 : 0)
         .ignoresSafeArea()
     } else {
       LinearGradient(
         colors: [
           Color.black.opacity(0.95),
-          Color.black.opacity(0.7),
+          Color.black.opacity(0.85),
+          Color.black.opacity(0.6),
           Color.clear,
         ],
         startPoint: .bottom,
         endPoint: .top
       )
+      .padding(.top, -30)
       .ignoresSafeArea()
     }
   }

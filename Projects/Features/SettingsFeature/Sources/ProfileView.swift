@@ -346,6 +346,33 @@ extension Settings {
             .adaptiveGlassCard()
           }
 
+          // MARK: - 설명서 섹션
+          Button {
+            store.send(.view(.guideTapped))
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: "book.fill")
+                .font(.body)
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(width: 24)
+
+              Text("설명서")
+                .font(.body)
+                .foregroundStyle(Color.primary)
+
+              Spacer()
+
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Color.secondary)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .adaptiveGlassCard()
+
           // MARK: - 지원 섹션
           Button {
             store.send(.view(.supportTapped))
