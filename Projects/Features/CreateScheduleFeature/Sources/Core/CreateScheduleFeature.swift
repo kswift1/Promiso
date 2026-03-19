@@ -73,6 +73,14 @@ public enum CreateSchedule {
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
 
+      // 인라인 그룹 생성
+      var showInlineCreateGroup: Bool = false
+      var inlineGroupName: String = ""
+      var inlineGroupMaxMembers: Int = 5
+      var isCreatingGroup: Bool = false
+      var groupCreationError: String? = nil
+      var pendingAutoSelectGroupId: String? = nil
+
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -152,6 +160,10 @@ public enum CreateSchedule {
       var thirdButtonDisabled: Bool {
         isCreatingSchedule // 생성 중일 때만 비활성화
       }
+
+      var canSubmitInlineGroup: Bool {
+        inlineGroupName.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
+      }
     }
     
     public enum Action: Sendable {
@@ -179,6 +191,12 @@ public enum CreateSchedule {
         case retryLoadGroups
         case clearCreationError
         case createGroupTapped
+        // 인라인 그룹 생성
+        case inlineCreateGroupDismissed
+        case setInlineGroupName(String)
+        case setInlineGroupMaxMembers(Int)
+        case submitInlineCreateGroup
+        case clearGroupCreationError
         // LiveActivity 정보 팝오버
         case liveActivityInfoButtonTapped
         case liveActivityInfoDismissed
@@ -208,8 +226,9 @@ public enum CreateSchedule {
         case settingsLoaded(UserSettings)
         case refreshProFeatures(debounce: Bool)
         case weatherResponse(Result<WeatherInfo, Error>)
+        case inlineCreateGroupResponse(Result<GroupCreationResultModel, Error>)
       }
-      
+
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
       public enum Delegate: Sendable {
         case scheduleCreated(id: String)
@@ -359,7 +378,48 @@ public enum CreateSchedule {
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
-            return .send(.delegate(.createGroupRequested))
+            state.showInlineCreateGroup = true
+            return .none
+
+          case .inlineCreateGroupDismissed:
+            state.showInlineCreateGroup = false
+            state.inlineGroupName = ""
+            state.inlineGroupMaxMembers = 5
+            state.groupCreationError = nil
+            return .none
+
+          case .setInlineGroupName(let name):
+            state.inlineGroupName = String(name.prefix(12))
+            return .none
+
+          case .setInlineGroupMaxMembers(let count):
+            state.inlineGroupMaxMembers = max(2, min(10, count))
+            return .none
+
+          case .submitInlineCreateGroup:
+            let trimmedName = state.inlineGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedName.count >= 2 else { return .none }
+            state.isCreatingGroup = true
+            state.groupCreationError = nil
+            let request = CreateGroupRequestModel(
+              name: trimmedName,
+              maxMembers: state.inlineGroupMaxMembers,
+              description: nil,
+              creatorId: state.currentUserId,
+              photoData: nil
+            )
+            return .run { [groupClient] send in
+              do {
+                let result = try await groupClient.createGroup(request)
+                await send(.internal(.inlineCreateGroupResponse(.success(result))))
+              } catch {
+                await send(.internal(.inlineCreateGroupResponse(.failure(error))))
+              }
+            }
+
+          case .clearGroupCreationError:
+            state.groupCreationError = nil
+            return .none
 
           case .liveActivityInfoButtonTapped:
             state.showLiveActivityInfo = true
@@ -467,6 +527,18 @@ public enum CreateSchedule {
           case .groupListResponse(.success(let groups)):
             state.groupListState = .loaded(groups)
             let groupIds = groups.map(\.id)
+            if let pendingId = state.pendingAutoSelectGroupId,
+               let group = groups.first(where: { $0.id == pendingId }) {
+              state.pendingAutoSelectGroupId = nil
+              state.schedule.group = group
+              if group.maxMembers <= 1 {
+                state.schedule.minimumParticipants = 1
+              } else {
+                let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+                state.schedule.minimumParticipants = defaultMinimum
+              }
+              state.currentStep.next()
+            }
             return .send(.internal(.fetchScheduleCounts(groupIds)))
             
           case .groupListResponse(.failure(let error)):
@@ -561,6 +633,20 @@ public enum CreateSchedule {
 
           case .weatherResponse(.failure):
             state.weatherState = .idle
+            return .none
+
+          case .inlineCreateGroupResponse(.success(let result)):
+            state.isCreatingGroup = false
+            state.pendingAutoSelectGroupId = result.id
+            state.showInlineCreateGroup = false
+            state.inlineGroupName = ""
+            state.inlineGroupMaxMembers = 5
+            state.groupCreationError = nil
+            return .send(.internal(.fetchGroupList))
+
+          case .inlineCreateGroupResponse(.failure(let error)):
+            state.isCreatingGroup = false
+            state.groupCreationError = error.localizedDescription
             return .none
           }
           

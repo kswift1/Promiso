@@ -75,5 +75,13 @@ struct CreateScheduleStep1View: View {
         isHourglassFlipped.toggle()
       }
     }
+    .sheet(
+      isPresented: Binding(
+        get: { store.showInlineCreateGroup },
+        set: { if !$0 { store.send(.view(.inlineCreateGroupDismissed)) } }
+      )
+    ) {
+      InlineCreateGroupView(store: store)
+    }
   }
 }

@@ -2160,6 +2160,16 @@ public enum LocalizedStrings {
     }
     public static var maxParticipantsWarning: String { String(localized: "createSchedule.maxParticipantsWarning", bundle: bundle) }
     public static var navigationTitle: String { String(localized: "createSchedule.navigationTitle", bundle: bundle) }
+    // Inline Create Group
+    public static var inlineCreateGroupTitle: String { String(localized: "createSchedule.inlineCreateGroupTitle", bundle: bundle) }
+    public static var inlineGroupNameLabel: String { String(localized: "createSchedule.inlineGroupNameLabel", bundle: bundle) }
+    public static var inlineGroupNamePlaceholder: String { String(localized: "createSchedule.inlineGroupNamePlaceholder", bundle: bundle) }
+    public static var inlineGroupMaxMembersLabel: String { String(localized: "createSchedule.inlineGroupMaxMembersLabel", bundle: bundle) }
+    public static func inlineGroupMaxMembersCount(_ count: Int) -> String {
+      String(localized: "createSchedule.inlineGroupMaxMembersCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static var inlineCreateGroupButton: String { String(localized: "createSchedule.inlineCreateGroupButton", bundle: bundle) }
   }
 
   // MARK: - ManageGroup
