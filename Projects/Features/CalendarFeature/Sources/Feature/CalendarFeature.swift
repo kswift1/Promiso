@@ -1023,10 +1023,6 @@ extension CalendarFeature {
         state.createSchedule = nil
         return .none
 
-      case .createSchedule(.presented(.delegate(.createGroupRequested))):
-        state.createSchedule = nil
-        return .none
-
       case .createSchedule:
         return .none
 

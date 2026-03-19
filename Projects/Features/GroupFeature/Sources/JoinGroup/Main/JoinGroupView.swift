@@ -3,6 +3,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import Nuke
+import CreateGroupFeature
 
 extension JoinGroup {
   public struct RootView: View {

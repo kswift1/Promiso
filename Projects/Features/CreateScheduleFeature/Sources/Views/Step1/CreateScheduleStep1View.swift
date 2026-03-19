@@ -2,6 +2,7 @@ import SwiftUI
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import CreateGroupFeature
 
 // MARK: - Step 1 Content View
 struct CreateScheduleStep1View: View {
@@ -76,12 +77,11 @@ struct CreateScheduleStep1View: View {
       }
     }
     .sheet(
-      isPresented: Binding(
-        get: { store.showInlineCreateGroup },
-        set: { if !$0 { store.send(.view(.inlineCreateGroupDismissed)) } }
-      )
-    ) {
-      InlineCreateGroupView(store: store)
+      store: store.scope(state: \.$createGroup, action: \.createGroup)
+    ) { childStore in
+      NavigationStack {
+        CreateGroup.RootView(store: childStore)
+      }
     }
   }
 }

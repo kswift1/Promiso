@@ -1902,10 +1902,6 @@ extension Home {
           state.createSchedule = nil
           return .none
 
-        case .createSchedule(.presented(.delegate(.createGroupRequested))):
-          state.createSchedule = nil
-          return .send(.delegate(.navigateToCreateSchedule))
-
         case .createSchedule:
           return .none
 
@@ -1987,17 +1983,6 @@ extension Home {
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
           return .none
-
-        case .overlayCreateSchedule(.delegate(.createGroupRequested)):
-          // 그룹 생성은 오버레이에서 불가 → 오버레이 닫고 기존 플로우로 위임
-          state.overlayCreateSchedule = nil
-          state.overlayCalendarModeBeforeFeature = nil
-          state.showCalendarOverlay = false
-          state.overlayCalendarMode = .monthly
-          return .merge(
-            .cancel(id: CancelID.overlayWeatherFetch),
-            .send(.delegate(.navigateToCreateSchedule))
-          )
 
         case .overlayCreateSchedule:
           return .none

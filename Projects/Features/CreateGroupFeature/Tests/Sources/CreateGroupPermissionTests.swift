@@ -15,7 +15,7 @@
 //
 
 import Testing
-@testable import GroupFeature
+@testable import CreateGroupFeature
 
 // MARK: - Test Helpers
 

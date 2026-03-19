@@ -12,7 +12,7 @@ import Clients
 import PromisoShared
 import ResourceKit
 
-struct CreateGroupSuccessView: View {
+public struct CreateGroupSuccessView: View {
   let result: GroupCreationResultModel
   let photoData: Data?
   let selectedGroupColor: GroupColor?
@@ -22,7 +22,23 @@ struct CreateGroupSuccessView: View {
   @State private var toast: ToastMessage?
   @State private var showConfetti = false
 
-  var body: some View {
+  public init(
+    result: GroupCreationResultModel,
+    photoData: Data?,
+    selectedGroupColor: GroupColor?,
+    isKakaoSharing: Bool,
+    onKakaoShareTapped: @escaping () -> Void,
+    onConfirm: @escaping () -> Void
+  ) {
+    self.result = result
+    self.photoData = photoData
+    self.selectedGroupColor = selectedGroupColor
+    self.isKakaoSharing = isKakaoSharing
+    self.onKakaoShareTapped = onKakaoShareTapped
+    self.onConfirm = onConfirm
+  }
+
+  public var body: some View {
     ScrollView {
       VStack(spacing: 24) {
         Spacer()

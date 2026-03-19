@@ -9,7 +9,7 @@ import SwiftUI
 import PromisoShared
 import Clients
 
-struct CreateGroupSettingsView: View {
+public struct CreateGroupSettingsView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   let groupName: String
@@ -30,7 +30,45 @@ struct CreateGroupSettingsView: View {
   let onCalendarPermissionInfoAlertDismiss: () -> Void
   let onAppear: () -> Void
 
-  var body: some View {
+  public init(
+    groupName: String,
+    photoData: Data?,
+    isJoining: Bool,
+    notificationEnabled: Bool,
+    calendarSyncEnabled: Bool,
+    notificationAuthStatus: NotificationAuthorizationStatus,
+    calendarAuthStatus: CalendarAuthorizationStatus,
+    isSaving: Bool,
+    showCalendarPermissionInfoAlert: Bool,
+    selectedGroupColor: GroupColor?,
+    existingGroupColorMap: [GroupColor: String],
+    onNotificationToggle: @escaping (Bool) -> Void,
+    onCalendarSyncToggle: @escaping (Bool) -> Void,
+    onGroupColorSelected: @escaping (GroupColor?) -> Void,
+    onComplete: @escaping () -> Void,
+    onCalendarPermissionInfoAlertDismiss: @escaping () -> Void,
+    onAppear: @escaping () -> Void
+  ) {
+    self.groupName = groupName
+    self.photoData = photoData
+    self.isJoining = isJoining
+    self.notificationEnabled = notificationEnabled
+    self.calendarSyncEnabled = calendarSyncEnabled
+    self.notificationAuthStatus = notificationAuthStatus
+    self.calendarAuthStatus = calendarAuthStatus
+    self.isSaving = isSaving
+    self.showCalendarPermissionInfoAlert = showCalendarPermissionInfoAlert
+    self.selectedGroupColor = selectedGroupColor
+    self.existingGroupColorMap = existingGroupColorMap
+    self.onNotificationToggle = onNotificationToggle
+    self.onCalendarSyncToggle = onCalendarSyncToggle
+    self.onGroupColorSelected = onGroupColorSelected
+    self.onComplete = onComplete
+    self.onCalendarPermissionInfoAlertDismiss = onCalendarPermissionInfoAlertDismiss
+    self.onAppear = onAppear
+  }
+
+  public var body: some View {
     ScrollView {
       VStack(spacing: 32) {
         Spacer()
