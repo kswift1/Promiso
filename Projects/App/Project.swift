@@ -12,6 +12,12 @@ func infoPlistWithDisplayName(_ displayName: String, environment: String = "prod
 
 let crashlyticsScript = TargetScript.post(
   script: """
+  # Skip for Debug builds and Simulator
+  if [ "${CONFIGURATION}" = "Debug" ]; then
+    echo "Skipping Crashlytics dSYM upload for Debug build"
+    exit 0
+  fi
+
   # Find the correct GoogleService-Info.plist in the built app bundle
   GSP_PATH="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/GoogleService-Info.plist"
 
