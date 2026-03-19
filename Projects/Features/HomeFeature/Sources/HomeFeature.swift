@@ -753,7 +753,7 @@ extension Home {
           case .overlayCreatePersonalEventTapped(let date):
             // 오버레이 닫기
             state.showCalendarOverlay = false
-            state.overlayCalendarMode = .monthly
+            state.overlayCalendarMode = .weekly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
@@ -1994,7 +1994,7 @@ extension Home {
           state.overlayCreateSchedule = nil
           state.overlayCalendarModeBeforeFeature = nil
           state.showCalendarOverlay = false
-          state.overlayCalendarMode = .monthly
+          state.overlayCalendarMode = .weekly
           return .merge(
             .cancel(id: CancelID.overlayWeatherFetch),
             .send(.delegate(.navigateToCreateSchedule))
