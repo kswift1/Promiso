@@ -124,6 +124,15 @@ public enum PromisoCalendarTag {
     createURL(id: eventId, host: personalHost, contentHash: contentHash)
   }
 
+  /// 모든 환경(promiso/promiso-dev/promiso-stage)의 Promiso URL인지 확인
+  public static func isAnyPromisoURL(_ url: URL?) -> Bool {
+    guard let url, let scheme = url.scheme else { return false }
+    let allSchemes: Set<String> = ["promiso", "promiso-dev", "promiso-stage"]
+    guard allSchemes.contains(scheme) else { return false }
+    let host = url.host ?? ""
+    return host == promiseHost || host == scheduleHost || host == personalHost
+  }
+
   private static func createURL(id: String, host: String, contentHash: String) -> URL? {
     var components = URLComponents()
     components.scheme = scheme
@@ -131,18 +140,5 @@ public enum PromisoCalendarTag {
     components.path = "/\(id)"
     components.queryItems = [URLQueryItem(name: "hash", value: contentHash)]
     return components.url
-  }
-}
-
-// MARK: - Multi-Environment URL Check
-
-extension PromisoCalendarTag {
-  /// 모든 환경의 Promiso URL인지 확인 (dev/stage/prod)
-  /// fetchEvents에서 모든 환경의 싱크 이벤트를 제외하기 위해 사용
-  private static let allSchemes: Set<String> = ["promiso", "promiso-dev", "promiso-stage"]
-
-  public static func isAnyPromisoURL(_ url: URL?) -> Bool {
-    guard let scheme = url?.scheme?.lowercased() else { return false }
-    return allSchemes.contains(scheme)
   }
 }

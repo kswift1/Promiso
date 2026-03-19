@@ -238,16 +238,6 @@ extension Home {
           homeHeader
             .padding(.horizontal, 16)
 
-          // 캘린더 임포트 배너
-          if store.showCalendarImportBanner {
-            CalendarImportBanner(
-              onTap: { store.send(.view(.calendarImportBannerTapped)) },
-              onDismiss: { store.send(.view(.calendarImportBannerDismissed)) }
-            )
-            .padding(.horizontal, 16)
-            .transition(.opacity.combined(with: .move(edge: .top)))
-          }
-
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
           } else if let error = store.schedulesState.error {

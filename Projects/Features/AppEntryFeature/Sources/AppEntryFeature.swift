@@ -32,7 +32,6 @@ extension AppEntry {
     @Dependency(\.clarityClient) var clarityClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
-    @Dependency(\.personalEventClient) var personalEventClient
 
     public init() {}
     
@@ -128,7 +127,6 @@ extension AppEntry {
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
       case fcmTokenFetched(String)
-      case personalEventsCheckCompleted(hasEvents: Bool)
     }
 
     // MARK: - Destination Reducer
@@ -138,7 +136,6 @@ extension AppEntry {
       case onboardingIntro(AppEntry.OnboardingIntro)
       case auth(AuthFeature.Auth.Feature)
       case profile(ProfileSetup)
-      case calendarImport(AppEntry.CalendarImport)
       case main(RootTab.Feature)
     }
 
@@ -363,13 +360,6 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
-            // 캘린더 임포트 결과 → Home으로 전달 (결과는 CalendarImport 화면에서 표시됨)
-            if isSignup {
-              effects.append(.send(.destination(.presented(
-                .main(.showCalendarImportResult)
-              ))))
-            }
-
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
               effects.append(routeDeeplink(deeplink))
@@ -389,18 +379,6 @@ extension AppEntry {
 
           case .fcmTokenFetched(let token):
             return .send(.internal(.fcmTokenReceived(token)))
-
-          case .personalEventsCheckCompleted(let hasEvents):
-            guard let userModel = state.pendingUserForMain else { return .none }
-            if hasEvents {
-              state.pendingUserForMain = nil
-              return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-            } else {
-              state.destination = .calendarImport(
-                AppEntry.CalendarImport.State(nickname: userModel.nickname)
-              )
-            }
-            return .none
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
@@ -410,31 +388,14 @@ extension AppEntry {
           state.destination = .auth(Auth.Feature.State())
           return .none
 
-        case .destination(.presented(.calendarImport(.delegate(.completed)))):
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-          }
-          return .none
-
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
           state.providerProfileImageURL = providerProfileImageURL
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.log(.profileSetupCompleted)
-          if state.isFullOnboarding {
-            state.pendingUserForMain = userModel
-            // 서버에서 기존 PersonalEvent 존재 확인 (중복 임포트 방지)
-            return .run { [personalEventClient] send in
-              let existingEvents = try? await personalEventClient.getActiveEvents(1)
-              let hasEvents = !(existingEvents?.isEmpty ?? true)
-              await send(.internal(.personalEventsCheckCompleted(hasEvents: hasEvents)))
-            }
-          } else {
-            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
-            return .send(.internal(.checkNotificationPermission(userModel)))
-          }
+          state.pendingUserForMain = userModel
+          return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
@@ -621,11 +582,6 @@ extension AppEntry {
           }
         }
 
-      case .calendarImport:
-        if let store = store.scope(state: \.destination?.calendarImport, action: \.destination.calendarImport) {
-          AppEntry.CalendarImport.View(store: store)
-        }
-
       case .main:
         if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
           RootTab.RootView(store: store)
@@ -657,7 +613,7 @@ extension AppEntry {
 
 extension AppEntry.Feature.State {
   enum DestinationType: Equatable {
-    case onboardingIntro, auth, profile, calendarImport, main
+    case onboardingIntro, auth, profile, main
   }
 
   var destinationType: DestinationType? {
@@ -665,7 +621,6 @@ extension AppEntry.Feature.State {
     case .onboardingIntro: return .onboardingIntro
     case .auth: return .auth
     case .profile: return .profile
-    case .calendarImport: return .calendarImport
     case .main: return .main
     case nil: return nil
     }

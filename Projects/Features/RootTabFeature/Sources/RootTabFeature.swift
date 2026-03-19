@@ -227,8 +227,6 @@ extension RootTab {
       case openCreateGroup
       /// 딥링크에서 ProPlan 화면 열기
       case openProPlan
-      /// 캘린더 임포트 결과 표시 (온보딩 → Home)
-      case showCalendarImportResult
       /// Scene phase 변경 (포그라운드 복귀 시 구독 상태 갱신)
       case scenePhaseChanged(ScenePhase)
       /// 내부 액션
@@ -524,10 +522,6 @@ extension RootTab {
         case .openProPlan:
           state.selectedTab = .settings
           return .send(.settings(.view(.proPlanTapped)))
-
-        case .showCalendarImportResult:
-          state.home.showCalendarImportBanner = true
-          return .none
 
         case .internal(let internalAction):
           switch internalAction {
