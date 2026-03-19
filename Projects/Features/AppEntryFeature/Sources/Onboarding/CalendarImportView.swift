@@ -18,12 +18,23 @@ extension AppEntry.CalendarImport {
     @SwiftUI.State private var cardsGathered: Bool = false
     @SwiftUI.State private var showContent: Bool = false
     @SwiftUI.State private var showButtons: Bool = false
+    private var isImporting: Bool {
+      switch store.phase {
+      case .requesting, .scanning: return true
+      default: return false
+      }
+    }
+
+    private var isUploading: Bool {
+      store.phase == .uploading
+    }
 
     public var body: some SwiftUI.View {
       Group {
-        if store.phase == .selecting {
+        switch store.phase {
+        case .selecting, .uploading:
           selectingLayoutView
-        } else {
+        default:
           defaultLayoutView
         }
       }
@@ -70,11 +81,18 @@ extension AppEntry.CalendarImport {
 
           VStack(spacing: 0) {
             GlassActionButton(
-              title: "가져오기 (\(store.selectedEventCount)개)",
+              title: isUploading ? "가져오는 중이에요" : "가져오기 (\(store.selectedEventCount)개)",
               isPrimary: true,
-              isEnabled: store.selectedEventCount > 0,
+              isEnabled: store.selectedEventCount > 0 && !isUploading,
               action: { store.send(.view(.confirmImportTapped)) }
             )
+            .overlay(alignment: .leading) {
+              if isUploading {
+                ProgressView()
+                  .tint(.white)
+                  .padding(.leading, 16)
+              }
+            }
           }
           .padding(.horizontal, 24)
           .padding(.vertical, 16)
@@ -88,14 +106,10 @@ extension AppEntry.CalendarImport {
     @ViewBuilder
     private var phaseContentView: some SwiftUI.View {
       switch store.phase {
-      case .idle:
+      case .idle, .requesting, .scanning:
         idlePhaseView
-      case .requesting, .scanning, .uploading:
-        loadingPhaseView
-      case .selecting:
+      case .selecting, .uploading:
         selectingPhaseView
-      case .success(let result):
-        successPhaseView(result: result)
       case .completed:
         EmptyView()
       }
@@ -114,7 +128,7 @@ extension AppEntry.CalendarImport {
               .foregroundStyle(Color.pmtext.primary)
               .multilineTextAlignment(.center)
 
-            Text("Apple Calendar에 있는 일정을 가져오면\n홈에서 모든 약속을 한눈에 볼 수 있어요")
+            Text("애플 캘린더에 있는 일정을 가져오면\n홈에서 모든 약속을 한눈에 볼 수 있어요")
               .font(.title3)
               .foregroundStyle(Color.pmtext.secondary)
               .multilineTextAlignment(.center)
@@ -203,20 +217,6 @@ extension AppEntry.CalendarImport {
       .staticGlassBackground(cornerRadius: 14)
     }
 
-    // MARK: - Loading Phase
-
-    private var loadingPhaseView: some SwiftUI.View {
-      VStack(spacing: 16) {
-        ProgressView()
-          .tint(Color.pmindigo.n500)
-          .scaleEffect(1.2)
-
-        Text("기존 약속을 확인하고 있어요...")
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
-      }
-    }
-
     // MARK: - Selecting Phase
 
     private var selectingPhaseView: some SwiftUI.View {
@@ -247,80 +247,42 @@ extension AppEntry.CalendarImport {
       }
     }
 
-    // MARK: - Success Phase
-
-    private func successPhaseView(result: CalendarImportResult) -> some SwiftUI.View {
-      VStack(spacing: 20) {
-        Text(result.totalImported > 0 ? "🎉" : "📅")
-          .font(.system(size: 72))
-
-        VStack(spacing: 10) {
-          Text(successTitle(result))
-            .font(.largeTitle.bold())
-            .foregroundStyle(Color.pmtext.primary)
-            .multilineTextAlignment(.center)
-
-          Text(successSubtitle(result))
-            .font(.title3)
-            .foregroundStyle(Color.pmtext.secondary)
-            .multilineTextAlignment(.center)
-            .lineSpacing(4)
-        }
-      }
-      .padding(.horizontal, 20)
-      .transition(.opacity.combined(with: .offset(y: 12)))
-    }
-
-    private func successTitle(_ result: CalendarImportResult) -> String {
-      if result.thisWeekCount > 0 {
-        return "이번 주 약속 \(result.thisWeekCount)개\n가져왔어요!"
-      } else if result.totalImported > 0 {
-        return "일정 \(result.totalImported)개\n가져왔어요!"
-      } else {
-        return "준비 완료!"
-      }
-    }
-
-    private func successSubtitle(_ result: CalendarImportResult) -> String {
-      if result.totalImported > 0 {
-        return "다가오는 약속을 미리 챙겨드릴게요"
-      } else {
-        return "첫 약속을 만들면 바로 챙겨드릴게요"
-      }
-    }
-
     // MARK: - Button Area
 
     @ViewBuilder
     private var buttonArea: some SwiftUI.View {
       switch store.phase {
-      case .idle:
+      case .idle, .requesting, .scanning:
         if showButtons {
           VStack(spacing: 14) {
             GlassActionButton(
-              title: "가져오기",
+              title: isImporting ? "가져오는 중이에요" : "가져오기",
               isPrimary: true,
+              isEnabled: !isImporting,
               action: { store.send(.view(.importTapped)) }
             )
+            .overlay(alignment: .leading) {
+              if isImporting {
+                ProgressView()
+                  .tint(.white)
+                  .padding(.leading, 16)
+              }
+            }
             .transition(.opacity.combined(with: .offset(y: 16)))
 
-            Button {
-              store.send(.view(.laterTapped))
-            } label: {
-              Text("나중에")
-                .font(.body)
-                .foregroundStyle(Color.pmtext.secondary)
+            if !isImporting {
+              Button {
+                store.send(.view(.laterTapped))
+              } label: {
+                Text("나중에")
+                  .font(.footnote)
+                  .foregroundStyle(Color.pmtext.secondary.opacity(0.6))
+              }
+              .buttonStyle(.plain)
+              .transition(.opacity.combined(with: .offset(y: 16)))
             }
-            .buttonStyle(.plain)
-            .transition(.opacity.combined(with: .offset(y: 16)))
           }
         }
-      case .success:
-        GlassActionButton(
-          title: "시작해보세요!",
-          isPrimary: true,
-          action: { store.send(.view(.startTapped)) }
-        )
       default:
         EmptyView()
       }
@@ -536,16 +498,3 @@ private struct CalendarEventCard: SwiftUI.View {
   )
 }
 
-#Preview("Success") {
-  AppEntry.CalendarImport.View(
-    store: Store(
-      initialState: {
-        var state = AppEntry.CalendarImport.State(nickname: "성원")
-        state.phase = .success(CalendarImportResult(totalImported: 23, thisWeekCount: 5))
-        return state
-      }()
-    ) {
-      AppEntry.CalendarImport()
-    }
-  )
-}
