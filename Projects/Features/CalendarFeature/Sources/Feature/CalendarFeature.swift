@@ -1019,7 +1019,10 @@ extension CalendarFeature {
 
       case .createSchedule(.presented(.delegate(.scheduleCreated))):
         state.createSchedule = nil
+        // 일정이 어느 월에 생성되었을지 모르므로 현재 보이는 월들 캐시 무효화
         let currentMonth = state.selectedDate.startOfMonth
+        state.loadedMonths.remove(currentMonth)
+        state.cachedSchedulesByMonth.removeValue(forKey: currentMonth)
         return .send(.internal(.fetchSchedulesForMonth(currentMonth)))
 
       case .createSchedule(.presented(.delegate(.dismiss))):
@@ -1374,6 +1377,13 @@ extension CalendarFeature {
       case .refresh:
         // 탭 전환 시 최신 데이터 로드
         AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
+        // 삭제된 그룹을 필터에서 제거
+        let currentGroupIds = Set(state.currentUser.groups.map(\.id))
+        state.selectedGroupIds = state.selectedGroupIds.intersection(currentGroupIds)
+        // 필터가 비게 되면 전체 선택으로 복원
+        if state.selectedGroupIds.isEmpty {
+          state.selectedGroupIds = currentGroupIds
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))

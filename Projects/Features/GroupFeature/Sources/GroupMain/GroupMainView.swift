@@ -620,6 +620,9 @@ extension GroupMain {
           .frame(maxWidth: .infinity)
         }
       }
+      .overlay(alignment: .bottomTrailing) {
+        fabButton
+      }
     }
 
   }

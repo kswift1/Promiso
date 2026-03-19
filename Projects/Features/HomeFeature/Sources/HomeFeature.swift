@@ -34,6 +34,7 @@ extension Home {
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.groupClient) var groupClient
     public init() {}
 
     // MARK: - CancelID
@@ -389,6 +390,8 @@ extension Home {
         case departureLocationResolved(String?)
         /// 현재 위치 좌표 저장
         case currentLocationStored(Coordinate)
+        /// 그룹 목록 갱신 완료 (인라인 그룹 생성 후)
+        case groupSummariesRefreshed([UserGroupInfo])
       }
 
       @CasePathable
@@ -1865,6 +1868,21 @@ extension Home {
             state.currentLocationCoordinate = coordinate
             return .none
 
+          case .groupSummariesRefreshed(let summaries):
+            state.$currentUser.withLock { user in
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: summaries
+              )
+            }
+            return .none
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -1897,6 +1915,16 @@ extension Home {
         case .createSchedule(.presented(.delegate(.scheduleCreated(_)))):
           state.createSchedule = nil
           return .send(.internal(.fetchSchedules))
+
+        case .createSchedule(.presented(.delegate(.groupCreated))):
+          return .run { [groupClient] send in
+            do {
+              let summaries = try await groupClient.fetchGroupSummaries()
+              await send(.internal(.groupSummariesRefreshed(summaries)))
+            } catch {
+              // 그룹 갱신 실패해도 무시
+            }
+          }
 
         case .createSchedule(.presented(.delegate(.dismiss))):
           state.createSchedule = nil

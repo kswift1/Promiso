@@ -223,6 +223,7 @@ public enum CreateSchedule {
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
       public enum Delegate: Sendable {
         case scheduleCreated(id: String)
+        case groupCreated
         case dismiss
       }
 
@@ -267,6 +268,20 @@ public enum CreateSchedule {
             scheduleToCreate.groupId = state.schedule.group?.id ?? ""
             let localImages = state.localImageData
             state.isUploadingImages = !localImages.isEmpty
+            let logGroupName = state.schedule.group?.name ?? "nil"
+            let logUserId = state.currentUserId
+            let logHasUser = state.currentUser != nil
+            AppLogger.general.info("""
+              [CreateSchedule] 일정 생성 요청:
+                groupId=\(scheduleToCreate.groupId),
+                title=\(scheduleToCreate.title),
+                group=\(logGroupName),
+                currentUserId=\(logUserId),
+                hasCurrentUser=\(logHasUser),
+                startAt=\(scheduleToCreate.startAt),
+                minimumParticipants=\(scheduleToCreate.minimumParticipants),
+                imageCount=\(localImages.count)
+              """)
             return .run { [schedule = scheduleToCreate, scheduleClient, imageUploadClient] send in
               do {
                 let scheduleId = try await scheduleClient.createSchedule(schedule)
@@ -287,8 +302,10 @@ public enum CreateSchedule {
 
                 await send(.internal(.createScheduleResponse(.success(scheduleId))))
               } catch let e as Clients.ScheduleClientError {
+                AppLogger.general.error("[CreateSchedule] ScheduleClientError: \(e)")
                 await send(.internal(.createScheduleResponse(.failure(e))))
               } catch {
+                AppLogger.general.error("[CreateSchedule] Unknown error: \(error)")
                 await send(.internal(.createScheduleResponse(.failure(.unknown(String(describing: error))))))
               }
             }
@@ -470,10 +487,12 @@ public enum CreateSchedule {
             
           case .fetchGroupList:
             state.groupListState = .loading
-            return .run { [groupClient, groupSummaries = state.groupSummaries] send in
+            // 그룹 생성 직후(pendingAutoSelectGroupId)에는 전체 fetch
+            let shouldFetchAll = state.pendingAutoSelectGroupId != nil
+            return .run { [groupClient, groupSummaries = state.groupSummaries, shouldFetchAll] send in
               do {
                 let groups: [GroupModel]
-                if let groupSummaries, groupSummaries.isEmpty == false {
+                if !shouldFetchAll, let groupSummaries, !groupSummaries.isEmpty {
                   let ids = groupSummaries.map(\.id)
                   groups = try await groupClient.fetchGroupsByIds(ids)
                 } else {
@@ -498,7 +517,6 @@ public enum CreateSchedule {
                 let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
                 state.schedule.minimumParticipants = defaultMinimum
               }
-              state.currentStep.next()
             }
             return .send(.internal(.fetchScheduleCounts(groupIds)))
             
@@ -626,12 +644,18 @@ public enum CreateSchedule {
         case .createGroup(.presented(.delegate(.groupCreated(let id)))):
           state.createGroup = nil
           state.pendingAutoSelectGroupId = id
-          return .send(.internal(.fetchGroupList))
+          return .merge(
+            .send(.internal(.fetchGroupList)),
+            .send(.delegate(.groupCreated))
+          )
 
         case .createGroup(.presented(.delegate(.groupCreatedAndCreateSchedule(let id)))):
           state.createGroup = nil
           state.pendingAutoSelectGroupId = id
-          return .send(.internal(.fetchGroupList))
+          return .merge(
+            .send(.internal(.fetchGroupList)),
+            .send(.delegate(.groupCreated))
+          )
 
         case .createGroup:
           return .none

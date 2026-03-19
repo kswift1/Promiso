@@ -1337,7 +1337,10 @@ extension GroupMain {
 
         case .createSchedule(.presented(.delegate(.scheduleCreated))):
           state.createSchedule = nil
-          return .none
+          return .send(.internal(.fetchGroupList))
+
+        case .createSchedule(.presented(.delegate(.groupCreated))):
+          return .send(.internal(.fetchGroupList))
 
         case .createSchedule:
           return .none
