@@ -127,7 +127,7 @@ extension Home {
       /// 오버레이 날씨 전체 정보 (시간별 예보 포함)
       var overlayWeatherInfo: WeatherInfo? = nil
       /// 오버레이 캘린더 표시 모드
-      var overlayCalendarMode: CalendarMode = .monthly
+      var overlayCalendarMode: CalendarMode = .weekly
       /// 오버레이 월별 일정 캐시 (키: 월 시작일)
       var overlaySchedulesByMonth: [Date: [ScheduleModel]] = [:]
       /// 이미 로드된 오버레이 월 (중복 요청 방지)
@@ -612,6 +612,7 @@ extension Home {
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
             state.overlaySelectedDate = Date()
+            state.overlayCalendarMode = .weekly
             state.showCalendarOverlay = true
 
             let currentMonth = Date().startOfMonth
@@ -658,7 +659,7 @@ extension Home {
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
-            state.overlayCalendarMode = .monthly
+            state.overlayCalendarMode = .weekly
             state.overlayCalendarModeBeforeFeature = nil
             state.overlayScheduleDetail = nil
             state.overlayCreateSchedule = nil
@@ -761,7 +762,7 @@ extension Home {
           case .overlayCreatePersonalEventTapped(let date):
             // 오버레이 닫기
             state.showCalendarOverlay = false
-            state.overlayCalendarMode = .monthly
+            state.overlayCalendarMode = .weekly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
@@ -2011,7 +2012,7 @@ extension Home {
           state.overlayCreateSchedule = nil
           state.overlayCalendarModeBeforeFeature = nil
           state.showCalendarOverlay = false
-          state.overlayCalendarMode = .monthly
+          state.overlayCalendarMode = .weekly
           return .merge(
             .cancel(id: CancelID.overlayWeatherFetch),
             .send(.delegate(.navigateToCreateSchedule))
