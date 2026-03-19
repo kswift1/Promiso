@@ -107,6 +107,7 @@ Claude Code 추가 규칙:
 | `/new-screen` | 화면 생성 (Feature + UI) |
 | `/review-pr` | PR 코드 리뷰 |
 | `/fix-reviews` | PR 리뷰 자동 수정 |
+| `/release-notes` | 릴리스 노트 자동 생성 |
 
 ---
 
