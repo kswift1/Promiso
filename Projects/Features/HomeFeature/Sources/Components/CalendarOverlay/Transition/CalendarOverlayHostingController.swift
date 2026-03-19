@@ -224,7 +224,12 @@ extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
 
 private struct CalendarOverlayContentView: View {
   var viewModel: CalendarOverlayViewModel
-  @State private var animatedMode: CalendarMode = .monthly
+  @State private var animatedMode: CalendarMode
+
+  init(viewModel: CalendarOverlayViewModel) {
+    self.viewModel = viewModel
+    self._animatedMode = State(initialValue: viewModel.calendarMode)
+  }
 
   private var isFeatureMode: Bool {
     animatedMode == .scheduleDetail || animatedMode == .scheduleCreate
