@@ -120,6 +120,7 @@ Claude Code 추가 규칙:
 | `/fix-reviews` | PR 리뷰 자동 수정 |
 | `/release-notes` | 릴리스 노트 자동 생성 |
 | `/next-release` | 릴리스 후 다음 버전 준비 (머지, 태그, 브랜치, 버전 업데이트) |
+| `/verify-changes` | 크로스 레이어 정합성 검증 (커밋 전/PR 전 필수) |
 
 ---
 

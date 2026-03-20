@@ -132,10 +132,7 @@ public actor NotificationRemoteDataSource {
 
     do {
       _ = try await callable.call(callableData)
-      AppLogger.liveActivity.info(
-        "✅ Push to Start 토큰 등록 성공 (userId: \(userId), " +
-        "deviceId: \(self.deviceId), activityType: \(activityType))"
-      )
+      AppLogger.liveActivity.info("✅ Push to Start 토큰 등록 성공 (userId: \(userId), deviceId: \(self.deviceId), activityType: \(activityType))")
     } catch {
       AppLogger.liveActivity.error("❌ Push to Start 토큰 등록 실패: \(error.localizedDescription)")
       throw error
