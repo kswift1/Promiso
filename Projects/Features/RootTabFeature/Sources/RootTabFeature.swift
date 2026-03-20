@@ -583,7 +583,7 @@ extension RootTab {
           case .votePushToStartTokenReceived(let token):
             return .run { [notificationClient] _ in
               do {
-                try await notificationClient.saveLiveActivityPushToStartToken(token)
+                try await notificationClient.saveVotePushToStartToken(token)
               } catch {
                 AppLogger.liveActivity.error("Vote Push to Start 토큰 등록 실패: \(error.localizedDescription)")
               }

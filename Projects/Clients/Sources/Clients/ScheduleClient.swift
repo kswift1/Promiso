@@ -329,8 +329,7 @@ extension ScheduleClient: DependencyKey {
         try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
       },
       finalizeVote: { scheduleId in
-        // TODO: dataSource.finalizeVote(scheduleId: scheduleId) 구현 필요
-        throw ScheduleClientError.unknown("finalizeVote not implemented")
+        try await dataSource.finalizeVote(scheduleId: scheduleId)
       },
       updateETA: { channelId, participants, trackingDurationMinutes in
         try await dataSource.updateETA(

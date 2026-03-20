@@ -1330,6 +1330,13 @@ export interface RegisterPushToStartTokenRequest {
 
   /** 디바이스 ID */
   deviceId: string;
+
+  /**
+   * Activity 타입 (기본값: "schedule")
+   * - "schedule": liveActivityPushToStartToken 필드에 저장
+   * - "vote": votePushToStartToken 필드에 저장
+   */
+  activityType?: "schedule" | "vote";
 }
 
 /**

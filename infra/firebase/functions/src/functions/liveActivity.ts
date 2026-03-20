@@ -82,22 +82,28 @@ export const registerPushToStartToken = onCall<
     }
 
     const userId = request.auth.uid;
-    const {token, deviceId} = request.data;
+    const {token, deviceId, activityType} = request.data;
 
     if (!token || !deviceId) {
       throw new HttpsError("invalid-argument", "token과 deviceId는 필수입니다");
     }
+
+    const fieldName = activityType === "vote" ?
+      "votePushToStartToken" :
+      "liveActivityPushToStartToken";
 
     const db = admin.firestore();
     const usersCollection = db.collection("users");
 
     try {
       await usersCollection.doc(userId).update({
-        [`devices.${deviceId}.liveActivityPushToStartToken`]: token,
+        [`devices.${deviceId}.${fieldName}`]: token,
       });
 
       console.log(
-        `✅ Push to Start 토큰 등록: userId=${userId}, deviceId=${deviceId}`,
+        `✅ Push to Start 토큰 등록: userId=${userId}, ` +
+          `deviceId=${deviceId}, ` +
+          `activityType=${activityType ?? "schedule"}`,
       );
       return {success: true};
     } catch (error) {
@@ -257,7 +263,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "start",
-        "attributes-type": "PromiseActivityAttributes",
+        "attributes-type": "ScheduleActivityAttributes",
         "attributes": {
           trackingDurationMinutes,
           promiseId,
@@ -287,7 +293,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
-          "attributes-type": "PromiseActivityAttributes",
+          "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
             promiseId,
@@ -923,7 +929,7 @@ export const executeLiveActivityStart = onTaskDispatched<
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
           "input-push-channel": channelId || "", // iOS 18 채널 구독
-          "attributes-type": "PromiseActivityAttributes",
+          "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
             promiseId,
