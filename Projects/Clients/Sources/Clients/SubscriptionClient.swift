@@ -213,11 +213,25 @@ extension SubscriptionClient: DependencyKey {
                   continuation.yield(merged)
                 }
               }
-              // StoreKit Transaction.updates (서버 상태 기준으로 필터링)
+              // StoreKit Transaction.updates (서버 상태 기준으로 필터링, 활성 상태면 서버 동기화)
               group.addTask {
                 for await status in dataSource.statusStream() {
                   if let filtered = await merger.filterStoreKit(status) {
                     continuation.yield(filtered)
+                  } else if status.isActive {
+                    // StoreKit은 활성인데 서버 미반영 — 서버 동기화 시도
+                    do {
+                      let restoreResult = try await dataSource.restoreWithReceipt()
+                      if let jws = restoreResult.jwsString, let productId = restoreResult.productId {
+                        let verified = try await Self.verifyPurchaseOnServer(transactionJWS: jws, productId: productId)
+                        if verified.isActive {
+                          _ = await merger.updateServer(verified)
+                          continuation.yield(verified)
+                        }
+                      }
+                    } catch {
+                      AppLogger.subscription.debug("[SubscriptionClient] StoreKit sync attempt failed: \(error)")
+                    }
                   }
                 }
               }
