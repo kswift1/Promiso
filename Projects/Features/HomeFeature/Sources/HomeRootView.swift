@@ -4,6 +4,7 @@ import Foundation
 import CreateScheduleFeature
 import NotificationCenterFeature
 import PromisoShared
+import ResourceKit
 import SharedFeature
 import SwiftUI
 
@@ -75,6 +76,14 @@ extension Home {
               store.send(.view(.departureAlertSheetDismissed))
             }
           )
+        }
+        .fullScreenCover(
+          isPresented: Binding(
+            get: { store.isShowingGuide },
+            set: { if !$0 { store.send(.view(.dismissGuide)) } }
+          )
+        ) {
+          homeGuideContent
         }
     }
 
@@ -398,5 +407,16 @@ extension Home {
       .padding(.vertical, 60)
       .padding(.horizontal, 24)
     }
+
+    // MARK: - Guide Content
+
+    @ViewBuilder
+    private var homeGuideContent: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.homeGuideItems,
+        onComplete: { store.send(.view(.dismissGuide)) }
+      )
+    }
   }
 }
+

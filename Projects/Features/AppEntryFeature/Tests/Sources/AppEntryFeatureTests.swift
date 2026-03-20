@@ -369,10 +369,11 @@ struct AppEntryFeatureTests {
       $0.notificationClient.getAuthorizationStatus = { .denied }
     }
 
-    await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) 
+    await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
+      $0.pendingUserForMain = user
+    }
     await store.receive(\.internal.checkNotificationPermission)
     await store.receive(\.internal.notificationPermissionChecked) {
-      $0.pendingUserForMain = user
       $0.notificationPermission = NotificationPermission.Feature.State()
     }
   }
@@ -532,10 +533,10 @@ struct AppEntryFeatureTests {
     }
   }
 
-  // MARK: - Profile + OnboardingStart 플로우
+  // MARK: - Profile + 풀 온보딩 플로우
 
-  @Test("profile.completed + isFullOnboarding=true → onboardingStart 표시")
-  func profileCompleted_fullOnboarding_showsOnboardingStart() async {
+  @Test("profile.completed + isFullOnboarding=true → 알림 권한 확인으로 진행")
+  func profileCompleted_fullOnboarding_checksNotificationPermission() async {
     let user = makeUser(id: "full-onboarding-user", nickname: "풀온보딩")
     var state = AppEntry.Feature.State()
     state.destination = .profile(AppEntry.ProfileSetup.State())
@@ -545,36 +546,16 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.notificationClient.getAuthorizationStatus = { .denied }
     }
 
     await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
       $0.pendingUserForMain = user
-      $0.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "풀온보딩"))
     }
-  }
-
-  @Test("onboardingStart.delegate.completed → pendingUser로 메인 전환")
-  func onboardingStartCompleted_transitionsToMain() async {
-    let user = makeUser(id: "start-completed", nickname: "시작완료")
-    var state = AppEntry.Feature.State()
-    state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "시작완료"))
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
-      $0.analyticsClient.setUserID = { _ in }
-      $0.analyticsClient.setUserProperty = { _, _ in }
-      $0.analyticsClient.logEvent = { _, _ in }
+    await store.receive(\.internal.checkNotificationPermission)
+    await store.receive(\.internal.notificationPermissionChecked) {
+      $0.notificationPermission = NotificationPermission.Feature.State()
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.destination(.presented(.onboardingStart(.delegate(.completed))))) {
-      $0.pendingUserForMain = nil
-    }
-    await store.receive(\.internal.transitionToMain)
-    #expect(store.state.destinationType == .main)
   }
 
   // MARK: - Logout 테스트

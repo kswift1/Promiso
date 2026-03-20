@@ -742,6 +742,18 @@ export type AdminProPlanPrices = {
   lifetime: number;
 };
 
+export type AdminOfferCodeRedemption = {
+  userId: string;
+  offerIdentifier: string;
+  redeemedAt: string;
+  productId: string | null;
+};
+
+export type AdminOfferCodeSummary = {
+  totalRedemptions: number;
+  recentRedemptions: AdminOfferCodeRedemption[];
+};
+
 export type AdminProPlanDashboard = {
   overview: {
     totalUsers: number;
@@ -756,6 +768,7 @@ export type AdminProPlanDashboard = {
   prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
+  offerCodes: AdminOfferCodeSummary;
 };
 
 type GetAdminProPlanDashboardResponse = {

@@ -41,6 +41,7 @@ public enum LocalizedStrings {
     public static var success: String { String(localized: "common.success", bundle: bundle) }
     public static var warning: String { String(localized: "common.warning", bundle: bundle) }
     public static var info: String { String(localized: "common.info", bundle: bundle) }
+    public static var comingSoon: String { String(localized: "common.comingSoon", bundle: bundle) }
     public static var live: String { String(localized: "common.live", bundle: bundle) }
     public static var modify: String { String(localized: "common.modify", bundle: bundle) }
     public static var change: String { String(localized: "common.change", bundle: bundle) }
@@ -151,6 +152,18 @@ public enum LocalizedStrings {
     public static var joinSuccess: String { String(localized: "schedule.success.join", bundle: bundle) }
     public static var leaveSuccess: String { String(localized: "schedule.success.leave", bundle: bundle) }
     public static var completeSuccess: String { String(localized: "schedule.success.complete", bundle: bundle) }
+
+    // Schedule Guide
+    public static var guideModeSwitchTitle: String { String(localized: "schedule.guide.modeSwitch.title", bundle: bundle) }
+    public static var guideModeSwitchSubtitle: String { String(localized: "schedule.guide.modeSwitch.subtitle", bundle: bundle) }
+    public static var guideGroupListTitle: String { String(localized: "schedule.guide.groupList.title", bundle: bundle) }
+    public static var guideGroupListSubtitle: String { String(localized: "schedule.guide.groupList.subtitle", bundle: bundle) }
+    public static var guideSwipeResponseTitle: String { String(localized: "schedule.guide.swipeResponse.title", bundle: bundle) }
+    public static var guideSwipeResponseSubtitle: String { String(localized: "schedule.guide.swipeResponse.subtitle", bundle: bundle) }
+    public static var guidePersonalTitle: String { String(localized: "schedule.guide.personal.title", bundle: bundle) }
+    public static var guidePersonalSubtitle: String { String(localized: "schedule.guide.personal.subtitle", bundle: bundle) }
+    public static var guideTooltip: String { String(localized: "schedule.guide.tooltip", bundle: bundle) }
+    public static var guideToastMessage: String { String(localized: "schedule.guide.toastMessage", bundle: bundle) }
   }
 
   // MARK: - Groups
@@ -232,6 +245,7 @@ public enum LocalizedStrings {
     public static var title: String { String(localized: "settings.title", bundle: bundle) }
     public static var appSettings: String { String(localized: "settings.appSettings", bundle: bundle) }
     public static var support: String { String(localized: "settings.support", bundle: bundle) }
+    public static var guide: String { String(localized: "settings.guide", bundle: bundle) }
     public static var info: String { String(localized: "settings.info", bundle: bundle) }
     public static var developer: String { String(localized: "settings.developer", bundle: bundle) }
 
@@ -1270,6 +1284,17 @@ public enum LocalizedStrings {
       String(localized: "home.briefing.locationOffMessage", bundle: bundle)
     }
 
+    // Guide
+    public static var guideOverviewTitle: String { String(localized: "home.guide.overview.title", bundle: bundle) }
+    public static var guideOverviewSubtitle: String { String(localized: "home.guide.overview.subtitle", bundle: bundle) }
+    public static var guideCalendarOverlayTitle: String { String(localized: "home.guide.calendarOverlay.title", bundle: bundle) }
+    public static var guideCalendarOverlaySubtitle: String { String(localized: "home.guide.calendarOverlay.subtitle", bundle: bundle) }
+    public static var guideLiveActivityTitle: String { String(localized: "home.guide.liveActivity.title", bundle: bundle) }
+    public static var guideLiveActivitySubtitle: String { String(localized: "home.guide.liveActivity.subtitle", bundle: bundle) }
+    public static var guideProFeaturesTitle: String { String(localized: "home.guide.proFeatures.title", bundle: bundle) }
+    public static var guideProFeaturesSubtitle: String { String(localized: "home.guide.proFeatures.subtitle", bundle: bundle) }
+    public static var guideTooltip: String { String(localized: "home.guide.tooltip", bundle: bundle) }
+
     // Timeline
     public static var startLiveSharing: String { String(localized: "home.timeline.startLiveSharing", bundle: bundle) }
     public static var departurePrompt: String { String(localized: "home.timeline.departurePrompt", bundle: bundle) }
@@ -1729,6 +1754,21 @@ public enum LocalizedStrings {
     // Calendar Event Detail
     public static var calendarEventSource: String { String(localized: "calendar.event.source", bundle: bundle) }
     public static var openInCalendarApp: String { String(localized: "calendar.event.openInCalendar", bundle: bundle) }
+
+    // Guide
+    public static var guideModeSwitchTitle: String { String(localized: "calendar.guide.modeSwitch.title", bundle: bundle) }
+    public static var guideModeSwitchSubtitle: String { String(localized: "calendar.guide.modeSwitch.subtitle", bundle: bundle) }
+    public static var guideWeekTimelineTitle: String { String(localized: "calendar.guide.weekTimeline.title", bundle: bundle) }
+    public static var guideWeekTimelineSubtitle: String { String(localized: "calendar.guide.weekTimeline.subtitle", bundle: bundle) }
+    public static var guideWeekCreateTitle: String { String(localized: "calendar.guide.weekCreate.title", bundle: bundle) }
+    public static var guideWeekCreateSubtitle: String { String(localized: "calendar.guide.weekCreate.subtitle", bundle: bundle) }
+    public static var guideMonthListTitle: String { String(localized: "calendar.guide.monthList.title", bundle: bundle) }
+    public static var guideMonthListSubtitle: String { String(localized: "calendar.guide.monthList.subtitle", bundle: bundle) }
+    public static var guideMonthExpandedTitle: String { String(localized: "calendar.guide.monthExpanded.title", bundle: bundle) }
+    public static var guideMonthExpandedSubtitle: String { String(localized: "calendar.guide.monthExpanded.subtitle", bundle: bundle) }
+    public static var guideFilterTitle: String { String(localized: "calendar.guide.filter.title", bundle: bundle) }
+    public static var guideFilterSubtitle: String { String(localized: "calendar.guide.filter.subtitle", bundle: bundle) }
+    public static var guideTooltip: String { String(localized: "calendar.guide.tooltip", bundle: bundle) }
   }
 
   // MARK: - Personal
@@ -1770,6 +1810,7 @@ public enum LocalizedStrings {
     public static var filterAll: String { String(localized: "personal.filter.all", bundle: bundle) }
     public static var filterPast: String { String(localized: "personal.filter.past", bundle: bundle) }
     public static var filterRecurring: String { String(localized: "personal.filter.recurring", bundle: bundle) }
+    public static var recurringEventsSummaryTitle: String { String(localized: "personal.recurringEvents.summaryTitle", bundle: bundle) }
     public static var notificationStartsNow: String { String(localized: "personal.event.notification.startsNow", bundle: bundle) }
     public static func notificationStartsInWeeks(_ weeks: Int) -> String {
       String(localized: "personal.event.notification.startsInWeeks", bundle: bundle)
@@ -1826,6 +1867,13 @@ public enum LocalizedStrings {
 
   // MARK: - ProPlan
   public enum ProPlan {
+    // Banner
+    public static var bannerSubtitle: String { String(localized: "proPlan.banner.subtitle", bundle: bundle) }
+    public static var bannerBenefitDepartureTime: String { String(localized: "proPlan.banner.benefit.departureTime", bundle: bundle) }
+    public static var bannerBenefitWeather: String { String(localized: "proPlan.banner.benefit.weather", bundle: bundle) }
+    public static var bannerBenefitConflict: String { String(localized: "proPlan.banner.benefit.conflict", bundle: bundle) }
+    public static var bannerBenefitDailySummary: String { String(localized: "proPlan.banner.benefit.dailySummary", bundle: bundle) }
+
     public static var manageTitle: String { String(localized: "proPlan.manage.title", bundle: bundle) }
     public static var manageAction: String { String(localized: "proPlan.manage.action", bundle: bundle) }
     public static var subscriptionInfo: String { String(localized: "proPlan.manage.subscriptionInfo", bundle: bundle) }
@@ -1845,6 +1893,7 @@ public enum LocalizedStrings {
     public static var proFeatures: String { String(localized: "proPlan.manage.features", bundle: bundle) }
     public static var manageAppleSubscription: String { String(localized: "proPlan.manage.appleSubscription", bundle: bundle) }
     public static var manageHelpText: String { String(localized: "proPlan.manage.helpText", bundle: bundle) }
+    public static var offerCodeApplied: String { String(localized: "proPlan.manage.offerCodeApplied", bundle: bundle) }
     public static var statusActive: String { String(localized: "proPlan.manage.status.active", bundle: bundle) }
     public static var statusLifetime: String { String(localized: "proPlan.manage.status.lifetime", bundle: bundle) }
     public static var statusGracePeriod: String { String(localized: "proPlan.manage.status.gracePeriod", bundle: bundle) }
@@ -1968,7 +2017,9 @@ public enum LocalizedStrings {
       String(localized: "proPlan.error.restoreNoPurchaseHistory", bundle: bundle)
     }
     public static var restoreFailed: String { String(localized: "proPlan.error.restoreFailed", bundle: bundle) }
+    public static var onboardingConflictTitle: String { String(localized: "proPlan.onboarding.conflict.title", bundle: bundle) }
     public static var onboardingConflictSubtitle: String { String(localized: "proPlan.onboarding.conflict.subtitle", bundle: bundle) }
+    public static var onboardingConflictSubtitleNew: String { String(localized: "proPlan.onboarding.conflict.subtitleNew", bundle: bundle) }
     public static var onboardingConflictDetected: String { String(localized: "proPlan.onboarding.conflict.detected", bundle: bundle) }
     public static var onboardingConflictExistingTitle: String { String(localized: "proPlan.onboarding.conflict.existingTitle", bundle: bundle) }
     public static var onboardingConflictExistingTime: String { String(localized: "proPlan.onboarding.conflict.existingTime", bundle: bundle) }
@@ -1976,6 +2027,10 @@ public enum LocalizedStrings {
     public static var onboardingConflictNewTime: String { String(localized: "proPlan.onboarding.conflict.newTime", bundle: bundle) }
     public static var onboardingConflictOverlap: String { String(localized: "proPlan.onboarding.conflict.overlap", bundle: bundle) }
     public static var onboardingBriefingSubtitle: String { String(localized: "proPlan.onboarding.briefing.subtitle", bundle: bundle) }
+    public static var onboardingBriefingSettingsTitle: String { String(localized: "proPlan.onboarding.briefingSettings.title", bundle: bundle) }
+    public static var onboardingBriefingSettingsSubtitle: String { String(localized: "proPlan.onboarding.briefingSettings.subtitle", bundle: bundle) }
+    public static var onboardingBriefingStyleTitle: String { String(localized: "proPlan.onboarding.briefingStyle.title", bundle: bundle) }
+    public static var onboardingBriefingStyleSubtitle: String { String(localized: "proPlan.onboarding.briefingStyle.subtitle", bundle: bundle) }
     public static var onboardingAlertAndTransport: String { String(localized: "proPlan.onboarding.alertAndTransport", bundle: bundle) }
     public static var onboardingMultipleSelectHint: String { String(localized: "proPlan.onboarding.multipleSelectHint", bundle: bundle) }
     public static var onboardingTodayBriefing: String { String(localized: "proPlan.onboarding.todayBriefing", bundle: bundle) }

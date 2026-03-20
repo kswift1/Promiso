@@ -136,6 +136,7 @@ public enum SubscriptionStatus: Equatable, Sendable {
 public struct ProEntitlementInfo: Equatable, Sendable {
   public enum Source: String, Equatable, Sendable {
     case subscription
+    case offerCode
     case coupon
     case admin
     case none

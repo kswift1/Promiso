@@ -124,6 +124,15 @@ public enum PromisoCalendarTag {
     createURL(id: eventId, host: personalHost, contentHash: contentHash)
   }
 
+  /// 모든 환경(promiso/promiso-dev/promiso-stage)의 Promiso URL인지 확인
+  public static func isAnyPromisoURL(_ url: URL?) -> Bool {
+    guard let url, let scheme = url.scheme else { return false }
+    let allSchemes: Set<String> = ["promiso", "promiso-dev", "promiso-stage"]
+    guard allSchemes.contains(scheme) else { return false }
+    let host = url.host ?? ""
+    return host == promiseHost || host == scheduleHost || host == personalHost
+  }
+
   private static func createURL(id: String, host: String, contentHash: String) -> URL? {
     var components = URLComponents()
     components.scheme = scheme

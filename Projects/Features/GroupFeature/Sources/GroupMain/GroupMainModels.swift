@@ -1,5 +1,4 @@
 import PromisoShared
-import ResourceKit
 import SwiftUI
 import UIKit
 
@@ -66,46 +65,3 @@ extension GroupMain {
   }
 }
 
-// MARK: - Onboarding
-// TODO: onboarding - 추후 고도화 필요 (튜토리얼, 샘플 데이터 등)
-
-extension GroupMain {
-  /// 온보딩용 Mock 그룹 ID
-  static let onboardingGroupId = "__onboarding__"
-
-  /// 온보딩 카드 타입
-  public enum OnboardingCard: CaseIterable, Identifiable {
-    case createGroup
-    case joinGroup
-
-    public var id: Self { self }
-
-    var title: String {
-      switch self {
-      case .createGroup: return LocalizedStrings.GroupMain.createGroupCard
-      case .joinGroup: return LocalizedStrings.GroupMain.joinGroupCard
-      }
-    }
-
-    var subtitle: String {
-      switch self {
-      case .createGroup: return LocalizedStrings.GroupMain.createGroupCardSubtitle
-      case .joinGroup: return LocalizedStrings.GroupMain.joinGroupCardSubtitle
-      }
-    }
-
-    var icon: String {
-      switch self {
-      case .createGroup: return "person.3.fill"
-      case .joinGroup: return "link.circle.fill"
-      }
-    }
-
-    var color: Color {
-      switch self {
-      case .createGroup: return .blue
-      case .joinGroup: return .green
-      }
-    }
-  }
-}

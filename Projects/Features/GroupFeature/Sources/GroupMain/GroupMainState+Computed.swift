@@ -1,6 +1,5 @@
 import Clients
 import PromisoShared
-import ResourceKit
 import SwiftUI
 
 extension GroupMain.Feature.State {
@@ -11,27 +10,9 @@ extension GroupMain.Feature.State {
     allGroupSummaries == nil
   }
 
-  /// 온보딩 모드 여부 (그룹이 없을 때)
-  var isOnboardingMode: Bool {
-    allGroupSummaries?.isEmpty == true
-  }
-
   /// 그룹 가로 바용 아이템 목록
   var groupBarItems: [GroupBarItem] {
-    guard let groups = allGroupSummaries else { return [] }
-
-    // 그룹이 없으면 온보딩 Mock 그룹 표시
-    if groups.isEmpty {
-      return [
-        GroupBarItem(
-          id: GroupMain.onboardingGroupId,
-          name: LocalizedStrings.GroupMain.onboardingGroupName,
-          localImage: ResourceKitAsset.notificationLogo.swiftUIImage,
-          hasNewActivity: false,
-          isSelected: true
-        )
-      ]
-    }
+    guard let groups = allGroupSummaries, !groups.isEmpty else { return [] }
 
     let sortedGroups = sortedGroupsForSelection(groups)
 

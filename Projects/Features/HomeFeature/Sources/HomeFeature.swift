@@ -34,6 +34,7 @@ extension Home {
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.groupClient) var groupClient
     public init() {}
 
     // MARK: - CancelID
@@ -45,6 +46,7 @@ extension Home {
       case overlayPersonalEventFetch(Date)
       case briefingFetch
       case transportationFetch
+      case showGuide
     }
 
     // MARK: - State
@@ -112,6 +114,10 @@ extension Home {
       /// 화면 상단/하단 토스트 메시지
       var toastMessage: ToastMessage?
 
+      // MARK: Guide
+      /// 가이드 표시 여부
+      var isShowingGuide: Bool = false
+
       // MARK: Calendar Overlay
       /// 캘린더 오버레이 표시 여부
       var showCalendarOverlay: Bool = false
@@ -126,7 +132,7 @@ extension Home {
       /// 오버레이 날씨 전체 정보 (시간별 예보 포함)
       var overlayWeatherInfo: WeatherInfo? = nil
       /// 오버레이 캘린더 표시 모드
-      var overlayCalendarMode: CalendarMode = .monthly
+      var overlayCalendarMode: CalendarMode = .weekly
       /// 오버레이 월별 일정 캐시 (키: 월 시작일)
       var overlaySchedulesByMonth: [Date: [ScheduleModel]] = [:]
       /// 이미 로드된 오버레이 월 (중복 요청 방지)
@@ -325,6 +331,10 @@ extension Home {
         case emptyCreateRecurringEventTapped
         /// 반복 일정 요약 항목 탭 (상세 화면)
         case recurringSummaryTapped(HomeModels.RecurringEventSummary)
+        /// 가이드 보기
+        case showGuide
+        /// 가이드 닫기
+        case dismissGuide
       }
 
       @CasePathable
@@ -389,6 +399,8 @@ extension Home {
         case departureLocationResolved(String?)
         /// 현재 위치 좌표 저장
         case currentLocationStored(Coordinate)
+        /// 그룹 목록 갱신 완료 (인라인 그룹 생성 후)
+        case groupSummariesRefreshed([UserGroupInfo])
       }
 
       @CasePathable
@@ -439,12 +451,20 @@ extension Home {
             }
 
             // Firestore에서 직접 쿼리 (일정 + 개인 일정 + 반복 개인 일정 병렬)
+            let shouldShowGuide = !state.hasLoadedOnce && !userDefaultsClient.hasSeenHomeGuide
             return .merge(
               weatherEffect,
               .send(.internal(.fetchSchedules)),
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents)),
-              .send(.internal(.checkPermissions))
+              .send(.internal(.checkPermissions)),
+              shouldShowGuide
+                ? .run { send in
+                    try await Task.sleep(for: .seconds(1))
+                    await send(.view(.showGuide))
+                  }
+                  .cancellable(id: CancelID.showGuide, cancelInFlight: true)
+                : .none
             )
 
           case .refreshTriggered:
@@ -603,6 +623,7 @@ extension Home {
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
             state.overlaySelectedDate = Date()
+            state.overlayCalendarMode = .weekly
             state.showCalendarOverlay = true
 
             let currentMonth = Date().startOfMonth
@@ -649,7 +670,7 @@ extension Home {
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
-            state.overlayCalendarMode = .monthly
+            state.overlayCalendarMode = .weekly
             state.overlayCalendarModeBeforeFeature = nil
             state.overlayScheduleDetail = nil
             state.overlayCreateSchedule = nil
@@ -752,7 +773,7 @@ extension Home {
           case .overlayCreatePersonalEventTapped(let date):
             // 오버레이 닫기
             state.showCalendarOverlay = false
-            state.overlayCalendarMode = .monthly
+            state.overlayCalendarMode = .weekly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
@@ -1111,6 +1132,24 @@ extension Home {
             }
             return .none
 
+          case .showGuide:
+            state.isShowingGuide = true
+            return .none
+
+          case .dismissGuide:
+            state.isShowingGuide = false
+            let isFirstTime = !userDefaultsClient.hasSeenHomeGuide
+            if isFirstTime {
+              state.toastMessage = ToastMessage(
+                type: .info,
+                title: LocalizedStrings.Home.guideTooltip,
+                position: .top
+              )
+            }
+            return .run { [userDefaultsClient] _ in
+              userDefaultsClient.markHomeGuideSeen()
+            }
+
           }
 
         case .internal(let internalAction):
@@ -1380,7 +1419,7 @@ extension Home {
               guard !updates.isEmpty else { return }
               await send(.internal(.weatherBatchResponse(updates)))
             }
-            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: false)
 
           case .weatherBatchResponse(let updates):
             guard !updates.isEmpty else { return .none }
@@ -1865,6 +1904,22 @@ extension Home {
             state.currentLocationCoordinate = coordinate
             return .none
 
+          case .groupSummariesRefreshed(let summaries):
+            state.$currentUser.withLock { user in
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: summaries
+              )
+            }
+            return .none
+
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -1898,13 +1953,19 @@ extension Home {
           state.createSchedule = nil
           return .send(.internal(.fetchSchedules))
 
+        case .createSchedule(.presented(.delegate(.groupCreated))):
+          return .run { [groupClient] send in
+            do {
+              let summaries = try await groupClient.fetchGroupSummaries()
+              await send(.internal(.groupSummariesRefreshed(summaries)))
+            } catch {
+              // 그룹 갱신 실패해도 무시
+            }
+          }
+
         case .createSchedule(.presented(.delegate(.dismiss))):
           state.createSchedule = nil
           return .none
-
-        case .createSchedule(.presented(.delegate(.createGroupRequested))):
-          state.createSchedule = nil
-          return .send(.delegate(.navigateToCreateSchedule))
 
         case .createSchedule:
           return .none
@@ -1987,17 +2048,6 @@ extension Home {
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
           return .none
-
-        case .overlayCreateSchedule(.delegate(.createGroupRequested)):
-          // 그룹 생성은 오버레이에서 불가 → 오버레이 닫고 기존 플로우로 위임
-          state.overlayCreateSchedule = nil
-          state.overlayCalendarModeBeforeFeature = nil
-          state.showCalendarOverlay = false
-          state.overlayCalendarMode = .monthly
-          return .merge(
-            .cancel(id: CancelID.overlayWeatherFetch),
-            .send(.delegate(.navigateToCreateSchedule))
-          )
 
         case .overlayCreateSchedule:
           return .none

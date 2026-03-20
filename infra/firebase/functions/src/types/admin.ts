@@ -455,6 +455,18 @@ export interface AdminProPlanPrices {
   lifetime: number;
 }
 
+export interface AdminOfferCodeRedemption {
+  userId: string;
+  offerIdentifier: string;
+  redeemedAt: string;
+  productId: string | null;
+}
+
+export interface AdminOfferCodeSummary {
+  totalRedemptions: number;
+  recentRedemptions: AdminOfferCodeRedemption[];
+}
+
 export interface AdminProPlanDashboard {
   overview: {
     totalUsers: number;
@@ -469,6 +481,7 @@ export interface AdminProPlanDashboard {
   prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
+  offerCodes: AdminOfferCodeSummary;
 }
 
 export interface GetAdminProPlanDashboardResponse {

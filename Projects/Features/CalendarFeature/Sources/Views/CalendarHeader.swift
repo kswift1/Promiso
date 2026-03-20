@@ -12,6 +12,8 @@ struct CalendarHeader: View {
   let displayMode: CalendarDisplayMode
   let isSelectedDateToday: Bool
   let isFilterActive: Bool
+  let isShowingGuideTooltip: Bool
+  let onGuideTapped: () -> Void
   let onFilterTapped: () -> Void
   let onToggleMode: () -> Void
   let onSetMode: (CalendarDisplayMode) -> Void
@@ -26,13 +28,13 @@ struct CalendarHeader: View {
         Button(action: onMovePrevious) {
           Image(systemName: "chevron.left")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(width: 28, height: 36)
         }
 
         Text(title)
           .font(.system(size: 18, weight: .bold).monospacedDigit())
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
           .fixedSize(horizontal: true, vertical: false)
           .contentTransition(.numericText())
           .animation(.spring(duration: 0.3), value: title)
@@ -40,7 +42,7 @@ struct CalendarHeader: View {
         Button(action: onMoveNext) {
           Image(systemName: "chevron.right")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(width: 28, height: 36)
         }
       }
@@ -59,6 +61,20 @@ struct CalendarHeader: View {
             .cornerRadius(8)
         }
         .fixedSize()
+      }
+
+      // 가이드
+      Button(action: onGuideTapped) {
+        Image(systemName: "questionmark.circle")
+          .font(.system(size: 18))
+          .foregroundStyle(.primary)
+          .frame(width: 32, height: 36)
+      }
+      .overlay(alignment: .bottom) {
+        if isShowingGuideTooltip {
+          GuideTooltip()
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
       }
 
       // 필터
@@ -84,7 +100,7 @@ struct CalendarHeader: View {
       } label: {
         Image(systemName: displayMode.iconName)
           .font(.system(size: 18))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
           .frame(width: 32, height: 36)
           .contentShape(Rectangle())
       } primaryAction: {
@@ -122,5 +138,38 @@ struct WeekdayHeader: View {
     if symbol == LocalizedStrings.Calendar.weekdaySun { return .red.opacity(0.8) }
     if symbol == LocalizedStrings.Calendar.weekdaySat { return .blue.opacity(0.8) }
     return .secondary
+  }
+}
+
+// MARK: - Guide Tooltip
+
+private struct GuideTooltip: View {
+  var body: some View {
+    Text(LocalizedStrings.Calendar.guideTooltip)
+      .font(.caption)
+      .foregroundStyle(.white)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 8)
+      .background(Color.pmindigo.n700, in: RoundedRectangle(cornerRadius: 8))
+      .overlay(alignment: .top) {
+        // 말풍선 꼬리
+        Triangle()
+          .fill(Color.pmindigo.n700)
+          .frame(width: 12, height: 6)
+          .offset(y: -6)
+      }
+      .offset(y: 42)
+      .fixedSize()
+  }
+}
+
+private struct Triangle: SwiftUI.Shape {
+  func path(in rect: CGRect) -> SwiftUI.Path {
+    var path = SwiftUI.Path()
+    path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+    path.closeSubpath()
+    return path
   }
 }

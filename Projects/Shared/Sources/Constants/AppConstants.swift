@@ -236,6 +236,17 @@ public enum AppConstants {
     public static let briefingStyle = "promisoBriefingStyle"
     /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
     public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
+
+    // MARK: - Guide
+
+    /// 캘린더 기능 가이드 본 적 있는지
+    public static let hasSeenCalendarGuide = "promisoHasSeenCalendarGuide"
+    /// 홈 기능 가이드 본 적 있는지
+    public static let hasSeenHomeGuide = "promisoHasSeenHomeGuide"
+    /// 일정 기능 가이드 본 적 있는지
+    public static let hasSeenScheduleGuide = "promisoHasSeenScheduleGuide"
+    /// 설정 기능 가이드 본 적 있는지
+    public static let hasSeenSettingsGuide = "promisoHasSeenSettingsGuide"
   }
 
   // MARK: - Calendar Helpers
