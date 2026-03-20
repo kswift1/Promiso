@@ -459,6 +459,8 @@ export interface AdminProPlanDashboard {
   overview: {
     totalUsers: number;
     proUsers: number;
+    proSubscriptionUsers: number;
+    proOverrideUsers: number;
     freeUsers: number;
     proRate: number;
   };

@@ -170,11 +170,12 @@ export function ProPlanDashboardPage() {
             <Grid container spacing={2}>
               {[
                 {label: "전체 사용자", value: dashboard.overview.totalUsers.toLocaleString("ko-KR")},
-                {label: "Pro 사용자", value: dashboard.overview.proUsers.toLocaleString("ko-KR")},
+                {label: "구독 Pro", value: dashboard.overview.proSubscriptionUsers.toLocaleString("ko-KR")},
+                {label: "쿠폰 Pro", value: dashboard.overview.proOverrideUsers.toLocaleString("ko-KR")},
                 {label: "Free 사용자", value: dashboard.overview.freeUsers.toLocaleString("ko-KR")},
                 {label: "Pro 전환율", value: `${dashboard.overview.proRate}%`},
               ].map((card) => (
-                <Grid key={card.label} size={{xs: 12, sm: 6, md: 3}}>
+                <Grid key={card.label} size={{xs: 6, sm: 4, md: true}}>
                   <Card elevation={0} sx={{height: "100%"}}>
                     <CardContent>
                       <Stack spacing={1}>

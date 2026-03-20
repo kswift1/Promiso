@@ -2691,6 +2691,16 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
 
   // Pro users from entitlements (SSOT)
   const proUsers = entitlementsSnapshot.docs.length;
+  let proSubscriptionUsers = 0;
+  let proOverrideUsers = 0;
+  for (const doc of entitlementsSnapshot.docs) {
+    const source = doc.data().source;
+    if (source === "subscription") {
+      proSubscriptionUsers++;
+    } else if (source === "override") {
+      proOverrideUsers++;
+    }
+  }
   const totalUsers = usersSnapshot.docs.length;
 
   // Revenue estimates
@@ -2747,6 +2757,8 @@ async function buildProPlanDashboard(): Promise<AdminProPlanDashboard> {
     overview: {
       totalUsers,
       proUsers,
+      proSubscriptionUsers,
+      proOverrideUsers,
       freeUsers: totalUsers - proUsers,
       proRate: totalUsers > 0 ?
         Math.round((proUsers / totalUsers) * 10000) / 100 :
