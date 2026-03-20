@@ -586,8 +586,26 @@ export const onPromiseCreated = onDocumentCreated(
     const groupId = promiseData.groupId as string;
     const hostId = promiseData.hostId as string;
     const title = promiseData.title as string;
+    const notificationMethod =
+      (promiseData.notificationMethod as string) || "pushNotification";
 
-    console.log(`📅 Promise created: ${promiseId} in group ${groupId}`);
+    console.log(
+      `📅 Promise created: ${promiseId} ` +
+      `(notification: ${notificationMethod})`
+    );
+
+    // 라이브액티비티 선택 시 푸시 알림 건너뛰기
+    // (startVoteLiveActivity가 별도로 LiveActivity 시작)
+    if (notificationMethod === "liveActivity") {
+      console.log("LiveActivity selected, skip push");
+      return;
+    }
+
+    // 없음 선택 시 알림 건너뛰기
+    if (notificationMethod === "none") {
+      console.log("No notification selected, skip");
+      return;
+    }
 
     // 그룹 멤버 조회
     const db = admin.firestore();
