@@ -108,8 +108,9 @@ struct PersonalEventDetailFeatureTests {
     let requestedCoordinates = LockIsolated<[Double]>([])
     let weatherContinuation = LockIsolated<CheckedContinuation<WeatherInfo, Never>?>(nil)
 
-    let state = PersonalEventDetail.Feature.State(event: event)
+    var state = PersonalEventDetail.Feature.State(event: event)
     state.$weatherCache.withLock { $0 = [event.id: staleWeather] }
+    state.$isPro.withLock { $0 = true }
 
     let store = TestStore(initialState: state) {
       PersonalEventDetail.Feature()
