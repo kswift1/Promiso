@@ -35,7 +35,7 @@ git push origin main
 
 이미 머지 완료 상태면 스킵한다.
 
-### 3. 릴리스 태그 생성 (자동)
+### 3. 릴리스 태그 & GitHub Release 생성 (자동)
 
 `v{현재버전}` 태그가 없으면 main의 머지 커밋에 태그를 생성한다:
 
@@ -45,6 +45,12 @@ git push origin v{현재버전}
 ```
 
 이미 존재하면 스킵한다.
+
+태그 생성 후 GitHub Release도 함께 생성한다:
+
+```bash
+gh release create v{현재버전} --title "v{현재버전}" --generate-notes --notes-start-tag v{이전태그} --latest
+```
 
 ### 4. 다음 버전 제안 (멈춤 — 사용자 확인)
 
