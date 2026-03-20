@@ -58,6 +58,23 @@ async function getPriceForProduct(
 }
 
 /**
+ * Pro 사용자 수를 조회하는 내부 헬퍼
+ *
+ * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
+ * @return {Promise<number>} 현재 Pro 사용자 수
+ */
+async function getTotalProUsers(
+  db: FirebaseFirestore.Firestore,
+): Promise<number> {
+  const proSnap = await db
+    .collection("entitlements")
+    .where("hasPro", "==", true)
+    .count()
+    .get();
+  return proSnap.data().count;
+}
+
+/**
  * subscriptions/{uid} 변경 시 구독 상태 전환을 감지하여
  * 적절한 Slack 알림을 전송한다.
  *
@@ -122,12 +139,7 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
 
       // 케이스 1: 신규 구독 시작 (비활성 → 활성)
       if (isAfterActive && !isBeforeActive) {
-        const proSnap = await db
-          .collection("entitlements")
-          .where("hasPro", "==", true)
-          .count()
-          .get();
-        const totalProUsers = proSnap.data().count;
+        const totalProUsers = await getTotalProUsers(db);
 
         const price = await getPriceForProduct(db, productId);
 
@@ -164,12 +176,7 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
 
       // 케이스 2: 구독 취소/환불 (활성 → revoked)
       if (afterStatus === "revoked" && isBeforeActive) {
-        const proSnap = await db
-          .collection("entitlements")
-          .where("hasPro", "==", true)
-          .count()
-          .get();
-        const totalProUsers = proSnap.data().count;
+        const totalProUsers = await getTotalProUsers(db);
 
         await sendSlackSubscriptionCancelNotification({
           uid,
@@ -185,12 +192,7 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
         afterStatus === "expired" &&
         (isBeforeActive || isBeforeGracePeriod);
       if (isExpiredTransition) {
-        const proSnap = await db
-          .collection("entitlements")
-          .where("hasPro", "==", true)
-          .count()
-          .get();
-        const totalProUsers = proSnap.data().count;
+        const totalProUsers = await getTotalProUsers(db);
 
         await sendSlackSubscriptionExpiredNotification({
           uid,
