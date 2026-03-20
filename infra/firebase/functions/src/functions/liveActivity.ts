@@ -82,28 +82,23 @@ export const registerPushToStartToken = onCall<
     }
 
     const userId = request.auth.uid;
-    const {token, deviceId, activityType} = request.data;
+    const {token, deviceId} = request.data;
 
     if (!token || !deviceId) {
       throw new HttpsError("invalid-argument", "token과 deviceId는 필수입니다");
     }
-
-    const fieldName = activityType === "vote" ?
-      "votePushToStartToken" :
-      "liveActivityPushToStartToken";
 
     const db = admin.firestore();
     const usersCollection = db.collection("users");
 
     try {
       await usersCollection.doc(userId).update({
-        [`devices.${deviceId}.${fieldName}`]: token,
+        [`devices.${deviceId}.pushToStartToken`]: token,
       });
 
       console.log(
         `✅ Push to Start 토큰 등록: userId=${userId}, ` +
-          `deviceId=${deviceId}, ` +
-          `activityType=${activityType ?? "schedule"}`,
+          `deviceId=${deviceId}`,
       );
       return {success: true};
     } catch (error) {
@@ -224,10 +219,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
-              if (device.liveActivityPushToStartToken) {
+              if (device.pushToStartToken) {
                 allTokens.push({
                   userId: uid,
-                  token: device.liveActivityPushToStartToken,
+                  token: device.pushToStartToken,
                 });
               }
             }
@@ -869,10 +864,10 @@ export const executeLiveActivityStart = onTaskDispatched<
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
-              if (device.liveActivityPushToStartToken) {
+              if (device.pushToStartToken) {
                 allTokens.push({
                   userId: uid,
-                  token: device.liveActivityPushToStartToken,
+                  token: device.pushToStartToken,
                 });
               }
             }

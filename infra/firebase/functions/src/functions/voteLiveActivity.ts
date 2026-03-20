@@ -33,7 +33,7 @@ import {
 // ============================================================================
 
 interface DeviceInfo {
-  liveActivityPushToStartToken?: string;
+  pushToStartToken?: string;
   [key: string]: unknown;
 }
 
@@ -151,10 +151,10 @@ export const startVoteLiveActivity = onCall(
         if (devices) {
           for (const deviceId of Object.keys(devices)) {
             const device = devices[deviceId];
-            if (device.liveActivityPushToStartToken) {
+            if (device.pushToStartToken) {
               allTokens.push({
                 userId: uid,
-                token: device.liveActivityPushToStartToken,
+                token: device.pushToStartToken,
               });
             }
           }

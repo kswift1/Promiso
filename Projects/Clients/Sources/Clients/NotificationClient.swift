@@ -16,13 +16,9 @@ public struct NotificationClient: Sendable {
   /// FCM 토큰 삭제 (로그아웃 시)
   public var deleteFCMToken: @Sendable () async throws -> Void
 
-  /// LiveActivity Push to Start 토큰 저장 (Schedule)
+  /// LiveActivity Push to Start 토큰 저장 (앱 단위 통합)
   /// - Parameter token: Push to Start 토큰
   public var saveLiveActivityPushToStartToken: @Sendable (_ token: String) async throws -> Void
-
-  /// Vote LiveActivity Push to Start 토큰 저장
-  /// - Parameter token: Push to Start 토큰
-  public var saveVotePushToStartToken: @Sendable (_ token: String) async throws -> Void
 
   // MARK: - Authorization
 
@@ -88,7 +84,6 @@ extension NotificationClient: TestDependencyKey {
     saveFCMToken: { _ in },
     deleteFCMToken: { },
     saveLiveActivityPushToStartToken: { _ in },
-    saveVotePushToStartToken: { _ in },
     getAuthorizationStatus: { .authorized },
     requestAuthorization: { true },
     openNotificationSettings: { },
@@ -107,7 +102,6 @@ extension NotificationClient: TestDependencyKey {
     saveLiveActivityPushToStartToken: unimplemented(
       "\(Self.self).saveLiveActivityPushToStartToken"
     ),
-    saveVotePushToStartToken: unimplemented("\(Self.self).saveVotePushToStartToken"),
     getAuthorizationStatus: unimplemented("\(Self.self).getAuthorizationStatus", placeholder: .notDetermined),
     requestAuthorization: unimplemented("\(Self.self).requestAuthorization", placeholder: false),
     openNotificationSettings: unimplemented("\(Self.self).openNotificationSettings"),
@@ -149,19 +143,7 @@ extension NotificationClient: DependencyKey {
         }
         try await dataSource.saveLiveActivityPushToStartToken(
           userId: currentUser.uid,
-          token: token,
-          activityType: "schedule"
-        )
-      },
-
-      saveVotePushToStartToken: { token in
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
-        }
-        try await dataSource.saveLiveActivityPushToStartToken(
-          userId: currentUser.uid,
-          token: token,
-          activityType: "vote"
+          token: token
         )
       },
 

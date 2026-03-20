@@ -240,10 +240,6 @@ extension RootTab {
       case observePushToStartToken
       /// Push to Start 토큰 수신
       case pushToStartTokenReceived(String)
-      /// Vote Push to Start 토큰 구독 시작
-      case observeVotePushToStartToken
-      /// Vote Push to Start 토큰 수신
-      case votePushToStartTokenReceived(String)
       /// Widget용 Auth 토큰 갱신 (Firebase ID Token - 1시간)
       case refreshWidgetAuthToken
       /// Widget 전용 Long-lived Token 발급 요청 (30일)
@@ -308,7 +304,6 @@ extension RootTab {
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
-            .send(.internal(.observeVotePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
             .send(.internal(.observeVoteActivityUpdates)),
             .send(.internal(.syncCalendar)),
@@ -569,23 +564,6 @@ extension RootTab {
                 UserDefaults.standard.set(token, forKey: cacheKey)
               } catch {
                 AppLogger.liveActivity.error("Push to Start 토큰 등록 실패: \(error.localizedDescription)")
-              }
-            }
-
-          case .observeVotePushToStartToken:
-            // Vote Push to Start 토큰 스트림 구독
-            return .run { [voteLiveActivityClient] send in
-              for await token in voteLiveActivityClient.observePushToStartTokenUpdates() {
-                await send(.internal(.votePushToStartTokenReceived(token)))
-              }
-            }
-
-          case .votePushToStartTokenReceived(let token):
-            return .run { [notificationClient] _ in
-              do {
-                try await notificationClient.saveVotePushToStartToken(token)
-              } catch {
-                AppLogger.liveActivity.error("Vote Push to Start 토큰 등록 실패: \(error.localizedDescription)")
               }
             }
 

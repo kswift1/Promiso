@@ -111,28 +111,27 @@ public actor NotificationRemoteDataSource {
 
   // MARK: - LiveActivity Push to Start Token
 
-  /// LiveActivity Push to Start 토큰 저장
+  /// LiveActivity Push to Start 토큰 저장 (앱 단위 통합)
   /// - Parameters:
   ///   - userId: 사용자 ID
   ///   - token: Push to Start 토큰
-  ///   - activityType: Activity 타입 ("schedule" 또는 "vote", 기본값 "schedule")
   public func saveLiveActivityPushToStartToken(
     userId: String,
-    token: String,
-    activityType: String = "schedule"
+    token: String
   ) async throws {
     let functions = DefaultFunctionsProvider().functions
     let callable = functions.httpsCallable(FirebaseConstants.registerPushToStartToken)
 
     let callableData: [String: Any] = [
       "token": token,
-      "deviceId": deviceId,
-      "activityType": activityType
+      "deviceId": deviceId
     ]
 
     do {
       _ = try await callable.call(callableData)
-      AppLogger.liveActivity.info("✅ Push to Start 토큰 등록 성공 (userId: \(userId), deviceId: \(self.deviceId), activityType: \(activityType))")
+      AppLogger.liveActivity.info(
+        "✅ Push to Start 토큰 등록 성공 (userId: \(userId), deviceId: \(self.deviceId))"
+      )
     } catch {
       AppLogger.liveActivity.error("❌ Push to Start 토큰 등록 실패: \(error.localizedDescription)")
       throw error

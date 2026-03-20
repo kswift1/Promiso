@@ -1228,8 +1228,8 @@ export interface DeviceInfo {
   /** 토큰 등록 시각 */
   createdAt: FirebaseFirestore.Timestamp;
 
-  /** LiveActivity Push to Start 토큰 (iOS 17.2+) */
-  liveActivityPushToStartToken?: string | null;
+  /** Push to Start 토큰 (iOS 17.2+, 앱 단위 통합) */
+  pushToStartToken?: string | null;
 
   /** LiveActivity Push 토큰 (개별 Activity용) */
   liveActivityPushToken?: string | null;
@@ -1323,6 +1323,7 @@ export interface UpdateETAResponse {
  * @remarks
  * - 인증 필수 (Firebase Auth)
  * - iOS 17.2+ 디바이스에서 앱 시작 시 호출
+ * - pushToStartToken 필드에 통합 저장 (Activity 타입 무관)
  */
 export interface RegisterPushToStartTokenRequest {
   /** Push to Start 토큰 */
@@ -1330,13 +1331,6 @@ export interface RegisterPushToStartTokenRequest {
 
   /** 디바이스 ID */
   deviceId: string;
-
-  /**
-   * Activity 타입 (기본값: "schedule")
-   * - "schedule": liveActivityPushToStartToken 필드에 저장
-   * - "vote": votePushToStartToken 필드에 저장
-   */
-  activityType?: "schedule" | "vote";
 }
 
 /**
