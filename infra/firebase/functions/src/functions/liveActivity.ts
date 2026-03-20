@@ -261,7 +261,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
         "attributes-type": "ScheduleActivityAttributes",
         "attributes": {
           trackingDurationMinutes,
-          promiseId,
+          scheduleId: promiseId,
           currentUserId: firstToken.userId,
           emoji,
           title,
@@ -291,7 +291,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
           "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
-            promiseId,
+            scheduleId: promiseId,
             currentUserId: tokenUserId,
             emoji,
             title,
@@ -927,7 +927,7 @@ export const executeLiveActivityStart = onTaskDispatched<
           "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
-            promiseId,
+            scheduleId: promiseId,
             currentUserId: tokenUserId,
             emoji,
             title,
