@@ -474,6 +474,39 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
 const FIREBASE_STORAGE_PATH_REGEX = /\/o\/(.+?)\?/;
 
 /**
+ * userId 기준으로 컬렉션의 문서를 배치 삭제한다.
+ *
+ * @param {string} collectionName 삭제할 컬렉션 이름
+ * @param {string} userId 대상 사용자 ID
+ */
+async function deleteCollectionByUserId(
+  collectionName: string,
+  userId: string,
+): Promise<void> {
+  const db = admin.firestore();
+  const query = await db
+    .collection(collectionName)
+    .where("userId", "==", userId)
+    .get();
+
+  if (!query.empty) {
+    const batchSize = 500;
+    const docs = query.docs;
+    for (let i = 0; i < docs.length; i += batchSize) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + batchSize);
+      for (const doc of chunk) {
+        batch.delete(doc.ref);
+      }
+      await batch.commit();
+    }
+    console.log(
+      `🗑️ ${query.size} ${collectionName} deleted`,
+    );
+  }
+}
+
+/**
  * 회원 탈퇴
  *
  * @remarks
@@ -647,50 +680,24 @@ export const deleteUser = onCall<DeleteUserRequest>(
       // 8. 루트 컬렉션 관련 데이터 삭제
       // 8-1. notifications 삭제 (userId 기준 쿼리)
       try {
-        const notificationsQuery = await db
-          .collection("notifications")
-          .where("userId", "==", userId)
-          .get();
-
-        if (!notificationsQuery.empty) {
-          const BATCH_SIZE = 500;
-          const notifDocs = notificationsQuery.docs;
-          for (let i = 0; i < notifDocs.length; i += BATCH_SIZE) {
-            const batch = db.batch();
-            const chunk = notifDocs.slice(i, i + BATCH_SIZE);
-            for (const doc of chunk) {
-              batch.delete(doc.ref);
-            }
-            await batch.commit();
-          }
-          console.log(`🗑️ ${notificationsQuery.size} notifications deleted`);
-        }
+        await deleteCollectionByUserId(
+          "notifications", userId,
+        );
       } catch (error) {
-        console.error(`❌ Failed to delete notifications: ${error}`);
+        console.error(
+          `❌ Failed to delete notifications: ${error}`,
+        );
       }
 
       // 8-2. liveActivities 삭제 (userId 기준 쿼리)
       try {
-        const liveActivitiesQuery = await db
-          .collection("liveActivities")
-          .where("userId", "==", userId)
-          .get();
-
-        if (!liveActivitiesQuery.empty) {
-          const BATCH_SIZE = 500;
-          const laDocs = liveActivitiesQuery.docs;
-          for (let i = 0; i < laDocs.length; i += BATCH_SIZE) {
-            const batch = db.batch();
-            const chunk = laDocs.slice(i, i + BATCH_SIZE);
-            for (const doc of chunk) {
-              batch.delete(doc.ref);
-            }
-            await batch.commit();
-          }
-          console.log(`🗑️ ${liveActivitiesQuery.size} liveActivities deleted`);
-        }
+        await deleteCollectionByUserId(
+          "liveActivities", userId,
+        );
       } catch (error) {
-        console.error(`❌ Failed to delete liveActivities: ${error}`);
+        console.error(
+          `❌ Failed to delete liveActivities: ${error}`,
+        );
       }
 
       // 8-3. entitlements/{userId} 삭제
