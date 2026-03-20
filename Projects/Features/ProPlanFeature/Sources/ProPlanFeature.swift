@@ -505,7 +505,22 @@ extension ProPlan {
 
           case .setOfferCodePresented(let isPresented):
             state.showOfferCodeRedemption = isPresented
-            return .none
+            guard !isPresented else { return .none }
+            // Offer code 시트 닫힘 — 복원 시도로 서버 동기화
+            return .run { [subscriptionClient] send in
+              do {
+                let result = try await subscriptionClient.restoreWithReceipt()
+                if result.localStatus.isPro,
+                   let jwsString = result.jwsString,
+                   let productId = result.productId {
+                  let verifiedStatus = try await subscriptionClient.verifyPurchase(jwsString, productId, false)
+                  await send(.internal(.restoreResponse(.success(verifiedStatus))))
+                }
+              } catch {
+                // silent — 프로모션 코드가 실제로 적용되지 않았을 수 있음
+                AppLogger.subscription.debug("[ProPlan] Offer code restore attempt: \(error)")
+              }
+            }
           }
 
         // MARK: - Internal Actions
