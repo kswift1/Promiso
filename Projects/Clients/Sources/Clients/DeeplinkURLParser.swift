@@ -13,6 +13,7 @@ import PromisoShared
 /// - `{scheme}://promise/{scheduleId}/{groupId}` → 레거시 일정 상세 화면
 /// - `{scheme}://promise/{scheduleId}/eta` → 레거시 LiveActivity ETA 변경 시트
 /// - `{scheme}://live/{scheduleId}` → LiveSchedule 상세 화면 (ETA 시트 없이)
+/// - `{scheme}://vote/{scheduleId}` → 투표 일정 상세 화면 (VoteLiveActivity 탭 시)
 /// - `{scheme}://create` → 일정 만들기 화면 (Widget용, 그룹 있을 때만)
 /// - `{scheme}://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
 ///
@@ -47,6 +48,9 @@ public enum DeeplinkURLParser {
 
     case "live":
       return parseLiveSchedule(from: url)
+
+    case "vote":
+      return parseVoteSchedule(from: url)
 
     case "create":
       return .create
@@ -144,6 +148,14 @@ private extension DeeplinkURLParser {
       return nil
     }
     return .liveSchedule(scheduleId: scheduleId)
+  }
+
+  /// promiso://vote/{scheduleId}
+  static func parseVoteSchedule(from url: URL) -> DeeplinkDestination? {
+    // vote/{scheduleId} 형태
+    let pathComponents = url.pathComponents.filter { $0 != "/" }
+    guard let scheduleId = pathComponents.first else { return nil }
+    return .vote(scheduleId: scheduleId)
   }
 
   /// promiso://personalEvent/{eventId}

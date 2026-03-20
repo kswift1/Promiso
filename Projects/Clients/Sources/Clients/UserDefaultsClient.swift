@@ -68,6 +68,16 @@ public extension UserDefaultsClient {
   func markSettingsGuideSeen() {
     setBool(true, AppConstants.UserDefaults.hasSeenSettingsGuide)
   }
+
+  /// 마지막으로 선택한 일정 알림 방법 rawValue (pushNotification/liveActivity/none)
+  var lastScheduleNotificationMethod: String? {
+    stringForKey(AppConstants.UserDefaults.lastScheduleNotificationMethod)
+  }
+
+  /// 마지막으로 선택한 일정 알림 방법 저장
+  func setLastScheduleNotificationMethod(_ rawValue: String) {
+    setString(rawValue, AppConstants.UserDefaults.lastScheduleNotificationMethod)
+  }
 }
 
 // MARK: - Test / Preview

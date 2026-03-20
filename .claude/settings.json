@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Write",
+      "Edit"
+    ],
+    "deny": []
+  },
   "enabledPlugins": {
     "swiftui-expert@swiftui-expert-skill": true,
     "swift-concurrency@swift-concurrency-agent-skill": true

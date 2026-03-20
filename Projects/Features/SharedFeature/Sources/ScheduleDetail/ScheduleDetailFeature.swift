@@ -14,6 +14,7 @@ extension ScheduleDetail {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.voteLiveActivityClient) var voteLiveActivityClient
 
     public init() {}
 
@@ -61,6 +62,9 @@ extension ScheduleDetail {
       @Presents var alert: AlertState<Action.Alert>?
 
       var toastMessage: ToastMessage?
+
+      /// 투표 LiveActivity 현황 (nil이면 투표 LiveActivity 미사용)
+      var voteStatus: VoteActivityAttributes.ContentState?
 
       public init(
         schedule: ScheduleModel,
@@ -147,6 +151,7 @@ extension ScheduleDetail {
         case mapTapped
         case mapDetailDismissed
         case toastDismissed
+        case closeVoteTapped
       }
 
       @CasePathable
@@ -170,6 +175,10 @@ extension ScheduleDetail {
         case fetchWeather
         case weatherFetched(Result<WeatherInfo, Error>)
         case kakaoShareResult(KakaoShareResult)
+        case observeVoteUpdates
+        case voteStatusUpdated(VoteActivityAttributes.ContentState)
+        case closeVoteDone
+        case closeVoteFailed(AppError)
       }
 
       @CasePathable
@@ -194,27 +203,33 @@ extension ScheduleDetail {
             let needsWeatherFetch = state.weatherInfo == nil
               || isWeatherStale(state.weatherInfo)
 
+            // 투표 LiveActivity 관찰
+            let observeVote: Effect<Action> = state.schedule.notificationMethod == .liveActivity
+              ? .send(.internal(.observeVoteUpdates))
+              : .none
+
             // 그룹 멤버 캐시 확인 → 없으면 로드
             if state.groupMembers == nil {
               // 캐시에서 먼저 확인
               if let cached = state.groupMembersCache[state.schedule.groupId] {
                 state.groupMembers = cached
                 if needsWeatherFetch {
-                  return .send(.internal(.fetchWeather))
+                  return .merge(.send(.internal(.fetchWeather)), observeVote)
                 }
-                return .none
+                return observeVote
               }
               // 캐시 miss → 서버에서 로드 + 날씨
               state.isLoadingMembers = true
               return .merge(
                 .send(.internal(.fetchGroupMembers)),
-                needsWeatherFetch ? .send(.internal(.fetchWeather)) : .none
+                needsWeatherFetch ? .send(.internal(.fetchWeather)) : .none,
+                observeVote
               )
             }
             if needsWeatherFetch {
-              return .send(.internal(.fetchWeather))
+              return .merge(.send(.internal(.fetchWeather)), observeVote)
             }
-            return .none
+            return observeVote
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -360,6 +375,17 @@ extension ScheduleDetail {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .closeVoteTapped:
+            let scheduleId = state.schedule.id
+            return .run { [scheduleClient] send in
+              do {
+                try await scheduleClient.finalizeVote(scheduleId)
+                await send(.internal(.closeVoteDone))
+              } catch {
+                await send(.internal(.closeVoteFailed(AppError(error))))
+              }
+            }
           }
 
         case .internal(let internalAction):
@@ -367,6 +393,7 @@ extension ScheduleDetail {
           case .respondSchedule(let status):
             let scheduleId = state.schedule.id
             let calendarSyncCache = state.groupCalendarSyncCache
+            let isLiveActivity = state.schedule.notificationMethod == .liveActivity
             return .run { [scheduleClient, calendarSyncClient] send in
               do {
                 let result = try await scheduleClient.respondSchedule(scheduleId, status)
@@ -384,6 +411,14 @@ extension ScheduleDetail {
                 if status == .declined {
                   try? await calendarSyncClient.removeSchedule(scheduleId)
                 }
+
+                // TODO: 투표 LiveActivity 응답 전송
+                // scheduleClient.updateVoteResponse 구현 후 아래 주석을 해제하세요.
+                // if isLiveActivity {
+                //   let response = status == .accepted ? "accepted" : "declined"
+                //   try? await scheduleClient.updateVoteResponse(scheduleId, currentUserId, response)
+                // }
+                _ = isLiveActivity
               } catch {
                 await send(.internal(.respondFailed(error: AppError(error))))
               }
@@ -545,6 +580,20 @@ extension ScheduleDetail {
             }
             return .none
 
+          case .observeVoteUpdates:
+            return .run { [voteLiveActivityClient, scheduleId = state.schedule.id] send in
+              guard let stream = voteLiveActivityClient.observeStateUpdates(scheduleId) else {
+                return
+              }
+              for await contentState in stream {
+                await send(.internal(.voteStatusUpdated(contentState)))
+              }
+            }
+
+          case .voteStatusUpdated(let status):
+            state.voteStatus = status
+            return .none
+
           case .kakaoShareResult(let result):
             state.isKakaoSharing = false
             switch result {
@@ -559,6 +608,14 @@ extension ScheduleDetail {
             case .fallbackToSystem:
               return .none
             }
+
+          case .closeVoteDone:
+            // 투표 마감 완료 처리
+            return .none
+
+          case .closeVoteFailed:
+            // 에러 처리
+            return .none
           }
 
         case .delegate:

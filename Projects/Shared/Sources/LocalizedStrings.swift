@@ -2183,7 +2183,13 @@ public enum LocalizedStrings {
     public static var searchLocation: String { String(localized: "createSchedule.searchLocation", bundle: bundle) }
     public static var totalDurationPrefix: String { String(localized: "createSchedule.totalDurationPrefix", bundle: bundle) }
     public static var startTimeWarning: String { String(localized: "createSchedule.startTimeWarning", bundle: bundle) }
-    // Step 3
+    // Step 3 - 알림 방법
+    public static var notificationMethod: String { String(localized: "createSchedule.notificationMethod", bundle: bundle) }
+    public static var notificationMethodDescription: String { String(localized: "createSchedule.notificationMethodDescription", bundle: bundle) }
+    public static var notificationLiveActivity: String { String(localized: "createSchedule.notificationLiveActivity", bundle: bundle) }
+    public static var notificationPush: String { String(localized: "createSchedule.notificationPush", bundle: bundle) }
+    public static var notificationNone: String { String(localized: "createSchedule.notificationNone", bundle: bundle) }
+    // Step 3 - 도착 공유
     public static var liveSharing: String { String(localized: "createSchedule.liveSharing", bundle: bundle) }
     public static var liveSharingDescription: String { String(localized: "createSchedule.liveSharingDescription", bundle: bundle) }
     public static var minutes15Before: String { String(localized: "createSchedule.minutes15Before", bundle: bundle) }

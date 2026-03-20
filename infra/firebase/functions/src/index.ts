@@ -68,6 +68,16 @@ export {
 } from "./functions/liveActivity";
 
 // ============================================================================
+// Vote LiveActivity Functions
+// ============================================================================
+export {
+  startVoteLiveActivity,
+  updateVoteResponse,
+  widgetVoteResponse,
+  finalizeVote,
+} from "./functions/voteLiveActivity";
+
+// ============================================================================
 // Emoji Functions
 // ============================================================================
 export {generateEmoji} from "./functions/emoji";

@@ -101,6 +101,7 @@ extension RootTab {
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.voteLiveActivityClient) var voteLiveActivityClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.scheduleClient) var scheduleClient
@@ -239,6 +240,10 @@ extension RootTab {
       case observePushToStartToken
       /// Push to Start 토큰 수신
       case pushToStartTokenReceived(String)
+      /// Vote Push to Start 토큰 구독 시작
+      case observeVotePushToStartToken
+      /// Vote Push to Start 토큰 수신
+      case votePushToStartTokenReceived(String)
       /// Widget용 Auth 토큰 갱신 (Firebase ID Token - 1시간)
       case refreshWidgetAuthToken
       /// Widget 전용 Long-lived Token 발급 요청 (30일)
@@ -247,6 +252,10 @@ extension RootTab {
       case observeActivityUpdates
       /// LiveActivity 변화 감지됨
       case activityUpdateReceived(ActivityUpdate)
+      /// Vote LiveActivity 변화 구독 시작
+      case observeVoteActivityUpdates
+      /// Vote LiveActivity 변화 감지됨
+      case voteActivityUpdateReceived(VoteActivityUpdate)
       /// 특정 Activity 상태 변화 구독 시작
       case observeActivityState(activityId: String)
       /// Activity 상태 변화 감지됨 (dismissed/ended)
@@ -299,7 +308,9 @@ extension RootTab {
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
+            .send(.internal(.observeVotePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
+            .send(.internal(.observeVoteActivityUpdates)),
             .send(.internal(.syncCalendar)),
             .send(.internal(.observeSubscriptionStatus))
           ]
@@ -560,6 +571,38 @@ extension RootTab {
                 AppLogger.liveActivity.error("Push to Start 토큰 등록 실패: \(error.localizedDescription)")
               }
             }
+
+          case .observeVotePushToStartToken:
+            // Vote Push to Start 토큰 스트림 구독
+            return .run { [voteLiveActivityClient] send in
+              for await token in voteLiveActivityClient.observePushToStartTokenUpdates() {
+                await send(.internal(.votePushToStartTokenReceived(token)))
+              }
+            }
+
+          case .votePushToStartTokenReceived(let token):
+            return .run { [notificationClient] _ in
+              do {
+                try await notificationClient.saveLiveActivityPushToStartToken(token)
+              } catch {
+                AppLogger.liveActivity.error("Vote Push to Start 토큰 등록 실패: \(error.localizedDescription)")
+              }
+            }
+
+          case .observeVoteActivityUpdates:
+            return .run { [voteLiveActivityClient] send in
+              for await update in voteLiveActivityClient.observeActivityUpdates() {
+                await send(.internal(.voteActivityUpdateReceived(update)))
+              }
+            }
+
+          case .voteActivityUpdateReceived(let update):
+            // 투표 LiveActivity가 시작되었을 때 처리
+            if update.isActive, let attributes = update.attributes {
+              // 투표 상세 화면으로 이동하거나 상태 업데이트
+              AppLogger.liveActivity.debug("Vote Activity started: \(attributes.scheduleId)")
+            }
+            return .none
 
           case .observeActivityUpdates:
             let stream = liveActivityClient.observeActivityUpdates()

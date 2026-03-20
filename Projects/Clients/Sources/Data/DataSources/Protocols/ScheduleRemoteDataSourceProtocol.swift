@@ -42,6 +42,9 @@ public protocol ScheduleRemoteDataSourceProtocol {
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   func startLiveActivity(scheduleId: String) async throws
 
+  /// 투표 LiveActivity 시작 요청 (Firebase Function 호출)
+  func startVoteLiveActivity(scheduleId: String) async throws
+
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   func updateETA(

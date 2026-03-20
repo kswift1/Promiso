@@ -12,6 +12,7 @@ private enum FirebaseFunctionNames {
   static let updateSchedule = "updatePromise"
   static let deleteSchedule = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
+  static let startVoteLiveActivity = "startVoteLiveActivity"
   static let updateETA = "updateETA"
   static let getConfirmedSchedulesForCalendar = "getConfirmedPromisesForCalendar"
 }
@@ -558,6 +559,16 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     ]
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
+  }
+
+  /// 투표 LiveActivity 시작 요청
+  /// Firebase Functions의 startVoteLiveActivity를 호출하여 투표 LiveActivity APNs 전송
+  public func startVoteLiveActivity(scheduleId: String) async throws {
+    let callableData: [String: Any] = [
+      "promiseId": scheduleId
+    ]
+
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.startVoteLiveActivity).call(callableData)
   }
 
   /// ETA 업데이트 요청

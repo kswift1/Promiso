@@ -37,6 +37,10 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
   /// LiveActivity 시작 시간 (일정 시간 N분 전)
   public var trackingStartMinutesBefore: Int?
 
+  // MARK: - 알림 방법
+  /// 그룹원에게 보낼 참여 확인 알림 방법
+  public var notificationMethod: ScheduleNotificationMethod?
+
   // MARK: - 메타데이터
   public var createdAt: Date
   public var updatedAt: Date
@@ -56,6 +60,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     location: LocationInfoModel? = nil,
     imageUrls: [String] = [],
     trackingStartMinutesBefore: Int? = nil,
+    notificationMethod: ScheduleNotificationMethod? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) {
@@ -73,6 +78,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     self.location = location
     self.imageUrls = imageUrls
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
+    self.notificationMethod = notificationMethod
     self.createdAt = createdAt
     self.updatedAt = updatedAt
   }
@@ -102,6 +108,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     location: LocationInfoModel? = nil,
     imageUrls: [String] = [],
     trackingStartMinutesBefore: Int? = nil,
+    notificationMethod: ScheduleNotificationMethod? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) -> ScheduleModel {
@@ -120,6 +127,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
       location: location,
       imageUrls: imageUrls,
       trackingStartMinutesBefore: trackingStartMinutesBefore,
+      notificationMethod: notificationMethod,
       createdAt: createdAt,
       updatedAt: updatedAt
     )
@@ -146,6 +154,7 @@ extension ScheduleModel {
       location: dto.location.map { LocationInfoModel(dto: $0) },
       imageUrls: dto.imageUrls ?? [],
       trackingStartMinutesBefore: dto.trackingStartMinutesBefore,
+      notificationMethod: dto.notificationMethod.flatMap { ScheduleNotificationMethod(rawValue: $0) },
       createdAt: dto.createdAt.dateValue(),
       updatedAt: dto.updatedAt.dateValue()
     )

@@ -15,6 +15,10 @@ struct CreateScheduleStep3View: View {
           CreateScheduleStep.third.headerView
             .id("header")
 
+          // 참여 확인 알림 방법
+          NotificationMethodSection(store: store)
+            .id("notificationMethod")
+
           // 도착 상황 공유 시작
           ArrivalSharingSection(store: store)
             .id("arrivalSharing")

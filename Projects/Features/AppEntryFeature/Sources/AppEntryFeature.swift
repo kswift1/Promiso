@@ -672,6 +672,10 @@ extension AppEntry.Feature {
       // LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
       return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
 
+    case .vote:
+      // VoteLiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
+
     case .create:
       // Widget "일정 만들기" 버튼 → 그룹 탭 이동 + 일정 생성 (그룹 있을 때만)
       return .send(.destination(.presented(.main(.openCreateScheduleIfPossible))))

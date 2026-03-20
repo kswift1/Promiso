@@ -23,7 +23,34 @@ description: 릴리스 완료 후 다음 버전 준비 (머지, 태그, 브랜�
 - 기존 태그 목록: `git tag --list 'v*'`
 - release → main 머지 여부: `git log main..release/v{현재버전} --oneline`
 
-### 2. release → main 머지 (자동)
+### 2. 미머지 PR 확인 (멈춤 — 경고)
+
+release 브랜치를 base로 한 미머지 PR이 있는지 확인한다:
+
+```bash
+gh pr list --base release/v{현재버전} --state open
+```
+
+또한 release 브랜치에서 분기되었지만 아직 머지되지 않은 피처 브랜치를 확인한다:
+
+```bash
+git branch -r --no-merged origin/release/v{현재버전} | grep -v "release/"
+```
+
+미머지 PR/브랜치가 있으면 사용자에게 경고하고 확인받는다:
+
+```
+⚠️ release/v{현재버전}에 미머지 PR이 있습니다:
+- #230: 탭 온보딩 가이드 (kswift1/onboarding-guide)
+- #231: 홈 탭 온보딩 가이드 (kswift1/home-onboarding)
+
+이 PR들이 머지되지 않은 상태로 다음 버전을 진행하면 누락됩니다.
+계속 진행할까요?
+```
+
+> **미머지 항목이 있으면 반드시 사용자 확인 후 진행한다.**
+
+### 3. release → main 머지 (자동)
 
 release 브랜치가 main에 아직 머지되지 않았으면:
 
@@ -35,7 +62,15 @@ git push origin main
 
 이미 머지 완료 상태면 스킵한다.
 
-### 3. 릴리스 태그 & GitHub Release 생성 (자동)
+머지 후 **동기화 검증**을 수행한다:
+
+```bash
+git log main..release/v{현재버전} --oneline
+```
+
+이 결과가 비어있지 않으면 release 브랜치에 main에 없는 커밋이 남아있다는 의미이므로 중단하고 사용자에게 보고한다.
+
+### 4. 릴리스 태그 & GitHub Release 생성 (자동)
 
 `v{현재버전}` 태그가 없으면 main의 머지 커밋에 태그를 생성한다:
 
@@ -52,7 +87,7 @@ git push origin v{현재버전}
 gh release create v{현재버전} --title "v{현재버전}" --generate-notes --notes-start-tag v{이전태그} --latest
 ```
 
-### 4. 다음 버전 제안 (멈춤 — 사용자 확인)
+### 5. 다음 버전 제안 (멈춤 — 사용자 확인)
 
 이전 태그 이후 커밋을 분석하여 다음 버전을 제안한다:
 
@@ -73,13 +108,22 @@ gh release create v{현재버전} --title "v{현재버전}" --generate-notes --n
 
 > **반드시 사용자 응답을 받은 후 다음 단계로 진행한다.**
 
-### 5. release 브랜치 생성 & 버전 업데이트 (자동)
+### 6. release 브랜치 생성 & 버전 업데이트 (자동)
 
-main에서 새 release 브랜치를 생성하고 버전을 업데이트한다:
+**이전 release 브랜치**에서 새 release 브랜치를 생성한다 (main 아님):
 
 ```bash
-git checkout -b release/v{다음버전} main
+git checkout -b release/v{다음버전} release/v{현재버전}
 ```
+
+> **중요**: `main`이 아닌 `release/v{현재버전}`에서 분기해야 한다.
+> release 브랜치에 머지된 PR들이 main에는 머지 커밋 하나로 합쳐지므로,
+> release 브랜치가 가장 완전한 히스토리를 가진다.
+> 이후 main의 최신 변경사항도 반영한다:
+>
+> ```bash
+> git merge main --no-edit
+> ```
 
 `Tuist/ProjectDescriptionHelpers/AppConfig.swift`의 `marketingNumber`를 변경:
 
@@ -90,7 +134,7 @@ public static let marketingNumber: String = "{현재버전}"
 public static let marketingNumber: String = "{다음버전}"
 ```
 
-### 6. 초기 커밋 & 푸시 (자동)
+### 7. 초기 커밋 & 푸시 (자동)
 
 ```bash
 git add Tuist/ProjectDescriptionHelpers/AppConfig.swift
@@ -98,7 +142,7 @@ git commit -m "chore: v{다음버전} 개발 시작"
 git push -u origin release/v{다음버전}
 ```
 
-### 7. 이전 release 브랜치 정리 (자동 — 선택)
+### 8. 이전 release 브랜치 정리 (자동 — 선택)
 
 머지 완료된 이전 release 브랜치 삭제 여부를 묻는다:
 
@@ -109,7 +153,7 @@ release/v{현재버전} 브랜치를 삭제할까요? (로컬 + 리모트)
 - 승인 시: 로컬 & 리모트 모두 삭제
 - 거부 시: 스킵
 
-### 8. 완료 요약
+### 9. 완료 요약
 
 최종 상태를 출력한다:
 
