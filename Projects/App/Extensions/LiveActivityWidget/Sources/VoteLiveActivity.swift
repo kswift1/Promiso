@@ -12,6 +12,7 @@ struct VoteLiveActivity: Widget {
     ActivityConfiguration(for: VoteActivityAttributes.self) { context in
       // MARK: - Lock Screen UI
       VoteLockScreenView(context: context)
+        .activityBackgroundTint(.black)
         .widgetURL(AppConstants.Deeplink.url(path: "vote/\(context.attributes.scheduleId)"))
 
     } dynamicIsland: { context in
@@ -249,51 +250,81 @@ private struct VoteStatusBar: View {
   private var acceptedCount: Int { state.acceptedMembers.count }
   private var declinedCount: Int { state.declinedMembers.count }
   private var pendingCount: Int { state.pendingCount }
-  private var total: Int { max(totalMemberCount, acceptedCount + declinedCount + pendingCount) }
+  private var total: Int { max(totalMemberCount, 1) }
 
   var body: some View {
     VStack(spacing: 6) {
-      // 숫자 요약
-      HStack(spacing: 12) {
-        Label("\(acceptedCount)명 참여", systemImage: "checkmark.circle.fill")
-          .foregroundStyle(.green)
+      // 프로그레스 바 (그룹 일정 카드 스타일)
+      GeometryReader { geometry in
+        let barWidth = geometry.size.width
+        let acceptedRatio = CGFloat(acceptedCount) / CGFloat(total)
+        let declinedRatio = CGFloat(declinedCount) / CGFloat(total)
 
-        Label("\(declinedCount)명 불참", systemImage: "xmark.circle.fill")
-          .foregroundStyle(.red)
+        ZStack(alignment: .leading) {
+          // 배경
+          Capsule()
+            .fill(Color.gray.opacity(0.25))
 
-        Label("\(pendingCount)명 대기", systemImage: "clock.fill")
-          .foregroundStyle(.secondary)
+          // 참여 + 불참 채움
+          HStack(spacing: 0) {
+            Rectangle()
+              .fill(Color.green)
+              .frame(width: max(0, barWidth * acceptedRatio))
+            Rectangle()
+              .fill(Color.red.opacity(0.6))
+              .frame(width: max(0, barWidth * declinedRatio))
+          }
+          .clipShape(Capsule())
 
-        Spacer()
-      }
-      .font(.caption.weight(.medium))
-
-      // 게이지 바
-      if total > 0 {
-        GeometryReader { geo in
-          HStack(spacing: 2) {
-            // 참여 (초록)
-            if acceptedCount > 0 {
-              RoundedRectangle(cornerRadius: 2)
-                .fill(Color.green)
-                .frame(width: geo.size.width * CGFloat(acceptedCount) / CGFloat(total))
-            }
-            // 불참 (빨강)
-            if declinedCount > 0 {
-              RoundedRectangle(cornerRadius: 2)
-                .fill(Color.red)
-                .frame(width: geo.size.width * CGFloat(declinedCount) / CGFloat(total))
-            }
-            // 대기 (회색)
-            if pendingCount > 0 {
-              RoundedRectangle(cornerRadius: 2)
-                .fill(Color.secondary.opacity(0.3))
-                .frame(maxWidth: .infinity)
+          // 인원별 마디
+          if total > 1 {
+            ForEach(1..<total, id: \.self) { i in
+              let x = barWidth * CGFloat(i) / CGFloat(total)
+              RoundedRectangle(cornerRadius: 0.5)
+                .fill(Color.white.opacity(0.3))
+                .frame(width: 1, height: 6)
+                .offset(x: x - 0.5)
             }
           }
         }
-        .frame(height: 6)
       }
+      .frame(height: 6)
+
+      // 범례
+      HStack(spacing: 0) {
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.green)
+            .frame(width: 6, height: 6)
+          Text("\(acceptedCount)명 참여")
+            .foregroundStyle(.green)
+        }
+
+        Text(" · ")
+          .foregroundStyle(.white.opacity(0.3))
+
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.red.opacity(0.7))
+            .frame(width: 6, height: 6)
+          Text("\(declinedCount)명 불참")
+            .foregroundStyle(.red)
+        }
+
+        Text(" · ")
+          .foregroundStyle(.white.opacity(0.3))
+
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.gray.opacity(0.4))
+            .frame(width: 6, height: 6)
+          Text("\(pendingCount)명 대기")
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
+      }
+      .font(.system(size: 11, weight: .medium))
     }
   }
 }

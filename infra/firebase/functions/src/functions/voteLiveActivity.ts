@@ -473,17 +473,26 @@ export const widgetVoteResponse = onRequest(
     const {scheduleId, response, userName} = req.body as {
       scheduleId: string;
       response: "accepted" | "declined";
-      userName: string;
+      userName?: string;
     };
 
-    if (!scheduleId || !response || !userName) {
+    if (!scheduleId || !response) {
       res.status(400).json({
         error: {
           code: "invalid-argument",
-          message: "scheduleId, response, and userName are required",
+          message: "scheduleId and response are required",
         },
       });
       return;
+    }
+
+    // userName이 없으면 Firestore에서 조회
+    let resolvedUserName = userName;
+    if (!resolvedUserName) {
+      const userDoc = await admin.firestore()
+        .collection("users").doc(userId).get();
+      resolvedUserName =
+        (userDoc.data()?.nickname as string) || "멤버";
     }
 
     if (response !== "accepted" && response !== "declined") {
@@ -562,7 +571,7 @@ export const widgetVoteResponse = onRequest(
     // Save vote result
     await scheduleRef.collection("votes").doc(userId).set({
       response,
-      userName,
+      userName: resolvedUserName,
       respondedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
