@@ -175,7 +175,7 @@ export function ProPlanDashboardPage() {
                 {label: "Free 사용자", value: dashboard.overview.freeUsers.toLocaleString("ko-KR")},
                 {label: "Pro 전환율", value: `${dashboard.overview.proRate}%`},
               ].map((card) => (
-                <Grid key={card.label} size={{xs: 6, sm: 4, md: true}}>
+                <Grid key={card.label} size={{xs: 6, sm: 4, md: "grow"}}>
                   <Card elevation={0} sx={{height: "100%"}}>
                     <CardContent>
                       <Stack spacing={1}>
