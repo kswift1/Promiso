@@ -12,6 +12,7 @@ import {
   sendSlackSubscriptionExpiredNotification,
   sendSlackSubscriptionGracePeriodNotification,
   sendSlackSubscriptionPromoNotification,
+  sendSlackSubscriptionRecoveredNotification,
 } from "../utils/slack";
 
 const ACTIVE_STATUSES = ["subscribed", "lifetime"];
@@ -109,8 +110,18 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
         typeof userData?.nickname === "string" ?
           userData.nickname : uid;
 
+      // 케이스 5: 갱신 복구 (gracePeriod → 활성)
+      if (isAfterActive && isBeforeGracePeriod) {
+        await sendSlackSubscriptionRecoveredNotification({
+          uid,
+          nickname,
+          productId,
+        });
+        return;
+      }
+
       // 케이스 1: 신규 구독 시작 (비활성 → 활성)
-      if (isAfterActive && !isBeforeActive && !isBeforeGracePeriod) {
+      if (isAfterActive && !isBeforeActive) {
         const proSnap = await db
           .collection("entitlements")
           .where("hasPro", "==", true)

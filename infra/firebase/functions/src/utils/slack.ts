@@ -39,6 +39,12 @@ interface SubscriptionExpiredNotificationParams {
   totalProUsers: number;
 }
 
+interface SubscriptionRecoveredNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+}
+
 interface SubscriptionGracePeriodNotificationParams {
   uid: string;
   nickname: string;
@@ -529,5 +535,77 @@ export async function sendSlackSubscriptionPromoNotification(
     }
   } catch (error) {
     console.error("❌ [Slack] 프로모션 코드 알림 전송 중 오류:", error);
+  }
+}
+
+/**
+ * 구독 갱신 복구 시 Slack 알림 전송
+ *
+ * @param {SubscriptionRecoveredNotificationParams} params 복구 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionRecoveredNotification(
+  params: SubscriptionRecoveredNotificationParams,
+): Promise<void> {
+  const env = getCurrentEnvironment();
+
+  if (env !== FirestoreEnvironment.Release) {
+    console.log(`📢 [Slack] 프로덕션 환경이 아니므로 갱신 복구 알림 스킵 (env: ${env})`);
+    return;
+  }
+
+  const webhookUrl = SLACK_WEBHOOK_URL.value();
+  if (!webhookUrl) {
+    console.warn("⚠️ [Slack] SLACK_WEBHOOK_URL이 설정되지 않았습니다");
+    return;
+  }
+
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "✅ 구독 갱신이 복구되었습니다",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        fields: [
+          {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+          {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {type: "mrkdwn", text: `⏰ ${now}`},
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [Slack] 갱신 복구 알림 전송 실패: ${response.status}`);
+    } else {
+      console.log("✅ [Slack] 갱신 복구 알림 전송 완료");
+    }
+  } catch (error) {
+    console.error("❌ [Slack] 갱신 복구 알림 전송 중 오류:", error);
   }
 }
