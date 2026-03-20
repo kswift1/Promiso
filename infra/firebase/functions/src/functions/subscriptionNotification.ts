@@ -1,14 +1,21 @@
 /**
  * 구독 Slack 알림 트리거
  *
- * subscriptions/{uid} 변경 시 신규 유료 구독이 시작된 경우에만
- * Slack 알림을 전송한다.
+ * subscriptions/{uid} 변경 시 구독 상태 전환에 따라
+ * 적절한 Slack 알림을 전송한다.
  */
 import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import {admin, REGION, SLACK_WEBHOOK_URL} from "../config";
-import {sendSlackSubscriptionNotification} from "../utils/slack";
+import {
+  sendSlackSubscriptionNotification,
+  sendSlackSubscriptionCancelNotification,
+  sendSlackSubscriptionExpiredNotification,
+  sendSlackSubscriptionGracePeriodNotification,
+  sendSlackSubscriptionPromoNotification,
+} from "../utils/slack";
 
 const ACTIVE_STATUSES = ["subscribed", "lifetime"];
+const GRACE_PERIOD_STATUS = "gracePeriod";
 
 const DEFAULT_PRICES: Record<string, number> = {
   monthly: 3900,
@@ -50,8 +57,13 @@ async function getPriceForProduct(
 }
 
 /**
- * subscriptions/{uid} 변경 시 신규 Pro 구독 시작을
- * 감지하여 Slack 알림을 전송한다.
+ * subscriptions/{uid} 변경 시 구독 상태 전환을 감지하여
+ * 적절한 Slack 알림을 전송한다.
+ *
+ * - 비활성 → 활성: 신규 구독 (가격 0원이면 프로모션 코드)
+ * - 활성 → revoked: 구독 취소/환불
+ * - 활성/gracePeriod → expired: 구독 만료
+ * - subscribed → gracePeriod: 갱신 실패 (유예 기간 진입)
  */
 export const onSubscriptionWriteNotifySlack = onDocumentWritten(
   {
@@ -77,9 +89,15 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
 
     const isAfterActive = ACTIVE_STATUSES.includes(afterStatus);
     const isBeforeActive = ACTIVE_STATUSES.includes(beforeStatus);
+    const isBeforeGracePeriod = beforeStatus === GRACE_PERIOD_STATUS;
 
-    // 신규 구독 시작이 아니면 스킵
-    if (!isAfterActive || isBeforeActive) return;
+    // 상태 변화가 없으면 스킵
+    if (afterStatus === beforeStatus) return;
+
+    const productId: string =
+      typeof afterData.productId === "string" ?
+        afterData.productId :
+        (typeof beforeData?.productId === "string" ? beforeData.productId : "");
 
     try {
       const db = admin.firestore();
@@ -91,29 +109,104 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
         typeof userData?.nickname === "string" ?
           userData.nickname : uid;
 
-      const proSnap = await db
-        .collection("entitlements")
-        .where("hasPro", "==", true)
-        .count()
-        .get();
-      const totalProUsers = proSnap.data().count;
+      // 케이스 1: 신규 구독 시작 (비활성 → 활성)
+      if (isAfterActive && !isBeforeActive && !isBeforeGracePeriod) {
+        const proSnap = await db
+          .collection("entitlements")
+          .where("hasPro", "==", true)
+          .count()
+          .get();
+        const totalProUsers = proSnap.data().count;
 
-      const productId: string =
-        typeof afterData.productId === "string" ?
-          afterData.productId : "";
+        const price = await getPriceForProduct(db, productId);
 
-      const price = await getPriceForProduct(
-        db, productId,
-      );
+        // lastNotificationType이 OFFER_REDEEMED이면 프로모션 코드 등록
+        const lastNotification =
+          typeof afterData.lastNotificationType === "string" ?
+            afterData.lastNotificationType : "";
+        const isPromo = lastNotification === "OFFER_REDEEMED";
 
-      await sendSlackSubscriptionNotification({
-        uid,
-        nickname,
-        productId,
-        status: afterStatus,
-        price,
-        totalProUsers,
-      });
+        if (isPromo) {
+          const expirationDate =
+            typeof afterData.expirationDate === "string" ?
+              afterData.expirationDate : null;
+
+          await sendSlackSubscriptionPromoNotification({
+            uid,
+            nickname,
+            productId,
+            expirationDate,
+            totalProUsers,
+          });
+        } else {
+          await sendSlackSubscriptionNotification({
+            uid,
+            nickname,
+            productId,
+            status: afterStatus,
+            price,
+            totalProUsers,
+          });
+        }
+        return;
+      }
+
+      // 케이스 2: 구독 취소/환불 (활성 → revoked)
+      if (afterStatus === "revoked" && isBeforeActive) {
+        const proSnap = await db
+          .collection("entitlements")
+          .where("hasPro", "==", true)
+          .count()
+          .get();
+        const totalProUsers = proSnap.data().count;
+
+        await sendSlackSubscriptionCancelNotification({
+          uid,
+          nickname,
+          productId,
+          totalProUsers,
+        });
+        return;
+      }
+
+      // 케이스 3: 구독 만료 (활성/gracePeriod → expired)
+      const isExpiredTransition =
+        afterStatus === "expired" &&
+        (isBeforeActive || isBeforeGracePeriod);
+      if (isExpiredTransition) {
+        const proSnap = await db
+          .collection("entitlements")
+          .where("hasPro", "==", true)
+          .count()
+          .get();
+        const totalProUsers = proSnap.data().count;
+
+        await sendSlackSubscriptionExpiredNotification({
+          uid,
+          nickname,
+          productId,
+          totalProUsers,
+        });
+        return;
+      }
+
+      // 케이스 4: 갱신 실패 (subscribed → gracePeriod)
+      const isGracePeriodTransition =
+        afterStatus === GRACE_PERIOD_STATUS &&
+        beforeStatus === "subscribed";
+      if (isGracePeriodTransition) {
+        const expirationDate =
+          typeof afterData.expirationDate === "string" ?
+            afterData.expirationDate : null;
+
+        await sendSlackSubscriptionGracePeriodNotification({
+          uid,
+          nickname,
+          productId,
+          expirationDate,
+        });
+        return;
+      }
     } catch (error) {
       console.error(
         `[SubscriptionNotification] uid=${uid}`,

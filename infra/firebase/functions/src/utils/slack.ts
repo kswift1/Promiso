@@ -25,6 +25,35 @@ interface SubscriptionNotificationParams {
   totalProUsers: number;
 }
 
+interface SubscriptionCancelNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+  totalProUsers: number;
+}
+
+interface SubscriptionExpiredNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+  totalProUsers: number;
+}
+
+interface SubscriptionGracePeriodNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+  expirationDate: string | null;
+}
+
+interface SubscriptionPromoNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+  expirationDate: string | null;
+  totalProUsers: number;
+}
+
 /**
  * productId를 한글 플랜명으로 변환
  *
@@ -188,5 +217,317 @@ export async function sendSlackSignupNotification(
     }
   } catch (error) {
     console.error("❌ [Slack] 전송 중 오류:", error);
+  }
+}
+
+/**
+ * 구독 취소/환불 시 Slack 알림 전송
+ *
+ * @param {SubscriptionCancelNotificationParams} params 구독 취소 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionCancelNotification(
+  params: SubscriptionCancelNotificationParams,
+): Promise<void> {
+  const env = getCurrentEnvironment();
+
+  if (env !== FirestoreEnvironment.Release) {
+    console.log(`📢 [Slack] 프로덕션 환경이 아니므로 구독 취소 알림 스킵 (env: ${env})`);
+    return;
+  }
+
+  const webhookUrl = SLACK_WEBHOOK_URL.value();
+  if (!webhookUrl) {
+    console.warn("⚠️ [Slack] SLACK_WEBHOOK_URL이 설정되지 않았습니다");
+    return;
+  }
+
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "🚫 구독이 취소/환불되었습니다",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        fields: [
+          {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+          {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `⏰ ${now}  |  ` +
+              `총 Pro 사용자: ${params.totalProUsers}명`,
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [Slack] 구독 취소 알림 전송 실패: ${response.status}`);
+    } else {
+      console.log("✅ [Slack] 구독 취소 알림 전송 완료");
+    }
+  } catch (error) {
+    console.error("❌ [Slack] 구독 취소 알림 전송 중 오류:", error);
+  }
+}
+
+/**
+ * 구독 만료 시 Slack 알림 전송
+ *
+ * @param {SubscriptionExpiredNotificationParams} params 구독 만료 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionExpiredNotification(
+  params: SubscriptionExpiredNotificationParams,
+): Promise<void> {
+  const env = getCurrentEnvironment();
+
+  if (env !== FirestoreEnvironment.Release) {
+    console.log(`📢 [Slack] 프로덕션 환경이 아니므로 구독 만료 알림 스킵 (env: ${env})`);
+    return;
+  }
+
+  const webhookUrl = SLACK_WEBHOOK_URL.value();
+  if (!webhookUrl) {
+    console.warn("⚠️ [Slack] SLACK_WEBHOOK_URL이 설정되지 않았습니다");
+    return;
+  }
+
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "⏰ 구독이 만료되었습니다",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        fields: [
+          {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+          {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `⏰ ${now}  |  ` +
+              `총 Pro 사용자: ${params.totalProUsers}명`,
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [Slack] 구독 만료 알림 전송 실패: ${response.status}`);
+    } else {
+      console.log("✅ [Slack] 구독 만료 알림 전송 완료");
+    }
+  } catch (error) {
+    console.error("❌ [Slack] 구독 만료 알림 전송 중 오류:", error);
+  }
+}
+
+/**
+ * 구독 갱신 실패(유예 기간 진입) 시 Slack 알림 전송
+ *
+ * @param {SubscriptionGracePeriodNotificationParams} params 유예 기간 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionGracePeriodNotification(
+  params: SubscriptionGracePeriodNotificationParams,
+): Promise<void> {
+  const env = getCurrentEnvironment();
+
+  if (env !== FirestoreEnvironment.Release) {
+    console.log(`📢 [Slack] 프로덕션 환경이 아니므로 갱신 실패 알림 스킵 (env: ${env})`);
+    return;
+  }
+
+  const webhookUrl = SLACK_WEBHOOK_URL.value();
+  if (!webhookUrl) {
+    console.warn("⚠️ [Slack] SLACK_WEBHOOK_URL이 설정되지 않았습니다");
+    return;
+  }
+
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+  const locale = "ko-KR";
+  const tz = {timeZone: "Asia/Seoul"};
+  const expirationLabel = params.expirationDate ?
+    new Date(params.expirationDate).toLocaleString(locale, tz) :
+    "-";
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "⚠️ 구독 갱신에 실패했습니다",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        fields: [
+          {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+          {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+          {type: "mrkdwn", text: `*유예 만료일*\n${expirationLabel}`},
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {type: "mrkdwn", text: `⏰ ${now}`},
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [Slack] 갱신 실패 알림 전송 실패: ${response.status}`);
+    } else {
+      console.log("✅ [Slack] 갱신 실패 알림 전송 완료");
+    }
+  } catch (error) {
+    console.error("❌ [Slack] 갱신 실패 알림 전송 중 오류:", error);
+  }
+}
+
+/**
+ * 프로모션 코드 등록 시 Slack 알림 전송
+ *
+ * @param {SubscriptionPromoNotificationParams} params 프로모션 코드 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionPromoNotification(
+  params: SubscriptionPromoNotificationParams,
+): Promise<void> {
+  const env = getCurrentEnvironment();
+
+  if (env !== FirestoreEnvironment.Release) {
+    console.log(`📢 [Slack] 프로덕션 환경이 아니므로 프로모션 코드 알림 스킵 (env: ${env})`);
+    return;
+  }
+
+  const webhookUrl = SLACK_WEBHOOK_URL.value();
+  if (!webhookUrl) {
+    console.warn("⚠️ [Slack] SLACK_WEBHOOK_URL이 설정되지 않았습니다");
+    return;
+  }
+
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+  const locale = "ko-KR";
+  const tz = {timeZone: "Asia/Seoul"};
+  const expirationLabel = params.expirationDate ?
+    new Date(params.expirationDate).toLocaleString(locale, tz) :
+    "-";
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "🎟️ 프로모션 코드가 등록되었습니다",
+          emoji: true,
+        },
+      },
+      {
+        type: "section",
+        fields: [
+          {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+          {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+          {type: "mrkdwn", text: `*만료일*\n${expirationLabel}`},
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `⏰ ${now}  |  ` +
+              `총 Pro 사용자: ${params.totalProUsers}명`,
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [Slack] 프로모션 코드 알림 전송 실패: ${response.status}`);
+    } else {
+      console.log("✅ [Slack] 프로모션 코드 알림 전송 완료");
+    }
+  } catch (error) {
+    console.error("❌ [Slack] 프로모션 코드 알림 전송 중 오류:", error);
   }
 }
