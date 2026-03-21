@@ -436,9 +436,20 @@ extension CalendarFeature {
         } else if store.sectionDates.isEmpty {
           emptyStateView
         } else {
+          let schedulesByDate = store.schedulesByDate
+          let calendarEventsByDate = store.calendarEventsByDate
+          let personalEventsByDate = store.personalEventsByDate
+          let recurringEventsByDate = store.recurringEventsByDate
+
           monthModeHeader
           ForEach(store.sectionDates, id: \.self) { date in
-            monthModeRow(for: date)
+            monthModeRow(
+              for: date,
+              schedulesByDate: schedulesByDate,
+              calendarEventsByDate: calendarEventsByDate,
+              personalEventsByDate: personalEventsByDate,
+              recurringEventsByDate: recurringEventsByDate
+            )
           }
         }
       }
@@ -468,13 +479,19 @@ extension CalendarFeature {
     // MARK: - Month Mode Row (간소화된 행)
 
     @ViewBuilder
-    private func monthModeRow(for date: Date) -> some View {
+    private func monthModeRow(
+      for date: Date,
+      schedulesByDate: [Date: [ScheduleModel]],
+      calendarEventsByDate: [Date: [CalendarEvent]],
+      personalEventsByDate: [Date: [PersonalEventModel]],
+      recurringEventsByDate: [Date: [ExpandedEventInstance]]
+    ) -> some View {
       let calendar = Calendar.current
       let dateKey = calendar.startOfDay(for: date)
-      let daySchedules = store.schedulesByDate[dateKey] ?? []
-      let dayEvents = store.calendarEventsByDate[dateKey] ?? []
-      let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
-      let dayRecurringEvents = store.recurringEventsByDate[dateKey] ?? []
+      let daySchedules = schedulesByDate[dateKey] ?? []
+      let dayEvents = calendarEventsByDate[dateKey] ?? []
+      let dayPersonalEvents = personalEventsByDate[dateKey] ?? []
+      let dayRecurringEvents = recurringEventsByDate[dateKey] ?? []
       let holidayName = store.holidaysByDate[dateKey]
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
