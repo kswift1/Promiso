@@ -249,14 +249,19 @@ extension PersonalMode {
 
     @ViewBuilder
     private var eventListView: some View {
+      let groupedEvents = store.groupedEvents
+      let weatherByEventId = store.weatherByEventId
+      let conflictsByEventId = store.conflictsByEventId
+      let conflictCheckingIds = store.conflictCheckingIds
+
       List {
-        ForEach(store.groupedEvents, id: \.day) { section in
+        ForEach(groupedEvents, id: \.day) { section in
           Section {
             ForEach(section.events) { event in
               PersonalEventCard(
                 event: event,
-                weather: store.weatherByEventId[event.id],
-                conflicts: (store.conflictsByEventId[event.id] ?? []).map { conflict in
+                weather: weatherByEventId[event.id],
+                conflicts: (conflictsByEventId[event.id] ?? []).map { conflict in
                   ConflictInfo(
                     title: conflict.title,
                     overlapMinutes: conflict.overlapMinutes,
@@ -267,7 +272,7 @@ extension PersonalMode {
                     severity: conflict.severity == .confirmed ? .confirmed : .pending
                   )
                 },
-                isCheckingConflicts: store.conflictCheckingIds.contains(event.id),
+                isCheckingConflicts: conflictCheckingIds.contains(event.id),
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },

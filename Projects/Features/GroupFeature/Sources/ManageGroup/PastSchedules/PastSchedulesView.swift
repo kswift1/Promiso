@@ -168,21 +168,28 @@ extension PastSchedules {
 
     @ViewBuilder
     private var scheduleListView: some View {
+      let filteredSchedules = store.filteredSchedules
+      let grouped = groupedSchedules
+      let currentUserId = store.currentUserId
+      let groupMembers = store.groupMembers
+      let filteredIds = filteredSchedules.map(\.id)
+      let firstSectionDate = grouped.first?.date
+
       List {
         filterControlsRow
 
         if store.sortOption == .participants {
-          ForEach(store.filteredSchedules) { schedule in
-            scheduleRow(schedule)
+          ForEach(filteredSchedules) { schedule in
+            scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: filteredSchedules.last?.id)
           }
         } else {
-          ForEach(groupedSchedules, id: \.date) { section in
+          ForEach(grouped, id: \.date) { section in
             Section {
               ForEach(section.schedules) { schedule in
-                scheduleRow(schedule)
+                scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: filteredSchedules.last?.id)
               }
             } header: {
-              sectionHeader(for: section.date)
+              sectionHeader(for: section.date, firstSectionDate: firstSectionDate)
             }
             .listSectionSeparator(.hidden)
           }
@@ -202,16 +209,21 @@ extension PastSchedules {
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
-      .animation(.easeInOut(duration: 0.25), value: store.filteredSchedules.map(\.id))
+      .animation(.easeInOut(duration: 0.25), value: filteredIds)
       .animation(.easeInOut(duration: 0.25), value: store.sortOption)
       .animation(.easeInOut(duration: 0.25), value: store.statusFilter)
     }
 
-    private func scheduleRow(_ schedule: ScheduleModel) -> some View {
+    private func scheduleRow(
+      _ schedule: ScheduleModel,
+      currentUserId: String,
+      groupMembers: [UserPublicModel]?,
+      lastScheduleId: String?
+    ) -> some View {
       ScheduleCard(
         schedule: schedule,
-        currentUserId: store.currentUserId,
-        groupMembers: store.groupMembers,
+        currentUserId: currentUserId,
+        groupMembers: groupMembers,
         respondingState: .idle,
         onTap: { store.send(.view(.scheduleTapped(schedule))) },
         onAccept: {},
@@ -229,7 +241,7 @@ extension PastSchedules {
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
       .onAppear {
         // 마지막 아이템이 나타나면 더 불러오기
-        if schedule.id == store.filteredSchedules.last?.id {
+        if schedule.id == lastScheduleId {
           store.send(.view(.loadMoreTriggered))
         }
       }
@@ -300,7 +312,7 @@ extension PastSchedules {
     }
 
     @ViewBuilder
-    private func sectionHeader(for date: String) -> some View {
+    private func sectionHeader(for date: String, firstSectionDate: String?) -> some View {
       HStack {
         Text(date)
           .font(.system(size: 20, weight: .bold))
@@ -312,7 +324,7 @@ extension PastSchedules {
           .frame(height: 1)
       }
       .padding(.horizontal, 16)
-      .padding(.top, date == groupedSchedules.first?.date ? 12 : 24)
+      .padding(.top, date == firstSectionDate ? 12 : 24)
       .padding(.bottom, 12)
     }
 
