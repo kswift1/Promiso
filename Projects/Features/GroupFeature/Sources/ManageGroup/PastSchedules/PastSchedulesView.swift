@@ -174,19 +174,20 @@ extension PastSchedules {
       let groupMembers = store.groupMembers
       let filteredIds = filteredSchedules.map(\.id)
       let firstSectionDate = grouped.first?.date
+      let lastScheduleId = filteredSchedules.last?.id
 
       List {
         filterControlsRow
 
         if store.sortOption == .participants {
           ForEach(filteredSchedules) { schedule in
-            scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: filteredSchedules.last?.id)
+            scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: lastScheduleId)
           }
         } else {
           ForEach(grouped, id: \.date) { section in
             Section {
               ForEach(section.schedules) { schedule in
-                scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: filteredSchedules.last?.id)
+                scheduleRow(schedule, currentUserId: currentUserId, groupMembers: groupMembers, lastScheduleId: lastScheduleId)
               }
             } header: {
               sectionHeader(for: section.date, firstSectionDate: firstSectionDate)
