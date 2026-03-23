@@ -115,19 +115,9 @@ private struct VoteLockScreenView: View {
 
         Spacer()
 
-        VStack(alignment: .trailing, spacing: 2) {
-          Text(context.attributes.scheduledTime.shortDateText)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.white.opacity(0.5))
-          HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(context.attributes.scheduledTime.amPmText)
-              .font(.system(size: 12, weight: .medium, design: .monospaced))
-              .foregroundStyle(.white.opacity(0.6))
-            Text(context.attributes.scheduledTime.timeOnlyText)
-              .font(.system(size: 18, weight: .bold, design: .monospaced))
-              .foregroundStyle(.white)
-          }
-        }
+        Text(context.attributes.scheduledTime.dateTimeText)
+          .font(.system(size: 13, weight: .bold))
+          .foregroundStyle(.white)
       }
 
       // 2행: 그룹 · 위치
@@ -369,11 +359,11 @@ private extension Date {
     LocalizedDateFormatters.time12Hour.string(from: self)
   }
 
-  /// "3/24(월)" 형태의 짧은 날짜
-  var shortDateText: String {
+  /// "3/24(월) 오후 7:42" 형태
+  var dateTimeText: String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M/d(E)"
+    formatter.dateFormat = "M/d(E) a h:mm"
     return formatter.string(from: self)
   }
 }
