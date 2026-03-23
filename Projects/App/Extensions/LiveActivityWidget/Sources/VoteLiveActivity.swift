@@ -405,24 +405,14 @@ private struct MiniAvatarStack: View {
   }
 }
 
-/// 단일 미니 아바타: 캐시 프로필 이미지 → 이모지 폴백
+/// 단일 미니 아바타: 캐시 프로필 이미지 → 이니셜 폴백
 private struct MiniAvatar: View {
   let member: VoteMember
   let color: Color
   let size: CGFloat
 
-  private static let defaultEmojis = [
-    "😀", "😊", "🙂", "😎", "🤗",
-    "😇", "🥳", "🤩", "😺", "🐻"
-  ]
-
   private var cachedImage: UIImage? {
     LiveActivityImageStore.loadImage(userId: member.id)
-  }
-
-  private var assignedEmoji: String {
-    let index = abs(member.id.hashValue) % Self.defaultEmojis.count
-    return Self.defaultEmojis[index]
   }
 
   var body: some View {
@@ -436,8 +426,9 @@ private struct MiniAvatar: View {
       } else {
         ZStack {
           Circle().fill(color.opacity(0.6))
-          Text(assignedEmoji)
-            .font(.system(size: size * 0.55))
+          Text(String(member.name.prefix(1)))
+            .font(.system(size: size * 0.5, weight: .bold))
+            .foregroundStyle(.white)
         }
         .frame(width: size, height: size)
       }
