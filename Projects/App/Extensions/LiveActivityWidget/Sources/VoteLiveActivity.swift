@@ -367,14 +367,20 @@ private struct VoteStatusBar: View {
 
 // MARK: - Mini Avatar Stack
 
-/// 범례 옆 이니셜 아바타 (최대 3개 + 초과 뱃지)
+/// 범례 옆 아바타 (최대 3개 + 초과 뱃지)
+/// 기존 CompactParticipantMarker 패턴: 캐시 이미지 → 이모지 폴백
 private struct MiniAvatarStack: View {
   let members: [VoteMember]
   let color: Color
 
-  private let size: CGFloat = 14
+  private let size: CGFloat = 16
   private let overlap: CGFloat = 4
   private let maxVisible: Int = 3
+
+  private static let defaultEmojis = [
+    "😀", "😊", "🙂", "😎", "🤗",
+    "😇", "🥳", "🤩", "😺", "🐻"
+  ]
 
   var body: some View {
     let visible = Array(members.prefix(maxVisible))
@@ -382,19 +388,12 @@ private struct MiniAvatarStack: View {
 
     HStack(spacing: -overlap) {
       ForEach(visible) { member in
-        Text(String(member.name.prefix(1)))
-          .font(.system(size: 7, weight: .bold))
-          .foregroundStyle(.white)
-          .frame(width: size, height: size)
-          .background(color.opacity(0.6), in: Circle())
-          .overlay(
-            Circle().strokeBorder(.black, lineWidth: 0.5)
-          )
+        MiniAvatar(member: member, color: color, size: size)
       }
 
       if extra > 0 {
         Text("+\(extra)")
-          .font(.system(size: 6, weight: .bold))
+          .font(.system(size: 7, weight: .bold))
           .foregroundStyle(.white)
           .frame(width: size, height: size)
           .background(Color.white.opacity(0.2), in: Circle())
@@ -403,6 +402,48 @@ private struct MiniAvatarStack: View {
           )
       }
     }
+  }
+}
+
+/// 단일 미니 아바타: 캐시 프로필 이미지 → 이모지 폴백
+private struct MiniAvatar: View {
+  let member: VoteMember
+  let color: Color
+  let size: CGFloat
+
+  private static let defaultEmojis = [
+    "😀", "😊", "🙂", "😎", "🤗",
+    "😇", "🥳", "🤩", "😺", "🐻"
+  ]
+
+  private var cachedImage: UIImage? {
+    LiveActivityImageStore.loadImage(userId: member.id)
+  }
+
+  private var assignedEmoji: String {
+    let index = abs(member.id.hashValue) % Self.defaultEmojis.count
+    return Self.defaultEmojis[index]
+  }
+
+  var body: some View {
+    Group {
+      if let image = cachedImage {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+          .frame(width: size, height: size)
+          .clipShape(Circle())
+      } else {
+        ZStack {
+          Circle().fill(color.opacity(0.6))
+          Text(assignedEmoji)
+            .font(.system(size: size * 0.55))
+        }
+        .frame(width: size, height: size)
+      }
+    }
+    .overlay(Circle().strokeBorder(color, lineWidth: 1))
+    .overlay(Circle().strokeBorder(.black, lineWidth: 0.5))
   }
 }
 
