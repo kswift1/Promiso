@@ -116,7 +116,7 @@ private struct VoteLockScreenView: View {
         Spacer()
 
         Text(context.attributes.scheduledTime.dateTimeText)
-          .font(.system(size: 13, weight: .semibold))
+          .font(.system(size: 13, weight: .semibold, design: .monospaced))
           .foregroundStyle(.white.opacity(0.7))
       }
 
@@ -159,7 +159,7 @@ private struct VoteLockScreenView: View {
           .font(.system(size: 10))
           .foregroundStyle(.white.opacity(0.4))
         Text(context.attributes.voteDeadline, style: .timer)
-          .font(.system(size: 10, weight: .medium).monospacedDigit())
+          .font(.system(size: 10, weight: .medium, design: .monospaced))
           .foregroundStyle(.white.opacity(0.6))
         Spacer()
       }
