@@ -317,21 +317,41 @@ private struct VoteStatusBar: View {
       }
       .frame(height: 6)
 
-      // 범례 (확정 기준 표시)
+      // 범례 (아바타 포함)
       HStack(spacing: 0) {
-        HStack(spacing: 3) {
+        // 참여
+        HStack(spacing: 2) {
           Circle().fill(Color.green).frame(width: 6, height: 6)
-          Text("\(acceptedCount)명 참여")
+          Text("\(acceptedCount)")
             .foregroundStyle(.green)
+          MiniAvatarStack(
+            members: state.acceptedMembers,
+            color: .green
+          )
         }
         Text(" · ").foregroundStyle(.white.opacity(0.3))
-        HStack(spacing: 3) {
+        // 불참
+        HStack(spacing: 2) {
           Circle().fill(Color.red.opacity(0.7)).frame(width: 6, height: 6)
-          Text("\(declinedCount)명 불참")
+          Text("\(declinedCount)")
             .foregroundStyle(.red)
+          MiniAvatarStack(
+            members: state.declinedMembers,
+            color: .red
+          )
         }
         Text(" · ").foregroundStyle(.white.opacity(0.3))
-        HStack(spacing: 3) {
+        // 대기
+        HStack(spacing: 2) {
+          Circle()
+            .fill(Color.white.opacity(0.3))
+            .frame(width: 6, height: 6)
+          Text("\(pendingCount)")
+            .foregroundStyle(.white.opacity(0.4))
+        }
+        Text(" · ").foregroundStyle(.white.opacity(0.3))
+        // 확정 기준
+        HStack(spacing: 2) {
           RoundedRectangle(cornerRadius: 0.5)
             .fill(Color.pmindigo.n500)
             .frame(width: 2, height: 8)
@@ -345,8 +365,46 @@ private struct VoteStatusBar: View {
   }
 }
 
-// MARK: - Vote Status Row
+// MARK: - Mini Avatar Stack
 
+/// 범례 옆 이니셜 아바타 (최대 3개 + 초과 뱃지)
+private struct MiniAvatarStack: View {
+  let members: [VoteMember]
+  let color: Color
+
+  private let size: CGFloat = 14
+  private let overlap: CGFloat = 4
+  private let maxVisible: Int = 3
+
+  var body: some View {
+    let visible = Array(members.prefix(maxVisible))
+    let extra = members.count - visible.count
+
+    HStack(spacing: -overlap) {
+      ForEach(visible) { member in
+        Text(String(member.name.prefix(1)))
+          .font(.system(size: 7, weight: .bold))
+          .foregroundStyle(.white)
+          .frame(width: size, height: size)
+          .background(color.opacity(0.6), in: Circle())
+          .overlay(
+            Circle().strokeBorder(.black, lineWidth: 0.5)
+          )
+      }
+
+      if extra > 0 {
+        Text("+\(extra)")
+          .font(.system(size: 6, weight: .bold))
+          .foregroundStyle(.white)
+          .frame(width: size, height: size)
+          .background(Color.white.opacity(0.2), in: Circle())
+          .overlay(
+            Circle().strokeBorder(.black, lineWidth: 0.5)
+          )
+      }
+    }
+  }
+}
 
 // MARK: - Date Extension
 
