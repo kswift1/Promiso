@@ -49,6 +49,10 @@ extension CreateRecurringPersonalEvent {
       .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in
         LocationPicker.RootView(store: pickerStore)
       }
+      .sheet(item: $store.scope(state: \.notificationPermission, action: \.notificationPermission)) { permissionStore in
+        NotificationPermission.View(store: permissionStore)
+          .presentationDetents([.large])
+      }
     }
 
     // MARK: - Main Content

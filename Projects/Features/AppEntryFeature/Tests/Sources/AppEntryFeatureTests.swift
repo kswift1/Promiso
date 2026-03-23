@@ -54,6 +54,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.onAppear))
@@ -95,6 +96,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.scenePhaseChanged(.active)))
@@ -199,6 +201,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.internal(.versionCheckCompleted(.upToDate))) {
@@ -221,6 +224,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.updateAlert(.laterTapped)) {
@@ -490,6 +494,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.userDefaultsClient.boolForKey = { _ in false }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.internal(.sessionCheckResponse(isAuthenticated: false))) {
@@ -508,6 +513,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.userDefaultsClient.setBool = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.destination(.presented(.onboardingIntro(.delegate(.introCompleted))))) {

@@ -18,6 +18,14 @@ extension CreateGroup {
     case input
     case success(GroupCreationResultModel)
     case settings(GroupCreationResultModel)
+
+    var analyticsName: String {
+      switch self {
+      case .input: "input"
+      case .settings: "settings"
+      case .success: "success"
+      }
+    }
   }
 
   // MARK: - Reducer
@@ -185,6 +193,7 @@ extension CreateGroup {
           case .createGroupTapped:
             guard state.canSubmit else { return .none }
             state.isCreating = true
+            analyticsClient.log(.groupCreateTapped)
             state.creationError = nil
             let request = state.makeCreateRequest()
             return .run { send in
@@ -198,6 +207,7 @@ extension CreateGroup {
             .cancellable(id: CancelID.createGroup, cancelInFlight: true)
 
           case .cancelTapped:
+            analyticsClient.log(.groupCreateCancelled(step: state.step.analyticsName))
             return .send(.delegate(.dismiss))
 
           case .errorAlertDismissed:
@@ -329,6 +339,7 @@ extension CreateGroup {
 
           case .settingsCompleted:
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.log(.groupCreateSettingsCompleted(groupID: result.id))
             state.isSavingSettings = true
             let settings = GroupNotificationSettings(
               enabled: state.notificationEnabled,
@@ -359,6 +370,7 @@ extension CreateGroup {
           case .createGroupResponse(.success(let result)):
             state.isCreating = false
             state.step = .settings(result)
+            analyticsClient.log(.groupCreateSucceeded(groupID: result.id, groupName: result.name))
             // 알림 및 캘린더 권한 상태 확인
             return .merge(
               .run { send in
@@ -374,12 +386,15 @@ extension CreateGroup {
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
             state.creationError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
+            let errorMsg = (error as? GroupClientError)?.localizedMessage ?? error.localizedDescription
+            analyticsClient.log(.groupCreateFailed(errorMessage: errorMsg))
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
             // .failure의 경우에도 그룹 생성은 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.updateActivationStatus(.groupJoined)
             state.step = .success(result)
             return .none
 

@@ -35,6 +35,7 @@ extension Home {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.analyticsClient) var analyticsClient
     public init() {}
 
     // MARK: - CancelID
@@ -1207,7 +1208,9 @@ extension Home {
                 return mutableSchedule
               }
               state.schedulesState = .loaded(schedulesWithGroup)
-              state.refreshHomeContentSnapshot()
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+                analyticsClient.log(.homeEmptyStateShown)
+              }
 
               // 위젯 캐시 업데이트 (확정된 일정만)
               WidgetDataManager.saveSchedules(
@@ -1242,7 +1245,9 @@ extension Home {
             switch result {
             case .success(let events):
               state.personalEventsState = .loaded(events)
-              state.refreshHomeContentSnapshot()
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+                analyticsClient.log(.homeEmptyStateShown)
+              }
               WidgetDataManager.savePersonalEvents(events.toWidgetData())
               WidgetDataManager.reloadWidgets()
               // 개인 일정 날씨도 조회 (이미 캐시된 항목은 스킵)
@@ -1270,7 +1275,9 @@ extension Home {
             switch result {
             case .success(let events):
               state.recurringEventsState = .loaded(events)
-              state.refreshHomeContentSnapshot()
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+                analyticsClient.log(.homeEmptyStateShown)
+              }
               return .none
             case .failure:
               if !state.recurringEventsState.isLoaded {

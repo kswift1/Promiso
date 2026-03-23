@@ -155,6 +155,10 @@ extension AppEntry {
 
           case .handleDeeplink(let url):
             guard let destination = deeplinkClient.parseURL(url) else { return .none }
+            if case .joinGroup(let inviteCode) = destination {
+              let source = url.scheme?.hasPrefix("kakao") == true ? "kakao" : "deeplink"
+              analyticsClient.log(.inviteLinkOpened(inviteCode: inviteCode, source: source))
+            }
             return routeOrPendDeeplink(destination, state: &state)
 
           case .scenePhaseChanged(let phase):
@@ -218,6 +222,7 @@ extension AppEntry {
             } else {
               state.isFullOnboarding = true
               state.destination = .onboardingIntro(OnboardingIntro.State())
+              analyticsClient.log(.onboardingStepViewed(step: "intro"))
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -243,6 +248,9 @@ extension AppEntry {
               var profileState = ProfileSetup.State()
               profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
               state.destination = .profile(profileState)
+              if state.isFullOnboarding {
+                analyticsClient.log(.onboardingStepViewed(step: "profile"))
+              }
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -336,6 +344,10 @@ extension AppEntry {
                 ? .userSignup(loginMethod: providerIdentifier)
                 : .userLogin(loginMethod: providerIdentifier)
             )
+            if isSignup {
+              analyticsClient.setSignupDateIfNeeded()
+              analyticsClient.updateActivationStatus(.signedUp)
+            }
 
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
 
@@ -386,6 +398,7 @@ extension AppEntry {
           userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           state.isFullOnboarding = true
           state.destination = .auth(Auth.Feature.State())
+          analyticsClient.log(.onboardingStepViewed(step: "auth"))
           return .none
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):

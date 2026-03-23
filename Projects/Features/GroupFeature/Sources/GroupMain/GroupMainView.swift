@@ -354,13 +354,29 @@ extension GroupMain {
       let animationKey = sections.flatMap { section in
         [String(Int(section.day.timeIntervalSince1970))] + section.schedules.map(\.id)
       }
+      let currentGroupMembers = store.currentGroupMembers
+      let proposalResponding = store.proposalResponding
+      let weatherByScheduleId = store.weatherByScheduleId
+      let conflictsByScheduleId = store.conflictsByScheduleId
+      let conflictCheckingIds = store.conflictCheckingIds
+      let liveActivityScheduleId = store.liveActivityScheduleId
+      let currentUserId = store.currentUser.userId
 
       ScrollViewReader { proxy in
         List {
           ForEach(sections, id: \.day) { section in
             Section {
               ForEach(section.schedules, id: \.id) { schedule in
-                scheduleRowView(for: schedule)
+                scheduleRowView(
+                  for: schedule,
+                  currentUserId: currentUserId,
+                  groupMembers: currentGroupMembers,
+                  proposalResponding: proposalResponding,
+                  liveActivityScheduleId: liveActivityScheduleId,
+                  weatherByScheduleId: weatherByScheduleId,
+                  conflictsByScheduleId: conflictsByScheduleId,
+                  conflictCheckingIds: conflictCheckingIds
+                )
                   .id(schedule.id)
               }
             } header: {
@@ -408,19 +424,27 @@ extension GroupMain {
     }
 
     @ViewBuilder
-    private func scheduleRowView(for schedule: ScheduleModel) -> some View {
+    private func scheduleRowView(
+      for schedule: ScheduleModel,
+      currentUserId: String,
+      groupMembers: [UserPublicModel]?,
+      proposalResponding: [String: RespondingState],
+      liveActivityScheduleId: String?,
+      weatherByScheduleId: [String: WeatherInfo],
+      conflictsByScheduleId: [String: [ScheduleConflict]],
+      conflictCheckingIds: Set<String>
+    ) -> some View {
       let scheduleId = schedule.id
-      let userId = store.currentUser.userId
-      let myVoteStatus = schedule.myVoteStatus(userId: userId)
+      let myVoteStatus = schedule.myVoteStatus(userId: currentUserId)
 
       ScheduleCard(
         schedule: schedule,
-        currentUserId: userId,
-        groupMembers: store.currentGroupMembers,
-        respondingState: store.proposalResponding[scheduleId] ?? .idle,
-        isLive: store.liveActivityScheduleId == scheduleId,
-        weather: store.weatherByScheduleId[scheduleId],
-        conflicts: (store.conflictsByScheduleId[scheduleId] ?? []).map { conflict in
+        currentUserId: currentUserId,
+        groupMembers: groupMembers,
+        respondingState: proposalResponding[scheduleId] ?? .idle,
+        isLive: liveActivityScheduleId == scheduleId,
+        weather: weatherByScheduleId[scheduleId],
+        conflicts: (conflictsByScheduleId[scheduleId] ?? []).map { conflict in
           ConflictInfo(
             title: conflict.title,
             overlapMinutes: conflict.overlapMinutes,
@@ -431,7 +455,7 @@ extension GroupMain {
             severity: conflict.severity == .confirmed ? .confirmed : .pending
           )
         },
-        isCheckingConflicts: store.conflictCheckingIds.contains(scheduleId),
+        isCheckingConflicts: conflictCheckingIds.contains(scheduleId),
         onTap: {
           store.send(.view(.scheduleTapped(schedule)))
         },

@@ -3,7 +3,11 @@
 
 import Combine
 import ExternalDependency
+@preconcurrency import StoreKit
 import SwiftUI
+
+// StoreKit import로 인한 SubscriptionStatus 이름 충돌 해소
+public typealias SubscriptionStatus = Clients.SubscriptionStatus
 
 import Clients
 import PromisoShared
@@ -720,7 +724,27 @@ extension RootTab {
           case .refreshSubscriptionStatus:
             return .run { [subscriptionClient] send in
               if let status = try? await subscriptionClient.fetchStatus() {
-                await send(.internal(.subscriptionStatusChanged(status)))
+                // 서버 상태가 subscribed인데 만료일이 지났으면 StoreKit 재검증
+                if case .subscribed(_, let expirationDate) = status,
+                   let expDate = expirationDate,
+                   expDate < Date() {
+                  do {
+                    let restoreResult = try await subscriptionClient.restoreWithReceipt()
+                    if let jws = restoreResult.jwsString, let productId = restoreResult.productId {
+                      let verified = try await subscriptionClient.verifyPurchase(jws, productId, false)
+                      await send(.internal(.subscriptionStatusChanged(verified)))
+                    } else {
+                      // StoreKit에도 활성 구독 없음 → expired 처리
+                      await send(.internal(.subscriptionStatusChanged(.expired(expirationDate: expDate))))
+                    }
+                  } catch {
+                    // 재검증 실패 시 서버 상태 그대로 사용
+                    AppLogger.subscription.error("[RootTab] Subscription re-verification failed: \(error)")
+                    await send(.internal(.subscriptionStatusChanged(status)))
+                  }
+                } else {
+                  await send(.internal(.subscriptionStatusChanged(status)))
+                }
               }
             }
 
@@ -772,6 +796,7 @@ extension RootTab {
     // SwiftUI transition 타이밍이 맞지 않아 zoom 애니메이션이 동작하지 않습니다.
     // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
     @State private var expandLiveSchedule: Bool = false
+    @State private var showManageSubscriptions: Bool = false
     @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Tab Animation State
@@ -804,6 +829,11 @@ extension RootTab {
 
     public var body: some View {
       tabViewWithLiveSchedule
+        .overlay(alignment: .top) {
+          if case .gracePeriod(let expirationDate) = store.subscriptionStatus {
+            gracePeriodOverlay(expirationDate: expirationDate)
+          }
+        }
         .tint(Color.pmbrand.primary)
         .preferredColorScheme(preferredColorScheme)
         .id("\(store.preferredLanguage)_\(store.use24HourFormat)")
@@ -831,6 +861,50 @@ extension RootTab {
             expandLiveSchedule = true
           }
         }
+    }
+
+    // MARK: - Grace Period Banner
+
+    private func gracePeriodOverlay(expirationDate: Date) -> some View {
+      let days = Calendar.current.dateComponents([.day], from: Date(), to: expirationDate).day ?? 0
+
+      return HStack(spacing: 8) {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .font(.subheadline)
+          .foregroundStyle(Color.pmwarning.n500)
+
+        if days > 0 {
+          Text("결제 문제가 있어요 · \(days)일 후 Pro 비활성화")
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(Color.pmtext.primary)
+        } else {
+          Text("결제 문제가 있어요 · 곧 Pro가 비활성화됩니다")
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(Color.pmtext.primary)
+        }
+
+        Spacer()
+
+        Button {
+          showManageSubscriptions = true
+        } label: {
+          Text("확인")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.pmwarning.n500)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
+      .background(Color.pmwarning.n500.opacity(0.12))
+      .manageSubscriptionsSheet(
+        isPresented: $showManageSubscriptions,
+        subscriptionGroupID: "21947112"
+      )
     }
 
     // MARK: - TabView
