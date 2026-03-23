@@ -576,25 +576,6 @@ struct AppEntryFeatureTests {
     }
   }
 
-  @Test("onboardingStart.delegate.completed → pendingUser로 메인 전환")
-  func onboardingStartCompleted_transitionsToMain() async {
-    let user = makeUser(id: "start-completed", nickname: "시작완료")
-    var state = AppEntry.Feature.State()
-    state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "시작완료"))
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.clarityClient.setUser = { _ in }
-      $0.crashlyticsClient.setUser = { _ in }
-      $0.crashlyticsClient.clearUser = { }
-      $0.analyticsClient.setUserID = { _ in }
-      $0.analyticsClient.setUserProperty = { _, _ in }
-      $0.analyticsClient.logEvent = { _, _ in }
-    }
-  }
-
   // MARK: - Logout 테스트
 
   @Test("logoutRequested delegate 수신 시 auth로 전환")
