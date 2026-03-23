@@ -37,9 +37,14 @@ interface DeviceInfo {
   [key: string]: unknown;
 }
 
+interface VoteMember {
+  id: string;
+  name: string;
+}
+
 interface VoteContentState {
-  acceptedMembers: string[];
-  declinedMembers: string[];
+  acceptedMembers: VoteMember[];
+  declinedMembers: VoteMember[];
   pendingCount: number;
   isFinalized: boolean;
 }
@@ -181,11 +186,21 @@ export const startVoteLiveActivity = onCall(
     const channelId = channelResult.channelId;
     console.log(`📡 Vote APNs channel created: ${channelId}`);
 
-    // 6. Save channelId to Firestore
-    await promisesCollection.doc(scheduleId).update({
+    // 6. Save channelId to Firestore + auto-accept host
+    const resolvedHostName = hostName || "호스트";
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const promiseRef = promisesCollection.doc(scheduleId);
+    await promiseRef.update({
       "liveActivity.voteChannelId": channelId,
-      "liveActivity.voteStartedAt":
-        admin.firestore.FieldValue.serverTimestamp(),
+      "liveActivity.voteStartedAt": now,
+      "votes.accepted": admin.firestore.FieldValue.arrayUnion(hostId),
+    });
+
+    // Save host vote to subcollection
+    await promiseRef.collection("votes").doc(hostId).set({
+      response: "accepted",
+      userName: resolvedHostName,
+      respondedAt: now,
     });
 
     // 7. Send Push to Start to all members
@@ -202,9 +217,9 @@ export const startVoteLiveActivity = onCall(
     const voteDeadline = Math.floor(voteDeadlineMs / 1000);
 
     const initialContentState: VoteContentState = {
-      acceptedMembers: [],
+      acceptedMembers: [{id: hostId, name: resolvedHostName}],
       declinedMembers: [],
-      pendingCount: totalMemberCount,
+      pendingCount: totalMemberCount - 1,
       isFinalized: false,
     };
 
@@ -217,6 +232,7 @@ export const startVoteLiveActivity = onCall(
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
           "dismissal-date": voteDeadline,
+          "input-push-channel": channelId, // iOS 18 채널 구독
           "attributes-type": "VoteActivityAttributes",
           "attributes": {
             scheduleId,
@@ -333,15 +349,19 @@ export const updateVoteResponse = onCall(
 
     // 2. Read all votes to build ContentState
     const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: string[] = [];
-    const declinedMembers: string[] = [];
+    const acceptedMembers: VoteMember[] = [];
+    const declinedMembers: VoteMember[] = [];
 
     votesSnapshot.forEach((doc) => {
       const voteData = doc.data();
+      const member: VoteMember = {
+        id: doc.id,
+        name: (voteData.userName as string) || "멤버",
+      };
       if (voteData.response === "accepted") {
-        acceptedMembers.push(doc.id);
+        acceptedMembers.push(member);
       } else if (voteData.response === "declined") {
-        declinedMembers.push(doc.id);
+        declinedMembers.push(member);
       }
     });
 
@@ -365,7 +385,15 @@ export const updateVoteResponse = onCall(
       isFinalized,
     };
 
-    // 4. Broadcast via APNs
+    // 4. Sync accepted/declined IDs to main document
+    const acceptedIds = acceptedMembers.map((m) => m.id);
+    const declinedIds = declinedMembers.map((m) => m.id);
+    await scheduleRef.update({
+      "votes.accepted": acceptedIds,
+      "votes.declined": declinedIds,
+    });
+
+    // 5. Broadcast via APNs
     const channelId = scheduleData?.["liveActivity"]?.voteChannelId as
       | string
       | undefined;
@@ -591,15 +619,19 @@ export const widgetVoteResponse = onRequest(
 
     // Read all votes to build ContentState
     const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: string[] = [];
-    const declinedMembers: string[] = [];
+    const acceptedMembers: VoteMember[] = [];
+    const declinedMembers: VoteMember[] = [];
 
     votesSnapshot.forEach((doc) => {
       const voteData = doc.data();
+      const member: VoteMember = {
+        id: doc.id,
+        name: (voteData.userName as string) || "멤버",
+      };
       if (voteData.response === "accepted") {
-        acceptedMembers.push(doc.id);
+        acceptedMembers.push(member);
       } else if (voteData.response === "declined") {
-        declinedMembers.push(doc.id);
+        declinedMembers.push(member);
       }
     });
 
@@ -621,6 +653,14 @@ export const widgetVoteResponse = onRequest(
       pendingCount,
       isFinalized,
     };
+
+    // Sync accepted/declined IDs to main document
+    const acceptedIds = acceptedMembers.map((m) => m.id);
+    const declinedIds = declinedMembers.map((m) => m.id);
+    await scheduleRef.update({
+      "votes.accepted": acceptedIds,
+      "votes.declined": declinedIds,
+    });
 
     // Broadcast via APNs
     const channelId = scheduleData?.["liveActivity"]?.voteChannelId as
@@ -727,15 +767,19 @@ export const finalizeVote = onCall(
 
     // 3. Read all votes
     const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: string[] = [];
-    const declinedMembers: string[] = [];
+    const acceptedMembers: VoteMember[] = [];
+    const declinedMembers: VoteMember[] = [];
 
     votesSnapshot.forEach((doc) => {
       const voteData = doc.data();
+      const member: VoteMember = {
+        id: doc.id,
+        name: (voteData.userName as string) || "멤버",
+      };
       if (voteData.response === "accepted") {
-        acceptedMembers.push(doc.id);
+        acceptedMembers.push(member);
       } else if (voteData.response === "declined") {
-        declinedMembers.push(doc.id);
+        declinedMembers.push(member);
       }
     });
 
@@ -754,13 +798,17 @@ export const finalizeVote = onCall(
       isFinalized: true,
     };
 
-    // 4. Save finalized state to Firestore
+    // 4. Save finalized state to Firestore + sync main document
+    const acceptedIds = acceptedMembers.map((m) => m.id);
+    const declinedIds = declinedMembers.map((m) => m.id);
     await scheduleRef.update({
       "liveActivity.voteFinalized": true,
       "liveActivity.voteFinalizedAt":
         admin.firestore.FieldValue.serverTimestamp(),
       "liveActivity.acceptedMembers": acceptedMembers,
       "liveActivity.declinedMembers": declinedMembers,
+      "votes.accepted": acceptedIds,
+      "votes.declined": declinedIds,
     });
 
     console.log(
