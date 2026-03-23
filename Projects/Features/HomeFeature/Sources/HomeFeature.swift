@@ -1169,9 +1169,7 @@ extension Home {
                 return mutableSchedule
               }
               state.schedulesState = .loaded(schedulesWithGroup)
-              let wasLoaded = state.hasLoadedOnce
-              state.refreshHomeContentSnapshot()
-              if !wasLoaded && state.hasLoadedOnce && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
                 analyticsClient.log(.homeEmptyStateShown)
               }
 
@@ -1208,9 +1206,7 @@ extension Home {
             switch result {
             case .success(let events):
               state.personalEventsState = .loaded(events)
-              let wasLoaded = state.hasLoadedOnce
-              state.refreshHomeContentSnapshot()
-              if !wasLoaded && state.hasLoadedOnce && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
                 analyticsClient.log(.homeEmptyStateShown)
               }
               WidgetDataManager.savePersonalEvents(events.toWidgetData())
@@ -1240,9 +1236,7 @@ extension Home {
             switch result {
             case .success(let events):
               state.recurringEventsState = .loaded(events)
-              let wasLoaded = state.hasLoadedOnce
-              state.refreshHomeContentSnapshot()
-              if !wasLoaded && state.hasLoadedOnce && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
+              if state.refreshHomeContentSnapshot() && state.homeContentSnapshot.upcomingScheduleItems.isEmpty && state.homeContentSnapshot.upcomingRecurringSummaries.isEmpty {
                 analyticsClient.log(.homeEmptyStateShown)
               }
               return .none

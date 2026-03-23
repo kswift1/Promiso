@@ -29,12 +29,16 @@ extension Home.Feature.State {
   }
 
   /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 갱신
-  mutating func refreshHomeContentSnapshot() {
+  /// 초기 로딩이 방금 완료되었으면 `true` 반환
+  @discardableResult
+  mutating func refreshHomeContentSnapshot() -> Bool {
     homeContentSnapshot = buildHomeContentSnapshot()
     // 3개 데이터 소스가 모두 로드/실패 완료되면 초기 로딩 완료로 표시
-    if !hasLoadedOnce && !isLoading {
+    let didCompleteInitialLoad = !hasLoadedOnce && !isLoading
+    if didCompleteInitialLoad {
       hasLoadedOnce = true
     }
+    return didCompleteInitialLoad
   }
 
   /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 생성

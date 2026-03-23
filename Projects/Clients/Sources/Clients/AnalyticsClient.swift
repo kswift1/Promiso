@@ -286,8 +286,14 @@ public extension AnalyticsClient {
     )
   }
 
+  private enum UserDefaultsKey {
+    static let activationLevel = "com.promiso.analytics.activationLevel"
+    static let firstScheduleResponseFired = "com.promiso.analytics.firstScheduleResponseFired"
+    static let signupDateSet = "com.promiso.analytics.signupDateSet"
+  }
+
   public func updateActivationStatus(_ status: ActivationStatus) {
-    let key = "com.promiso.analytics.activationLevel"
+    let key = UserDefaultsKey.activationLevel
     let currentLevel = UserDefaults.standard.integer(forKey: key)
     guard status.level > currentLevel else { return }
     UserDefaults.standard.set(status.level, forKey: key)
@@ -295,11 +301,18 @@ public extension AnalyticsClient {
   }
 
   public func logFirstScheduleResponseIfNeeded(scheduleID: String, scheduleTitle: String) {
-    let key = "com.promiso.analytics.firstScheduleResponseFired"
+    let key = UserDefaultsKey.firstScheduleResponseFired
     guard !UserDefaults.standard.bool(forKey: key) else { return }
     UserDefaults.standard.set(true, forKey: key)
     log(.firstScheduleResponse(scheduleID: scheduleID, scheduleTitle: scheduleTitle))
     updateActivationStatus(.scheduleResponded)
+  }
+
+  public func setSignupDateIfNeeded() {
+    let key = UserDefaultsKey.signupDateSet
+    guard !UserDefaults.standard.bool(forKey: key) else { return }
+    UserDefaults.standard.set(true, forKey: key)
+    setUserProperty(ISO8601DateFormatter().string(from: Date()), .signupDate)
   }
 }
 

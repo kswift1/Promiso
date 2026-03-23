@@ -18,6 +18,14 @@ extension CreateGroup {
     case input
     case success(GroupCreationResultModel)
     case settings(GroupCreationResultModel)
+
+    var analyticsName: String {
+      switch self {
+      case .input: "input"
+      case .settings: "settings"
+      case .success: "success"
+      }
+    }
   }
 
   // MARK: - Reducer
@@ -199,13 +207,7 @@ extension CreateGroup {
             .cancellable(id: CancelID.createGroup, cancelInFlight: true)
 
           case .cancelTapped:
-            let stepName: String
-            switch state.step {
-            case .input: stepName = "input"
-            case .settings: stepName = "settings"
-            case .success: stepName = "success"
-            }
-            analyticsClient.log(.groupCreateCancelled(step: stepName))
+            analyticsClient.log(.groupCreateCancelled(step: state.step.analyticsName))
             return .send(.delegate(.dismiss))
 
           case .errorAlertDismissed:

@@ -346,14 +346,7 @@ extension AppEntry {
                 : .userLogin(loginMethod: providerIdentifier)
             )
             if isSignup {
-              let signupKey = "com.promiso.analytics.signupDateSet"
-              if !UserDefaults.standard.bool(forKey: signupKey) {
-                UserDefaults.standard.set(true, forKey: signupKey)
-                analyticsClient.setUserProperty(
-                  ISO8601DateFormatter().string(from: Date()),
-                  .signupDate
-                )
-              }
+              analyticsClient.setSignupDateIfNeeded()
               analyticsClient.updateActivationStatus(.signedUp)
             }
 
