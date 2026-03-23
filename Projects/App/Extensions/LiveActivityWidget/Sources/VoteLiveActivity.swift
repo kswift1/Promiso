@@ -108,7 +108,7 @@ private struct VoteLockScreenView: View {
       // 1행: 이모지 + 제목 (좌) / 약속 시간 (우)
       HStack(alignment: .firstTextBaseline) {
         Text("\(context.attributes.emoji) \(context.attributes.title)")
-          .font(.system(size: 17, weight: .bold))
+          .font(.system(size: 19, weight: .bold))
           .foregroundStyle(.white)
           .lineLimit(1)
           .minimumScaleFactor(0.7)
@@ -116,34 +116,34 @@ private struct VoteLockScreenView: View {
         Spacer()
 
         Text(context.attributes.scheduledTime.dateTimeText)
-          .font(.system(size: 14, weight: .semibold))
-          .foregroundStyle(.white.opacity(0.8))
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.white.opacity(0.7))
       }
 
       // 2행: 그룹 · 위치
       HStack(spacing: 4) {
         if let groupName = context.attributes.groupName {
           Image(systemName: "person.2.fill")
-            .font(.system(size: 9))
+            .font(.system(size: 8))
             .foregroundStyle(Color.pmindigo.n300)
           Text(groupName)
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.6))
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.5))
         }
 
         if context.attributes.groupName != nil, context.attributes.location != nil {
           Text("·")
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.4))
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.3))
         }
 
         if let location = context.attributes.location {
           Image(systemName: "location.fill")
-            .font(.system(size: 9))
+            .font(.system(size: 8))
             .foregroundStyle(Color.pmindigo.n300)
           Text(location)
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.6))
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.5))
         }
 
         Spacer()
@@ -153,14 +153,14 @@ private struct VoteLockScreenView: View {
       // 3행: 남은 시간
       HStack(spacing: 4) {
         Image(systemName: "timer")
-          .font(.system(size: 10))
+          .font(.system(size: 8))
           .foregroundStyle(Color.pmindigo.n300)
         Text("투표 종료까지")
-          .font(.caption)
-          .foregroundStyle(.white.opacity(0.5))
+          .font(.system(size: 10))
+          .foregroundStyle(.white.opacity(0.4))
         Text(context.attributes.voteDeadline, style: .timer)
-          .font(.caption.weight(.medium).monospacedDigit())
-          .foregroundStyle(.white.opacity(0.7))
+          .font(.system(size: 10, weight: .medium).monospacedDigit())
+          .foregroundStyle(.white.opacity(0.6))
         Spacer()
       }
 
