@@ -322,40 +322,40 @@ private struct VoteStatusBar: View {
         // 참여
         HStack(spacing: 2) {
           Circle().fill(Color.green).frame(width: 6, height: 6)
-          Text("\(acceptedCount)")
+          Text("참여 \(acceptedCount)")
             .foregroundStyle(.green)
           MiniAvatarStack(
             members: state.acceptedMembers,
             color: .green
           )
         }
-        Text(" · ").foregroundStyle(.white.opacity(0.3))
+        Text("·").foregroundStyle(.white.opacity(0.3))
         // 불참
         HStack(spacing: 2) {
           Circle().fill(Color.red.opacity(0.7)).frame(width: 6, height: 6)
-          Text("\(declinedCount)")
+          Text("불참 \(declinedCount)")
             .foregroundStyle(.red)
           MiniAvatarStack(
             members: state.declinedMembers,
             color: .red
           )
         }
-        Text(" · ").foregroundStyle(.white.opacity(0.3))
-        // 대기
+        Text("·").foregroundStyle(.white.opacity(0.3))
+        // 미응답
         HStack(spacing: 2) {
           Circle()
             .fill(Color.white.opacity(0.3))
             .frame(width: 6, height: 6)
-          Text("\(pendingCount)")
+          Text("미응답 \(pendingCount)")
             .foregroundStyle(.white.opacity(0.4))
         }
-        Text(" · ").foregroundStyle(.white.opacity(0.3))
-        // 확정 기준
+        Text("·").foregroundStyle(.white.opacity(0.3))
+        // 최소확정 기준
         HStack(spacing: 2) {
           RoundedRectangle(cornerRadius: 0.5)
             .fill(Color.pmindigo.n500)
             .frame(width: 2, height: 8)
-          Text("확정 \(minimumParticipants)")
+          Text("최소확정 \(minimumParticipants)")
             .foregroundStyle(Color.pmindigo.n500)
         }
         Spacer()
