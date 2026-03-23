@@ -132,6 +132,7 @@ export function UserTimelinePage() {
                   />
                   <Chip label={`그룹 ${timelineQuery.data.summary.groupCount}개`} />
                   <Chip label={`기기 ${timelineQuery.data.summary.deviceCount}개`} />
+                  <Chip label={`개인일정 ${timelineQuery.data.summary.personalEventCount}개`} />
                 </Stack>
               </Stack>
             </CardContent>
