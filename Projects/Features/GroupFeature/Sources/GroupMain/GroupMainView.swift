@@ -340,7 +340,7 @@ extension GroupMain {
           get: { store.selectedFilter },
           set: { newFilter in
             withAnimation(.snappy) {
-              _ = store.send(.view(.filterChanged(newFilter)))
+              store.send(.view(.filterChanged(newFilter)))
             }
           }
         ),

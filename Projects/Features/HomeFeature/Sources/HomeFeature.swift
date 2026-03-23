@@ -1426,7 +1426,7 @@ extension Home {
               guard !updates.isEmpty else { return }
               await send(.internal(.weatherBatchResponse(updates)))
             }
-            .cancellable(id: CancelID.weatherFetch, cancelInFlight: false)
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
 
           case .weatherBatchResponse(let updates):
             guard !updates.isEmpty else { return .none }

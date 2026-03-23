@@ -387,15 +387,7 @@ public enum CreateSchedule {
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
-            let user = state.currentUser ?? UserPrivateModel(
-              userId: state.currentUserId,
-              name: "",
-              nickname: "",
-              email: "",
-              provider: "",
-              metadata: .init(),
-              groups: state.groupSummaries ?? []
-            )
+            guard let user = state.currentUser else { return .none }
             state.createGroup = CreateGroup.Feature.State(currentUser: user)
             return .none
 

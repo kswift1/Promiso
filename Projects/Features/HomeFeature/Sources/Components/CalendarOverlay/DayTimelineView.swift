@@ -85,7 +85,7 @@ struct DayTimelineView: View {
     .scrollPosition($scrollPosition)
     .onAppear {
       let hour = Calendar.scheduleDisplay.component(.hour, from: Date())
-      let capped = max(0, min(hour, 16) - 1)
+      let capped = max(0, min(hour, 22) - 1)
       let offset = CGFloat(capped) * baseHourHeight
       scrollPosition.scrollTo(y: offset)
     }
