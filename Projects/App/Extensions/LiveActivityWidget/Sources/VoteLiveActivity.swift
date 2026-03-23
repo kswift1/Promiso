@@ -102,10 +102,24 @@ struct VoteLiveActivity: Widget {
           .font(.system(size: 16))
 
       } compactTrailing: {
-        // MARK: - Compact Trailing (참여/전체 카운트)
-        Text("\(context.state.acceptedMembers.count)/\(context.attributes.totalMemberCount)")
-          .font(.system(size: 14, weight: .bold, design: .monospaced))
-          .monospacedDigit()
+        // MARK: - Compact Trailing
+        let userId = context.attributes.currentUserId
+        let isAccepted = context.state.acceptedMembers.contains { $0.id == userId }
+        let isDeclined = context.state.declinedMembers.contains { $0.id == userId }
+        let hasResponded = isAccepted || isDeclined
+
+        if hasResponded {
+          HStack(spacing: 2) {
+            Text(isAccepted ? "✅" : "❌")
+              .font(.system(size: 10))
+            Text("\(context.state.acceptedMembers.count)/\(context.attributes.totalMemberCount)")
+              .font(.system(size: 13, weight: .bold, design: .monospaced))
+          }
+        } else {
+          Text(context.attributes.voteDeadline, style: .timer)
+            .font(.system(size: 13, weight: .bold, design: .monospaced))
+            .monospacedDigit()
+        }
 
       } minimal: {
         // MARK: - Minimal (이모지)
