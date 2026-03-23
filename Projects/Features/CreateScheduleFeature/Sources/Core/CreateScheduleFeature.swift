@@ -257,10 +257,9 @@ public enum CreateSchedule {
                   await send(.internal(.settingsLoaded(settings)))
                 }
               },
-              .run { [userDefaultsClient] send in
-                let rawValue = userDefaultsClient.lastScheduleNotificationMethod
-                let method = rawValue.flatMap { ScheduleNotificationMethod(rawValue: $0) }
-                await send(.internal(.lastNotificationMethodLoaded(method)))
+              .run { send in
+                // 항상 liveActivity 사용
+                await send(.internal(.lastNotificationMethodLoaded(.liveActivity)))
               }
             )
             
