@@ -108,6 +108,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.onAppear))
@@ -189,6 +190,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -220,6 +222,7 @@ struct HomeFeatureTests {
       $0.locationClient.reverseGeocode = { _ in "서울" }
       $0.weatherClient.getWeather = { _, _, _ in WeatherInfo() }
       $0.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -256,6 +259,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -433,6 +437,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.onAppear))
@@ -610,6 +615,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -658,6 +664,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
