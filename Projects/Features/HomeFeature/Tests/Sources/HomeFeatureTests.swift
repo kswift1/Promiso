@@ -106,6 +106,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -188,6 +189,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -257,6 +259,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -435,6 +438,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -662,6 +666,7 @@ struct HomeFeatureTests {
       $0.userSettingsClient.fetchSettings = { _ in
         UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
       }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
