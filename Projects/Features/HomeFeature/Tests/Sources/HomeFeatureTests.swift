@@ -75,6 +75,7 @@ struct HomeFeatureTests {
       }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
       configure(&$0)
     }
   }

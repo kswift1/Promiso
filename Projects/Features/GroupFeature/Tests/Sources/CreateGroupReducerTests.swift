@@ -81,6 +81,8 @@ struct CreateGroupReducerTests {
       initialState: CreateGroup.Feature.State(currentUser: user)
     ) {
       CreateGroup.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.cancelTapped))
@@ -135,6 +137,7 @@ struct CreateGroupReducerTests {
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
     } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
       $0.notificationClient.getAuthorizationStatus = { .authorized }
       $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
@@ -156,6 +159,8 @@ struct CreateGroupReducerTests {
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.internal(.createGroupResponse(.failure(testError)))) {

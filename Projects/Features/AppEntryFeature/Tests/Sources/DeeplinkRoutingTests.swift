@@ -12,6 +12,7 @@ struct DeeplinkRoutingTests {
       $0.deeplinkClient.parseURL = { _ in .joinGroup(inviteCode: "ABC123") }
       $0.groupClient.previewGroup = { _ in makeGroupPreviewModel() }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -99,6 +100,7 @@ struct DeeplinkRoutingTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.deeplinkClient.parseURL = { _ in .joinGroup(inviteCode: "PENDING-123") }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://join/PENDING-123")!))) {
@@ -130,6 +132,7 @@ struct DeeplinkRoutingTests {
         }
         return .group(groupId: "LATEST-GROUP")
       }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://join/FIRST")!))) {
