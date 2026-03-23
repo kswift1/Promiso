@@ -189,6 +189,18 @@ export const startVoteLiveActivity = onCall(
     });
 
     // 7. Send Push to Start to all members
+
+    // 투표 마감 시간 계산
+    // scheduledTime - trackingStartMinutesBefore, 최대 now+8시간
+    const scheduledAtMs = startAt.toDate().getTime();
+    const trackingStart =
+      (scheduleData.trackingStartMinutesBefore as number) || 30;
+    const deadlineFromSchedule =
+      scheduledAtMs - trackingStart * 60 * 1000;
+    const maxDeadline = Date.now() + 8 * 60 * 60 * 1000;
+    const voteDeadlineMs = Math.min(deadlineFromSchedule, maxDeadline);
+    const voteDeadline = Math.floor(voteDeadlineMs / 1000);
+
     const initialContentState: VoteContentState = {
       acceptedMembers: [],
       declinedMembers: [],
@@ -204,6 +216,7 @@ export const startVoteLiveActivity = onCall(
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
+          "dismissal-date": voteDeadline,
           "attributes-type": "VoteActivityAttributes",
           "attributes": {
             scheduleId,
@@ -211,12 +224,13 @@ export const startVoteLiveActivity = onCall(
             emoji,
             title,
             location,
-            scheduledTime: startAt.toDate().getTime() / 1000,
+            scheduledTime: scheduledAtMs / 1000,
             hostId,
             hostName,
             channelId,
             groupName,
             totalMemberCount,
+            voteDeadline,
           },
           "content-state": initialContentState,
           "alert": {

@@ -12,7 +12,6 @@ struct VoteLiveActivity: Widget {
     ActivityConfiguration(for: VoteActivityAttributes.self) { context in
       // MARK: - Lock Screen UI
       VoteLockScreenView(context: context)
-        .activityBackgroundTint(.black)
         .widgetURL(AppConstants.Deeplink.url(path: "vote/\(context.attributes.scheduleId)"))
 
     } dynamicIsland: { context in
@@ -59,7 +58,7 @@ struct VoteLiveActivity: Widget {
         DynamicIslandExpandedRegion(.bottom) {
           VoteStatusBar(
             state: context.state,
-            totalMemberCount: context.attributes.totalMemberCount
+            totalMemberCount: context.attributes.totalMemberCount, minimumParticipants: context.attributes.minimumParticipants
           )
           .padding(.horizontal, 8)
           .padding(.top, 8)
@@ -105,42 +104,76 @@ private struct VoteLockScreenView: View {
   }
 
   var body: some View {
-    VStack(spacing: 12) {
-      // 상단: 이모지 + 제목 + 일정 시간
-      HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("\(context.attributes.emoji) \(context.attributes.title)")
-            .font(.headline.weight(.bold))
-            .foregroundStyle(.primary)
-            .lineLimit(2)
-            .minimumScaleFactor(0.8)
-
-          if let location = context.attributes.location {
-            Label(location, systemImage: "mappin.circle.fill")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-          }
-        }
+    VStack(spacing: 10) {
+      // 1행: 이모지 + 제목 (좌) / 약속 시간 (우)
+      HStack {
+        Text("\(context.attributes.emoji) \(context.attributes.title)")
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(.white)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
 
         Spacer()
 
-        // 일정 시간 표시
-        VStack(alignment: .trailing, spacing: 2) {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
           Text(context.attributes.scheduledTime.amPmText)
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
-            .foregroundStyle(.secondary)
-
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.6))
           Text(context.attributes.scheduledTime.timeOnlyText)
-            .font(.system(size: 17, weight: .bold, design: .monospaced))
-            .foregroundStyle(.primary)
+            .font(.system(size: 18, weight: .bold, design: .monospaced))
+            .foregroundStyle(.white)
         }
       }
 
-      // 중간: 응답 현황 바
+      // 2행: 그룹 · 위치
+      HStack(spacing: 4) {
+        if let groupName = context.attributes.groupName {
+          Image(systemName: "person.2.fill")
+            .font(.system(size: 9))
+            .foregroundStyle(Color.pmindigo.n300)
+          Text(groupName)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.6))
+        }
+
+        if context.attributes.groupName != nil, context.attributes.location != nil {
+          Text("·")
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.4))
+        }
+
+        if let location = context.attributes.location {
+          Image(systemName: "location.fill")
+            .font(.system(size: 9))
+            .foregroundStyle(Color.pmindigo.n300)
+          Text(location)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.6))
+        }
+
+        Spacer()
+      }
+      .lineLimit(1)
+
+      // 3행: 남은 시간
+      HStack(spacing: 4) {
+        Image(systemName: "timer")
+          .font(.system(size: 10))
+          .foregroundStyle(Color.pmindigo.n300)
+        Text(context.attributes.voteDeadline, style: .timer)
+          .font(.caption.weight(.medium).monospacedDigit())
+          .foregroundStyle(.white.opacity(0.7))
+        Text("남음")
+          .font(.caption)
+          .foregroundStyle(.white.opacity(0.5))
+        Spacer()
+      }
+
+      // 중간: 응답 현황 (썸네일 포함)
       VoteStatusBar(
         state: context.state,
-        totalMemberCount: context.attributes.totalMemberCount
+        totalMemberCount: context.attributes.totalMemberCount,
+        minimumParticipants: context.attributes.minimumParticipants
       )
 
       // 하단: 버튼 또는 완료/마감 메시지
@@ -149,10 +182,10 @@ private struct VoteLockScreenView: View {
           // 투표 마감
           Label("투표 마감", systemImage: "lock.fill")
             .font(.subheadline.weight(.medium))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.white.opacity(0.6))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
 
         } else if hasResponded {
           // 이미 응답함 — 참여/불참 완료 텍스트
@@ -179,7 +212,10 @@ private struct VoteLockScreenView: View {
         }
       }
     }
-    .padding(16)
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
+    .foregroundStyle(.white)
+    .activityBackgroundTint(.black)
   }
 }
 
@@ -246,32 +282,67 @@ private struct VoteActionButtons: View {
 private struct VoteStatusBar: View {
   let state: VoteActivityAttributes.ContentState
   let totalMemberCount: Int
+  let minimumParticipants: Int
 
   private var acceptedCount: Int { state.acceptedMembers.count }
   private var declinedCount: Int { state.declinedMembers.count }
   private var pendingCount: Int { state.pendingCount }
   private var total: Int { max(totalMemberCount, 1) }
+  private var isConfirmed: Bool { acceptedCount >= minimumParticipants }
 
   var body: some View {
-    VStack(spacing: 6) {
+    VStack(spacing: 8) {
+      // 참여/불참/대기 행 (썸네일 포함)
+      VStack(spacing: 4) {
+        VoteStatusRow(
+          icon: "checkmark.circle.fill",
+          iconColor: .green,
+          label: "참여",
+          count: acceptedCount,
+          members: state.acceptedMembers,
+          borderColor: .green
+        )
+
+        VoteStatusRow(
+          icon: "xmark.circle.fill",
+          iconColor: .red,
+          label: "불참",
+          count: declinedCount,
+          members: state.declinedMembers,
+          borderColor: .red
+        )
+
+        // 대기 행 (썸네일 없음 — ID 모름)
+        HStack(spacing: 6) {
+          Image(systemName: "clock.fill")
+            .font(.system(size: 11))
+            .foregroundStyle(.white.opacity(0.4))
+          Text("대기 \(pendingCount)")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.4))
+          Spacer()
+        }
+      }
+
       // 프로그레스 바 (그룹 일정 카드 스타일)
       GeometryReader { geometry in
         let barWidth = geometry.size.width
-        let acceptedRatio = CGFloat(acceptedCount) / CGFloat(total)
-        let declinedRatio = CGFloat(declinedCount) / CGFloat(total)
+        let acceptedRatio = min(1.0, CGFloat(acceptedCount) / CGFloat(total))
+        let declinedRatio = min(1.0 - acceptedRatio, CGFloat(declinedCount) / CGFloat(total))
+        let confirmRatio = min(1.0, CGFloat(minimumParticipants) / CGFloat(total))
 
         ZStack(alignment: .leading) {
           // 배경
           Capsule()
-            .fill(Color.gray.opacity(0.25))
+            .fill(Color.white.opacity(0.15))
 
           // 참여 + 불참 채움
           HStack(spacing: 0) {
             Rectangle()
-              .fill(Color.green)
+              .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
               .frame(width: max(0, barWidth * acceptedRatio))
             Rectangle()
-              .fill(Color.red.opacity(0.6))
+              .fill(Color.red.opacity(0.5))
               .frame(width: max(0, barWidth * declinedRatio))
           }
           .clipShape(Capsule())
@@ -286,46 +357,177 @@ private struct VoteStatusBar: View {
                 .offset(x: x - 0.5)
             }
           }
+
+          // 확정 기준선 (보라색)
+          if minimumParticipants < total {
+            RoundedRectangle(cornerRadius: 1)
+              .fill(Color.pmindigo.n500)
+              .frame(width: 2, height: 10)
+              .offset(x: barWidth * confirmRatio - 1)
+          }
         }
       }
       .frame(height: 6)
 
-      // 범례
+      // 범례 (확정 기준 표시)
       HStack(spacing: 0) {
         HStack(spacing: 3) {
-          Circle()
-            .fill(Color.green)
-            .frame(width: 6, height: 6)
+          Circle().fill(Color.green).frame(width: 6, height: 6)
           Text("\(acceptedCount)명 참여")
             .foregroundStyle(.green)
         }
-
-        Text(" · ")
-          .foregroundStyle(.white.opacity(0.3))
-
+        Text(" · ").foregroundStyle(.white.opacity(0.3))
         HStack(spacing: 3) {
-          Circle()
-            .fill(Color.red.opacity(0.7))
-            .frame(width: 6, height: 6)
+          Circle().fill(Color.red.opacity(0.7)).frame(width: 6, height: 6)
           Text("\(declinedCount)명 불참")
             .foregroundStyle(.red)
         }
-
-        Text(" · ")
-          .foregroundStyle(.white.opacity(0.3))
-
+        Text(" · ").foregroundStyle(.white.opacity(0.3))
         HStack(spacing: 3) {
-          Circle()
-            .fill(Color.gray.opacity(0.4))
-            .frame(width: 6, height: 6)
-          Text("\(pendingCount)명 대기")
-            .foregroundStyle(.secondary)
+          RoundedRectangle(cornerRadius: 0.5)
+            .fill(Color.pmindigo.n500)
+            .frame(width: 2, height: 8)
+          Text("확정 \(minimumParticipants)")
+            .foregroundStyle(Color.pmindigo.n500)
         }
-
         Spacer()
       }
       .font(.system(size: 11, weight: .medium))
     }
+  }
+}
+
+// MARK: - Vote Status Row
+
+/// 참여/불참 행: 아이콘 + 레이블 + 카운트 + 썸네일 스택
+private struct VoteStatusRow: View {
+  let icon: String
+  let iconColor: Color
+  let label: String
+  let count: Int
+  let members: [VoteMember]
+  let borderColor: Color
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Image(systemName: icon)
+        .font(.system(size: 11))
+        .foregroundStyle(iconColor)
+
+      Text("\(label) \(count)")
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.white.opacity(0.7))
+
+      Spacer()
+
+      // 썸네일 스택 (최대 5명 표시)
+      MemberThumbnailStack(members: members, borderColor: borderColor)
+    }
+  }
+}
+
+// MARK: - Member Thumbnail Stack
+
+/// 멤버 썸네일 오버랩 스택 (최대 5명, 20x20pt)
+private struct MemberThumbnailStack: View {
+  let members: [VoteMember]
+  let borderColor: Color
+
+  private let size: CGFloat = 20
+  private let overlap: CGFloat = 6
+  private let maxVisible: Int = 5
+
+  private var visibleMembers: [VoteMember] {
+    Array(members.prefix(maxVisible))
+  }
+
+  var body: some View {
+    let visible = visibleMembers
+    let extraCount = members.count - visible.count
+
+    ZStack(alignment: .trailing) {
+      // 여분 인원 뱃지 (오른쪽에서 왼쪽으로 쌓기)
+      ForEach(Array(visible.enumerated().reversed()), id: \.element.id) { index, member in
+        MemberAvatar(member: member, borderColor: borderColor, size: size)
+          .offset(x: CGFloat(index) * (size - overlap))
+      }
+    }
+    // ZStack 너비를 실제 스택 너비에 맞게 지정
+    .frame(
+      width: visible.isEmpty ? 0 : size + CGFloat(max(0, visible.count - 1)) * (size - overlap),
+      height: size
+    )
+    .overlay(alignment: .trailing) {
+      if extraCount > 0 {
+        Text("+\(extraCount)")
+          .font(.system(size: 7, weight: .bold))
+          .foregroundStyle(.white)
+          .frame(width: size, height: size)
+          .background(Color.white.opacity(0.2), in: Circle())
+          .overlay(Circle().strokeBorder(borderColor.opacity(0.6), lineWidth: 1))
+          .offset(x: -(size + CGFloat(max(0, visible.count - 1)) * (size - overlap)) + size)
+      }
+    }
+  }
+}
+
+// MARK: - Member Avatar
+
+/// 단일 멤버 아바타: 캐싱된 프로필 이미지 or 이니셜 원
+private struct MemberAvatar: View {
+  let member: VoteMember
+  let borderColor: Color
+  let size: CGFloat
+
+  private var cachedImage: UIImage? {
+    LiveActivityImageStore.loadImage(userId: member.id)
+  }
+
+  /// 이름의 첫 글자 (이니셜)
+  private var initial: String {
+    String(member.name.prefix(1))
+  }
+
+  /// 이름 기반 결정론적 그라데이션 색상
+  private var gradientColors: [Color] {
+    let hash = abs(member.id.hashValue)
+    let palettes: [[Color]] = [
+      [.purple, .blue],
+      [.orange, .pink],
+      [.teal, .green],
+      [.indigo, .purple],
+      [.red, .orange],
+      [.cyan, .blue]
+    ]
+    return palettes[hash % palettes.count]
+  }
+
+  var body: some View {
+    Group {
+      if let image = cachedImage {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+          .frame(width: size, height: size)
+          .clipShape(Circle())
+      } else {
+        // 이니셜 폴백 아바타
+        ZStack {
+          LinearGradient(
+            colors: gradientColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+          Text(initial)
+            .font(.system(size: size * 0.45, weight: .bold))
+            .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+      }
+    }
+    .overlay(Circle().strokeBorder(borderColor, lineWidth: 1.5))
+    .overlay(Circle().strokeBorder(Color.black, lineWidth: 1))
   }
 }
 
@@ -354,7 +556,8 @@ private let previewAttributes = VoteActivityAttributes(
   hostName: "민수",
   channelId: "channel-abc",
   groupName: "친구들",
-  totalMemberCount: 5
+  totalMemberCount: 5,
+  voteDeadline: Date().addingTimeInterval(3600 * 23)
 )
 
 /// 긴 제목 테스트용
@@ -369,7 +572,8 @@ private let previewAttributesLong = VoteActivityAttributes(
   hostName: "지현",
   channelId: "channel-xyz",
   groupName: "대학교 동아리",
-  totalMemberCount: 8
+  totalMemberCount: 8,
+  voteDeadline: Date().addingTimeInterval(3600 * 47)
 )
 
 // MARK: - Preview States

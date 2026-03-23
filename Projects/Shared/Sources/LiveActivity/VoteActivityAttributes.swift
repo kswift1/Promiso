@@ -41,6 +41,12 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
   /// 전체 참여자 수
   public let totalMemberCount: Int
 
+  /// 일정 확정 최소 인원
+  public let minimumParticipants: Int
+
+  /// 투표 마감 시간 (scheduledTime - trackingStartMinutes, 최대 8시간)
+  public let voteDeadline: Date
+
   // MARK: - CodingKeys
 
   private enum CodingKeys: String, CodingKey {
@@ -55,6 +61,8 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
     case channelId
     case groupName
     case totalMemberCount
+    case minimumParticipants
+    case voteDeadline
   }
 
   // MARK: - Initializer
@@ -70,7 +78,9 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
     hostName: String? = nil,
     channelId: String = "",
     groupName: String? = nil,
-    totalMemberCount: Int
+    totalMemberCount: Int,
+    minimumParticipants: Int = 2,
+    voteDeadline: Date = Date()
   ) {
     self.scheduleId = scheduleId
     self.currentUserId = currentUserId
@@ -83,6 +93,8 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
     self.channelId = channelId
     self.groupName = groupName
     self.totalMemberCount = totalMemberCount
+    self.minimumParticipants = minimumParticipants
+    self.voteDeadline = voteDeadline
   }
 
   // MARK: - Decodable (Unix timestamp → Date 변환)
@@ -100,10 +112,18 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
     self.channelId = try container.decodeIfPresent(String.self, forKey: .channelId) ?? ""
     self.groupName = try container.decodeIfPresent(String.self, forKey: .groupName)
     self.totalMemberCount = try container.decode(Int.self, forKey: .totalMemberCount)
+    self.minimumParticipants = try container.decodeIfPresent(Int.self, forKey: .minimumParticipants) ?? 2
 
     // scheduledTime: Unix timestamp (1970년 기준 초) → Date 변환
     let timestamp = try container.decode(Double.self, forKey: .scheduledTime)
     self.scheduledTime = Date(timeIntervalSince1970: timestamp)
+
+    // voteDeadline: Unix timestamp → Date 변환
+    if let deadlineTs = try container.decodeIfPresent(Double.self, forKey: .voteDeadline) {
+      self.voteDeadline = Date(timeIntervalSince1970: deadlineTs)
+    } else {
+      self.voteDeadline = self.scheduledTime
+    }
   }
 
   // MARK: - Encodable (Date → Unix timestamp 변환)
@@ -121,9 +141,11 @@ public struct VoteActivityAttributes: ActivityAttributes, Equatable, Sendable {
     try container.encode(channelId, forKey: .channelId)
     try container.encodeIfPresent(groupName, forKey: .groupName)
     try container.encode(totalMemberCount, forKey: .totalMemberCount)
+    try container.encode(minimumParticipants, forKey: .minimumParticipants)
 
     // Date → Unix timestamp (1970년 기준 초) 변환
     try container.encode(scheduledTime.timeIntervalSince1970, forKey: .scheduledTime)
+    try container.encode(voteDeadline.timeIntervalSince1970, forKey: .voteDeadline)
   }
 
   // MARK: - Content State (동적 정보)
