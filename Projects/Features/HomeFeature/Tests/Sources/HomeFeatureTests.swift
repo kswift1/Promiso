@@ -111,13 +111,13 @@ struct HomeFeatureTests {
       $0.analyticsClient.logEvent = { _, _ in }
     }
 
+    store.exhaustivity = .off(showSkippedAssertions: false)
     await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
     }
 
-    store.exhaustivity = .off(showSkippedAssertions: false)
     await store.receive(\.internal.schedulesResponse.success) {
       $0.schedulesState = .loaded([])
     }
@@ -440,15 +440,15 @@ struct HomeFeatureTests {
       $0.analyticsClient.logEvent = { _, _ in }
     }
 
+    // GroupModel의 createdAt/updatedAt가 Date() 기본값이라 타이밍 불일치 발생
+    // exhaustivity off로 전환 후 명시적 receive로 chain 완료
+    store.exhaustivity = .off(showSkippedAssertions: false)
     await store.send(.view(.onAppear))
 
     await store.receive(\.internal.fetchSchedules) {
       $0.schedulesState = .loading
     }
 
-    // GroupModel의 createdAt/updatedAt가 Date() 기본값이라 타이밍 불일치 발생
-    // exhaustivity off로 전환 후 명시적 receive로 chain 완료
-    store.exhaustivity = .off(showSkippedAssertions: false)
     await store.receive(\.internal.schedulesResponse)
     await store.receive(\.internal.unreadNotificationCountResponse)
     await store.finish()
