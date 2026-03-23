@@ -295,6 +295,7 @@ struct CreateScheduleReducerTests {
       CreateSchedule.Feature()
     } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.scheduleClient.startVoteLiveActivity = { _ in }
     }
     store.exhaustivity = .off
 

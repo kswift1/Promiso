@@ -199,6 +199,10 @@ extension CalendarFeature {
       var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
+      /// 가이드 표시 여부
+      var isShowingGuide: Bool = false
+      /// 가이드 툴팁 표시 여부 (첫 온보딩 완료 후)
+      var isShowingGuideTooltip: Bool = false
 
       // MARK: - Computed Properties
 
@@ -585,8 +589,11 @@ extension CalendarFeature {
       func filteredSchedules(for monthKey: Date) -> [ScheduleModel] {
         var schedules = cachedSchedulesByMonth[monthKey] ?? []
 
-        // 그룹 필터
-        schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        // 그룹 필터 (명시적으로 필터를 설정한 경우에만 적용)
+        let isGroupFilterCustomized = selectedGroupIds != Set(currentUser.groups.map(\.id))
+        if isGroupFilterCustomized {
+          schedules = schedules.filter { selectedGroupIds.contains($0.groupId) }
+        }
 
         // 상태 필터 (allIndividualFilters = 전체, 필터 안 함)
         if selectedStatusFilters != StatusFilter.allIndividualFilters {
@@ -853,6 +860,9 @@ extension CalendarFeature {
         case filterCalendarEventsToggled
         case filterReset
         case filterSheetDismissed
+        // 가이드
+        case showGuide
+        case dismissGuide
       }
 
       @CasePathable
@@ -884,6 +894,8 @@ extension CalendarFeature {
         case recurringEventsFailed
         // 공유
         case kakaoScheduleShareResult(KakaoShareResult)
+        // 가이드 툴팁
+        case showGuideTooltip
       }
 
     }
@@ -895,6 +907,8 @@ extension CalendarFeature {
       case fetchCalendarEventsForMonth(Date)
       case fetchPersonalEventsForMonth(Date)
       case fetchHolidays(Int)
+      case showGuide
+      case showGuideTooltip
     }
 
     // MARK: - Dependencies
@@ -1016,14 +1030,13 @@ extension CalendarFeature {
 
       case .createSchedule(.presented(.delegate(.scheduleCreated))):
         state.createSchedule = nil
+        // 일정이 어느 월에 생성되었을지 모르므로 현재 보이는 월들 캐시 무효화
         let currentMonth = state.selectedDate.startOfMonth
+        state.loadedMonths.remove(currentMonth)
+        state.cachedSchedulesByMonth.removeValue(forKey: currentMonth)
         return .send(.internal(.fetchSchedulesForMonth(currentMonth)))
 
       case .createSchedule(.presented(.delegate(.dismiss))):
-        state.createSchedule = nil
-        return .none
-
-      case .createSchedule(.presented(.delegate(.createGroupRequested))):
         state.createSchedule = nil
         return .none
 
@@ -1105,11 +1118,20 @@ extension CalendarFeature {
         if state.selectedGroupIds.isEmpty {
           state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         }
+        // 최초 진입 시 가이드 표시 (1초 딜레이)
+        let shouldShowGuide = !userDefaultsClient.hasSeenCalendarGuide
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData)),
           .send(.internal(.fetchSettings)),
-          .send(.internal(.fetchRecurringEvents))
+          .send(.internal(.fetchRecurringEvents)),
+          shouldShowGuide
+            ? .run { send in
+                try await Task.sleep(for: .seconds(1))
+                await send(.view(.showGuide))
+              }
+              .cancellable(id: CancelID.showGuide, cancelInFlight: true)
+            : .none
         )
 
       case .toggleDisplayMode:
@@ -1375,6 +1397,13 @@ extension CalendarFeature {
       case .refresh:
         // 탭 전환 시 최신 데이터 로드
         AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
+        // 삭제된 그룹을 필터에서 제거
+        let currentGroupIds = Set(state.currentUser.groups.map(\.id))
+        state.selectedGroupIds = state.selectedGroupIds.intersection(currentGroupIds)
+        // 필터가 비게 되면 전체 선택으로 복원
+        if state.selectedGroupIds.isEmpty {
+          state.selectedGroupIds = currentGroupIds
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
@@ -1626,6 +1655,24 @@ extension CalendarFeature {
       case .filterSheetDismissed:
         state.isFilterSheetPresented = false
         return .none
+
+      case .showGuide:
+        state.isShowingGuide = true
+        return .none
+
+      case .dismissGuide:
+        state.isShowingGuide = false
+        let isFirstTime = !userDefaultsClient.hasSeenCalendarGuide
+        guard isFirstTime else {
+          userDefaultsClient.markCalendarGuideSeen()
+          return .none
+        }
+        return .run { send in
+          userDefaultsClient.markCalendarGuideSeen()
+          try await Task.sleep(for: .milliseconds(500))
+          await send(.internal(.showGuideTooltip), animation: .easeInOut)
+        }
+        .cancellable(id: CancelID.showGuideTooltip, cancelInFlight: true)
 
       }
     }
@@ -1966,6 +2013,20 @@ extension CalendarFeature {
           break
         }
         return .none
+
+      case .showGuideTooltip:
+        if state.isShowingGuideTooltip {
+          // 5초 후 두 번째 호출: 숨기기
+          state.isShowingGuideTooltip = false
+          return .none
+        }
+        // 첫 호출: 표시 + 5초 후 자동 숨기기
+        state.isShowingGuideTooltip = true
+        return .run { send in
+          try await Task.sleep(for: .seconds(5))
+          await send(.internal(.showGuideTooltip), animation: .easeOut)
+        }
+        .cancellable(id: CancelID.showGuideTooltip, cancelInFlight: true)
       }
     }
 

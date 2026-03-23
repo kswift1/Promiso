@@ -51,6 +51,7 @@ struct ProOnboardingSetupView: View {
         case 0: onboardingStep0
         case 1: onboardingStep1
         case 2: onboardingStep2
+        case 3: onboardingStep3
         default: EmptyView()
         }
       }
@@ -106,12 +107,12 @@ struct ProOnboardingSetupView: View {
             .font(.system(size: 44))
             .foregroundStyle(Color.pmwarning.n500)
 
-          Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
+          Text(LocalizedStrings.ProPlan.onboardingConflictTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text(LocalizedStrings.ProPlan.onboardingConflictSubtitle)
+          Text(LocalizedStrings.ProPlan.onboardingConflictSubtitleNew)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
             .multilineTextAlignment(.center)
@@ -329,7 +330,7 @@ struct ProOnboardingSetupView: View {
     )
   }
 
-  // MARK: - Step 1: Briefing
+  // MARK: - Step 1: Briefing Settings (알림시간 + 기본위치)
 
   @ViewBuilder
   private var onboardingStep1: some View {
@@ -340,12 +341,12 @@ struct ProOnboardingSetupView: View {
             .font(.system(size: 44))
             .foregroundStyle(Color.pmaurora.purple)
 
-          Text(LocalizedStrings.ProPlan.featureSmartBriefingTitle)
+          Text(LocalizedStrings.ProPlan.onboardingBriefingSettingsTitle)
             .font(.title2)
             .fontWeight(.bold)
             .foregroundStyle(Color.pmtext.primary)
 
-          Text(LocalizedStrings.ProPlan.onboardingBriefingSubtitle)
+          Text(LocalizedStrings.ProPlan.onboardingBriefingSettingsSubtitle)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
             .multilineTextAlignment(.center)
@@ -355,7 +356,7 @@ struct ProOnboardingSetupView: View {
         briefingPreviewCard
 
         VStack(alignment: .leading, spacing: 10) {
-          Text(LocalizedStrings.ProPlan.onboardingAlertAndTransport)
+          Text(LocalizedStrings.SettingsStrings.briefingNotification)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
 
@@ -398,9 +399,113 @@ struct ProOnboardingSetupView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
+          }
+          .adaptiveGlassCard()
+        }
 
-            Divider().padding(.leading, 16)
+        VStack(alignment: .leading, spacing: 10) {
+          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
 
+          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmtext.secondary)
+
+          VStack(spacing: 0) {
+            if let location = store.onboardingDefaultLocation {
+              HStack(spacing: 12) {
+                HStack(spacing: 12) {
+                  Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.pmindigo.n500)
+
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(location.name)
+                      .font(.subheadline.weight(.medium))
+                      .foregroundStyle(Color.pmtext.primary)
+
+                    if let address = location.address {
+                      Text(address)
+                        .font(.caption)
+                        .foregroundStyle(Color.pmtext.secondary)
+                        .lineLimit(1)
+                    }
+                  }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                  store.send(.view(.onboardingDefaultLocationTapped))
+                }
+
+                Spacer()
+
+                Button {
+                  store.send(.view(.onboardingRemoveDefaultLocation))
+                } label: {
+                  Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
+                .buttonStyle(.plain)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+            } else {
+              Button {
+                store.send(.view(.onboardingDefaultLocationTapped))
+              } label: {
+                HStack(spacing: 12) {
+                  Image(systemName: "plus.circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.pmindigo.n500)
+
+                  Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.pmtext.secondary)
+
+                  Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+            }
+          }
+          .adaptiveGlassCard()
+        }
+      }
+      .padding(.horizontal, 20)
+      .padding(.bottom, 100)
+    }
+  }
+
+  // MARK: - Step 2: Briefing Style (교통수단 + 스타일)
+
+  @ViewBuilder
+  private var onboardingStep2: some View {
+    ScrollView {
+      VStack(spacing: 20) {
+        VStack(spacing: 8) {
+          Image(systemName: "paintbrush.pointed")
+            .font(.system(size: 44))
+            .foregroundStyle(Color.pmaurora.purple)
+
+          Text(LocalizedStrings.ProPlan.onboardingBriefingStyleTitle)
+            .font(.title2)
+            .fontWeight(.bold)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text(LocalizedStrings.ProPlan.onboardingBriefingStyleSubtitle)
+            .font(.subheadline)
+            .foregroundStyle(Color.pmtext.secondary)
+            .multilineTextAlignment(.center)
+        }
+        .padding(.top, 20)
+
+        VStack(alignment: .leading, spacing: 10) {
+          VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
               HStack(spacing: 4) {
                 Text(LocalizedStrings.SettingsStrings.briefingTransport)
@@ -494,79 +599,6 @@ struct ProOnboardingSetupView: View {
           }
           .adaptiveGlassCard()
         }
-
-        VStack(alignment: .leading, spacing: 10) {
-          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocation)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmtext.primary)
-
-          Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationDescription)
-            .font(.system(size: 12))
-            .foregroundStyle(Color.pmtext.secondary)
-
-          VStack(spacing: 0) {
-            if let location = store.onboardingDefaultLocation {
-              HStack(spacing: 12) {
-                HStack(spacing: 12) {
-                  Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(Color.pmindigo.n500)
-
-                  VStack(alignment: .leading, spacing: 2) {
-                    Text(location.name)
-                      .font(.subheadline.weight(.medium))
-                      .foregroundStyle(Color.pmtext.primary)
-
-                    if let address = location.address {
-                      Text(address)
-                        .font(.caption)
-                        .foregroundStyle(Color.pmtext.secondary)
-                        .lineLimit(1)
-                    }
-                  }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                  store.send(.view(.onboardingDefaultLocationTapped))
-                }
-
-                Spacer()
-
-                Button {
-                  store.send(.view(.onboardingRemoveDefaultLocation))
-                } label: {
-                  Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.pmtext.secondary)
-                }
-                .buttonStyle(.plain)
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-            } else {
-              Button {
-                store.send(.view(.onboardingDefaultLocationTapped))
-              } label: {
-                HStack(spacing: 12) {
-                  Image(systemName: "plus.circle")
-                    .font(.system(size: 20))
-                    .foregroundStyle(Color.pmindigo.n500)
-
-                  Text(LocalizedStrings.SettingsStrings.briefingDefaultLocationPlaceholder)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.pmtext.secondary)
-
-                  Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
-            }
-          }
-          .adaptiveGlassCard()
-        }
       }
       .padding(.horizontal, 20)
       .padding(.bottom, 100)
@@ -640,10 +672,10 @@ struct ProOnboardingSetupView: View {
     .background(Color.pmindigo.n500.opacity(0.08), in: Capsule())
   }
 
-  // MARK: - Step 2: Summary
+  // MARK: - Step 3: Summary
 
   @ViewBuilder
-  private var onboardingStep2: some View {
+  private var onboardingStep3: some View {
     ScrollView {
       VStack(spacing: 24) {
         VStack(spacing: 8) {
@@ -738,20 +770,20 @@ struct ProOnboardingSetupView: View {
 
       Button {
         navigateForward = true
-        if store.onboardingStep < 2 {
+        if store.onboardingStep < 3 {
           store.send(.view(.onboardingNextStep))
         } else {
           store.send(.view(.proOnboardingCompleted))
         }
       } label: {
         HStack {
-          Text(store.onboardingStep == 2 ? LocalizedStrings.ProPlan.startButton : LocalizedStrings.Common.next)
+          Text(store.onboardingStep == 3 ? LocalizedStrings.ProPlan.startButton : LocalizedStrings.Common.next)
             .font(.headline)
             .foregroundStyle(.white)
 
           Spacer()
 
-          Image(systemName: store.onboardingStep == 2 ? "checkmark" : "arrow.right")
+          Image(systemName: store.onboardingStep == 3 ? "checkmark" : "arrow.right")
             .font(.headline)
             .foregroundStyle(.white)
         }
@@ -769,8 +801,20 @@ struct ProOnboardingSetupView: View {
       }
     }
     .padding(.horizontal, 20)
+    .padding(.top, 12)
     .padding(.bottom, 8)
-    .padding(.top, 8)
+    .background(
+      LinearGradient(
+        stops: [
+          .init(color: .clear, location: 0),
+          .init(color: Color(.systemBackground).opacity(0.95), location: 0.15),
+          .init(color: Color(.systemBackground), location: 1.0),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea()
+    )
     .safeAreaPadding(.bottom)
   }
 
@@ -816,4 +860,58 @@ struct ProOnboardingSetupView: View {
         .hour(.defaultDigits(amPM: .wide))
     )
   }
+}
+
+// MARK: - Previews
+
+#Preview("Step 0 - 충돌 감지") {
+  ProOnboardingSetupView(
+    store: Store(
+      initialState: ProPlan.Feature.State()
+    ) {
+      ProPlan.Feature()
+    } withDependencies: {
+      $0.subscriptionClient = .previewValue
+    }
+  )
+  .environment(\.locale, Locale(identifier: "ko"))
+}
+
+#Preview("Step 1 - 브리핑설정") {
+  ProOnboardingSetupView(
+    store: Store(
+      initialState: ProPlan.Feature.State()
+    ) {
+      ProPlan.Feature()
+    } withDependencies: {
+      $0.subscriptionClient = .previewValue
+    }
+  )
+  .environment(\.locale, Locale(identifier: "ko"))
+}
+
+#Preview("Step 2 - 브리핑스타일") {
+  ProOnboardingSetupView(
+    store: Store(
+      initialState: ProPlan.Feature.State()
+    ) {
+      ProPlan.Feature()
+    } withDependencies: {
+      $0.subscriptionClient = .previewValue
+    }
+  )
+  .environment(\.locale, Locale(identifier: "ko"))
+}
+
+#Preview("Step 3 - 설정 완료") {
+  ProOnboardingSetupView(
+    store: Store(
+      initialState: ProPlan.Feature.State()
+    ) {
+      ProPlan.Feature()
+    } withDependencies: {
+      $0.subscriptionClient = .previewValue
+    }
+  )
+  .environment(\.locale, Locale(identifier: "ko"))
 }

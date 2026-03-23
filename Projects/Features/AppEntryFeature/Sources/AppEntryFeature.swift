@@ -137,7 +137,6 @@ extension AppEntry {
       case onboardingIntro(AppEntry.OnboardingIntro)
       case auth(AuthFeature.Auth.Feature)
       case profile(ProfileSetup)
-      case onboardingStart(AppEntry.OnboardingStart)
       case main(RootTab.Feature)
     }
 
@@ -420,30 +419,14 @@ extension AppEntry {
           analyticsClient.log(.onboardingStepViewed(step: "auth"))
           return .none
 
-        case .destination(.presented(.onboardingStart(.delegate(.completed)))):
-          // "나중에 둘러볼게요" → 메인으로
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-          }
-          return .none
-
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
           state.providerProfileImageURL = providerProfileImageURL
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.log(.profileSetupCompleted)
-          if state.isFullOnboarding {
-            // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
-            state.pendingUserForMain = userModel
-            state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
-            analyticsClient.log(.onboardingStepViewed(step: "welcome"))
-            return .none
-          } else {
-            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
-            return .send(.internal(.checkNotificationPermission(userModel)))
-          }
+          state.pendingUserForMain = userModel
+          return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
@@ -633,11 +616,6 @@ extension AppEntry {
           }
         }
 
-      case .onboardingStart:
-        if let store = store.scope(state: \.destination?.onboardingStart, action: \.destination.onboardingStart) {
-          AppEntry.OnboardingStart.View(store: store)
-        }
-
       case .main:
         if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
           RootTab.RootView(store: store)
@@ -669,7 +647,7 @@ extension AppEntry {
 
 extension AppEntry.Feature.State {
   enum DestinationType: Equatable {
-    case onboardingIntro, auth, profile, onboardingStart, main
+    case onboardingIntro, auth, profile, main
   }
 
   var destinationType: DestinationType? {
@@ -677,7 +655,6 @@ extension AppEntry.Feature.State {
     case .onboardingIntro: return .onboardingIntro
     case .auth: return .auth
     case .profile: return .profile
-    case .onboardingStart: return .onboardingStart
     case .main: return .main
     case nil: return nil
     }
@@ -727,6 +704,10 @@ extension AppEntry.Feature {
 
     case .liveSchedule:
       // LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
+
+    case .vote:
+      // VoteLiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
       return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
 
     case .create:

@@ -105,6 +105,7 @@ struct GroupFeatureTests {
       }
       $0.subscriptionClient.fetchStatus = { .none }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off
 

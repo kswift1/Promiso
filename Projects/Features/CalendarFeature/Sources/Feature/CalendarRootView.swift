@@ -129,6 +129,28 @@ extension CalendarFeature {
         .onAppear {
           store.send(.view(.onAppear))
         }
+        .fullScreenCover(
+          isPresented: Binding(
+            get: { store.isShowingGuide },
+            set: { newValue in
+              if !newValue {
+                store.send(.view(.dismissGuide))
+              }
+            }
+          )
+        ) {
+          calendarGuideContent
+        }
+    }
+
+    @ViewBuilder
+    private var calendarGuideContent: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.calendarGuideItems,
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
     }
 
     private var calendarWithEditCovers: some View {
@@ -160,6 +182,8 @@ extension CalendarFeature {
           displayMode: store.displayMode,
           isSelectedDateToday: store.isSelectedDateToday,
           isFilterActive: store.isFilterActive,
+          isShowingGuideTooltip: store.isShowingGuideTooltip,
+          onGuideTapped: { store.send(.view(.showGuide)) },
           onFilterTapped: { store.send(.view(.filterIconTapped)) },
           onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
           onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
@@ -473,7 +497,7 @@ extension CalendarFeature {
       let monthTitle = formatter.string(from: store.currentMonth)
 
       return HStack {
-        Text("\(monthTitle) \(LocalizedStrings.Schedule.title)")
+        Text("\(monthTitle) \(LocalizedStrings.Schedule.schedule)")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 

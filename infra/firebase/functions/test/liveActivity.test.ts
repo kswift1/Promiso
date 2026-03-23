@@ -212,7 +212,7 @@ describe('registerPushToStartToken', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
       expect(mockUserRef.update).toHaveBeenCalledWith({
-        'devices.device-uuid-12345.liveActivityPushToStartToken': 'apns-push-to-start-token-12345',
+        'devices.device-uuid-12345.pushToStartToken': 'apns-push-to-start-token-12345',
       });
     });
   });
@@ -310,7 +310,7 @@ describe('startLiveActivity', () => {
     nickname: `유저 ${userId}`,
     devices: {
       'device-1': {
-        liveActivityPushToStartToken: `token-${userId}`,
+        pushToStartToken: `token-${userId}`,
         fcmToken: 'fcm-token',
       },
     },
@@ -823,7 +823,7 @@ describe('executeLiveActivityStart', () => {
     nickname: `유저 ${userId}`,
     devices: {
       'device-1': {
-        liveActivityPushToStartToken: `token-${userId}`,
+        pushToStartToken: `token-${userId}`,
       },
     },
   });

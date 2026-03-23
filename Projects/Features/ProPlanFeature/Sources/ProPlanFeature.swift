@@ -88,7 +88,7 @@ extension ProPlan {
       public var onboardingBriefingHour: Int = 8
       /// 온보딩 설정: 이용 가능 교통수단
       public var onboardingTransports: Set<AvailableTransport> = [.transit, .car]
-      /// 온보딩 현재 스텝 (0: 충돌감지, 1: 브리핑, 2: 완료)
+      /// 온보딩 현재 스텝 (0: 충돌감지, 1: 알림시간+기본위치, 2: 교통수단+스타일, 3: 완료)
       public var onboardingStep: Int = 0
       /// 구독 이전 확인 얼럿 표시 여부
       public var showTransferAlert: Bool = false
@@ -102,6 +102,8 @@ extension ProPlan {
       public var onboardingDefaultLocation: LocationInfoModel? = nil
       /// Apple Offer Code Redemption sheet 표시 여부
       public var showOfferCodeRedemption: Bool = false
+      /// Offer Code 사용 후 구독 상태 변경 대기 중 여부
+      public var isWaitingForOfferCode: Bool = false
       /// LocationPicker sheet
       @Presents public var locationPicker: LocationPicker.Feature.State?
       /// State를 위한 기본 initializer
@@ -454,7 +456,7 @@ extension ProPlan {
             return .none
 
           case .onboardingNextStep:
-            if state.onboardingStep < 2 {
+            if state.onboardingStep < 3 {
               state.onboardingStep += 1
             }
             return .run { _ in await hapticFeedback.selection() }
@@ -501,7 +503,8 @@ extension ProPlan {
 
           case .offerCodeTapped:
             state.showOfferCodeRedemption = true
-            return .none
+            state.isWaitingForOfferCode = true
+            return .run { _ in await hapticFeedback.selection() }
 
           case .setOfferCodePresented(let isPresented):
             state.showOfferCodeRedemption = isPresented
@@ -618,6 +621,22 @@ extension ProPlan {
           case .statusUpdated(let status):
             let previousStatus = state.subscriptionStatus
             state.subscriptionStatus = status
+
+            // Offer Code로 Pro 전환 감지 → 축하 + 온보딩 진입
+            if state.isWaitingForOfferCode, !previousStatus.isPro, status.isPro {
+              state.isWaitingForOfferCode = false
+              state.showCelebration = true
+              state.showProOnboarding = true
+              state.isSettingUpDefaults = true
+              return .concatenate(
+                .run { _ in
+                  await hapticFeedback.success()
+                },
+                prepareProOnboarding(),
+                .send(.delegate(.subscriptionStatusChanged(status)))
+              )
+            }
+
             if previousStatus != status {
               return .send(.delegate(.subscriptionStatusChanged(status)))
             }

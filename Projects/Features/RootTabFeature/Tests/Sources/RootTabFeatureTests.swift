@@ -50,6 +50,7 @@ struct RootTabFeatureTests {
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.observeVoteActivityUpdates)
     await store.receive(\.internal.syncCalendar) {
       $0.isCalendarSyncInFlight = true
     }
@@ -87,6 +88,7 @@ struct RootTabFeatureTests {
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.observeVoteActivityUpdates)
     await store.receive(\.internal.syncCalendar)
     await store.receive(\.internal.observeSubscriptionStatus)
     await store.receive(\.internal.syncCalendar)
@@ -98,6 +100,7 @@ struct RootTabFeatureTests {
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.observeVoteActivityUpdates)
     await store.receive(\.internal.syncCalendar)
     await store.receive(\.internal.observeSubscriptionStatus)
     await store.receive(\.internal.syncCalendarFinished)
@@ -1035,6 +1038,9 @@ private extension RootTabFeatureTests {
       AsyncStream { $0.finish() }
     }
     dependencies.liveActivityClient.observeActivityUpdates = {
+      AsyncStream { $0.finish() }
+    }
+    dependencies.voteLiveActivityClient.observeActivityUpdates = {
       AsyncStream { $0.finish() }
     }
     dependencies.liveActivityClient.observeActivityStateUpdates = { _ in nil }

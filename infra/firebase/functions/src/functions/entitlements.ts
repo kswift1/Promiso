@@ -53,6 +53,13 @@ export async function reconcileEntitlement(uid: string): Promise<void> {
       overrideActive && typeof rawOverrideType === "string" ?
         rawOverrideType : null;
 
+    const rawOfferType = subscriptionData?.lastOfferType;
+    const lastOfferType =
+      typeof rawOfferType === "number" ? rawOfferType : null;
+    const rawOfferIdentifier = subscriptionData?.lastOfferIdentifier;
+    const lastOfferIdentifier =
+      typeof rawOfferIdentifier === "string" ? rawOfferIdentifier : null;
+
     await db.collection("entitlements").doc(uid).set(
       {
         hasPro,
@@ -63,6 +70,8 @@ export async function reconcileEntitlement(uid: string): Promise<void> {
         overrideActive,
         overrideExpiresAt,
         overrideType,
+        lastOfferType,
+        lastOfferIdentifier,
         updatedAt: FieldValue.serverTimestamp(),
       },
       {merge: true},

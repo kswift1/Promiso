@@ -26,6 +26,49 @@ public extension UserDefaultsClient {
   func markLiveActivityInfoSeen() {
     setBool(true, AppConstants.UserDefaults.hasSeenLiveActivityInfo)
   }
+
+  // MARK: - Guide
+
+  /// 캘린더 기능 가이드를 본 적 있는지
+  var hasSeenCalendarGuide: Bool {
+    boolForKey(AppConstants.UserDefaults.hasSeenCalendarGuide)
+  }
+
+  /// 캘린더 기능 가이드를 봤다고 표시
+  func markCalendarGuideSeen() {
+    setBool(true, AppConstants.UserDefaults.hasSeenCalendarGuide)
+  }
+
+  /// 홈 기능 가이드를 본 적 있는지
+  var hasSeenHomeGuide: Bool {
+    boolForKey(AppConstants.UserDefaults.hasSeenHomeGuide)
+  }
+
+  /// 홈 기능 가이드를 봤다고 표시
+  func markHomeGuideSeen() {
+    setBool(true, AppConstants.UserDefaults.hasSeenHomeGuide)
+  }
+
+  /// 일정 기능 가이드를 본 적 있는지
+  var hasSeenScheduleGuide: Bool {
+    boolForKey(AppConstants.UserDefaults.hasSeenScheduleGuide)
+  }
+
+  /// 일정 기능 가이드를 봤다고 표시
+  func markScheduleGuideSeen() {
+    setBool(true, AppConstants.UserDefaults.hasSeenScheduleGuide)
+  }
+
+  /// 설정 기능 가이드를 본 적 있는지
+  var hasSeenSettingsGuide: Bool {
+    boolForKey(AppConstants.UserDefaults.hasSeenSettingsGuide)
+  }
+
+  /// 설정 기능 가이드를 봤다고 표시
+  func markSettingsGuideSeen() {
+    setBool(true, AppConstants.UserDefaults.hasSeenSettingsGuide)
+  }
+
 }
 
 // MARK: - Test / Preview

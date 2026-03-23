@@ -9,8 +9,9 @@ import PhotosUI
 import _PhotosUI_SwiftUI
 import Clients
 import PromisoShared
+import CreateGroupFeature
 
-// TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
+// TODO: 지도 추가
 public enum CreateSchedule {
   
   
@@ -62,6 +63,7 @@ public enum CreateSchedule {
 
       // 일정 충돌 감지
       var currentUserId: String = ""
+      var currentUser: UserPrivateModel? = nil
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
       var hasCheckedConflicts: Bool = false
@@ -73,8 +75,14 @@ public enum CreateSchedule {
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
 
+      // 그룹 생성 후 자동 선택용
+      var pendingAutoSelectGroupId: String? = nil
+
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
+
+      // 그룹 생성 sheet
+      @Presents var createGroup: CreateGroup.Feature.State?
 
       // pre-fill 정보 (퀵 일정에서 전달)
       var prefillInfo: ScheduleExtractedInfo?
@@ -92,6 +100,7 @@ public enum CreateSchedule {
         hasSeenLiveActivityInfo: Bool = true,
         useLocation: Bool = false,
         currentUserId: String = "",
+        currentUser: UserPrivateModel? = nil,
         locationPicker: LocationPicker.Feature.State? = nil,
         prefillInfo: ScheduleExtractedInfo? = nil,
         weatherState: LoadingState<WeatherInfo> = .idle
@@ -108,6 +117,7 @@ public enum CreateSchedule {
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
         self.useLocation = useLocation
         self.currentUserId = currentUserId
+        self.currentUser = currentUser
         self.locationPicker = locationPicker
         self.prefillInfo = prefillInfo
         self.weatherState = weatherState
@@ -209,17 +219,19 @@ public enum CreateSchedule {
         case refreshProFeatures(debounce: Bool)
         case weatherResponse(Result<WeatherInfo, Error>)
       }
-      
+
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
       public enum Delegate: Sendable {
         case scheduleCreated(id: String)
+        case groupCreated
         case dismiss
-        case createGroupRequested
       }
+
+      case createGroup(PresentationAction<CreateGroup.Feature.Action>)
     }
-    
+
     public init() {}
-    
+
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
@@ -237,7 +249,7 @@ public enum CreateSchedule {
                 if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
                   await send(.internal(.settingsLoaded(settings)))
                 }
-              }
+              },
             )
             
           case .nextStep:
@@ -256,6 +268,20 @@ public enum CreateSchedule {
             scheduleToCreate.groupId = state.schedule.group?.id ?? ""
             let localImages = state.localImageData
             state.isUploadingImages = !localImages.isEmpty
+            let logGroupName = state.schedule.group?.name ?? "nil"
+            let logUserId = state.currentUserId
+            let logHasUser = state.currentUser != nil
+            AppLogger.general.info("""
+              [CreateSchedule] 일정 생성 요청:
+                groupId=\(scheduleToCreate.groupId),
+                title=\(scheduleToCreate.title),
+                group=\(logGroupName),
+                currentUserId=\(logUserId),
+                hasCurrentUser=\(logHasUser),
+                startAt=\(scheduleToCreate.startAt),
+                minimumParticipants=\(scheduleToCreate.minimumParticipants),
+                imageCount=\(localImages.count)
+              """)
             return .run { [schedule = scheduleToCreate, scheduleClient, imageUploadClient] send in
               do {
                 let scheduleId = try await scheduleClient.createSchedule(schedule)
@@ -276,8 +302,10 @@ public enum CreateSchedule {
 
                 await send(.internal(.createScheduleResponse(.success(scheduleId))))
               } catch let e as Clients.ScheduleClientError {
+                AppLogger.general.error("[CreateSchedule] ScheduleClientError: \(e)")
                 await send(.internal(.createScheduleResponse(.failure(e))))
               } catch {
+                AppLogger.general.error("[CreateSchedule] Unknown error: \(error)")
                 await send(.internal(.createScheduleResponse(.failure(.unknown(String(describing: error))))))
               }
             }
@@ -359,7 +387,9 @@ public enum CreateSchedule {
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .createGroupTapped:
-            return .send(.delegate(.createGroupRequested))
+            guard let user = state.currentUser else { return .none }
+            state.createGroup = CreateGroup.Feature.State(currentUser: user)
+            return .none
 
           case .liveActivityInfoButtonTapped:
             state.showLiveActivityInfo = true
@@ -449,10 +479,12 @@ public enum CreateSchedule {
             
           case .fetchGroupList:
             state.groupListState = .loading
-            return .run { [groupClient, groupSummaries = state.groupSummaries] send in
+            // 그룹 생성 직후(pendingAutoSelectGroupId)에는 전체 fetch
+            let shouldFetchAll = state.pendingAutoSelectGroupId != nil
+            return .run { [groupClient, groupSummaries = state.groupSummaries, shouldFetchAll] send in
               do {
                 let groups: [GroupModel]
-                if let groupSummaries, groupSummaries.isEmpty == false {
+                if !shouldFetchAll, let groupSummaries, !groupSummaries.isEmpty {
                   let ids = groupSummaries.map(\.id)
                   groups = try await groupClient.fetchGroupsByIds(ids)
                 } else {
@@ -467,6 +499,17 @@ public enum CreateSchedule {
           case .groupListResponse(.success(let groups)):
             state.groupListState = .loaded(groups)
             let groupIds = groups.map(\.id)
+            if let pendingId = state.pendingAutoSelectGroupId,
+               let group = groups.first(where: { $0.id == pendingId }) {
+              state.pendingAutoSelectGroupId = nil
+              state.schedule.group = group
+              if group.maxMembers <= 1 {
+                state.schedule.minimumParticipants = 1
+              } else {
+                let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+                state.schedule.minimumParticipants = defaultMinimum
+              }
+            }
             return .send(.internal(.fetchScheduleCounts(groupIds)))
             
           case .groupListResponse(.failure(let error)):
@@ -505,7 +548,12 @@ public enum CreateSchedule {
                 scheduleTitle: state.schedule.title
               )
             )
-            return .send(.delegate(.scheduleCreated(id: id)))
+            return .merge(
+              .send(.delegate(.scheduleCreated(id: id))),
+              .run { [scheduleClient] _ in
+                try? await scheduleClient.startVoteLiveActivity(id)
+              }
+            )
 
           case .createScheduleResponse(.failure(let e)):
             state.isCreatingSchedule = false
@@ -584,10 +632,37 @@ public enum CreateSchedule {
 
         case .locationPicker:
           return .none
+
+          // MARK: - CreateGroup
+        case .createGroup(.presented(.delegate(.dismiss))):
+          state.createGroup = nil
+          return .none
+
+        case .createGroup(.presented(.delegate(.groupCreated(let id)))):
+          state.createGroup = nil
+          state.pendingAutoSelectGroupId = id
+          return .merge(
+            .send(.internal(.fetchGroupList)),
+            .send(.delegate(.groupCreated))
+          )
+
+        case .createGroup(.presented(.delegate(.groupCreatedAndCreateSchedule(let id)))):
+          state.createGroup = nil
+          state.pendingAutoSelectGroupId = id
+          return .merge(
+            .send(.internal(.fetchGroupList)),
+            .send(.delegate(.groupCreated))
+          )
+
+        case .createGroup:
+          return .none
         }
       }
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
+      }
+      .ifLet(\.$createGroup, action: \.createGroup) {
+        CreateGroup.Feature()
       }
     }
 
