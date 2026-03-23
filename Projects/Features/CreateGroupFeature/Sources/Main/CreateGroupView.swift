@@ -252,7 +252,7 @@ private struct GroupNameSection: View {
 
         Text("\(characterCount)/\(maxLength)")
           .font(.system(size: 13))
-          .foregroundStyle(characterCount >= 2 ? .secondary : .red)
+          .foregroundStyle(characterCount >= 2 ? Color.secondary : Color.red)
       }
 
       TextField(LocalizedStrings.CreateGroup.groupNamePlaceholder, text: $groupName)
@@ -270,7 +270,7 @@ private struct GroupNameSection: View {
         if characterCount > 0 && characterCount < 2 {
           Text(LocalizedStrings.CreateGroup.groupNameMinLength)
             .font(.system(size: 12))
-            .foregroundStyle(.red)
+            .foregroundStyle(Color.red)
         }
 
         Label(LocalizedStrings.CreateGroup.groupNameCannotChange, systemImage: "info.circle")
