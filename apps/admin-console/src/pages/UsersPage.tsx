@@ -220,6 +220,7 @@ export function UsersPage() {
                       />
                       <Chip label={`그룹 ${user.groupCount}개`} />
                       <Chip label={`기기 ${user.deviceCount}개`} />
+                      <Chip label={`개인일정 ${user.personalEventCount}개`} />
                     </Stack>
 
                     <Typography variant="body2" color="text.secondary">
