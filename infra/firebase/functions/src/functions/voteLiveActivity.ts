@@ -123,6 +123,25 @@ export const startVoteLiveActivity = onCall(
       );
     }
 
+    // 케이스 4: 약속 시간이 이미 지난 경우 (케이스 3보다 먼저 체크)
+    const scheduledAtMs = startAt.toDate().getTime();
+    if (scheduledAtMs < Date.now()) {
+      throw new HttpsError(
+        "failed-precondition",
+        "약속 시간이 이미 지났습니다",
+      );
+    }
+
+    // 케이스 5: 이미 진행 중인 투표가 있는 경우
+    const existingChannelId =
+      scheduleData.liveActivity?.voteChannelId as string | undefined;
+    if (existingChannelId) {
+      throw new HttpsError(
+        "already-exists",
+        "이미 투표가 진행 중입니다",
+      );
+    }
+
     // 3. Fetch group data
     const groupDoc = await groupsCollection.doc(groupId).get();
     const groupData = groupDoc.data();
@@ -207,7 +226,6 @@ export const startVoteLiveActivity = onCall(
 
     // 투표 마감 시간 계산
     // scheduledTime - trackingStartMinutesBefore, 최대 now+8시간
-    const scheduledAtMs = startAt.toDate().getTime();
     const trackingStart =
       (scheduleData.trackingStartMinutesBefore as number) || 30;
     const deadlineFromSchedule =
@@ -215,6 +233,14 @@ export const startVoteLiveActivity = onCall(
     const maxDeadline = Date.now() + 8 * 60 * 60 * 1000;
     const voteDeadlineMs = Math.min(deadlineFromSchedule, maxDeadline);
     const voteDeadline = Math.floor(voteDeadlineMs / 1000);
+
+    // 케이스 3: 투표 마감 시간이 이미 지난 경우
+    if (voteDeadline <= Math.floor(Date.now() / 1000)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "투표 마감 시간이 이미 지났습니다",
+      );
+    }
 
     const initialContentState: VoteContentState = {
       acceptedMembers: [{id: hostId, name: resolvedHostName}],
@@ -857,5 +883,144 @@ export const finalizeVote = onCall(
     }
 
     return {success: result.success, contentState};
+  },
+);
+
+/**
+ * End Vote LiveActivity (케이스 1: 약속 삭제, 케이스 2: 날짜/시간 변경)
+ *
+ * Broadcasts APNs "end" event to terminate the LiveActivity for all
+ * subscribers and removes the voteChannelId from Firestore.
+ * Called by the client on schedule deletion or date/time change.
+ */
+export const endVoteLiveActivity = onCall(
+  {
+    region: REGION,
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const {scheduleId} = request.data as {scheduleId: string};
+
+    if (!scheduleId) {
+      throw new HttpsError("invalid-argument", "scheduleId는 필수입니다");
+    }
+
+    console.log(
+      `📥 endVoteLiveActivity called: scheduleId="${scheduleId}"`
+    );
+
+    const db = admin.firestore();
+    const scheduleRef = db.collection("promises").doc(scheduleId);
+
+    // 1. Fetch schedule data
+    const scheduleDoc = await scheduleRef.get();
+    if (!scheduleDoc.exists) {
+      throw new HttpsError("not-found", "일정을 찾을 수 없습니다");
+    }
+
+    const scheduleData = scheduleDoc.data();
+    if (!scheduleData) {
+      throw new HttpsError("internal", "일정 데이터를 읽을 수 없습니다");
+    }
+
+    // 2. Permission check (host only)
+    const hostId = scheduleData.hostId as string;
+    if (userId !== hostId) {
+      throw new HttpsError(
+        "permission-denied",
+        "호스트만 투표 LiveActivity를 종료할 수 있습니다",
+      );
+    }
+
+    // 3. Get channelId
+    const channelId = scheduleData.liveActivity?.voteChannelId as
+      | string
+      | undefined;
+
+    if (!channelId) {
+      console.log(
+        `⚠️ No voteChannelId for scheduleId=${scheduleId}, nothing to end`
+      );
+      return {success: true};
+    }
+
+    // 4. Build current ContentState from votes
+    const votesSnapshot = await scheduleRef.collection("votes").get();
+    const acceptedMembers: VoteMember[] = [];
+    const declinedMembers: VoteMember[] = [];
+
+    votesSnapshot.forEach((doc) => {
+      const voteData = doc.data();
+      const member: VoteMember = {
+        id: doc.id,
+        name: (voteData.userName as string) || "멤버",
+      };
+      if (voteData.response === "accepted") {
+        acceptedMembers.push(member);
+      } else if (voteData.response === "declined") {
+        declinedMembers.push(member);
+      }
+    });
+
+    const groupId = scheduleData.groupId as string;
+    const groupDoc = await db.collection("groups").doc(groupId).get();
+    const groupData = groupDoc.data();
+    const memberIds = (groupData?.memberIds as string[]) || [];
+    const totalMemberCount = memberIds.length;
+    const respondedCount =
+      acceptedMembers.length + declinedMembers.length;
+    const pendingCount = Math.max(0, totalMemberCount - respondedCount);
+
+    const contentState: VoteContentState = {
+      acceptedMembers,
+      declinedMembers,
+      pendingCount,
+      isFinalized: true,
+    };
+
+    // 5. Broadcast APNs "end" event
+    const isProduction = isAPNsProduction();
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      aps: {
+        "timestamp": now,
+        "event": "end",
+        "dismissal-date": now,
+        "content-state": contentState,
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(
+        `✅ End vote broadcast sent: channelId=${channelId}`
+      );
+    } else {
+      console.error(`❌ End vote broadcast failed: ${result.error}`);
+    }
+
+    // 6. Remove voteChannelId from Firestore
+    await scheduleRef.update({
+      "liveActivity.voteChannelId":
+        admin.firestore.FieldValue.delete(),
+      "liveActivity.voteEndedAt":
+        admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(
+      `🗑️ voteChannelId removed: scheduleId=${scheduleId}`
+    );
+
+    return {success: result.success};
   },
 );

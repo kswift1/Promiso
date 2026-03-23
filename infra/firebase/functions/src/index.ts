@@ -75,6 +75,7 @@ export {
   updateVoteResponse,
   widgetVoteResponse,
   finalizeVote,
+  endVoteLiveActivity,
 } from "./functions/voteLiveActivity";
 
 // ============================================================================
