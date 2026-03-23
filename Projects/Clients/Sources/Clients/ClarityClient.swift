@@ -5,8 +5,26 @@ import Clarity
 // MARK: - Client
 
 public struct ClarityClient: Sendable {
+  public struct UserInfo: Sendable {
+    public let userId: String
+    public let nickname: String
+    public let email: String
+    public let provider: String
+    public let groupCount: Int
+    public let createdAt: Date
+
+    public init(userId: String, nickname: String, email: String, provider: String, groupCount: Int, createdAt: Date) {
+      self.userId = userId
+      self.nickname = nickname
+      self.email = email
+      self.provider = provider
+      self.groupCount = groupCount
+      self.createdAt = createdAt
+    }
+  }
+
   /// Clarity에 유저 정보 등록
-  public var setUser: @Sendable (String, String) -> Void
+  public var setUser: @Sendable (UserInfo) -> Void
 
   /// Clarity에서 유저 정보 제거
   public var clearUser: @Sendable () -> Void
@@ -16,7 +34,7 @@ public struct ClarityClient: Sendable {
 
 extension ClarityClient: TestDependencyKey {
   public static let previewValue = Self(
-    setUser: { _, _ in },
+    setUser: { _ in },
     clearUser: { }
   )
 
@@ -30,12 +48,22 @@ extension ClarityClient: TestDependencyKey {
 
 extension ClarityClient: DependencyKey {
   public static let liveValue = Self(
-    setUser: { userId, nickname in
-      ClaritySDK.setCustomUserId(userId)
-      ClaritySDK.setCustomTag(key: "nickname", value: nickname)
+    setUser: { userInfo in
+      let formatter = ISO8601DateFormatter()
+      ClaritySDK.setCustomUserId(userInfo.userId)
+      ClaritySDK.setCustomTag(key: "nickname", value: userInfo.nickname)
+      ClaritySDK.setCustomTag(key: "email", value: userInfo.email)
+      ClaritySDK.setCustomTag(key: "provider", value: userInfo.provider)
+      ClaritySDK.setCustomTag(key: "groupCount", value: String(userInfo.groupCount))
+      ClaritySDK.setCustomTag(key: "createdAt", value: formatter.string(from: userInfo.createdAt))
     },
     clearUser: {
       ClaritySDK.setCustomUserId("")
+      ClaritySDK.setCustomTag(key: "nickname", value: "")
+      ClaritySDK.setCustomTag(key: "email", value: "")
+      ClaritySDK.setCustomTag(key: "provider", value: "")
+      ClaritySDK.setCustomTag(key: "groupCount", value: "")
+      ClaritySDK.setCustomTag(key: "createdAt", value: "")
     }
   )
 }
