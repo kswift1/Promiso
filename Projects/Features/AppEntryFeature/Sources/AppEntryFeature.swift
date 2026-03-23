@@ -30,6 +30,7 @@ extension AppEntry {
     @Dependency(\.openURL) var openURL
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.clarityClient) var clarityClient
+    @Dependency(\.crashlyticsClient) var crashlyticsClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
 
@@ -326,7 +327,24 @@ extension AppEntry {
 
           case .transitionToMain(let userModel, let isSignup):
             WidgetDataManager.saveUserId(userModel.id)
-            clarityClient.setUser(userModel.id, userModel.nickname)
+            clarityClient.setUser(
+              ClarityClient.UserInfo(
+                userId: userModel.id,
+                nickname: userModel.nickname,
+                email: userModel.email,
+                provider: userModel.provider,
+                groupCount: userModel.groups.count,
+                createdAt: userModel.metadata.createdAt
+              )
+            )
+            crashlyticsClient.setUser(
+              CrashlyticsClient.UserInfo(
+                userId: userModel.id,
+                nickname: userModel.nickname,
+                provider: userModel.provider,
+                groupCount: userModel.groups.count
+              )
+            )
             let providerIdentifier = userModel.provider.providerTypeIdentifier
             let personalCalendarSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
@@ -428,7 +446,7 @@ extension AppEntry {
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
-          return .run { [notificationClient, authClient, clarityClient, analyticsClient] _ in
+          return .run { [notificationClient, authClient, clarityClient, crashlyticsClient, analyticsClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
             authClient.clearWidgetAuthToken()
@@ -436,6 +454,9 @@ extension AppEntry {
 
             // Clarity 유저 정보 제거
             clarityClient.clearUser()
+
+            // Crashlytics 유저 정보 제거
+            crashlyticsClient.clearUser()
 
             // Analytics 유저 정보 제거
             analyticsClient.setUserID(nil)

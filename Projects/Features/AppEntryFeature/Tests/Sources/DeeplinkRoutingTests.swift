@@ -151,7 +151,9 @@ struct DeeplinkRoutingTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -338,7 +340,9 @@ struct PushNotificationDeeplinkTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }

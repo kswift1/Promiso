@@ -668,18 +668,20 @@ async function buildUserSummary(
   userData: Record<string, unknown>
 ): Promise<AdminUserSummary> {
   const db = admin.firestore();
-  const subscriptionSnapshot = await db.collection("subscriptions")
-    .doc(userId)
-    .get();
-  const overrideSnapshot = await db.collection("entitlementOverrides")
-    .doc(userId)
-    .get();
+  const [subscriptionSnapshot, overrideSnapshot, personalEventsCount] =
+    await Promise.all([
+      db.collection("subscriptions").doc(userId).get(),
+      db.collection("entitlementOverrides").doc(userId).get(),
+      db.collection("users").doc(userId).collection("personalEvents")
+        .count().get(),
+    ]);
 
   return buildUserSummaryPayload(
     userId,
     userData,
     subscriptionSnapshot.data() as Record<string, unknown> | undefined,
-    overrideSnapshot.data() as Record<string, unknown> | undefined
+    overrideSnapshot.data() as Record<string, unknown> | undefined,
+    personalEventsCount.data().count
   );
 }
 
@@ -691,13 +693,15 @@ async function buildUserSummary(
  * subscription document, if any.
  * @param {Record<string, unknown> | undefined} overrideData The stored
  * entitlement override document, if any.
+ * @param {number} personalEventCount The number of personal events.
  * @return {AdminUserSummary} The normalized summary payload.
  */
 function buildUserSummaryPayload(
   userId: string,
   userData: Record<string, unknown>,
   subscriptionData?: Record<string, unknown>,
-  overrideData?: Record<string, unknown>
+  overrideData?: Record<string, unknown>,
+  personalEventCount = 0
 ): AdminUserSummary {
   const groups = userData.groups && typeof userData.groups === "object" ?
     userData.groups as Record<string, unknown> :
@@ -713,6 +717,7 @@ function buildUserSummaryPayload(
     email: typeof userData.email === "string" ? userData.email : null,
     groupCount: Object.keys(groups).length,
     deviceCount: Object.keys(devices).length,
+    personalEventCount,
     subscriptionStatus:
       typeof subscriptionData?.status === "string" ?
         subscriptionData.status :
@@ -1611,6 +1616,7 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
       subscriptionSnapshot,
       overrideSnapshot,
       auditSnapshot,
+      personalEventsCount,
     ] = await Promise.all([
       db.collection("users").doc(userId).get(),
       db.collection("subscriptions").doc(userId).get(),
@@ -1620,6 +1626,8 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
         .orderBy("createdAt", "desc")
         .limit(limit)
         .get(),
+      db.collection("users").doc(userId).collection("personalEvents")
+        .count().get(),
     ]);
 
     const userData = userSnapshot.data();
@@ -1631,7 +1639,8 @@ export const getAdminUserTimeline = onCall<GetAdminUserTimelineRequest>(
       userId,
       userData as Record<string, unknown>,
       subscriptionSnapshot.data() as Record<string, unknown> | undefined,
-      overrideSnapshot.data() as Record<string, unknown> | undefined
+      overrideSnapshot.data() as Record<string, unknown> | undefined,
+      personalEventsCount.data().count
     );
     const auditLogs = auditSnapshot.docs.map((doc) =>
       buildAdminAuditLog(doc.id, doc.data() as Record<string, unknown>)

@@ -70,6 +70,7 @@ export interface AdminUserSummary {
   email: string | null;
   groupCount: number;
   deviceCount: number;
+  personalEventCount: number;
   subscriptionStatus: string | null;
   overrideActive: boolean;
 }
