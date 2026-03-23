@@ -412,6 +412,14 @@ extension ScheduleDetail {
               break // 응답 취소는 이벤트 없음
             }
 
+            // 첫 일정 응답 추적
+            if status != .pending {
+              analyticsClient.logFirstScheduleResponseIfNeeded(
+                scheduleID: state.schedule.id,
+                scheduleTitle: state.schedule.title
+              )
+            }
+
             // 로컬 상태 업데이트 (immutable이므로 새로 생성)
             var newAccepted = state.schedule.votes.accepted.filter { $0 != state.currentUserId }
             var newDeclined = state.schedule.votes.declined.filter { $0 != state.currentUserId }
