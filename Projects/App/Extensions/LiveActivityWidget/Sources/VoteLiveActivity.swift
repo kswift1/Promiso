@@ -302,14 +302,21 @@ private struct VoteStatusBar: View {
   private var total: Int { max(totalMemberCount, 1) }
   private var isConfirmed: Bool { acceptedCount >= minimumParticipants }
 
+  private var acceptedRatio: CGFloat {
+    min(1.0, CGFloat(acceptedCount) / CGFloat(total))
+  }
+  private var declinedRatio: CGFloat {
+    min(1.0 - acceptedRatio, CGFloat(declinedCount) / CGFloat(total))
+  }
+  private var confirmRatio: CGFloat {
+    min(1.0, CGFloat(minimumParticipants) / CGFloat(total))
+  }
+
   var body: some View {
     VStack(spacing: 6) {
       // 프로그레스 바 (그룹 일정 카드 스타일)
       GeometryReader { geometry in
         let barWidth = geometry.size.width
-        let acceptedRatio = min(1.0, CGFloat(acceptedCount) / CGFloat(total))
-        let declinedRatio = min(1.0 - acceptedRatio, CGFloat(declinedCount) / CGFloat(total))
-        let confirmRatio = min(1.0, CGFloat(minimumParticipants) / CGFloat(total))
 
         ZStack(alignment: .leading) {
           // 배경
@@ -483,10 +490,7 @@ private extension Date {
 
   /// "3/24(월) 오후 7:42" 형태
   var dateTimeText: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M/d(E) a h:mm"
-    return formatter.string(from: self)
+    LocalizedDateFormatters.shortDateTime.string(from: self)
   }
 }
 

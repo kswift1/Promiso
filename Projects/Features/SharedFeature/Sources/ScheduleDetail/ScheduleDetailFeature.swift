@@ -189,6 +189,10 @@ extension ScheduleDetail {
       }
     }
 
+    private enum CancelID {
+      case observeVoteUpdates
+    }
+
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
@@ -579,6 +583,7 @@ extension ScheduleDetail {
                 await send(.internal(.voteStatusUpdated(contentState)))
               }
             }
+            .cancellable(id: CancelID.observeVoteUpdates, cancelInFlight: true)
 
           case .voteStatusUpdated(let status):
             state.voteStatus = status

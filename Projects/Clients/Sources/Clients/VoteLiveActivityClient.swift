@@ -5,6 +5,7 @@ import PromisoShared
 
 // MARK: - Client
 
+@DependencyClient
 public struct VoteLiveActivityClient: Sendable {
   /// 라이브액티비티 지원 여부
   public var isSupported: @Sendable () -> Bool

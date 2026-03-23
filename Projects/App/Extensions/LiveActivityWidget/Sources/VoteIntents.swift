@@ -93,9 +93,8 @@ struct VoteResponseIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    // channelId 유효성 확인
-    guard !channelId.isEmpty else {
-      logger.error("VoteResponse: channelId empty")
+    guard !channelId.isEmpty, !scheduleId.isEmpty, !userId.isEmpty else {
+      logger.error("VoteResponse: required parameter empty (channelId=\(channelId.isEmpty), scheduleId=\(scheduleId.isEmpty), userId=\(userId.isEmpty))")
       return .result()
     }
 
@@ -168,7 +167,7 @@ private func callVoteResponseFunction(
     let (data, httpResponse) = try await URLSession.shared.data(for: request)
     if let httpResponse = httpResponse as? HTTPURLResponse, httpResponse.statusCode != 200 {
       let body = String(data: data, encoding: .utf8) ?? ""
-      logger.error("VoteResponse failed(\(httpResponse.statusCode)): \(body)")
+      logger.error("VoteResponse failed(\(httpResponse.statusCode)): \(body.prefix(200))")
     } else {
       logger.info("VoteResponse success: \(response) for \(scheduleId)")
     }

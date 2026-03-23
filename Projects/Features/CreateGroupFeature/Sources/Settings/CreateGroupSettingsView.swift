@@ -102,7 +102,10 @@ public struct CreateGroupSettingsView: View {
     }
     .alert(
       LocalizedStrings.GroupSettings.calendarPermissionTitle,
-      isPresented: .constant(showCalendarPermissionInfoAlert),
+      isPresented: Binding(
+        get: { showCalendarPermissionInfoAlert },
+        set: { if !$0 { onCalendarPermissionInfoAlertDismiss() } }
+      ),
       actions: {
         Button(LocalizedStrings.Common.ok) {
           onCalendarPermissionInfoAlertDismiss()

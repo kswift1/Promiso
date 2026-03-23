@@ -265,6 +265,24 @@ export const startVoteLiveActivity = onCall(
       );
     }
 
+    // 케이스 3: 투표 마감 시간이 이미 지난 경우
+    const trackingStartEarly =
+      (scheduleData.trackingStartMinutesBefore as number) || 30;
+    const deadlineFromScheduleEarly =
+      scheduledAtMs - trackingStartEarly * 60 * 1000;
+    const maxDeadlineEarly = Date.now() + 8 * 60 * 60 * 1000;
+    const voteDeadlineMsEarly = Math.min(
+      deadlineFromScheduleEarly,
+      maxDeadlineEarly,
+    );
+    const voteDeadlineEarly = Math.floor(voteDeadlineMsEarly / 1000);
+    if (voteDeadlineEarly <= Math.floor(Date.now() / 1000)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "투표 마감 시간이 이미 지났습니다",
+      );
+    }
+
     // 3. Fetch group data
     const groupDoc = await groupsCollection.doc(groupId).get();
     const groupData = groupDoc.data();
@@ -356,14 +374,6 @@ export const startVoteLiveActivity = onCall(
     const maxDeadline = Date.now() + 8 * 60 * 60 * 1000;
     const voteDeadlineMs = Math.min(deadlineFromSchedule, maxDeadline);
     const voteDeadline = Math.floor(voteDeadlineMs / 1000);
-
-    // 케이스 3: 투표 마감 시간이 이미 지난 경우
-    if (voteDeadline <= Math.floor(Date.now() / 1000)) {
-      throw new HttpsError(
-        "failed-precondition",
-        "투표 마감 시간이 이미 지났습니다",
-      );
-    }
 
     const initialContentState: VoteContentState = {
       acceptedMembers: [{id: hostId, name: resolvedHostName}],
@@ -485,86 +495,116 @@ export const updateVoteResponse = onCall(
 
     const db = admin.firestore();
     const scheduleRef = db.collection("promises").doc(scheduleId);
+    const voteDocRef = scheduleRef.collection("votes").doc(userId);
 
-    // 1. Save vote to Firestore subcollection
-    await scheduleRef
-      .collection("votes")
-      .doc(userId)
-      .set({
+    // 1-4. Atomic transaction: save vote + read all votes +
+    //       read schedule/group + sync accepted/declined IDs
+    let contentState: VoteContentState;
+    let channelId: string | undefined;
+
+    await db.runTransaction(async (tx) => {
+      // Read schedule, group, and all existing votes atomically
+      const scheduleDoc = await tx.get(scheduleRef);
+      const scheduleData = scheduleDoc.data();
+      if (!scheduleData) {
+        throw new HttpsError(
+          "not-found",
+          "일정을 찾을 수 없습니다",
+        );
+      }
+
+      const groupId = scheduleData.groupId as string;
+      const groupRef = db.collection("groups").doc(groupId);
+      const groupDoc = await tx.get(groupRef);
+      const groupData = groupDoc.data();
+      const memberIds = (groupData?.memberIds as string[]) || [];
+
+      const votesSnapshot = await tx.get(
+        scheduleRef.collection("votes")
+      );
+
+      // Build ContentState with the new vote included
+      const acceptedMembers: VoteMember[] = [];
+      const declinedMembers: VoteMember[] = [];
+
+      votesSnapshot.forEach((doc) => {
+        if (doc.id === userId) return; // will be overwritten below
+        const voteData = doc.data();
+        const member: VoteMember = {
+          id: doc.id,
+          name: (voteData.userName as string) || "멤버",
+        };
+        if (voteData.response === "accepted") {
+          acceptedMembers.push(member);
+        } else if (voteData.response === "declined") {
+          declinedMembers.push(member);
+        }
+      });
+
+      // Include the current vote
+      const currentMember: VoteMember = {id: userId, name: userName};
+      if (response === "accepted") {
+        acceptedMembers.push(currentMember);
+      } else {
+        declinedMembers.push(currentMember);
+      }
+
+      const totalMemberCount = memberIds.length;
+      const respondedCount =
+        acceptedMembers.length + declinedMembers.length;
+      const isFinalized = respondedCount >= totalMemberCount;
+      const pendingCount = Math.max(0, totalMemberCount - respondedCount);
+
+      contentState = {
+        acceptedMembers,
+        declinedMembers,
+        pendingCount,
+        isFinalized,
+      };
+
+      channelId = scheduleData?.["liveActivity"]?.voteChannelId as
+        | string
+        | undefined;
+
+      const acceptedIds = acceptedMembers.map((m) => m.id);
+      const declinedIds = declinedMembers.map((m) => m.id);
+
+      // Write: save vote + sync main document
+      tx.set(voteDocRef, {
         response,
         userName,
         respondedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-
-    // 2. Read all votes to build ContentState
-    const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: VoteMember[] = [];
-    const declinedMembers: VoteMember[] = [];
-
-    votesSnapshot.forEach((doc) => {
-      const voteData = doc.data();
-      const member: VoteMember = {
-        id: doc.id,
-        name: (voteData.userName as string) || "멤버",
-      };
-      if (voteData.response === "accepted") {
-        acceptedMembers.push(member);
-      } else if (voteData.response === "declined") {
-        declinedMembers.push(member);
-      }
+      tx.update(scheduleRef, {
+        "votes.accepted": acceptedIds,
+        "votes.declined": declinedIds,
+      });
     });
 
-    // 3. Determine if all members have responded
-    const scheduleDoc = await scheduleRef.get();
-    const scheduleData = scheduleDoc.data();
-    const groupId = scheduleData?.groupId as string;
-
-    const groupDoc = await db.collection("groups").doc(groupId).get();
-    const groupData = groupDoc.data();
-    const memberIds = (groupData?.memberIds as string[]) || [];
-    const totalMemberCount = memberIds.length;
-    const respondedCount = acceptedMembers.length + declinedMembers.length;
-    const isFinalized = respondedCount >= totalMemberCount;
-    const pendingCount = Math.max(0, totalMemberCount - respondedCount);
-
-    const contentState: VoteContentState = {
-      acceptedMembers,
-      declinedMembers,
-      pendingCount,
-      isFinalized,
-    };
-
-    // 4. Sync accepted/declined IDs to main document
-    const acceptedIds = acceptedMembers.map((m) => m.id);
-    const declinedIds = declinedMembers.map((m) => m.id);
-    await scheduleRef.update({
-      "votes.accepted": acceptedIds,
-      "votes.declined": declinedIds,
-    });
-
-    // 5. Broadcast via APNs
-    const channelId = scheduleData?.["liveActivity"]?.voteChannelId as
-      | string
-      | undefined;
+    // 5. Broadcast via APNs (outside transaction — external call)
+    // contentState! is guaranteed to be set by the transaction above
+    const finalContentState = contentState!;
+    const finalIsFinalized = finalContentState.isFinalized;
 
     if (!channelId) {
       console.warn(
-        `⚠️ No voteChannelId for scheduleId=${scheduleId}, skipping broadcast`
+        `⚠️ No voteChannelId for scheduleId=${scheduleId}, ` +
+          "skipping broadcast"
       );
-      return {success: true, contentState};
+      return {success: true, contentState: finalContentState};
     }
 
     const isProduction = isAPNsProduction();
     const payload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
-        "event": isFinalized ? "end" : "update",
-        "content-state": contentState,
-        ...(isFinalized && {
+        "event": finalIsFinalized ? "end" : "update",
+        "content-state": finalContentState,
+        ...(finalIsFinalized && {
           "alert": {
             "title": "투표가 마감되었습니다",
-            "body": `참여 ${acceptedMembers.length}명` +
-            ` / 불참 ${declinedMembers.length}명`,
+            "body": `참여 ${finalContentState.acceptedMembers.length}명` +
+              ` / 불참 ${finalContentState.declinedMembers.length}명`,
           },
         }),
       },
@@ -579,13 +619,13 @@ export const updateVoteResponse = onCall(
     if (result.success) {
       console.log(
         `✅ Vote broadcast sent: channelId=${channelId}, ` +
-          `isFinalized=${isFinalized}`
+          `isFinalized=${finalIsFinalized}`
       );
     } else {
       console.error(`❌ Vote broadcast failed: ${result.error}`);
     }
 
-    return {success: result.success, contentState};
+    return {success: result.success, contentState: finalContentState};
   },
 );
 
@@ -645,20 +685,36 @@ export const widgetVoteResponse = onRequest(
       return;
     }
 
-    // Optional auth token verification
-    if (authToken) {
-      try {
-        const decodedToken = await admin.auth().verifyIdToken(authToken);
-        if (decodedToken.uid !== userId) {
-          res.status(401).json({
-            error: {code: "unauthenticated", message: "Token uid mismatch"},
-          });
-          return;
-        }
-      } catch (error) {
-        console.warn(`⚠️ Widget vote auth token verification failed: ${error}`);
-        // Allow widget requests even if token verification fails
+    // Required auth token verification
+    if (!authToken) {
+      res.status(401).json({
+        error: {
+          code: "unauthenticated",
+          message: "X-Auth-Token header is required",
+        },
+      });
+      return;
+    }
+
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(authToken);
+      if (decodedToken.uid !== userId) {
+        res.status(401).json({
+          error: {code: "unauthenticated", message: "Token uid mismatch"},
+        });
+        return;
       }
+    } catch (error) {
+      console.error(
+        `❌ Widget vote auth token verification failed: ${error}`
+      );
+      res.status(401).json({
+        error: {
+          code: "unauthenticated",
+          message: "Token verification failed",
+        },
+      });
+      return;
     }
 
     const {scheduleId, response, userName} = req.body as {
@@ -759,66 +815,101 @@ export const widgetVoteResponse = onRequest(
       return;
     }
 
-    // Save vote result
-    await scheduleRef.collection("votes").doc(userId).set({
-      response,
-      userName: resolvedUserName,
-      respondedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    const widgetVoteDocRef = scheduleRef.collection("votes").doc(userId);
 
-    // Read all votes to build ContentState
-    const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: VoteMember[] = [];
-    const declinedMembers: VoteMember[] = [];
+    // Atomic transaction: save vote + read all votes +
+    // read schedule/group + sync accepted/declined IDs
+    let widgetContentState: VoteContentState | undefined;
+    let widgetChannelId: string | undefined;
 
-    votesSnapshot.forEach((doc) => {
-      const voteData = doc.data();
-      const member: VoteMember = {
-        id: doc.id,
-        name: (voteData.userName as string) || "멤버",
-      };
-      if (voteData.response === "accepted") {
-        acceptedMembers.push(member);
-      } else if (voteData.response === "declined") {
-        declinedMembers.push(member);
+    await db.runTransaction(async (tx) => {
+      const scheduleDoc = await tx.get(scheduleRef);
+      const scheduleData = scheduleDoc.data();
+      if (!scheduleData) {
+        throw new Error("Failed to read schedule data in transaction");
       }
+
+      const txGroupId = scheduleData.groupId as string;
+      const groupRef = db.collection("groups").doc(txGroupId);
+      const groupDoc = await tx.get(groupRef);
+      const groupData = groupDoc.data();
+      const memberIds = (groupData?.memberIds as string[]) || [];
+
+      const votesSnapshot = await tx.get(
+        scheduleRef.collection("votes")
+      );
+
+      const acceptedMembers: VoteMember[] = [];
+      const declinedMembers: VoteMember[] = [];
+
+      votesSnapshot.forEach((doc) => {
+        if (doc.id === userId) return; // will be overwritten below
+        const voteData = doc.data();
+        const member: VoteMember = {
+          id: doc.id,
+          name: (voteData.userName as string) || "멤버",
+        };
+        if (voteData.response === "accepted") {
+          acceptedMembers.push(member);
+        } else if (voteData.response === "declined") {
+          declinedMembers.push(member);
+        }
+      });
+
+      // Include the current vote
+      const currentMember: VoteMember = {
+        id: userId,
+        name: resolvedUserName || "멤버",
+      };
+      if (response === "accepted") {
+        acceptedMembers.push(currentMember);
+      } else {
+        declinedMembers.push(currentMember);
+      }
+
+      const totalMemberCount = memberIds.length;
+      const respondedCount =
+        acceptedMembers.length + declinedMembers.length;
+      const isFinalized = respondedCount >= totalMemberCount;
+      const pendingCount =
+        Math.max(0, totalMemberCount - respondedCount);
+
+      widgetContentState = {
+        acceptedMembers,
+        declinedMembers,
+        pendingCount,
+        isFinalized,
+      };
+
+      widgetChannelId =
+        scheduleData?.["liveActivity"]?.voteChannelId as
+          | string
+          | undefined;
+
+      const acceptedIds = acceptedMembers.map((m) => m.id);
+      const declinedIds = declinedMembers.map((m) => m.id);
+
+      tx.set(widgetVoteDocRef, {
+        response,
+        userName: resolvedUserName,
+        respondedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.update(scheduleRef, {
+        "votes.accepted": acceptedIds,
+        "votes.declined": declinedIds,
+      });
     });
 
-    const scheduleDoc = await scheduleRef.get();
-    const scheduleData = scheduleDoc.data();
-    const groupId = scheduleData?.groupId as string;
-
-    const groupDoc = await db.collection("groups").doc(groupId).get();
-    const groupData = groupDoc.data();
-    const memberIds = (groupData?.memberIds as string[]) || [];
-    const totalMemberCount = memberIds.length;
-    const respondedCount = acceptedMembers.length + declinedMembers.length;
-    const isFinalized = respondedCount >= totalMemberCount;
-    const pendingCount = Math.max(0, totalMemberCount - respondedCount);
-
-    const contentState: VoteContentState = {
-      acceptedMembers,
-      declinedMembers,
-      pendingCount,
-      isFinalized,
-    };
-
-    // Sync accepted/declined IDs to main document
-    const acceptedIds = acceptedMembers.map((m) => m.id);
-    const declinedIds = declinedMembers.map((m) => m.id);
-    await scheduleRef.update({
-      "votes.accepted": acceptedIds,
-      "votes.declined": declinedIds,
-    });
-
-    // Broadcast via APNs
-    const channelId = scheduleData?.["liveActivity"]?.voteChannelId as
-      | string
-      | undefined;
+    // Broadcast via APNs (outside transaction — external call)
+    // widgetContentState is guaranteed set by the transaction above
+    const contentState = widgetContentState!;
+    const isFinalized = contentState.isFinalized;
+    const channelId = widgetChannelId;
 
     if (!channelId) {
       console.warn(
-        `⚠️ No voteChannelId for scheduleId=${scheduleId}, skipping broadcast`
+        `⚠️ No voteChannelId for scheduleId=${scheduleId}, ` +
+          "skipping broadcast"
       );
       res.status(200).json({success: true, contentState});
       return;
@@ -833,8 +924,8 @@ export const widgetVoteResponse = onRequest(
         ...(isFinalized && {
           "alert": {
             "title": "투표가 마감되었습니다",
-            "body": `참여 ${acceptedMembers.length}명` +
-              ` / 불참 ${declinedMembers.length}명`,
+            "body": `참여 ${contentState.acceptedMembers.length}명` +
+              ` / 불참 ${contentState.declinedMembers.length}명`,
           },
         }),
       },

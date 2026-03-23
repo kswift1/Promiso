@@ -146,7 +146,7 @@ Firestore Root
 | `platform` | String | ✅ | 플랫폼 (`ios` \| `android`) |
 | `lastActiveAt` | Timestamp | ✅ | 마지막 활성 시각 |
 | `createdAt` | Timestamp | ✅ | 토큰 등록 시각 |
-| `liveActivityPushToStartToken` | String | ❌ | LiveActivity Push to Start 토큰 (iOS 17.2+) |
+| `pushToStartToken` | String | ❌ | Push to Start 토큰 (iOS 17.2+, 앱 단위 통합) |
 | `liveActivityPushToken` | String | ❌ | LiveActivity Push 토큰 (개별 Activity용) |
 
 > 💡 **Key**: 디바이스 고유 ID (UUID, 앱 설치 시 생성)
