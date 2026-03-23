@@ -176,6 +176,13 @@ public extension AnalyticsClient {
     public static let paywallRestore = "paywall_restore"
     public static let paywallClose = "paywall_close"
 
+    // 📊 그룹 생성 퍼널
+    public static let groupCreateTapped = "group_create_tapped"
+    public static let groupCreateSucceeded = "group_create_succeeded"
+    public static let groupCreateFailed = "group_create_failed"
+    public static let groupCreateSettingsCompleted = "group_create_settings_completed"
+    public static let groupCreateCancelled = "group_create_cancelled"
+
     // 🔔 알림
     public static let notificationPermissionRequested = "notification_permission_requested"
     public static let notificationPermissionGranted = "notification_permission_granted"
@@ -196,6 +203,8 @@ public extension AnalyticsClient {
     public static let scheduleCount = "schedule_count"
     public static let productID = "product_id"
     public static let hasIntroOffer = "has_intro_offer"
+    public static let errorMessage = "error_message"
+    public static let step = "step"
   }
 }
 
@@ -283,6 +292,39 @@ public extension AnalyticsClient.Event {
         AnalyticsClient.ParameterKey.groupID: groupID,
         AnalyticsClient.ParameterKey.groupName: groupName
       ]
+    )
+  }
+
+  public static let groupCreateTapped = Self(name: AnalyticsClient.EventName.groupCreateTapped)
+
+  public static func groupCreateSucceeded(groupID: String, groupName: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupCreateSucceeded,
+      [
+        AnalyticsClient.ParameterKey.groupID: groupID,
+        AnalyticsClient.ParameterKey.groupName: groupName
+      ]
+    )
+  }
+
+  public static func groupCreateFailed(errorMessage: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupCreateFailed,
+      [AnalyticsClient.ParameterKey.errorMessage: errorMessage]
+    )
+  }
+
+  public static func groupCreateSettingsCompleted(groupID: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupCreateSettingsCompleted,
+      [AnalyticsClient.ParameterKey.groupID: groupID]
+    )
+  }
+
+  public static func groupCreateCancelled(step: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.groupCreateCancelled,
+      [AnalyticsClient.ParameterKey.step: step]
     )
   }
 

@@ -185,6 +185,7 @@ extension CreateGroup {
           case .createGroupTapped:
             guard state.canSubmit else { return .none }
             state.isCreating = true
+            analyticsClient.log(.groupCreateTapped)
             state.creationError = nil
             let request = state.makeCreateRequest()
             return .run { send in
@@ -198,6 +199,13 @@ extension CreateGroup {
             .cancellable(id: CancelID.createGroup, cancelInFlight: true)
 
           case .cancelTapped:
+            let stepName: String
+            switch state.step {
+            case .input: stepName = "input"
+            case .settings: stepName = "settings"
+            case .success: stepName = "success"
+            }
+            analyticsClient.log(.groupCreateCancelled(step: stepName))
             return .send(.delegate(.dismiss))
 
           case .errorAlertDismissed:
@@ -329,6 +337,7 @@ extension CreateGroup {
 
           case .settingsCompleted:
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.log(.groupCreateSettingsCompleted(groupID: result.id))
             state.isSavingSettings = true
             let settings = GroupNotificationSettings(
               enabled: state.notificationEnabled,
@@ -359,6 +368,7 @@ extension CreateGroup {
           case .createGroupResponse(.success(let result)):
             state.isCreating = false
             state.step = .settings(result)
+            analyticsClient.log(.groupCreateSucceeded(groupID: result.id, groupName: result.name))
             // 알림 및 캘린더 권한 상태 확인
             return .merge(
               .run { send in
@@ -374,6 +384,8 @@ extension CreateGroup {
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
             state.creationError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
+            let errorMsg = (error as? GroupClientError)?.localizedMessage ?? error.localizedDescription
+            analyticsClient.log(.groupCreateFailed(errorMessage: errorMsg))
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
