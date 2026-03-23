@@ -54,9 +54,6 @@ public enum CreateSchedule {
       var showLiveActivityInfo: Bool = false
       var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
 
-      // 알림 방법 선택
-      var notificationMethod: ScheduleNotificationMethod = .liveActivity
-
       // 장소 사용 여부 (토글 상태)
       var useLocation: Bool = false
 
@@ -101,7 +98,6 @@ public enum CreateSchedule {
         isEmojiLoading: Bool = false,
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
-        notificationMethod: ScheduleNotificationMethod = .liveActivity,
         useLocation: Bool = false,
         currentUserId: String = "",
         currentUser: UserPrivateModel? = nil,
@@ -119,7 +115,6 @@ public enum CreateSchedule {
         self.isEmojiLoading = isEmojiLoading
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
-        self.notificationMethod = notificationMethod
         self.useLocation = useLocation
         self.currentUserId = currentUserId
         self.currentUser = currentUser
@@ -198,7 +193,6 @@ public enum CreateSchedule {
         case liveActivityInfoButtonTapped
         case liveActivityInfoDismissed
         case arrivalSharingSectionAppeared
-        case setNotificationMethod(ScheduleNotificationMethod)
         // 장소 선택
         case locationPickerTapped
         case setLocation(LocationInfoModel?)
@@ -220,7 +214,6 @@ public enum CreateSchedule {
         case photosLoaded([Data])
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
-        case lastNotificationMethodLoaded(ScheduleNotificationMethod?)
         case conflictsLoaded([ScheduleConflict])
         case settingsLoaded(UserSettings)
         case refreshProFeatures(debounce: Bool)
@@ -257,10 +250,6 @@ public enum CreateSchedule {
                   await send(.internal(.settingsLoaded(settings)))
                 }
               },
-              .run { send in
-                // 항상 liveActivity 사용
-                await send(.internal(.lastNotificationMethodLoaded(.liveActivity)))
-              }
             )
             
           case .nextStep:
@@ -277,7 +266,7 @@ public enum CreateSchedule {
             // groupId 설정 (hostId는 서버에서 auth.uid로 설정)
             var scheduleToCreate = state.schedule
             scheduleToCreate.groupId = state.schedule.group?.id ?? ""
-            scheduleToCreate.notificationMethod = state.notificationMethod
+            scheduleToCreate.notificationMethod = .liveActivity
             let localImages = state.localImageData
             state.isUploadingImages = !localImages.isEmpty
             let logGroupName = state.schedule.group?.name ?? "nil"
@@ -433,13 +422,6 @@ public enum CreateSchedule {
               await send(.internal(.liveActivityInfoSeenLoaded(hasSeen)))
             }
 
-          case .setNotificationMethod(let method):
-            state.notificationMethod = method
-            state.schedule.notificationMethod = method
-            return .run { [userDefaultsClient] _ in
-              userDefaultsClient.setLastScheduleNotificationMethod(method.rawValue)
-            }
-
           case .locationPickerTapped:
             state.locationPicker = LocationPicker.Feature.State()
             return .none
@@ -575,14 +557,11 @@ public enum CreateSchedule {
                 scheduleTitle: state.schedule.title
               )
             )
-            let notificationMethod = state.notificationMethod
             return .merge(
               .send(.delegate(.scheduleCreated(id: id))),
-              notificationMethod == .liveActivity
-                ? .run { [scheduleClient] _ in
-                    try? await scheduleClient.startVoteLiveActivity(id)
-                  }
-                : .none
+              .run { [scheduleClient] _ in
+                try? await scheduleClient.startVoteLiveActivity(id)
+              }
             )
 
           case .createScheduleResponse(.failure(let e)):
@@ -597,12 +576,6 @@ public enum CreateSchedule {
             if !hasSeen {
               state.showLiveActivityInfo = true
             }
-            return .none
-
-          case .lastNotificationMethodLoaded(let method):
-            let resolved = method ?? .liveActivity
-            state.notificationMethod = resolved
-            state.schedule.notificationMethod = resolved
             return .none
 
           case .photosLoaded(let data):

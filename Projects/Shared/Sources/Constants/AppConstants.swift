@@ -247,8 +247,6 @@ public enum AppConstants {
     public static let hasSeenScheduleGuide = "promisoHasSeenScheduleGuide"
     /// 설정 기능 가이드 본 적 있는지
     public static let hasSeenSettingsGuide = "promisoHasSeenSettingsGuide"
-    /// 마지막으로 선택한 일정 알림 방법 (pushNotification/liveActivity/none)
-    public static let lastScheduleNotificationMethod = "promisoLastScheduleNotificationMethod"
   }
 
   // MARK: - Calendar Helpers
