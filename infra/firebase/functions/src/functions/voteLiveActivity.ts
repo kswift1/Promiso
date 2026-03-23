@@ -64,6 +64,129 @@ function isAPNsProduction(): boolean {
 }
 
 // ============================================================================
+// Internal Helpers
+// ============================================================================
+
+/**
+ * End Vote LiveActivity (internal helper)
+ *
+ * Broadcasts APNs "end" event and removes voteChannelId from Firestore.
+ * Called by endVoteLiveActivity onCall, deletePromise, and updatePromise.
+ *
+ * @param {string} scheduleId - The schedule document ID
+ * @param {string} reason - Log label for the caller context
+ */
+export async function endVoteActivityInternal(
+  scheduleId: string,
+  reason = "internal",
+): Promise<void> {
+  const db = admin.firestore();
+  const scheduleRef = db.collection("promises").doc(scheduleId);
+
+  // 1. Fetch schedule data
+  const scheduleDoc = await scheduleRef.get();
+  if (!scheduleDoc.exists) {
+    console.warn(
+      `⚠️ endVoteActivityInternal(${reason}): ` +
+        `scheduleId=${scheduleId} not found, skipping`
+    );
+    return;
+  }
+
+  const scheduleData = scheduleDoc.data();
+  if (!scheduleData) return;
+
+  // 2. Get channelId — nothing to do if absent
+  const channelId = scheduleData.liveActivity?.voteChannelId as
+    | string
+    | undefined;
+
+  if (!channelId) {
+    console.log(
+      `⚠️ endVoteActivityInternal(${reason}): ` +
+        `no voteChannelId for scheduleId=${scheduleId}`
+    );
+    return;
+  }
+
+  // 3. Build current ContentState from votes
+  const votesSnapshot = await scheduleRef.collection("votes").get();
+  const acceptedMembers: VoteMember[] = [];
+  const declinedMembers: VoteMember[] = [];
+
+  votesSnapshot.forEach((doc) => {
+    const voteData = doc.data();
+    const member: VoteMember = {
+      id: doc.id,
+      name: (voteData.userName as string) || "멤버",
+    };
+    if (voteData.response === "accepted") {
+      acceptedMembers.push(member);
+    } else if (voteData.response === "declined") {
+      declinedMembers.push(member);
+    }
+  });
+
+  const groupId = scheduleData.groupId as string;
+  const groupDoc = await db.collection("groups").doc(groupId).get();
+  const groupData = groupDoc.data();
+  const memberIds = (groupData?.memberIds as string[]) || [];
+  const totalMemberCount = memberIds.length;
+  const respondedCount =
+    acceptedMembers.length + declinedMembers.length;
+  const pendingCount = Math.max(0, totalMemberCount - respondedCount);
+
+  const contentState: VoteContentState = {
+    acceptedMembers,
+    declinedMembers,
+    pendingCount,
+    isFinalized: true,
+  };
+
+  // 4. Broadcast APNs "end" event
+  const isProduction = isAPNsProduction();
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aps: {
+      "timestamp": now,
+      "event": "end",
+      "dismissal-date": now,
+      "content-state": contentState,
+    },
+  };
+
+  const result = await sendAPNsBroadcast({
+    channelId,
+    payload,
+    isProduction,
+  });
+
+  if (result.success) {
+    console.log(
+      `✅ endVoteActivityInternal(${reason}): ` +
+        `end broadcast sent channelId=${channelId}`
+    );
+  } else {
+    console.error(
+      `❌ endVoteActivityInternal(${reason}): ` +
+        `broadcast failed ${result.error}`
+    );
+  }
+
+  // 5. Remove voteChannelId from Firestore
+  await scheduleRef.update({
+    "liveActivity.voteChannelId": admin.firestore.FieldValue.delete(),
+    "liveActivity.voteEndedAt":
+      admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(
+    `🗑️ endVoteActivityInternal(${reason}): ` +
+      `voteChannelId removed scheduleId=${scheduleId}`
+  );
+}
+
+// ============================================================================
 // Functions
 // ============================================================================
 
@@ -892,6 +1015,7 @@ export const finalizeVote = onCall(
  * Broadcasts APNs "end" event to terminate the LiveActivity for all
  * subscribers and removes the voteChannelId from Firestore.
  * Called by the client on schedule deletion or date/time change.
+ * Internally delegates to endVoteActivityInternal.
  */
 export const endVoteLiveActivity = onCall(
   {
@@ -914,11 +1038,13 @@ export const endVoteLiveActivity = onCall(
       `📥 endVoteLiveActivity called: scheduleId="${scheduleId}"`
     );
 
+    // Permission check (host only)
     const db = admin.firestore();
-    const scheduleRef = db.collection("promises").doc(scheduleId);
+    const scheduleDoc = await db
+      .collection("promises")
+      .doc(scheduleId)
+      .get();
 
-    // 1. Fetch schedule data
-    const scheduleDoc = await scheduleRef.get();
     if (!scheduleDoc.exists) {
       throw new HttpsError("not-found", "일정을 찾을 수 없습니다");
     }
@@ -928,7 +1054,6 @@ export const endVoteLiveActivity = onCall(
       throw new HttpsError("internal", "일정 데이터를 읽을 수 없습니다");
     }
 
-    // 2. Permission check (host only)
     const hostId = scheduleData.hostId as string;
     if (userId !== hostId) {
       throw new HttpsError(
@@ -937,90 +1062,7 @@ export const endVoteLiveActivity = onCall(
       );
     }
 
-    // 3. Get channelId
-    const channelId = scheduleData.liveActivity?.voteChannelId as
-      | string
-      | undefined;
-
-    if (!channelId) {
-      console.log(
-        `⚠️ No voteChannelId for scheduleId=${scheduleId}, nothing to end`
-      );
-      return {success: true};
-    }
-
-    // 4. Build current ContentState from votes
-    const votesSnapshot = await scheduleRef.collection("votes").get();
-    const acceptedMembers: VoteMember[] = [];
-    const declinedMembers: VoteMember[] = [];
-
-    votesSnapshot.forEach((doc) => {
-      const voteData = doc.data();
-      const member: VoteMember = {
-        id: doc.id,
-        name: (voteData.userName as string) || "멤버",
-      };
-      if (voteData.response === "accepted") {
-        acceptedMembers.push(member);
-      } else if (voteData.response === "declined") {
-        declinedMembers.push(member);
-      }
-    });
-
-    const groupId = scheduleData.groupId as string;
-    const groupDoc = await db.collection("groups").doc(groupId).get();
-    const groupData = groupDoc.data();
-    const memberIds = (groupData?.memberIds as string[]) || [];
-    const totalMemberCount = memberIds.length;
-    const respondedCount =
-      acceptedMembers.length + declinedMembers.length;
-    const pendingCount = Math.max(0, totalMemberCount - respondedCount);
-
-    const contentState: VoteContentState = {
-      acceptedMembers,
-      declinedMembers,
-      pendingCount,
-      isFinalized: true,
-    };
-
-    // 5. Broadcast APNs "end" event
-    const isProduction = isAPNsProduction();
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      aps: {
-        "timestamp": now,
-        "event": "end",
-        "dismissal-date": now,
-        "content-state": contentState,
-      },
-    };
-
-    const result = await sendAPNsBroadcast({
-      channelId,
-      payload,
-      isProduction,
-    });
-
-    if (result.success) {
-      console.log(
-        `✅ End vote broadcast sent: channelId=${channelId}`
-      );
-    } else {
-      console.error(`❌ End vote broadcast failed: ${result.error}`);
-    }
-
-    // 6. Remove voteChannelId from Firestore
-    await scheduleRef.update({
-      "liveActivity.voteChannelId":
-        admin.firestore.FieldValue.delete(),
-      "liveActivity.voteEndedAt":
-        admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    console.log(
-      `🗑️ voteChannelId removed: scheduleId=${scheduleId}`
-    );
-
-    return {success: result.success};
+    await endVoteActivityInternal(scheduleId, "endVoteLiveActivity");
+    return {success: true};
   },
 );

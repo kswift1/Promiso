@@ -10,6 +10,7 @@ import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {isValidFirebaseStorageUrl} from "../utils/helpers";
+import {endVoteActivityInternal} from "./voteLiveActivity";
 import {
   CreatePromiseRequest,
   CreatePromiseResponse,
@@ -540,7 +541,23 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     // 8. Firestore 업데이트
     await promiseRef.update(updateData);
 
-    // 9. 응답 반환
+    // 9. 시간 변경 시 투표 LiveActivity 종료 (voteChannelId 존재 시)
+    const isStartAtChanged =
+      data.startAt !== undefined && data.startAt !== null;
+    if (isStartAtChanged) {
+      try {
+        await endVoteActivityInternal(
+          data.promiseId,
+          "updatePromise/startAt",
+        );
+      } catch (err) {
+        console.warn(
+          `⚠️ endVoteActivityInternal failed on updatePromise: ${err}`,
+        );
+      }
+    }
+
+    // 10. 응답 반환
     return {
       success: true,
     };
@@ -658,12 +675,24 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    // 7. Firestore에서 삭제 (Hard Delete)
+    // 7. 투표 LiveActivity 종료 (voteChannelId 존재 시)
+    try {
+      await endVoteActivityInternal(
+        data.promiseId,
+        "deletePromise",
+      );
+    } catch (err) {
+      console.warn(
+        `⚠️ endVoteActivityInternal failed on deletePromise: ${err}`,
+      );
+    }
+
+    // 8. Firestore에서 삭제 (Hard Delete)
     await promiseRef.delete();
 
     console.log(`🗑️ Promise deleted: ${data.promiseId}`);
 
-    // 8. 응답 반환
+    // 9. 응답 반환
     return {
       success: true,
     };
