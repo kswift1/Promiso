@@ -67,14 +67,33 @@ struct VoteLiveActivity: Widget {
           .padding(.horizontal, 8)
         }
 
-        // MARK: - Expanded Bottom (응답 현황)
+        // MARK: - Expanded Bottom (응답 현황 + 버튼)
         DynamicIslandExpandedRegion(.bottom) {
-          VoteStatusBar(
-            state: context.state,
-            totalMemberCount: context.attributes.totalMemberCount, minimumParticipants: context.attributes.minimumParticipants
-          )
+          VStack(spacing: 8) {
+            VoteStatusBar(
+              state: context.state,
+              totalMemberCount: context.attributes.totalMemberCount,
+              minimumParticipants: context.attributes.minimumParticipants
+            )
+
+            if !context.state.isFinalized {
+              let userId = context.attributes.currentUserId
+              let isAccepted = context.state.acceptedMembers.contains { $0.id == userId }
+              let isDeclined = context.state.declinedMembers.contains { $0.id == userId }
+              let currentResponse: String? = isAccepted ? "accepted" : (isDeclined ? "declined" : nil)
+
+              VoteActionButtons(
+                channelId: context.attributes.channelId,
+                scheduleId: context.attributes.scheduleId,
+                userId: userId,
+                totalMemberCount: context.attributes.totalMemberCount,
+                state: context.state,
+                currentResponse: currentResponse
+              )
+            }
+          }
           .padding(.horizontal, 8)
-          .padding(.top, 8)
+          .padding(.top, 4)
         }
 
       } compactLeading: {
