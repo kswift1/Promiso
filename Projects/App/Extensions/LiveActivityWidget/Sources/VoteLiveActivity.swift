@@ -16,40 +16,53 @@ struct VoteLiveActivity: Widget {
 
     } dynamicIsland: { context in
       DynamicIsland {
-        // MARK: - Expanded Center (이모지 + 제목 + 장소)
+        // MARK: - Expanded Center
         DynamicIslandExpandedRegion(.center) {
-          HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+          VStack(alignment: .leading, spacing: 3) {
+            // 1행: 제목 + 일정
+            HStack(alignment: .firstTextBaseline) {
               Text("\(context.attributes.emoji) \(context.attributes.title)")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-
-              if let location = context.attributes.location {
-                HStack(spacing: 4) {
-                  Text("📍")
-                    .font(.caption2)
-                  Text(location)
-                    .font(.caption)
-                }
-                .foregroundStyle(.white.opacity(0.6))
-                .lineLimit(1)
-              }
+              Spacer()
+              Text(context.attributes.scheduledTime.dateTimeText)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.7))
             }
-
-            Spacer()
-
-            // 오른쪽: 일정 시간
-            VStack(alignment: .trailing, spacing: 2) {
-              Text(context.attributes.scheduledTime.amPmText)
+            // 2행: 그룹 · 위치 · 카운트다운
+            HStack(spacing: 4) {
+              if let groupName = context.attributes.groupName {
+                Image(systemName: "person.2.fill")
+                  .font(.system(size: 7))
+                  .foregroundStyle(Color.pmindigo.n300)
+                Text(groupName)
+                  .font(.system(size: 10))
+                  .foregroundStyle(.white.opacity(0.5))
+              }
+              if context.attributes.groupName != nil, context.attributes.location != nil {
+                Text("·")
+                  .font(.system(size: 10))
+                  .foregroundStyle(.white.opacity(0.3))
+              }
+              if let location = context.attributes.location {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 7))
+                  .foregroundStyle(Color.pmindigo.n300)
+                Text(location)
+                  .font(.system(size: 10))
+                  .foregroundStyle(.white.opacity(0.5))
+              }
+              Spacer()
+              Image(systemName: "timer")
+                .font(.system(size: 7))
+                .foregroundStyle(Color.pmindigo.n300)
+              Text(context.attributes.voteDeadline, style: .timer)
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.6))
-
-              Text(context.attributes.scheduledTime.timeOnlyText)
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
             }
+            .lineLimit(1)
           }
           .padding(.horizontal, 8)
         }
