@@ -8,7 +8,13 @@
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {admin, REGION} from "../config";
+import {
+  admin,
+  REGION,
+  APNS_KEY_ID,
+  APNS_TEAM_ID,
+  APNS_AUTH_KEY,
+} from "../config";
 import {isValidFirebaseStorageUrl} from "../utils/helpers";
 import {endVoteActivityInternal} from "./voteLiveActivity";
 import {
@@ -347,7 +353,10 @@ export const respondPromise = onCall<RespondPromiseRequest>(
  * - LiveActivity 실행 중인 약속은 수정 불가
  */
 export const updatePromise = onCall<UpdatePromiseRequest>(
-  {region: REGION},
+  {
+    region: REGION,
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
   async (request): Promise<UpdatePromiseResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
@@ -578,7 +587,10 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
  * @added 2026-01-21
  */
 export const deletePromise = onCall<DeletePromiseRequest>(
-  {region: REGION},
+  {
+    region: REGION,
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
   async (request): Promise<DeletePromiseResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
