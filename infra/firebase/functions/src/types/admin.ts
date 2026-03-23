@@ -61,6 +61,7 @@ export interface GetAdminUserSummaryRequest {
   subscription?: AdminSubscriptionFilter;
   override?: AdminOverrideFilter;
   limit?: number;
+  startAfter?: string;
 }
 
 export interface AdminUserSummary {
@@ -78,6 +79,7 @@ export interface AdminUserSummary {
 export interface GetAdminUserSummaryResponse {
   success: true;
   results: AdminUserSummary[];
+  hasMore: boolean;
 }
 
 export interface AdminSubscriptionSnapshot {

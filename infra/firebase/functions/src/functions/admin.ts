@@ -1512,6 +1512,7 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
     const overrideFilter = normalizeOverrideFilter(request.data.override);
     const requestedLimit = request.data.limit ?? 25;
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
+    const startAfter = request.data.startAfter?.trim() ?? "";
     const isDefaultBrowseRequest =
       !query &&
       subscriptionFilter === "all" &&
@@ -1525,6 +1526,7 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
     const matches = new Map<string, Record<string, unknown>>();
 
     if (query) {
+      // 검색 모드: 결과가 소수이므로 페이지네이션 불필요
       if (field === "all" || field === "userId") {
         const userIdSnapshot = await usersCollection.doc(query).get();
         if (userIdSnapshot.exists) {
@@ -1560,10 +1562,23 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
           }
         });
       }
+    } else if (isDefaultBrowseRequest) {
+      // 기본 브라우즈: Firestore 커서 기반 페이지네이션
+      let firestoreQuery = usersCollection
+        .orderBy(admin.firestore.FieldPath.documentId());
+      if (startAfter) {
+        firestoreQuery = firestoreQuery.startAfter(startAfter);
+      }
+      const usersSnapshot = await firestoreQuery.limit(limit + 1).get();
+      usersSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data) {
+          matches.set(doc.id, data as Record<string, unknown>);
+        }
+      });
     } else {
-      const usersSnapshot = isDefaultBrowseRequest ?
-        await usersCollection.limit(limit).get() :
-        await usersCollection.get();
+      // 필터 모드: 전체 fetch 후 필터링
+      const usersSnapshot = await usersCollection.get();
       usersSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         if (data) {
@@ -1577,17 +1592,48 @@ export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
         buildUserSummary(userId, userData)
       )
     );
-    const filteredResults = results
-      .filter((summary) =>
-        matchesSubscriptionFilter(summary, subscriptionFilter) &&
-        matchesOverrideFilter(summary, overrideFilter)
-      )
-      .sort((lhs, rhs) => lhs.userId.localeCompare(rhs.userId))
-      .slice(0, limit);
+
+    let filteredResults: AdminUserSummary[];
+    let hasMore = false;
+
+    if (query) {
+      // 검색 모드: 페이지네이션 없음
+      filteredResults = results
+        .filter((summary) =>
+          matchesSubscriptionFilter(summary, subscriptionFilter) &&
+          matchesOverrideFilter(summary, overrideFilter)
+        )
+        .sort((lhs, rhs) => lhs.userId.localeCompare(rhs.userId))
+        .slice(0, limit);
+    } else if (isDefaultBrowseRequest) {
+      // 기본 브라우즈: limit+1개를 가져왔으므로 hasMore 판단
+      const sorted = results.sort((lhs, rhs) =>
+        lhs.userId.localeCompare(rhs.userId)
+      );
+      hasMore = sorted.length > limit;
+      filteredResults = sorted.slice(0, limit);
+    } else {
+      // 필터 모드: 정렬 후 startAfter 커서 이후부터 slice
+      const sorted = results
+        .filter((summary) =>
+          matchesSubscriptionFilter(summary, subscriptionFilter) &&
+          matchesOverrideFilter(summary, overrideFilter)
+        )
+        .sort((lhs, rhs) => lhs.userId.localeCompare(rhs.userId));
+
+      const startIndex = startAfter ?
+        sorted.findIndex((s) => s.userId > startAfter) :
+        0;
+      const sliceStart = startIndex === -1 ? sorted.length : startIndex;
+      const sliced = sorted.slice(sliceStart, sliceStart + limit + 1);
+      hasMore = sliced.length > limit;
+      filteredResults = sliced.slice(0, limit);
+    }
 
     return {
       success: true,
       results: filteredResults,
+      hasMore,
     };
   }
 );

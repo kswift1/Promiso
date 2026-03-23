@@ -12,12 +12,13 @@ import {
   Typography,
 } from "@mui/material";
 import {useQuery} from "@tanstack/react-query";
-import {FormEvent, useState} from "react";
+import {FormEvent, useCallback, useEffect, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
 import {
   AdminOverrideFilter,
   AdminSubscriptionFilter,
   AdminUserSearchField,
+  AdminUserSummary,
   getAdminUserSummary,
 } from "../api/admin";
 
@@ -34,22 +35,46 @@ export function UsersPage() {
   const [submittedFilters, setSubmittedFilters] = useState(
     defaultSearchFilters
   );
+  const [allUsers, setAllUsers] = useState<AdminUserSummary[]>([]);
+  const [startAfter, setStartAfter] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(false);
+
   const query = useQuery({
-    queryKey: ["admin-user-summary", submittedFilters],
+    queryKey: ["admin-user-summary", submittedFilters, startAfter],
     queryFn: () => getAdminUserSummary({
       ...submittedFilters,
       query: submittedFilters.query || undefined,
+      startAfter,
     }),
   });
 
+  // 새 데이터가 도착하면 누적
+  useEffect(() => {
+    if (query.data) {
+      setAllUsers((prev) =>
+        startAfter ? [...prev, ...query.data.results] : query.data.results
+      );
+      setHasMore(query.data.hasMore);
+    }
+  }, [query.data, startAfter]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
+    // 새 검색 시 결과 리셋
+    setAllUsers([]);
+    setStartAfter(undefined);
+    setHasMore(false);
     setSubmittedFilters({
       ...filters,
       query: filters.query.trim(),
     });
   };
+
+  const handleLoadMore = useCallback(() => {
+    if (allUsers.length > 0) {
+      setStartAfter(allUsers[allUsers.length - 1].userId);
+    }
+  }, [allUsers]);
 
   return (
     <Stack spacing={3}>
@@ -150,6 +175,9 @@ export function UsersPage() {
                 variant="text"
                 onClick={() => {
                   setFilters(defaultSearchFilters);
+                  setAllUsers([]);
+                  setStartAfter(undefined);
+                  setHasMore(false);
                   setSubmittedFilters(defaultSearchFilters);
                 }}
               >
@@ -174,7 +202,7 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
-      {query.isLoading && (
+      {query.isLoading && allUsers.length === 0 && (
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={20} />
           <Typography color="text.secondary">검색 중입니다.</Typography>
@@ -187,70 +215,86 @@ export function UsersPage() {
         </Alert>
       )}
 
-      {query.data && query.data.length === 0 && (
+      {!query.isLoading && allUsers.length === 0 && query.data && (
         <Alert severity="info">
           일치하는 사용자를 찾지 못했습니다.
         </Alert>
       )}
 
-      {query.data && query.data.length > 0 && (
-        <Grid container spacing={2}>
-          {query.data.map((user) => (
-            <Grid key={user.userId} size={{xs: 12, md: 6}}>
-              <Card elevation={0}>
-                <CardContent>
-                  <Stack spacing={2}>
-                    <Stack spacing={0.5}>
-                      <Typography variant="h6">
-                        {user.nickname ?? user.name ?? user.userId}
-                      </Typography>
+      {allUsers.length > 0 && (
+        <>
+          <Typography color="text.secondary">
+            {allUsers.length}명 표시 중
+          </Typography>
+          <Grid container spacing={2}>
+            {allUsers.map((user) => (
+              <Grid key={user.userId} size={{xs: 12, md: 6}}>
+                <Card elevation={0}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Stack spacing={0.5}>
+                        <Typography variant="h6">
+                          {user.nickname ?? user.name ?? user.userId}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.userId}
+                        </Typography>
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <Chip
+                          color={user.subscriptionStatus ? "primary" : "default"}
+                          label={user.subscriptionStatus ?? "subscription 없음"}
+                        />
+                        <Chip
+                          color={user.overrideActive ? "secondary" : "default"}
+                          label={user.overrideActive ? "수동 변경 활성" : "수동 변경 없음"}
+                        />
+                        <Chip label={`그룹 ${user.groupCount}개`} />
+                        <Chip label={`기기 ${user.deviceCount}개`} />
+                        <Chip label={`개인일정 ${user.personalEventCount}개`} />
+                      </Stack>
+
                       <Typography variant="body2" color="text.secondary">
-                        {user.userId}
+                        {user.email ?? "이메일 없음"}
                       </Typography>
-                    </Stack>
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      <Chip
-                        color={user.subscriptionStatus ? "primary" : "default"}
-                        label={user.subscriptionStatus ?? "subscription 없음"}
-                      />
-                      <Chip
-                        color={user.overrideActive ? "secondary" : "default"}
-                        label={user.overrideActive ? "수동 변경 활성" : "수동 변경 없음"}
-                      />
-                      <Chip label={`그룹 ${user.groupCount}개`} />
-                      <Chip label={`기기 ${user.deviceCount}개`} />
-                      <Chip label={`개인일정 ${user.personalEventCount}개`} />
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          component={RouterLink}
+                          to={`/users/${user.userId}/timeline`}
+                          variant="contained"
+                          size="small"
+                        >
+                          이력 보기
+                        </Button>
+                        <Button
+                          component={RouterLink}
+                          to={`/entitlements?userId=${user.userId}`}
+                          variant="text"
+                          size="small"
+                        >
+                          Pro 수동 변경
+                        </Button>
+                      </Stack>
                     </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
 
-                    <Typography variant="body2" color="text.secondary">
-                      {user.email ?? "이메일 없음"}
-                    </Typography>
-
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        component={RouterLink}
-                        to={`/users/${user.userId}/timeline`}
-                        variant="contained"
-                        size="small"
-                      >
-                        이력 보기
-                      </Button>
-                      <Button
-                        component={RouterLink}
-                        to={`/entitlements?userId=${user.userId}`}
-                        variant="text"
-                        size="small"
-                      >
-                        Pro 수동 변경
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+          {hasMore && (
+            <Button
+              variant="outlined"
+              onClick={handleLoadMore}
+              disabled={query.isFetching}
+              startIcon={query.isFetching ? <CircularProgress size={16} /> : undefined}
+            >
+              {query.isFetching ? "불러오는 중..." : "더 보기"}
+            </Button>
+          )}
+        </>
       )}
     </Stack>
   );
