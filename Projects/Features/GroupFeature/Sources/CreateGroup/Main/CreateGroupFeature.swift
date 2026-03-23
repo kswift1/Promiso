@@ -392,6 +392,7 @@ extension CreateGroup {
             // .failure의 경우에도 그룹 생성은 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.updateActivationStatus(.groupJoined)
             state.step = .success(result)
             return .none
 

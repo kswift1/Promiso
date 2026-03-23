@@ -94,6 +94,22 @@ public extension AnalyticsClient {
     case hasGroup = "has_group"
     case groupCountBucket = "group_count_bucket"
     case calendarSyncEnabled = "calendar_sync_enabled"
+    case signupDate = "signup_date"
+    case activationStatus = "activation_status"
+  }
+
+  public enum ActivationStatus: String, Sendable {
+    case signedUp = "signed_up"
+    case groupJoined = "group_joined"
+    case scheduleResponded = "schedule_responded"
+
+    var level: Int {
+      switch self {
+      case .signedUp: 0
+      case .groupJoined: 1
+      case .scheduleResponded: 2
+      }
+    }
   }
 }
 
@@ -183,6 +199,12 @@ public extension AnalyticsClient {
     public static let groupCreateSettingsCompleted = "group_create_settings_completed"
     public static let groupCreateCancelled = "group_create_cancelled"
 
+    // 📊 신규 유저 퍼널
+    public static let inviteLinkOpened = "invite_link_opened"
+    public static let onboardingStepViewed = "onboarding_step_viewed"
+    public static let firstScheduleResponse = "first_schedule_response"
+    public static let homeEmptyStateShown = "home_empty_state_shown"
+
     // 🔔 알림
     public static let notificationPermissionRequested = "notification_permission_requested"
     public static let notificationPermissionGranted = "notification_permission_granted"
@@ -205,6 +227,9 @@ public extension AnalyticsClient {
     public static let hasIntroOffer = "has_intro_offer"
     public static let errorMessage = "error_message"
     public static let step = "step"
+    public static let inviteCode = "invite_code"
+    public static let source = "source"
+    public static let onboardingStep = "onboarding_step"
   }
 }
 
@@ -259,6 +284,22 @@ public extension AnalyticsClient {
       ),
       .calendarSyncEnabled
     )
+  }
+
+  public func updateActivationStatus(_ status: ActivationStatus) {
+    let key = "com.promiso.analytics.activationLevel"
+    let currentLevel = UserDefaults.standard.integer(forKey: key)
+    guard status.level > currentLevel else { return }
+    UserDefaults.standard.set(status.level, forKey: key)
+    setUserProperty(status.rawValue, .activationStatus)
+  }
+
+  public func logFirstScheduleResponseIfNeeded(scheduleID: String, scheduleTitle: String) {
+    let key = "com.promiso.analytics.firstScheduleResponseFired"
+    guard !UserDefaults.standard.bool(forKey: key) else { return }
+    UserDefaults.standard.set(true, forKey: key)
+    log(.firstScheduleResponse(scheduleID: scheduleID, scheduleTitle: scheduleTitle))
+    updateActivationStatus(.scheduleResponded)
   }
 }
 
@@ -327,6 +368,35 @@ public extension AnalyticsClient.Event {
       [AnalyticsClient.ParameterKey.step: step]
     )
   }
+
+  public static func inviteLinkOpened(inviteCode: String, source: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.inviteLinkOpened,
+      [
+        AnalyticsClient.ParameterKey.inviteCode: inviteCode,
+        AnalyticsClient.ParameterKey.source: source
+      ]
+    )
+  }
+
+  public static func onboardingStepViewed(step: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.onboardingStepViewed,
+      [AnalyticsClient.ParameterKey.onboardingStep: step]
+    )
+  }
+
+  public static func firstScheduleResponse(scheduleID: String, scheduleTitle: String) -> Self {
+    analyticsEvent(
+      AnalyticsClient.EventName.firstScheduleResponse,
+      [
+        AnalyticsClient.ParameterKey.scheduleID: scheduleID,
+        AnalyticsClient.ParameterKey.scheduleTitle: scheduleTitle
+      ]
+    )
+  }
+
+  public static let homeEmptyStateShown = Self(name: AnalyticsClient.EventName.homeEmptyStateShown)
 
   public static func groupJoined(groupID: String, groupName: String) -> Self {
     analyticsEvent(

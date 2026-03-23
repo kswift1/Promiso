@@ -41,6 +41,54 @@ Firebase Console에서 확인할 포인트:
 
 ---
 
+## 신규 유저 퍼널
+
+신규 가입 유저의 활성화 과정을 추적.
+
+```
+onboarding_step_viewed(intro) → (auth) → (profile) → (welcome) → user_signup
+                                                                       ↓
+                                              invite_link_opened ← 초대 유입
+                                                                       ↓
+                                         group_created / group_joined (activation: group_joined)
+                                                                       ↓
+                                         schedule_response → first_schedule_response (activation: schedule_responded)
+                                                                       ↓
+                                              home_empty_state_shown ← 빈 화면 노출 빈도
+```
+
+### 이벤트
+
+| 이벤트                      | 설명                       | 파라미터                                                    | 트리거 시점                    |
+|-----------------------------|----------------------------|-------------------------------------------------------------|-------------------------------|
+| `onboarding_step_viewed`    | 온보딩 단계 진입           | `onboarding_step`: intro/auth/profile/welcome               | 각 온보딩 화면 전환 시         |
+| `invite_link_opened`        | 초대 링크 딥링크 진입      | `invite_code`, `source`: deeplink/kakao                     | 초대 URL 파싱 시              |
+| `first_schedule_response`   | 첫 일정 응답 (1회만)       | `schedule_id`, `schedule_title`                             | 최초 가능/불가능 응답 시       |
+| `home_empty_state_shown`    | 홈 빈 화면 노출            | -                                                           | 초기 로딩 완료 후 일정 없음    |
+
+### 유저 속성
+
+| 속성                | 설명                                     | 값                                                                    | 설정 시점                  |
+|---------------------|------------------------------------------|-----------------------------------------------------------------------|---------------------------|
+| `signup_date`       | 가입 일시 (ISO 8601)                     | "2026-03-23T..."                                                      | 최초 가입 시 1회           |
+| `activation_status` | 활성화 단계 (단방향 업그레이드)          | "signed_up" → "group_joined" → "schedule_responded"                  | 각 마일스톤 달성 시         |
+
+### 분석 가이드
+
+1. **온보딩 완주율**: `onboarding_step_viewed`의 step별 유저 수 비교
+   - intro → auth 이탈 높으면: 가입 허들
+   - auth → profile 이탈 높으면: 소셜 로그인 문제
+   - profile → welcome 이탈 높으면: 프로필 설정 부담
+2. **오가닉 vs 초대 유입**: `invite_link_opened`의 `source` 파라미터
+   - 초대 유입 유저의 D7 리텐션 vs 오가닉 비교
+3. **활성화율**: `activation_status` 유저 속성으로 코호트 분석
+   - `signup_date` 기준 주간 코호트별 activation_status 분포
+4. **빈 화면 노출**: `home_empty_state_shown` 빈도
+   - 그룹/일정 없는 유저의 첫 경험 품질 측정
+5. **Aha moment 검증**: `first_schedule_response` 발생 유저의 D30 리텐션 비교
+
+---
+
 ## 핵심 비즈니스 이벤트
 
 | 이벤트                  | 설명             | 파라미터                          |
@@ -92,3 +140,5 @@ Firebase Console에서 확인할 포인트:
 | `has_group`                       | 그룹 보유 여부    | "true" / "false"                                                           |
 | `group_count_bucket`              | 그룹 수 구간      | "0" / "1" / "2_4" / "5_plus"                                              |
 | `calendar_sync_enabled`           | 캘린더 동기화     | "true" / "false"                                                           |
+| `signup_date`                     | 가입 일시 (ISO 8601)  | "2026-03-23T..."                                                       |
+| `activation_status`               | 활성화 단계       | "signed_up" / "group_joined" / "schedule_responded"                        |
