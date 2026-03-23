@@ -160,12 +160,12 @@ private struct VoteLockScreenView: View {
         Image(systemName: "timer")
           .font(.system(size: 10))
           .foregroundStyle(Color.pmindigo.n300)
+        Text("투표 종료까지")
+          .font(.caption)
+          .foregroundStyle(.white.opacity(0.5))
         Text(context.attributes.voteDeadline, style: .timer)
           .font(.caption.weight(.medium).monospacedDigit())
           .foregroundStyle(.white.opacity(0.7))
-        Text("남음")
-          .font(.caption)
-          .foregroundStyle(.white.opacity(0.5))
         Spacer()
       }
 
