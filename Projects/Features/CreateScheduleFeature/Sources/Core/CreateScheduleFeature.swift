@@ -266,7 +266,6 @@ public enum CreateSchedule {
             // groupId 설정 (hostId는 서버에서 auth.uid로 설정)
             var scheduleToCreate = state.schedule
             scheduleToCreate.groupId = state.schedule.group?.id ?? ""
-            scheduleToCreate.notificationMethod = .liveActivity
             let localImages = state.localImageData
             state.isUploadingImages = !localImages.isEmpty
             let logGroupName = state.schedule.group?.name ?? "nil"

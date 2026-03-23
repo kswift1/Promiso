@@ -41,10 +41,6 @@ public struct ScheduleDTO: Codable {
   /// LiveActivity 시작 시간 (일정 시간 N분 전)
   public let trackingStartMinutesBefore: Int?
 
-  // MARK: - 알림 방법
-  /// 그룹원에게 보낼 참여 확인 알림 방법 (pushNotification/liveActivity/none)
-  public let notificationMethod: String?
-
   // MARK: - 메타데이터
   public let createdAt: Timestamp
   public let updatedAt: Timestamp
@@ -62,7 +58,6 @@ public struct ScheduleDTO: Codable {
     location: LocationDTO? = nil,
     imageUrls: [String]? = nil,
     trackingStartMinutesBefore: Int? = nil,
-    notificationMethod: String? = nil,
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp()
   ) {
@@ -78,7 +73,6 @@ public struct ScheduleDTO: Codable {
     self.location = location
     self.imageUrls = imageUrls
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
-    self.notificationMethod = notificationMethod
     self.createdAt = createdAt
     self.updatedAt = updatedAt
   }
@@ -143,7 +137,6 @@ extension ScheduleDTO {
       location: model.location.map { LocationDTO(model: $0) },
       imageUrls: model.imageUrls.isEmpty ? nil : model.imageUrls,
       trackingStartMinutesBefore: model.trackingStartMinutesBefore,
-      notificationMethod: model.notificationMethod?.rawValue,
       createdAt: Timestamp(date: model.createdAt),
       updatedAt: Timestamp(date: model.updatedAt)
     )

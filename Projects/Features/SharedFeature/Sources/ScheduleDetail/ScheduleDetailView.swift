@@ -438,8 +438,8 @@ extension ScheduleDetail {
               }
             }
 
-            // 투표 마감 버튼 (호스트 + 투표 LiveActivity 사용 중인 경우에만)
-            if store.isHost && store.schedule.notificationMethod == .liveActivity {
+            // 투표 마감 버튼 (호스트만)
+            if store.isHost {
               Button(role: .destructive) {
                 store.send(.view(.closeVoteTapped))
               } label: {

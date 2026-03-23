@@ -204,9 +204,7 @@ extension ScheduleDetail {
               || isWeatherStale(state.weatherInfo)
 
             // 투표 LiveActivity 관찰
-            let observeVote: Effect<Action> = state.schedule.notificationMethod == .liveActivity
-              ? .send(.internal(.observeVoteUpdates))
-              : .none
+            let observeVote: Effect<Action> = .send(.internal(.observeVoteUpdates))
 
             // 그룹 멤버 캐시 확인 → 없으면 로드
             if state.groupMembers == nil {
@@ -393,7 +391,6 @@ extension ScheduleDetail {
           case .respondSchedule(let status):
             let scheduleId = state.schedule.id
             let calendarSyncCache = state.groupCalendarSyncCache
-            let isLiveActivity = state.schedule.notificationMethod == .liveActivity
             return .run { [scheduleClient, calendarSyncClient] send in
               do {
                 let result = try await scheduleClient.respondSchedule(scheduleId, status)
@@ -412,13 +409,6 @@ extension ScheduleDetail {
                   try? await calendarSyncClient.removeSchedule(scheduleId)
                 }
 
-                // TODO: 투표 LiveActivity 응답 전송
-                // scheduleClient.updateVoteResponse 구현 후 아래 주석을 해제하세요.
-                // if isLiveActivity {
-                //   let response = status == .accepted ? "accepted" : "declined"
-                //   try? await scheduleClient.updateVoteResponse(scheduleId, currentUserId, response)
-                // }
-                _ = isLiveActivity
               } catch {
                 await send(.internal(.respondFailed(error: AppError(error))))
               }
