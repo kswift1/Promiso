@@ -115,13 +115,18 @@ private struct VoteLockScreenView: View {
 
         Spacer()
 
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-          Text(context.attributes.scheduledTime.amPmText)
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.6))
-          Text(context.attributes.scheduledTime.timeOnlyText)
-            .font(.system(size: 18, weight: .bold, design: .monospaced))
-            .foregroundStyle(.white)
+        VStack(alignment: .trailing, spacing: 2) {
+          Text(context.attributes.scheduledTime.shortDateText)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.5))
+          HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(context.attributes.scheduledTime.amPmText)
+              .font(.system(size: 12, weight: .medium, design: .monospaced))
+              .foregroundStyle(.white.opacity(0.6))
+            Text(context.attributes.scheduledTime.timeOnlyText)
+              .font(.system(size: 18, weight: .bold, design: .monospaced))
+              .foregroundStyle(.white)
+          }
         }
       }
 
@@ -176,40 +181,23 @@ private struct VoteLockScreenView: View {
         minimumParticipants: context.attributes.minimumParticipants
       )
 
-      // 하단: 버튼 또는 완료/마감 메시지
-      Group {
-        if context.state.isFinalized {
-          // 투표 마감
-          Label("투표 마감", systemImage: "lock.fill")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white.opacity(0.6))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-
-        } else if hasResponded {
-          // 이미 응답함 — 참여/불참 완료 텍스트
-          let message = isAccepted ? "참여 완료" : "불참 완료"
-          let icon = isAccepted ? "checkmark.circle.fill" : "xmark.circle.fill"
-          let color: Color = isAccepted ? .green : .red
-
-          Label(message, systemImage: icon)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(color)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-
-        } else {
-          // 미응답 — 참여/불참 버튼
-          VoteActionButtons(
-            channelId: context.attributes.channelId,
-            scheduleId: context.attributes.scheduleId,
-            userId: context.attributes.currentUserId,
-            totalMemberCount: context.attributes.totalMemberCount,
-            state: context.state
-          )
-        }
+      // 하단: 마감 시 텍스트, 아니면 항상 버튼 표시
+      if context.state.isFinalized {
+        Label("투표 마감", systemImage: "lock.fill")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white.opacity(0.6))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 8)
+          .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+      } else {
+        VoteActionButtons(
+          channelId: context.attributes.channelId,
+          scheduleId: context.attributes.scheduleId,
+          userId: context.attributes.currentUserId,
+          totalMemberCount: context.attributes.totalMemberCount,
+          state: context.state,
+          currentResponse: hasResponded ? (isAccepted ? "accepted" : "declined") : nil
+        )
       }
     }
     .padding(.horizontal, 14)
@@ -227,6 +215,8 @@ private struct VoteActionButtons: View {
   let userId: String
   let totalMemberCount: Int
   let state: VoteActivityAttributes.ContentState
+  /// 현재 응답 상태: "accepted", "declined", nil(미응답)
+  let currentResponse: String?
 
   /// ContentState를 JSON 문자열로 직렬화
   private var stateJSON: String {
@@ -253,7 +243,7 @@ private struct VoteActionButtons: View {
           .font(.subheadline.weight(.semibold))
           .frame(maxWidth: .infinity)
       }
-      .tint(.green)
+      .tint(currentResponse == "accepted" ? .green : .gray)
       .buttonStyle(.borderedProminent)
       .buttonBorderShape(.roundedRectangle(radius: 10))
 
@@ -270,7 +260,7 @@ private struct VoteActionButtons: View {
           .font(.subheadline.weight(.semibold))
           .frame(maxWidth: .infinity)
       }
-      .tint(.red)
+      .tint(currentResponse == "declined" ? .red : .gray)
       .buttonStyle(.borderedProminent)
       .buttonBorderShape(.roundedRectangle(radius: 10))
     }
@@ -377,6 +367,14 @@ private extension Date {
 
   var timeOnlyText: String {
     LocalizedDateFormatters.time12Hour.string(from: self)
+  }
+
+  /// "3/24(월)" 형태의 짧은 날짜
+  var shortDateText: String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "M/d(E)"
+    return formatter.string(from: self)
   }
 }
 
