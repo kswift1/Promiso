@@ -1050,6 +1050,9 @@ export async function generateBriefingInternal(params: {
     });
 
     // 6. promptKey 계산 + 캐시 체크
+    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
+    const effectiveLanguage = SUPPORTED_LANGUAGES
+      .includes(language as "ko" | "en") ? language : "ko";
     const weatherMatches = enrichedSchedules.map((s) => s.weatherMatch);
     const promptKey = computePromptKey({
       slots: sortedSlots,
@@ -1115,9 +1118,6 @@ export async function generateBriefingInternal(params: {
     }
 
     // 9. 프롬프트 조립
-    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
-    const effectiveLanguage = SUPPORTED_LANGUAGES
-      .includes(language as "ko" | "en") ? language : "ko";
     const prompt = buildPrompt(
       effectiveLanguage === "ko" ? "한국어" : effectiveLanguage,
       dateTimeStr,
