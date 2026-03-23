@@ -106,9 +106,9 @@ private struct VoteLockScreenView: View {
   var body: some View {
     VStack(spacing: 10) {
       // 1행: 이모지 + 제목 (좌) / 약속 시간 (우)
-      HStack {
+      HStack(alignment: .firstTextBaseline) {
         Text("\(context.attributes.emoji) \(context.attributes.title)")
-          .font(.subheadline.weight(.bold))
+          .font(.system(size: 17, weight: .bold))
           .foregroundStyle(.white)
           .lineLimit(1)
           .minimumScaleFactor(0.7)
@@ -116,8 +116,8 @@ private struct VoteLockScreenView: View {
         Spacer()
 
         Text(context.attributes.scheduledTime.dateTimeText)
-          .font(.system(size: 13, weight: .bold))
-          .foregroundStyle(.white)
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.white.opacity(0.8))
       }
 
       // 2행: 그룹 · 위치
