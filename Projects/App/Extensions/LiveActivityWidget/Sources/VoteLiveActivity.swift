@@ -265,9 +265,10 @@ private struct VoteActionButtons: View {
           .font(.subheadline.weight(.semibold))
           .frame(maxWidth: .infinity)
       }
-      .tint(currentResponse == "accepted" ? .green : .gray)
+      .tint(currentResponse == "accepted" ? Color.pmsuccess.n500 : .gray)
       .buttonStyle(.borderedProminent)
       .buttonBorderShape(.roundedRectangle(radius: 10))
+      .accessibilityLabel("참여 버튼")
 
       // 불참 버튼
       Button(intent: VoteResponseIntent(
@@ -282,9 +283,10 @@ private struct VoteActionButtons: View {
           .font(.subheadline.weight(.semibold))
           .frame(maxWidth: .infinity)
       }
-      .tint(currentResponse == "declined" ? .red : .gray)
+      .tint(currentResponse == "declined" ? Color.pmerror.n500 : .gray)
       .buttonStyle(.borderedProminent)
       .buttonBorderShape(.roundedRectangle(radius: 10))
+      .accessibilityLabel("불참 버튼")
     }
   }
 }
@@ -326,10 +328,10 @@ private struct VoteStatusBar: View {
           // 참여 + 불참 채움
           HStack(spacing: 0) {
             Rectangle()
-              .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
+              .fill(isConfirmed ? Color.pmsuccess.n500 : Color.pmsuccess.n500.opacity(0.7))
               .frame(width: max(0, barWidth * acceptedRatio))
             Rectangle()
-              .fill(Color.red.opacity(0.5))
+              .fill(Color.pmerror.n500.opacity(0.5))
               .frame(width: max(0, barWidth * declinedRatio))
           }
           .clipShape(Capsule())
@@ -360,23 +362,23 @@ private struct VoteStatusBar: View {
       HStack(spacing: 0) {
         // 참여
         HStack(spacing: 2) {
-          Circle().fill(Color.green).frame(width: 6, height: 6)
+          Circle().fill(Color.pmsuccess.n500).frame(width: 6, height: 6)
           Text("참여 \(acceptedCount)")
-            .foregroundStyle(.green)
+            .foregroundStyle(Color.pmsuccess.n500)
           MiniAvatarStack(
             members: state.acceptedMembers,
-            color: .green
+            color: Color.pmsuccess.n500
           )
         }
         Text("·").foregroundStyle(.white.opacity(0.3))
         // 불참
         HStack(spacing: 2) {
-          Circle().fill(Color.red.opacity(0.7)).frame(width: 6, height: 6)
+          Circle().fill(Color.pmerror.n500.opacity(0.7)).frame(width: 6, height: 6)
           Text("불참 \(declinedCount)")
-            .foregroundStyle(.red)
+            .foregroundStyle(Color.pmerror.n500)
           MiniAvatarStack(
             members: state.declinedMembers,
-            color: .red
+            color: Color.pmerror.n500
           )
         }
         Text("·").foregroundStyle(.white.opacity(0.3))
@@ -401,6 +403,8 @@ private struct VoteStatusBar: View {
       }
       .font(.system(size: 11, weight: .medium))
     }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("투표 현황: 참여 \(acceptedCount)명, 불참 \(declinedCount)명, 미응답 \(pendingCount)명")
   }
 }
 

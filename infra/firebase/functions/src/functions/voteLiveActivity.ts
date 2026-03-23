@@ -382,58 +382,71 @@ export const startVoteLiveActivity = onCall(
       isFinalized: false,
     };
 
+    const pushResults = await Promise.allSettled(
+      allTokens.map(({userId: tokenUserId, token}) => {
+        const payload = {
+          aps: {
+            "timestamp": Math.floor(Date.now() / 1000),
+            "event": "start",
+            "dismissal-date": voteDeadline,
+            "input-push-channel": channelId, // iOS 18 채널 구독
+            "attributes-type": "VoteActivityAttributes",
+            "attributes": {
+              scheduleId,
+              currentUserId: tokenUserId,
+              emoji,
+              title,
+              location,
+              scheduledTime: scheduledAtMs / 1000,
+              hostId,
+              hostName,
+              channelId,
+              groupName,
+              totalMemberCount,
+              voteDeadline,
+            },
+            "content-state": initialContentState,
+            "alert": {
+              "title": `${emoji} ${title}`,
+              "body": "참여 여부를 확인해주세요",
+            },
+          },
+        };
+        return sendAPNsPush({
+          deviceToken: token,
+          payload,
+          pushType: "liveactivity",
+          topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+          priority: 10,
+          isProduction,
+        });
+      })
+    );
+
     let successCount = 0;
     let failureCount = 0;
-
-    for (const {userId: tokenUserId, token} of allTokens) {
-      const payload = {
-        aps: {
-          "timestamp": Math.floor(Date.now() / 1000),
-          "event": "start",
-          "dismissal-date": voteDeadline,
-          "input-push-channel": channelId, // iOS 18 채널 구독
-          "attributes-type": "VoteActivityAttributes",
-          "attributes": {
-            scheduleId,
-            currentUserId: tokenUserId,
-            emoji,
-            title,
-            location,
-            scheduledTime: scheduledAtMs / 1000,
-            hostId,
-            hostName,
-            channelId,
-            groupName,
-            totalMemberCount,
-            voteDeadline,
-          },
-          "content-state": initialContentState,
-          "alert": {
-            "title": `${emoji} ${title}`,
-            "body": "참여 여부를 확인해주세요",
-          },
-        },
-      };
-
-      const result = await sendAPNsPush({
-        deviceToken: token,
-        payload,
-        pushType: "liveactivity",
-        topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
-        priority: 10,
-        isProduction,
-      });
-
-      if (result.success) {
+    pushResults.forEach((result, index) => {
+      const tokenUserId = allTokens[index].userId;
+      if (
+        result.status === "fulfilled" &&
+        result.value.success
+      ) {
         successCount++;
-        console.log(`✅ Vote APNs Push to Start success for ${tokenUserId}`);
+        console.log(
+          `✅ Vote APNs Push to Start success for ${tokenUserId}`
+        );
       } else {
         failureCount++;
+        const error =
+          result.status === "rejected" ?
+            result.reason :
+            result.value.error;
         console.log(
-          `❌ Vote APNs Push to Start failed for ${tokenUserId}: ${result.error}`
+          "❌ Vote APNs Push to Start failed for " +
+            tokenUserId + ": " + error
         );
       }
-    }
+    });
 
     console.log(
       "📤 Vote LiveActivity started: " +

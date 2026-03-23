@@ -189,7 +189,7 @@ private struct PhotoUploadSection: View {
     VStack(spacing: 12) {
       Text(LocalizedStrings.CreateGroup.groupPhoto)
         .font(.system(size: 16, weight: .semibold))
-        .foregroundColor(.primary)
+        .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, alignment: .leading)
       
       PhotosPickerButton(
@@ -221,10 +221,10 @@ private struct PhotosPickerButton: View {
               VStack(spacing: 8) {
                 Image(systemName: "camera.fill")
                   .font(.system(size: 28))
-                  .foregroundColor(.secondary)
+                  .foregroundStyle(.secondary)
                 Text(LocalizedStrings.CreateGroup.addPhoto)
                   .font(.system(size: 13))
-                  .foregroundColor(.secondary)
+                  .foregroundStyle(.secondary)
               }
             }
         }
@@ -246,13 +246,13 @@ private struct GroupNameSection: View {
       HStack {
         Text(LocalizedStrings.CreateGroup.groupName)
           .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
 
         Spacer()
 
         Text("\(characterCount)/\(maxLength)")
           .font(.system(size: 13))
-          .foregroundColor(characterCount >= 2 ? .secondary : .red)
+          .foregroundStyle(characterCount >= 2 ? .secondary : .red)
       }
 
       TextField(LocalizedStrings.CreateGroup.groupNamePlaceholder, text: $groupName)
@@ -270,12 +270,12 @@ private struct GroupNameSection: View {
         if characterCount > 0 && characterCount < 2 {
           Text(LocalizedStrings.CreateGroup.groupNameMinLength)
             .font(.system(size: 12))
-            .foregroundColor(.red)
+            .foregroundStyle(.red)
         }
 
         Label(LocalizedStrings.CreateGroup.groupNameCannotChange, systemImage: "info.circle")
           .font(.system(size: 12))
-          .foregroundColor(.secondary)
+          .foregroundStyle(.secondary)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -295,13 +295,13 @@ private struct GroupDescriptionSection: View {
       HStack {
         Text(LocalizedStrings.CreateGroup.groupDescription)
           .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
 
         Spacer()
 
         Text("\(characterCount)/\(maxLength)")
           .font(.system(size: 13))
-          .foregroundColor(.secondary)
+          .foregroundStyle(.secondary)
       }
 
       TextField(LocalizedStrings.CreateGroup.groupDescriptionPlaceholder, text: $groupDescription, axis: .vertical)
@@ -328,7 +328,7 @@ private struct MaxMembersSection: View {
     HStack {
       Text(LocalizedStrings.CreateGroup.maxMembers)
         .font(.system(size: 16, weight: .semibold))
-        .foregroundColor(.primary)
+        .foregroundStyle(.primary)
       
       Spacer()
       
@@ -369,7 +369,7 @@ private struct BottomButton: View {
       
       Text(LocalizedStrings.CreateGroup.adminHint)
         .font(.system(size: 12))
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
     }
     .padding(.horizontal, 20)
     .padding(.vertical, 16)

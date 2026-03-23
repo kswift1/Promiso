@@ -152,9 +152,9 @@ private extension DeeplinkURLParser {
 
   /// promiso://vote/{scheduleId}
   static func parseVoteSchedule(from url: URL) -> DeeplinkDestination? {
-    // vote/{scheduleId} 형태
-    let pathComponents = url.pathComponents.filter { $0 != "/" }
-    guard let scheduleId = pathComponents.first else { return nil }
+    guard let scheduleId = url.pathComponents.dropFirst().first else {
+      return nil
+    }
     return .vote(scheduleId: scheduleId)
   }
 

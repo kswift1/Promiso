@@ -443,7 +443,7 @@ extension ScheduleDetail {
               Button(role: .destructive) {
                 store.send(.view(.closeVoteTapped))
               } label: {
-                Label("투표 마감", systemImage: "stop.circle")
+                Label(LocalizedStrings.Shared.voteDeadline, systemImage: "stop.circle")
               }
             }
 

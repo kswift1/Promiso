@@ -44,6 +44,15 @@ public struct FeatureGuideView: View {
   }
 
   public var body: some View {
+    if items.isEmpty {
+      Color.clear
+    } else {
+      mainContent
+    }
+  }
+
+  @ViewBuilder
+  private var mainContent: some View {
     ZStack(alignment: .bottom) {
       screenshotSection
         .compositingGroup()
@@ -225,7 +234,7 @@ public struct FeatureGuideView: View {
         Image(systemName: "xmark")
           .font(.body.weight(.medium))
           .foregroundStyle(.white.opacity(0.7))
-          .frame(width: 36, height: 36)
+          .frame(width: 44, height: 44)
           .background(Color.white.opacity(0.15), in: Circle())
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)

@@ -575,8 +575,8 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   /// 투표 마감 요청 (호스트 전용)
   /// Firebase Functions의 finalizeVote를 호출하여 투표를 마감하고 일정을 확정합니다
   public func finalizeVote(scheduleId: String) async throws {
-    let function = functions.httpsCallable(FirebaseFunctionNames.finalizeVote)
-    _ = try await function.call(["scheduleId": scheduleId])
+    let callableData: [String: Any] = ["scheduleId": scheduleId]
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.finalizeVote).call(callableData)
   }
 
   /// ETA 업데이트 요청

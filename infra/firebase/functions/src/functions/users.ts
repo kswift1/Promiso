@@ -689,16 +689,9 @@ export const deleteUser = onCall<DeleteUserRequest>(
         );
       }
 
-      // 8-2. liveActivities 삭제 (userId 기준 쿼리)
-      try {
-        await deleteCollectionByUserId(
-          "liveActivities", userId,
-        );
-      } catch (error) {
-        console.error(
-          `❌ Failed to delete liveActivities: ${error}`,
-        );
-      }
+      // liveActivities: promiseId 기반이며 userId 필드 없음.
+      // 약속 삭제 시(deletePromise) 개별 정리되므로
+      // 회원 탈퇴 시 별도 삭제 불필요.
 
       // 8-3. entitlements/{userId} 삭제
       try {
