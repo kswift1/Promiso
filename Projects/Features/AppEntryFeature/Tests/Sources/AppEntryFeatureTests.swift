@@ -152,7 +152,9 @@ struct AppEntryFeatureTests {
     } withDependencies: {
       $0.authClient.currentUser = { firebaseUser }
       $0.userProfileClient.getPrivateProfile = { _ in user }
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -295,7 +297,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -321,7 +325,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -407,7 +413,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -445,7 +453,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -470,7 +480,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -569,7 +581,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -596,6 +610,7 @@ struct AppEntryFeatureTests {
       $0.authClient.logout = { }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
     }
 
@@ -617,6 +632,7 @@ struct AppEntryFeatureTests {
       $0.authClient.logout = { throw LogoutError.failed }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
     }
 
