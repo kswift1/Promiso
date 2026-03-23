@@ -8,10 +8,10 @@ import PromisoShared
 @DependencyClient
 public struct VoteLiveActivityClient: Sendable {
   /// 라이브액티비티 지원 여부
-  public var isSupported: @Sendable () -> Bool
+  public var isSupported: @Sendable () -> Bool = { false }
 
   /// 현재 활성화된 투표 Activity가 있는지
-  public var hasActiveActivity: @Sendable () -> Bool
+  public var hasActiveActivity: @Sendable () -> Bool = { false }
 
   /// 현재 활성화된 일정 ID
   public var activeScheduleId: @Sendable () -> String?
@@ -48,11 +48,11 @@ public struct VoteLiveActivityClient: Sendable {
 
   /// Push to Start 토큰 업데이트 스트림 구독
   /// 토큰이 변경될 때마다 백엔드에 재등록 필요
-  public var observePushToStartTokenUpdates: @Sendable () -> AsyncStream<String>
+  public var observePushToStartTokenUpdates: @Sendable () -> AsyncStream<String> = { AsyncStream { $0.finish() } }
 
   /// 라이브액티비티 시작/종료 감지 스트림
   /// Push-to-Start로 시작된 Activity도 감지 가능
-  public var observeActivityUpdates: @Sendable () -> AsyncStream<VoteActivityUpdate>
+  public var observeActivityUpdates: @Sendable () -> AsyncStream<VoteActivityUpdate> = { AsyncStream { $0.finish() } }
 }
 
 // MARK: - Vote Activity Update
