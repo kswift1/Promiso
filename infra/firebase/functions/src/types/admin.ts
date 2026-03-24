@@ -61,6 +61,7 @@ export interface GetAdminUserSummaryRequest {
   subscription?: AdminSubscriptionFilter;
   override?: AdminOverrideFilter;
   limit?: number;
+  startAfter?: string;
 }
 
 export interface AdminUserSummary {
@@ -70,6 +71,7 @@ export interface AdminUserSummary {
   email: string | null;
   groupCount: number;
   deviceCount: number;
+  personalEventCount: number;
   subscriptionStatus: string | null;
   overrideActive: boolean;
 }
@@ -77,6 +79,7 @@ export interface AdminUserSummary {
 export interface GetAdminUserSummaryResponse {
   success: true;
   results: AdminUserSummary[];
+  hasMore: boolean;
 }
 
 export interface AdminSubscriptionSnapshot {
@@ -455,10 +458,24 @@ export interface AdminProPlanPrices {
   lifetime: number;
 }
 
+export interface AdminOfferCodeRedemption {
+  userId: string;
+  offerIdentifier: string;
+  redeemedAt: string;
+  productId: string | null;
+}
+
+export interface AdminOfferCodeSummary {
+  totalRedemptions: number;
+  recentRedemptions: AdminOfferCodeRedemption[];
+}
+
 export interface AdminProPlanDashboard {
   overview: {
     totalUsers: number;
     proUsers: number;
+    proSubscriptionUsers: number;
+    proOverrideUsers: number;
     freeUsers: number;
     proRate: number;
   };
@@ -467,6 +484,7 @@ export interface AdminProPlanDashboard {
   prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
+  offerCodes: AdminOfferCodeSummary;
 }
 
 export interface GetAdminProPlanDashboardResponse {

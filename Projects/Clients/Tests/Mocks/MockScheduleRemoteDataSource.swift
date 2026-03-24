@@ -42,6 +42,8 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   private(set) var getHomeSchedulesCallCount = 0
   private(set) var getConfirmedSchedulesForCalendarCallCount = 0
   private(set) var startLiveActivityCallCount = 0
+  private(set) var startVoteLiveActivityCallCount = 0
+  private(set) var finalizeVoteCallCount = 0
   private(set) var updateETACallCount = 0
 
   // MARK: - Captured Arguments
@@ -70,6 +72,8 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   var getHomeSchedulesHandler: (([String], Int) async throws -> [ScheduleModel])?
   var getConfirmedSchedulesForCalendarHandler: (() async throws -> [CalendarSyncSchedule])?
   var startLiveActivityHandler: ((String) async throws -> Void)?
+  var startVoteLiveActivityHandler: ((String) async throws -> Void)?
+  var finalizeVoteHandler: ((String) async throws -> Void)?
   var updateETAHandler: ((String, [ParticipantState], Int) async throws -> Void)?
 
   // MARK: - Reset
@@ -92,6 +96,8 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     getHomeSchedulesCallCount = 0
     getConfirmedSchedulesForCalendarCallCount = 0
     startLiveActivityCallCount = 0
+    startVoteLiveActivityCallCount = 0
+    finalizeVoteCallCount = 0
     updateETACallCount = 0
 
     createScheduleArguments = []
@@ -247,6 +253,20 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   func startLiveActivity(scheduleId: String) async throws {
     startLiveActivityCallCount += 1
     if let handler = startLiveActivityHandler {
+      try await handler(scheduleId)
+    }
+  }
+
+  func startVoteLiveActivity(scheduleId: String) async throws {
+    startVoteLiveActivityCallCount += 1
+    if let handler = startVoteLiveActivityHandler {
+      try await handler(scheduleId)
+    }
+  }
+
+  func finalizeVote(scheduleId: String) async throws {
+    finalizeVoteCallCount += 1
+    if let handler = finalizeVoteHandler {
       try await handler(scheduleId)
     }
   }

@@ -36,7 +36,7 @@
 | U12 | 프로필 이미지 URL 우선순위 | thumbUrl > url (썸네일 우선) | ✅ | — |
 | U13 | 이미 존재하는 사용자 생성 거부 | `already-exists` 에러 | — | ✅ |
 
-### 회원 탈퇴 Cascade (7단계)
+### 회원 탈퇴 Cascade (10단계)
 
 | 단계 | 동작 | 실패 시 |
 |:----:|------|---------|
@@ -45,10 +45,14 @@
 | 3 | 모든 그룹의 memberIds에서 제거 | — |
 | 4 | 모든 약속의 votes(accepted/declined)에서 제거 | — |
 | 5 | Storage 프로필 이미지 + 썸네일 삭제 | 실패 무시 |
-| 6 | Firestore 서브컬렉션(auth, settings, cache) 삭제 | — |
-| 7 | Firebase Auth 계정 삭제 | — |
+| 6 | 루트 컬렉션 정리: notifications, liveActivities (userId 쿼리 배치 삭제) | 실패 무시 |
+| 7 | 루트 문서 정리: entitlements/{userId}, briefingSubscriptions/{userId} 삭제 | 실패 무시 |
+| 8 | Firestore 서브컬렉션(auth, settings, cache, personalEvents, recurringEvents) 삭제 | — |
+| 9 | Firestore users/{userId} 메인 문서 삭제 | — |
+| 10 | Firebase Auth 계정 삭제 | — |
 
 **보안**: 프로필 이미지 삭제 시 `profile_images/{userId}/` prefix 검증 (임의 파일 삭제 방지)
+**보류**: subscriptions/{userId}, subscriptionOwners는 결제 이력 보존을 위해 삭제하지 않음
 
 ---
 

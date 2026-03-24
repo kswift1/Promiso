@@ -54,6 +54,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.onAppear))
@@ -95,6 +96,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.view(.scenePhaseChanged(.active)))
@@ -150,7 +152,9 @@ struct AppEntryFeatureTests {
     } withDependencies: {
       $0.authClient.currentUser = { firebaseUser }
       $0.userProfileClient.getPrivateProfile = { _ in user }
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -199,6 +203,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.internal(.versionCheckCompleted(.upToDate))) {
@@ -221,6 +226,7 @@ struct AppEntryFeatureTests {
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.updateAlert(.laterTapped)) {
@@ -291,7 +297,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -317,7 +325,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -369,10 +379,11 @@ struct AppEntryFeatureTests {
       $0.notificationClient.getAuthorizationStatus = { .denied }
     }
 
-    await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) 
+    await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
+      $0.pendingUserForMain = user
+    }
     await store.receive(\.internal.checkNotificationPermission)
     await store.receive(\.internal.notificationPermissionChecked) {
-      $0.pendingUserForMain = user
       $0.notificationPermission = NotificationPermission.Feature.State()
     }
   }
@@ -403,7 +414,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -441,7 +454,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -466,7 +481,9 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
+      $0.clarityClient.setUser = { _ in }
+      $0.crashlyticsClient.setUser = { _ in }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
@@ -489,6 +506,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.userDefaultsClient.boolForKey = { _ in false }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.internal(.sessionCheckResponse(isAuthenticated: false))) {
@@ -507,6 +525,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.userDefaultsClient.setBool = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
 
     await store.send(.destination(.presented(.onboardingIntro(.delegate(.introCompleted))))) {
@@ -532,10 +551,10 @@ struct AppEntryFeatureTests {
     }
   }
 
-  // MARK: - Profile + OnboardingStart 플로우
+  // MARK: - Profile + 풀 온보딩 플로우
 
-  @Test("profile.completed + isFullOnboarding=true → onboardingStart 표시")
-  func profileCompleted_fullOnboarding_showsOnboardingStart() async {
+  @Test("profile.completed + isFullOnboarding=true → 알림 권한 확인으로 진행")
+  func profileCompleted_fullOnboarding_checksNotificationPermission() async {
     let user = makeUser(id: "full-onboarding-user", nickname: "풀온보딩")
     var state = AppEntry.Feature.State()
     state.destination = .profile(AppEntry.ProfileSetup.State())
@@ -545,36 +564,16 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.notificationClient.getAuthorizationStatus = { .denied }
     }
 
     await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
       $0.pendingUserForMain = user
-      $0.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "풀온보딩"))
     }
-  }
-
-  @Test("onboardingStart.delegate.completed → pendingUser로 메인 전환")
-  func onboardingStartCompleted_transitionsToMain() async {
-    let user = makeUser(id: "start-completed", nickname: "시작완료")
-    var state = AppEntry.Feature.State()
-    state.pendingUserForMain = user
-    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "시작완료"))
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.clarityClient.setUser = { _, _ in }
-      $0.analyticsClient.setUserID = { _ in }
-      $0.analyticsClient.setUserProperty = { _, _ in }
-      $0.analyticsClient.logEvent = { _, _ in }
+    await store.receive(\.internal.checkNotificationPermission)
+    await store.receive(\.internal.notificationPermissionChecked) {
+      $0.notificationPermission = NotificationPermission.Feature.State()
     }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.destination(.presented(.onboardingStart(.delegate(.completed))))) {
-      $0.pendingUserForMain = nil
-    }
-    await store.receive(\.internal.transitionToMain)
-    #expect(store.state.destinationType == .main)
   }
 
   // MARK: - Logout 테스트
@@ -590,6 +589,7 @@ struct AppEntryFeatureTests {
       $0.authClient.logout = { }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
     }
 
@@ -611,6 +611,7 @@ struct AppEntryFeatureTests {
       $0.authClient.logout = { throw LogoutError.failed }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
+      $0.crashlyticsClient.clearUser = { }
       $0.analyticsClient.setUserID = { _ in }
     }
 

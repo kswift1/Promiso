@@ -15,7 +15,6 @@ extension PersonalMode {
     case all = "all"
     case today = "today"
     case future = "future"
-    case recurring = "recurring"
     case past = "past"
 
     public var title: String {
@@ -24,7 +23,6 @@ extension PersonalMode {
       case .future: return LocalizedStrings.Personal.filterFuture
       case .all: return LocalizedStrings.Personal.filterAll
       case .past: return LocalizedStrings.Personal.filterPast
-      case .recurring: return LocalizedStrings.Personal.filterRecurring
       }
     }
 
@@ -34,7 +32,6 @@ extension PersonalMode {
       case .future: return "clock.fill"
       case .all: return "calendar"
       case .past: return "clock.arrow.circlepath"
-      case .recurring: return "repeat"
       }
     }
 
@@ -44,12 +41,11 @@ extension PersonalMode {
       case .future: return .blue
       case .all: return .pmindigo.n500
       case .past: return Color(UIColor.systemGray)
-      case .recurring: return .teal
       }
     }
 
     public var hasSeparatorBefore: Bool {
-      self == .past || self == .recurring
+      self == .past
     }
   }
 }
@@ -128,9 +124,6 @@ extension PersonalMode {
         case .past:
           guard let events = pastEventsState.value else { return [] }
           return events.sorted { $0.startAt > $1.startAt }
-        case .recurring:
-          // 반복 일정은 별도 뷰에서 처리
-          return []
         }
       }
 
@@ -190,10 +183,6 @@ extension PersonalMode {
           .future: futureCount,
           .all: events.count
         ]
-        // 반복 일정 카운트 (로드된 경우에만)
-        if let recurringEvents = recurringEventsState.value {
-          counts[.recurring] = recurringEvents.count
-        }
         return counts
       }
     }
@@ -289,9 +278,6 @@ extension PersonalMode {
             state.selectedFilter = filter
             if filter == .past && !state.pastEventsState.isLoaded {
               return .send(.internal(.fetchPastEvents))
-            }
-            if filter == .recurring && state.recurringEventsState == .idle {
-              return .send(.internal(.fetchRecurringEvents))
             }
             return .none
 

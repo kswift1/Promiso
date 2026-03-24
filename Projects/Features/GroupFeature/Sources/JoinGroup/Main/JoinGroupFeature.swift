@@ -381,6 +381,7 @@ extension JoinGroup {
                 groupName: group.name
               )
             )
+            analyticsClient.updateActivationStatus(.groupJoined)
             return .send(.delegate(.groupJoined(group)))
 
           case .notificationAuthStatusChecked(let status):

@@ -20,6 +20,7 @@ export type AdminUserSummary = {
   email: string | null;
   groupCount: number;
   deviceCount: number;
+  personalEventCount: number;
   subscriptionStatus: string | null;
   overrideActive: boolean;
 };
@@ -51,6 +52,7 @@ type GetAdminUserSummaryRequest = {
   subscription?: AdminSubscriptionFilter;
   override?: AdminOverrideFilter;
   limit?: number;
+  startAfter?: string;
 };
 
 type GetAdminUsersResponse = {
@@ -83,6 +85,7 @@ type UpdateAdminUserResponse = {
 type GetAdminUserSummaryResponse = {
   success: true;
   results: AdminUserSummary[];
+  hasMore: boolean;
 };
 
 type GetAdminUserTimelineRequest = {
@@ -362,7 +365,8 @@ export async function getAdminUserSummary(params: {
   subscription?: AdminSubscriptionFilter;
   override?: AdminOverrideFilter;
   limit?: number;
-}): Promise<AdminUserSummary[]> {
+  startAfter?: string;
+}): Promise<{ results: AdminUserSummary[]; hasMore: boolean }> {
   if (!firebaseFunctions) {
     throw new Error("Firebase Functions is not configured");
   }
@@ -372,7 +376,7 @@ export async function getAdminUserSummary(params: {
     GetAdminUserSummaryResponse
   >(firebaseFunctions, "getAdminUserSummary");
   const result = await callable(params);
-  return result.data.results;
+  return { results: result.data.results, hasMore: result.data.hasMore };
 }
 
 export async function getAdminUsers(): Promise<AdminAccount[]> {
@@ -742,10 +746,24 @@ export type AdminProPlanPrices = {
   lifetime: number;
 };
 
+export type AdminOfferCodeRedemption = {
+  userId: string;
+  offerIdentifier: string;
+  redeemedAt: string;
+  productId: string | null;
+};
+
+export type AdminOfferCodeSummary = {
+  totalRedemptions: number;
+  recentRedemptions: AdminOfferCodeRedemption[];
+};
+
 export type AdminProPlanDashboard = {
   overview: {
     totalUsers: number;
     proUsers: number;
+    proSubscriptionUsers: number;
+    proOverrideUsers: number;
     freeUsers: number;
     proRate: number;
   };
@@ -754,6 +772,7 @@ export type AdminProPlanDashboard = {
   prices: AdminProPlanPrices;
   coupons: AdminProPlanCouponSummary;
   recentActivities: AdminProPlanActivity[];
+  offerCodes: AdminOfferCodeSummary;
 };
 
 type GetAdminProPlanDashboardResponse = {

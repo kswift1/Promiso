@@ -14,6 +14,7 @@ extension CreateRecurringPersonalEvent {
   public struct Feature {
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
     @Dependency(\.localNotificationClient) var localNotificationClient
+    @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
@@ -45,6 +46,10 @@ extension CreateRecurringPersonalEvent {
       var useSeriesEndDate: Bool = false
       var errorMessage: String?
 
+      /// 알림 권한 미허용 시 보류할 분 값
+      var pendingReminderMinutes: Int?
+
+      @Presents var notificationPermission: NotificationPermission.Feature.State?
       @Presents var locationPicker: LocationPicker.Feature.State?
 
       var selectedFrequency: RecurrenceRule.Frequency = .weekly
@@ -76,6 +81,7 @@ extension CreateRecurringPersonalEvent {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
       case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
     }
 
@@ -108,6 +114,7 @@ extension CreateRecurringPersonalEvent {
       case emojiGenerationFailed
       case saveSuccess(RecurringPersonalEventModel)
       case saveFailed(String)
+      case notificationStatusChecked(NotificationAuthorizationStatus)
     }
 
     @CasePathable
@@ -230,8 +237,17 @@ extension CreateRecurringPersonalEvent {
             return .none
 
           case .reminderOptionSelected(let minutes):
-            state.event.reminderMinutesBefore = minutes
-            return .run { _ in await hapticFeedback.selection() }
+            if let minutes {
+              state.pendingReminderMinutes = minutes
+              return .run { [notificationClient] send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationStatusChecked(status)))
+              }
+            } else {
+              state.event.reminderMinutesBefore = nil
+              state.pendingReminderMinutes = nil
+              return .run { _ in await hapticFeedback.selection() }
+            }
 
           case .descriptionChanged(let text):
             let trimmed = String(text.prefix(500))
@@ -322,7 +338,44 @@ extension CreateRecurringPersonalEvent {
             state.isSaving = false
             state.errorMessage = message
             return .run { _ in await hapticFeedback.error() }
+
+          case .notificationStatusChecked(let status):
+            switch status {
+            case .authorized, .provisional, .ephemeral:
+              state.event.reminderMinutesBefore = state.pendingReminderMinutes
+              state.pendingReminderMinutes = nil
+              return .run { _ in await hapticFeedback.selection() }
+            case .notDetermined, .denied:
+              state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
+              return .none
+            }
           }
+
+        // MARK: - NotificationPermission
+
+        case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
+          if isGranted {
+            state.event.reminderMinutesBefore = state.pendingReminderMinutes
+          }
+          state.pendingReminderMinutes = nil
+          return .none
+
+        case .notificationPermission(.presented(.delegate(.dismissed))):
+          state.notificationPermission = nil
+          guard state.pendingReminderMinutes != nil else { return .none }
+          return .run { [notificationClient] send in
+            let status = await notificationClient.getAuthorizationStatus()
+            if status.isGranted {
+              await send(.internal(.notificationStatusChecked(status)))
+            }
+          }
+
+        case .notificationPermission(.dismiss):
+          state.pendingReminderMinutes = nil
+          return .none
+
+        case .notificationPermission:
+          return .none
 
         // MARK: - LocationPicker
 
@@ -343,6 +396,9 @@ extension CreateRecurringPersonalEvent {
         case .delegate:
           return .none
         }
+      }
+      .ifLet(\.$notificationPermission, action: \.notificationPermission) {
+        NotificationPermission.Feature()
       }
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()

@@ -551,7 +551,12 @@ final class SubscriptionRemoteDataSource: Sendable {
     let entitlementSource: ProEntitlementInfo.Source
     switch sourceStr {
     case "subscription":
-      entitlementSource = .subscription
+      let lastOfferType = data["lastOfferType"] as? Int
+      if lastOfferType == 3 {
+        entitlementSource = .offerCode
+      } else {
+        entitlementSource = .subscription
+      }
     case "override":
       entitlementSource = overrideType == "coupon_redeem" ? .coupon : .admin
     default:

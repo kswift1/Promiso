@@ -146,7 +146,7 @@ Firestore Root
 | `platform` | String | ✅ | 플랫폼 (`ios` \| `android`) |
 | `lastActiveAt` | Timestamp | ✅ | 마지막 활성 시각 |
 | `createdAt` | Timestamp | ✅ | 토큰 등록 시각 |
-| `liveActivityPushToStartToken` | String | ❌ | LiveActivity Push to Start 토큰 (iOS 17.2+) |
+| `pushToStartToken` | String | ❌ | Push to Start 토큰 (iOS 17.2+, 앱 단위 통합) |
 | `liveActivityPushToken` | String | ❌ | LiveActivity Push 토큰 (개별 Activity용) |
 
 > 💡 **Key**: 디바이스 고유 ID (UUID, 앱 설치 시 생성)
@@ -1180,6 +1180,8 @@ subscriptions/{userId}
 | `latestAppStoreSignedDate` | Number \| null | ❌ | 마지막으로 반영한 App Store `signedDate` (millisecond timestamp, stale replay 차단용) |
 | `latestTransactionId` | String \| null | ❌ | 마지막으로 반영한 App Store transaction ID |
 | `lastNotificationType` | String \| null | ❌ | 마지막으로 반영한 App Store Server Notification 타입 |
+| `lastOfferType` | Number \| null | ❌ | Apple Offer Type (1=introductory, 2=promotional, 3=offer-code) |
+| `lastOfferIdentifier` | String \| null | ❌ | ASC에서 설정한 Offer Code 레퍼런스명 |
 | `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
 
 #### 📝 예시 데이터
@@ -1269,6 +1271,8 @@ subscriptionOwners/{originalTransactionId}
 | `subscriptionStatus` | String \| null | ✅ | `subscriptions`에서 온 raw 상태 |
 | `overrideActive` | Boolean | ✅ | `entitlementOverrides` 활성 여부 |
 | `overrideExpiresAt` | String \| null | ✅ | override 만료 시점 (ISO 8601) |
+| `lastOfferType` | Number \| null | ❌ | Apple Offer Type (subscriptions에서 패스스루) |
+| `lastOfferIdentifier` | String \| null | ❌ | Offer Code 레퍼런스명 (subscriptions에서 패스스루) |
 | `updatedAt` | Timestamp | ✅ | 마지막 갱신 시각 |
 
 #### 갱신 트리거

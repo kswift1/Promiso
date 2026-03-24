@@ -399,6 +399,7 @@ function computePromptKey(params: {
   style: string;
   availableTransports: string[];
   weatherMatches: (string | null)[];
+  language: string;
 }): string {
   const sortedSlots = [...params.slots]
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -415,6 +416,7 @@ function computePromptKey(params: {
     style: params.style,
     transport: [...params.availableTransports].sort(),
     weather: params.weatherMatches,
+    language: params.language,
   });
 
   return createHash("sha256").update(raw).digest("hex").substring(0, 16);
@@ -620,6 +622,7 @@ function buildPrompt(
   lines.push("- JSON으로만 응답: {\"summary\":\"...\", \"detail\":\"...\"}");
   lines.push("- summary: 행동 추천 한 줄 (30자 이내). 예: '우산 챙기세요, 약속 2개', '마스크 필수! 미세먼지 나쁨', '여유있게 출발하세요'");
   lines.push(`- detail: 3~5문장, 친근한 ${language} 말투, 문장 사이에 줄바꿈(\\n) 삽입`);
+  lines.push(`- 반드시 ${language}로만 작성. 다른 언어(영어, 러시아어, 일본어 등) 단어를 절대 섞지 마세요.`);
   lines.push("- 인사말(안녕하세요, 좋은 아침 등) 절대 금지. 바로 본론부터 시작");
   lines.push("- JSON 외 다른 텍스트는 절대 포함하지 마세요.");
   lines.push("");
@@ -1047,12 +1050,16 @@ export async function generateBriefingInternal(params: {
     });
 
     // 6. promptKey 계산 + 캐시 체크
+    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
+    const effectiveLanguage = SUPPORTED_LANGUAGES
+      .includes(language as "ko" | "en") ? language : "ko";
     const weatherMatches = enrichedSchedules.map((s) => s.weatherMatch);
     const promptKey = computePromptKey({
       slots: sortedSlots,
       style: effectiveStyle,
       availableTransports,
       weatherMatches,
+      language: effectiveLanguage,
     });
 
     let isUpdated = false;
@@ -1111,9 +1118,6 @@ export async function generateBriefingInternal(params: {
     }
 
     // 9. 프롬프트 조립
-    const SUPPORTED_LANGUAGES = ["ko", "en"] as const;
-    const effectiveLanguage = SUPPORTED_LANGUAGES
-      .includes(language as "ko" | "en") ? language : "ko";
     const prompt = buildPrompt(
       effectiveLanguage === "ko" ? "한국어" : effectiveLanguage,
       dateTimeStr,

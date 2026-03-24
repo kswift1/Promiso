@@ -491,6 +491,7 @@ struct ScheduleDetailFeatureTests {
       ScheduleDetail.Feature()
     } withDependencies: {
       $0.groupClient.fetchGroupMembers = { _ in [] }
+      $0.voteLiveActivityClient.observeStateUpdates = { _ in nil }
     }
     store.exhaustivity = .off
 

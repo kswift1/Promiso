@@ -93,11 +93,12 @@ export const registerPushToStartToken = onCall<
 
     try {
       await usersCollection.doc(userId).update({
-        [`devices.${deviceId}.liveActivityPushToStartToken`]: token,
+        [`devices.${deviceId}.pushToStartToken`]: token,
       });
 
       console.log(
-        `✅ Push to Start 토큰 등록: userId=${userId}, deviceId=${deviceId}`,
+        `✅ Push to Start 토큰 등록: userId=${userId}, ` +
+          `deviceId=${deviceId}`,
       );
       return {success: true};
     } catch (error) {
@@ -218,10 +219,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
-              if (device.liveActivityPushToStartToken) {
+              if (device.pushToStartToken) {
                 allTokens.push({
                   userId: uid,
-                  token: device.liveActivityPushToStartToken,
+                  token: device.pushToStartToken,
                 });
               }
             }
@@ -257,10 +258,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "start",
-        "attributes-type": "PromiseActivityAttributes",
+        "attributes-type": "ScheduleActivityAttributes",
         "attributes": {
           trackingDurationMinutes,
-          promiseId,
+          scheduleId: promiseId,
           currentUserId: firstToken.userId,
           emoji,
           title,
@@ -287,10 +288,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
-          "attributes-type": "PromiseActivityAttributes",
+          "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
-            promiseId,
+            scheduleId: promiseId,
             currentUserId: tokenUserId,
             emoji,
             title,
@@ -863,10 +864,10 @@ export const executeLiveActivityStart = onTaskDispatched<
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
-              if (device.liveActivityPushToStartToken) {
+              if (device.pushToStartToken) {
                 allTokens.push({
                   userId: uid,
-                  token: device.liveActivityPushToStartToken,
+                  token: device.pushToStartToken,
                 });
               }
             }
@@ -923,10 +924,10 @@ export const executeLiveActivityStart = onTaskDispatched<
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
           "input-push-channel": channelId || "", // iOS 18 채널 구독
-          "attributes-type": "PromiseActivityAttributes",
+          "attributes-type": "ScheduleActivityAttributes",
           "attributes": {
             trackingDurationMinutes,
-            promiseId,
+            scheduleId: promiseId,
             currentUserId: tokenUserId,
             emoji,
             title,

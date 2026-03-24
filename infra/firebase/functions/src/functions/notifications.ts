@@ -586,8 +586,19 @@ export const onPromiseCreated = onDocumentCreated(
     const groupId = promiseData.groupId as string;
     const hostId = promiseData.hostId as string;
     const title = promiseData.title as string;
+    const notificationMethod =
+      (promiseData.notificationMethod as string) || "pushNotification";
 
-    console.log(`📅 Promise created: ${promiseId} in group ${groupId}`);
+    console.log(
+      `📅 Promise created: ${promiseId} ` +
+      `(notification: ${notificationMethod})`
+    );
+
+    // 없음 선택 시 알림 건너뛰기
+    if (notificationMethod === "none") {
+      console.log("No notification selected, skip");
+      return;
+    }
 
     // 그룹 멤버 조회
     const db = admin.firestore();
@@ -616,11 +627,19 @@ export const onPromiseCreated = onDocumentCreated(
     const hostName = hostDoc.data()?.nickname as string || "누군가";
 
     // 푸시 알림 전송
+    const isLiveActivity =
+      notificationMethod === "liveActivity";
+    const body = isLiveActivity ?
+      `${hostName}님이 ${title}을 제안했어요` +
+        " — 잠금화면에서 바로 응답할 수 있어요" :
+      `${hostName}님이 ${title}을 제안했어요.` +
+        " 확인해주세요!";
+
     await sendPushNotificationInternal({
       userIds: recipientIds,
       type: NotificationType.PromiseInvitation,
       title: "새 약속 도착 📩",
-      body: `${hostName}님이 ${title}을 제안했어요. 확인해주세요!`,
+      body,
       promiseId,
       groupId,
       relatedUserId: hostId,

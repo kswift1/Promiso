@@ -30,6 +30,7 @@ extension AppEntry {
     @Dependency(\.openURL) var openURL
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.clarityClient) var clarityClient
+    @Dependency(\.crashlyticsClient) var crashlyticsClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
 
@@ -136,7 +137,6 @@ extension AppEntry {
       case onboardingIntro(AppEntry.OnboardingIntro)
       case auth(AuthFeature.Auth.Feature)
       case profile(ProfileSetup)
-      case onboardingStart(AppEntry.OnboardingStart)
       case main(RootTab.Feature)
     }
 
@@ -156,6 +156,10 @@ extension AppEntry {
 
           case .handleDeeplink(let url):
             guard let destination = deeplinkClient.parseURL(url) else { return .none }
+            if case .joinGroup(let inviteCode) = destination {
+              let source = url.scheme?.hasPrefix("kakao") == true ? "kakao" : "deeplink"
+              analyticsClient.log(.inviteLinkOpened(inviteCode: inviteCode, source: source))
+            }
             return routeOrPendDeeplink(destination, state: &state)
 
           case .scenePhaseChanged(let phase):
@@ -219,6 +223,7 @@ extension AppEntry {
             } else {
               state.isFullOnboarding = true
               state.destination = .onboardingIntro(OnboardingIntro.State())
+              analyticsClient.log(.onboardingStepViewed(step: "intro"))
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -244,6 +249,9 @@ extension AppEntry {
               var profileState = ProfileSetup.State()
               profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
               state.destination = .profile(profileState)
+              if state.isFullOnboarding {
+                analyticsClient.log(.onboardingStepViewed(step: "profile"))
+              }
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -319,7 +327,24 @@ extension AppEntry {
 
           case .transitionToMain(let userModel, let isSignup):
             WidgetDataManager.saveUserId(userModel.id)
-            clarityClient.setUser(userModel.id, userModel.nickname)
+            clarityClient.setUser(
+              ClarityClient.UserInfo(
+                userId: userModel.id,
+                nickname: userModel.nickname,
+                email: userModel.email,
+                provider: userModel.provider,
+                groupCount: userModel.groups.count,
+                createdAt: userModel.metadata.createdAt
+              )
+            )
+            crashlyticsClient.setUser(
+              CrashlyticsClient.UserInfo(
+                userId: userModel.id,
+                nickname: userModel.nickname,
+                provider: userModel.provider,
+                groupCount: userModel.groups.count
+              )
+            )
             let providerIdentifier = userModel.provider.providerTypeIdentifier
             let personalCalendarSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
@@ -337,6 +362,10 @@ extension AppEntry {
                 ? .userSignup(loginMethod: providerIdentifier)
                 : .userLogin(loginMethod: providerIdentifier)
             )
+            if isSignup {
+              analyticsClient.setSignupDateIfNeeded()
+              analyticsClient.updateActivationStatus(.signedUp)
+            }
 
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
 
@@ -387,14 +416,7 @@ extension AppEntry {
           userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           state.isFullOnboarding = true
           state.destination = .auth(Auth.Feature.State())
-          return .none
-
-        case .destination(.presented(.onboardingStart(.delegate(.completed)))):
-          // "나중에 둘러볼게요" → 메인으로
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-          }
+          analyticsClient.log(.onboardingStepViewed(step: "auth"))
           return .none
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
@@ -403,15 +425,8 @@ extension AppEntry {
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.log(.profileSetupCompleted)
-          if state.isFullOnboarding {
-            // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
-            state.pendingUserForMain = userModel
-            state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
-            return .none
-          } else {
-            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
-            return .send(.internal(.checkNotificationPermission(userModel)))
-          }
+          state.pendingUserForMain = userModel
+          return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
@@ -431,7 +446,7 @@ extension AppEntry {
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
-          return .run { [notificationClient, authClient, clarityClient, analyticsClient] _ in
+          return .run { [notificationClient, authClient, clarityClient, crashlyticsClient, analyticsClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
             authClient.clearWidgetAuthToken()
@@ -439,6 +454,9 @@ extension AppEntry {
 
             // Clarity 유저 정보 제거
             clarityClient.clearUser()
+
+            // Crashlytics 유저 정보 제거
+            crashlyticsClient.clearUser()
 
             // Analytics 유저 정보 제거
             analyticsClient.setUserID(nil)
@@ -598,11 +616,6 @@ extension AppEntry {
           }
         }
 
-      case .onboardingStart:
-        if let store = store.scope(state: \.destination?.onboardingStart, action: \.destination.onboardingStart) {
-          AppEntry.OnboardingStart.View(store: store)
-        }
-
       case .main:
         if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
           RootTab.RootView(store: store)
@@ -634,7 +647,7 @@ extension AppEntry {
 
 extension AppEntry.Feature.State {
   enum DestinationType: Equatable {
-    case onboardingIntro, auth, profile, onboardingStart, main
+    case onboardingIntro, auth, profile, main
   }
 
   var destinationType: DestinationType? {
@@ -642,7 +655,6 @@ extension AppEntry.Feature.State {
     case .onboardingIntro: return .onboardingIntro
     case .auth: return .auth
     case .profile: return .profile
-    case .onboardingStart: return .onboardingStart
     case .main: return .main
     case nil: return nil
     }
@@ -692,6 +704,10 @@ extension AppEntry.Feature {
 
     case .liveSchedule:
       // LiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
+
+    case .vote:
+      // VoteLiveActivity 탭 → LiveScheduleExpandedView 열기 (ETA 시트 없이)
       return .send(.destination(.presented(.main(.openLiveScheduleDetail))))
 
     case .create:

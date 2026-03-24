@@ -78,6 +78,12 @@ export interface SubscriptionStatusData {
   /** 가장 최근에 반영한 서버 알림 타입 */
   lastNotificationType?: string | null;
 
+  /** Apple Offer Type (1=introductory, 2=promotional, 3=offer-code) */
+  lastOfferType?: number | null;
+
+  /** ASC에서 설정한 Offer Code 레퍼런스명 */
+  lastOfferIdentifier?: string | null;
+
   /** 마지막 업데이트 (Timestamp) */
   updatedAt: FirebaseFirestore.Timestamp;
 }

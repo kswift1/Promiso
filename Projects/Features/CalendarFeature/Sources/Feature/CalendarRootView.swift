@@ -129,6 +129,28 @@ extension CalendarFeature {
         .onAppear {
           store.send(.view(.onAppear))
         }
+        .fullScreenCover(
+          isPresented: Binding(
+            get: { store.isShowingGuide },
+            set: { newValue in
+              if !newValue {
+                store.send(.view(.dismissGuide))
+              }
+            }
+          )
+        ) {
+          calendarGuideContent
+        }
+    }
+
+    @ViewBuilder
+    private var calendarGuideContent: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.calendarGuideItems,
+        onComplete: {
+          store.send(.view(.dismissGuide))
+        }
+      )
     }
 
     private var calendarWithEditCovers: some View {
@@ -160,6 +182,8 @@ extension CalendarFeature {
           displayMode: store.displayMode,
           isSelectedDateToday: store.isSelectedDateToday,
           isFilterActive: store.isFilterActive,
+          isShowingGuideTooltip: store.isShowingGuideTooltip,
+          onGuideTapped: { store.send(.view(.showGuide)) },
           onFilterTapped: { store.send(.view(.filterIconTapped)) },
           onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
           onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
@@ -436,9 +460,28 @@ extension CalendarFeature {
         } else if store.sectionDates.isEmpty {
           emptyStateView
         } else {
+          let schedulesByDate = store.schedulesByDate
+          let calendarEventsByDate = store.calendarEventsByDate
+          let personalEventsByDate = store.personalEventsByDate
+          let recurringEventsByDate = store.recurringEventsByDate
+          let groupColorMap = store.groupColorMap
+          let holidaysByDate = store.holidaysByDate
+          let currentUserId = store.currentUserId
+          let selectedDate = store.selectedDate
+
           monthModeHeader
           ForEach(store.sectionDates, id: \.self) { date in
-            monthModeRow(for: date)
+            monthModeRow(
+              for: date,
+              schedulesByDate: schedulesByDate,
+              calendarEventsByDate: calendarEventsByDate,
+              personalEventsByDate: personalEventsByDate,
+              recurringEventsByDate: recurringEventsByDate,
+              groupColorMap: groupColorMap,
+              holidaysByDate: holidaysByDate,
+              currentUserId: currentUserId,
+              selectedDate: selectedDate
+            )
           }
         }
       }
@@ -454,7 +497,7 @@ extension CalendarFeature {
       let monthTitle = formatter.string(from: store.currentMonth)
 
       return HStack {
-        Text("\(monthTitle) \(LocalizedStrings.Schedule.title)")
+        Text("\(monthTitle) \(LocalizedStrings.Schedule.schedule)")
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 
@@ -468,15 +511,25 @@ extension CalendarFeature {
     // MARK: - Month Mode Row (간소화된 행)
 
     @ViewBuilder
-    private func monthModeRow(for date: Date) -> some View {
+    private func monthModeRow(
+      for date: Date,
+      schedulesByDate: [Date: [ScheduleModel]],
+      calendarEventsByDate: [Date: [CalendarEvent]],
+      personalEventsByDate: [Date: [PersonalEventModel]],
+      recurringEventsByDate: [Date: [ExpandedEventInstance]],
+      groupColorMap: [String: Color],
+      holidaysByDate: [Date: String],
+      currentUserId: String,
+      selectedDate: Date
+    ) -> some View {
       let calendar = Calendar.current
       let dateKey = calendar.startOfDay(for: date)
-      let daySchedules = store.schedulesByDate[dateKey] ?? []
-      let dayEvents = store.calendarEventsByDate[dateKey] ?? []
-      let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
-      let dayRecurringEvents = store.recurringEventsByDate[dateKey] ?? []
-      let holidayName = store.holidaysByDate[dateKey]
-      let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
+      let daySchedules = schedulesByDate[dateKey] ?? []
+      let dayEvents = calendarEventsByDate[dateKey] ?? []
+      let dayPersonalEvents = personalEventsByDate[dateKey] ?? []
+      let dayRecurringEvents = recurringEventsByDate[dateKey] ?? []
+      let holidayName = holidaysByDate[dateKey]
+      let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
 
       CompactDayRow(
         date: date,
@@ -485,9 +538,9 @@ extension CalendarFeature {
         personalEvents: dayPersonalEvents,
         recurringPersonalEvents: dayRecurringEvents,
         isSelected: isSelected,
-        currentUserId: store.currentUserId,
+        currentUserId: currentUserId,
         holidayName: holidayName,
-        groupColorMap: store.groupColorMap,
+        groupColorMap: groupColorMap,
         onDateTap: {
           store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
         },

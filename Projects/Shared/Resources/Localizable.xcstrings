@@ -2054,6 +2054,24 @@
         }
       }
     },
+    "common.add": {
+      "comment": "추가 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
+          }
+        }
+      }
+    },
     "common.all": {
       "comment": "전체",
       "extractionState": "manual",
@@ -3621,6 +3639,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "그룹에 멤버가 없습니다"
+          }
+        }
+      }
+    },
+    "createSchedule.notificationLiveActivity": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Activity"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브 액티비티"
+          }
+        }
+      }
+    },
+    "createSchedule.notificationMethod": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Participation Notification"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참여 확인 알림"
+          }
+        }
+      }
+    },
+    "createSchedule.notificationMethodDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose how to notify group members to confirm participation"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정이 제안되면 그룹원들에게 참여 확인을 요청합니다"
+          }
+        }
+      }
+    },
+    "createSchedule.notificationNone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "없음"
+          }
+        }
+      }
+    },
+    "createSchedule.notificationPush": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "푸시 알림"
           }
         }
       }
@@ -11698,6 +11801,60 @@
         }
       }
     },
+    "home.upcoming.createDialog.groupSchedule": {
+      "comment": "그룹 일정 생성 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 일정"
+          }
+        }
+      }
+    },
+    "home.upcoming.createDialog.personalEvent": {
+      "comment": "개인 일정 생성 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인 일정"
+          }
+        }
+      }
+    },
+    "home.upcoming.createDialog.title": {
+      "comment": "일정 생성 다이얼로그 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a new event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로운 일정 만들기"
+          }
+        }
+      }
+    },
     "home.upcoming.empty.subtitle": {
       "comment": "예정 일정 없음 설명",
       "extractionState": "manual",
@@ -11770,24 +11927,6 @@
         }
       }
     },
-    "home.upcoming.recurring.empty.title": {
-      "comment": "반복 일정 없음 타이틀",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No recurring events"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "등록된 반복 일정이 없어요"
-          }
-        }
-      }
-    },
     "home.upcoming.recurring.empty.subtitle": {
       "comment": "반복 일정 없음 서브타이틀",
       "extractionState": "manual",
@@ -11806,56 +11945,20 @@
         }
       }
     },
-    "home.upcoming.createDialog.title": {
-      "comment": "일정 생성 다이얼로그 타이틀",
+    "home.upcoming.recurring.empty.title": {
+      "comment": "반복 일정 없음 타이틀",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create a new event"
+            "value": "No recurring events"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새로운 일정 만들기"
-          }
-        }
-      }
-    },
-    "home.upcoming.createDialog.groupSchedule": {
-      "comment": "그룹 일정 생성 버튼",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Group schedule"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "그룹 일정"
-          }
-        }
-      }
-    },
-    "home.upcoming.createDialog.personalEvent": {
-      "comment": "개인 일정 생성 버튼",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personal event"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "개인 일정"
+            "value": "등록된 반복 일정이 없어요"
           }
         }
       }
@@ -13697,6 +13800,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "초대코드가 있어요"
+          }
+        }
+      }
+    },
+    "onboarding.intro.confirm.subtitle": {
+      "comment": "온보딩 인트로 약속 확정 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gets notified"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림이 가요"
+          }
+        }
+      }
+    },
+    "onboarding.intro.confirm.title": {
+      "comment": "온보딩 인트로 약속 확정 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When confirmed, everyone"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정되면 모두에게"
           }
         }
       }
@@ -15803,42 +15942,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "지금"
-          }
-        }
-      }
-    },
-    "onboarding.intro.confirm.subtitle": {
-      "comment": "온보딩 인트로 약속 확정 설명",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "gets notified"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "알림이 가요"
-          }
-        }
-      }
-    },
-    "onboarding.intro.confirm.title": {
-      "comment": "온보딩 인트로 약속 확정 타이틀",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "When confirmed, everyone"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "확정되면 모두에게"
           }
         }
       }
@@ -18745,6 +18848,29 @@
         }
       }
     },
+    "proPlan.onboarding.multipleSelectHint": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(multiple selection)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(複数選択可)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(중복 선택 가능)"
+          }
+        }
+      }
+    },
     "proPlan.onboarding.todayBriefing": {
       "extractionState": "stale",
       "localizations": {
@@ -21425,6 +21551,57 @@
         }
       }
     },
+    "settings.briefing.defaultLocation": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본 위치"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.description": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather and travel time in your briefing will be based on this location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리핑 생성 시 이 위치 기준으로 날씨와 이동 시간을 알려드려요"
+          }
+        }
+      }
+    },
+    "settings.briefing.defaultLocation.placeholder": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Home, office, or wherever you usually are at notification time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예: 집, 회사 등 알림 시간에 주로 있는 장소"
+          }
+        }
+      }
+    },
     "settings.briefing.notification": {
       "extractionState": "stale",
       "localizations": {
@@ -21506,57 +21683,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "알림 받기"
-          }
-        }
-      }
-    },
-    "settings.briefing.defaultLocation": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Default Location"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기본 위치"
-          }
-        }
-      }
-    },
-    "settings.briefing.defaultLocation.description": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Weather and travel time in your briefing will be based on this location"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "브리핑 생성 시 이 위치 기준으로 날씨와 이동 시간을 알려드려요"
-          }
-        }
-      }
-    },
-    "settings.briefing.defaultLocation.placeholder": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "e.g. Home, office, or wherever you usually are at notification time"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "예: 집, 회사 등 알림 시간에 주로 있는 장소"
           }
         }
       }
@@ -22764,78 +22890,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "탈퇴 실패"
-          }
-        }
-      }
-    },
-    "settings.manageSubscription": {
-      "comment": "구독 관리로 이동 버튼",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manage Subscription"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "구독 관리로 이동"
-          }
-        }
-      }
-    },
-    "settings.proceedDeleteAccount": {
-      "comment": "구독 무시하고 탈퇴 버튼",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Anyway"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "그냥 탈퇴"
-          }
-        }
-      }
-    },
-    "settings.proSubscriptionWarningMessage": {
-      "comment": "Pro 구독 활성 상태에서 탈퇴 시 경고 메시지",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your Pro subscription is active. It will auto-renew even after account deletion. Would you like to cancel the subscription first?"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pro 구독이 활성 상태입니다. 계정을 삭제해도 구독은 자동 갱신됩니다. 구독을 먼저 취소하시겠습니까?"
-          }
-        }
-      }
-    },
-    "settings.proSubscriptionWarningTitle": {
-      "comment": "Pro 구독 활성 상태 경고 타이틀",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Active Pro Subscription"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pro 구독 활성 상태"
           }
         }
       }
@@ -24311,6 +24365,24 @@
         }
       }
     },
+    "settings.manageSubscription": {
+      "comment": "구독 관리로 이동 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Subscription"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 관리로 이동"
+          }
+        }
+      }
+    },
     "settings.nickname": {
       "comment": "닉네임",
       "extractionState": "manual",
@@ -25085,6 +25157,24 @@
         }
       }
     },
+    "settings.proceedDeleteAccount": {
+      "comment": "구독 무시하고 탈퇴 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Anyway"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그냥 탈퇴"
+          }
+        }
+      }
+    },
     "settings.profile": {
       "comment": "프로필",
       "extractionState": "manual",
@@ -25153,6 +25243,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "저장"
+          }
+        }
+      }
+    },
+    "settings.proSubscriptionWarningMessage": {
+      "comment": "Pro 구독 활성 상태에서 탈퇴 시 경고 메시지",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Pro subscription is active. It will auto-renew even after account deletion. Would you like to cancel the subscription first?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro 구독이 활성 상태입니다. 계정을 삭제해도 구독은 자동 갱신됩니다. 구독을 먼저 취소하시겠습니까?"
+          }
+        }
+      }
+    },
+    "settings.proSubscriptionWarningTitle": {
+      "comment": "Pro 구독 활성 상태 경고 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active Pro Subscription"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro 구독 활성 상태"
           }
         }
       }
@@ -29773,42 +29899,811 @@
         }
       }
     },
-    "common.add": {
-      "comment": "추가 버튼",
+    "calendar.guide.filter.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add"
+            "value": "Filter by group or status, and toggle personal events and iOS calendar events."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "추가"
+            "value": "그룹별 · 상태별로 필터링하고, 개인 일정과 iOS 캘린더 이벤트 표시를 조절할 수 있어요"
           }
         }
       }
     },
-    "proPlan.onboarding.multipleSelectHint": {
+    "calendar.guide.filter.title": {
+      "extractionState": "manual",
       "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(중복 선택 가능)"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "(multiple selection)"
+            "value": "Only the events you want"
           }
         },
-        "ja": {
+        "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "(複数選択可)"
+            "value": "원하는 일정만, 그대로"
+          }
+        }
+      }
+    },
+    "calendar.guide.modeSwitch.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly Timeline · Monthly List · Monthly Full — tap or long-press the header icon to switch."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주간 타임라인 · 월간 리스트 · 월간 전체, 헤더 아이콘을 탭하거나 길게 눌러 전환해요"
+          }
+        }
+      }
+    },
+    "calendar.guide.modeSwitch.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Three ways to view your schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세 가지 시선으로 일정을 봐요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthExpanded.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See all events at a glance. Tap an event bar for details, or tap a date to switch to weekly view."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정을 한눈에 파악해요. 일정 바를 탭하면 상세로, 날짜를 탭하면 주간 뷰로 전환돼요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthExpanded.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All events inside the calendar"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "달력 안에서 모든 일정 확인"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthList.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View the calendar grid and event list together. Tap a date to scroll to its events."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상단 달력과 하단 일정 리스트를 함께 볼 수 있어요. 날짜를 탭하면 해당 일정으로 스크롤돼요"
+          }
+        }
+      }
+    },
+    "calendar.guide.monthList.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A whole month at a glance"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한 달을 한눈에"
+          }
+        }
+      }
+    },
+    "calendar.guide.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can revisit this anytime"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언제든 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekCreate.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-tap or long-press an empty slot to place an event, then drag to adjust the time range."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빈 시간대를 더블 탭하거나 꾹 눌러 일정을 배치하고, 드래그로 시간 범위를 조정할 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekCreate.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Here, let me place an event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기, 일정 하나 놓을게요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekTimeline.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See your 24-hour schedule at a glance, and zoom in or out to expand or collapse time slots."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24시간 일정을 한눈에 확인하고, 줌인·줌아웃으로 시간대를 확대하거나 축소할 수 있어요"
+          }
+        }
+      }
+    },
+    "calendar.guide.weekTimeline.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your day as a timeline"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하루를 타임라인으로"
+          }
+        }
+      }
+    },
+    "common.comingSoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming Soon"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "준비 중"
+          }
+        }
+      }
+    },
+    "home.guide.calendarOverlay.subtitle": {
+      "comment": "홈 가이드 캘린더 오버레이 부제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap the date at the top to open the calendar. Check the weather and your schedule at a glance."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상단 날짜를 탭하면 캘린더가 펼쳐져요. 날씨와 일정을 한눈에 살펴볼 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.calendarOverlay.title": {
+      "comment": "홈 가이드 캘린더 오버레이 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar, just a tap away"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭 한 번에 열리는 캘린더"
+          }
+        }
+      }
+    },
+    "home.guide.liveActivity.subtitle": {
+      "comment": "홈 가이드 라이브 액티비티 부제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As the time approaches, live location sharing begins. Check on the Lock Screen and Dynamic Island (iPhone 14 Pro and later) too."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속이 다가오면 실시간 위치 공유가 시작돼요. 잠금 화면과 다이나믹 아일랜드(iPhone 14 Pro 이상)에서도 확인할 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.liveActivity.title": {
+      "comment": "홈 가이드 라이브 액티비티 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Racing to the meetup, together"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "함께 달리는 약속 시간"
+          }
+        }
+      }
+    },
+    "home.guide.overview.subtitle": {
+      "comment": "홈 가이드 개요 부제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Briefing, today's schedule, pending responses, and upcoming plans — see your entire day from the Home tab."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리핑 · 오늘의 일정 · 응답 대기 · 다가오는 약속까지, 홈에서 하루의 모든 흐름을 확인할 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.overview.title": {
+      "comment": "홈 가이드 개요 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your day, at a glance"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하루의 흐름, 한눈에"
+          }
+        }
+      }
+    },
+    "home.guide.proFeatures.subtitle": {
+      "comment": "홈 가이드 Pro 기능 부제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check departure times by transit type and the weather forecast, and set departure alerts. Available with Promiso Pro."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "교통수단별 출발 시간과 날씨를 미리 확인하고, 출발 알림까지 설정할 수 있어요. Promiso Pro에서 사용할 수 있어요"
+          }
+        }
+      }
+    },
+    "home.guide.proFeatures.title": {
+      "comment": "홈 가이드 Pro 기능 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Departure and weather, ahead of time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출발도, 날씨도 미리"
+          }
+        }
+      }
+    },
+    "home.guide.tooltip": {
+      "comment": "홈 가이드 완료 후 토스트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can revisit this in Settings → Guide"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 → 가이드에서 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "personal.recurringEvents.summaryTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recurring Events"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복 일정"
+          }
+        }
+      }
+    },
+    "proPlan.manage.offerCodeApplied": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offer Code Applied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "할인코드 적용"
+          }
+        }
+      }
+    },
+    "proPlan.banner.benefit.conflict": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicting event alerts"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹치는 일정 미리 알림"
+          }
+        }
+      }
+    },
+    "proPlan.banner.benefit.dailySummary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daily schedule summary"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 일정 한 번에 정리"
+          }
+        }
+      }
+    },
+    "proPlan.banner.benefit.departureTime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto departure time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출발 시간 자동 계산"
+          }
+        }
+      }
+    },
+    "proPlan.banner.benefit.weather": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check event weather"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 날씨 미리 확인"
+          }
+        }
+      }
+    },
+    "proPlan.banner.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll take care of the rest"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 그 이후를 챙겨드려요"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingSettings.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll send you a daily morning briefing.\nPick a time and your usual starting point."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "매일 아침 약속 브리핑을 보내드려요.\n받고 싶은 시간과 자주 출발하는 위치를 알려주세요."
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingSettings.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When and where for your briefing?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브리핑, 언제 어디서 받을까요?"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingStyle.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your transport and tone,\nand your perfect briefing is ready."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동수단과 말투를 고르면\n나에게 딱 맞는 브리핑이 완성돼요."
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.briefingStyle.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What kind of briefing suits you?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어떤 브리핑이 좋으세요?"
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.conflict.subtitleNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll alert you when a new plan overlaps with an existing one.\nSet how close is too close."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 약속이 기존 일정과 겹칠 때 바로 알려드려요.\n얼마나 가까우면 알릴지 기준을 정해주세요."
+          }
+        }
+      }
+    },
+    "proPlan.onboarding.conflict.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll catch overlapping plans for you"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹치는 약속, 미리 잡아드릴게요"
+          }
+        }
+      }
+    },
+    "schedule.guide.groupList.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a group at the top and use filters to sort events by what you need to do"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상단에서 그룹을 선택하고, 필터로 내가 할 일 중심으로 일정을 구분할 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.groupList.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View events by group"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹별로 일정을 모아봐요"
+          }
+        }
+      }
+    },
+    "schedule.guide.modeSwitch.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch between group and personal mode.\nRe-tap the tab at the bottom or switch at the top.\nYou can set the default mode in Settings → Tab Settings."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹과 개인, 두 가지 모드를 전환할 수 있어요.\n하단 탭을 다시 탭하거나 상단에서 전환해보세요.\n설정 → 탭 설정에서 기본 모드를 변경할 수 있어요."
+          }
+        }
+      }
+    },
+    "schedule.guide.modeSwitch.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage events in two modes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 가지 모드로 일정을 관리해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.personal.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add personal and recurring events, and filter by All · Today · Upcoming"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인 일정과 반복 일정을 등록하고, 전체 · 오늘 · 예정으로 나눠 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.personal.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage your own events"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나만의 일정도 따로 관리해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.swipeResponse.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe right to accept, left to decline. You can also long-press"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 카드를 오른쪽으로 밀어 수락, 왼쪽으로 밀어 거절할 수 있어요. 꾹 눌러서도 가능해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.swipeResponse.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe to respond instantly"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "밀어서, 바로 응답해요"
+          }
+        }
+      }
+    },
+    "schedule.guide.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can revisit this anytime"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언제든 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "schedule.guide.toastMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can revisit this in Settings → Guide"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 → 가이드에서 다시 볼 수 있어요"
+          }
+        }
+      }
+    },
+    "settings.guide": {
+      "comment": "가이드",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가이드"
           }
         }
       }

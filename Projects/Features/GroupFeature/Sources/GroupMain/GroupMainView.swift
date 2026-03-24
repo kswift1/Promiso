@@ -4,6 +4,7 @@ import Clients
 import PromisoShared
 import ResourceKit
 import CreateScheduleFeature
+import CreateGroupFeature
 
 extension GroupMain {
   public struct RootView: View {
@@ -124,6 +125,18 @@ extension GroupMain {
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
       )
+      .fullScreenCover(
+        isPresented: Binding(
+          get: { store.isShowingGuide },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.dismissGuide))
+            }
+          }
+        )
+      ) {
+        scheduleGuideContent
+      }
       .sheet(
         isPresented: Binding(
           get: { store.showGroupInviteSheet },
@@ -148,6 +161,27 @@ extension GroupMain {
       }
     }
 
+
+    // MARK: - Group Header
+
+    private var defaultMode: ScheduleMode {
+      store.defaultScheduleTabMode == "own" ? .personal : .group
+    }
+
+    @ViewBuilder
+    private var groupHeaderSection: some View {
+      ScheduleTabHeader(
+        selectedMode: .group,
+        defaultMode: defaultMode,
+        onSettingsTapped: {
+          store.send(.view(.groupOverviewTapped))
+        }
+      ) { mode in
+        if mode == .personal {
+          store.send(.view(.switchToPersonalMode))
+        }
+      }
+    }
 
     // MARK: - New Group Detail View (섹션 기반)
 
@@ -190,17 +224,10 @@ extension GroupMain {
 
         // 필터 세그먼트
         filterSegment
-          .padding(.top, 8)
+          .padding(.top, 12)
 
         // 일정 리스트 (스와이프 지원)
-        if store.isOnboardingMode {
-          ScrollView {
-            onboardingCardsView
-          }
-          .refreshable {
-            store.send(.view(.refreshTriggered))
-          }
-        } else if isLoadingState {
+        if isLoadingState {
           // .idle 또는 .loading 상태
           ScrollView {
             loadingView
@@ -228,59 +255,48 @@ extension GroupMain {
       }
     }
 
-    // MARK: - Group Header
-
-    private var defaultMode: ScheduleMode {
-      store.defaultScheduleTabMode == "own" ? .personal : .group
-    }
+    // MARK: - Schedule Guide Content
 
     @ViewBuilder
-    private var groupHeaderSection: some View {
-      ScheduleTabHeader(
-        selectedMode: .group,
-        defaultMode: defaultMode,
-        onSettingsTapped: {
-          store.send(.view(.groupOverviewTapped))
+    private var scheduleGuideContent: some View {
+      FeatureGuideView(
+        items: FeatureGuideView.scheduleGuideItems,
+        onComplete: {
+          store.send(.view(.dismissGuide))
         }
-      ) { mode in
-        if mode == .personal {
-          store.send(.view(.switchToPersonalMode))
-        }
-      }
+      )
     }
 
     // MARK: - FAB
 
     @ViewBuilder
     private var fabButton: some View {
-      if !store.isOnboardingMode {
-        Menu {
-          Button {
-            store.send(.view(.createNewSchedule))
-          } label: {
-            Label(LocalizedStrings.GroupMain.createSchedule, systemImage: "calendar.badge.plus")
-          }
-
-          Button {
-            store.send(.view(.groupSettingsTapped))
-          } label: {
-            Label(LocalizedStrings.GroupMain.groupSettings, systemImage: "gearshape")
-          }
+      Menu {
+        Button {
+          store.send(.view(.createNewSchedule))
         } label: {
-          ZStack {
-            Circle()
-              .fill(Color.pmindigo.n500)
-              .frame(width: 56, height: 56)
-              .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-
-            Image(systemName: "plus")
-              .font(.system(size: 24, weight: .semibold))
-              .foregroundStyle(.white)
-          }
+          Label(LocalizedStrings.GroupMain.createSchedule, systemImage: "calendar.badge.plus")
         }
-        .padding(.trailing, 16)
-        .padding(.bottom, 16)
+
+        Button {
+          store.send(.view(.groupSettingsTapped))
+        } label: {
+          Label(LocalizedStrings.GroupMain.groupSettings, systemImage: "gearshape")
+        }
+      } label: {
+        ZStack {
+          Circle()
+            .fill(Color.pmindigo.n500)
+            .frame(width: 56, height: 56)
+            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+          Image(systemName: "plus")
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(.white)
+        }
       }
+      .padding(.trailing, 16)
+      .padding(.bottom, 16)
     }
 
     @ViewBuilder
@@ -317,37 +333,16 @@ extension GroupMain {
     }
 
 
-    // MARK: - Onboarding Cards
-
-    @ViewBuilder
-    private var onboardingCardsView: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(GroupMain.OnboardingCard.allCases) { card in
-          OnboardingCardView(card: card) {
-            handleOnboardingCardTap(card)
-          }
-        }
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .padding(.bottom, 100)
-    }
-
-    private func handleOnboardingCardTap(_ card: GroupMain.OnboardingCard) {
-      switch card {
-      case .createGroup:
-        store.send(.view(.createGroup))
-      case .joinGroup:
-        store.send(.view(.joinGroup))
-      }
-    }
-
     @ViewBuilder
     private var filterSegment: some View {
       CategoryFilterBar(
         selection: Binding(
           get: { store.selectedFilter },
-          set: { store.send(.view(.filterChanged($0))) }
+          set: { newFilter in
+            withAnimation(.snappy) {
+              _ = store.send(.view(.filterChanged(newFilter)))
+            }
+          }
         ),
         counts: store.filterCounts
       )
@@ -359,13 +354,29 @@ extension GroupMain {
       let animationKey = sections.flatMap { section in
         [String(Int(section.day.timeIntervalSince1970))] + section.schedules.map(\.id)
       }
+      let currentGroupMembers = store.currentGroupMembers
+      let proposalResponding = store.proposalResponding
+      let weatherByScheduleId = store.weatherByScheduleId
+      let conflictsByScheduleId = store.conflictsByScheduleId
+      let conflictCheckingIds = store.conflictCheckingIds
+      let liveActivityScheduleId = store.liveActivityScheduleId
+      let currentUserId = store.currentUser.userId
 
       ScrollViewReader { proxy in
         List {
           ForEach(sections, id: \.day) { section in
             Section {
               ForEach(section.schedules, id: \.id) { schedule in
-                scheduleRowView(for: schedule)
+                scheduleRowView(
+                  for: schedule,
+                  currentUserId: currentUserId,
+                  groupMembers: currentGroupMembers,
+                  proposalResponding: proposalResponding,
+                  liveActivityScheduleId: liveActivityScheduleId,
+                  weatherByScheduleId: weatherByScheduleId,
+                  conflictsByScheduleId: conflictsByScheduleId,
+                  conflictCheckingIds: conflictCheckingIds
+                )
                   .id(schedule.id)
               }
             } header: {
@@ -413,19 +424,27 @@ extension GroupMain {
     }
 
     @ViewBuilder
-    private func scheduleRowView(for schedule: ScheduleModel) -> some View {
+    private func scheduleRowView(
+      for schedule: ScheduleModel,
+      currentUserId: String,
+      groupMembers: [UserPublicModel]?,
+      proposalResponding: [String: RespondingState],
+      liveActivityScheduleId: String?,
+      weatherByScheduleId: [String: WeatherInfo],
+      conflictsByScheduleId: [String: [ScheduleConflict]],
+      conflictCheckingIds: Set<String>
+    ) -> some View {
       let scheduleId = schedule.id
-      let userId = store.currentUser.userId
-      let myVoteStatus = schedule.myVoteStatus(userId: userId)
+      let myVoteStatus = schedule.myVoteStatus(userId: currentUserId)
 
       ScheduleCard(
         schedule: schedule,
-        currentUserId: userId,
-        groupMembers: store.currentGroupMembers,
-        respondingState: store.proposalResponding[scheduleId] ?? .idle,
-        isLive: store.liveActivityScheduleId == scheduleId,
-        weather: store.weatherByScheduleId[scheduleId],
-        conflicts: (store.conflictsByScheduleId[scheduleId] ?? []).map { conflict in
+        currentUserId: currentUserId,
+        groupMembers: groupMembers,
+        respondingState: proposalResponding[scheduleId] ?? .idle,
+        isLive: liveActivityScheduleId == scheduleId,
+        weather: weatherByScheduleId[scheduleId],
+        conflicts: (conflictsByScheduleId[scheduleId] ?? []).map { conflict in
           ConflictInfo(
             title: conflict.title,
             overlapMinutes: conflict.overlapMinutes,
@@ -436,7 +455,7 @@ extension GroupMain {
             severity: conflict.severity == .confirmed ? .confirmed : .pending
           )
         },
-        isCheckingConflicts: store.conflictCheckingIds.contains(scheduleId),
+        isCheckingConflicts: conflictCheckingIds.contains(scheduleId),
         onTap: {
           store.send(.view(.scheduleTapped(schedule)))
         },
@@ -627,7 +646,7 @@ extension GroupMain {
         VStack(spacing: 0) {
           // 필터 (비활성 상태로 유지)
           filterSegment
-            .padding(.vertical, 8)
+            .padding(.vertical, 12)
             .disabled(true)
             .opacity(0.5)
 
@@ -654,6 +673,9 @@ extension GroupMain {
           .frame(maxWidth: .infinity)
         }
       }
+      .overlay(alignment: .bottomTrailing) {
+        fabButton
+      }
     }
 
   }
@@ -663,14 +685,9 @@ extension GroupMain {
 
 private extension GroupMain.Feature.State {
 
-  /// 속한 그룹이 없는 경우
-  private var hasNoGroups: Bool {
-    allGroupSummaries?.isEmpty == true && currentGroup == nil
-  }
-
-  /// 빈 그룹 화면 표시 여부 (온보딩 모드로 대체되어 항상 false)
+  /// 빈 그룹 화면 표시 여부 (그룹이 없을 때)
   var shouldShowEmptyGroupView: Bool {
-    false  // 온보딩 모드에서 groupDetailView 재사용
+    allGroupSummaries?.isEmpty == true
   }
 
   /// 특정 일정의 응답 상태 조회
@@ -678,68 +695,6 @@ private extension GroupMain.Feature.State {
     proposalResponding[scheduleId] ?? .idle
   }
 }
-
-// MARK: - Onboarding Card View
-
-private struct OnboardingCardView: View {
-  let card: GroupMain.OnboardingCard
-  let onTap: () -> Void
-
-  var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 14) {
-        // 헤더
-        HStack(spacing: 10) {
-          // 아이콘
-          iconView
-            .frame(width: 32, height: 32)
-
-          Text(card.title)
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.primary)
-
-          Spacer()
-
-          // 화살표
-          Image(systemName: "chevron.right")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.tertiary)
-        }
-
-        Divider()
-
-        // 설명
-        Text(card.subtitle)
-          .font(.system(size: 14))
-          .foregroundStyle(.secondary)
-          .lineLimit(2)
-      }
-      .padding(16)
-      .contentShape(Rectangle())
-      .adaptiveGlassCard()
-    }
-    .buttonStyle(.plain)
-  }
-
-  @ViewBuilder
-  private var iconView: some View {
-    if card == .createGroup {
-      ResourceKitAsset.fingerSchedule.swiftUIImage
-        .resizable()
-        .scaledToFit()
-    } else {
-      ZStack {
-        Circle()
-          .fill(card.color.opacity(0.15))
-
-        Image(systemName: card.icon)
-          .font(.system(size: 16))
-          .foregroundStyle(card.color)
-      }
-    }
-  }
-}
-
 
 // MARK: - SortSettingsSheetContent
 

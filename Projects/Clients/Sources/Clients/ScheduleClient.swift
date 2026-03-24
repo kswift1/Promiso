@@ -137,6 +137,12 @@ public struct ScheduleClient: Sendable {
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   public var startLiveActivity: @Sendable (_ scheduleId: String) async throws -> Void
 
+  /// 투표 LiveActivity 시작 요청 (Firebase Function 호출)
+  public var startVoteLiveActivity: @Sendable (_ scheduleId: String) async throws -> Void
+
+  /// 투표 마감 (호스트 전용)
+  public var finalizeVote: @Sendable (_ scheduleId: String) async throws -> Void
+
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   public var updateETA: @Sendable (
@@ -227,6 +233,12 @@ extension ScheduleClient: TestDependencyKey {
     startLiveActivity: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
+    startVoteLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.5))
+    },
+    finalizeVote: { _ in
+      try await Task.sleep(for: .seconds(0.5))
+    },
     updateETA: { _, _, _  in
       try await Task.sleep(for: .seconds(0.3))
     }
@@ -312,6 +324,12 @@ extension ScheduleClient: DependencyKey {
       },
       startLiveActivity: { scheduleId in
         try await dataSource.startLiveActivity(scheduleId: scheduleId)
+      },
+      startVoteLiveActivity: { scheduleId in
+        try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+      },
+      finalizeVote: { scheduleId in
+        try await dataSource.finalizeVote(scheduleId: scheduleId)
       },
       updateETA: { channelId, participants, trackingDurationMinutes in
         try await dataSource.updateETA(

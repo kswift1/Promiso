@@ -313,14 +313,18 @@ extension EventKitClient: DependencyKey {
         // 공휴일 구독 캘린더 이벤트 제외 (Nager.Date API로 별도 표시)
         return events
           .filter { event in
-            // Promiso 동기화 이벤트 제외
-            guard PromisoCalendarTag.parse(from: event.url) == nil else { return false }
+            // Promiso 동기화 이벤트 제외 (모든 환경: promiso/promiso-dev/promiso-stage)
+            guard !PromisoCalendarTag.isAnyPromisoURL(event.url) else { return false }
             // 공휴일 구독 캘린더 제외
             if event.calendar?.type == .subscription {
               let title = event.calendar?.title.lowercased() ?? ""
               if title.contains("holiday") || title.contains("공휴일") {
                 return false
               }
+            }
+            // 생일 캘린더 제외
+            if event.calendar?.type == .birthday {
+              return false
             }
             return true
           }

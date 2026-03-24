@@ -570,6 +570,11 @@ export const appleServerNotification = onRequest(
           lastNotificationType: notificationType,
           updatedAt: FieldValue.serverTimestamp() as
             FirebaseFirestore.Timestamp,
+          // Offer Code 추적
+          ...(notificationType === NotificationTypeV2.OFFER_REDEEMED && {
+            lastOfferType: transactionPayload.offerType ?? null,
+            lastOfferIdentifier: transactionPayload.offerIdentifier ?? null,
+          }),
         };
 
         transaction.set(subscriptionRef, subscriptionData, {merge: true});

@@ -17,6 +17,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case liveActivityETA(scheduleId: String)
   /// LiveSchedule 상세 화면 (LiveActivity 탭 시 ETA 시트 없이 열기)
   case liveSchedule(scheduleId: String)
+  /// 투표 딥링크 (VoteLiveActivity 탭 시 일정 상세 화면 열기)
+  case vote(scheduleId: String)
   /// 일정 만들기 화면 (Widget에서 "일정 만들기" 버튼)
   case create
   /// 개인 일정 (Widget에서 탭 시 개인 모드 탭으로 이동 + 상세 push)
