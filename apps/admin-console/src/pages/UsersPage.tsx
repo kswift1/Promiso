@@ -11,6 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import {DataGrid, GridColDef, GridRenderCellParams} from "@mui/x-data-grid";
 import {keepPreviousData, useQuery} from "@tanstack/react-query";
 import {FormEvent, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
@@ -29,6 +30,99 @@ const defaultSearchFilters = {
   override: "all" as AdminOverrideFilter,
   limit: 25,
 };
+
+const columns: GridColDef<AdminUserSummary>[] = [
+  {
+    field: "nickname",
+    headerName: "닉네임",
+    width: 150,
+    valueGetter: (_value, row) => row.nickname ?? row.name ?? row.userId,
+  },
+  {
+    field: "userId",
+    headerName: "사용자 ID",
+    width: 250,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Typography variant="body2" sx={{fontFamily: "monospace"}}>
+        {params.value}
+      </Typography>
+    ),
+  },
+  {
+    field: "email",
+    headerName: "이메일",
+    width: 200,
+    valueGetter: (_value, row) => row.email ?? "이메일 없음",
+  },
+  {
+    field: "subscriptionStatus",
+    headerName: "Subscription",
+    width: 150,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Chip
+        color={params.row.subscriptionStatus ? "primary" : "default"}
+        label={params.row.subscriptionStatus ?? "없음"}
+        size="small"
+      />
+    ),
+  },
+  {
+    field: "overrideActive",
+    headerName: "수동 변경",
+    width: 120,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Chip
+        color={params.row.overrideActive ? "secondary" : "default"}
+        label={params.row.overrideActive ? "활성" : "없음"}
+        size="small"
+      />
+    ),
+  },
+  {
+    field: "groupCount",
+    headerName: "그룹",
+    width: 80,
+    type: "number",
+  },
+  {
+    field: "deviceCount",
+    headerName: "기기",
+    width: 80,
+    type: "number",
+  },
+  {
+    field: "personalEventCount",
+    headerName: "개인일정",
+    width: 90,
+    type: "number",
+  },
+  {
+    field: "actions",
+    headerName: "액션",
+    width: 200,
+    sortable: false,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Stack direction="row" spacing={1} alignItems="center" height="100%">
+        <Button
+          component={RouterLink}
+          to={`/users/${params.row.userId}/timeline`}
+          variant="contained"
+          size="small"
+        >
+          이력 보기
+        </Button>
+        <Button
+          component={RouterLink}
+          to={`/entitlements?userId=${params.row.userId}`}
+          variant="text"
+          size="small"
+        >
+          Pro 수동 변경
+        </Button>
+      </Stack>
+    ),
+  },
+];
 
 export function UsersPage() {
   const [filters, setFilters] = useState(defaultSearchFilters);
@@ -230,63 +324,21 @@ export function UsersPage() {
           <Typography color="text.secondary">
             페이지 {currentPage} · {pageUsers.length}명 표시
           </Typography>
-          <Grid container spacing={2}>
-            {pageUsers.map((user) => (
-              <Grid key={user.userId} size={{xs: 12, md: 6}}>
-                <Card elevation={0}>
-                  <CardContent>
-                    <Stack spacing={2}>
-                      <Stack spacing={0.5}>
-                        <Typography variant="h6">
-                          {user.nickname ?? user.name ?? user.userId}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {user.userId}
-                        </Typography>
-                      </Stack>
 
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Chip
-                          color={user.subscriptionStatus ? "primary" : "default"}
-                          label={user.subscriptionStatus ?? "subscription 없음"}
-                        />
-                        <Chip
-                          color={user.overrideActive ? "secondary" : "default"}
-                          label={user.overrideActive ? "수동 변경 활성" : "수동 변경 없음"}
-                        />
-                        <Chip label={`그룹 ${user.groupCount}개`} />
-                        <Chip label={`기기 ${user.deviceCount}개`} />
-                        <Chip label={`개인일정 ${user.personalEventCount}개`} />
-                      </Stack>
-
-                      <Typography variant="body2" color="text.secondary">
-                        {user.email ?? "이메일 없음"}
-                      </Typography>
-
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          component={RouterLink}
-                          to={`/users/${user.userId}/timeline`}
-                          variant="contained"
-                          size="small"
-                        >
-                          이력 보기
-                        </Button>
-                        <Button
-                          component={RouterLink}
-                          to={`/entitlements?userId=${user.userId}`}
-                          variant="text"
-                          size="small"
-                        >
-                          Pro 수동 변경
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          <DataGrid
+            rows={pageUsers}
+            columns={columns}
+            getRowId={(row) => row.userId}
+            hideFooter
+            disableRowSelectionOnClick
+            autoHeight
+            density="comfortable"
+            localeText={{noRowsLabel: "데이터 없음"}}
+            sx={{
+              border: 0,
+              "& .MuiDataGrid-cell": {py: 1},
+            }}
+          />
 
           <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
             {query.isFetching && <CircularProgress size={16} />}
