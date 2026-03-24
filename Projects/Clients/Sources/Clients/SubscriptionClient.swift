@@ -29,6 +29,9 @@ public struct SubscriptionClient: Sendable {
   /// 현재 구독 상태 조회
   public var fetchStatus: @Sendable () async throws -> SubscriptionStatus
 
+  /// 로컬 StoreKit 상태만 조회 (AppStore.sync() 없이 Transaction.currentEntitlements 사용)
+  public var fetchLocalStatus: @Sendable () async throws -> SubscriptionStatus
+
   /// 서버에 구매 검증 요청
   public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String, _ forceTransfer: Bool) async throws -> SubscriptionStatus
 
@@ -59,6 +62,7 @@ extension SubscriptionClient: TestDependencyKey {
     restore: unimplemented("\(Self.self).restore", placeholder: .none),
     restoreWithReceipt: unimplemented("\(Self.self).restoreWithReceipt", placeholder: RestoreResult(jwsString: nil, productId: nil, localStatus: .none)),
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
+    fetchLocalStatus: unimplemented("\(Self.self).fetchLocalStatus", placeholder: .none),
     verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
     checkIntroOfferEligibility: unimplemented("\(Self.self).checkIntroOfferEligibility", placeholder: false),
     unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished),
@@ -116,6 +120,7 @@ extension SubscriptionClient: TestDependencyKey {
     fetchStatus: {
       return .none
     },
+    fetchLocalStatus: { .subscribed(productType: .yearly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600)) },
     verifyPurchase: { _, _, _ in
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(productType: .monthly, expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
@@ -167,6 +172,9 @@ extension SubscriptionClient: DependencyKey {
       },
       fetchStatus: {
         try await remoteDataSource.fetchRemoteStatus()
+      },
+      fetchLocalStatus: {
+        try await dataSource.fetchCurrentStatus()
       },
       verifyPurchase: { jwsString, productId, forceTransfer in
         try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId, forceTransfer: forceTransfer)

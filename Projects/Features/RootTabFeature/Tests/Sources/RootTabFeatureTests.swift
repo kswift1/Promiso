@@ -676,40 +676,35 @@ struct RootTabFeatureTests {
     }
   }
 
-  @Test("만료일 경과 + StoreKit 재검증 성공 - 새로운 상태로 갱신")
-  func refreshSubscription_expired_storeKitVerifySuccess_updatesStatus() async {
+  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 확인 - 서버 상태 그대로 유지")
+  func refreshSubscription_expired_localStoreKitActive_keepsServerStatus() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let newFutureDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 30) // 30일 후
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
-    let verifiedStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: newFutureDate)
+    let localStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: newFutureDate)
 
-    let store = makeStore(state: makeState(key: "refresh-expired-verify-success")) {
+    let store = makeStore(state: makeState(key: "refresh-expired-local-active")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.restoreWithReceipt = {
-        RestoreResult(jwsString: "mock-jws", productId: "monthly_sub", localStatus: .none)
-      }
-      $0.subscriptionClient.verifyPurchase = { _, _, _ in verifiedStatus }
+      $0.subscriptionClient.fetchLocalStatus = { localStatus }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.scenePhaseChanged(.active))
     await store.receive(\.internal.refreshSubscriptionStatus)
     await store.receive(\.internal.subscriptionStatusChanged) {
-      $0.subscriptionStatus = verifiedStatus
-      $0.settings.subscriptionStatus = verifiedStatus
+      $0.subscriptionStatus = serverStatus
+      $0.settings.subscriptionStatus = serverStatus
     }
   }
 
-  @Test("만료일 경과 + StoreKit 활성 구독 없음 - expired 처리")
-  func refreshSubscription_expired_noActiveStoreKit_setsExpired() async {
+  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 없음 - expired 처리")
+  func refreshSubscription_expired_noLocalActive_setsExpired() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
 
-    let store = makeStore(state: makeState(key: "refresh-expired-no-storekit")) {
+    let store = makeStore(state: makeState(key: "refresh-expired-no-local")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.restoreWithReceipt = {
-        RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
-      }
+      $0.subscriptionClient.fetchLocalStatus = { .none }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -721,16 +716,16 @@ struct RootTabFeatureTests {
     }
   }
 
-  @Test("만료일 경과 + 재검증 실패 (에러) - 서버 상태 그대로 사용")
-  func refreshSubscription_expired_verifyThrows_fallsBackToServerStatus() async {
+  @Test("만료일 경과 + 로컬 조회 실패 - 서버 상태 그대로 사용")
+  func refreshSubscription_expired_localFails_fallsBackToServerStatus() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
 
     struct MockError: Error {}
 
-    let store = makeStore(state: makeState(key: "refresh-expired-verify-error")) {
+    let store = makeStore(state: makeState(key: "refresh-expired-local-fail")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.restoreWithReceipt = { throw MockError() }
+      $0.subscriptionClient.fetchLocalStatus = { throw MockError() }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -744,14 +739,8 @@ struct RootTabFeatureTests {
 
   @Test("lifetime 구독 - 재검증 없이 그대로 반환")
   func refreshSubscription_lifetime_returnsWithoutReVerification() async {
-    let restoreCounter = CallCounter()
-
     let store = makeStore(state: makeState(key: "refresh-lifetime")) {
       $0.subscriptionClient.fetchStatus = { .lifetime }
-      $0.subscriptionClient.restoreWithReceipt = {
-        await restoreCounter.increment()
-        return RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -761,21 +750,14 @@ struct RootTabFeatureTests {
       $0.subscriptionStatus = .lifetime
       $0.settings.subscriptionStatus = .lifetime
     }
-
-    #expect(await restoreCounter.value() == 0)
   }
 
   @Test("이미 expired 상태 - 재검증 없이 그대로 반환")
   func refreshSubscription_alreadyExpired_returnsWithoutReVerification() async {
     let expDate = Date(timeIntervalSinceNow: -60 * 60 * 24 * 7) // 7일 전
-    let restoreCounter = CallCounter()
 
     let store = makeStore(state: makeState(key: "refresh-already-expired")) {
       $0.subscriptionClient.fetchStatus = { .expired(expirationDate: expDate) }
-      $0.subscriptionClient.restoreWithReceipt = {
-        await restoreCounter.increment()
-        return RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -785,21 +767,14 @@ struct RootTabFeatureTests {
       $0.subscriptionStatus = .expired(expirationDate: expDate)
       $0.settings.subscriptionStatus = .expired(expirationDate: expDate)
     }
-
-    #expect(await restoreCounter.value() == 0)
   }
 
   @Test("gracePeriod 상태 - 재검증 없이 그대로 반환")
   func refreshSubscription_gracePeriod_returnsWithoutReVerification() async {
     let graceDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 3) // 3일 후
-    let restoreCounter = CallCounter()
 
     let store = makeStore(state: makeState(key: "refresh-grace-period")) {
       $0.subscriptionClient.fetchStatus = { .gracePeriod(expirationDate: graceDate) }
-      $0.subscriptionClient.restoreWithReceipt = {
-        await restoreCounter.increment()
-        return RestoreResult(jwsString: nil, productId: nil, localStatus: .none)
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -809,8 +784,6 @@ struct RootTabFeatureTests {
       $0.subscriptionStatus = .gracePeriod(expirationDate: graceDate)
       $0.settings.subscriptionStatus = .gracePeriod(expirationDate: graceDate)
     }
-
-    #expect(await restoreCounter.value() == 0)
   }
 }
 
