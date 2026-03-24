@@ -4548,6 +4548,42 @@
         }
       }
     },
+    "error.emptyText" : {
+      "comment" : "빈 텍스트 에러",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text is empty"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트가 비어있습니다"
+          }
+        }
+      }
+    },
+    "error.extractionFailed" : {
+      "comment" : "일정 추출 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to extract schedule"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 추출에 실패했습니다"
+          }
+        }
+      }
+    },
     "error.eventDeleteFailed": {
       "comment": "일정 삭제 실패 에러",
       "extractionState": "manual",
@@ -5347,6 +5383,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "구매 검증에 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.textTooLong" : {
+      "comment" : "텍스트 길이 초과",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text is too long (max 2000 characters)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트가 너무 깁니다 (최대 2000자)"
           }
         }
       }
@@ -17141,6 +17195,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "상세 보기"
+          }
+        }
+      }
+    },
+    "personal.extraction.extract" : {
+      "comment" : "추출하기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extract"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추출하기"
+          }
+        }
+      }
+    },
+    "personal.extraction.fromText" : {
+      "comment" : "텍스트에서 가져오기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from text"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트에서 가져오기"
+          }
+        }
+      }
+    },
+    "personal.extraction.paste" : {
+      "comment" : "붙여넣기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "붙여넣기"
+          }
+        }
+      }
+    },
+    "personal.extraction.placeholder" : {
+      "comment" : "텍스트 추출 입력 플레이스홀더",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste a text message"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "문자 메시지를 붙여넣으세요"
           }
         }
       }

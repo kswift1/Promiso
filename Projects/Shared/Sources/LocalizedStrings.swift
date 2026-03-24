@@ -642,6 +642,11 @@ public enum LocalizedStrings {
     public static var userAuthRequired: String { String(localized: "error.user.authRequired", bundle: bundle) }
     public static var userPermissionDenied: String { String(localized: "error.user.permissionDenied", bundle: bundle) }
 
+    // Schedule Extraction
+    public static var textTooLong: String { String(localized: "error.textTooLong", bundle: bundle) }
+    public static var emptyText: String { String(localized: "error.emptyText", bundle: bundle) }
+    public static var extractionFailed: String { String(localized: "error.extractionFailed", bundle: bundle) }
+
     // Group Data Source
     public static var groupInvalidResponse: String { String(localized: "error.group.invalidResponse", bundle: bundle) }
     public static var groupInvalidRequestData: String { String(localized: "error.group.invalidRequestData", bundle: bundle) }
@@ -1863,6 +1868,12 @@ public enum LocalizedStrings {
     public static var recurringDeleteSeriesMessage: String {
       String(localized: "personal.recurringDetail.deleteSeriesMessage", bundle: bundle)
     }
+
+    // Text Extraction
+    public static var extractFromText: String { String(localized: "personal.extraction.fromText", bundle: bundle) }
+    public static var extractionPlaceholder: String { String(localized: "personal.extraction.placeholder", bundle: bundle) }
+    public static var extractionPaste: String { String(localized: "personal.extraction.paste", bundle: bundle) }
+    public static var extractionExtract: String { String(localized: "personal.extraction.extract", bundle: bundle) }
   }
 
   // MARK: - ProPlan

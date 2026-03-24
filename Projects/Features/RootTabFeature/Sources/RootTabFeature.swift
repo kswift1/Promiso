@@ -386,11 +386,6 @@ extension RootTab {
           state.scheduleMode = .group
           state.selectedTab = .schedule(.group)
           return .send(.groupMain(.view(.openCreateScheduleIfPossible)))
-        case .home(.delegate(.createScheduleWithExtractedInfo(let info))):
-          // 그룹 탭으로 전환 → CreateSchedule 열기 (추출 정보 pre-fill)
-          state.scheduleMode = .group
-          state.selectedTab = .schedule(.group)
-          return .send(.groupMain(.view(.openCreateScheduleWithExtractedInfo(info))))
 
         case .home(.delegate(.proPlanRequested)):
           state.selectedTab = .settings

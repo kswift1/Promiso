@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
@@ -25,6 +26,7 @@ extension CreatePersonalEvent {
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.scheduleExtractionClient) var scheduleExtractionClient
 
     public init() {}
 
@@ -34,6 +36,7 @@ extension CreatePersonalEvent {
       case emojiDebounce
       case conflictCheckDebounce
       case weatherFetchDebounce
+      case textExtraction
     }
 
     // MARK: - Mode
@@ -78,6 +81,12 @@ extension CreatePersonalEvent {
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
 
+      // 텍스트 추출
+      var isTextExtractionExpanded: Bool = false
+      var extractionText: String = ""
+      var isExtracting: Bool = false
+      var extractionError: String?
+
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
         self.mode = mode
@@ -121,6 +130,12 @@ extension CreatePersonalEvent {
       case removeLocalImage(Int)
       case removeExistingImage(Int)
       case onAppear
+      // 텍스트 추출
+      case toggleTextExtraction
+      case extractionTextChanged(String)
+      case extractTapped
+      case pasteFromClipboardTapped
+      case dismissExtractionError
     }
 
     @CasePathable
@@ -136,6 +151,9 @@ extension CreatePersonalEvent {
       case settingsLoaded(String, Int)
       case refreshProFeatures(debounce: Bool)
       case weatherResponse(Result<WeatherInfo, Error>)
+      // 텍스트 추출
+      case extractionSuccess(PersonalEventModel)
+      case extractionFailed(String)
     }
 
     @CasePathable
@@ -374,6 +392,47 @@ extension CreatePersonalEvent {
             guard index < visibleUrls.count else { return .none }
             state.removedImageUrls.append(visibleUrls[index])
             return .none
+
+          // MARK: Text Extraction
+
+          case .toggleTextExtraction:
+            state.isTextExtractionExpanded.toggle()
+            if !state.isTextExtractionExpanded {
+              state.extractionText = ""
+              state.extractionError = nil
+            }
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .extractionTextChanged(let text):
+            state.extractionText = String(text.prefix(2000))
+            return .none
+
+          case .extractTapped:
+            let text = state.extractionText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return .none }
+            state.isExtracting = true
+            state.extractionError = nil
+            return .run { [scheduleExtractionClient] send in
+              do {
+                let event = try await scheduleExtractionClient.extractFromText(text)
+                await send(.internal(.extractionSuccess(event)))
+              } catch let error as ScheduleExtractionError {
+                await send(.internal(.extractionFailed(error.localizedDescription)))
+              } catch {
+                await send(.internal(.extractionFailed(LocalizedStrings.Error.extractionFailed)))
+              }
+            }
+            .cancellable(id: CancelID.textExtraction, cancelInFlight: true)
+
+          case .pasteFromClipboardTapped:
+            if let clipboardText = UIPasteboard.general.string {
+              state.extractionText = String(clipboardText.prefix(2000))
+            }
+            return .none
+
+          case .dismissExtractionError:
+            state.extractionError = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -458,6 +517,47 @@ extension CreatePersonalEvent {
               checkConflictsEffect(state: &state),
               fetchWeatherHintEffect(state: &state, debounce: debounce)
             )
+
+          // MARK: Text Extraction Results
+
+          case .extractionSuccess(let extractedEvent):
+            state.isExtracting = false
+            // 추출된 정보로 폼 필드 채우기
+            if !extractedEvent.title.isEmpty {
+              state.event.title = extractedEvent.title
+            }
+            state.event.startAt = extractedEvent.startAt
+            if let endAt = extractedEvent.endAt {
+              state.event.endAt = endAt
+              state.useEndTime = true
+            }
+            if let location = extractedEvent.location {
+              state.event.location = location
+            }
+            if let description = extractedEvent.description {
+              state.event.description = description
+            }
+            // 섹션 접기
+            state.isTextExtractionExpanded = false
+            state.extractionText = ""
+            // 이모지 생성 트리거 (title이 채워졌으면)
+            guard !state.event.title.isEmpty else {
+              return .run { _ in await hapticFeedback.success() }
+            }
+            return .merge(
+              .run { _ in await hapticFeedback.success() },
+              .run { [title = state.event.title, clock] send in
+                try await clock.sleep(for: .milliseconds(300))
+                await send(.internal(.titleDebounced(title)))
+              }
+              .cancellable(id: CancelID.emojiDebounce, cancelInFlight: true),
+              .send(.internal(.refreshProFeatures(debounce: false)))
+            )
+
+          case .extractionFailed(let message):
+            state.isExtracting = false
+            state.extractionError = message
+            return .run { _ in await hapticFeedback.error() }
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)

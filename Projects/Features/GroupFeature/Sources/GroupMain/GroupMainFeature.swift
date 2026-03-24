@@ -219,7 +219,6 @@ extension GroupMain {
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (scheduleId)
         case openCreateScheduleIfPossible  // Widget 딥링크: 그룹 있으면 일정 생성
-        case openCreateScheduleWithExtractedInfo(ScheduleExtractedInfo)  // 퀵 일정: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case showGuide
         case dismissGuide
@@ -604,38 +603,6 @@ extension GroupMain {
             }
             // 그룹 있음 → 일정 생성 화면 열기
             return .send(.view(.createNewSchedule))
-
-          case .openCreateScheduleWithExtractedInfo(let info):
-            // 퀵 일정: 추출 정보로 CreateSchedule 열기
-            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
-              return .none
-            }
-            var schedule = ScheduleModel.empty
-            if let currentGroup = state.currentGroup {
-              schedule.group = currentGroup
-              schedule.groupId = currentGroup.id
-            }
-            // 추출 정보 적용
-            if let title = info.title {
-              schedule.title = title
-            }
-            if let date = info.date {
-              schedule.startAt = date
-            }
-            if let description = info.description {
-              schedule.description = description
-            }
-            if let location = info.location {
-              schedule.location = LocationInfoModel(name: location)
-            }
-            state.createSchedule = CreateSchedule.Feature.State(
-              schedule: schedule,
-              groupSummaries: state.allGroupSummaries,
-              currentUserId: state.currentUser.userId,
-              currentUser: state.currentUser,
-              prefillInfo: info
-            )
-            return .none
 
           case .switchToPersonalMode:
             // RootTabFeature에서 처리
