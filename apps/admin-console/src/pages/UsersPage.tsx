@@ -11,8 +11,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import {useQuery} from "@tanstack/react-query";
-import {FormEvent, useCallback, useEffect, useState} from "react";
+import {keepPreviousData, useQuery} from "@tanstack/react-query";
+import {FormEvent, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
 import {
   AdminOverrideFilter,
@@ -35,9 +35,11 @@ export function UsersPage() {
   const [submittedFilters, setSubmittedFilters] = useState(
     defaultSearchFilters
   );
-  const [allUsers, setAllUsers] = useState<AdminUserSummary[]>([]);
-  const [startAfter, setStartAfter] = useState<string | undefined>(undefined);
-  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  // index 0 = undefined (1페이지), index 1 = 2페이지 시작 커서, ...
+  const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
+
+  const startAfter = pageCursors[currentPage - 1];
 
   const query = useQuery({
     queryKey: ["admin-user-summary", submittedFilters, startAfter],
@@ -46,35 +48,38 @@ export function UsersPage() {
       query: submittedFilters.query || undefined,
       startAfter,
     }),
+    placeholderData: keepPreviousData,
   });
 
-  // 새 데이터가 도착하면 누적
-  useEffect(() => {
-    if (query.data) {
-      setAllUsers((prev) =>
-        startAfter ? [...prev, ...query.data.results] : query.data.results
-      );
-      setHasMore(query.data.hasMore);
-    }
-  }, [query.data, startAfter]);
+  const pageUsers: AdminUserSummary[] = query.data?.results ?? [];
+  const hasMore = query.data?.hasMore ?? false;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // 새 검색 시 결과 리셋
-    setAllUsers([]);
-    setStartAfter(undefined);
-    setHasMore(false);
+    setCurrentPage(1);
+    setPageCursors([undefined]);
     setSubmittedFilters({
       ...filters,
       query: filters.query.trim(),
     });
   };
 
-  const handleLoadMore = useCallback(() => {
-    if (allUsers.length > 0) {
-      setStartAfter(allUsers[allUsers.length - 1].userId);
-    }
-  }, [allUsers]);
+  const handleNextPage = () => {
+    if (!hasMore || query.isFetching) return;
+    const nextCursor = pageUsers[pageUsers.length - 1]?.userId;
+    const nextPage = currentPage + 1;
+    setPageCursors((prev) => {
+      const updated = [...prev];
+      updated[nextPage - 1] = nextCursor;
+      return updated;
+    });
+    setCurrentPage(nextPage);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage <= 1 || query.isFetching) return;
+    setCurrentPage((prev) => prev - 1);
+  };
 
   return (
     <Stack spacing={3}>
@@ -175,9 +180,8 @@ export function UsersPage() {
                 variant="text"
                 onClick={() => {
                   setFilters(defaultSearchFilters);
-                  setAllUsers([]);
-                  setStartAfter(undefined);
-                  setHasMore(false);
+                  setCurrentPage(1);
+                  setPageCursors([undefined]);
                   setSubmittedFilters(defaultSearchFilters);
                 }}
               >
@@ -202,7 +206,7 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
-      {query.isLoading && allUsers.length === 0 && (
+      {query.isLoading && (
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={20} />
           <Typography color="text.secondary">검색 중입니다.</Typography>
@@ -215,19 +219,19 @@ export function UsersPage() {
         </Alert>
       )}
 
-      {!query.isLoading && allUsers.length === 0 && query.data && (
+      {!query.isLoading && pageUsers.length === 0 && query.data && (
         <Alert severity="info">
           일치하는 사용자를 찾지 못했습니다.
         </Alert>
       )}
 
-      {allUsers.length > 0 && (
+      {pageUsers.length > 0 && (
         <>
           <Typography color="text.secondary">
-            {allUsers.length}명 표시 중
+            페이지 {currentPage} · {pageUsers.length}명 표시
           </Typography>
           <Grid container spacing={2}>
-            {allUsers.map((user) => (
+            {pageUsers.map((user) => (
               <Grid key={user.userId} size={{xs: 12, md: 6}}>
                 <Card elevation={0}>
                   <CardContent>
@@ -284,16 +288,31 @@ export function UsersPage() {
             ))}
           </Grid>
 
-          {hasMore && (
-            <Button
-              variant="outlined"
-              onClick={handleLoadMore}
-              disabled={query.isFetching}
-              startIcon={query.isFetching ? <CircularProgress size={16} /> : undefined}
-            >
-              {query.isFetching ? "불러오는 중..." : "더 보기"}
-            </Button>
-          )}
+          <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+            {query.isFetching && <CircularProgress size={16} />}
+            {Array.from(
+              {length: hasMore ? currentPage + 1 : currentPage},
+              (_, i) => i + 1
+            ).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "contained" : "outlined"}
+                size="small"
+                sx={{minWidth: 36}}
+                disabled={query.isFetching || (page > currentPage && !hasMore)}
+                onClick={() => {
+                  if (page === currentPage) return;
+                  if (page > currentPage && hasMore) {
+                    handleNextPage();
+                  } else if (page < currentPage) {
+                    setCurrentPage(page);
+                  }
+                }}
+              >
+                {page}
+              </Button>
+            ))}
+          </Stack>
         </>
       )}
     </Stack>
