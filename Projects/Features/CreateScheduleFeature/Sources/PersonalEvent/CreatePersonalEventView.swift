@@ -200,9 +200,7 @@ extension CreatePersonalEvent {
         VStack(spacing: 0) {
           // 헤더 (항상 표시)
           Button {
-            withAnimation(.default) {
-              store.send(.view(.toggleTextExtraction))
-            }
+            store.send(.view(.toggleTextExtraction), animation: .default)
           } label: {
             HStack {
               Image(systemName: "text.viewfinder")
@@ -247,7 +245,7 @@ extension CreatePersonalEvent {
                 if store.extractionText.isEmpty {
                   Text(LocalizedStrings.Personal.extractionPlaceholder)
                     .font(.system(size: 14))
-                    .foregroundStyle(Color.pmtext.tertiary)
+                    .foregroundStyle(Color.pmtext.secondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 16)
                     .allowsHitTesting(false)
