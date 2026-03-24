@@ -676,8 +676,8 @@ struct RootTabFeatureTests {
     }
   }
 
-  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 확인 - 서버 상태 그대로 유지")
-  func refreshSubscription_expired_localStoreKitActive_keepsServerStatus() async {
+  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 확인 - 로컬 상태 우선 반영")
+  func refreshSubscription_expired_localStoreKitActive_usesLocalStatus() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let newFutureDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 30) // 30일 후
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
@@ -692,8 +692,8 @@ struct RootTabFeatureTests {
     await store.send(.scenePhaseChanged(.active))
     await store.receive(\.internal.refreshSubscriptionStatus)
     await store.receive(\.internal.subscriptionStatusChanged) {
-      $0.subscriptionStatus = serverStatus
-      $0.settings.subscriptionStatus = serverStatus
+      $0.subscriptionStatus = localStatus
+      $0.settings.subscriptionStatus = localStatus
     }
   }
 

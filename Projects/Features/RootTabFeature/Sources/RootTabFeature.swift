@@ -732,8 +732,9 @@ extension RootTab {
                   do {
                     let localStatus = try await subscriptionClient.fetchLocalStatus()
                     if localStatus.isPro {
-                      // 로컬 StoreKit에서 활성 구독 확인됨 → 서버 상태 그대로 사용
-                      await send(.internal(.subscriptionStatusChanged(status)))
+                      // 로컬 StoreKit에서 활성 구독 확인됨 → 로컬 상태 우선 반영
+                      // (서버는 unifiedStatusStream으로 곧 동기화됨)
+                      await send(.internal(.subscriptionStatusChanged(localStatus)))
                     } else {
                       // 로컬에도 활성 구독 없음 → expired 처리
                       await send(.internal(.subscriptionStatusChanged(.expired(expirationDate: expDate))))
