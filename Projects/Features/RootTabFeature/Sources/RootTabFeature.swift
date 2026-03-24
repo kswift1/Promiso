@@ -724,22 +724,24 @@ extension RootTab {
           case .refreshSubscriptionStatus:
             return .run { [subscriptionClient] send in
               if let status = try? await subscriptionClient.fetchStatus() {
-                // 서버 상태가 subscribed인데 만료일이 지났으면 StoreKit 재검증
+                // 서버 상태가 subscribed인데 만료일이 지났으면 로컬 StoreKit으로 검증
+                // (AppStore.sync() 없이 — Apple ID 로그인 팝업 방지)
                 if case .subscribed(_, let expirationDate) = status,
                    let expDate = expirationDate,
                    expDate < Date() {
                   do {
-                    let restoreResult = try await subscriptionClient.restoreWithReceipt()
-                    if let jws = restoreResult.jwsString, let productId = restoreResult.productId {
-                      let verified = try await subscriptionClient.verifyPurchase(jws, productId, false)
-                      await send(.internal(.subscriptionStatusChanged(verified)))
+                    let localStatus = try await subscriptionClient.fetchLocalStatus()
+                    if localStatus.isPro {
+                      // 로컬 StoreKit에서 활성 구독 확인됨 → 로컬 상태 우선 반영
+                      // (서버는 unifiedStatusStream으로 곧 동기화됨)
+                      await send(.internal(.subscriptionStatusChanged(localStatus)))
                     } else {
-                      // StoreKit에도 활성 구독 없음 → expired 처리
+                      // 로컬에도 활성 구독 없음 → expired 처리
                       await send(.internal(.subscriptionStatusChanged(.expired(expirationDate: expDate))))
                     }
                   } catch {
-                    // 재검증 실패 시 서버 상태 그대로 사용
-                    AppLogger.subscription.error("[RootTab] Subscription re-verification failed: \(error)")
+                    // 로컬 조회 실패 시 서버 상태 그대로 사용
+                    AppLogger.subscription.error("[RootTab] Local status check failed: \(error)")
                     await send(.internal(.subscriptionStatusChanged(status)))
                   }
                 } else {
