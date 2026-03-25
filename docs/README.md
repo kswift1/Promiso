@@ -18,6 +18,7 @@ Promiso 저장소의 공식 개발 문서를 빠르게 찾기 위한 인덱스�
 | 제품 정체성/메시지 정렬 | [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md) |
 | 운영 콘솔 계획 확인 | [ADMIN_CONSOLE_PLAN.md](ADMIN_CONSOLE_PLAN.md) |
 | 기능 개발/테스트 규칙 | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| QA 에이전트 운영 | [QA_AGENT.md](QA_AGENT.md) |
 | 테스트 의존성/Unimplemented/중복링킹 대응 | [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md) |
 | 브랜치 운영 규칙 | [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) |
 | GitHub Actions 파이프라인 이해 | [CI_CD.md](CI_CD.md) |
@@ -30,6 +31,7 @@ Promiso 저장소의 공식 개발 문서를 빠르게 찾기 위한 인덱스�
 | [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md) | 제품 카테고리, 포지셔닝, Free/Pro 가치, 온보딩/Paywall 메시지 기준 | 구현 세부 아키텍처, 배포 절차 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 모듈 구조, 의존성 규칙, 데이터 흐름 | 배포 절차 상세 |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Feature 개발, 테스트, 코딩 컨벤션 | CI/CD 운영 정책 |
+| [QA_AGENT.md](QA_AGENT.md) | QA 에이전트 역할, diff 리뷰, smoke 검증, 보고 형식 | 기능 구현 세부 규칙 전체 |
 | [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md) | TestStore 의존성 규칙, `testValue`, 중복링킹 대응 | 일반 기능 구현 컨벤션 전체 |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | 새 컴퓨터/온보딩 초기 세팅 | 환경별 빌드 전략 상세 |
 | [ENVIRONMENT.md](ENVIRONMENT.md) | Dev/Stage/Prod 구성과 로컬 환경 파일 | 브랜치 운영 정책 |

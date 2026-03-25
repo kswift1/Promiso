@@ -6,7 +6,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 
 - 목적: GitHub Actions 워크플로우 동작과 운영 기준 정의
 - 대상 독자: CI/CD 관리 담당자, 배포 자동화 작업자
-- 최종 수정일: 2026-03-13
+- 최종 수정일: 2026-03-25
 - 관련 문서: [README.md](README.md) · [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 범위 안내
@@ -21,8 +21,10 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 
 | 워크플로우 | 트리거 | 목적 | 환경 |
 |-----------|--------|------|------|
-| **PR Check** | PR → develop/staging/main | iOS 빌드 & 테스트 검증 | Dev |
+| **PR Check** | PR → develop/staging/main/release/** | iOS 빌드 & 테스트 검증 | Dev |
 | **Admin Console Check** | PR + `apps/admin-console/**` 변경 | admin console 웹 앱 빌드 검증 | N/A |
+| **QA Nightly** | 평일 18:00 KST + 수동 실행 | release 기준 curated QA | Stage / Web / Functions |
+| **QA Weekly** | 매주 월요일 10:00 KST + 수동 실행 | release 기준 넓은 회귀 QA | Stage / Web / Functions |
 | **Deploy iOS** | 수동 (workflow_dispatch) | TestFlight 배포 | Stage / Prod |
 | **Deploy Firebase** | 수동 (workflow_dispatch) | Firebase 배포 (Functions/Rules) | Stage / Prod |
 | **Deploy Firebase Stage (Auto)** | `push` to `release/**` + Firebase 경로 변경 | Stage 자동 배포 | Stage |
@@ -39,7 +41,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 ```yaml
 on:
   pull_request:
-    branches: [develop, staging, main]
+    branches: [develop, staging, main, 'release/**']
 ```
 
 ### 실행 단계
@@ -172,6 +174,72 @@ on:
 - iOS PR Check와 분리되어 실행됩니다.
 - `apps/admin-console` 변경이 없으면 실행되지 않습니다.
 - 아직 별도 배포 워크플로우는 정의하지 않았습니다.
+
+---
+
+## 1.2 QA Nightly 워크플로우
+
+### 목적
+`release/v1.3.1` 기준으로 평일마다 curated QA를 실행해 출시선의 기본 안정성을 점검합니다.
+
+### 트리거
+```yaml
+on:
+  schedule:
+    - cron: '0 9 * * 1-5'   # 평일 18:00 KST
+  workflow_dispatch:
+```
+
+### 실행 범위
+
+- iOS: `PromisoStage` 빌드 + 핵심 모듈 테스트
+  - `AppEntryFeature`
+  - `RootTabFeature`
+  - `HomeFeature`
+  - `GroupFeature`
+  - `AuthFeature`
+  - `Clients`
+  - `SettingsFeature`
+- Admin Console: `npm ci` + `npm run build`
+- Firebase Functions: `npm ci` + `npm run lint` + `npm run build`
+
+### 특징
+
+- PR Check와 달리 **diff 기반이 아니라 고정 ref 기준**으로 실행됩니다.
+- 기본 검증 ref는 `vars.QA_TARGET_REF`를 우선 사용하고, 없으면 `release/v1.3.1`로 fallback 합니다. 수동 실행 시 `ref` input으로 덮어쓸 수 있습니다.
+- 결과는 GitHub Actions Summary와 artifact로 남깁니다. 실패 시 summary에 job별 핵심 에러 3~5줄을 함께 기록합니다.
+
+---
+
+## 1.3 QA Weekly 워크플로우
+
+### 목적
+`release/v1.3.1` 기준으로 주 1회 더 넓은 회귀 검증을 실행합니다.
+
+### 트리거
+```yaml
+on:
+  schedule:
+    - cron: '0 1 * * 1'   # 월요일 10:00 KST
+  workflow_dispatch:
+```
+
+### 실행 범위
+
+- iOS: `PromisoStage` 빌드 + `tuist test` 전체 실행
+- Admin Console: `npm ci` + `npm run build`
+- Firebase Functions:
+  - `npm ci`
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run api:validate`
+
+### 특징
+
+- nightly보다 느리지만 회귀 탐지 범위가 넓습니다.
+- iOS 전체 테스트 결과와 로그를 artifact로 업로드합니다. 실패 시 summary에 핵심 에러 3~5줄을 함께 기록합니다.
+- 주간 품질 게이트 성격으로 운영합니다.
 
 ---
 
