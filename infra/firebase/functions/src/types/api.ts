@@ -1788,14 +1788,17 @@ export interface ScheduleSlotEntry {
  *
  * @remarks
  * - 인증 필수 (Firebase Auth)
- * - Gemini API를 사용하여 텍스트에서 일정 정보 추출
+ * - Gemini API를 사용하여 텍스트 또는 이미지에서 일정 정보 추출
+ * - text 또는 imageBase64 중 하나 이상 필수
  *
  * @added 2026-03-24
- * @ios CreatePersonalEventView - "텍스트에서 가져오기" 기능
+ * @ios CreatePersonalEventView - "텍스트에서 가져오기" / "사진에서 가져오기" 기능
  */
 export interface ExtractScheduleRequest {
-  /** SMS/문자 원본 텍스트 */
-  text: string;
+  /** SMS/문자 원본 텍스트 (텍스트 모드) */
+  text?: string;
+  /** 이미지 base64 인코딩 (사진 모드) */
+  imageBase64?: string;
   /** 클라이언트 타임존 (예: "Asia/Seoul") */
   timezone: string;
 }

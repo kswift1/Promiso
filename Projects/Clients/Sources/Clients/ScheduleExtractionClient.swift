@@ -13,6 +13,7 @@ public enum ScheduleExtractionError: Error, Equatable {
   case serverError(String)
   case textTooLong
   case emptyText
+  case imageTooLarge
 
   public var localizedDescription: String {
     switch self {
@@ -28,17 +29,21 @@ public enum ScheduleExtractionError: Error, Equatable {
       return LocalizedStrings.Error.textTooLong
     case .emptyText:
       return LocalizedStrings.Error.emptyText
+    case .imageTooLarge:
+      return LocalizedStrings.Error.imageTooLarge
     }
   }
 }
 
 // MARK: - Client
 
-/// 텍스트에서 일정 정보를 추출하는 Client (LLM 기반)
+/// 텍스트/이미지에서 일정 정보를 추출하는 Client (LLM 기반)
 @DependencyClient
 public struct ScheduleExtractionClient: Sendable {
   /// 텍스트에서 일정 정보 추출 (Firebase Function 호출)
   public var extractFromText: @Sendable (_ text: String) async throws -> PersonalEventModel
+  /// 이미지에서 일정 정보 추출 (Firebase Function 호출, base64 인코딩)
+  public var extractFromImage: @Sendable (_ imageData: Data) async throws -> PersonalEventModel
 }
 
 // MARK: - Test & Preview Values
@@ -48,6 +53,14 @@ extension ScheduleExtractionClient: TestDependencyKey {
 
   public static let previewValue = Self(
     extractFromText: { _ in
+      try await Task.sleep(for: .seconds(1))
+      return PersonalEventModel(
+        title: "주말 모임",
+        startAt: Date().addingTimeInterval(86400),
+        location: LocationInfoModel(name: "강남역")
+      )
+    },
+    extractFromImage: { _ in
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel(
         title: "주말 모임",
@@ -133,36 +146,7 @@ extension ScheduleExtractionClient: DependencyKey {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.general.info("✅ [ScheduleExtraction] 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
 
-          // PersonalEventModel 구성
-          var event = PersonalEventModel()
-
-          if let title = data["title"] as? String, !title.isEmpty {
-            event.title = String(title.prefix(30))
-          }
-
-          if let startDateStr = data["startDate"] as? String,
-             let startDate = parseISO8601Date(startDateStr) {
-            event.startAt = startDate
-          }
-
-          if let endDateStr = data["endDate"] as? String,
-             let endDate = parseISO8601Date(endDateStr) {
-            event.endAt = endDate
-          }
-
-          if let locationName = data["location"] as? String, !locationName.isEmpty {
-            let address = data["address"] as? String
-            event.location = LocationInfoModel(
-              name: locationName,
-              address: address
-            )
-          }
-
-          if let description = data["description"] as? String, !description.isEmpty {
-            event.description = String(description.prefix(500))
-          }
-
-          return event
+          return try parseEventModel(from: data)
         } catch let error as ScheduleExtractionError {
           throw error
         } catch let error as NSError {
@@ -182,7 +166,86 @@ extension ScheduleExtractionClient: DependencyKey {
           }
           throw ScheduleExtractionError.networkError
         }
+      },
+      extractFromImage: { imageData in
+        // 4MB 제한
+        guard imageData.count <= 4 * 1024 * 1024 else {
+          throw ScheduleExtractionError.imageTooLarge
+        }
+
+        let base64String = imageData.base64EncodedString()
+        AppLogger.general.debug("📸 [ScheduleExtraction] 이미지 추출 시작 (\(imageData.count) bytes)")
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        do {
+          let result = try await functions.httpsCallable("extractSchedule").call([
+            "imageBase64": base64String,
+            "timezone": TimeZone.current.identifier,
+          ])
+
+          guard let data = result.data as? [String: Any] else {
+            AppLogger.general.error("❌ [ScheduleExtraction] 이미지 응답 파싱 실패")
+            throw ScheduleExtractionError.invalidResponse
+          }
+
+          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
+          AppLogger.general.info("✅ [ScheduleExtraction] 이미지 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
+
+          return try parseEventModel(from: data)
+        } catch let error as ScheduleExtractionError {
+          throw error
+        } catch let error as NSError {
+          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
+          AppLogger.general.error("❌ [ScheduleExtraction] 이미지 에러: \(error.localizedDescription) (소요: \(String(format: "%.2f", totalTime))초)")
+
+          if error.domain == FunctionsErrorDomain {
+            let code = FunctionsErrorCode(rawValue: error.code)
+            switch code {
+            case .unauthenticated:
+              throw ScheduleExtractionError.notAuthenticated
+            case .invalidArgument:
+              throw ScheduleExtractionError.invalidResponse
+            default:
+              throw ScheduleExtractionError.serverError(error.localizedDescription)
+            }
+          }
+          throw ScheduleExtractionError.networkError
+        }
       }
     )
   }()
+}
+
+// MARK: - Response Parsing
+
+private func parseEventModel(from data: [String: Any]) throws -> PersonalEventModel {
+  var event = PersonalEventModel()
+
+  if let title = data["title"] as? String, !title.isEmpty {
+    event.title = String(title.prefix(30))
+  }
+
+  if let startDateStr = data["startDate"] as? String,
+     let startDate = parseISO8601Date(startDateStr) {
+    event.startAt = startDate
+  }
+
+  if let endDateStr = data["endDate"] as? String,
+     let endDate = parseISO8601Date(endDateStr) {
+    event.endAt = endDate
+  }
+
+  if let locationName = data["location"] as? String, !locationName.isEmpty {
+    let address = data["address"] as? String
+    event.location = LocationInfoModel(
+      name: locationName,
+      address: address
+    )
+  }
+
+  if let description = data["description"] as? String, !description.isEmpty {
+    event.description = String(description.prefix(500))
+  }
+
+  return event
 }

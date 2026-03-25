@@ -83,6 +83,7 @@ extension PersonalMode {
       /// 일정 탭 기본 모드 (Settings에서 설정)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
 
+      @Presents var scheduleImport: ScheduleImport.Feature.State?
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -190,6 +191,7 @@ extension PersonalMode {
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
+      case scheduleImport(PresentationAction<ScheduleImport.Feature.Action>)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
       case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
@@ -199,6 +201,7 @@ extension PersonalMode {
         case onAppear
         case refreshEvents
         case filterChanged(EventFilter)
+        case scheduleImportTapped
         case createNewEventTapped
         case createOneTimeEventTapped
         case createRecurringEventTapped
@@ -281,6 +284,10 @@ extension PersonalMode {
             if filter == .past && !state.pastEventsState.isLoaded {
               return .send(.internal(.fetchPastEvents))
             }
+            return .none
+
+          case .scheduleImportTapped:
+            state.scheduleImport = ScheduleImport.Feature.State()
             return .none
 
           case .createNewEventTapped:
@@ -615,6 +622,20 @@ extension PersonalMode {
             return .none
           }
 
+        // MARK: - ScheduleImport Delegate
+
+        case .scheduleImport(.presented(.delegate(.extracted(let event)))):
+          state.scheduleImport = nil
+          state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
+          return .none
+
+        case .scheduleImport(.presented(.delegate(.dismiss))):
+          state.scheduleImport = nil
+          return .none
+
+        case .scheduleImport:
+          return .none
+
         // MARK: - CreateEvent Delegate
 
         case .createEvent(.presented(.delegate(.eventCreated))),
@@ -683,6 +704,9 @@ extension PersonalMode {
           return .none
         }
       }
+      .ifLet(\.$scheduleImport, action: \.scheduleImport) {
+        ScheduleImport.Feature()
+      }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
       }
@@ -702,15 +726,11 @@ extension PersonalMode {
 // MARK: - Deeplink Helpers
 
 extension PersonalMode.Feature {
-  /// Share Extension 텍스트로 CreatePersonalEvent 폼을 엽니다.
+  /// Share Extension 텍스트로 ScheduleImport 폼을 엽니다.
   func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
     let text = AppConstants.AppGroup.consumePendingExtractionText()
-    var eventState = CreatePersonalEvent.Feature.State()
-    if let text {
-      eventState.isTextExtractionExpanded = true
-      eventState.extractionText = text
-    }
-    state.createEvent = eventState
+    let importState = ScheduleImport.Feature.State(inputText: text ?? "")
+    state.scheduleImport = importState
     return .none
   }
 }

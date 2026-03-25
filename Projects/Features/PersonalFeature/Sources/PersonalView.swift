@@ -41,6 +41,13 @@ extension PersonalMode {
         store.send(.view(.onAppear))
       }
       .sheet(
+        item: $store.scope(state: \.scheduleImport, action: \.scheduleImport)
+      ) { importStore in
+        ScheduleImport.RootView(store: importStore)
+          .presentationDetents([.large])
+          .presentationDragIndicator(.visible)
+      }
+      .sheet(
         item: $store.scope(state: \.createEvent, action: \.createEvent)
       ) { createEventStore in
         CreatePersonalEvent.RootView(
@@ -381,6 +388,12 @@ extension PersonalMode {
     @ViewBuilder
     private var fabButton: some View {
       Menu {
+        Button {
+          store.send(.view(.scheduleImportTapped))
+        } label: {
+          Label(LocalizedStrings.Personal.addFromPhotoText, systemImage: "text.viewfinder")
+        }
+
         Button {
           store.send(.view(.createOneTimeEventTapped))
         } label: {
