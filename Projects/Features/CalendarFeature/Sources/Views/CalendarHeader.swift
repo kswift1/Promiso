@@ -79,12 +79,18 @@ struct CalendarHeader: View {
 
       // 필터
       Button(action: onFilterTapped) {
-        Image(systemName: isFilterActive
-          ? "line.3.horizontal.decrease.circle.fill"
-          : "line.3.horizontal.decrease.circle")
-          .font(.system(size: 18))
-          .foregroundColor(isFilterActive ? Color.pmindigo.n500 : .primary)
-          .frame(width: 32, height: 36)
+        Group {
+          if isFilterActive {
+            Image(systemName: "line.3.horizontal.decrease.circle.fill")
+              .font(.system(size: 18))
+              .foregroundStyle(Color.pmindigo.n500)
+          } else {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+              .font(.system(size: 18))
+              .foregroundStyle(.primary)
+          }
+        }
+        .frame(width: 32, height: 36)
       }
 
       // 모드 전환 (탭: 순환, 꾹 누르기: 메뉴)
