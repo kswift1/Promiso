@@ -119,7 +119,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   private func configureClaritySDK() {
     #if DEBUG
     AppLogger.general.debug("Clarity SDK disabled for DEBUG build")
-    #else
+    return
+    #endif
+
     guard let projectId = Bundle.main.object(forInfoDictionaryKey: "CLARITY_PROJECT_ID") as? String else {
       AppLogger.general.error("Clarity Project ID not found in Info.plist")
       return
@@ -128,7 +130,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     let config = ClarityConfig(projectId: projectId, logLevel: .none)
     ClaritySDK.initialize(config: config)
     AppLogger.general.debug("Clarity SDK initialized with projectId: \(projectId)")
-    #endif
   }
 
   /// Google Sign-In 리디렉션 URL 처리
