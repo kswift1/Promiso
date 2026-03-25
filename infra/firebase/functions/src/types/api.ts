@@ -1802,6 +1802,19 @@ export interface ScheduleSlotEntry {
 // ============================================================================
 
 /**
+ * 설명 블록 응답 타입 (LLM 추출 결과)
+ *
+ * @remarks
+ * - text: 일반 텍스트 정보 (급여, 연락처, 기타 안내)
+ * - checklist: 준비물, 할 일 등 체크 가능한 항목
+ * - bulletList: 나열형 정보 (여러 연락처, 여러 조건 등)
+ */
+export type DescriptionBlockResponse =
+  | { type: "text"; content: string }
+  | { type: "checklist"; items: string[] }
+  | { type: "bulletList"; items: string[] };
+
+/**
  * 일정 추출 요청
  *
  * @remarks
@@ -1827,7 +1840,7 @@ export interface ExtractScheduleRequest {
  * 모든 필드가 nullable — LLM이 추출하지 못한 정보는 null
  */
 export interface ExtractScheduleResponse {
-  /** 일정 제목 (20자 이내) */
+  /** 일정 제목 (30자 이내) */
   title: string | null;
   /** 시작 날짜시간 (ISO 8601) */
   startDate: string | null;
@@ -1839,4 +1852,6 @@ export interface ExtractScheduleResponse {
   address: string | null;
   /** 부가 정보 (급여, 준비물, 담당자 등) */
   description: string | null;
+  /** 구조화된 설명 블록 (text/checklist/bulletList) */
+  descriptionBlocks: DescriptionBlockResponse[] | null;
 }

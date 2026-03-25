@@ -57,6 +57,13 @@ extension ScheduleExtractionClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel(
         title: "주말 모임",
+        descriptionBlocks: [
+          DescriptionBlock(content: .text("회비: 1인당 30,000원")),
+          DescriptionBlock(content: .checklist([
+            ChecklistItem(text: "보드게임"),
+            ChecklistItem(text: "간식"),
+          ])),
+        ],
         startAt: Date().addingTimeInterval(86400),
         location: LocationInfoModel(name: "강남역")
       )
@@ -65,6 +72,13 @@ extension ScheduleExtractionClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(1))
       return PersonalEventModel(
         title: "주말 모임",
+        descriptionBlocks: [
+          DescriptionBlock(content: .text("회비: 1인당 30,000원")),
+          DescriptionBlock(content: .checklist([
+            ChecklistItem(text: "보드게임"),
+            ChecklistItem(text: "간식"),
+          ])),
+        ],
         startAt: Date().addingTimeInterval(86400),
         location: LocationInfoModel(name: "강남역")
       )
@@ -246,8 +260,51 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
     )
   }
 
-  if let description = data["description"] as? String, !description.isEmpty {
-    event.description = String(description.prefix(500))
+  // First try structured blocks
+  if let blocksData = data["descriptionBlocks"] as? [[String: Any]] {
+    var blocks: [DescriptionBlock] = []
+    for blockData in blocksData {
+      guard let type = blockData["type"] as? String else { continue }
+      switch type {
+      case "text":
+        if let content = blockData["content"] as? String,
+           !content.isEmpty {
+          blocks.append(DescriptionBlock(content: .text(content)))
+        }
+      case "checklist":
+        if let items = blockData["items"] as? [String],
+           !items.isEmpty {
+          let checklistItems = items.map {
+            ChecklistItem(text: $0)
+          }
+          blocks.append(
+            DescriptionBlock(content: .checklist(checklistItems))
+          )
+        }
+      case "bulletList":
+        if let items = blockData["items"] as? [String],
+           !items.isEmpty {
+          blocks.append(
+            DescriptionBlock(content: .bulletList(items))
+          )
+        }
+      default:
+        break
+      }
+    }
+    if !blocks.isEmpty {
+      event.descriptionBlocks = blocks
+      event.description = blocks.plainText
+    }
+  }
+
+  // Fallback: plain description → wrap in text block
+  if event.descriptionBlocks.isEmpty,
+     let description = data["description"] as? String,
+     !description.isEmpty {
+    let trimmed = String(description.prefix(500))
+    event.description = trimmed
+    event.descriptionBlocks = [DescriptionBlock(content: .text(trimmed))]
   }
 
   return event
@@ -280,17 +337,17 @@ private func geocodeIfNeeded(_ event: PersonalEventModel) async -> PersonalEvent
     AppLogger.general.warning("📍 [Geocoding] 실패: \(error.localizedDescription)")
   }
 
-  // 좌표 변환 실패 → location 제거, description에 장소 정보 추가
+  // 좌표 변환 실패 → location 제거, descriptionBlocks에 장소 정보 추가
   var updated = event
   updated.location = nil
-  let locationText = [location.name, location.address].compactMap { $0 }.joined(separator: " ")
+  let locationText = [location.name, location.address]
+    .compactMap { $0 }.joined(separator: " ")
   if !locationText.isEmpty {
-    let prefix = "장소: \(locationText)"
-    if let existing = updated.description, !existing.isEmpty {
-      updated.description = "\(prefix)\n\(existing)"
-    } else {
-      updated.description = prefix
-    }
+    let locationBlock = DescriptionBlock(
+      content: .text("장소: \(locationText)")
+    )
+    updated.descriptionBlocks.insert(locationBlock, at: 0)
+    updated.description = updated.descriptionBlocks.plainText
   }
   AppLogger.general.info("📍 [Geocoding] 좌표 변환 실패 → description으로 이동: \(locationText)")
   return updated
