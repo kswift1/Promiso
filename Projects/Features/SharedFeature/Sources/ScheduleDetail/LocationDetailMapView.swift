@@ -153,12 +153,23 @@ public struct KakaoInteractiveMapView: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ container: KMViewContainer, coordinator: Coordinator) {
-    coordinator.mapController?.pauseEngine()
-    coordinator.mapController?.resetEngine()
+    coordinator.cleanupMapController()
   }
 
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
+
+    deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
+      mapController?.delegate = nil
+      mapController?.pauseEngine()
+      mapController?.resetEngine()
+      mapController = nil
+    }
+
     private var pendingLatitude: Double?
     private var pendingLongitude: Double?
     private var pendingZoomLevel: Int = 16

@@ -11,8 +11,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import {useQuery} from "@tanstack/react-query";
-import {FormEvent, useCallback, useEffect, useState} from "react";
+import {DataGrid, GridColDef, GridRenderCellParams} from "@mui/x-data-grid";
+import {keepPreviousData, useQuery} from "@tanstack/react-query";
+import {FormEvent, useState} from "react";
 import {Link as RouterLink} from "react-router-dom";
 import {
   AdminOverrideFilter,
@@ -30,14 +31,109 @@ const defaultSearchFilters = {
   limit: 25,
 };
 
+const columns: GridColDef<AdminUserSummary>[] = [
+  {
+    field: "nickname",
+    headerName: "닉네임",
+    width: 150,
+    valueGetter: (_value, row) => row.nickname ?? row.name ?? row.userId,
+  },
+  {
+    field: "userId",
+    headerName: "사용자 ID",
+    width: 250,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Typography variant="body2" sx={{fontFamily: "monospace"}}>
+        {params.value}
+      </Typography>
+    ),
+  },
+  {
+    field: "email",
+    headerName: "이메일",
+    width: 200,
+    valueGetter: (_value, row) => row.email ?? "이메일 없음",
+  },
+  {
+    field: "subscriptionStatus",
+    headerName: "Subscription",
+    width: 150,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Chip
+        color={params.row.subscriptionStatus ? "primary" : "default"}
+        label={params.row.subscriptionStatus ?? "없음"}
+        size="small"
+      />
+    ),
+  },
+  {
+    field: "overrideActive",
+    headerName: "수동 변경",
+    width: 120,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Chip
+        color={params.row.overrideActive ? "secondary" : "default"}
+        label={params.row.overrideActive ? "활성" : "없음"}
+        size="small"
+      />
+    ),
+  },
+  {
+    field: "groupCount",
+    headerName: "그룹",
+    width: 80,
+    type: "number",
+  },
+  {
+    field: "deviceCount",
+    headerName: "기기",
+    width: 80,
+    type: "number",
+  },
+  {
+    field: "personalEventCount",
+    headerName: "개인일정",
+    width: 90,
+    type: "number",
+  },
+  {
+    field: "actions",
+    headerName: "액션",
+    width: 200,
+    sortable: false,
+    renderCell: (params: GridRenderCellParams<AdminUserSummary>) => (
+      <Stack direction="row" spacing={1} alignItems="center" height="100%">
+        <Button
+          component={RouterLink}
+          to={`/users/${params.row.userId}/timeline`}
+          variant="contained"
+          size="small"
+        >
+          이력 보기
+        </Button>
+        <Button
+          component={RouterLink}
+          to={`/entitlements?userId=${params.row.userId}`}
+          variant="text"
+          size="small"
+        >
+          Pro 수동 변경
+        </Button>
+      </Stack>
+    ),
+  },
+];
+
 export function UsersPage() {
   const [filters, setFilters] = useState(defaultSearchFilters);
   const [submittedFilters, setSubmittedFilters] = useState(
     defaultSearchFilters
   );
-  const [allUsers, setAllUsers] = useState<AdminUserSummary[]>([]);
-  const [startAfter, setStartAfter] = useState<string | undefined>(undefined);
-  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  // index 0 = undefined (1페이지), index 1 = 2페이지 시작 커서, ...
+  const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
+
+  const startAfter = pageCursors[currentPage - 1];
 
   const query = useQuery({
     queryKey: ["admin-user-summary", submittedFilters, startAfter],
@@ -46,35 +142,38 @@ export function UsersPage() {
       query: submittedFilters.query || undefined,
       startAfter,
     }),
+    placeholderData: keepPreviousData,
   });
 
-  // 새 데이터가 도착하면 누적
-  useEffect(() => {
-    if (query.data) {
-      setAllUsers((prev) =>
-        startAfter ? [...prev, ...query.data.results] : query.data.results
-      );
-      setHasMore(query.data.hasMore);
-    }
-  }, [query.data, startAfter]);
+  const pageUsers: AdminUserSummary[] = query.data?.results ?? [];
+  const hasMore = query.data?.hasMore ?? false;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // 새 검색 시 결과 리셋
-    setAllUsers([]);
-    setStartAfter(undefined);
-    setHasMore(false);
+    setCurrentPage(1);
+    setPageCursors([undefined]);
     setSubmittedFilters({
       ...filters,
       query: filters.query.trim(),
     });
   };
 
-  const handleLoadMore = useCallback(() => {
-    if (allUsers.length > 0) {
-      setStartAfter(allUsers[allUsers.length - 1].userId);
-    }
-  }, [allUsers]);
+  const handleNextPage = () => {
+    if (!hasMore || query.isFetching) return;
+    const nextCursor = pageUsers[pageUsers.length - 1]?.userId;
+    const nextPage = currentPage + 1;
+    setPageCursors((prev) => {
+      const updated = [...prev];
+      updated[nextPage - 1] = nextCursor;
+      return updated;
+    });
+    setCurrentPage(nextPage);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage <= 1 || query.isFetching) return;
+    setCurrentPage((prev) => prev - 1);
+  };
 
   return (
     <Stack spacing={3}>
@@ -175,9 +274,8 @@ export function UsersPage() {
                 variant="text"
                 onClick={() => {
                   setFilters(defaultSearchFilters);
-                  setAllUsers([]);
-                  setStartAfter(undefined);
-                  setHasMore(false);
+                  setCurrentPage(1);
+                  setPageCursors([undefined]);
                   setSubmittedFilters(defaultSearchFilters);
                 }}
               >
@@ -202,7 +300,7 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
-      {query.isLoading && allUsers.length === 0 && (
+      {query.isLoading && (
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={20} />
           <Typography color="text.secondary">검색 중입니다.</Typography>
@@ -215,85 +313,58 @@ export function UsersPage() {
         </Alert>
       )}
 
-      {!query.isLoading && allUsers.length === 0 && query.data && (
+      {!query.isLoading && pageUsers.length === 0 && query.data && (
         <Alert severity="info">
           일치하는 사용자를 찾지 못했습니다.
         </Alert>
       )}
 
-      {allUsers.length > 0 && (
+      {pageUsers.length > 0 && (
         <>
           <Typography color="text.secondary">
-            {allUsers.length}명 표시 중
+            페이지 {currentPage} · {pageUsers.length}명 표시
           </Typography>
-          <Grid container spacing={2}>
-            {allUsers.map((user) => (
-              <Grid key={user.userId} size={{xs: 12, md: 6}}>
-                <Card elevation={0}>
-                  <CardContent>
-                    <Stack spacing={2}>
-                      <Stack spacing={0.5}>
-                        <Typography variant="h6">
-                          {user.nickname ?? user.name ?? user.userId}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {user.userId}
-                        </Typography>
-                      </Stack>
 
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Chip
-                          color={user.subscriptionStatus ? "primary" : "default"}
-                          label={user.subscriptionStatus ?? "subscription 없음"}
-                        />
-                        <Chip
-                          color={user.overrideActive ? "secondary" : "default"}
-                          label={user.overrideActive ? "수동 변경 활성" : "수동 변경 없음"}
-                        />
-                        <Chip label={`그룹 ${user.groupCount}개`} />
-                        <Chip label={`기기 ${user.deviceCount}개`} />
-                        <Chip label={`개인일정 ${user.personalEventCount}개`} />
-                      </Stack>
+          <DataGrid
+            rows={pageUsers}
+            columns={columns}
+            getRowId={(row) => row.userId}
+            hideFooter
+            disableRowSelectionOnClick
+            autoHeight
+            density="comfortable"
+            localeText={{noRowsLabel: "데이터 없음"}}
+            sx={{
+              border: 0,
+              "& .MuiDataGrid-cell": {py: 1},
+            }}
+          />
 
-                      <Typography variant="body2" color="text.secondary">
-                        {user.email ?? "이메일 없음"}
-                      </Typography>
-
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          component={RouterLink}
-                          to={`/users/${user.userId}/timeline`}
-                          variant="contained"
-                          size="small"
-                        >
-                          이력 보기
-                        </Button>
-                        <Button
-                          component={RouterLink}
-                          to={`/entitlements?userId=${user.userId}`}
-                          variant="text"
-                          size="small"
-                        >
-                          Pro 수동 변경
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
+          <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+            {query.isFetching && <CircularProgress size={16} />}
+            {Array.from(
+              {length: hasMore ? currentPage + 1 : currentPage},
+              (_, i) => i + 1
+            ).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "contained" : "outlined"}
+                size="small"
+                sx={{minWidth: 36}}
+                disabled={query.isFetching || (page > currentPage && !hasMore)}
+                onClick={() => {
+                  if (page === currentPage) return;
+                  if (page > currentPage && hasMore) {
+                    handleNextPage();
+                  } else if (page < currentPage) {
+                    setCurrentPage(page);
+                  }
+                }}
+              >
+                {page}
+              </Button>
             ))}
-          </Grid>
-
-          {hasMore && (
-            <Button
-              variant="outlined"
-              onClick={handleLoadMore}
-              disabled={query.isFetching}
-              startIcon={query.isFetching ? <CircularProgress size={16} /> : undefined}
-            >
-              {query.isFetching ? "불러오는 중..." : "더 보기"}
-            </Button>
-          )}
+          </Stack>
         </>
       )}
     </Stack>

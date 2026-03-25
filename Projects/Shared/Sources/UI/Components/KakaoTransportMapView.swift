@@ -139,14 +139,25 @@ public struct KakaoTransportMapView: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ container: KMViewContainer, coordinator: Coordinator) {
-    coordinator.mapController?.pauseEngine()
-    coordinator.mapController?.resetEngine()
+    coordinator.cleanupMapController()
   }
 
   // MARK: - Coordinator
 
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
+
+    deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
+      mapController?.delegate = nil
+      mapController?.pauseEngine()
+      mapController?.resetEngine()
+      mapController = nil
+    }
+
     var currentData: TransportMapData = .walking()
     var pendingOriginLatitude: Double = 0
     var pendingOriginLongitude: Double = 0
