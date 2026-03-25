@@ -253,16 +253,18 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
   return event
 }
 
-/// 주소 텍스트 → CLGeocoder로 좌표 변환 (best-effort)
+/// 주소 텍스트 → CLGeocoder로 좌표 변환
+/// 성공 시 LocationInfoModel에 좌표 설정, 실패 시 location 제거하고 description에 장소 정보 추가
 private func geocodeIfNeeded(_ event: PersonalEventModel) async -> PersonalEventModel {
   guard let location = event.location,
-        let address = location.address, !address.isEmpty,
         location.latitude == nil else {
     return event
   }
 
+  // 주소 또는 장소명으로 geocoding 시도
+  let query = location.address ?? location.name
   do {
-    let placemarks = try await CLGeocoder().geocodeAddressString(address)
+    let placemarks = try await CLGeocoder().geocodeAddressString(query)
     if let coordinate = placemarks.first?.location?.coordinate {
       var updated = event
       updated.location = LocationInfoModel(
@@ -271,11 +273,25 @@ private func geocodeIfNeeded(_ event: PersonalEventModel) async -> PersonalEvent
         latitude: coordinate.latitude,
         longitude: coordinate.longitude
       )
-      AppLogger.general.info("📍 [Geocoding] \(address) → (\(coordinate.latitude), \(coordinate.longitude))")
+      AppLogger.general.info("📍 [Geocoding] \(query) → (\(coordinate.latitude), \(coordinate.longitude))")
       return updated
     }
   } catch {
     AppLogger.general.warning("📍 [Geocoding] 실패: \(error.localizedDescription)")
   }
-  return event
+
+  // 좌표 변환 실패 → location 제거, description에 장소 정보 추가
+  var updated = event
+  updated.location = nil
+  let locationText = [location.name, location.address].compactMap { $0 }.joined(separator: " ")
+  if !locationText.isEmpty {
+    let prefix = "장소: \(locationText)"
+    if let existing = updated.description, !existing.isEmpty {
+      updated.description = "\(prefix)\n\(existing)"
+    } else {
+      updated.description = prefix
+    }
+  }
+  AppLogger.general.info("📍 [Geocoding] 좌표 변환 실패 → description으로 이동: \(locationText)")
+  return updated
 }
