@@ -387,7 +387,8 @@ let shareExtensionDev = Target.target(
   ],
   settings: .standard(base: [
     "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
+    "CODE_SIGN_STYLE": .string("Automatic"),
+    "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
   ])
 )
 
@@ -422,7 +423,8 @@ let shareExtensionStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
     ],
     configurations: [
       .debug(name: "Debug", settings: [
@@ -468,7 +470,8 @@ let shareExtensionProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
     ],
     configurations: [
       .debug(name: "Debug", settings: [

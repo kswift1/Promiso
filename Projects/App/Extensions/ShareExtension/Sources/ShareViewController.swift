@@ -73,32 +73,11 @@ final class ShareViewController: UIViewController {
 
     UserDefaults(suiteName: appGroupId)?.set(text, forKey: "pendingExtractionText")
 
-    // iOS 18+: 3-arg open(_:options:completionHandler:) via IMP casting
-    openURL(url)
+    // Obj-C helper로 UIApplication.open(_:options:completionHandler:) 호출
+    OpenURLHelper.open(url, from: self)
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       self?.close()
-    }
-  }
-
-  /// Responder chain → UIApplication.open(_:options:completionHandler:) 호출
-  /// iOS 18에서는 deprecated 1-arg openURL: 대신 3-arg 버전을 사용해야 동작함
-  private func openURL(_ url: URL) {
-    let selector = NSSelectorFromString("openURL:options:completionHandler:")
-    var responder: UIResponder? = self as UIResponder
-    while let current = responder {
-      if current.responds(to: selector) {
-        let target = current as NSObject
-        let imp = target.method(for: selector)
-        // open(_:options:completionHandler:) → (self, _cmd, URL, [String:Any], ((Bool)->Void)?)
-        typealias OpenURLFunc = @convention(c) (
-          AnyObject, Selector, Any, Any, Any?
-        ) -> Void
-        let function = unsafeBitCast(imp, to: OpenURLFunc.self)
-        function(target, selector, url, [:] as [String: Any], nil)
-        return
-      }
-      responder = current.next
     }
   }
 
