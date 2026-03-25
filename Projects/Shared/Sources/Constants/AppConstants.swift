@@ -157,7 +157,7 @@ public enum AppConstants {
     /// App Group suite name (Info.plist의 APP_GROUP_ID에서 읽기)
     public static var suiteName: String {
       guard let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String else {
-        assertionFailure("APP_GROUP_ID not found in Info.plist")
+        AppLogger.general.warning("APP_GROUP_ID not found in Info.plist, using fallback")
         return "group.com.promiso.shared"
       }
       return appGroupId

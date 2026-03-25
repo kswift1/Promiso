@@ -6,6 +6,7 @@ import PromisoShared
 // MARK: - Client
 
 /// What's New 데이터를 Firebase Functions에서 가져오는 클라이언트
+@DependencyClient
 public struct WhatsNewClient: Sendable {
   /// 특정 버전의 What's New 조회 (enabled=true인 경우만 반환)
   public var fetchWhatsNew: @Sendable (_ version: String) async throws -> WhatsNewModel?

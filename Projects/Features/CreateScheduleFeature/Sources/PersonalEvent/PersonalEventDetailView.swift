@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 extension PersonalEventDetail {
   public struct RootView: View {
@@ -37,6 +38,19 @@ extension PersonalEventDetail {
         .padding(.vertical, 24)
       }
       .auroraBackground()
+      .navigationDestination(isPresented: Binding(
+        get: { store.showMapDetail },
+        set: { _ in store.send(.view(.mapDetailDismissed)) }
+      )) {
+        if let location = store.event.location {
+          LocationDetailMapView(
+            location: location,
+            onDirectionsTapped: {
+              store.send(.view(.directionsTapped))
+            }
+          )
+        }
+      }
       .onAppear { store.send(.view(.onAppear)) }
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
@@ -155,11 +169,35 @@ extension PersonalEventDetail {
           if let location = store.event.location {
             Divider().padding(.leading, 44)
 
-            ScheduleDetailEmojiInfoRow(
-              emoji: "📍",
-              title: LocalizedStrings.Common.location,
-              value: location.name
-            )
+            ScheduleDetailLocationInfoRow(location: location)
+
+            if let latitude = location.latitude,
+               let longitude = location.longitude {
+              ScheduleDetailLocationMapPreview(
+                latitude: latitude,
+                longitude: longitude,
+                placeName: location.name,
+                onTap: { store.send(.view(.mapTapped)) }
+              )
+
+              Button {
+                store.send(.view(.directionsTapped))
+              } label: {
+                HStack(spacing: 6) {
+                  Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .font(.system(size: 14))
+                  Text(LocalizedStrings.Common.directions)
+                    .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(Color.pmindigo.n500.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+              }
+              .padding(.horizontal, 16)
+              .padding(.bottom, 12)
+            }
           }
 
           // 알림

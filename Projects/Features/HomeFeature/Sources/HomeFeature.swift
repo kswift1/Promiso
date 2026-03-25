@@ -2401,6 +2401,7 @@ extension Home {
                 AppLogger.home.debug("⚠️ [Transit] 도보 구간 MKDirections 실패 — route:\(routeId) subPath:\(capturedSubIdx) \(error)")
               }
             }
+            .cancellable(id: CancelID.transportationFetch)
           )
         }
       }

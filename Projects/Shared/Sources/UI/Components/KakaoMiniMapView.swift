@@ -38,17 +38,19 @@ public struct KakaoMiniMapView: UIViewRepresentable {
   }
 
   public func updateUIView(_ container: KMViewContainer, context: Context) {
-    // 이미 엔진이 있으면 위치만 업데이트
-    if let mapView = context.coordinator.mapController?.getView("mapview") as? KakaoMap {
-      let position = MapPoint(longitude: longitude, latitude: latitude)
-      mapView.moveCamera(
-        CameraUpdate.make(
-          target: position,
-          zoomLevel: zoomLevel,
-          mapView: mapView
+    // 엔진이 이미 존재하면 (준비 중이든 활성화됐든) 재생성 방지
+    if context.coordinator.mapController != nil {
+      if let mapView = context.coordinator.mapController?.getView("mapview") as? KakaoMap {
+        let position = MapPoint(longitude: longitude, latitude: latitude)
+        mapView.moveCamera(
+          CameraUpdate.make(
+            target: position,
+            zoomLevel: zoomLevel,
+            mapView: mapView
+          )
         )
-      )
-      context.coordinator.updateMarker(mapView: mapView, latitude: latitude, longitude: longitude)
+        context.coordinator.updateMarker(mapView: mapView, latitude: latitude, longitude: longitude)
+      }
       return
     }
 
@@ -73,21 +75,27 @@ public struct KakaoMiniMapView: UIViewRepresentable {
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
 
+    private var pendingLatitude: Double?
+    private var pendingLongitude: Double?
+    private var pendingZoomLevel: Int = 18
+    private var pendingMarkerImage: UIImage?
+
     deinit {
       cleanupMapController()
     }
 
     func cleanupMapController() {
-      mapController?.delegate = nil
-      mapController?.pauseEngine()
-      mapController?.resetEngine()
+      guard let controller = mapController else { return }
       mapController = nil
-    }
 
-    private var pendingLatitude: Double?
-    private var pendingLongitude: Double?
-    private var pendingZoomLevel: Int = 18
-    private var pendingMarkerImage: UIImage?
+      controller.delegate = nil
+      controller.pauseEngine()
+      controller.resetEngine()
+
+      // KMController.dealloc → stopEngine → notification → dispose 재진입 크래시 방지
+      // SwiftUI update cycle 밖에서 release 되도록 수명 연장
+      DispatchQueue.main.async { _ = controller }
+    }
 
     func createEngine(
       container: KMViewContainer,
@@ -96,6 +104,8 @@ public struct KakaoMiniMapView: UIViewRepresentable {
       zoomLevel: Int,
       markerImage: UIImage?
     ) {
+      guard mapController == nil else { return }
+
       pendingLatitude = latitude
       pendingLongitude = longitude
       pendingZoomLevel = zoomLevel

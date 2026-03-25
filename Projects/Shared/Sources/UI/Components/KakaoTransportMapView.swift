@@ -147,17 +147,6 @@ public struct KakaoTransportMapView: UIViewRepresentable {
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
 
-    deinit {
-      cleanupMapController()
-    }
-
-    func cleanupMapController() {
-      mapController?.delegate = nil
-      mapController?.pauseEngine()
-      mapController?.resetEngine()
-      mapController = nil
-    }
-
     var currentData: TransportMapData = .walking()
     var pendingOriginLatitude: Double = 0
     var pendingOriginLongitude: Double = 0
@@ -167,6 +156,23 @@ public struct KakaoTransportMapView: UIViewRepresentable {
     private let routeLayerID = "transportRouteLayer"
     private let markerLayerID = "transportMarkerLayer"
 
+    deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
+      guard let controller = mapController else { return }
+      mapController = nil
+
+      controller.delegate = nil
+      controller.pauseEngine()
+      controller.resetEngine()
+
+      // KMController.dealloc → stopEngine → notification → dispose 재진입 크래시 방지
+      // SwiftUI update cycle 밖에서 release 되도록 수명 연장
+      DispatchQueue.main.async { _ = controller }
+    }
+
     func createEngine(
       container: KMViewContainer,
       data: TransportMapData,
@@ -175,6 +181,8 @@ public struct KakaoTransportMapView: UIViewRepresentable {
       destinationLatitude: Double,
       destinationLongitude: Double
     ) {
+      guard mapController == nil else { return }
+
       currentData = data
       pendingOriginLatitude = originLatitude
       pendingOriginLongitude = originLongitude

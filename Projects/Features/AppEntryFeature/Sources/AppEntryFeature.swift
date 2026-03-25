@@ -33,6 +33,7 @@ extension AppEntry {
     @Dependency(\.crashlyticsClient) var crashlyticsClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.whatsNewClient) var whatsNewClient
 
     public init() {}
     
@@ -133,6 +134,7 @@ extension AppEntry {
       case requestFCMToken
       case fcmTokenFetched(String)
       case checkWhatsNew
+      case whatsNewFetched(WhatsNewModel?)
     }
 
     // MARK: - Destination Reducer
@@ -429,7 +431,22 @@ extension AppEntry {
             let currentVersion = AppConstants.App.version
             let lastSeenVersion = userDefaultsClient.lastSeenWhatsNewVersion
             guard lastSeenVersion != currentVersion else { return .none }
-            state.whatsNew = WhatsNew.Feature.State()
+            return .run { [whatsNewClient] send in
+              do {
+                let model = try await whatsNewClient.fetchWhatsNew(currentVersion)
+                await send(.internal(.whatsNewFetched(model)))
+              } catch {
+                // fetch 실패 시 팝업 표시 안 함 (깜빡임 방지)
+              }
+            }
+
+          case .whatsNewFetched(let model):
+            guard let model, !model.items.isEmpty else {
+              // 데이터 없음(비활성화/빈 목록): 현재 버전 마킹
+              userDefaultsClient.markWhatsNewSeen(version: AppConstants.App.version)
+              return .none
+            }
+            state.whatsNew = WhatsNew.Feature.State(model: model)
             return .none
           }
 

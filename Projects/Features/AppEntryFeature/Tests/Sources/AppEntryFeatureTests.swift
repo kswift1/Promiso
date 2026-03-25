@@ -159,6 +159,8 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
+      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -305,6 +307,8 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
+      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -334,6 +338,8 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
+      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

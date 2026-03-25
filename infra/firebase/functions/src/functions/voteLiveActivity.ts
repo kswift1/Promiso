@@ -734,8 +734,21 @@ export const widgetVoteResponse = onRequest(
       }
       authenticated = true;
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name !== "TokenExpiredError"
+      ) {
+        // 위변조 등 만료 외 오류는 즉시 거부
+        res.status(401).json({
+          error: {
+            code: "unauthenticated",
+            message: "Invalid token",
+          },
+        });
+        return;
+      }
       console.warn(
-        "Widget Token validation failed, falling back to Firebase ID Token:",
+        "Widget Token expired, falling back to Firebase ID Token:",
         error
       );
     }
