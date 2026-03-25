@@ -61,26 +61,29 @@ public struct StepSheetContainer<
   }
 
   public var body: some View {
-    GeometryReader { geometry in
-      VStack(spacing: 0) {
-        // 1. 상단 툴바
-        sheetToolbar
+    NavigationStack {
+      GeometryReader { geometry in
+        VStack(spacing: 0) {
+          // 1. 상단 툴바
+          sheetToolbar
 
-        // 2. 진행바 (totalSteps > 1일 때만 표시)
-        if totalSteps > 1 {
-          StepProgressBar(currentStep: currentStep, totalSteps: totalSteps)
-        }
-
-        // 3. 콘텐츠 영역 + 하단 고정 영역
-        content()
-          .safeAreaInset(edge: .bottom) {
-            bottomFixedArea
+          // 2. 진행바 (totalSteps > 1일 때만 표시)
+          if totalSteps > 1 {
+            StepProgressBar(currentStep: currentStep, totalSteps: totalSteps)
           }
+
+          // 3. 콘텐츠 영역 + 하단 고정 영역
+          content()
+            .safeAreaInset(edge: .bottom) {
+              bottomFixedArea
+            }
+        }
+        .frame(height: geometry.size.height)
       }
-      .frame(height: geometry.size.height)
+      .ignoresSafeArea(.keyboard, edges: .bottom)
+      .navigationBarHidden(true)
+      .keyboardDismissToolbar(iconColor: .secondary)
     }
-    .ignoresSafeArea(.keyboard, edges: .bottom)
-    .keyboardDismissToolbar(iconColor: .secondary)
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
       updateKeyboardPresentation(notification)
     }
