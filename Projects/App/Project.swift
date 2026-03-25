@@ -1,5 +1,10 @@
+import Foundation
 import ProjectDescription
 import ProjectDescriptionHelpers
+
+// CI에서만 Manual Signing (로컬은 Automatic으로 match 없이 빌드 가능)
+let isCI = ProcessInfo.processInfo.environment["CI"] != nil
+let ciSigningStyle: SettingValue = .string(isCI ? "Manual" : "Automatic")
 
 // Helper for infoPlist with DisplayName
 func infoPlistWithDisplayName(_ displayName: String, environment: String = "prod") -> [String: Plist.Value] {
@@ -89,19 +94,19 @@ let promisoStage = Target.target(
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "DEEPLINK_SCHEME": .string("promiso-stage"),
       "DEEPLINK_WEB_HOST": .string("stage.promiso.app")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
-      .release(name: "Release", settings: [
+      ] : [:], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
+      ] : [:], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
     ]
   )
 )
@@ -126,19 +131,19 @@ let promisoProd = Target.target(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "DEEPLINK_SCHEME": .string("promiso"),
       "DEEPLINK_WEB_HOST": .string("promiso.app")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
-      .release(name: "Release", settings: [
+      ] : [:], xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+      ] : [:], xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
     ]
   )
 )
@@ -196,17 +201,17 @@ let liveActivityStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -235,17 +240,17 @@ let liveActivityProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -301,17 +306,17 @@ let scheduleWidgetStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -340,17 +345,17 @@ let scheduleWidgetProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -425,18 +430,18 @@ let shareExtensionStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.shareextension"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.shareextension"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -473,18 +478,18 @@ let shareExtensionProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.shareextension"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.shareextension"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
