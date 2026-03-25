@@ -438,18 +438,16 @@ struct TimelineItemView: View {
   // MARK: - Weather Helpers
 
   private var weatherForecast: HourlyForecast? {
-    guard case .schedule(let schedule) = item else { return nil }
-    return weather?.forecast(for: schedule.startAt)
+    weather?.forecast(for: item.startAt)
   }
 
   private var weatherRangeForecasts: [HourlyForecast] {
-    guard case .schedule(let schedule) = item else { return [] }
-    return weather?.forecasts(from: schedule.startAt, to: schedule.endAt) ?? []
+    guard let endAt = item.endAt else { return [] }
+    return weather?.forecasts(from: item.startAt, to: endAt) ?? []
   }
 
   private var weatherForecastSource: ForecastSource {
-    guard case .schedule(let schedule) = item else { return .shortTerm }
-    return weather?.forecastSource(for: schedule.startAt) ?? .shortTerm
+    weather?.forecastSource(for: item.startAt) ?? .shortTerm
   }
 
   private var weatherShouldShowSkeleton: Bool {
