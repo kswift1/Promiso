@@ -44,14 +44,12 @@ extension WhatsNew {
           coverPage(version: model.version)
         } else {
           // Item 페이지
-          VStack {
-            if let item = currentItem {
-              imageSection(item: item)
-            }
-            Spacer()
+          if let item = currentItem {
+            imageSection(item: item)
+              .frame(maxHeight: .infinity)
+              .padding(.top, 60)
+              .padding(.bottom, 240)
           }
-          .padding(.top, 60)
-          .padding(.bottom, 260)
         }
 
         // Bottom panel (텍스트 + 인디케이터 + 버튼)
@@ -191,7 +189,7 @@ extension WhatsNew {
             imagePlaceholder
           }
         }
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 15)
       } else {
         imagePlaceholder
       }
