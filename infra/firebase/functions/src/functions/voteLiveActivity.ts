@@ -733,8 +733,11 @@ export const widgetVoteResponse = onRequest(
         return;
       }
       authenticated = true;
-    } catch {
-      // Widget Token failed → fallback
+    } catch (error) {
+      console.warn(
+        "Widget Token validation failed, falling back to Firebase ID Token:",
+        error
+      );
     }
 
     if (!authenticated) {

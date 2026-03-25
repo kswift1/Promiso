@@ -325,24 +325,19 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       try {
         // 사용자 이름 조회
         const userDoc = await db.collection("users").doc(userId).get();
+        const nickname = userDoc.data()?.nickname;
         const userName =
-          (userDoc.data()?.nickname as string) || "멤버";
+          (typeof nickname === "string" ? nickname : "") || "멤버";
 
         // votes 서브컬렉션 업데이트
         const broadcastPromiseRef =
           db.collection("promises").doc(data.promiseId);
-        if (status === "pending") {
-          // pending이면 서브컬렉션에서 삭제
-          await broadcastPromiseRef
-            .collection("votes").doc(userId).delete();
-        } else {
-          await broadcastPromiseRef
-            .collection("votes").doc(userId).set({
-              response: status,
-              userName,
-              respondedAt: FieldValue.serverTimestamp(),
-            });
-        }
+        await broadcastPromiseRef
+          .collection("votes").doc(userId).set({
+            response: status,
+            userName,
+            respondedAt: FieldValue.serverTimestamp(),
+          });
 
         // 전체 votes 읽기 → ContentState 빌드
         const votesSnapshot =
@@ -354,7 +349,8 @@ export const respondPromise = onCall<RespondPromiseRequest>(
           const voteData = doc.data();
           const member = {
             id: doc.id,
-            name: (voteData.userName as string) || "멤버",
+            name: (typeof voteData.userName === "string" ?
+              voteData.userName : "") || "멤버",
           };
           if (voteData.response === "accepted") {
             acceptedMembers.push(member);
