@@ -32,18 +32,21 @@ extension CreatePersonalEvent {
     }
 
     public var body: some View {
-      StepSheetContainer(
-        title: store.navigationTitle,
-        currentStep: 0,
-        totalSteps: 1,
-        showsDismissButton: showsDismissButton,
-        onDismiss: { store.send(.view(.dismissTapped)) }
-      ) {
-        singleStepContent
-      } floatingContent: {
-        floatingBonusView
-      } bottomContent: {
-        bottomBar
+      NavigationStack {
+        StepSheetContainer(
+          title: store.navigationTitle,
+          currentStep: 0,
+          totalSteps: 1,
+          showsDismissButton: showsDismissButton,
+          onDismiss: { store.send(.view(.dismissTapped)) }
+        ) {
+          singleStepContent
+        } floatingContent: {
+          floatingBonusView
+        } bottomContent: {
+          bottomBar
+        }
+        .navigationBarHidden(true)
       }
       .onAppear { store.send(.view(.onAppear)) }
       .alert(
