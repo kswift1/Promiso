@@ -46,7 +46,7 @@ final class ShareViewController: UIViewController {
     view.addSubview(separator)
 
     // 텍스트 미리보기
-    previewTextView.isEditable = false
+    previewTextView.isEditable = true
     previewTextView.isScrollEnabled = true
     previewTextView.font = .systemFont(ofSize: 15)
     previewTextView.textColor = .secondaryLabel
@@ -54,6 +54,7 @@ final class ShareViewController: UIViewController {
     previewTextView.layer.cornerRadius = 12
     previewTextView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
     previewTextView.text = "텍스트를 가져오는 중..."
+    previewTextView.delegate = self
     previewTextView.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(previewTextView)
 
@@ -209,5 +210,16 @@ final class ShareViewController: UIViewController {
 
   private func close() {
     extensionContext?.completeRequest(returningItems: nil)
+  }
+}
+
+// MARK: - UITextViewDelegate
+
+extension ShareViewController: UITextViewDelegate {
+  func textViewDidChange(_ textView: UITextView) {
+    let text = String(textView.text.prefix(2000))
+    sharedText = text
+    charCountLabel.text = "\(text.count)자"
+    personalButton.isEnabled = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 }
