@@ -75,17 +75,6 @@ public struct KakaoMiniMapView: UIViewRepresentable {
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
 
-    deinit {
-      cleanupMapController()
-    }
-
-    func cleanupMapController() {
-      mapController?.delegate = nil
-      mapController?.pauseEngine()
-      mapController?.resetEngine()
-      mapController = nil
-    }
-
     private var pendingLatitude: Double?
     private var pendingLongitude: Double?
     private var pendingZoomLevel: Int = 18

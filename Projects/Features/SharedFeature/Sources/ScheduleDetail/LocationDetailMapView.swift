@@ -226,19 +226,6 @@ public struct KakaoInteractiveMapView: UIViewRepresentable {
     private var lastHeading: Double = 0
     private var isHeadingMode = false
 
-    deinit {
-      cleanupMapController()
-    }
-
-    func cleanupMapController() {
-      cameraEventHandler?.dispose()
-      cameraEventHandler = nil
-      mapController?.delegate = nil
-      mapController?.pauseEngine()
-      mapController?.resetEngine()
-      mapController = nil
-    }
-
     private var pendingLatitude: Double?
     private var pendingLongitude: Double?
     private var pendingZoomLevel: Int = 16
