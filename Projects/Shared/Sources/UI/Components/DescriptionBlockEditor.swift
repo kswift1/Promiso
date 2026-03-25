@@ -5,6 +5,12 @@ import SwiftUI
 public struct DescriptionBlockEditor: View {
   @Binding public var blocks: [DescriptionBlock]
   public var characterLimit: Int
+  @FocusState private var focusedItem: ItemFocus?
+
+  private struct ItemFocus: Hashable {
+    let blockIndex: Int
+    let itemIndex: Int
+  }
 
   public init(blocks: Binding<[DescriptionBlock]>, characterLimit: Int = 500) {
     self._blocks = blocks
@@ -176,6 +182,7 @@ public struct DescriptionBlockEditor: View {
               let newItem = ChecklistItem(text: newItemText)
               items.insert(newItem, at: itemIndex + 1)
               blocks[blockIndex].content = .checklist(items)
+              focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
             } else {
               items[itemIndex].text = newValue
               blocks[blockIndex].content = .checklist(items)
@@ -185,6 +192,7 @@ public struct DescriptionBlockEditor: View {
         axis: .vertical
       )
       .lineLimit(1)
+      .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
       .strikethrough({
         if case .checklist(let items) = blocks[blockIndex].content,
@@ -249,6 +257,7 @@ public struct DescriptionBlockEditor: View {
               let newItemText = parts.count > 1 ? String(parts[1]) : ""
               items.insert(newItemText, at: itemIndex + 1)
               blocks[blockIndex].content = .bulletList(items)
+              focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
             } else {
               items[itemIndex] = newValue
               blocks[blockIndex].content = .bulletList(items)
@@ -258,6 +267,7 @@ public struct DescriptionBlockEditor: View {
         axis: .vertical
       )
       .lineLimit(1)
+      .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
     }
   }
