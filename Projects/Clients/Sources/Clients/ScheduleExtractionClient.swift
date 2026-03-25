@@ -266,34 +266,20 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
 
   // First try structured blocks
   if let blocksData = data["descriptionBlocks"] as? [[String: Any]] {
-    var blocks: [DescriptionBlock] = []
-    for blockData in blocksData {
-      guard let type = blockData["type"] as? String else { continue }
+    let blocks = blocksData.compactMap { blockData -> DescriptionBlock? in
+      guard let type = blockData["type"] as? String else { return nil }
       switch type {
       case "text":
-        if let content = blockData["content"] as? String,
-           !content.isEmpty {
-          blocks.append(DescriptionBlock(content: .text(content)))
-        }
+        guard let content = blockData["content"] as? String, !content.isEmpty else { return nil }
+        return DescriptionBlock(content: .text(content))
       case "checklist":
-        if let items = blockData["items"] as? [String],
-           !items.isEmpty {
-          let checklistItems = items.map {
-            ChecklistItem(text: $0)
-          }
-          blocks.append(
-            DescriptionBlock(content: .checklist(checklistItems))
-          )
-        }
+        guard let items = blockData["items"] as? [String], !items.isEmpty else { return nil }
+        return DescriptionBlock(content: .checklist(items.map { ChecklistItem(text: $0) }))
       case "bulletList":
-        if let items = blockData["items"] as? [String],
-           !items.isEmpty {
-          blocks.append(
-            DescriptionBlock(content: .bulletList(items))
-          )
-        }
+        guard let items = blockData["items"] as? [String], !items.isEmpty else { return nil }
+        return DescriptionBlock(content: .bulletList(items))
       default:
-        break
+        return nil
       }
     }
     if !blocks.isEmpty {
