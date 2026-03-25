@@ -3,62 +3,17 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
 
-  private let statusLabel = UILabel()
-  private let iconView = UIImageView()
-
   override func viewDidLoad() {
     super.viewDidLoad()
-    setupUI()
+    view.backgroundColor = .clear
     handleSharedText()
-  }
-
-  // MARK: - UI
-
-  private func setupUI() {
-    view.backgroundColor = UIColor.black.withAlphaComponent(0.4)
-
-    let card = UIView()
-    card.backgroundColor = .systemBackground
-    card.layer.cornerRadius = 16
-    card.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(card)
-
-    iconView.image = UIImage(systemName: "text.viewfinder")
-    iconView.tintColor = .systemIndigo
-    iconView.contentMode = .scaleAspectFit
-    iconView.translatesAutoresizingMaskIntoConstraints = false
-    card.addSubview(iconView)
-
-    statusLabel.text = "텍스트를 가져오는 중..."
-    statusLabel.font = .systemFont(ofSize: 15, weight: .medium)
-    statusLabel.textColor = .label
-    statusLabel.textAlignment = .center
-    statusLabel.numberOfLines = 0
-    statusLabel.translatesAutoresizingMaskIntoConstraints = false
-    card.addSubview(statusLabel)
-
-    NSLayoutConstraint.activate([
-      card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      card.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-      card.widthAnchor.constraint(equalToConstant: 260),
-
-      iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
-      iconView.centerXAnchor.constraint(equalTo: card.centerXAnchor),
-      iconView.widthAnchor.constraint(equalToConstant: 36),
-      iconView.heightAnchor.constraint(equalToConstant: 36),
-
-      statusLabel.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
-      statusLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
-      statusLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
-      statusLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
-    ])
   }
 
   // MARK: - Text Handling
 
   private func handleSharedText() {
     guard let items = extensionContext?.inputItems as? [NSExtensionItem], !items.isEmpty else {
-      showResult(success: false, message: "공유된 텍스트를 찾을 수 없습니다")
+      close()
       return
     }
 
@@ -78,12 +33,11 @@ final class ShareViewController: UIViewController {
 
       if let attrText = item.attributedContentText?.string,
          !attrText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        saveText(String(attrText.prefix(2000)))
+        saveAndOpen(String(attrText.prefix(2000)))
         return
       }
     }
-
-    showResult(success: false, message: "공유된 텍스트를 찾을 수 없습니다")
+    close()
   }
 
   private func loadText(from provider: NSItemProvider, typeIdentifier: String) {
@@ -97,33 +51,58 @@ final class ShareViewController: UIViewController {
         }
 
         guard let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-          self?.showResult(success: false, message: "빈 텍스트입니다")
+          self?.close()
           return
         }
-        self?.saveText(String(text.prefix(2000)))
+        self?.saveAndOpen(String(text.prefix(2000)))
       }
     }
   }
 
-  private func saveText(_ text: String) {
-    guard let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String else {
-      showResult(success: false, message: "저장에 실패했습니다")
+  // MARK: - Save & Open
+
+  private func saveAndOpen(_ text: String) {
+    guard
+      let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
+      let scheme = Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_SCHEME") as? String,
+      let url = URL(string: "\(scheme)://extractSchedule")
+    else {
+      close()
       return
     }
 
     UserDefaults(suiteName: appGroupId)?.set(text, forKey: "pendingExtractionText")
-    showResult(success: true, message: "Promiso를 열면\n일정이 자동으로 추출됩니다")
+
+    // iOS 18+: 3-arg open(_:options:completionHandler:) via IMP casting
+    openURL(url)
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+      self?.close()
+    }
   }
 
-  // MARK: - Result
-
-  private func showResult(success: Bool, message: String) {
-    iconView.image = UIImage(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
-    iconView.tintColor = success ? .systemGreen : .systemRed
-    statusLabel.text = message
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + (success ? 1.5 : 2.0)) { [weak self] in
-      self?.extensionContext?.completeRequest(returningItems: nil)
+  /// Responder chain → UIApplication.open(_:options:completionHandler:) 호출
+  /// iOS 18에서는 deprecated 1-arg openURL: 대신 3-arg 버전을 사용해야 동작함
+  private func openURL(_ url: URL) {
+    let selector = NSSelectorFromString("openURL:options:completionHandler:")
+    var responder: UIResponder? = self as UIResponder
+    while let current = responder {
+      if current.responds(to: selector) {
+        let target = current as NSObject
+        let imp = target.method(for: selector)
+        // open(_:options:completionHandler:) → (self, _cmd, URL, [String:Any], ((Bool)->Void)?)
+        typealias OpenURLFunc = @convention(c) (
+          AnyObject, Selector, Any, Any, Any?
+        ) -> Void
+        let function = unsafeBitCast(imp, to: OpenURLFunc.self)
+        function(target, selector, url, [:] as [String: Any], nil)
+        return
+      }
+      responder = current.next
     }
+  }
+
+  private func close() {
+    extensionContext?.completeRequest(returningItems: nil)
   }
 }
