@@ -601,8 +601,12 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     }
 
     if (data.descriptionBlocks !== undefined) {
-      if (data.descriptionBlocks && Array.isArray(data.descriptionBlocks) && data.descriptionBlocks.length > 20) {
-        throw new HttpsError("invalid-argument", "설명 블록은 최대 20개까지 허용됩니다");
+      const blocks = data.descriptionBlocks;
+      if (blocks && Array.isArray(blocks) && blocks.length > 20) {
+        throw new HttpsError(
+          "invalid-argument",
+          "설명 블록은 최대 20개까지 허용됩니다"
+        );
       }
       updateData.descriptionBlocks = data.descriptionBlocks || null;
     }

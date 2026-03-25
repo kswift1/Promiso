@@ -177,7 +177,8 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
         );
       } else {
         console.log(
-          `📋 Extracting schedule from text (${sanitizedText?.length ?? 0} chars)`
+          "📋 Extracting schedule from text " +
+          `(${sanitizedText?.length ?? 0} chars)`
         );
       }
     }
