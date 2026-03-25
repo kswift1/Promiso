@@ -107,7 +107,7 @@ extension DescriptionBlock {
     case .text(let text):
       return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     case .checklist(let items):
-      return items.isEmpty
+      return items.isEmpty || items.allSatisfy { $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     case .bulletList(let items):
       return items.isEmpty || items.allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
@@ -115,6 +115,12 @@ extension DescriptionBlock {
 }
 
 extension Array where Element == DescriptionBlock {
+  /// 빈 블록 필터링 후 빈 배열이면 nil 반환
+  public var nilIfAllEmpty: [DescriptionBlock]? {
+    let filtered = filter { !$0.isEmpty }
+    return filtered.isEmpty ? nil : filtered
+  }
+
   /// 블록 배열을 플레인 텍스트로 변환
   public var plainText: String? {
     let text = filter { !$0.isEmpty }

@@ -132,7 +132,7 @@ extension ScheduleDTO {
       emoji: model.emoji,
       // 하위 호환: 구버전 앱용으로 descriptionBlocks의 plainText를 description에 동기화
       description: model.descriptionBlocks.plainText ?? model.description,
-      descriptionBlocks: model.descriptionBlocks.isEmpty ? nil : model.descriptionBlocks,
+      descriptionBlocks: model.descriptionBlocks.nilIfAllEmpty,
       hostId: model.hostId,
       groupId: model.groupId,
       minimumParticipants: model.minimumParticipants,
