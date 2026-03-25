@@ -11,6 +11,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI, Part} from "@google/generative-ai";
 import {REGION, GEMINI_API_KEY} from "../config";
 import {
+  DescriptionBlockResponse,
   ExtractScheduleRequest,
   ExtractScheduleResponse,
 } from "../types/api";
@@ -20,18 +21,24 @@ const SCHEDULE_EXTRACTION_PROMPT = `당신은 한국어 문자 메시지 또는 
 
 입력된 텍스트 또는 이미지에서 다음 정보를 JSON 형태로 추출하세요:
 - title: 일정 제목 (간결하게 추론, 30자 이내)
+- emoji: 일정 내용에 어울리는 이모지 1개 (예: 💼, 🏥, 🎉, 🏃, ☕️)
 - startDate: 시작 날짜시간 (ISO 8601 형식, 예: "2026-03-27T09:00:00+09:00")
 - endDate: 종료 날짜시간 (ISO 8601 형식, 없으면 null)
 - location: 장소명 (없으면 null)
 - address: 상세 주소 (없으면 null)
-- description: 부가 정보 메모 - 급여, 준비물, 담당자 등 (없으면 null)
+- descriptionBlocks: 부가 정보를 구조화된 블록 배열로 분류 (없으면 null)
+  - { type: "text", content: "..." } — 일반 텍스트 정보 (급여, 연락처, 기타 안내)
+  - { type: "checklist", items: ["...", "..."] } — 준비물, 할 일 등 체크 가능한 항목
+  - { type: "bulletList", items: ["...", "..."] } — 나열형 정보 (여러 연락처, 여러 조건 등)
 
 규칙:
 - 반드시 JSON만 출력, 다른 텍스트 절대 금지
 - 연도가 없으면 현재 연도 기준으로 추론
 - "9시~18시" 같은 범위 표현은 startDate/endDate로 분리
 - 장소명과 상세 주소를 구분 (장소: "GS25 성남양우프레시점", 주소: "경기 성남시 수정구 논골로 29")
-- 급여, 준비물, 담당자 연락처 등 부가 정보는 description에 줄바꿈으로 구분하여 통합
+- 준비물, 할 일 목록 등 체크 가능한 항목은 type: 'checklist'로 분류
+- 단일 정보(급여, 연락처 등)는 type: 'text'로, 같은 카테고리의 여러 항목 나열은 type: 'bulletList'로 분류
+- descriptionBlocks 하나의 블록에 여러 종류의 정보를 합치지 말고, 정보 종류별로 블록을 분리
 - title은 핵심 내용을 간결하게 (예: "GS25 진열 근무", "고용센터 초기상담")
 - 텍스트 또는 이미지(스크린샷, 포스터, 문자 캡처 등)에서 일정 정보를 추출
 - 이미지인 경우 텍스트를 먼저 인식한 후 동일한 규칙으로 추출
@@ -228,16 +235,61 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
       }
 
       // 7. 응답 구성
+
+      // descriptionBlocks 파싱
+      let descriptionBlocks: DescriptionBlockResponse[] | null = null;
+      if (Array.isArray(parsed.descriptionBlocks)) {
+        descriptionBlocks = parsed.descriptionBlocks
+          .filter((block: Record<string, unknown>) =>
+            typeof block === "object" && block !== null &&
+            typeof block.type === "string" &&
+            ["text", "checklist", "bulletList"].includes(block.type as string)
+          )
+          .map((block: Record<string, unknown>) => {
+            const type = block.type as "text" | "checklist" | "bulletList";
+            if (type === "text") {
+              return {
+                type,
+                content: typeof block.content === "string" ?
+                  block.content : "",
+              };
+            }
+            return {
+              type,
+              items: Array.isArray(block.items) ?
+                block.items.filter((i: unknown) => typeof i === "string") :
+                [],
+            };
+          })
+          .filter((block: DescriptionBlockResponse) => {
+            if (block.type === "text") return !!block.content;
+            return block.items && block.items.length > 0;
+          });
+        if (descriptionBlocks.length === 0) descriptionBlocks = null;
+      }
+
+      // blocks에서 plain text description 생성 (하위 호환)
+      let description: string | null = null;
+      if (descriptionBlocks) {
+        description = descriptionBlocks.map((block) => {
+          if (block.type === "text") return block.content ?? "";
+          return (block.items ?? []).join("\n");
+        }).join("\n").trim() || null;
+      } else if (typeof parsed.description === "string") {
+        description = parsed.description;
+      }
+
       const extractedResponse: ExtractScheduleResponse = {
         title: typeof parsed.title === "string" ? parsed.title : null,
+        emoji: typeof parsed.emoji === "string" ? parsed.emoji : null,
         startDate: typeof parsed.startDate === "string" ?
           parsed.startDate : null,
         endDate: typeof parsed.endDate === "string" ? parsed.endDate : null,
         location: typeof parsed.location === "string" ?
           parsed.location : null,
         address: typeof parsed.address === "string" ? parsed.address : null,
-        description: typeof parsed.description === "string" ?
-          parsed.description : null,
+        description,
+        descriptionBlocks,
       };
 
       console.log(
