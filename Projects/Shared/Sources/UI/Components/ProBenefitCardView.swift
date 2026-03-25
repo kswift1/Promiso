@@ -16,6 +16,7 @@ public struct ProBenefitCardView: View {
   let isCheckingConflicts: Bool
   let eventTitle: String
   let eventEmoji: String?
+  let conflictsChecked: Bool
 
   public init(
     weather: WeatherInfo? = nil,
@@ -24,7 +25,8 @@ public struct ProBenefitCardView: View {
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
     eventTitle: String,
-    eventEmoji: String?
+    eventEmoji: String?,
+    conflictsChecked: Bool = false
   ) {
     self.weather = weather
     self.eventStartAt = eventStartAt
@@ -33,6 +35,7 @@ public struct ProBenefitCardView: View {
     self.isCheckingConflicts = isCheckingConflicts
     self.eventTitle = eventTitle
     self.eventEmoji = eventEmoji
+    self.conflictsChecked = conflictsChecked
   }
 
   private var weatherForecast: HourlyForecast? {
@@ -43,6 +46,7 @@ public struct ProBenefitCardView: View {
     weatherForecast != nil
     || isCheckingConflicts
     || !conflicts.isEmpty
+    || conflictsChecked
   }
 
   public var body: some View {
@@ -65,14 +69,15 @@ public struct ProBenefitCardView: View {
           }
 
           // 충돌 행
-          if isCheckingConflicts || !conflicts.isEmpty {
+          if isCheckingConflicts || !conflicts.isEmpty || conflictsChecked {
             ProConflictRow(
               conflicts: conflicts,
               isChecking: isCheckingConflicts,
               eventTitle: eventTitle,
               eventEmoji: eventEmoji,
               eventStartAt: eventStartAt,
-              eventEndAt: eventEndAt
+              eventEndAt: eventEndAt,
+              conflictsChecked: conflictsChecked
             )
           }
         }

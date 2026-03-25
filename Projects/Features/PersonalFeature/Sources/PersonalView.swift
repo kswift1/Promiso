@@ -339,6 +339,7 @@ extension PersonalMode {
                   )
                 },
                 isCheckingConflicts: conflictCheckingIds.contains(event.id),
+                conflictsChecked: conflictsByEventId[event.id] != nil,
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },

@@ -456,6 +456,7 @@ extension GroupMain {
           )
         },
         isCheckingConflicts: conflictCheckingIds.contains(scheduleId),
+        conflictsChecked: conflictsByScheduleId[scheduleId] != nil,
         onTap: {
           store.send(.view(.scheduleTapped(schedule)))
         },
