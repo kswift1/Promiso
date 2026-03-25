@@ -1886,6 +1886,7 @@ public enum LocalizedStrings {
     public static var selectPhoto: String { String(localized: "scheduleImport.image.selectPhoto", bundle: bundle) }
     public static var selectPhotoHint: String { String(localized: "scheduleImport.image.selectPhotoHint", bundle: bundle) }
     public static var removeImage: String { String(localized: "scheduleImport.image.removeImage", bundle: bundle) }
+    public static var changePhoto: String { String(localized: "scheduleImport.image.changePhoto", bundle: bundle) }
     // Reuse from Personal extraction
     public static var extractionPaste: String { String(localized: "personal.extraction.paste", bundle: bundle) }
     public static var extractionExtract: String { String(localized: "personal.extraction.extract", bundle: bundle) }

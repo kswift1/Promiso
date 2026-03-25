@@ -223,7 +223,7 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
       try {
         parsed = JSON.parse(jsonText);
       } catch {
-        console.error(`Failed to parse JSON: ${jsonText}`);
+        console.error(`Failed to parse JSON: ${jsonText.substring(0, 200)}`);
         throw new HttpsError("internal", "일정 추출에 실패했습니다");
       }
 

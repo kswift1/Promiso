@@ -17414,6 +17414,24 @@
         }
       }
     },
+    "scheduleImport.image.changePhoto" : {
+      "comment" : "다른 사진 선택 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Photo"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 사진 선택"
+          }
+        }
+      }
+    },
     "personal.filter.all": {
       "comment": "필터 - 전체",
       "extractionState": "manual",

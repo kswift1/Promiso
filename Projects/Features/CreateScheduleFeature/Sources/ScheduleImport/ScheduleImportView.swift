@@ -163,6 +163,7 @@ extension ScheduleImport {
           }
           .buttonStyle(.plain)
           .contentShape(Circle())
+          .accessibilityLabel("사진 제거")
           .padding(10)
         }
         .adaptiveGlassCard()
@@ -181,7 +182,7 @@ extension ScheduleImport {
           HStack(spacing: 6) {
             Image(systemName: "arrow.triangle.2.circlepath.camera")
               .font(.system(size: 13))
-            Text("다른 사진 선택")
+            Text(LocalizedStrings.ScheduleImport.changePhoto)
               .font(.system(size: 14))
           }
           .foregroundStyle(Color.pmindigo.n500)
