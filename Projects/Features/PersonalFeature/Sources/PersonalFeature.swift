@@ -756,12 +756,15 @@ extension PersonalMode.Feature {
         }
       }
     } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {
-      // 이미지 → ScheduleImport 시트 (미리보기 + 수동 추출)
-      var importState = ScheduleImport.Feature.State()
-      importState.selectedImage = imageData
-      importState.inputMode = .image
-      state.scheduleImport = importState
-      return .none
+      // 이미지 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
+      return .run { [scheduleExtractionClient] send in
+        do {
+          let event = try await scheduleExtractionClient.extractFromImage(imageData)
+          await send(.internal(.deeplinkExtractionSuccess(event)))
+        } catch {
+          await send(.internal(.deeplinkExtractionFailed(originalText: "")))
+        }
+      }
     }
 
     // pending 데이터 없음 → 빈 ScheduleImport 시트
