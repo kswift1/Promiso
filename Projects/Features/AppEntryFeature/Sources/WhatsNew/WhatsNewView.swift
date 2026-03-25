@@ -29,48 +29,142 @@ extension WhatsNew {
 
     @ViewBuilder
     private func whatsNewContent(model: WhatsNewModel) -> some View {
-      let currentItem = model.items[safe: store.currentIndex]
-      let isLast = store.currentIndex == model.items.count - 1
+      let isCover = store.currentIndex == 0
+      let itemIndex = store.currentIndex - 1
+      let currentItem = isCover ? nil : model.items[safe: itemIndex]
+      let totalPages = model.items.count + 1
+      let isLast = store.currentIndex == model.items.count
 
       ZStack(alignment: .bottom) {
         // Background
         Color.black
 
-        // Image area (상단)
-        VStack {
+        if isCover {
+          // 표지 페이지
+          coverPage(version: model.version)
+        } else {
+          // Item 페이지
           if let item = currentItem {
             imageSection(item: item)
+              .frame(maxHeight: .infinity)
+              .padding(.top, 60)
+              .padding(.bottom, 240)
           }
-          Spacer()
         }
-        .padding(.top, 60)
-        .padding(.bottom, 260)
 
         // Bottom panel (텍스트 + 인디케이터 + 버튼)
-        VStack(spacing: 10) {
-          // Text
-          if let item = currentItem {
-            textSection(item: item)
-          }
+        if !isCover {
+          VStack(spacing: 10) {
+            if let item = currentItem {
+              textSection(item: item)
+            }
 
-          // Indicator
-          if model.items.count > 1 {
-            indicatorSection(count: model.items.count, currentIndex: store.currentIndex)
-          }
+            if totalPages > 2 {
+              indicatorSection(count: model.items.count, currentIndex: itemIndex)
+            }
 
-          // Buttons
-          buttonRow(isLast: isLast)
-        }
-        .padding(.top, 20)
-        .padding(.horizontal, 15)
-        .frame(height: 250)
-        .background {
-          bottomGradient
+            buttonRow(isLast: isLast)
+          }
+          .padding(.top, 20)
+          .padding(.horizontal, 15)
+          .frame(height: 250)
+          .background {
+            bottomGradient
+          }
         }
 
         // Close button (우측 상단)
         closeButton
       }
+    }
+
+    private var appIcon: UIImage? {
+      guard let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
+            let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
+            let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+            let iconName = iconFiles.last else { return nil }
+      return UIImage(named: iconName)
+    }
+
+    // MARK: - Cover Page
+
+    @ViewBuilder
+    private func coverPage(version: String) -> some View {
+      VStack(spacing: 0) {
+        Spacer()
+        Spacer()
+
+        // 앱 아이콘 + 글로우
+        ZStack {
+          Circle()
+            .fill(
+              RadialGradient(
+                colors: [Color.pmindigo.n500.opacity(0.4), .clear],
+                center: .center,
+                startRadius: 30,
+                endRadius: 120
+              )
+            )
+            .frame(width: 240, height: 240)
+
+          if let icon = appIcon {
+            Image(uiImage: icon)
+              .resizable()
+              .aspectRatio(contentMode: .fit)
+              .frame(width: 100, height: 100)
+              .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+              .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
+          }
+        }
+
+        VStack(spacing: 8) {
+          Text("What's New")
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(.white)
+
+          Text("Promiso v\(version)의 새로운 기능을 소개합니다")
+            .font(.callout)
+            .foregroundStyle(.white.opacity(0.5))
+        }
+        .padding(.top, 4)
+
+        Spacer()
+        Spacer()
+        Spacer()
+
+        // 시작 버튼
+        if #available(iOS 26, *) {
+          Button {
+            withAnimation(.interpolatingSpring(duration: 0.65, bounce: 0)) {
+              _ = store.send(.view(.nextTapped))
+            }
+          } label: {
+            Text("살펴보기")
+              .fontWeight(.medium)
+              .padding(.vertical, 6)
+          }
+          .tint(Color.pmindigo.n500)
+          .buttonStyle(.glassProminent)
+          .buttonSizing(.flexible)
+        } else {
+          Button {
+            withAnimation(.interpolatingSpring(duration: 0.65, bounce: 0)) {
+              _ = store.send(.view(.nextTapped))
+            }
+          } label: {
+            Text("살펴보기")
+              .fontWeight(.medium)
+              .frame(maxWidth: .infinity)
+              .frame(height: 44)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.pmindigo.n500)
+        }
+      }
+      .padding(.horizontal, 30)
+      .padding(.bottom, 60)
     }
 
     // MARK: - Image Section
@@ -95,7 +189,7 @@ extension WhatsNew {
             imagePlaceholder
           }
         }
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 15)
       } else {
         imagePlaceholder
       }
