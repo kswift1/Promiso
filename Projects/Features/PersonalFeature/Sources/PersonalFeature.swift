@@ -89,6 +89,8 @@ extension PersonalMode {
       @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
       @Presents var recurringEventDetail: RecurringPersonalEventDetail.Feature.State?
+      @Presents var deleteAlert: AlertState<Action.Alert>?
+      var eventToDelete: PersonalEventModel?
 
       /// Share Extension 딥링크 추출 중 여부
       public var isDeeplinkExtracting: Bool = false
@@ -196,10 +198,16 @@ extension PersonalMode {
       case view(View)
       case `internal`(Internal)
       case scheduleImport(PresentationAction<ScheduleImport.Feature.Action>)
+      case alert(PresentationAction<Alert>)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
       case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
       case recurringEventDetail(PresentationAction<RecurringPersonalEventDetail.Feature.Action>)
+
+      @CasePathable
+      public enum Alert: Sendable {
+        case confirmDelete
+      }
 
       public enum View: Sendable {
         case onAppear
@@ -323,16 +331,20 @@ extension PersonalMode {
             return .none
 
           case .deleteEvent(let event):
-            return .run { [localNotificationClient, calendarSyncClient] send in
-              do {
-                try await personalEventClient.deleteEvent(event.id)
-                await localNotificationClient.cancel(event.notificationId)
-                try? await calendarSyncClient.removePersonalEvent(event.id)
-                await send(.internal(.eventDeleted(event.id)))
-              } catch {
-                await send(.internal(.eventDeleteFailed(LocalizedStrings.Error.unknownError)))
+            state.eventToDelete = event
+            state.deleteAlert = AlertState {
+              TextState(LocalizedStrings.Shared.deleteEvent)
+            } actions: {
+              ButtonState(role: .destructive, action: .confirmDelete) {
+                TextState(LocalizedStrings.Common.delete)
               }
+              ButtonState(role: .cancel) {
+                TextState(LocalizedStrings.Common.cancel)
+              }
+            } message: {
+              TextState(LocalizedStrings.Shared.deleteEventConfirm(event.title))
             }
+            return .none
 
           case .switchToGroupMode:
             // RootTabFeature에서 처리
@@ -733,11 +745,32 @@ extension PersonalMode {
 
         case .recurringEventDetail:
           return .none
+
+        // MARK: - Alert
+
+        case .alert(.presented(.confirmDelete)):
+          guard let event = state.eventToDelete else { return .none }
+          state.eventToDelete = nil
+          return .run { [localNotificationClient, calendarSyncClient] send in
+            do {
+              try await personalEventClient.deleteEvent(event.id)
+              await localNotificationClient.cancel(event.notificationId)
+              try? await calendarSyncClient.removePersonalEvent(event.id)
+              await send(.internal(.eventDeleted(event.id)))
+            } catch {
+              await send(.internal(.eventDeleteFailed(LocalizedStrings.Error.unknownError)))
+            }
+          }
+
+        case .alert:
+          state.eventToDelete = nil
+          return .none
         }
       }
       .ifLet(\.$scheduleImport, action: \.scheduleImport) {
         ScheduleImport.Feature()
       }
+      .ifLet(\.$deleteAlert, action: \.alert)
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
       }

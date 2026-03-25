@@ -93,6 +93,7 @@ extension PersonalMode {
       ) { detailStore in
         RecurringPersonalEventDetail.RootView(store: detailStore)
       }
+      .alert(store: store.scope(state: \.$deleteAlert, action: \.alert))
     }
 
     // MARK: - Header

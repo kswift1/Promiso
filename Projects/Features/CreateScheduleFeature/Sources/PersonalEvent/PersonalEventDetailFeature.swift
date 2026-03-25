@@ -114,7 +114,7 @@ extension PersonalEventDetail {
             state.event.descriptionBlocks[blockIndex].content = .checklist(items)
             let updatedEvent = state.event
             return .merge(
-              .run { _ in await hapticFeedback.impact(.light) },
+              .run { _ in await hapticFeedback.light() },
               .run { _ in
                 try? await personalEventClient.updateEvent(updatedEvent)
               },
