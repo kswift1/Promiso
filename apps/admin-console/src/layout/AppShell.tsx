@@ -2,6 +2,7 @@ import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSetting
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import NewReleasesRoundedIcon from "@mui/icons-material/NewReleasesRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
@@ -74,6 +75,12 @@ const navItems = [
     label: "릴리스 제어",
     path: "/release-controls",
     icon: <TuneRoundedIcon />,
+    allowedRoles: ["owner", "marketer"] as AdminRole[],
+  },
+  {
+    label: "What's New",
+    path: "/whats-new",
+    icon: <NewReleasesRoundedIcon />,
     allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {label: "감사 로그", path: "/audit-logs", icon: <HistoryRoundedIcon />},
