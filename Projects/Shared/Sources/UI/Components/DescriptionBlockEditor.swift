@@ -17,34 +17,52 @@ public struct DescriptionBlockEditor: View {
     self.characterLimit = characterLimit
   }
 
-  // 총 글자 수 계산
+  // 총 글자 수 계산 (사용자 입력 텍스트만)
   private var totalCharacterCount: Int {
     blocks.reduce(0) { total, block in
-      total + block.plainText.count
+      switch block.content {
+      case .text(let text):
+        return total + text.count
+      case .checklist(let items):
+        return total + items.reduce(0) { $0 + $1.text.count }
+      case .bulletList(let items):
+        return total + items.reduce(0) { $0 + $1.count }
+      }
     }
   }
 
   public var body: some View {
-    let _ = ensureDefaultBlock()
-    VStack(alignment: .leading, spacing: 16) {
-      ForEach(blocks.indices, id: \.self) { index in
-        blockEditorRow(for: index)
-      }
+    ScrollViewReader { proxy in
+      let _ = ensureDefaultBlock()
+      VStack(alignment: .leading, spacing: 16) {
+        ForEach(blocks.indices, id: \.self) { index in
+          if blocks.count > 1 && index > 0 {
+            Divider()
+          }
+          blockEditorRow(for: index, proxy: proxy)
+        }
 
-      // 컴팩트 블록 추가 버튼
-      addBlockRow
+        // 컴팩트 블록 추가 버튼
+        addBlockRow
 
-      // 글자 수 카운터
-      HStack {
-        Spacer()
-        Text("\(totalCharacterCount)/\(characterLimit)")
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
+        // 글자 수 카운터
+        HStack {
+          Spacer()
+          Text("\(totalCharacterCount)/\(characterLimit)")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
       }
-    }
-    .onAppear {
-      if blocks.isEmpty {
-        blocks.append(DescriptionBlock(content: .text("")))
+      .onAppear {
+        if blocks.isEmpty {
+          blocks.append(DescriptionBlock(content: .text("")))
+        }
+      }
+      .onChange(of: focusedItem) { _, newItem in
+        guard let newItem else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+          proxy.scrollTo("block-\(newItem.blockIndex)-item-\(newItem.itemIndex)", anchor: .center)
+        }
       }
     }
   }
@@ -58,10 +76,10 @@ public struct DescriptionBlockEditor: View {
   // MARK: - Block Editor Row
 
   @ViewBuilder
-  private func blockEditorRow(for index: Int) -> some View {
+  private func blockEditorRow(for index: Int, proxy: ScrollViewProxy) -> some View {
     switch blocks[index].content {
     case .text:
-      textBlockRow(for: index)
+      textBlockRow(for: index, proxy: proxy)
     case .checklist:
       checklistBlockRow(for: index)
     case .bulletList:
@@ -69,23 +87,74 @@ public struct DescriptionBlockEditor: View {
     }
   }
 
-  // MARK: - Text Block (플랫, 카드 없음)
+  // MARK: - Block Header (공통 — 전체 탭 가능, 오른쪽 ellipsis)
 
-  private func textBlockRow(for index: Int) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      // 블록이 2개 이상일 때만 타입 메뉴 표시 (단독 텍스트면 깔끔하게)
-      if blocks.count > 1 {
-        HStack(spacing: 4) {
-          blockTypeMenu(for: index)
+  private func blockHeader(for index: Int) -> some View {
+    let title: String = switch blocks[index].content {
+    case .text: "텍스트"
+    case .checklist: "체크리스트"
+    case .bulletList: "목록"
+    }
 
-          Text("텍스트")
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.secondary)
-        }
+    return Menu {
+      Button {
+        convertBlock(at: index, to: .text(""))
+      } label: {
+        Label("텍스트", systemImage: "text.alignleft")
       }
 
+      Button {
+        convertBlock(at: index, to: .checklist([ChecklistItem(text: "")]))
+      } label: {
+        Label("체크리스트", systemImage: "checklist")
+      }
+
+      Button {
+        convertBlock(at: index, to: .bulletList([""]))
+      } label: {
+        Label("목록", systemImage: "list.bullet")
+      }
+
+      Divider()
+
+      Button(role: .destructive) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+          _ = blocks.remove(at: index)
+        }
+      } label: {
+        Label("삭제", systemImage: "trash")
+      }
+    } label: {
+      HStack(spacing: 4) {
+        Image(systemName: blockTypeIconName(blocks[index].content))
+          .font(.system(size: 13))
+        Text(title)
+          .font(.system(size: 13, weight: .medium))
+        Spacer()
+        Image(systemName: "ellipsis")
+          .font(.system(size: 14))
+      }
+      .foregroundStyle(.secondary)
+      .padding(.vertical, 2)
+      .contentShape(Rectangle())
+    }
+    .menuStyle(.button)
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Text Block
+
+  private func textBlockRow(for index: Int, proxy: ScrollViewProxy) -> some View {
+    let textContent: String = {
+      if case .text(let text) = blocks[index].content { return text }
+      return ""
+    }()
+
+    return VStack(alignment: .leading, spacing: 6) {
+      blockHeader(for: index)
+
       TextField(
-        "텍스트 입력",
+        "내용을 입력하세요",
         text: Binding(
           get: {
             if case .text(let text) = blocks[index].content { return text }
@@ -98,10 +167,17 @@ public struct DescriptionBlockEditor: View {
         axis: .vertical
       )
       .lineLimit(2...10)
+      .focused($focusedItem, equals: ItemFocus(blockIndex: index, itemIndex: 0))
       .font(.system(size: 15))
-      .padding(12)
-      .background(Color(.systemGray6))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    .id("block-\(index)-item-0")
+    .onChange(of: textContent) { _, _ in
+      guard focusedItem == ItemFocus(blockIndex: index, itemIndex: 0) else { return }
+      DispatchQueue.main.async {
+        withAnimation(.easeInOut(duration: 0.15)) {
+          proxy.scrollTo("block-\(index)-item-0", anchor: .bottom)
+        }
+      }
     }
   }
 
@@ -109,13 +185,7 @@ public struct DescriptionBlockEditor: View {
 
   private func checklistBlockRow(for index: Int) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      HStack(spacing: 4) {
-        blockTypeMenu(for: index)
-
-        Text("체크리스트")
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
+      blockHeader(for: index)
 
       if case .checklist(let items) = blocks[index].content {
         ForEach(items.indices, id: \.self) { itemIndex in
@@ -123,9 +193,6 @@ public struct DescriptionBlockEditor: View {
         }
       }
     }
-    .padding(12)
-    .background(Color(.systemGray6))
-    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
   private func checklistItemRow(blockIndex: Int, itemIndex: Int) -> some View {
@@ -171,18 +238,26 @@ public struct DescriptionBlockEditor: View {
           set: { newValue in
             guard case .checklist(var items) = blocks[blockIndex].content,
                   itemIndex < items.count else { return }
-            if newValue.contains("\n") {
-              let parts = newValue.split(
-                separator: "\n",
-                maxSplits: 1,
-                omittingEmptySubsequences: false
-              )
-              items[itemIndex].text = String(parts[0])
-              let newItemText = parts.count > 1 ? String(parts[1]) : ""
-              let newItem = ChecklistItem(text: newItemText)
+            if let newlineIndex = newValue.firstIndex(of: "\n") {
+              let before = String(newValue[newValue.startIndex..<newlineIndex])
+              let after = String(newValue[newValue.index(after: newlineIndex)...])
+              // 빈 문자열이면 줄바꿈만 제거하고 새 항목 추가 안 함
+              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else {
+                items[itemIndex].text = before
+                blocks[blockIndex].content = .checklist(items)
+                return
+              }
+              // 이중 트리거 방지: 이미 분리된 상태면 스킵
+              if items[itemIndex].text == before,
+                 itemIndex + 1 < items.count,
+                 items[itemIndex + 1].text == after {
+                return
+              }
+              items[itemIndex].text = before
+              let newItem = ChecklistItem(text: after)
               items.insert(newItem, at: itemIndex + 1)
               blocks[blockIndex].content = .checklist(items)
-              DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+              DispatchQueue.main.async {
                 focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
               }
             } else {
@@ -193,7 +268,7 @@ public struct DescriptionBlockEditor: View {
         ),
         axis: .vertical
       )
-      .lineLimit(1...2)
+      .lineLimit(1)
       .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
       .strikethrough({
@@ -203,20 +278,31 @@ public struct DescriptionBlockEditor: View {
         }
         return false
       }())
+
+      // 삭제 버튼
+      Button {
+        if case .checklist(var items) = blocks[blockIndex].content {
+          items.remove(at: itemIndex)
+          if items.isEmpty {
+            items.append(ChecklistItem(text: ""))
+          }
+          blocks[blockIndex].content = .checklist(items)
+        }
+      } label: {
+        Image(systemName: "xmark")
+          .font(.system(size: 11))
+          .foregroundStyle(Color(.systemGray3))
+      }
+      .buttonStyle(.plain)
     }
+    .id("block-\(blockIndex)-item-\(itemIndex)")
   }
 
   // MARK: - Bullet List Block
 
   private func bulletListBlockRow(for index: Int) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      HStack(spacing: 4) {
-        blockTypeMenu(for: index)
-
-        Text("목록")
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
+      blockHeader(for: index)
 
       if case .bulletList(let items) = blocks[index].content {
         ForEach(items.indices, id: \.self) { itemIndex in
@@ -224,9 +310,6 @@ public struct DescriptionBlockEditor: View {
         }
       }
     }
-    .padding(12)
-    .background(Color(.systemGray6))
-    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
   private func bulletItemRow(blockIndex: Int, itemIndex: Int) -> some View {
@@ -249,17 +332,25 @@ public struct DescriptionBlockEditor: View {
           set: { newValue in
             guard case .bulletList(var items) = blocks[blockIndex].content,
                   itemIndex < items.count else { return }
-            if newValue.contains("\n") {
-              let parts = newValue.split(
-                separator: "\n",
-                maxSplits: 1,
-                omittingEmptySubsequences: false
-              )
-              items[itemIndex] = String(parts[0])
-              let newItemText = parts.count > 1 ? String(parts[1]) : ""
-              items.insert(newItemText, at: itemIndex + 1)
+            if let newlineIndex = newValue.firstIndex(of: "\n") {
+              let before = String(newValue[newValue.startIndex..<newlineIndex])
+              let after = String(newValue[newValue.index(after: newlineIndex)...])
+              // 빈 문자열이면 줄바꿈만 제거하고 새 항목 추가 안 함
+              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else {
+                items[itemIndex] = before
+                blocks[blockIndex].content = .bulletList(items)
+                return
+              }
+              // 이중 트리거 방지
+              if items[itemIndex] == before,
+                 itemIndex + 1 < items.count,
+                 items[itemIndex + 1] == after {
+                return
+              }
+              items[itemIndex] = before
+              items.insert(after, at: itemIndex + 1)
               blocks[blockIndex].content = .bulletList(items)
-              DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+              DispatchQueue.main.async {
                 focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
               }
             } else {
@@ -270,53 +361,27 @@ public struct DescriptionBlockEditor: View {
         ),
         axis: .vertical
       )
-      .lineLimit(1...2)
+      .lineLimit(1)
       .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
-    }
-  }
 
-  // MARK: - Block Type Menu (타입 전환 + 삭제)
-
-  private func blockTypeMenu(for index: Int) -> some View {
-    Menu {
+      // 삭제 버튼
       Button {
-        convertBlock(at: index, to: .text(""))
-      } label: {
-        Label("텍스트", systemImage: "text.alignleft")
-      }
-
-      Button {
-        convertBlock(at: index, to: .checklist([ChecklistItem(text: "")]))
-      } label: {
-        Label("체크리스트", systemImage: "checklist")
-      }
-
-      Button {
-        convertBlock(at: index, to: .bulletList([""]))
-      } label: {
-        Label("목록", systemImage: "list.bullet")
-      }
-
-      Divider()
-
-      Button(role: .destructive) {
-        withAnimation(.easeInOut(duration: 0.2)) {
-          _ = blocks.remove(at: index)
+        if case .bulletList(var items) = blocks[blockIndex].content {
+          items.remove(at: itemIndex)
+          if items.isEmpty {
+            items.append("")
+          }
+          blocks[blockIndex].content = .bulletList(items)
         }
       } label: {
-        Label("삭제", systemImage: "trash")
+        Image(systemName: "xmark")
+          .font(.system(size: 11))
+          .foregroundStyle(Color(.systemGray3))
       }
-    } label: {
-      Image(systemName: blockTypeIconName(blocks[index].content))
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
-        .frame(width: 20, height: 20)
-        .contentShape(Rectangle())
+      .buttonStyle(.plain)
     }
-    .menuStyle(.button)
-    .buttonStyle(.plain)
-    .padding(.top, 2)
+    .id("block-\(blockIndex)-item-\(itemIndex)")
   }
 
   private func blockTypeIconName(_ content: DescriptionBlock.BlockContent) -> String {

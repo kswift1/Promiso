@@ -122,9 +122,6 @@ extension CreatePersonalEvent {
           }
         }
       }
-      .onTapGesture {
-        dismissKeyboard()
-      }
       .auroraBackground()
     }
 
@@ -492,6 +489,8 @@ extension CreatePersonalEvent {
           set: { store.send(.view(.descriptionBlocksChanged($0))) }
         )
       )
+      .padding(16)
+      .adaptiveGlassCard()
     }
   }
 }
