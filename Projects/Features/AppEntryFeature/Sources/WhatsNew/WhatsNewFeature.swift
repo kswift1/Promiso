@@ -84,7 +84,8 @@ extension WhatsNew {
 
           case .nextTapped:
             guard let model = state.model else { return .none }
-            if state.currentIndex < model.items.count - 1 {
+            // 표지(0) + items → 총 페이지 = items.count + 1
+            if state.currentIndex < model.items.count {
               state.currentIndex += 1
             } else {
               // 마지막 → 닫기
