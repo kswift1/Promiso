@@ -1,9 +1,11 @@
+import os.lock
 import UserNotifications
 
 final class NotificationService: UNNotificationServiceExtension {
 
   private var contentHandler: ((UNNotificationContent) -> Void)?
   private var bestAttemptContent: UNMutableNotificationContent?
+  private let lock = OSAllocatedUnfairLock()
   private var isHandled = false
 
   override func didReceive(
@@ -43,9 +45,11 @@ final class NotificationService: UNNotificationServiceExtension {
   }
 
   private func deliverContent(_ content: UNNotificationContent) {
-    guard !isHandled else { return }
-    isHandled = true
-    contentHandler?(content)
+    lock.withLock {
+      guard !isHandled else { return }
+      isHandled = true
+      contentHandler?(content)
+    }
   }
 
   private func downloadImage(

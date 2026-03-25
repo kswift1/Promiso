@@ -192,14 +192,18 @@ public actor NotificationRemoteDataSource {
         // changes JSON 파싱
         var changes: [NotificationChange]?
         if let changesJson = dto.data?["changes"],
-           let jsonData = changesJson.data(using: .utf8),
-           let decoded = try? JSONDecoder().decode([ChangeDTO].self, from: jsonData) {
-          changes = decoded.map {
-            NotificationChange(
-              label: $0.label,
-              before: $0.before,
-              after: $0.after
-            )
+           let jsonData = changesJson.data(using: .utf8) {
+          do {
+            let decoded = try JSONDecoder().decode([ChangeDTO].self, from: jsonData)
+            changes = decoded.map {
+              NotificationChange(
+                label: $0.label,
+                before: $0.before,
+                after: $0.after
+              )
+            }
+          } catch {
+            AppLogger.notification.error("'changes' JSON 파싱 실패: \(error.localizedDescription), json: \(changesJson)")
           }
         }
 

@@ -448,7 +448,7 @@ struct NotificationCellContent: View {
     if notification.imageUrl != nil {
       ProfileAvatarView(
         profileImageUrl: notification.imageUrl,
-        displayName: notification.title,
+        displayName: "",
         size: 44,
         borderWidth: 0
       )
