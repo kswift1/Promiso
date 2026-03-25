@@ -73,14 +73,14 @@ extension PersonalMode {
           store: createEventStore,
           dismissButtonVisibility: .hiddenForCreateMode
         )
-          .presentationDetents([.large, .medium])
+          .presentationDetents([.large])
           .presentationDragIndicator(.visible)
       }
       .sheet(
         item: $store.scope(state: \.createRecurringEvent, action: \.createRecurringEvent)
       ) { createRecurringStore in
         CreateRecurringPersonalEvent.RootView(store: createRecurringStore)
-          .presentationDetents([.large, .medium])
+          .presentationDetents([.large])
           .presentationDragIndicator(.visible)
       }
       .navigationDestination(

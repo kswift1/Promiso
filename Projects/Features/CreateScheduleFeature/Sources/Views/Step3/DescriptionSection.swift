@@ -8,15 +8,19 @@ struct DescriptionSection: View {
   @FocusState.Binding var isFocused: Bool
 
   var body: some View {
-    SectionPlaceHolder(
-      placeHolderTitle: LocalizedStrings.CreateSchedule.descriptionSection,
-    ) {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(LocalizedStrings.CreateSchedule.descriptionSection)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.primary)
+
       DescriptionBlockEditor(
         blocks: Binding(
           get: { store.schedule.descriptionBlocks },
           set: { store.send(.view(.setDescriptionBlocks($0))) }
         )
       )
+      .padding(16)
+      .adaptiveGlassCard()
     }
   }
 }
