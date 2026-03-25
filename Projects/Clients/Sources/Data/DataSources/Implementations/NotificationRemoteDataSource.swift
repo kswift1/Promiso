@@ -4,6 +4,15 @@ import FirebaseFunctions
 import PromisoShared
 import UIKit
 
+// MARK: - Internal DTOs
+
+/// changes JSON 디코딩용 내부 DTO
+private struct ChangeDTO: Decodable {
+  let label: String
+  let before: String
+  let after: String
+}
+
 // MARK: - Firebase 상수
 
 private enum FirebaseConstants {
@@ -179,6 +188,21 @@ public actor NotificationRemoteDataSource {
     let notifications = snapshot.documents.compactMap { document -> NotificationModel? in
       do {
         let dto = try document.data(as: NotificationDTO.self)
+
+        // changes JSON 파싱
+        var changes: [NotificationChange]?
+        if let changesJson = dto.data?["changes"],
+           let jsonData = changesJson.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([ChangeDTO].self, from: jsonData) {
+          changes = decoded.map {
+            NotificationChange(
+              label: $0.label,
+              before: $0.before,
+              after: $0.after
+            )
+          }
+        }
+
         return NotificationModel(
           notificationId: document.documentID,
           userId: dto.userId,
@@ -191,7 +215,8 @@ public actor NotificationRemoteDataSource {
           isRead: dto.isRead,
           createdAt: dto.createdAt.dateValue(),
           readAt: dto.readAt?.dateValue(),
-          imageUrl: dto.data?["imageUrl"]
+          imageUrl: dto.data?["imageUrl"],
+          changes: changes
         )
       } catch {
         AppLogger.notification.error("알림 파싱 실패: \(error.localizedDescription)")
