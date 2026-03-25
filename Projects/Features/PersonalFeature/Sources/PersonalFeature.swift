@@ -211,6 +211,8 @@ extension PersonalMode {
         case switchToGroupMode
         /// 위젯 딥링크로 개인 일정 상세 열기
         case openEventFromDeeplink(eventId: String)
+        /// Share Extension 텍스트로 CreatePersonalEvent 폼 열기 (App Group에서 텍스트 읽기)
+        case openCreateEventWithExtraction
         /// 토스트 닫힘
         case toastDismissed
       }
@@ -332,6 +334,9 @@ extension PersonalMode {
                 AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
               }
             }
+
+          case .openCreateEventWithExtraction:
+            return openCreateEventWithExtraction(state: &state)
 
           case .toastDismissed:
             state.toastMessage = nil
@@ -691,6 +696,22 @@ extension PersonalMode {
         RecurringPersonalEventDetail.Feature()
       }
     }
+  }
+}
+
+// MARK: - Deeplink Helpers
+
+extension PersonalMode.Feature {
+  /// Share Extension 텍스트로 CreatePersonalEvent 폼을 엽니다.
+  func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
+    let text = AppConstants.AppGroup.consumePendingExtractionText()
+    var eventState = CreatePersonalEvent.Feature.State()
+    if let text {
+      eventState.isTextExtractionExpanded = true
+      eventState.extractionText = text
+    }
+    state.createEvent = eventState
+    return .none
   }
 }
 

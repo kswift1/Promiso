@@ -150,6 +150,35 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - App Group
+
+  /// App Group 공유 데이터 (Extension ↔ 메인 앱)
+  public enum AppGroup {
+    /// App Group suite name (환경별 자동 판별)
+    public static var suiteName: String {
+      let bundleId = Bundle.main.bundleIdentifier ?? ""
+      if bundleId.contains(".dev") {
+        return "group.com.promiso.dev.shared"
+      } else if bundleId.contains(".stage") {
+        return "group.com.promiso.stage.shared"
+      } else {
+        return "group.com.promiso.shared"
+      }
+    }
+
+    public static let pendingExtractionTextKey = "pendingExtractionText"
+
+    /// pending 텍스트를 읽고 즉시 삭제 (consume)
+    public static func consumePendingExtractionText() -> String? {
+      let defaults = Foundation.UserDefaults(suiteName: suiteName)
+      let text = defaults?.string(forKey: pendingExtractionTextKey)
+      if text != nil {
+        defaults?.removeObject(forKey: pendingExtractionTextKey)
+      }
+      return text
+    }
+  }
+
   // MARK: - External URLs
 
   public enum ExternalURLs {

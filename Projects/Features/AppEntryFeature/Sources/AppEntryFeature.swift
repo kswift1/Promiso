@@ -720,6 +720,9 @@ extension AppEntry.Feature {
 
     case .proPlan:
       return .send(.destination(.presented(.main(.openProPlan))))
+
+    case .extractSchedule:
+      return .send(.destination(.presented(.main(.openExtractSchedule))))
     }
   }
 

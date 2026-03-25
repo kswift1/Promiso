@@ -82,8 +82,8 @@ extension CreatePersonalEvent {
       var weatherState: LoadingState<WeatherInfo> = .idle
 
       // 텍스트 추출
-      var isTextExtractionExpanded: Bool = false
-      var extractionText: String = ""
+      public var isTextExtractionExpanded: Bool = false
+      public var extractionText: String = ""
       var isExtracting: Bool = false
       var extractionError: String?
 
@@ -175,6 +175,11 @@ extension CreatePersonalEvent {
           switch viewAction {
           case .onAppear:
             guard !state.hasLoadedSettings else { return .none }
+            let autoExtractEffect: Effect<Action> = if !state.extractionText.isEmpty {
+              .send(.view(.extractTapped))
+            } else {
+              .none
+            }
             return .merge(
               .run { [authClient, userSettingsClient] send in
                 guard let user = await authClient.currentUser() else { return }
@@ -185,7 +190,8 @@ extension CreatePersonalEvent {
                   // 설정 로드 실패 시 기본값으로 처리 (충돌 감지 비활성)
                 }
               },
-              .send(.internal(.refreshProFeatures(debounce: false)))
+              .send(.internal(.refreshProFeatures(debounce: false))),
+              autoExtractEffect
             )
 
           case .titleChanged(let title):
