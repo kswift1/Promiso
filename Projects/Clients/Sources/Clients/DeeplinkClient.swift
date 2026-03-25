@@ -25,6 +25,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case personalEvent(eventId: String)
   /// 프로 플랜 화면 (마케팅/푸시에서 Paywall로 직접 진입)
   case proPlan
+  /// Share Extension에서 텍스트 일정 추출 (개인 일정 생성 폼으로 연결)
+  case extractSchedule
 }
 
 // MARK: - Client

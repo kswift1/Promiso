@@ -84,9 +84,6 @@ public enum CreateSchedule {
       // 그룹 생성 sheet
       @Presents var createGroup: CreateGroup.Feature.State?
 
-      // pre-fill 정보 (퀵 일정에서 전달)
-      var prefillInfo: ScheduleExtractedInfo?
-
       public init(
         currentStep: CreateScheduleStep = .first,
         schedule: ScheduleModel = .empty,
@@ -102,7 +99,6 @@ public enum CreateSchedule {
         currentUserId: String = "",
         currentUser: UserPrivateModel? = nil,
         locationPicker: LocationPicker.Feature.State? = nil,
-        prefillInfo: ScheduleExtractedInfo? = nil,
         weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
@@ -119,7 +115,6 @@ public enum CreateSchedule {
         self.currentUserId = currentUserId
         self.currentUser = currentUser
         self.locationPicker = locationPicker
-        self.prefillInfo = prefillInfo
         self.weatherState = weatherState
       }
 
@@ -185,6 +180,7 @@ public enum CreateSchedule {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setDescriptionBlocks([DescriptionBlock])
         case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
@@ -372,6 +368,12 @@ public enum CreateSchedule {
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
             state.schedule.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .setDescriptionBlocks(let blocks):
+            state.schedule.descriptionBlocks = blocks
+            // 하위 호환: description도 업데이트
+            state.schedule.description = blocks.plainText
             return .none
 
           case .setTrackingStartMinutes(let minutes):

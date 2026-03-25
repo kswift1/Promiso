@@ -68,6 +68,9 @@ extension AppEntry {
       /// 업데이트 알림 타입
       @Presents var updateAlert: UpdateAlertState?
 
+      /// What's New 팝업 (업데이트 후 신규 기능 안내)
+      @Presents var whatsNew: WhatsNew.Feature.State?
+
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
@@ -88,6 +91,7 @@ extension AppEntry {
       case destination(PresentationAction<Destination.Action>)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
       case updateAlert(UpdateAlertAction)
+      case whatsNew(PresentationAction<WhatsNew.Feature.Action>)
     }
 
     public enum UpdateAlertAction: Equatable {
@@ -128,6 +132,7 @@ extension AppEntry {
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
       case fcmTokenFetched(String)
+      case checkWhatsNew
     }
 
     // MARK: - Destination Reducer
@@ -163,8 +168,13 @@ extension AppEntry {
             return routeOrPendDeeplink(destination, state: &state)
 
           case .scenePhaseChanged(let phase):
+            guard phase == .active else { return .none }
+            // Share Extension에서 저장한 pending 데이터(텍스트/이미지) 확인
+            if AppConstants.AppGroup.hasPendingExtraction {
+              return routeOrPendDeeplink(.extractSchedule, state: &state)
+            }
             // 앱스토어에서 돌아왔을 때 버전 재체크
-            if phase == .active && state.updateAlert != nil {
+            if state.updateAlert != nil {
               return .send(.internal(.recheckVersionAfterAppStore))
             }
             return .none
@@ -390,6 +400,11 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
+            // 기존 사용자 로그인 시에만 What's New 체크 (신규 가입 시에는 불필요)
+            if !isSignup {
+              effects.append(.send(.internal(.checkWhatsNew)))
+            }
+
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
               effects.append(routeDeeplink(deeplink))
@@ -409,6 +424,13 @@ extension AppEntry {
 
           case .fcmTokenFetched(let token):
             return .send(.internal(.fcmTokenReceived(token)))
+
+          case .checkWhatsNew:
+            let currentVersion = AppConstants.App.version
+            let lastSeenVersion = userDefaultsClient.lastSeenWhatsNewVersion
+            guard lastSeenVersion != currentVersion else { return .none }
+            state.whatsNew = WhatsNew.Feature.State()
+            return .none
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
@@ -442,6 +464,13 @@ extension AppEntry {
           return .none
 
         case .notificationPermission:
+          return .none
+
+        case .whatsNew(.presented(.delegate(.dismissed))):
+          state.whatsNew = nil
+          return .none
+
+        case .whatsNew:
           return .none
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
@@ -506,6 +535,9 @@ extension AppEntry {
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
       }
+      .ifLet(\.$whatsNew, action: \.whatsNew) {
+        WhatsNew.Feature()
+      }
     }
   }
   
@@ -554,6 +586,14 @@ extension AppEntry {
         )
       ) { store in
         NotificationPermission.View(store: store)
+      }
+      .fullScreenCover(
+        item: $store.scope(
+          state: \.whatsNew,
+          action: \.whatsNew
+        )
+      ) { store in
+        WhatsNew.ContentView(store: store)
       }
       .alert(
         updateAlertTitle,
@@ -720,6 +760,9 @@ extension AppEntry.Feature {
 
     case .proPlan:
       return .send(.destination(.presented(.main(.openProPlan))))
+
+    case .extractSchedule:
+      return .send(.destination(.presented(.main(.openExtractSchedule))))
     }
   }
 

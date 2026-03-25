@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import PromisoShared
 
 // MARK: - Personal Event DTO
 
@@ -9,6 +10,7 @@ public struct PersonalEventDTO: Codable {
   public let title: String
   public let emoji: String?
   public let description: String?
+  public let descriptionBlocks: [DescriptionBlock]?
 
   // MARK: - 시간
   public let startAt: Timestamp
@@ -31,6 +33,7 @@ public struct PersonalEventDTO: Codable {
     title: String,
     emoji: String? = nil,
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock]? = nil,
     startAt: Timestamp,
     endAt: Timestamp? = nil,
     location: LocationDTO? = nil,
@@ -42,6 +45,7 @@ public struct PersonalEventDTO: Codable {
     self.title = title
     self.emoji = emoji
     self.description = description
+    self.descriptionBlocks = descriptionBlocks
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
@@ -60,7 +64,9 @@ extension PersonalEventDTO {
     self.init(
       title: model.title,
       emoji: model.emoji,
-      description: model.description,
+      // 하위 호환: 구버전 앱용으로 descriptionBlocks의 plainText를 description에 동기화
+      description: model.descriptionBlocks.plainText ?? model.description,
+      descriptionBlocks: model.descriptionBlocks.isEmpty ? nil : model.descriptionBlocks,
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },

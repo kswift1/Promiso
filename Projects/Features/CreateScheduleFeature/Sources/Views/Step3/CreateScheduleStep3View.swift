@@ -43,19 +43,10 @@ struct CreateScheduleStep3View: View {
         .padding(16)
       }
       .scrollDismissesKeyboard(.interactively)
-      .simultaneousGesture(
-        DragGesture().onChanged { _ in
-          isDescriptionFocused = false
-          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-      )
-      .onTapGesture {
-        isDescriptionFocused = false
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-      }
       .onChange(of: isDescriptionFocused) { _, newValue in
         if newValue {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+          Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
             withAnimation {
               proxy.scrollTo("description", anchor: .top)
             }

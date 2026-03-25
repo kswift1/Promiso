@@ -284,6 +284,19 @@ public struct KakaoInteractiveMapView: UIViewRepresentable {
     var onUserGesture: (() -> Void)?
     var cameraEventHandler: (any DisposableEventHandler)?
 
+    deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
+      cameraEventHandler?.dispose()
+      cameraEventHandler = nil
+      mapController?.delegate = nil
+      mapController?.pauseEngine()
+      mapController?.resetEngine()
+      mapController = nil
+    }
+
     private var pendingLatitude: Double?
     private var pendingLongitude: Double?
     private var pendingZoomLevel: Int = 16

@@ -35,16 +35,20 @@ public enum AppConfig {
     // Deeplink는 비밀값이 아니므로 환경별 직접 설정
     let deeplinkScheme: String
     let deeplinkWebHost: String
+    let appGroupId: String
     switch environment {
     case "dev":
       deeplinkScheme = "promiso-dev"
       deeplinkWebHost = "dev.promiso.app"
+      appGroupId = "group.com.promiso.dev.shared"
     case "stage":
       deeplinkScheme = "promiso-stage"
       deeplinkWebHost = "stage.promiso.app"
+      appGroupId = "group.com.promiso.stage.shared"
     default:
       deeplinkScheme = "promiso"
       deeplinkWebHost = "promiso.app"
+      appGroupId = "group.com.promiso.shared"
     }
 
     return [
@@ -96,6 +100,8 @@ public enum AppConfig {
       // Deeplink
       "DEEPLINK_SCHEME": .string(deeplinkScheme),
       "DEEPLINK_WEB_HOST": .string(deeplinkWebHost),
+      // App Group
+      "APP_GROUP_ID": .string(appGroupId),
       // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       // Microsoft Clarity

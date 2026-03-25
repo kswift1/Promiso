@@ -286,7 +286,7 @@ extension HomeModels {
     public let subwayTransitCount: Int
     public let pathType: Int
     public let departureTime: Date
-    public let subPaths: [TransportSubPath]
+    public var subPaths: [TransportSubPath]
     public let tags: [TransitRouteTag]
 
     public init(
@@ -326,12 +326,22 @@ extension HomeModels {
     public let laneName: String?          // 대표 노선명 (2호선, 143번 등)
     /// 노선 색상 (Hex, 예: "#0052A4")
     public let laneColor: String?
+    /// 구간 시작 경도
+    public let startX: Double?
+    /// 구간 시작 위도
+    public let startY: Double?
+    /// 구간 끝 경도
+    public let endX: Double?
+    /// 구간 끝 위도
+    public let endY: Double?
     /// 지하철 행선지 방향 (예: "합정")
     public let way: String?
     /// 하차 출구 번호
     public let endExitNo: String?
     /// 경유 정류장 좌표 [[lng, lat], ...]
     public let passStopCoords: [[Double]]
+    /// MKDirections로 받은 실제 도보 경로 좌표 [[lng, lat], ...]
+    public var walkingRoutePoints: [[Double]]
 
     public init(
       trafficType: Int,
@@ -342,9 +352,14 @@ extension HomeModels {
       stationCount: Int?,
       laneName: String?,
       laneColor: String? = nil,
+      startX: Double? = nil,
+      startY: Double? = nil,
+      endX: Double? = nil,
+      endY: Double? = nil,
       way: String? = nil,
       endExitNo: String? = nil,
-      passStopCoords: [[Double]] = []
+      passStopCoords: [[Double]] = [],
+      walkingRoutePoints: [[Double]] = []
     ) {
       self.trafficType = trafficType
       self.sectionTime = sectionTime
@@ -354,16 +369,21 @@ extension HomeModels {
       self.stationCount = stationCount
       self.laneName = laneName
       self.laneColor = laneColor
+      self.startX = startX
+      self.startY = startY
+      self.endX = endX
+      self.endY = endY
       self.way = way
       self.endExitNo = endExitNo
       self.passStopCoords = passStopCoords
+      self.walkingRoutePoints = walkingRoutePoints
     }
   }
 
   /// 출발 알림 시트에 표시할 전체 교통 데이터
   public struct DepartureTransportData: Equatable, Sendable {
     public let driving: TransportOption?
-    public let transitRoutes: [TransitRouteOption]  // 여러 대중교통 경로
+    public var transitRoutes: [TransitRouteOption]  // 여러 대중교통 경로
     public let walking: TransportOption
     /// 이용 가능 교통수단 (표시 순서 결정)
     public let availableTransports: Set<AvailableTransport>

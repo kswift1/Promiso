@@ -16,6 +16,7 @@ import PromisoShared
 /// - `{scheme}://vote/{scheduleId}` → 투표 일정 상세 화면 (VoteLiveActivity 탭 시)
 /// - `{scheme}://create` → 일정 만들기 화면 (Widget용, 그룹 있을 때만)
 /// - `{scheme}://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
+/// - `{scheme}://extractSchedule` → Share Extension 일정 추출 (개인 일정 생성 폼)
 ///
 /// 카카오톡 공유 URL 형식:
 /// - `kakao{APP_KEY}://kakaolink?path=join/{inviteCode}` → 초대 코드로 그룹 참여
@@ -60,6 +61,9 @@ public enum DeeplinkURLParser {
 
     case "pro":
       return .proPlan
+
+    case "extractSchedule":
+      return .extractSchedule
 
     default:
       return nil

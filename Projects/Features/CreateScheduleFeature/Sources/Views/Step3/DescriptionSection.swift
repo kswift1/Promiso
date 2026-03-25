@@ -8,37 +8,19 @@ struct DescriptionSection: View {
   @FocusState.Binding var isFocused: Bool
 
   var body: some View {
-    SectionPlaceHolder(
-      placeHolderTitle: LocalizedStrings.CreateSchedule.descriptionSection,
-    ) {
-      VStack(alignment: .trailing, spacing: 8) {
-        ZStack(alignment: .topLeading) {
-          if store.schedule.description?.isEmpty ?? true {
-            Text(LocalizedStrings.CreateSchedule.descriptionPlaceholder)
-              .font(.system(size: 15))
-              .foregroundColor(.secondary)
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-          }
+    VStack(alignment: .leading, spacing: 12) {
+      Text(LocalizedStrings.CreateSchedule.descriptionSection)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.primary)
 
-          TextEditor(text: Binding(
-            get: { store.schedule.description ?? "" },
-            set: { store.send(.view(.setDescription($0))) }
-          ))
-          .font(.system(size: 15))
-          .frame(height: 120)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 8)
-          .scrollContentBackground(.hidden)
-          .background(Color(.systemGray6))
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-          .focused($isFocused)
-        }
-
-        Text("\(store.schedule.description?.count ?? 0)/500")
-          .font(.system(size: 13))
-          .foregroundColor(.secondary)
-      }
+      DescriptionBlockEditor(
+        blocks: Binding(
+          get: { store.schedule.descriptionBlocks },
+          set: { store.send(.view(.setDescriptionBlocks($0))) }
+        )
+      )
+      .padding(16)
+      .adaptiveGlassCard()
     }
   }
 }

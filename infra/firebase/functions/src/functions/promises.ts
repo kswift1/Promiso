@@ -129,6 +129,15 @@ export const createPromise = onCall<CreatePromiseRequest>(
       title: data.title,
       emoji: data.emoji || null,
       description: data.description || null,
+      descriptionBlocks: (() => {
+        if (data.descriptionBlocks && Array.isArray(data.descriptionBlocks)) {
+          if (data.descriptionBlocks.length > 20) {
+            throw new HttpsError("invalid-argument", "설명 블록은 최대 20개까지 허용됩니다");
+          }
+          return data.descriptionBlocks;
+        }
+        return null;
+      })(),
       hostId: userId,
       groupId: data.groupId,
       minimumParticipants: data.minimumParticipants,
@@ -589,6 +598,13 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
 
     if (data.description !== undefined) {
       updateData.description = data.description || null;
+    }
+
+    if (data.descriptionBlocks !== undefined) {
+      if (data.descriptionBlocks && Array.isArray(data.descriptionBlocks) && data.descriptionBlocks.length > 20) {
+        throw new HttpsError("invalid-argument", "설명 블록은 최대 20개까지 허용됩니다");
+      }
+      updateData.descriptionBlocks = data.descriptionBlocks || null;
     }
 
     if (data.startAt !== undefined && data.startAt !== null) {

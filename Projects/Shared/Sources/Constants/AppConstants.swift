@@ -150,6 +150,72 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - App Group
+
+  /// App Group 공유 데이터 (Extension ↔ 메인 앱)
+  public enum AppGroup {
+    /// App Group suite name (Info.plist의 APP_GROUP_ID에서 읽기)
+    public static var suiteName: String {
+      guard let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String else {
+        assertionFailure("APP_GROUP_ID not found in Info.plist")
+        return "group.com.promiso.shared"
+      }
+      return appGroupId
+    }
+
+    public static let pendingExtractionTextKey = "pendingExtractionText"
+
+    /// pending 텍스트가 있는지 확인 (삭제하지 않음)
+    public static var hasPendingExtractionText: Bool {
+      Foundation.UserDefaults(suiteName: suiteName)?.string(forKey: pendingExtractionTextKey) != nil
+    }
+
+    /// pending 텍스트를 읽고 즉시 삭제 (consume)
+    public static func consumePendingExtractionText() -> String? {
+      let defaults = Foundation.UserDefaults(suiteName: suiteName)
+      let text = defaults?.string(forKey: pendingExtractionTextKey)
+      if text != nil {
+        defaults?.removeObject(forKey: pendingExtractionTextKey)
+      }
+      return text
+    }
+
+    // MARK: - Pending Image
+
+    private static let pendingImageFileName = "pendingExtractionImage.jpg"
+
+    /// App Group 공유 컨테이너의 이미지 파일 경로
+    private static var pendingImageURL: URL? {
+      FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+        .appendingPathComponent(pendingImageFileName)
+    }
+
+    /// pending 이미지가 있는지 확인
+    public static var hasPendingExtractionImage: Bool {
+      guard let url = pendingImageURL else { return false }
+      return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    /// pending 데이터(텍스트 또는 이미지)가 있는지 확인
+    public static var hasPendingExtraction: Bool {
+      hasPendingExtractionText || hasPendingExtractionImage
+    }
+
+    /// 이미지 저장 (Extension에서 호출)
+    public static func savePendingExtractionImage(_ data: Data) {
+      guard let url = pendingImageURL else { return }
+      try? data.write(to: url)
+    }
+
+    /// pending 이미지를 읽고 즉시 삭제 (consume)
+    public static func consumePendingExtractionImage() -> Data? {
+      guard let url = pendingImageURL,
+            let data = try? Data(contentsOf: url) else { return nil }
+      try? FileManager.default.removeItem(at: url)
+      return data
+    }
+  }
+
   // MARK: - External URLs
 
   public enum ExternalURLs {
@@ -247,6 +313,8 @@ public enum AppConstants {
     public static let hasSeenScheduleGuide = "promisoHasSeenScheduleGuide"
     /// 설정 기능 가이드 본 적 있는지
     public static let hasSeenSettingsGuide = "promisoHasSeenSettingsGuide"
+    /// 마지막으로 본 What's New 버전
+    public static let lastSeenWhatsNewVersion = "promisoLastSeenWhatsNewVersion"
   }
 
   // MARK: - Calendar Helpers

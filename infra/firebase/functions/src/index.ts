@@ -84,6 +84,11 @@ export {
 export {generateEmoji} from "./functions/emoji";
 
 // ============================================================================
+// Schedule Extraction Functions (텍스트에서 일정 추출)
+// ============================================================================
+export {extractSchedule} from "./functions/scheduleExtraction";
+
+// ============================================================================
 // Promise Badge Functions (신규 소식 배지 관리)
 // ============================================================================
 export {
@@ -204,3 +209,14 @@ export {
   onSubscriptionWriteSyncEntitlement,
   onEntitlementOverrideWriteSyncEntitlement,
 } from "./functions/entitlements";
+
+// ============================================================================
+// WhatsNew Functions (신규 기능 안내)
+// ============================================================================
+export {
+  getWhatsNew,
+  adminListWhatsNew,
+  adminSaveWhatsNew,
+  adminDeleteWhatsNew,
+  adminUploadWhatsNewImage,
+} from "./functions/whatsNew";

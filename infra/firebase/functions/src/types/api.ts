@@ -6,6 +6,18 @@
  */
 
 // ============================================================================
+// 공통 타입
+// ============================================================================
+
+/** 구조화된 설명 블록 */
+export interface DescriptionBlock {
+  id: string;
+  type: "text" | "checklist" | "bulletList";
+  content?: string;
+  items?: Array<{ id: string; text: string; isChecked?: boolean }>;
+}
+
+// ============================================================================
 // createGroup
 // ============================================================================
 
@@ -247,6 +259,9 @@ export interface CreatePromiseRequest {
   /** 약속 설명 (선택적) */
   description?: string | null;
 
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: DescriptionBlock[] | null;
+
   /** 시작 시간 (ISO 8601 문자열) */
   startAt: string;
 
@@ -336,6 +351,9 @@ export interface UpdatePromiseRequest {
 
   /** 약속 설명 (선택적) */
   description?: string | null;
+
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: DescriptionBlock[] | null;
 
   /** 시작 시간 (선택적, ISO 8601 문자열) */
   startAt?: string | null;
@@ -1777,4 +1795,48 @@ export interface ScheduleSlotEntry {
 
   /** 확정 상태 (promise: isConfirmed 기반, personalEvent: 항상 confirmed) */
   severity: "confirmed" | "pending";
+}
+
+// ============================================================================
+// extractSchedule
+// ============================================================================
+
+/**
+ * 일정 추출 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - Gemini API를 사용하여 텍스트 또는 이미지에서 일정 정보 추출
+ * - text 또는 imageBase64 중 하나 이상 필수
+ *
+ * @added 2026-03-24
+ * @ios CreatePersonalEventView - "텍스트에서 가져오기" / "사진에서 가져오기" 기능
+ */
+export interface ExtractScheduleRequest {
+  /** SMS/문자 원본 텍스트 (텍스트 모드) */
+  text?: string;
+  /** 이미지 base64 인코딩 (사진 모드) */
+  imageBase64?: string;
+  /** 클라이언트 타임존 (예: "Asia/Seoul") */
+  timezone: string;
+}
+
+/**
+ * 일정 추출 응답
+ *
+ * 모든 필드가 nullable — LLM이 추출하지 못한 정보는 null
+ */
+export interface ExtractScheduleResponse {
+  /** 일정 제목 (20자 이내) */
+  title: string | null;
+  /** 시작 날짜시간 (ISO 8601) */
+  startDate: string | null;
+  /** 종료 날짜시간 (ISO 8601, 없으면 null) */
+  endDate: string | null;
+  /** 장소명 */
+  location: string | null;
+  /** 상세 주소 */
+  address: string | null;
+  /** 부가 정보 (급여, 준비물, 담당자 등) */
+  description: string | null;
 }

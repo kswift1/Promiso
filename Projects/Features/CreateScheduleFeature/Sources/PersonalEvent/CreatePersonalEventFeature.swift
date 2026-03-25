@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
@@ -111,6 +112,7 @@ extension CreatePersonalEvent {
       case toggleUseEndTime
       case reminderOptionSelected(Int?)
       case descriptionChanged(String)
+      case descriptionBlocksChanged([DescriptionBlock])
       case locationTapped
       case removeLocation
       case saveTapped
@@ -250,6 +252,11 @@ extension CreatePersonalEvent {
             state.event.description = trimmed.isEmpty ? nil : trimmed
             return .none
 
+          case .descriptionBlocksChanged(let blocks):
+            state.event.descriptionBlocks = blocks
+            state.event.description = blocks.plainText
+            return .none
+
           case .locationTapped:
             state.locationPicker = LocationPicker.Feature.State()
             return .none
@@ -374,6 +381,7 @@ extension CreatePersonalEvent {
             guard index < visibleUrls.count else { return .none }
             state.removedImageUrls.append(visibleUrls[index])
             return .none
+
           }
 
         // MARK: - Internal Actions

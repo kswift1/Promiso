@@ -293,10 +293,10 @@ async function fetchDrivingRoute(
   }
 }
 
-// MARK: - 도보 (자체 계산)
+// MARK: - 도보 (Fallback — iOS에서 MKDirections 우선 사용)
 
 /**
- * Haversine 거리 기반 도보 소요시간 추정
+ * Haversine 거리 기반 도보 소요시간 추정 (MKDirections fallback용)
  * @param {number} distanceKm 직선거리 (km)
  * @return {number} 도보 소요시간 (분)
  */

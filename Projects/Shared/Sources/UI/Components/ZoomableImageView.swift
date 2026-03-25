@@ -8,13 +8,25 @@ import UIKit
 /// - 더블탭 줌 토글 (1x ↔ 2.5x)
 /// - 줌인 상태: UIScrollView 팬으로 이미지 이동
 /// - 줌아웃 상태: 수직 드래그 dismiss (수평은 패스스루 → TabView 페이징)
-struct ZoomableImageView: UIViewRepresentable {
-  let image: UIImage
-  let onZoomChanged: (Bool) -> Void
-  let onDismissDrag: (CGFloat) -> Void
-  let onDismissDragEnded: (CGFloat, CGFloat) -> Void
+public struct ZoomableImageView: UIViewRepresentable {
+  public let image: UIImage
+  public let onZoomChanged: (Bool) -> Void
+  public let onDismissDrag: (CGFloat) -> Void
+  public let onDismissDragEnded: (CGFloat, CGFloat) -> Void
 
-  func makeUIView(context: Context) -> ZoomableImageContainer {
+  public init(
+    image: UIImage,
+    onZoomChanged: @escaping (Bool) -> Void,
+    onDismissDrag: @escaping (CGFloat) -> Void,
+    onDismissDragEnded: @escaping (CGFloat, CGFloat) -> Void
+  ) {
+    self.image = image
+    self.onZoomChanged = onZoomChanged
+    self.onDismissDrag = onDismissDrag
+    self.onDismissDragEnded = onDismissDragEnded
+  }
+
+  public func makeUIView(context: Context) -> ZoomableImageContainer {
     ZoomableImageContainer(
       image: image,
       onZoomChanged: onZoomChanged,
@@ -23,7 +35,7 @@ struct ZoomableImageView: UIViewRepresentable {
     )
   }
 
-  func updateUIView(_ container: ZoomableImageContainer, context: Context) {
+  public func updateUIView(_ container: ZoomableImageContainer, context: Context) {
     container.onZoomChanged = onZoomChanged
     container.onDismissDrag = onDismissDrag
     container.onDismissDragEnded = onDismissDragEnded
@@ -32,7 +44,7 @@ struct ZoomableImageView: UIViewRepresentable {
 
 // MARK: - ZoomableImageContainer
 
-final class ZoomableImageContainer: UIView {
+public final class ZoomableImageContainer: UIView {
   private let scrollView = UIScrollView()
   private let imageView = UIImageView()
   private var dismissPan: UIPanGestureRecognizer!
@@ -110,7 +122,7 @@ final class ZoomableImageContainer: UIView {
 
   // MARK: - Layout
 
-  override func layoutSubviews() {
+  override public func layoutSubviews() {
     super.layoutSubviews()
     guard bounds.size != .zero, bounds.size != lastBoundsSize else { return }
     lastBoundsSize = bounds.size
@@ -187,16 +199,16 @@ final class ZoomableImageContainer: UIView {
 // MARK: - UIScrollViewDelegate
 
 extension ZoomableImageContainer: UIScrollViewDelegate {
-  func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+  public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
     imageView
   }
 
-  func scrollViewDidZoom(_ scrollView: UIScrollView) {
+  public func scrollViewDidZoom(_ scrollView: UIScrollView) {
     centerImage()
     updateZoomState(for: scrollView)
   }
 
-  func scrollViewDidEndZooming(
+  public func scrollViewDidEndZooming(
     _ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat
   ) {
     updateZoomState(for: scrollView)
@@ -212,7 +224,7 @@ extension ZoomableImageContainer: UIScrollViewDelegate {
 // MARK: - UIGestureRecognizerDelegate
 
 extension ZoomableImageContainer: UIGestureRecognizerDelegate {
-  override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+  override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
     guard gestureRecognizer === dismissPan else { return true }
     let velocity = dismissPan.velocity(in: self)
     return velocity.y > 0 && abs(velocity.y) > abs(velocity.x)

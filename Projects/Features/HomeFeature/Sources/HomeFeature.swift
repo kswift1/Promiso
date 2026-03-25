@@ -31,6 +31,7 @@ extension Home {
     @Dependency(\.briefingClient) var briefingClient
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
     @Dependency(\.transportationClient) var transportationClient
+    @Dependency(\.walkingDirectionsClient) var walkingDirectionsClient
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
@@ -391,7 +392,9 @@ extension Home {
         /// 권한 상태 확인 결과
         case permissionsChecked(notification: NotificationAuthorizationStatus, location: LocationAuthorizationStatus)
         /// 교통 정보 응답
-        case transportationResponse(String, Result<TransportationResult, Error>, Set<AvailableTransport> = [.transit, .car])
+        case transportationResponse(String, Result<TransportationResult, Error>, WalkingDirectionsResult?, Coordinate?, Set<AvailableTransport> = [.transit, .car])
+        /// 대중교통 도보 구간 실제 경로 로딩 완료
+        case transitWalkingRouteLoaded(routeId: Int, subPathIndex: Int, routePoints: [[Double]])
         /// 출발 알림 스케줄 완료
         case departureAlertScheduled(HomeModels.DepartureAlertInfo)
         /// 출발 알림 설정 실행 (TransportSelection → DepartureAlertInfo 변환 후 스케줄)
@@ -414,8 +417,6 @@ extension Home {
         case navigateToAllSchedules
         /// 오버레이에서 일정 만들기 요청 (→ RootTab → GroupMain)
         case navigateToCreateSchedule
-        /// 빠른 일정 생성 요청 (추출 정보 → CreateSchedule pre-fill)
-        case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
         /// Pro 플랜 업그레이드 요청
         case proPlanRequested
       }
@@ -865,7 +866,7 @@ extension Home {
             let scheduleItemId = item.id
             let userId = state.currentUser.userId
             let usePreviousOrigin = state.previousScheduleLocation
-            return .run { [locationClient, transportationClient, userSettingsClient] send in
+            return .run { [locationClient, transportationClient, walkingDirectionsClient, userSettingsClient] send in
               // 현재 위치와 설정을 병렬로 조회
               async let locationTask: Coordinate = {
                 do {
@@ -926,7 +927,9 @@ extension Home {
                 AppLogger.home.debug("❌ [DepartureAlert] 위치 조회 실패 — \(error)")
                 await send(.internal(.transportationResponse(
                   scheduleItemId,
-                  .failure(LocationClientError.denied)
+                  .failure(LocationClientError.denied),
+                  nil,
+                  nil
                 )))
                 return
               }
@@ -952,19 +955,36 @@ extension Home {
               }
 
               AppLogger.home.debug("📍 [DepartureAlert] 경로 조회 시작 — from: (\(fromLat), \(fromLng)) → to: (\(lat), \(lng))")
-              let result = await Result {
+
+              // Firebase(대중교통/자동차) + MKDirections(도보) 병렬 호출
+              async let transportationTask = Result {
                 try await transportationClient.getTransportation(
                   fromLat, fromLng,
                   lat, lng
                 )
               }
+              async let walkingTask = walkingDirectionsClient.getWalkingDirections(
+                fromLat, fromLng,
+                lat, lng
+              )
+
+              let result = await transportationTask
+              let walkingResult: WalkingDirectionsResult?
+              do {
+                walkingResult = try await walkingTask
+              } catch {
+                AppLogger.home.debug("⚠️ [DepartureAlert] MKDirections 실패 (Firebase fallback) — \(error)")
+                walkingResult = nil
+              }
+
               switch result {
               case .success(let data):
-                AppLogger.home.debug("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(data.walkingMinutes)분")
+                AppLogger.home.debug("✅ [DepartureAlert] 경로 조회 성공 — driving: \(data.driving != nil), transit: \(data.transitRoutes.count)개, walking: \(walkingResult?.durationMinutes ?? data.walkingMinutes)분")
               case .failure(let error):
                 AppLogger.home.debug("❌ [DepartureAlert] 경로 조회 실패 — \(error)")
               }
-              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+              let originCoord = Coordinate(latitude: fromLat, longitude: fromLng)
+              await send(.internal(.transportationResponse(scheduleItemId, result, walkingResult, originCoord, availableTransports)))
             }
             .cancellable(id: CancelID.transportationFetch)
 
@@ -1080,7 +1100,7 @@ extension Home {
             let scheduleItemId = item.id
             let userId = state.currentUser.userId
 
-            return .run { [transportationClient, userSettingsClient] send in
+            return .run { [transportationClient, walkingDirectionsClient, userSettingsClient] send in
               let availableTransports: Set<AvailableTransport>
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
@@ -1089,13 +1109,27 @@ extension Home {
                 availableTransports = [.transit, .car]
               }
 
-              let result = await Result {
+              async let transportationTask = Result {
                 try await transportationClient.getTransportation(
                   fromLat, fromLng,
                   toLat, toLng
                 )
               }
-              await send(.internal(.transportationResponse(scheduleItemId, result, availableTransports)))
+              async let walkingTask = walkingDirectionsClient.getWalkingDirections(
+                fromLat, fromLng,
+                toLat, toLng
+              )
+
+              let result = await transportationTask
+              let walkingResult: WalkingDirectionsResult?
+              do {
+                walkingResult = try await walkingTask
+              } catch {
+                AppLogger.home.debug("⚠️ [DepartureAlert] MKDirections 실패 (Firebase fallback) — \(error)")
+                walkingResult = nil
+              }
+              let originCoord = Coordinate(latitude: fromLat, longitude: fromLng)
+              await send(.internal(.transportationResponse(scheduleItemId, result, walkingResult, originCoord, availableTransports)))
             }
             .cancellable(id: CancelID.transportationFetch)
 
@@ -1703,7 +1737,7 @@ extension Home {
             state.locationAuthStatus = locationStatus
             return .none
 
-          case .transportationResponse(let scheduleItemId, let result, let availableTransports):
+          case .transportationResponse(let scheduleItemId, let result, let walkingDirections, let originCoord, let availableTransports):
             guard let item = state.departureAlertItem,
                   item.id == scheduleItemId else {
               return .none
@@ -1761,6 +1795,10 @@ extension Home {
                     stationCount: subPath.stationCount,
                     laneName: laneName,
                     laneColor: laneColor,
+                    startX: subPath.startX,
+                    startY: subPath.startY,
+                    endX: subPath.endX,
+                    endY: subPath.endY,
                     way: subPath.way,
                     endExitNo: subPath.endExitNo,
                     passStopCoords: subPath.passStopCoords
@@ -1778,22 +1816,37 @@ extension Home {
                 )
               }
 
-              // 도보 (buffer=0 기준 출발시간)
-              let walkDepartureTime = itemStartAt.addingTimeInterval(-Double(transportation.walkingMinutes * 60))
+              // 도보 (MKDirections 우선, Firebase fallback)
+              let walkMinutes = walkingDirections?.durationMinutes ?? transportation.walkingMinutes
+              let walkDistance = walkingDirections?.distanceMeters ?? transportation.walkingDistanceMeters
+              let walkRoutePoints = walkingDirections?.routePoints ?? []
+              let walkDepartureTime = itemStartAt.addingTimeInterval(-Double(walkMinutes * 60))
               let walkingOption = HomeModels.TransportOption(
                 type: .walking,
-                durationMinutes: transportation.walkingMinutes,
+                durationMinutes: walkMinutes,
                 departureTime: walkDepartureTime,
-                distanceMeters: transportation.walkingDistanceMeters
+                distanceMeters: walkDistance,
+                routePoints: walkRoutePoints
               )
 
+              let categorizedRoutes = HomeModels.DepartureTransportData.categorizeTransitRoutes(transitRoutes)
               let transportData = HomeModels.DepartureTransportData(
                 driving: drivingOption,
-                transitRoutes: HomeModels.DepartureTransportData.categorizeTransitRoutes(transitRoutes),
+                transitRoutes: categorizedRoutes,
                 walking: walkingOption,
                 availableTransports: availableTransports
               )
               state.departureTransportData = .loaded(transportData)
+
+              // 대중교통 도보 구간에 MKDirections 실제 경로 페치 (병렬)
+              let walkingEffects = Self.walkingRouteEffects(
+                for: categorizedRoutes,
+                origin: originCoord,
+                destinationLat: item.location?.latitude,
+                destinationLng: item.location?.longitude,
+                walkingDirectionsClient: walkingDirectionsClient
+              )
+              return .merge(walkingEffects)
 
             case .failure(let error):
               state.departureTransportData = .failed(error)
@@ -1806,6 +1859,14 @@ extension Home {
                 }
               }
             }
+            return .none
+
+          case .transitWalkingRouteLoaded(let routeId, let subPathIndex, let routePoints):
+            guard case .loaded(var data) = state.departureTransportData else { return .none }
+            guard let routeIdx = data.transitRoutes.firstIndex(where: { $0.id == routeId }),
+                  subPathIndex < data.transitRoutes[routeIdx].subPaths.count else { return .none }
+            data.transitRoutes[routeIdx].subPaths[subPathIndex].walkingRoutePoints = routePoints
+            state.departureTransportData = .loaded(data)
             return .none
 
           case .scheduleAlertForSelection(let selection, let bufferMinutes):
@@ -2283,6 +2344,67 @@ extension Home {
         AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
         return [:]
       }
+    }
+
+    // MARK: - Walking Route Effects
+
+    /// 대중교통 경로의 도보 구간(trafficType == 3)에 대해 MKDirections 경로를 병렬로 페치하는 Effect 배열을 반환합니다.
+    private static func walkingRouteEffects(
+      for routes: [HomeModels.TransitRouteOption],
+      origin: Coordinate?,
+      destinationLat: Double?,
+      destinationLng: Double?,
+      walkingDirectionsClient: WalkingDirectionsClient
+    ) -> [Effect<Action>] {
+      var effects: [Effect<Action>] = []
+      for route in routes {
+        let subPaths = route.subPaths
+        for (subIdx, subPath) in subPaths.enumerated() where subPath.trafficType == 3 {
+          // from 좌표 계산
+          let fromCoord: (lat: Double, lng: Double)?
+          if let sx = subPath.startX, let sy = subPath.startY {
+            fromCoord = (lat: sy, lng: sx)
+          } else if subIdx > 0, let lastCoord = subPaths[subIdx - 1].passStopCoords.last, lastCoord.count >= 2 {
+            fromCoord = (lat: lastCoord[1], lng: lastCoord[0])
+          } else if subIdx > 0, let ex = subPaths[subIdx - 1].endX, let ey = subPaths[subIdx - 1].endY {
+            fromCoord = (lat: ey, lng: ex)
+          } else if subIdx == 0, let origin {
+            fromCoord = (lat: origin.latitude, lng: origin.longitude)
+          } else {
+            fromCoord = nil
+          }
+
+          // to 좌표 계산
+          let toCoord: (lat: Double, lng: Double)?
+          if let ex = subPath.endX, let ey = subPath.endY {
+            toCoord = (lat: ey, lng: ex)
+          } else if subIdx < subPaths.count - 1, let firstCoord = subPaths[subIdx + 1].passStopCoords.first, firstCoord.count >= 2 {
+            toCoord = (lat: firstCoord[1], lng: firstCoord[0])
+          } else if subIdx < subPaths.count - 1, let sx = subPaths[subIdx + 1].startX, let sy = subPaths[subIdx + 1].startY {
+            toCoord = (lat: sy, lng: sx)
+          } else if subIdx == subPaths.count - 1, let dLat = destinationLat, let dLng = destinationLng {
+            toCoord = (lat: dLat, lng: dLng)
+          } else {
+            toCoord = nil
+          }
+
+          guard let from = fromCoord, let to = toCoord else { continue }
+          let routeId = route.id
+          let capturedSubIdx = subIdx
+          effects.append(
+            .run { [walkingDirectionsClient] send in
+              do {
+                let result = try await walkingDirectionsClient.getWalkingDirections(from.lat, from.lng, to.lat, to.lng)
+                await send(.internal(.transitWalkingRouteLoaded(routeId: routeId, subPathIndex: capturedSubIdx, routePoints: result.routePoints)))
+              } catch {
+                // 실패 시 무시 (직선 fallback 유지)
+                AppLogger.home.debug("⚠️ [Transit] 도보 구간 MKDirections 실패 — route:\(routeId) subPath:\(capturedSubIdx) \(error)")
+              }
+            }
+          )
+        }
+      }
+      return effects
     }
 
     // MARK: - Briefing Helpers

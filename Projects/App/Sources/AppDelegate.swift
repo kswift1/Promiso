@@ -117,17 +117,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
   // MARK: - Microsoft Clarity SDK
   private func configureClaritySDK() {
+    #if DEBUG
+    AppLogger.general.debug("Clarity SDK disabled for DEBUG build")
+    return
+    #endif
+
     guard let projectId = Bundle.main.object(forInfoDictionaryKey: "CLARITY_PROJECT_ID") as? String else {
       AppLogger.general.error("Clarity Project ID not found in Info.plist")
       return
     }
 
-    #if DEBUG
-    let config = ClarityConfig(projectId: projectId, logLevel: .error)
-    #else
     let config = ClarityConfig(projectId: projectId, logLevel: .none)
-    #endif
-
     ClaritySDK.initialize(config: config)
     AppLogger.general.debug("Clarity SDK initialized with projectId: \(projectId)")
   }

@@ -37,8 +37,34 @@ extension PersonalMode {
         get: { store.toastMessage },
         set: { _ in store.send(.view(.toastDismissed)) }
       ))
+      .overlay {
+        if store.isDeeplinkExtracting {
+          ZStack {
+            Color.black.opacity(0.3)
+              .ignoresSafeArea()
+            VStack(spacing: 16) {
+              ProgressView()
+                .controlSize(.large)
+                .tint(.white)
+              Text("일정을 추출하고 있어요...")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white)
+            }
+            .padding(32)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .sheet(
+        item: $store.scope(state: \.scheduleImport, action: \.scheduleImport)
+      ) { importStore in
+        ScheduleImport.RootView(store: importStore)
+          .presentationDetents([.medium, .large])
+          .presentationDragIndicator(.visible)
       }
       .sheet(
         item: $store.scope(state: \.createEvent, action: \.createEvent)
@@ -47,14 +73,14 @@ extension PersonalMode {
           store: createEventStore,
           dismissButtonVisibility: .hiddenForCreateMode
         )
-          .presentationDetents([.large, .medium])
+          .presentationDetents([.large])
           .presentationDragIndicator(.visible)
       }
       .sheet(
         item: $store.scope(state: \.createRecurringEvent, action: \.createRecurringEvent)
       ) { createRecurringStore in
         CreateRecurringPersonalEvent.RootView(store: createRecurringStore)
-          .presentationDetents([.large, .medium])
+          .presentationDetents([.large])
           .presentationDragIndicator(.visible)
       }
       .navigationDestination(
@@ -67,6 +93,7 @@ extension PersonalMode {
       ) { detailStore in
         RecurringPersonalEventDetail.RootView(store: detailStore)
       }
+      .alert(store: store.scope(state: \.$deleteAlert, action: \.alert))
     }
 
     // MARK: - Header
@@ -381,6 +408,12 @@ extension PersonalMode {
     @ViewBuilder
     private var fabButton: some View {
       Menu {
+        Button {
+          store.send(.view(.scheduleImportTapped))
+        } label: {
+          Label(LocalizedStrings.Personal.addFromPhotoText, systemImage: "text.viewfinder")
+        }
+
         Button {
           store.send(.view(.createOneTimeEventTapped))
         } label: {
