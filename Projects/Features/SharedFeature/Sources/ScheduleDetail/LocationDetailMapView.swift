@@ -153,16 +153,17 @@ public struct KakaoInteractiveMapView: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ container: KMViewContainer, coordinator: Coordinator) {
-    coordinator.mapController?.delegate = nil
-    coordinator.mapController?.pauseEngine()
-    coordinator.mapController?.resetEngine()
-    coordinator.mapController = nil
+    coordinator.cleanupMapController()
   }
 
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
 
     deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
       mapController?.delegate = nil
       mapController?.pauseEngine()
       mapController?.resetEngine()
