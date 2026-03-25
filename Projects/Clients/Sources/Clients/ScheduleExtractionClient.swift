@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import CoreLocation
 import FirebaseFunctions
 import Foundation
 import PromisoShared
@@ -146,7 +147,8 @@ extension ScheduleExtractionClient: DependencyKey {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.general.info("✅ [ScheduleExtraction] 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
 
-          return try parseEventModel(from: data)
+          let event = try parseEventModel(from: data)
+          return await geocodeIfNeeded(event)
         } catch let error as ScheduleExtractionError {
           throw error
         } catch let error as NSError {
@@ -191,7 +193,8 @@ extension ScheduleExtractionClient: DependencyKey {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.general.info("✅ [ScheduleExtraction] 이미지 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
 
-          return try parseEventModel(from: data)
+          let event = try parseEventModel(from: data)
+          return await geocodeIfNeeded(event)
         } catch let error as ScheduleExtractionError {
           throw error
         } catch let error as NSError {
@@ -247,5 +250,32 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
     event.description = String(description.prefix(500))
   }
 
+  return event
+}
+
+/// 주소 텍스트 → CLGeocoder로 좌표 변환 (best-effort)
+private func geocodeIfNeeded(_ event: PersonalEventModel) async -> PersonalEventModel {
+  guard let location = event.location,
+        let address = location.address, !address.isEmpty,
+        location.latitude == nil else {
+    return event
+  }
+
+  do {
+    let placemarks = try await CLGeocoder().geocodeAddressString(address)
+    if let coordinate = placemarks.first?.location?.coordinate {
+      var updated = event
+      updated.location = LocationInfoModel(
+        name: location.name,
+        address: location.address,
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude
+      )
+      AppLogger.general.info("📍 [Geocoding] \(address) → (\(coordinate.latitude), \(coordinate.longitude))")
+      return updated
+    }
+  } catch {
+    AppLogger.general.warning("📍 [Geocoding] 실패: \(error.localizedDescription)")
+  }
   return event
 }
