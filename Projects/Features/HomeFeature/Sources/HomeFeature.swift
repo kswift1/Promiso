@@ -1840,59 +1840,14 @@ extension Home {
               )
               state.departureTransportData = .loaded(transportData)
 
-              // 도착지 좌표
-              let destLat = item.location?.latitude
-              let destLng = item.location?.longitude
-
               // 대중교통 도보 구간에 MKDirections 실제 경로 페치 (병렬)
-              var walkingEffects: [Effect<Action>] = []
-              for route in categorizedRoutes {
-                let subPaths = route.subPaths
-                for (subIdx, subPath) in subPaths.enumerated() where subPath.trafficType == 3 {
-                  // from 좌표 계산
-                  let fromCoord: (lat: Double, lng: Double)?
-                  if let sx = subPath.startX, let sy = subPath.startY {
-                    fromCoord = (lat: sy, lng: sx)
-                  } else if subIdx > 0, let lastCoord = subPaths[subIdx - 1].passStopCoords.last, lastCoord.count >= 2 {
-                    fromCoord = (lat: lastCoord[1], lng: lastCoord[0])
-                  } else if subIdx > 0, let ex = subPaths[subIdx - 1].endX, let ey = subPaths[subIdx - 1].endY {
-                    fromCoord = (lat: ey, lng: ex)
-                  } else if subIdx == 0, let origin = originCoord {
-                    fromCoord = (lat: origin.latitude, lng: origin.longitude)
-                  } else {
-                    fromCoord = nil
-                  }
-
-                  // to 좌표 계산
-                  let toCoord: (lat: Double, lng: Double)?
-                  if let ex = subPath.endX, let ey = subPath.endY {
-                    toCoord = (lat: ey, lng: ex)
-                  } else if subIdx < subPaths.count - 1, let firstCoord = subPaths[subIdx + 1].passStopCoords.first, firstCoord.count >= 2 {
-                    toCoord = (lat: firstCoord[1], lng: firstCoord[0])
-                  } else if subIdx < subPaths.count - 1, let sx = subPaths[subIdx + 1].startX, let sy = subPaths[subIdx + 1].startY {
-                    toCoord = (lat: sy, lng: sx)
-                  } else if subIdx == subPaths.count - 1, let dLat = destLat, let dLng = destLng {
-                    toCoord = (lat: dLat, lng: dLng)
-                  } else {
-                    toCoord = nil
-                  }
-
-                  guard let from = fromCoord, let to = toCoord else { continue }
-                  let routeId = route.id
-                  let capturedSubIdx = subIdx
-                  walkingEffects.append(
-                    .run { [walkingDirectionsClient] send in
-                      do {
-                        let result = try await walkingDirectionsClient.getWalkingDirections(from.lat, from.lng, to.lat, to.lng)
-                        await send(.internal(.transitWalkingRouteLoaded(routeId: routeId, subPathIndex: capturedSubIdx, routePoints: result.routePoints)))
-                      } catch {
-                        // 실패 시 무시 (직선 fallback 유지)
-                        AppLogger.home.debug("⚠️ [Transit] 도보 구간 MKDirections 실패 — route:\(routeId) subPath:\(capturedSubIdx) \(error)")
-                      }
-                    }
-                  )
-                }
-              }
+              let walkingEffects = Self.walkingRouteEffects(
+                for: categorizedRoutes,
+                origin: originCoord,
+                destinationLat: item.location?.latitude,
+                destinationLng: item.location?.longitude,
+                walkingDirectionsClient: walkingDirectionsClient
+              )
               return .merge(walkingEffects)
 
             case .failure(let error):
@@ -2391,6 +2346,67 @@ extension Home {
         AppLogger.home.error("Failed to decode departure alerts from persistence: \(error)")
         return [:]
       }
+    }
+
+    // MARK: - Walking Route Effects
+
+    /// 대중교통 경로의 도보 구간(trafficType == 3)에 대해 MKDirections 경로를 병렬로 페치하는 Effect 배열을 반환합니다.
+    private static func walkingRouteEffects(
+      for routes: [HomeModels.TransitRouteOption],
+      origin: Coordinate?,
+      destinationLat: Double?,
+      destinationLng: Double?,
+      walkingDirectionsClient: WalkingDirectionsClient
+    ) -> [Effect<Action>] {
+      var effects: [Effect<Action>] = []
+      for route in routes {
+        let subPaths = route.subPaths
+        for (subIdx, subPath) in subPaths.enumerated() where subPath.trafficType == 3 {
+          // from 좌표 계산
+          let fromCoord: (lat: Double, lng: Double)?
+          if let sx = subPath.startX, let sy = subPath.startY {
+            fromCoord = (lat: sy, lng: sx)
+          } else if subIdx > 0, let lastCoord = subPaths[subIdx - 1].passStopCoords.last, lastCoord.count >= 2 {
+            fromCoord = (lat: lastCoord[1], lng: lastCoord[0])
+          } else if subIdx > 0, let ex = subPaths[subIdx - 1].endX, let ey = subPaths[subIdx - 1].endY {
+            fromCoord = (lat: ey, lng: ex)
+          } else if subIdx == 0, let origin {
+            fromCoord = (lat: origin.latitude, lng: origin.longitude)
+          } else {
+            fromCoord = nil
+          }
+
+          // to 좌표 계산
+          let toCoord: (lat: Double, lng: Double)?
+          if let ex = subPath.endX, let ey = subPath.endY {
+            toCoord = (lat: ey, lng: ex)
+          } else if subIdx < subPaths.count - 1, let firstCoord = subPaths[subIdx + 1].passStopCoords.first, firstCoord.count >= 2 {
+            toCoord = (lat: firstCoord[1], lng: firstCoord[0])
+          } else if subIdx < subPaths.count - 1, let sx = subPaths[subIdx + 1].startX, let sy = subPaths[subIdx + 1].startY {
+            toCoord = (lat: sy, lng: sx)
+          } else if subIdx == subPaths.count - 1, let dLat = destinationLat, let dLng = destinationLng {
+            toCoord = (lat: dLat, lng: dLng)
+          } else {
+            toCoord = nil
+          }
+
+          guard let from = fromCoord, let to = toCoord else { continue }
+          let routeId = route.id
+          let capturedSubIdx = subIdx
+          effects.append(
+            .run { [walkingDirectionsClient] send in
+              do {
+                let result = try await walkingDirectionsClient.getWalkingDirections(from.lat, from.lng, to.lat, to.lng)
+                await send(.internal(.transitWalkingRouteLoaded(routeId: routeId, subPathIndex: capturedSubIdx, routePoints: result.routePoints)))
+              } catch {
+                // 실패 시 무시 (직선 fallback 유지)
+                AppLogger.home.debug("⚠️ [Transit] 도보 구간 MKDirections 실패 — route:\(routeId) subPath:\(capturedSubIdx) \(error)")
+              }
+            }
+          )
+        }
+      }
+      return effects
     }
 
     // MARK: - Briefing Helpers

@@ -165,29 +165,8 @@ extension TransportDetail {
               var routePoints = subPath.walkingRoutePoints
 
               // 시작점을 마커/인접 정류장 좌표에 스냅
-              let snapStart: [Double]? = if index > 0, let lastCoord = subPaths[index - 1].passStopCoords.last {
-                lastCoord
-              } else if index > 0, let ex = subPaths[index - 1].endX, let ey = subPaths[index - 1].endY {
-                [ex, ey]
-              } else if index == 0, let origin = store.originCoordinate {
-                [origin.longitude, origin.latitude]
-              } else {
-                nil
-              }
-
-              // 끝점을 마커/인접 정류장 좌표에 스냅
-              let snapEnd: [Double]? = if index < subPaths.count - 1, let firstCoord = subPaths[index + 1].passStopCoords.first {
-                firstCoord
-              } else if index < subPaths.count - 1, let sx = subPaths[index + 1].startX, let sy = subPaths[index + 1].startY {
-                [sx, sy]
-              } else if index == subPaths.count - 1 {
-                [store.destinationCoordinate.longitude, store.destinationCoordinate.latitude]
-              } else {
-                nil
-              }
-
-              if let start = snapStart { routePoints[0] = start }
-              if let end = snapEnd { routePoints[routePoints.count - 1] = end }
+              if let start = walkingStartCoordinate(at: index, in: subPaths) { routePoints[0] = start }
+              if let end = walkingEndCoordinate(at: index, in: subPaths) { routePoints[routePoints.count - 1] = end }
 
               return TransitRouteSegmentData(
                 coords: routePoints,
@@ -206,31 +185,8 @@ extension TransportDetail {
             }
             // 도보 구간: startX/Y → endX/Y, 없으면 인접 구간에서 추론
             if subPath.trafficType == 3 {
-              let startCoord: [Double]? = if let sx = subPath.startX, let sy = subPath.startY {
-                [sx, sy]
-              } else if index > 0, let lastCoord = subPaths[index - 1].passStopCoords.last {
-                lastCoord
-              } else if index > 0, let ex = subPaths[index - 1].endX, let ey = subPaths[index - 1].endY {
-                [ex, ey]
-              } else if index == 0, let origin = store.originCoordinate {
-                [origin.longitude, origin.latitude]
-              } else {
-                nil
-              }
-
-              let endCoord: [Double]? = if let ex = subPath.endX, let ey = subPath.endY {
-                [ex, ey]
-              } else if index < subPaths.count - 1, let firstCoord = subPaths[index + 1].passStopCoords.first {
-                firstCoord
-              } else if index < subPaths.count - 1, let sx = subPaths[index + 1].startX, let sy = subPaths[index + 1].startY {
-                [sx, sy]
-              } else if index == subPaths.count - 1 {
-                [store.destinationCoordinate.longitude, store.destinationCoordinate.latitude]
-              } else {
-                nil
-              }
-
-              if let start = startCoord, let end = endCoord {
+              if let start = walkingStartCoordinate(at: index, in: subPaths),
+                 let end = walkingEndCoordinate(at: index, in: subPaths) {
                 return TransitRouteSegmentData(
                   coords: [start, end],
                   color: nil,
@@ -247,6 +203,40 @@ extension TransportDetail {
       case .walking:
         return .walking(routePoints: store.transportData.walking.routePoints)
       }
+    }
+
+    private func walkingStartCoordinate(
+      at index: Int,
+      in subPaths: [HomeModels.TransportSubPath]
+    ) -> [Double]? {
+      let subPath = subPaths[index]
+      if let sx = subPath.startX, let sy = subPath.startY {
+        return [sx, sy]
+      } else if index > 0, let lastCoord = subPaths[index - 1].passStopCoords.last {
+        return lastCoord
+      } else if index > 0, let ex = subPaths[index - 1].endX, let ey = subPaths[index - 1].endY {
+        return [ex, ey]
+      } else if index == 0, let origin = store.originCoordinate {
+        return [origin.longitude, origin.latitude]
+      }
+      return nil
+    }
+
+    private func walkingEndCoordinate(
+      at index: Int,
+      in subPaths: [HomeModels.TransportSubPath]
+    ) -> [Double]? {
+      let subPath = subPaths[index]
+      if let ex = subPath.endX, let ey = subPath.endY {
+        return [ex, ey]
+      } else if index < subPaths.count - 1, let firstCoord = subPaths[index + 1].passStopCoords.first {
+        return firstCoord
+      } else if index < subPaths.count - 1, let sx = subPaths[index + 1].startX, let sy = subPaths[index + 1].startY {
+        return [sx, sy]
+      } else if index == subPaths.count - 1 {
+        return [store.destinationCoordinate.longitude, store.destinationCoordinate.latitude]
+      }
+      return nil
     }
 
     // MARK: - My Location Button
