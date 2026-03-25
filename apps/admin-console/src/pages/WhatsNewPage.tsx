@@ -320,7 +320,8 @@ function ImageUploadCell(props: {
         reader.readAsDataURL(file);
       });
 
-      const fileName = `item-${itemIndex}-${Date.now()}-${file.name}`;
+      const ext = file.name.split(".").pop() ?? "png";
+      const fileName = `item-${itemIndex}-${Date.now()}.${ext}`;
       const imageURL = await adminUploadWhatsNewImage({
         version,
         fileName,
