@@ -65,7 +65,10 @@ extension PersonalEventDetail {
           if !store.event.descriptionBlocks.isEmpty {
             DescriptionBlockRenderer(
               blocks: store.event.descriptionBlocks,
-              isExpanded: $isDescriptionExpanded
+              isExpanded: $isDescriptionExpanded,
+              onChecklistToggle: { blockId, itemId in
+                store.send(.view(.toggleChecklist(blockId: blockId, itemId: itemId)))
+              }
             )
           } else if let description = store.event.description, !description.isEmpty {
             ScheduleDetailExpandableText(

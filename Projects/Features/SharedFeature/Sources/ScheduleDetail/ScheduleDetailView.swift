@@ -132,7 +132,10 @@ extension ScheduleDetail {
           if !store.schedule.descriptionBlocks.isEmpty {
             DescriptionBlockRenderer(
               blocks: store.schedule.descriptionBlocks,
-              isExpanded: $isDescriptionExpanded
+              isExpanded: $isDescriptionExpanded,
+              onChecklistToggle: { blockId, itemId in
+                store.send(.view(.toggleChecklist(blockId: blockId, itemId: itemId)))
+              }
             )
           } else if let description = store.schedule.description, !description.isEmpty {
             ScheduleDetailExpandableText(text: description, isExpanded: $isDescriptionExpanded)

@@ -84,6 +84,13 @@ public struct StepSheetContainer<
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
       updateKeyboardPresentation(notification)
     }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+      guard isKeyboardPresented else { return }
+      let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+      withAnimation(.easeInOut(duration: duration)) {
+        isKeyboardPresented = false
+      }
+    }
   }
 
   // MARK: - Sheet Toolbar

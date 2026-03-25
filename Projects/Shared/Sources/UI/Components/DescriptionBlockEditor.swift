@@ -241,12 +241,8 @@ public struct DescriptionBlockEditor: View {
             if let newlineIndex = newValue.firstIndex(of: "\n") {
               let before = String(newValue[newValue.startIndex..<newlineIndex])
               let after = String(newValue[newValue.index(after: newlineIndex)...])
-              // 빈 문자열이면 줄바꿈만 제거하고 새 항목 추가 안 함
-              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else {
-                items[itemIndex].text = before
-                blocks[blockIndex].content = .checklist(items)
-                return
-              }
+              // 텍스트 없으면 줄바꿈 무시
+              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else { return }
               // 이중 트리거 방지: 이미 분리된 상태면 스킵
               if items[itemIndex].text == before,
                  itemIndex + 1 < items.count,
@@ -335,12 +331,8 @@ public struct DescriptionBlockEditor: View {
             if let newlineIndex = newValue.firstIndex(of: "\n") {
               let before = String(newValue[newValue.startIndex..<newlineIndex])
               let after = String(newValue[newValue.index(after: newlineIndex)...])
-              // 빈 문자열이면 줄바꿈만 제거하고 새 항목 추가 안 함
-              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else {
-                items[itemIndex] = before
-                blocks[blockIndex].content = .bulletList(items)
-                return
-              }
+              // 텍스트 없으면 줄바꿈 무시
+              guard !before.trimmingCharacters(in: .whitespaces).isEmpty else { return }
               // 이중 트리거 방지
               if items[itemIndex] == before,
                  itemIndex + 1 < items.count,

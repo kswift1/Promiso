@@ -55,6 +55,7 @@ extension PersonalEventDetail {
         case onAppear
         case editTapped
         case deleteTapped
+        case toggleChecklist(blockId: String, itemId: String)
       }
 
       public enum Internal: Sendable {
@@ -102,6 +103,23 @@ extension PersonalEventDetail {
               mode: .edit
             )
             return .none
+
+          case let .toggleChecklist(blockId, itemId):
+            guard let blockIndex = state.event.descriptionBlocks.firstIndex(where: { $0.id == blockId }),
+                  case .checklist(var items) = state.event.descriptionBlocks[blockIndex].content,
+                  let itemIndex = items.firstIndex(where: { $0.id == itemId }) else {
+              return .none
+            }
+            items[itemIndex].isChecked.toggle()
+            state.event.descriptionBlocks[blockIndex].content = .checklist(items)
+            let updatedEvent = state.event
+            return .merge(
+              .run { _ in await hapticFeedback.impact(.light) },
+              .run { _ in
+                try? await personalEventClient.updateEvent(updatedEvent)
+              },
+              .send(.delegate(.eventUpdated(updatedEvent)))
+            )
 
           case .deleteTapped:
             let eventTitle = state.event.title
