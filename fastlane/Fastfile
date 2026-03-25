@@ -47,7 +47,8 @@ platform :ios do
     dev_bundle_ids = [
       "com.promiso.dev",
       "com.promiso.dev.liveactivity",
-      "com.promiso.dev.promisewidget"
+      "com.promiso.dev.promisewidget",
+      "com.promiso.dev.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -119,7 +120,8 @@ platform :ios do
     stage_bundle_ids = [
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
-      "com.promiso.stage.promisewidget"
+      "com.promiso.stage.promisewidget",
+      "com.promiso.stage.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -202,7 +204,8 @@ platform :ios do
     prod_bundle_ids = [
       "com.promiso",
       "com.promiso.liveactivity",
-      "com.promiso.promisewidget"
+      "com.promiso.promisewidget",
+      "com.promiso.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -339,12 +342,15 @@ platform :ios do
       "com.promiso.dev",
       "com.promiso.dev.liveactivity",
       "com.promiso.dev.promisewidget",
+      "com.promiso.dev.notificationservice",
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
       "com.promiso.stage.promisewidget",
+      "com.promiso.stage.notificationservice",
       "com.promiso",
       "com.promiso.liveactivity",
-      "com.promiso.promisewidget"
+      "com.promiso.promisewidget",
+      "com.promiso.notificationservice"
     ]
 
     # Development certificates
@@ -383,12 +389,15 @@ platform :ios do
       "com.promiso.dev",
       "com.promiso.dev.liveactivity",
       "com.promiso.dev.promisewidget",
+      "com.promiso.dev.notificationservice",
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
       "com.promiso.stage.promisewidget",
+      "com.promiso.stage.notificationservice",
       "com.promiso",
       "com.promiso.liveactivity",
-      "com.promiso.promisewidget"
+      "com.promiso.promisewidget",
+      "com.promiso.notificationservice"
     ]
 
     # Development profiles (Debug configuration 검증용)
