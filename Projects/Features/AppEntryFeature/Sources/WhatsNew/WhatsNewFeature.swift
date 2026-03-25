@@ -65,8 +65,12 @@ extension WhatsNew {
           case .onAppear:
             let version = AppConstants.App.version
             return .run { send in
-              let model = try? await whatsNewClient.fetchWhatsNew(version)
-              await send(.internal(.whatsNewLoaded(model)))
+              do {
+                let model = try await whatsNewClient.fetchWhatsNew(version)
+                await send(.internal(.whatsNewLoaded(model)))
+              } catch {
+                await send(.internal(.whatsNewLoaded(nil)))
+              }
             }
 
           case .nextTapped:
