@@ -8,7 +8,7 @@
  * @ios CreatePersonalEventView - "텍스트에서 가져오기" / "사진에서 가져오기" 기능
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {GoogleGenerativeAI} from "@google/generative-ai";
+import {GoogleGenerativeAI, Part} from "@google/generative-ai";
 import {REGION, GEMINI_API_KEY} from "../config";
 import {
   ExtractScheduleRequest,
@@ -187,7 +187,7 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
       const promptWithTime = SCHEDULE_EXTRACTION_PROMPT
         .replace("{currentTime}", currentTime);
 
-      const parts: object[] = [];
+      const parts: Part[] = [];
 
       // 프롬프트
       parts.push({text: promptWithTime});
