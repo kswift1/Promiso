@@ -44,6 +44,9 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
   /// 읽은 시각
   public let readAt: Date?
 
+  /// 이미지 URL (발신자 프로필 등)
+  public let imageUrl: String?
+
   // MARK: - Initializer
 
   public init(
@@ -57,7 +60,8 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     relatedUserId: String? = nil,
     isRead: Bool = false,
     createdAt: Date = Date(),
-    readAt: Date? = nil
+    readAt: Date? = nil,
+    imageUrl: String? = nil
   ) {
     self.notificationId = notificationId
     self.userId = userId
@@ -70,6 +74,7 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     self.isRead = isRead
     self.createdAt = createdAt
     self.readAt = readAt
+    self.imageUrl = imageUrl
   }
 }
 

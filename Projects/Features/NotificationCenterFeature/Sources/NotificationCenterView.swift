@@ -412,14 +412,23 @@ struct NotificationCellContent: View {
 
   @ViewBuilder
   private var iconView: some View {
-    ZStack {
-      Circle()
-        .fill(iconBackgroundColor.opacity(0.15))
-        .frame(width: 44, height: 44)
+    if notification.imageUrl != nil {
+      ProfileAvatarView(
+        profileImageUrl: notification.imageUrl,
+        displayName: notification.title,
+        size: 44,
+        borderWidth: 0
+      )
+    } else {
+      ZStack {
+        Circle()
+          .fill(iconBackgroundColor.opacity(0.15))
+          .frame(width: 44, height: 44)
 
-      Image(systemName: notification.type.iconName)
-        .font(.system(size: 18))
-        .foregroundStyle(iconBackgroundColor)
+        Image(systemName: notification.type.iconName)
+          .font(.system(size: 18))
+          .foregroundStyle(iconBackgroundColor)
+      }
     }
   }
 

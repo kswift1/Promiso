@@ -190,7 +190,8 @@ public actor NotificationRemoteDataSource {
           relatedUserId: dto.relatedUserId,
           isRead: dto.isRead,
           createdAt: dto.createdAt.dateValue(),
-          readAt: dto.readAt?.dateValue()
+          readAt: dto.readAt?.dateValue(),
+          imageUrl: dto.data?["imageUrl"]
         )
       } catch {
         AppLogger.notification.error("알림 파싱 실패: \(error.localizedDescription)")
