@@ -146,21 +146,21 @@ PR 또는 변경사항 기반으로:
 # 웹훅 URL 로드
 WEBHOOK_URL=$(grep SLACK_WEBHOOK_URL_QA .claude/.env.local | cut -d'=' -f2-)
 
-# 리포트 전송
+# 리포트 전송 (jq로 JSON 안전 구성)
 curl -s -X POST "$WEBHOOK_URL" \
   -H 'Content-type: application/json' \
-  -d "{
-    \"blocks\": [
+  -d "$(jq -n --arg body "$REPORT_BODY" '{
+    "blocks": [
       {
-        \"type\": \"header\",
-        \"text\": {\"type\": \"plain_text\", \"text\": \"🔍 QA 분석 리포트\"}
+        "type": "header",
+        "text": {"type": "plain_text", "text": "🔍 QA 분석 리포트"}
       },
       {
-        \"type\": \"section\",
-        \"text\": {\"type\": \"mrkdwn\", \"text\": \"$REPORT_BODY\"}
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": $body}
       }
     ]
-  }"
+  }')"
 ```
 
 ### Slack 메시지 포맷
