@@ -12,17 +12,26 @@ jobs:
       - name: Send Slack Notification
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REVIEW_URL: ${{ github.event.review.html_url }}
         run: |
-          curl -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d '{
-              "text": "🤖 Gemini Code Assist 리뷰가 등록되었습니다",
-              "attachments": [{
-                "color": "#4285F4",
-                "fields": [
-                  {"title": "PR", "value": "#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}", "short": true},
-                  {"title": "Author", "value": "${{ github.event.pull_request.user.login }}", "short": true},
-                  {"title": "Link", "value": "${{ github.event.review.html_url }}"}
+          PAYLOAD=$(jq -n \
+            --arg pr_title "#${PR_NUMBER} ${PR_TITLE}" \
+            --arg author "$PR_AUTHOR" \
+            --arg link "$REVIEW_URL" \
+            '{
+              text: "🤖 Gemini Code Assist 리뷰가 등록되었습니다",
+              attachments: [{
+                color: "#4285F4",
+                fields: [
+                  {title: "PR", value: $pr_title, short: true},
+                  {title: "Author", value: $author, short: true},
+                  {title: "Link", value: $link}
                 ]
               }]
-            }'
+            }')
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "$PAYLOAD"
