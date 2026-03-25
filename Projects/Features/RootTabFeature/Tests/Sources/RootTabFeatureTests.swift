@@ -1049,5 +1049,8 @@ private extension RootTabFeatureTests {
 
     dependencies.subscriptionClient.fetchStatus = { .none }
     dependencies.subscriptionClient.unifiedStatusStream = { AsyncStream { $0.finish() } }
+
+    dependencies.appReviewClient.recordFirstLaunchIfNeeded = { }
+    dependencies.appReviewClient.incrementSessionCount = { }
   }
 }

@@ -296,6 +296,7 @@ struct CreateScheduleReducerTests {
     } withDependencies: {
       $0.analyticsClient.logEvent = { _, _ in }
       $0.scheduleClient.startVoteLiveActivity = { _ in }
+      $0.appReviewClient.requestReviewIfEligible = { }
     }
     store.exhaustivity = .off
 
