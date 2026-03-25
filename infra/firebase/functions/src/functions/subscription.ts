@@ -390,6 +390,8 @@ export const verifyPurchase = onCall<VerifyPurchaseRequest>(
           latestAppStoreSignedDate: signedDate,
           latestTransactionId: transactionId,
           lastNotificationType: null,
+          lastOfferType: payload.offerType ?? null,
+          lastOfferIdentifier: payload.offerIdentifier ?? null,
           updatedAt: FieldValue.serverTimestamp() as
             FirebaseFirestore.Timestamp,
         };
