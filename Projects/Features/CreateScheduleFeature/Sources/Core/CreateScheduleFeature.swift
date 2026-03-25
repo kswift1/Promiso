@@ -29,12 +29,14 @@ public enum CreateSchedule {
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.appReviewClient) var appReviewClient
 
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
       case conflictCheckDebounce
       case weatherFetchDebounce
+      case appReviewDelay
     }
     
     @ObservableState
@@ -554,7 +556,12 @@ public enum CreateSchedule {
               .send(.delegate(.scheduleCreated(id: id))),
               .run { [scheduleClient] _ in
                 try? await scheduleClient.startVoteLiveActivity(id)
+              },
+              .run { [appReviewClient, clock] _ in
+                try? await clock.sleep(for: .seconds(2))
+                await appReviewClient.requestReviewIfEligible()
               }
+              .cancellable(id: CancelID.appReviewDelay)
             )
 
           case .createScheduleResponse(.failure(let e)):

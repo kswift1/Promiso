@@ -112,6 +112,7 @@ extension RootTab {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.subscriptionClient) var subscriptionClient
+    @Dependency(\.appReviewClient) var appReviewClient
 
     private enum CancelID: Hashable {
       case subscriptionStatus
@@ -315,6 +316,13 @@ extension RootTab {
             .send(.internal(.syncCalendar)),
             .send(.internal(.observeSubscriptionStatus))
           ]
+
+          effects.append(
+            .run { [appReviewClient] _ in
+              appReviewClient.recordFirstLaunchIfNeeded()
+              appReviewClient.incrementSessionCount()
+            }
+          )
 
           if !state.hasInitialCalendarSyncBeenScheduled {
             effects.append(.send(.internal(.syncCalendar)))

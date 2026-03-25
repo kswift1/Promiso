@@ -303,6 +303,15 @@ public enum AppConstants {
     /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
     public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
 
+    // MARK: - App Review
+
+    /// 앱 최초 실행일 (TimeInterval)
+    public static let firstLaunchDate = "promisoFirstLaunchDate"
+    /// 앱 세션 카운트
+    public static let sessionCount = "promisoSessionCount"
+    /// 마지막 리뷰 요청일 (TimeInterval)
+    public static let lastReviewRequestDate = "promisoLastReviewRequestDate"
+
     // MARK: - Guide
 
     /// 캘린더 기능 가이드 본 적 있는지
