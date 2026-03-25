@@ -84,9 +84,6 @@ public enum CreateSchedule {
       // 그룹 생성 sheet
       @Presents var createGroup: CreateGroup.Feature.State?
 
-      // pre-fill 정보 (퀵 일정에서 전달)
-      var prefillInfo: ScheduleExtractedInfo?
-
       public init(
         currentStep: CreateScheduleStep = .first,
         schedule: ScheduleModel = .empty,
@@ -102,7 +99,6 @@ public enum CreateSchedule {
         currentUserId: String = "",
         currentUser: UserPrivateModel? = nil,
         locationPicker: LocationPicker.Feature.State? = nil,
-        prefillInfo: ScheduleExtractedInfo? = nil,
         weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
@@ -119,7 +115,6 @@ public enum CreateSchedule {
         self.currentUserId = currentUserId
         self.currentUser = currentUser
         self.locationPicker = locationPicker
-        self.prefillInfo = prefillInfo
         self.weatherState = weatherState
       }
 

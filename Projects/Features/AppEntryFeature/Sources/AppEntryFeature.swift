@@ -168,8 +168,13 @@ extension AppEntry {
             return routeOrPendDeeplink(destination, state: &state)
 
           case .scenePhaseChanged(let phase):
+            guard phase == .active else { return .none }
+            // Share Extension에서 저장한 pending 데이터(텍스트/이미지) 확인
+            if AppConstants.AppGroup.hasPendingExtraction {
+              return routeOrPendDeeplink(.extractSchedule, state: &state)
+            }
             // 앱스토어에서 돌아왔을 때 버전 재체크
-            if phase == .active && state.updateAlert != nil {
+            if state.updateAlert != nil {
               return .send(.internal(.recheckVersionAfterAppStore))
             }
             return .none
@@ -755,6 +760,9 @@ extension AppEntry.Feature {
 
     case .proPlan:
       return .send(.destination(.presented(.main(.openProPlan))))
+
+    case .extractSchedule:
+      return .send(.destination(.presented(.main(.openExtractSchedule))))
     }
   }
 

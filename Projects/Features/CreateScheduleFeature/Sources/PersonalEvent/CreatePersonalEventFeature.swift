@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
@@ -374,6 +375,7 @@ extension CreatePersonalEvent {
             guard index < visibleUrls.count else { return .none }
             state.removedImageUrls.append(visibleUrls[index])
             return .none
+
           }
 
         // MARK: - Internal Actions

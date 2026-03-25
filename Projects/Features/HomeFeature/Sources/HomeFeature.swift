@@ -417,8 +417,6 @@ extension Home {
         case navigateToAllSchedules
         /// 오버레이에서 일정 만들기 요청 (→ RootTab → GroupMain)
         case navigateToCreateSchedule
-        /// 빠른 일정 생성 요청 (추출 정보 → CreateSchedule pre-fill)
-        case createScheduleWithExtractedInfo(ScheduleExtractedInfo)
         /// Pro 플랜 업그레이드 요청
         case proPlanRequested
       }

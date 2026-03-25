@@ -61,6 +61,7 @@ extension PersonalMode {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.scheduleExtractionClient) var scheduleExtractionClient
 
     public init() {}
 
@@ -83,10 +84,14 @@ extension PersonalMode {
       /// 일정 탭 기본 모드 (Settings에서 설정)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
 
+      @Presents var scheduleImport: ScheduleImport.Feature.State?
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var createRecurringEvent: CreateRecurringPersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
       @Presents var recurringEventDetail: RecurringPersonalEventDetail.Feature.State?
+
+      /// Share Extension 딥링크 추출 중 여부
+      public var isDeeplinkExtracting: Bool = false
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -190,6 +195,7 @@ extension PersonalMode {
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
+      case scheduleImport(PresentationAction<ScheduleImport.Feature.Action>)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
       case createRecurringEvent(PresentationAction<CreateRecurringPersonalEvent.Feature.Action>)
       case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
@@ -199,6 +205,7 @@ extension PersonalMode {
         case onAppear
         case refreshEvents
         case filterChanged(EventFilter)
+        case scheduleImportTapped
         case createNewEventTapped
         case createOneTimeEventTapped
         case createRecurringEventTapped
@@ -211,6 +218,8 @@ extension PersonalMode {
         case switchToGroupMode
         /// 위젯 딥링크로 개인 일정 상세 열기
         case openEventFromDeeplink(eventId: String)
+        /// Share Extension 텍스트로 CreatePersonalEvent 폼 열기 (App Group에서 텍스트 읽기)
+        case openCreateEventWithExtraction
         /// 토스트 닫힘
         case toastDismissed
       }
@@ -238,6 +247,10 @@ extension PersonalMode {
         case recurringEventsFailed(String)
         case recurringEventDeleted(String)
         case recurringEventDeleteFailed(String)
+        /// Share Extension 자동 추출 결과
+        case deeplinkExtractionSuccess(PersonalEventModel)
+        case deeplinkExtractionFailed(originalText: String)
+        case deeplinkExtractionImageFailed(imageData: Data)
       }
     }
 
@@ -245,6 +258,7 @@ extension PersonalMode {
       case eventSubscription
       case conflictCheck
       case weatherFetch
+      case deeplinkExtraction
     }
 
     public var body: some ReducerOf<Self> {
@@ -279,6 +293,10 @@ extension PersonalMode {
             if filter == .past && !state.pastEventsState.isLoaded {
               return .send(.internal(.fetchPastEvents))
             }
+            return .none
+
+          case .scheduleImportTapped:
+            state.scheduleImport = ScheduleImport.Feature.State()
             return .none
 
           case .createNewEventTapped:
@@ -332,6 +350,9 @@ extension PersonalMode {
                 AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
               }
             }
+
+          case .openCreateEventWithExtraction:
+            return openCreateEventWithExtraction(state: &state)
 
           case .toastDismissed:
             state.toastMessage = nil
@@ -608,7 +629,43 @@ extension PersonalMode {
               position: .top
             )
             return .none
+
+          case .deeplinkExtractionSuccess(let event):
+            state.isDeeplinkExtracting = false
+            state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
+            return .none
+
+          case .deeplinkExtractionFailed(let originalText):
+            // 추출 실패 시 원본 텍스트를 유지한 채 ScheduleImport 시트로 fallback
+            state.isDeeplinkExtracting = false
+            var importState = ScheduleImport.Feature.State()
+            importState.inputText = originalText
+            state.scheduleImport = importState
+            return .none
+
+          case .deeplinkExtractionImageFailed(let imageData):
+            // 이미지 추출 실패 시 이미지 모드 ScheduleImport 시트로 fallback
+            state.isDeeplinkExtracting = false
+            var importState = ScheduleImport.Feature.State()
+            importState.selectedImage = imageData
+            importState.inputMode = .image
+            state.scheduleImport = importState
+            return .none
           }
+
+        // MARK: - ScheduleImport Delegate
+
+        case .scheduleImport(.presented(.delegate(.extracted(let event)))):
+          state.scheduleImport = nil
+          state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
+          return .none
+
+        case .scheduleImport(.presented(.delegate(.dismiss))):
+          state.scheduleImport = nil
+          return .none
+
+        case .scheduleImport:
+          return .none
 
         // MARK: - CreateEvent Delegate
 
@@ -678,6 +735,9 @@ extension PersonalMode {
           return .none
         }
       }
+      .ifLet(\.$scheduleImport, action: \.scheduleImport) {
+        ScheduleImport.Feature()
+      }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
       }
@@ -691,6 +751,45 @@ extension PersonalMode {
         RecurringPersonalEventDetail.Feature()
       }
     }
+  }
+}
+
+// MARK: - Deeplink Helpers
+
+extension PersonalMode.Feature {
+  /// Share Extension에서 공유된 데이터로 일정을 추출합니다.
+  /// 텍스트: 바로 LLM 추출 → CreatePersonalEvent 폼 열기
+  /// 이미지: ScheduleImport 시트로 fallback (미리보기 필요)
+  func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
+    if let text = AppConstants.AppGroup.consumePendingExtractionText() {
+      // 텍스트 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
+      state.isDeeplinkExtracting = true
+      return .run { [scheduleExtractionClient] send in
+        do {
+          let event = try await scheduleExtractionClient.extractFromText(text)
+          await send(.internal(.deeplinkExtractionSuccess(event)))
+        } catch {
+          await send(.internal(.deeplinkExtractionFailed(originalText: text)))
+        }
+      }
+      .cancellable(id: CancelID.deeplinkExtraction, cancelInFlight: true)
+    } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {
+      // 이미지 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
+      state.isDeeplinkExtracting = true
+      return .run { [scheduleExtractionClient] send in
+        do {
+          let event = try await scheduleExtractionClient.extractFromImage(imageData)
+          await send(.internal(.deeplinkExtractionSuccess(event)))
+        } catch {
+          await send(.internal(.deeplinkExtractionImageFailed(imageData: imageData)))
+        }
+      }
+      .cancellable(id: CancelID.deeplinkExtraction, cancelInFlight: true)
+    }
+
+    // pending 데이터 없음 → 빈 ScheduleImport 시트
+    state.scheduleImport = ScheduleImport.Feature.State()
+    return .none
   }
 }
 
