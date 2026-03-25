@@ -1,10 +1,12 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Description Block Editor
 
 public struct DescriptionBlockEditor: View {
   @Binding public var blocks: [DescriptionBlock]
   public var characterLimit: Int
+  @FocusState private var isAnyFieldFocused: Bool
 
   public init(blocks: Binding<[DescriptionBlock]>, characterLimit: Int = 500) {
     self._blocks = blocks
@@ -28,14 +30,30 @@ public struct DescriptionBlockEditor: View {
       // 컴팩트 블록 추가 버튼
       addBlockRow
 
-      // 글자 수 카운터
+      // 글자 수 카운터 + 키보드 내리기
       HStack {
+        if isAnyFieldFocused {
+          Button {
+            UIApplication.shared.sendAction(
+              #selector(UIResponder.resignFirstResponder),
+              to: nil, from: nil, for: nil
+            )
+          } label: {
+            Image(systemName: "keyboard.chevron.compact.down")
+              .font(.system(size: 14))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+          .buttonStyle(.plain)
+        }
+
         Spacer()
+
         Text("\(totalCharacterCount)/\(characterLimit)")
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
       }
     }
+    .focused($isAnyFieldFocused)
     .onAppear {
       if blocks.isEmpty {
         blocks.append(DescriptionBlock(content: .text("")))
