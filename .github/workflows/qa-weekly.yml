@@ -103,17 +103,14 @@ jobs:
 
           summarize_log() {
             local file="$1"
-            python3 - "$file" <<'PY2'
-import pathlib, re, sys
-path = pathlib.Path(sys.argv[1])
-if not path.exists():
-    sys.exit(0)
-text = path.read_text(errors='ignore').splitlines()
-pattern = re.compile(r'(error:|failed|FAIL|Assertion|Testing failed|\*\* TEST FAILED \*\*)', re.I)
-matches = [line.strip() for line in text if pattern.search(line)]
-selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
-print('\n'.join(selected))
-PY2
+            [ -f "$file" ] || return 0
+            local matches
+            matches=$(grep -iE 'error:|failed|FAIL|Assertion|Testing failed|\*\* TEST FAILED \*\*' "$file" | tail -5)
+            if [ -n "$matches" ]; then
+              echo "$matches"
+            else
+              tail -20 "$file" | grep -v '^$' | tail -5
+            fi
           }
 
           APP_BUILD_STATUS="pass"
@@ -145,11 +142,9 @@ PY2
           fi
 
           if [ "$APP_BUILD_STATUS" != "pass" ]; then
-            ERROR_SNIPPET="[PromisoStage build]
-$(summarize_log /tmp/qa-weekly-logs/promiso-stage.log)"
+            ERROR_SNIPPET=$(printf '[PromisoStage build]\n%s' "$(summarize_log /tmp/qa-weekly-logs/promiso-stage.log)")
           elif [ "$TEST_STATUS" != "pass" ]; then
-            ERROR_SNIPPET="[tuist test]
-$(summarize_log /tmp/qa-weekly-logs/tuist-test.log)"
+            ERROR_SNIPPET=$(printf '[tuist test]\n%s' "$(summarize_log /tmp/qa-weekly-logs/tuist-test.log)")
           fi
 
           {
@@ -157,8 +152,7 @@ $(summarize_log /tmp/qa-weekly-logs/tuist-test.log)"
             echo "app_build_status=$APP_BUILD_STATUS"
             echo "test_status=$TEST_STATUS"
             echo "error_snippet<<EOF"
-            printf '%s
-' "$ERROR_SNIPPET"
+            printf '%s\n' "$ERROR_SNIPPET"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -212,17 +206,14 @@ $(summarize_log /tmp/qa-weekly-logs/tuist-test.log)"
           set +e
           summarize_log() {
             local file="$1"
-            python3 - "$file" <<'PY2'
-import pathlib, re, sys
-path = pathlib.Path(sys.argv[1])
-if not path.exists():
-    sys.exit(0)
-text = path.read_text(errors='ignore').splitlines()
-pattern = re.compile(r'(error|failed|ERR!|TS\d+:)', re.I)
-matches = [line.strip() for line in text if pattern.search(line)]
-selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
-print('\n'.join(selected))
-PY2
+            [ -f "$file" ] || return 0
+            local matches
+            matches=$(grep -iE 'error:|failed|FAIL|Assertion|Testing failed|\*\* TEST FAILED \*\*' "$file" | tail -5)
+            if [ -n "$matches" ]; then
+              echo "$matches"
+            else
+              tail -20 "$file" | grep -v '^$' | tail -5
+            fi
           }
 
           npm ci > /tmp/qa-weekly-admin-install.log 2>&1
@@ -253,8 +244,7 @@ PY2
             echo "status=$STATUS"
             echo "failure_step=$FAILURE_STEP"
             echo "error_snippet<<EOF"
-            printf '%s
-' "$ERROR_SNIPPET"
+            printf '%s\n' "$ERROR_SNIPPET"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -298,17 +288,14 @@ PY2
           set +e
           summarize_log() {
             local file="$1"
-            python3 - "$file" <<'PY2'
-import pathlib, re, sys
-path = pathlib.Path(sys.argv[1])
-if not path.exists():
-    sys.exit(0)
-text = path.read_text(errors='ignore').splitlines()
-pattern = re.compile(r'(error|failed|ERR!|TS\d+:)', re.I)
-matches = [line.strip() for line in text if pattern.search(line)]
-selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
-print('\n'.join(selected))
-PY2
+            [ -f "$file" ] || return 0
+            local matches
+            matches=$(grep -iE 'error:|failed|FAIL|Assertion|Testing failed|\*\* TEST FAILED \*\*' "$file" | tail -5)
+            if [ -n "$matches" ]; then
+              echo "$matches"
+            else
+              tail -20 "$file" | grep -v '^$' | tail -5
+            fi
           }
 
           npm ci > /tmp/qa-weekly-functions-install.log 2>&1
@@ -367,8 +354,7 @@ PY2
             echo "status=$STATUS"
             echo "failure_step=$FAILURE_STEP"
             echo "error_snippet<<EOF"
-            printf '%s
-' "$ERROR_SNIPPET"
+            printf '%s\n' "$ERROR_SNIPPET"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
