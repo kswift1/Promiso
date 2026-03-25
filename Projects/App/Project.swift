@@ -50,7 +50,8 @@ let promisoDev = Target.target(
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
     .target(name: "ScheduleWidgetExtension-Dev"),
-    .target(name: "ShareExtension-Dev")
+    .target(name: "ShareExtension-Dev"),
+    .target(name: "NotificationServiceExtension-Dev")
   ],
   settings: .settings(
     base: [
@@ -82,7 +83,8 @@ let promisoStage = Target.target(
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
     .target(name: "ScheduleWidgetExtension-Stage"),
-    .target(name: "ShareExtension-Stage")
+    .target(name: "ShareExtension-Stage"),
+    .target(name: "NotificationServiceExtension-Stage")
   ],
   settings: .settings(
     base: [
@@ -120,7 +122,8 @@ let promisoProd = Target.target(
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
     .target(name: "ScheduleWidgetExtension"),
-    .target(name: "ShareExtension")
+    .target(name: "ShareExtension"),
+    .target(name: "NotificationServiceExtension")
   ],
   settings: .settings(
     base: [
@@ -489,6 +492,104 @@ let shareExtensionProd = Target.target(
   )
 )
 
+// MARK: - Notification Service Extension Targets
+
+let notificationServiceDev = Target.target(
+  name: "NotificationServiceExtension-Dev",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.dev.notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension-Dev.entitlements"),
+  dependencies: [],
+  settings: .standard(base: [
+    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+    "CODE_SIGN_STYLE": .string("Automatic")
+  ])
+)
+
+let notificationServiceStage = Target.target(
+  name: "NotificationServiceExtension-Stage",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.stage.notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension-Stage.entitlements"),
+  dependencies: [],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
+)
+
+let notificationServiceProd = Target.target(
+  name: "NotificationServiceExtension",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "\(AppConfig.bundleId).notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension.entitlements"),
+  dependencies: [],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
+)
+
 // MARK: - Environment-based Target Filtering
 
 /// 환경변수 TUIST_ENV에 따라 생성할 타겟 결정
@@ -505,14 +606,14 @@ let environment: String = {
 let targets: [Target] = {
   switch environment {
   case "dev":
-    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev, notificationServiceDev]
   case "stage":
-    return [promisoStage, liveActivityStage, scheduleWidgetStage, shareExtensionStage]
+    return [promisoStage, liveActivityStage, scheduleWidgetStage, shareExtensionStage, notificationServiceStage]
   case "prod":
-    return [promisoProd, liveActivityProd, scheduleWidgetProd, shareExtensionProd]
+    return [promisoProd, liveActivityProd, scheduleWidgetProd, shareExtensionProd, notificationServiceProd]
   default:
     // 잘못된 값이 들어오면 dev로 fallback
-    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev, notificationServiceDev]
   }
 }()
 

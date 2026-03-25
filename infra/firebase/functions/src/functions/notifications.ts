@@ -484,7 +484,8 @@ export async function sendPushNotificationInternal(params: {
     apns: {
       payload: {
         aps: {
-          sound: "default",
+          "sound": "default",
+          "mutable-content": 1,
           // TODO: 읽지 않은 알림 수로 동적 계산 필요
           // badge: 1,
         },
@@ -626,6 +627,12 @@ export const onPromiseCreated = onDocumentCreated(
     const hostDoc = await usersCollection.doc(hostId).get();
     const hostName = hostDoc.data()?.nickname as string || "누군가";
 
+    // 호스트 프로필 이미지 URL 추출
+    const hostProfile = hostDoc.data()?.profile as
+      { url: string; thumbUrl?: string | null } | undefined;
+    const imageUrl = hostProfile?.thumbUrl ||
+      hostProfile?.url || null;
+
     // 푸시 알림 전송
     const isLiveActivity =
       notificationMethod === "liveActivity";
@@ -643,7 +650,7 @@ export const onPromiseCreated = onDocumentCreated(
       promiseId,
       groupId,
       relatedUserId: hostId,
-      data: null,
+      data: imageUrl ? {imageUrl} : null,
     });
   },
 );
@@ -790,7 +797,14 @@ export const onGroupMemberJoined = onDocumentUpdated(
       if (recipientIds.length === 0) continue;
 
       const newMemberDoc = await usersCollection.doc(newMemberId).get();
-      const newMemberName = newMemberDoc.data()?.nickname as string || "누군가";
+      const newMemberName =
+        newMemberDoc.data()?.nickname as string || "누군가";
+
+      // 새 멤버 프로필 이미지 URL 추출
+      const memberProfile = newMemberDoc.data()?.profile as
+        { url: string; thumbUrl?: string | null } | undefined;
+      const imageUrl = memberProfile?.thumbUrl ||
+        memberProfile?.url || null;
 
       await sendPushNotificationInternal({
         userIds: recipientIds,
@@ -800,7 +814,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
         promiseId: null,
         groupId,
         relatedUserId: newMemberId,
-        data: null,
+        data: imageUrl ? {imageUrl} : null,
       });
     }
   },
