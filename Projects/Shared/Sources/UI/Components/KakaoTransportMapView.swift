@@ -286,7 +286,6 @@ public struct KakaoTransportMapView: UIViewRepresentable {
         let lineColor: UIColor
         let strokeColor: UIColor
         let lineWidth: UInt
-        let patternIndex: Int
 
         if segment.isWalking {
           lineColor = MapColors.gray
@@ -395,21 +394,6 @@ public struct KakaoTransportMapView: UIViewRepresentable {
     }
 
     // MARK: - Helpers
-
-    private func makeDashPattern(color: UIColor) -> RoutePattern {
-      let dashLength: CGFloat = 12
-      let gapLength: CGFloat = 8
-      let height: CGFloat = 6
-      let totalLength = dashLength + gapLength
-
-      let renderer = UIGraphicsImageRenderer(size: CGSize(width: totalLength, height: height))
-      let image = renderer.image { ctx in
-        color.setFill()
-        ctx.fill(CGRect(x: 0, y: 0, width: dashLength, height: height))
-      }
-
-      return RoutePattern(pattern: image, distance: Float(totalLength), symbol: nil, pinStart: false, pinEnd: false)
-    }
 
     private func hexColor(_ hex: String?) -> UIColor {
       guard let hex = hex, hex.count >= 7 else {
