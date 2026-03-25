@@ -16,6 +16,7 @@ public struct ScheduleDTO: Codable {
   public let title: String
   public let emoji: String?
   public let description: String?
+  public let descriptionBlocks: [DescriptionBlock]?
 
   // MARK: - 관계
   public let hostId: String
@@ -49,6 +50,7 @@ public struct ScheduleDTO: Codable {
     title: String,
     emoji: String? = nil,
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock]? = nil,
     hostId: String,
     groupId: String,
     minimumParticipants: Int = 2,
@@ -64,6 +66,7 @@ public struct ScheduleDTO: Codable {
     self.title = title
     self.emoji = emoji
     self.description = description
+    self.descriptionBlocks = descriptionBlocks
     self.hostId = hostId
     self.groupId = groupId
     self.minimumParticipants = minimumParticipants
@@ -127,7 +130,8 @@ extension ScheduleDTO {
     self.init(
       title: model.title,
       emoji: model.emoji,
-      description: model.description,
+      description: model.descriptionBlocks.plainText ?? model.description,
+      descriptionBlocks: model.descriptionBlocks.isEmpty ? nil : model.descriptionBlocks,
       hostId: model.hostId,
       groupId: model.groupId,
       minimumParticipants: model.minimumParticipants,

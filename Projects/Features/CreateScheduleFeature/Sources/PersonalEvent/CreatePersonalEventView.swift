@@ -483,26 +483,12 @@ extension CreatePersonalEvent {
 
     @ViewBuilder
     private var descriptionSection: some View {
-      VStack(alignment: .trailing, spacing: 4) {
-        TextField(
-          LocalizedStrings.Shared.memoPlaceholder,
-          text: Binding(
-            get: { store.event.description ?? "" },
-            set: { store.send(.view(.descriptionChanged($0))) }
-          ),
-          axis: .vertical
+      DescriptionBlockEditor(
+        blocks: Binding(
+          get: { store.event.descriptionBlocks },
+          set: { store.send(.view(.descriptionBlocksChanged($0))) }
         )
-        .focused($focusedField, equals: .description)
-        .lineLimit(3...6)
-        .font(.body)
-        .padding(16)
-        .adaptiveGlassCard()
-
-        Text("\((store.event.description ?? "").count)/500")
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
-          .padding(.trailing, 4)
-      }
+      )
     }
   }
 }

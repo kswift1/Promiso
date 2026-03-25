@@ -112,6 +112,7 @@ extension CreatePersonalEvent {
       case toggleUseEndTime
       case reminderOptionSelected(Int?)
       case descriptionChanged(String)
+      case descriptionBlocksChanged([DescriptionBlock])
       case locationTapped
       case removeLocation
       case saveTapped
@@ -249,6 +250,11 @@ extension CreatePersonalEvent {
           case .descriptionChanged(let text):
             let trimmed = String(text.prefix(500))
             state.event.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .descriptionBlocksChanged(let blocks):
+            state.event.descriptionBlocks = blocks
+            state.event.description = blocks.plainText
             return .none
 
           case .locationTapped:

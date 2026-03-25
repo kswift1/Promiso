@@ -11,6 +11,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, R
   public var title: String
   public var emoji: String?
   public var description: String?
+  public var descriptionBlocks: [DescriptionBlock]
 
   // MARK: - 시간
   public var startAt: Date
@@ -35,6 +36,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, R
     title: String = "",
     emoji: String? = nil,
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock] = [],
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
@@ -47,6 +49,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, R
     self.title = title
     self.emoji = emoji
     self.description = description
+    self.descriptionBlocks = descriptionBlocks
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
@@ -67,6 +70,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, R
     title: String = "Mock 개인 일정",
     emoji: String? = "📅",
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock] = [],
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
@@ -80,6 +84,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable, R
       title: title,
       emoji: emoji,
       description: description,
+      descriptionBlocks: descriptionBlocks,
       startAt: startAt,
       endAt: endAt,
       location: location,
@@ -101,6 +106,7 @@ extension PersonalEventModel {
       title: dto.title,
       emoji: dto.emoji,
       description: dto.description,
+      descriptionBlocks: dto.descriptionBlocks ?? (dto.description.map { [DescriptionBlock(content: .text($0))] } ?? []),
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
@@ -213,7 +219,11 @@ extension PersonalEventModel {
     if let location = location {
       text += "📍 \(location.name)\n"
     }
-    if let description = description, !description.isEmpty {
+    if !descriptionBlocks.isEmpty {
+      if let blockText = descriptionBlocks.plainText {
+        text += "\n\(blockText)"
+      }
+    } else if let description = description, !description.isEmpty {
       text += "\n\(description)"
     }
     return text

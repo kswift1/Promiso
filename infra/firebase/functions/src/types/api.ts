@@ -247,6 +247,9 @@ export interface CreatePromiseRequest {
   /** 약속 설명 (선택적) */
   description?: string | null;
 
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: Record<string, unknown>[] | null;
+
   /** 시작 시간 (ISO 8601 문자열) */
   startAt: string;
 
@@ -336,6 +339,9 @@ export interface UpdatePromiseRequest {
 
   /** 약속 설명 (선택적) */
   description?: string | null;
+
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: Record<string, unknown>[] | null;
 
   /** 시작 시간 (선택적, ISO 8601 문자열) */
   startAt?: string | null;

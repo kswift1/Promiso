@@ -62,7 +62,12 @@ extension PersonalEventDetail {
             .font(.system(size: 20, weight: .bold))
             .foregroundStyle(.primary)
 
-          if let description = store.event.description, !description.isEmpty {
+          if !store.event.descriptionBlocks.isEmpty {
+            DescriptionBlockRenderer(
+              blocks: store.event.descriptionBlocks,
+              isExpanded: $isDescriptionExpanded
+            )
+          } else if let description = store.event.description, !description.isEmpty {
             ScheduleDetailExpandableText(
               text: description,
               isExpanded: $isDescriptionExpanded

@@ -182,23 +182,12 @@ extension EditSchedule {
             .foregroundStyle(.secondary)
         }
 
-        VStack(alignment: .trailing, spacing: 4) {
-          TextEditor(text: Binding(
-            get: { store.editedSchedule.description ?? "" },
-            set: { store.send(.view(.setDescription($0))) }
-          ))
-          .focused($focusedField, equals: .description)
-          .font(.system(size: 16))
-          .frame(minHeight: 80)
-          .padding(12)
-          .scrollContentBackground(.hidden)
-          .background(Color(.systemGray6))
-          .clipShape(RoundedRectangle(cornerRadius: 12))
-
-          Text("\((store.editedSchedule.description ?? "").count)/500")
-            .font(.system(size: 12))
-            .foregroundColor(.secondary)
-        }
+        DescriptionBlockEditor(
+          blocks: Binding(
+            get: { store.editedSchedule.descriptionBlocks },
+            set: { store.send(.view(.setDescriptionBlocks($0))) }
+          )
+        )
       }
     }
 

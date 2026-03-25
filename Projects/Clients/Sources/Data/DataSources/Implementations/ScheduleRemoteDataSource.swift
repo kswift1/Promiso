@@ -73,6 +73,15 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
       callableData["description"] = description
     }
 
+    // descriptionBlocks 전송
+    if !schedule.descriptionBlocks.isEmpty {
+      let encoder = JSONEncoder()
+      if let data = try? encoder.encode(schedule.descriptionBlocks),
+         let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+        callableData["descriptionBlocks"] = jsonArray
+      }
+    }
+
     if let endAt = schedule.endAt {
       callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     }
@@ -195,6 +204,17 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
       callableData["description"] = description.isEmpty ? NSNull() : description
     } else {
       callableData["description"] = NSNull()
+    }
+
+    // descriptionBlocks 전송
+    if !schedule.descriptionBlocks.isEmpty {
+      let encoder = JSONEncoder()
+      if let data = try? encoder.encode(schedule.descriptionBlocks),
+         let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+        callableData["descriptionBlocks"] = jsonArray
+      }
+    } else {
+      callableData["descriptionBlocks"] = NSNull()
     }
 
     if let endAt = schedule.endAt {

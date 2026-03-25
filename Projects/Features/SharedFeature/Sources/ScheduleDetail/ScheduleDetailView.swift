@@ -129,7 +129,12 @@ extension ScheduleDetail {
             .font(.system(size: 20, weight: .bold))
             .foregroundStyle(.primary)
 
-          if let description = store.schedule.description, !description.isEmpty {
+          if !store.schedule.descriptionBlocks.isEmpty {
+            DescriptionBlockRenderer(
+              blocks: store.schedule.descriptionBlocks,
+              isExpanded: $isDescriptionExpanded
+            )
+          } else if let description = store.schedule.description, !description.isEmpty {
             ScheduleDetailExpandableText(text: description, isExpanded: $isDescriptionExpanded)
           }
         }

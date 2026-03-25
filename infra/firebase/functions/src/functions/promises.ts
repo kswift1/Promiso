@@ -129,6 +129,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
       title: data.title,
       emoji: data.emoji || null,
       description: data.description || null,
+      descriptionBlocks: data.descriptionBlocks || null,
       hostId: userId,
       groupId: data.groupId,
       minimumParticipants: data.minimumParticipants,
@@ -589,6 +590,11 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
 
     if (data.description !== undefined) {
       updateData.description = data.description || null;
+    }
+
+    if (data.descriptionBlocks !== undefined) {
+      updateData.descriptionBlocks =
+        data.descriptionBlocks || null;
     }
 
     if (data.startAt !== undefined && data.startAt !== null) {
