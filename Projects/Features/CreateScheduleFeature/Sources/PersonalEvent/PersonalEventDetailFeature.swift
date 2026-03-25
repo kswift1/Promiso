@@ -186,7 +186,7 @@ extension PersonalEventDetail {
 
         case .alert(.presented(.confirmDelete)):
           state.isDeleting = true
-          return .run { [event = state.event, calendarSyncClient, imageUploadClient] send in
+          return .run { [event = state.event, personalEventClient, localNotificationClient, calendarSyncClient, imageUploadClient] send in
             do {
               try await personalEventClient.deleteEvent(event.id)
               await localNotificationClient.cancel(event.notificationId)

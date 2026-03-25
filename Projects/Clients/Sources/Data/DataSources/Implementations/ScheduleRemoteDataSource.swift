@@ -76,8 +76,8 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     // descriptionBlocks 전송
     if !schedule.descriptionBlocks.isEmpty {
       let encoder = JSONEncoder()
-      if let data = try? encoder.encode(schedule.descriptionBlocks),
-         let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+      let data = try encoder.encode(schedule.descriptionBlocks)
+      if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
         callableData["descriptionBlocks"] = jsonArray
       }
     }
@@ -209,8 +209,8 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     // descriptionBlocks 전송
     if !schedule.descriptionBlocks.isEmpty {
       let encoder = JSONEncoder()
-      if let data = try? encoder.encode(schedule.descriptionBlocks),
-         let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+      let data = try encoder.encode(schedule.descriptionBlocks)
+      if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
         callableData["descriptionBlocks"] = jsonArray
       }
     } else {
@@ -281,7 +281,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     let today = Date()
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: today)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+    guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
 
     // Firestore 'in' 쿼리는 최대 10개까지 지원 - 병렬 처리
     let chunks = groupIds.chunked(into: 10)

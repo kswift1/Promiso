@@ -33,7 +33,6 @@ public struct DescriptionBlockEditor: View {
 
   public var body: some View {
     ScrollViewReader { proxy in
-      let _ = ensureDefaultBlock()
       VStack(alignment: .leading, spacing: 16) {
         ForEach(blocks.indices, id: \.self) { index in
           if blocks.count > 1 && index > 0 {
@@ -65,12 +64,6 @@ public struct DescriptionBlockEditor: View {
         }
       }
     }
-  }
-
-  // body에서 호출하여 빈 경우 기본 블록 확보 (State 변경은 onAppear에서)
-  @discardableResult
-  private func ensureDefaultBlock() -> Bool {
-    return !blocks.isEmpty
   }
 
   // MARK: - Block Editor Row
