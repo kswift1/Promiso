@@ -144,35 +144,33 @@ extension ScheduleImport {
     @ViewBuilder
     private var imageInputSection: some View {
       if let imageData = store.selectedImage, let uiImage = UIImage(data: imageData) {
-        // Image preview
-        VStack(spacing: 8) {
+        // 이미지 미리보기 + 오버레이 액션
+        ZStack(alignment: .topTrailing) {
           Image(uiImage: uiImage)
             .resizable()
-            .scaledToFit()
+            .scaledToFill()
             .frame(maxWidth: .infinity)
-            .frame(maxHeight: 280)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .frame(height: 300)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
 
+          // 제거 버튼
           Button {
             store.send(.view(.removeImage))
           } label: {
-            HStack(spacing: 4) {
-              Image(systemName: "xmark.circle")
-                .font(.system(size: 13))
-              Text(LocalizedStrings.ScheduleImport.removeImage)
-                .font(.system(size: 14))
-            }
-            .foregroundStyle(Color.pmerror.n500)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.pmerror.n500.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            Image(systemName: "xmark")
+              .font(.system(size: 12, weight: .bold))
+              .foregroundStyle(.white)
+              .frame(width: 28, height: 28)
+              .background(.ultraThinMaterial)
+              .clipShape(Circle())
           }
           .buttonStyle(.plain)
-          .contentShape(Rectangle())
+          .contentShape(Circle())
+          .padding(10)
         }
-      } else {
-        // Photo picker placeholder
+        .adaptiveGlassCard()
+
+        // 다른 사진으로 교체
         PhotosPicker(
           selection: Binding(
             get: { nil as PhotosPickerItem? },
@@ -180,14 +178,43 @@ extension ScheduleImport {
           ),
           matching: .images
         ) {
-          VStack(spacing: 16) {
-            Image(systemName: "photo.badge.plus")
-              .font(.system(size: 48))
-              .foregroundStyle(Color.pmindigo.n500)
+          HStack(spacing: 6) {
+            Image(systemName: "arrow.triangle.2.circlepath.camera")
+              .font(.system(size: 13))
+            Text("다른 사진 선택")
+              .font(.system(size: 14))
+          }
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 10)
+          .background(Color.pmindigo.n500.opacity(0.08))
+          .clipShape(RoundedRectangle(cornerRadius: 10))
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      } else {
+        // 사진 선택 placeholder
+        PhotosPicker(
+          selection: Binding(
+            get: { nil as PhotosPickerItem? },
+            set: { store.send(.view(.photoSelected($0))) }
+          ),
+          matching: .images
+        ) {
+          VStack(spacing: 20) {
+            ZStack {
+              Circle()
+                .fill(Color.pmindigo.n500.opacity(0.1))
+                .frame(width: 72, height: 72)
 
-            VStack(spacing: 4) {
+              Image(systemName: "camera.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.pmindigo.n500)
+            }
+
+            VStack(spacing: 6) {
               Text(LocalizedStrings.ScheduleImport.selectPhoto)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.pmtext.primary)
 
               Text(LocalizedStrings.ScheduleImport.selectPhotoHint)
@@ -197,12 +224,13 @@ extension ScheduleImport {
             }
           }
           .frame(maxWidth: .infinity)
-          .frame(minHeight: 200)
+          .frame(minHeight: 240)
+          .adaptiveGlassCard()
           .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 16)
               .strokeBorder(
-                Color.pmindigo.n500.opacity(0.4),
-                style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+                Color.pmindigo.n500.opacity(0.3),
+                style: StrokeStyle(lineWidth: 1.5, dash: [8, 5])
               )
           )
           .contentShape(Rectangle())
