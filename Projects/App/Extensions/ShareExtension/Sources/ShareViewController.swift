@@ -3,17 +3,23 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
 
-  private var sharedText: String = ""
+  private enum SharedContent {
+    case text(String)
+    case image(Data)
+  }
+
+  private var content: SharedContent?
 
   // UI
   private let previewTextView = UITextView()
+  private let previewImageView = UIImageView()
   private let personalButton = UIButton(type: .system)
   private let charCountLabel = UILabel()
 
   override func viewDidLoad() {
     super.viewDidLoad()
     setupUI()
-    handleSharedText()
+    handleSharedContent()
   }
 
   // MARK: - UI Setup
@@ -21,7 +27,7 @@ final class ShareViewController: UIViewController {
   private func setupUI() {
     view.backgroundColor = .systemBackground
 
-    // 네비게이션 바 영역
+    // 네비게이션 바
     let navBar = UIView()
     navBar.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(navBar)
@@ -39,13 +45,12 @@ final class ShareViewController: UIViewController {
     closeButton.translatesAutoresizingMaskIntoConstraints = false
     navBar.addSubview(closeButton)
 
-    // 구분선
     let separator = UIView()
     separator.backgroundColor = .separator
     separator.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(separator)
 
-    // 텍스트 미리보기
+    // 텍스트 미리보기 (텍스트 모드)
     previewTextView.isEditable = true
     previewTextView.isScrollEnabled = true
     previewTextView.font = .systemFont(ofSize: 15)
@@ -53,10 +58,20 @@ final class ShareViewController: UIViewController {
     previewTextView.backgroundColor = .secondarySystemBackground
     previewTextView.layer.cornerRadius = 12
     previewTextView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
-    previewTextView.text = "텍스트를 가져오는 중..."
+    previewTextView.text = "콘텐츠를 가져오는 중..."
     previewTextView.delegate = self
     previewTextView.translatesAutoresizingMaskIntoConstraints = false
+    previewTextView.isHidden = true
     view.addSubview(previewTextView)
+
+    // 이미지 미리보기 (이미지 모드)
+    previewImageView.contentMode = .scaleAspectFit
+    previewImageView.backgroundColor = .secondarySystemBackground
+    previewImageView.layer.cornerRadius = 12
+    previewImageView.clipsToBounds = true
+    previewImageView.translatesAutoresizingMaskIntoConstraints = false
+    previewImageView.isHidden = true
+    view.addSubview(previewImageView)
 
     // 글자 수
     charCountLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
@@ -107,6 +122,11 @@ final class ShareViewController: UIViewController {
       previewTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
       previewTextView.bottomAnchor.constraint(equalTo: charCountLabel.topAnchor, constant: -4),
 
+      previewImageView.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 16),
+      previewImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+      previewImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+      previewImageView.bottomAnchor.constraint(equalTo: charCountLabel.topAnchor, constant: -4),
+
       charCountLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
       charCountLabel.bottomAnchor.constraint(equalTo: personalButton.topAnchor, constant: -16),
 
@@ -120,7 +140,7 @@ final class ShareViewController: UIViewController {
   // MARK: - Actions
 
   @objc private func personalTapped() {
-    guard !sharedText.isEmpty else { return }
+    guard content != nil else { return }
 
     guard
       let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
@@ -138,7 +158,21 @@ final class ShareViewController: UIViewController {
     config?.image = nil
     personalButton.configuration = config
 
-    UserDefaults(suiteName: appGroupId)?.set(sharedText, forKey: "pendingExtractionText")
+    let defaults = UserDefaults(suiteName: appGroupId)
+
+    switch content {
+    case .text(let text):
+      defaults?.set(text, forKey: "pendingExtractionText")
+    case .image(let data):
+      // App Group 공유 컨테이너에 파일로 저장
+      if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) {
+        let fileURL = containerURL.appendingPathComponent("pendingExtractionImage.jpg")
+        try? data.write(to: fileURL)
+      }
+    case .none:
+      break
+    }
+
     OpenURLHelper.open(url, from: self)
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -150,25 +184,31 @@ final class ShareViewController: UIViewController {
     close()
   }
 
-  // MARK: - Text Handling
+  // MARK: - Content Handling
 
-  private func handleSharedText() {
+  private func handleSharedContent() {
     guard let items = extensionContext?.inputItems as? [NSExtensionItem], !items.isEmpty else {
-      previewTextView.text = "공유된 텍스트를 찾을 수 없습니다"
+      showError("공유된 콘텐츠를 찾을 수 없습니다")
       return
     }
 
     for item in items {
-      if let attachments = item.attachments {
-        for provider in attachments {
-          if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-            loadText(from: provider, typeIdentifier: UTType.plainText.identifier)
-            return
-          }
-          if provider.hasItemConformingToTypeIdentifier(UTType.text.identifier) {
-            loadText(from: provider, typeIdentifier: UTType.text.identifier)
-            return
-          }
+      guard let attachments = item.attachments else { continue }
+
+      for provider in attachments {
+        // 텍스트 우선
+        if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+          loadText(from: provider, typeIdentifier: UTType.plainText.identifier)
+          return
+        }
+        if provider.hasItemConformingToTypeIdentifier(UTType.text.identifier) {
+          loadText(from: provider, typeIdentifier: UTType.text.identifier)
+          return
+        }
+        // 이미지
+        if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+          loadImage(from: provider)
+          return
         }
       }
 
@@ -178,7 +218,7 @@ final class ShareViewController: UIViewController {
         return
       }
     }
-    previewTextView.text = "공유된 텍스트를 찾을 수 없습니다"
+    showError("공유된 콘텐츠를 찾을 수 없습니다")
   }
 
   private func loadText(from provider: NSItemProvider, typeIdentifier: String) {
@@ -192,7 +232,7 @@ final class ShareViewController: UIViewController {
         }
 
         guard let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-          self?.previewTextView.text = "빈 텍스트입니다"
+          self?.showError("빈 텍스트입니다")
           return
         }
         self?.showText(String(text.prefix(2000)))
@@ -200,12 +240,61 @@ final class ShareViewController: UIViewController {
     }
   }
 
+  private func loadImage(from provider: NSItemProvider) {
+    provider.loadItem(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+      DispatchQueue.main.async {
+        var imageData: Data?
+
+        if let url = data as? URL {
+          imageData = try? Data(contentsOf: url)
+        } else if let data = data as? Data {
+          imageData = data
+        } else if let image = data as? UIImage {
+          imageData = image.jpegData(compressionQuality: 0.8)
+        }
+
+        guard let imageData, let image = UIImage(data: imageData) else {
+          self?.showError("이미지를 불러올 수 없습니다")
+          return
+        }
+
+        // 4MB 초과 시 리사이즈
+        var finalData = imageData
+        if finalData.count > 4 * 1024 * 1024 {
+          finalData = image.jpegData(compressionQuality: 0.5) ?? imageData
+        }
+
+        self?.showImage(finalData, image: image)
+      }
+    }
+  }
+
+  // MARK: - Display
+
   private func showText(_ text: String) {
-    sharedText = text
+    content = .text(text)
+    previewTextView.isHidden = false
+    previewImageView.isHidden = true
     previewTextView.text = text
     previewTextView.textColor = .label
     charCountLabel.text = "\(text.count)자"
     personalButton.isEnabled = true
+  }
+
+  private func showImage(_ data: Data, image: UIImage) {
+    content = .image(data)
+    previewTextView.isHidden = true
+    previewImageView.isHidden = false
+    previewImageView.image = image
+    charCountLabel.text = ""
+    personalButton.isEnabled = true
+  }
+
+  private func showError(_ message: String) {
+    previewTextView.isHidden = false
+    previewImageView.isHidden = true
+    previewTextView.text = message
+    previewTextView.isEditable = false
   }
 
   private func close() {
@@ -218,7 +307,7 @@ final class ShareViewController: UIViewController {
 extension ShareViewController: UITextViewDelegate {
   func textViewDidChange(_ textView: UITextView) {
     let text = String(textView.text.prefix(2000))
-    sharedText = text
+    content = .text(text)
     charCountLabel.text = "\(text.count)자"
     personalButton.isEnabled = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }

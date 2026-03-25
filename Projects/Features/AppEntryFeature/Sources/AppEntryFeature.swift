@@ -164,8 +164,8 @@ extension AppEntry {
 
           case .scenePhaseChanged(let phase):
             guard phase == .active else { return .none }
-            // Share Extension에서 저장한 pending 텍스트 확인
-            if AppConstants.AppGroup.hasPendingExtractionText {
+            // Share Extension에서 저장한 pending 데이터(텍스트/이미지) 확인
+            if AppConstants.AppGroup.hasPendingExtraction {
               return routeOrPendDeeplink(.extractSchedule, state: &state)
             }
             // 앱스토어에서 돌아왔을 때 버전 재체크

@@ -726,10 +726,17 @@ extension PersonalMode {
 // MARK: - Deeplink Helpers
 
 extension PersonalMode.Feature {
-  /// Share Extension 텍스트로 ScheduleImport 폼을 엽니다.
+  /// Share Extension에서 공유된 데이터(텍스트/이미지)로 ScheduleImport 폼을 엽니다.
   func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
-    let text = AppConstants.AppGroup.consumePendingExtractionText()
-    let importState = ScheduleImport.Feature.State(inputText: text ?? "")
+    var importState = ScheduleImport.Feature.State()
+
+    if let text = AppConstants.AppGroup.consumePendingExtractionText() {
+      importState.inputText = text
+    } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {
+      importState.selectedImage = imageData
+      importState.inputMode = .image
+    }
+
     state.scheduleImport = importState
     return .none
   }

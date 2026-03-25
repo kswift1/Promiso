@@ -182,6 +182,41 @@ public enum AppConstants {
       }
       return text
     }
+
+    // MARK: - Pending Image
+
+    private static let pendingImageFileName = "pendingExtractionImage.jpg"
+
+    /// App Group 공유 컨테이너의 이미지 파일 경로
+    private static var pendingImageURL: URL? {
+      FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+        .appendingPathComponent(pendingImageFileName)
+    }
+
+    /// pending 이미지가 있는지 확인
+    public static var hasPendingExtractionImage: Bool {
+      guard let url = pendingImageURL else { return false }
+      return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    /// pending 데이터(텍스트 또는 이미지)가 있는지 확인
+    public static var hasPendingExtraction: Bool {
+      hasPendingExtractionText || hasPendingExtractionImage
+    }
+
+    /// 이미지 저장 (Extension에서 호출)
+    public static func savePendingExtractionImage(_ data: Data) {
+      guard let url = pendingImageURL else { return }
+      try? data.write(to: url)
+    }
+
+    /// pending 이미지를 읽고 즉시 삭제 (consume)
+    public static func consumePendingExtractionImage() -> Data? {
+      guard let url = pendingImageURL,
+            let data = try? Data(contentsOf: url) else { return nil }
+      try? FileManager.default.removeItem(at: url)
+      return data
+    }
   }
 
   // MARK: - External URLs

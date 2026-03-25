@@ -37,7 +37,7 @@ extension ScheduleImport {
       public var selectedImage: Data? = nil
       var isExtracting: Bool = false
       var extractionError: String?
-      var inputMode: InputMode = .text
+      public var inputMode: InputMode = .text
 
       public init(inputText: String = "") {
         self.inputText = inputText

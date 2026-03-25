@@ -374,7 +374,8 @@ let shareExtensionDev = Target.target(
       "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
       "NSExtensionAttributes": [
         "NSExtensionActivationRule": [
-          "NSExtensionActivationSupportsText": .boolean(true)
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
         ]
       ]
     ]
@@ -409,7 +410,8 @@ let shareExtensionStage = Target.target(
       "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
       "NSExtensionAttributes": [
         "NSExtensionActivationRule": [
-          "NSExtensionActivationSupportsText": .boolean(true)
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
         ]
       ]
     ]
@@ -456,7 +458,8 @@ let shareExtensionProd = Target.target(
       "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
       "NSExtensionAttributes": [
         "NSExtensionActivationRule": [
-          "NSExtensionActivationSupportsText": .boolean(true)
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
         ]
       ]
     ]
