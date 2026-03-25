@@ -480,7 +480,7 @@ struct CalendarOverlayView: View {
     .padding(16)
     .frame(maxWidth: .infinity, alignment: .leading)
     .frame(height: 130)
-    .adaptiveGlassCard(cornerRadius: 20)
+    .staticGlassCard(cornerRadius: 20)
   }
 
   // MARK: - Failed Card
