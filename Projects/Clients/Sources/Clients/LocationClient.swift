@@ -95,18 +95,25 @@ extension LocationClient: DependencyKey {
     },
     streamHeading: {
       AsyncStream { continuation in
-        let manager = CLLocationManager()
         let delegate = HeadingDelegate()
         delegate.onHeadingUpdate = { heading in
           continuation.yield(heading)
         }
-        manager.delegate = delegate
-        manager.startUpdatingHeading()
+
+        // CLLocationManager는 반드시 메인 스레드에서 생성/시작
+        DispatchQueue.main.async {
+          let manager = CLLocationManager()
+          manager.delegate = delegate
+          manager.startUpdatingHeading()
+          // delegate가 manager를 강하게 참조하여 수명 유지
+          delegate.manager = manager
+        }
+
         continuation.onTermination = { _ in
-          manager.stopUpdatingHeading()
-          // delegate와 manager를 continuation 수명 동안 유지
-          _ = delegate
-          _ = manager
+          DispatchQueue.main.async {
+            delegate.manager?.stopUpdatingHeading()
+            delegate.manager = nil
+          }
         }
       }
     }
@@ -114,6 +121,7 @@ extension LocationClient: DependencyKey {
 
   private final class HeadingDelegate: NSObject, CLLocationManagerDelegate, @unchecked Sendable {
     var onHeadingUpdate: ((Double) -> Void)?
+    var manager: CLLocationManager?
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
       let heading = newHeading.trueHeading
