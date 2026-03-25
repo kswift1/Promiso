@@ -47,7 +47,8 @@ platform :ios do
     dev_bundle_ids = [
       "com.promiso.dev",
       "com.promiso.dev.liveactivity",
-      "com.promiso.dev.promisewidget"
+      "com.promiso.dev.promisewidget",
+      "com.promiso.dev.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -120,7 +121,8 @@ platform :ios do
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
       "com.promiso.stage.promisewidget",
-      "com.promiso.stage.shareextension"
+      "com.promiso.stage.shareextension",
+      "com.promiso.stage.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -204,7 +206,8 @@ platform :ios do
       "com.promiso",
       "com.promiso.liveactivity",
       "com.promiso.promisewidget",
-      "com.promiso.shareextension"
+      "com.promiso.shareextension",
+      "com.promiso.notificationservice"
     ]
 
     # 1-1. Development 프로파일 (Debug configuration 검증용)
@@ -342,14 +345,17 @@ platform :ios do
       "com.promiso.dev.liveactivity",
       "com.promiso.dev.promisewidget",
       "com.promiso.dev.shareextension",
+      "com.promiso.dev.notificationservice",
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
       "com.promiso.stage.promisewidget",
       "com.promiso.stage.shareextension",
+      "com.promiso.stage.notificationservice",
       "com.promiso",
       "com.promiso.liveactivity",
       "com.promiso.promisewidget",
-      "com.promiso.shareextension"
+      "com.promiso.shareextension",
+      "com.promiso.notificationservice"
     ]
 
     # Development certificates
@@ -389,14 +395,17 @@ platform :ios do
       "com.promiso.dev.liveactivity",
       "com.promiso.dev.promisewidget",
       "com.promiso.dev.shareextension",
+      "com.promiso.dev.notificationservice",
       "com.promiso.stage",
       "com.promiso.stage.liveactivity",
       "com.promiso.stage.promisewidget",
       "com.promiso.stage.shareextension",
+      "com.promiso.stage.notificationservice",
       "com.promiso",
       "com.promiso.liveactivity",
       "com.promiso.promisewidget",
-      "com.promiso.shareextension"
+      "com.promiso.shareextension",
+      "com.promiso.notificationservice"
     ]
 
     # Development profiles (Debug configuration 검증용)

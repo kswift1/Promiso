@@ -26,6 +26,7 @@ extension CreatePersonalEvent {
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.appReviewClient) var appReviewClient
 
     public init() {}
 
@@ -35,6 +36,7 @@ extension CreatePersonalEvent {
       case emojiDebounce
       case conflictCheckDebounce
       case weatherFetchDebounce
+      case appReviewDelay
     }
 
     // MARK: - Mode
@@ -417,13 +419,24 @@ extension CreatePersonalEvent {
 
           case .saveSuccess(let event):
             state.isSaving = false
-            let delegateAction: Action = state.mode == .create
+            let isCreate = state.mode == .create
+            let delegateAction: Action = isCreate
               ? .delegate(.eventCreated)
               : .delegate(.eventUpdated(event))
-            return .merge(
+            var effects: [Effect<Action>] = [
               .run { _ in await hapticFeedback.success() },
-              .send(delegateAction)
-            )
+              .send(delegateAction),
+            ]
+            if isCreate {
+              effects.append(
+                .run { [appReviewClient, clock] _ in
+                  try? await clock.sleep(for: Constants.appReviewRequestDelay)
+                  await appReviewClient.requestReviewIfEligible()
+                }
+                .cancellable(id: CancelID.appReviewDelay)
+              )
+            }
+            return .merge(effects)
 
           case .saveFailed(let message):
             state.isSaving = false
@@ -537,6 +550,7 @@ extension CreatePersonalEvent {
     private enum Constants {
       static let weatherForecastMaxDays = 10
       static let weatherFetchDebounceMilliseconds = 500
+      static let appReviewRequestDelay: Duration = .seconds(2)
     }
 
     private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {

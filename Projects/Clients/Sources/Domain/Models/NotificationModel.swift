@@ -44,6 +44,12 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
   /// 읽은 시각
   public let readAt: Date?
 
+  /// 이미지 URL (발신자 프로필 등)
+  public let imageUrl: String?
+
+  /// 변경 정보 (약속 수정 알림에서 사용)
+  public let changes: [NotificationChange]?
+
   // MARK: - Initializer
 
   public init(
@@ -57,7 +63,9 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     relatedUserId: String? = nil,
     isRead: Bool = false,
     createdAt: Date = Date(),
-    readAt: Date? = nil
+    readAt: Date? = nil,
+    imageUrl: String? = nil,
+    changes: [NotificationChange]? = nil
   ) {
     self.notificationId = notificationId
     self.userId = userId
@@ -70,6 +78,8 @@ public struct NotificationModel: Equatable, Hashable, Identifiable, Sendable {
     self.isRead = isRead
     self.createdAt = createdAt
     self.readAt = readAt
+    self.imageUrl = imageUrl
+    self.changes = changes
   }
 }
 
@@ -154,6 +164,21 @@ public enum NotificationCategory: String, Codable, CaseIterable, Equatable, Hash
 public enum NotificationFilter: String, CaseIterable, Equatable, Hashable, Sendable {
   case all = "all"
   case unread = "unread"
+}
+
+// MARK: - NotificationChange
+
+/// 알림 변경 정보 (약속 수정 시)
+public struct NotificationChange: Equatable, Hashable, Sendable {
+  public let label: String
+  public let before: String
+  public let after: String
+
+  public init(label: String, before: String, after: String) {
+    self.label = label
+    self.before = before
+    self.after = after
+  }
 }
 
 // MARK: - Computed Properties

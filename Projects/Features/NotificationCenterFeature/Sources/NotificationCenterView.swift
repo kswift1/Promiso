@@ -389,10 +389,14 @@ struct NotificationCellContent: View {
           .foregroundStyle(notification.isRead ? Color.pmgray.n500 : Color.pmgray.n800)
           .lineLimit(1)
 
-        Text(notification.body)
-          .font(.footnote)
-          .foregroundStyle(Color.pmgray.n500)
-          .lineLimit(2)
+        if let changes = notification.changes, !changes.isEmpty {
+          changesView(changes)
+        } else {
+          Text(notification.body)
+            .font(.footnote)
+            .foregroundStyle(Color.pmgray.n500)
+            .lineLimit(2)
+        }
 
         Text(notification.relativeTimeString)
           .font(.caption)
@@ -411,15 +415,53 @@ struct NotificationCellContent: View {
   }
 
   @ViewBuilder
-  private var iconView: some View {
-    ZStack {
-      Circle()
-        .fill(iconBackgroundColor.opacity(0.15))
-        .frame(width: 44, height: 44)
+  private func changesView(
+    _ changes: [NotificationChange]
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      ForEach(
+        Array(changes.prefix(3).enumerated()),
+        id: \.offset
+      ) { _, change in
+        HStack(spacing: 4) {
+          Text(change.label)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(Color.pmindigo.n500)
+          Text(change.before)
+            .font(.caption2)
+            .foregroundStyle(Color.pmgray.n400)
+            .strikethrough()
+          Image(systemName: "arrow.right")
+            .font(.system(size: 8))
+            .foregroundStyle(Color.pmgray.n400)
+          Text(change.after)
+            .font(.caption2)
+            .foregroundStyle(Color.pmgray.n700)
+        }
+        .lineLimit(1)
+      }
+    }
+  }
 
-      Image(systemName: notification.type.iconName)
-        .font(.system(size: 18))
-        .foregroundStyle(iconBackgroundColor)
+  @ViewBuilder
+  private var iconView: some View {
+    if notification.imageUrl != nil {
+      ProfileAvatarView(
+        profileImageUrl: notification.imageUrl,
+        displayName: "",
+        size: 44,
+        borderWidth: 0
+      )
+    } else {
+      ZStack {
+        Circle()
+          .fill(iconBackgroundColor.opacity(0.15))
+          .frame(width: 44, height: 44)
+
+        Image(systemName: notification.type.iconName)
+          .font(.system(size: 18))
+          .foregroundStyle(iconBackgroundColor)
+      }
     }
   }
 
