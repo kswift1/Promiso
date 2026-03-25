@@ -66,8 +66,17 @@ public struct DescriptionBlockEditor: View {
   // MARK: - Text Block (플랫, 카드 없음)
 
   private func textBlockRow(for index: Int) -> some View {
-    HStack(alignment: .top, spacing: 8) {
-      blockTypeMenu(for: index)
+    VStack(alignment: .leading, spacing: 6) {
+      // 블록이 2개 이상일 때만 타입 메뉴 표시 (단독 텍스트면 깔끔하게)
+      if blocks.count > 1 {
+        HStack(spacing: 4) {
+          blockTypeMenu(for: index)
+
+          Text("텍스트")
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
+      }
 
       TextField(
         "텍스트 입력",
@@ -84,33 +93,33 @@ public struct DescriptionBlockEditor: View {
       )
       .lineLimit(2...10)
       .font(.system(size: 15))
+      .padding(12)
+      .background(Color(.systemGray6))
+      .clipShape(RoundedRectangle(cornerRadius: 12))
     }
   }
 
   // MARK: - Checklist Block
 
   private func checklistBlockRow(for index: Int) -> some View {
-    HStack(alignment: .top, spacing: 8) {
-      blockTypeMenu(for: index)
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(spacing: 4) {
+        blockTypeMenu(for: index)
 
-      VStack(alignment: .leading, spacing: 6) {
-        if case .checklist(let items) = blocks[index].content {
-          ForEach(items.indices, id: \.self) { itemIndex in
-            checklistItemRow(blockIndex: index, itemIndex: itemIndex)
-          }
+        Text("체크리스트")
+          .font(.system(size: 13, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
+
+      if case .checklist(let items) = blocks[index].content {
+        ForEach(items.indices, id: \.self) { itemIndex in
+          checklistItemRow(blockIndex: index, itemIndex: itemIndex)
         }
       }
-      .padding(.leading, 4)
-      .overlay(
-        alignment: .leading,
-        content: {
-          RoundedRectangle(cornerRadius: 2)
-            .fill(Color.pmindigo.n500.opacity(0.3))
-            .frame(width: 2)
-            .padding(.leading, 0)
-        }
-      )
     }
+    .padding(12)
+    .background(Color(.systemGray6))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
   private func checklistItemRow(blockIndex: Int, itemIndex: Int) -> some View {
@@ -172,8 +181,10 @@ public struct DescriptionBlockEditor: View {
               blocks[blockIndex].content = .checklist(items)
             }
           }
-        )
+        ),
+        axis: .vertical
       )
+      .lineLimit(1)
       .font(.system(size: 15))
       .strikethrough({
         if case .checklist(let items) = blocks[blockIndex].content,
@@ -188,26 +199,24 @@ public struct DescriptionBlockEditor: View {
   // MARK: - Bullet List Block
 
   private func bulletListBlockRow(for index: Int) -> some View {
-    HStack(alignment: .top, spacing: 8) {
-      blockTypeMenu(for: index)
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(spacing: 4) {
+        blockTypeMenu(for: index)
 
-      VStack(alignment: .leading, spacing: 6) {
-        if case .bulletList(let items) = blocks[index].content {
-          ForEach(items.indices, id: \.self) { itemIndex in
-            bulletItemRow(blockIndex: index, itemIndex: itemIndex)
-          }
+        Text("목록")
+          .font(.system(size: 13, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
+
+      if case .bulletList(let items) = blocks[index].content {
+        ForEach(items.indices, id: \.self) { itemIndex in
+          bulletItemRow(blockIndex: index, itemIndex: itemIndex)
         }
       }
-      .padding(.leading, 4)
-      .overlay(
-        alignment: .leading,
-        content: {
-          RoundedRectangle(cornerRadius: 2)
-            .fill(Color.pmtext.secondary.opacity(0.4))
-            .frame(width: 2)
-        }
-      )
     }
+    .padding(12)
+    .background(Color(.systemGray6))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
   private func bulletItemRow(blockIndex: Int, itemIndex: Int) -> some View {
@@ -245,8 +254,10 @@ public struct DescriptionBlockEditor: View {
               blocks[blockIndex].content = .bulletList(items)
             }
           }
-        )
+        ),
+        axis: .vertical
       )
+      .lineLimit(1)
       .font(.system(size: 15))
     }
   }
