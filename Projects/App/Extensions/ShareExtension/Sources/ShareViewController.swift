@@ -6,7 +6,6 @@ final class ShareViewController: UIViewController {
   private var sharedText: String = ""
 
   // UI
-  private let containerView = UIView()
   private let previewTextView = UITextView()
   private let personalButton = UIButton(type: .system)
   private let charCountLabel = UILabel()
@@ -20,75 +19,52 @@ final class ShareViewController: UIViewController {
   // MARK: - UI Setup
 
   private func setupUI() {
-    view.backgroundColor = UIColor.black.withAlphaComponent(0.35)
-    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped))
-    tapGesture.delegate = self
-    view.addGestureRecognizer(tapGesture)
+    view.backgroundColor = .systemBackground
 
-    // 하단 시트
-    containerView.backgroundColor = .systemBackground
-    containerView.layer.cornerRadius = 24
-    containerView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-    containerView.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(containerView)
-
-    // 핸들 바
-    let handleBar = UIView()
-    handleBar.backgroundColor = UIColor.tertiaryLabel
-    handleBar.layer.cornerRadius = 2.5
-    handleBar.translatesAutoresizingMaskIntoConstraints = false
-    containerView.addSubview(handleBar)
-
-    // 헤더: 아이콘 + 타이틀
-    let headerStack = UIStackView()
-    headerStack.axis = .horizontal
-    headerStack.spacing = 8
-    headerStack.alignment = .center
-    headerStack.translatesAutoresizingMaskIntoConstraints = false
-    containerView.addSubview(headerStack)
-
-    let iconView = UIImageView(image: UIImage(systemName: "text.viewfinder"))
-    iconView.tintColor = .systemIndigo
-    iconView.contentMode = .scaleAspectFit
-    iconView.translatesAutoresizingMaskIntoConstraints = false
-    iconView.widthAnchor.constraint(equalToConstant: 22).isActive = true
-    iconView.heightAnchor.constraint(equalToConstant: 22).isActive = true
-    headerStack.addArrangedSubview(iconView)
+    // 네비게이션 바 영역
+    let navBar = UIView()
+    navBar.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(navBar)
 
     let titleLabel = UILabel()
-    titleLabel.text = "텍스트에서 일정 추출"
+    titleLabel.text = "일정 추출"
     titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
-    headerStack.addArrangedSubview(titleLabel)
+    titleLabel.translatesAutoresizingMaskIntoConstraints = false
+    navBar.addSubview(titleLabel)
 
     let closeButton = UIButton(type: .system)
     closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
     closeButton.tintColor = .tertiaryLabel
-    closeButton.addTarget(self, action: #selector(backgroundTapped), for: .touchUpInside)
+    closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
     closeButton.translatesAutoresizingMaskIntoConstraints = false
-    closeButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
-    closeButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
-    containerView.addSubview(closeButton)
+    navBar.addSubview(closeButton)
+
+    // 구분선
+    let separator = UIView()
+    separator.backgroundColor = .separator
+    separator.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(separator)
 
     // 텍스트 미리보기
     previewTextView.isEditable = false
     previewTextView.isScrollEnabled = true
-    previewTextView.font = .systemFont(ofSize: 14)
+    previewTextView.font = .systemFont(ofSize: 15)
     previewTextView.textColor = .secondaryLabel
-    previewTextView.backgroundColor = UIColor.secondarySystemBackground
+    previewTextView.backgroundColor = .secondarySystemBackground
     previewTextView.layer.cornerRadius = 12
     previewTextView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
     previewTextView.text = "텍스트를 가져오는 중..."
     previewTextView.translatesAutoresizingMaskIntoConstraints = false
-    containerView.addSubview(previewTextView)
+    view.addSubview(previewTextView)
 
     // 글자 수
     charCountLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
     charCountLabel.textColor = .tertiaryLabel
     charCountLabel.textAlignment = .right
     charCountLabel.translatesAutoresizingMaskIntoConstraints = false
-    containerView.addSubview(charCountLabel)
+    view.addSubview(charCountLabel)
 
-    // 개인 일정 추출 버튼
+    // 버튼
     var config = UIButton.Configuration.filled()
     config.cornerStyle = .large
     config.baseBackgroundColor = .systemIndigo
@@ -104,44 +80,40 @@ final class ShareViewController: UIViewController {
     personalButton.isEnabled = false
     personalButton.addTarget(self, action: #selector(personalTapped), for: .touchUpInside)
     personalButton.translatesAutoresizingMaskIntoConstraints = false
-    containerView.addSubview(personalButton)
+    view.addSubview(personalButton)
 
     NSLayoutConstraint.activate([
-      containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      navBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+      navBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      navBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      navBar.heightAnchor.constraint(equalToConstant: 44),
 
-      handleBar.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
-      handleBar.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
-      handleBar.widthAnchor.constraint(equalToConstant: 36),
-      handleBar.heightAnchor.constraint(equalToConstant: 5),
+      titleLabel.centerXAnchor.constraint(equalTo: navBar.centerXAnchor),
+      titleLabel.centerYAnchor.constraint(equalTo: navBar.centerYAnchor),
 
-      headerStack.topAnchor.constraint(equalTo: handleBar.bottomAnchor, constant: 16),
-      headerStack.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
+      closeButton.trailingAnchor.constraint(equalTo: navBar.trailingAnchor, constant: -16),
+      closeButton.centerYAnchor.constraint(equalTo: navBar.centerYAnchor),
+      closeButton.widthAnchor.constraint(equalToConstant: 30),
+      closeButton.heightAnchor.constraint(equalToConstant: 30),
 
-      closeButton.centerYAnchor.constraint(equalTo: headerStack.centerYAnchor),
-      closeButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+      separator.topAnchor.constraint(equalTo: navBar.bottomAnchor),
+      separator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      separator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      separator.heightAnchor.constraint(equalToConstant: 1.0 / UIScreen.main.scale),
 
-      previewTextView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 16),
-      previewTextView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
-      previewTextView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-      previewTextView.heightAnchor.constraint(equalToConstant: 140),
+      previewTextView.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 16),
+      previewTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+      previewTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+      previewTextView.bottomAnchor.constraint(equalTo: charCountLabel.topAnchor, constant: -4),
 
-      charCountLabel.topAnchor.constraint(equalTo: previewTextView.bottomAnchor, constant: 4),
-      charCountLabel.trailingAnchor.constraint(equalTo: previewTextView.trailingAnchor),
+      charCountLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+      charCountLabel.bottomAnchor.constraint(equalTo: personalButton.topAnchor, constant: -16),
 
-      personalButton.topAnchor.constraint(equalTo: charCountLabel.bottomAnchor, constant: 12),
-      personalButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
-      personalButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
+      personalButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+      personalButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
       personalButton.heightAnchor.constraint(equalToConstant: 52),
-      personalButton.bottomAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+      personalButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
     ])
-
-    // 시트 등장 애니메이션
-    containerView.transform = CGAffineTransform(translationX: 0, y: 400)
-    UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0.5) {
-      self.containerView.transform = .identity
-    }
   }
 
   // MARK: - Actions
@@ -158,7 +130,6 @@ final class ShareViewController: UIViewController {
       return
     }
 
-    // 버튼 로딩 상태
     personalButton.isEnabled = false
     var config = personalButton.configuration
     config?.showsActivityIndicator = true
@@ -174,14 +145,8 @@ final class ShareViewController: UIViewController {
     }
   }
 
-  @objc private func backgroundTapped() {
-    // 닫기 애니메이션
-    UIView.animate(withDuration: 0.25, animations: {
-      self.containerView.transform = CGAffineTransform(translationX: 0, y: 400)
-      self.view.backgroundColor = .clear
-    }) { _ in
-      self.close()
-    }
+  @objc private func closeTapped() {
+    close()
   }
 
   // MARK: - Text Handling
@@ -244,14 +209,5 @@ final class ShareViewController: UIViewController {
 
   private func close() {
     extensionContext?.completeRequest(returningItems: nil)
-  }
-}
-
-// MARK: - UIGestureRecognizerDelegate
-
-extension ShareViewController: UIGestureRecognizerDelegate {
-  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-    let location = touch.location(in: containerView)
-    return !containerView.bounds.contains(location)
   }
 }
