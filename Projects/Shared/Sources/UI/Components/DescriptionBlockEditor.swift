@@ -182,7 +182,9 @@ public struct DescriptionBlockEditor: View {
               let newItem = ChecklistItem(text: newItemText)
               items.insert(newItem, at: itemIndex + 1)
               blocks[blockIndex].content = .checklist(items)
-              focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
+              DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
+              }
             } else {
               items[itemIndex].text = newValue
               blocks[blockIndex].content = .checklist(items)
@@ -191,7 +193,7 @@ public struct DescriptionBlockEditor: View {
         ),
         axis: .vertical
       )
-      .lineLimit(1)
+      .lineLimit(1...2)
       .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
       .strikethrough({
@@ -257,7 +259,9 @@ public struct DescriptionBlockEditor: View {
               let newItemText = parts.count > 1 ? String(parts[1]) : ""
               items.insert(newItemText, at: itemIndex + 1)
               blocks[blockIndex].content = .bulletList(items)
-              focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
+              DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
+              }
             } else {
               items[itemIndex] = newValue
               blocks[blockIndex].content = .bulletList(items)
@@ -266,7 +270,7 @@ public struct DescriptionBlockEditor: View {
         ),
         axis: .vertical
       )
-      .lineLimit(1)
+      .lineLimit(1...2)
       .focused($focusedItem, equals: ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex))
       .font(.system(size: 15))
     }
