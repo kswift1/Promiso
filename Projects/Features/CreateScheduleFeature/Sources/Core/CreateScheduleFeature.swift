@@ -180,6 +180,7 @@ public enum CreateSchedule {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setDescriptionBlocks([DescriptionBlock])
         case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
@@ -367,6 +368,12 @@ public enum CreateSchedule {
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
             state.schedule.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .setDescriptionBlocks(let blocks):
+            state.schedule.descriptionBlocks = blocks
+            // 하위 호환: description도 업데이트
+            state.schedule.description = blocks.plainText
             return .none
 
           case .setTrackingStartMinutes(let minutes):

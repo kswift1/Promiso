@@ -6,6 +6,18 @@
  */
 
 // ============================================================================
+// 공통 타입
+// ============================================================================
+
+/** 구조화된 설명 블록 */
+export interface DescriptionBlock {
+  id: string;
+  type: "text" | "checklist" | "bulletList";
+  content?: string;
+  items?: Array<{ id: string; text: string; isChecked?: boolean }>;
+}
+
+// ============================================================================
 // createGroup
 // ============================================================================
 
@@ -247,6 +259,9 @@ export interface CreatePromiseRequest {
   /** 약속 설명 (선택적) */
   description?: string | null;
 
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: DescriptionBlock[] | null;
+
   /** 시작 시간 (ISO 8601 문자열) */
   startAt: string;
 
@@ -336,6 +351,9 @@ export interface UpdatePromiseRequest {
 
   /** 약속 설명 (선택적) */
   description?: string | null;
+
+  /** 구조화된 설명 블록 (선택적) */
+  descriptionBlocks?: DescriptionBlock[] | null;
 
   /** 시작 시간 (선택적, ISO 8601 문자열) */
   startAt?: string | null;

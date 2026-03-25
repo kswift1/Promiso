@@ -73,6 +73,15 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
       callableData["description"] = description
     }
 
+    // descriptionBlocks 전송
+    if !schedule.descriptionBlocks.isEmpty {
+      let encoder = JSONEncoder()
+      let data = try encoder.encode(schedule.descriptionBlocks)
+      if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+        callableData["descriptionBlocks"] = jsonArray
+      }
+    }
+
     if let endAt = schedule.endAt {
       callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     }
@@ -197,6 +206,17 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
       callableData["description"] = NSNull()
     }
 
+    // descriptionBlocks 전송
+    if !schedule.descriptionBlocks.isEmpty {
+      let encoder = JSONEncoder()
+      let data = try encoder.encode(schedule.descriptionBlocks)
+      if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+        callableData["descriptionBlocks"] = jsonArray
+      }
+    } else {
+      callableData["descriptionBlocks"] = NSNull()
+    }
+
     if let endAt = schedule.endAt {
       callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     } else {
@@ -261,7 +281,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     let today = Date()
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: today)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+    guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
 
     // Firestore 'in' 쿼리는 최대 10개까지 지원 - 병렬 처리
     let chunks = groupIds.chunked(into: 10)

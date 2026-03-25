@@ -152,6 +152,7 @@ extension ScheduleDetail {
         case mapDetailDismissed
         case toastDismissed
         case closeVoteTapped
+        case toggleChecklist(blockId: String, itemId: String)
       }
 
       @CasePathable
@@ -377,6 +378,22 @@ extension ScheduleDetail {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case let .toggleChecklist(blockId, itemId):
+            guard let blockIndex = state.schedule.descriptionBlocks.firstIndex(where: { $0.id == blockId }),
+                  case .checklist(var items) = state.schedule.descriptionBlocks[blockIndex].content,
+                  let itemIndex = items.firstIndex(where: { $0.id == itemId }) else {
+              return .none
+            }
+            items[itemIndex].isChecked.toggle()
+            state.schedule.descriptionBlocks[blockIndex].content = .checklist(items)
+            let updatedSchedule = state.schedule
+            return .merge(
+              .run { [scheduleClient] _ in
+                try? await scheduleClient.updateSchedule(updatedSchedule)
+              },
+              .send(.delegate(.scheduleUpdated(updatedSchedule)))
+            )
 
           case .closeVoteTapped:
             let scheduleId = state.schedule.id

@@ -65,6 +65,7 @@ extension EditSchedule {
         originalSchedule.title != editedSchedule.title ||
         originalSchedule.emoji != editedSchedule.emoji ||
         originalSchedule.description != editedSchedule.description ||
+        originalSchedule.descriptionBlocks != editedSchedule.descriptionBlocks ||
         originalSchedule.startAt != editedSchedule.startAt ||
         originalSchedule.endAt != editedSchedule.endAt ||
         originalSchedule.minimumParticipants != editedSchedule.minimumParticipants ||
@@ -107,6 +108,7 @@ extension EditSchedule {
         case setTitle(String)
         case setEmoji(String)
         case setDescription(String)
+        case setDescriptionBlocks([DescriptionBlock])
         case setStartDate(Date)
         case setEndDate(Date?)
         case toggleUseEndTime
@@ -175,6 +177,11 @@ extension EditSchedule {
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
             state.editedSchedule.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .setDescriptionBlocks(let blocks):
+            state.editedSchedule.descriptionBlocks = blocks
+            state.editedSchedule.description = blocks.plainText
             return .none
 
           case .setStartDate(let date):

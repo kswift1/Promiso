@@ -659,6 +659,7 @@ promises/{promiseId}
 | `title` | String | ✅ | - | 약속 제목 |
 | `emoji` | String | ❌ | null | 약속 대표 이모지 |
 | `description` | String | ❌ | null | 약속 설명 |
+| `descriptionBlocks` | Array<Map> | ❌ | null | 구조화된 설명 블록 배열 (text/checklist/bulletList) |
 | `hostId` | String | ✅ | - | 호스트(생성자) ID |
 | `groupId` | String | ✅ | - | 그룹 ID |
 | `minimumParticipants` | Number | ✅ | 2 | 최소 참가자 수 (확정 기준) |
@@ -679,6 +680,12 @@ promises/{promiseId}
   "title": "영화 관람",
   "emoji": "🍿",
   "description": "마블 신작 보러 가기",
+  "descriptionBlocks": [
+    { "id": "abc", "type": "text", "content": "마블 신작 보러 가기" },
+    { "id": "def", "type": "checklist", "items": [
+      { "id": "item1", "text": "팝콘 사기", "isChecked": false }
+    ]}
+  ],
   "hostId": "user_kim123",
   "groupId": "group_friends",
   "minimumParticipants": 2,
@@ -988,6 +995,7 @@ users/{userId}/personalEvents/{eventId}
 | `title` | String | ✅ | - | 일정 제목 |
 | `emoji` | String | ❌ | null | 일정 대표 이모지 (AI 자동 생성) |
 | `description` | String | ❌ | null | 일정 설명 (메모) |
+| `descriptionBlocks` | Array<Map> | ❌ | null | 구조화된 설명 블록 배열 (text/checklist/bulletList) |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Map | ❌ | null | 장소 정보 (아래 참조) |

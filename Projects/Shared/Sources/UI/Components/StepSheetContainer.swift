@@ -84,6 +84,13 @@ public struct StepSheetContainer<
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
       updateKeyboardPresentation(notification)
     }
+    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+      guard isKeyboardPresented else { return }
+      let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+      withAnimation(.easeInOut(duration: duration)) {
+        isKeyboardPresented = false
+      }
+    }
   }
 
   // MARK: - Sheet Toolbar
@@ -178,7 +185,10 @@ public struct StepSheetContainer<
       return
     }
 
-    let isVisible = endFrame.minY < UIScreen.main.bounds.height
+    let screenHeight = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .first?.screen.bounds.height ?? endFrame.height
+    let isVisible = endFrame.minY < screenHeight
     if isKeyboardPresented != isVisible {
       withAnimation(.easeInOut(duration: duration)) {
         isKeyboardPresented = isVisible
