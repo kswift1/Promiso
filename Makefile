@@ -19,7 +19,7 @@ MODULE ?=
 FORCE ?=
 
 # 시뮬레이터 destination
-DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=18.3.1
+DEFAULT_DESTINATION = $${DESTINATION:-$$(./scripts/resolve-ios-simulator-destination.sh)}
 
 # ============================================================================
 # 🚀 초기 설정
@@ -193,8 +193,10 @@ remove-feature:
 # 전체 테스트 실행
 test:
 	@echo "🧪 전체 테스트 실행 중..."
-	@tuist test -- \
-		-destination '$(DESTINATION)' \
+	@destination="$(DEFAULT_DESTINATION)"; \
+	echo "   destination: $$destination"; \
+	tuist test -- \
+		-destination "$$destination" \
 		-skipPackagePluginValidation
 
 # 특정 모듈 테스트 (MODULE=HomeFeature, Clients, PromisoShared 등)
@@ -209,10 +211,12 @@ test-module:
 		exit 1; \
 	fi
 	@echo "🧪 $(MODULE) 테스트 실행 중..."
-	@xcodebuild test \
+	@destination="$(DEFAULT_DESTINATION)"; \
+	echo "   destination: $$destination"; \
+	xcodebuild test \
 		-scheme $(MODULE) \
 		-workspace Promiso.xcworkspace \
-		-destination '$(DESTINATION)' \
+		-destination "$$destination" \
 		-skipPackagePluginValidation
 
 # 특정 모듈 빌드만
@@ -223,10 +227,12 @@ build-module:
 		exit 1; \
 	fi
 	@echo "🔨 $(MODULE) 빌드 중..."
-	@xcodebuild build-for-testing \
+	@destination="$(DEFAULT_DESTINATION)"; \
+	echo "   destination: $$destination"; \
+	xcodebuild build-for-testing \
 		-scheme $(MODULE) \
 		-workspace Promiso.xcworkspace \
-		-destination '$(DESTINATION)' \
+		-destination "$$destination" \
 		-skipPackagePluginValidation
 
 # 변경된 모듈만 테스트
