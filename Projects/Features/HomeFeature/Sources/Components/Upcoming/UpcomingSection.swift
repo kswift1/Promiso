@@ -156,8 +156,10 @@ struct UpcomingSection: View {
             }
           }
 
-          Divider()
-            .padding(.horizontal, 14)
+          if !recurringSummaries.isEmpty {
+            Divider()
+              .padding(.horizontal, 14)
+          }
 
           Button {
             onCreateRecurringEventTap()
