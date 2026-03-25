@@ -96,7 +96,8 @@ extension WhatsNew {
             if let model, !model.items.isEmpty {
               state.model = model
             } else {
-              // 데이터가 없으면 바로 닫기
+              // 데이터 없음(비활성화/빈 목록): 현재 버전 마킹 후 닫기
+              userDefaultsClient.markWhatsNewSeen(version: AppConstants.App.version)
               return .send(.delegate(.dismissed))
             }
             return .none

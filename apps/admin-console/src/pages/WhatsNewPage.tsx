@@ -289,8 +289,9 @@ function ImageUploadCell(props: {
   version: string;
   itemIndex: number;
   onUploaded: (imageURL: string) => void;
+  disabled?: boolean;
 }) {
-  const {item, version, itemIndex, onUploaded} = props;
+  const {item, version, itemIndex, onUploaded, disabled} = props;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -357,7 +358,7 @@ function ImageUploadCell(props: {
               <AddPhotoAlternateRoundedIcon />
             )
           }
-          disabled={uploading}
+          disabled={uploading || disabled}
           onClick={() => fileInputRef.current?.click()}
         >
           {uploading ? "업로드 중..." : "이미지 선택"}
@@ -575,6 +576,7 @@ function EditDialog(props: EditDialogProps) {
                         onUploaded={(imageURL) =>
                           handleItemChange(index, "imageURL", imageURL)
                         }
+                        disabled={!version.trim()}
                       />
                     </Stack>
                   </CardContent>
@@ -681,7 +683,13 @@ export function WhatsNewPage() {
   };
 
   const sortedDocs = listQuery.data ?
-    [...listQuery.data].sort((a, b) => b.version.localeCompare(a.version)) :
+    [...listQuery.data].sort((a, b) => {
+      const [aMaj, aMin, aPat] = a.version.split(".").map(Number);
+      const [bMaj, bMin, bPat] = b.version.split(".").map(Number);
+      if (bMaj !== aMaj) return bMaj - aMaj;
+      if (bMin !== aMin) return bMin - aMin;
+      return bPat - aPat;
+    }) :
     [];
 
   return (

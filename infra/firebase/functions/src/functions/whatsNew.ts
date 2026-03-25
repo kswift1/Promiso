@@ -349,8 +349,10 @@ export const adminDeleteWhatsNew = onCall<AdminDeleteWhatsNewRequest>(
     try {
       const bucket = admin.storage().bucket();
       await bucket.deleteFiles({prefix: `whats-new/${version}/`});
-    } catch {
-      // Storage 파일 삭제 실패는 무시 (Firestore 삭제 성공이 우선)
+    } catch (err) {
+      console.error(
+        "[adminDeleteWhatsNew] Storage 삭제 실패:", version, err
+      );
     }
 
     await writeAuditLog({
@@ -390,8 +392,11 @@ export const adminUploadWhatsNewImage =
       }
 
       const fileName = request.data.fileName?.trim();
-      if (!fileName) {
-        throw new HttpsError("invalid-argument", "fileName이 필요합니다");
+      if (!fileName || !/^[\w\-.]+$/.test(fileName)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "fileName은 영문자/숫자/하이픈/점/언더스코어만 허용됩니다"
+        );
       }
 
       const contentType = request.data.contentType?.trim();
@@ -419,6 +424,7 @@ export const adminUploadWhatsNewImage =
       const file = bucket.file(storagePath);
 
       await file.save(buffer, {metadata: {contentType}});
+      // 앱에서 imageURL로 직접 접근하므로 공개 URL이 필요함
       await file.makePublic();
 
       const imageURL =
