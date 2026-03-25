@@ -1827,7 +1827,7 @@ export interface ExtractScheduleRequest {
  * 모든 필드가 nullable — LLM이 추출하지 못한 정보는 null
  */
 export interface ExtractScheduleResponse {
-  /** 일정 제목 (20자 이내) */
+  /** 일정 제목 (30자 이내) */
   title: string | null;
   /** 시작 날짜시간 (ISO 8601) */
   startDate: string | null;

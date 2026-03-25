@@ -120,8 +120,12 @@ extension PersonalEventDetail {
             let updatedEvent = state.event
             return .merge(
               .run { _ in await hapticFeedback.light() },
-              .run { _ in
-                try? await personalEventClient.updateEvent(updatedEvent)
+              .run { send in
+                do {
+                  try await personalEventClient.updateEvent(updatedEvent)
+                } catch {
+                  AppLogger.personal.error("❌ [Checklist] 체크리스트 업데이트 실패 — \(error)")
+                }
               },
               .send(.delegate(.eventUpdated(updatedEvent)))
             )

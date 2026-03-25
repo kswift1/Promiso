@@ -26,7 +26,14 @@ extension WhatsNew {
       var isLoading: Bool = true
       var currentIndex: Int = 0
 
+      /// 빈 초기화 — onAppear에서 fetch 수행
       public init() {}
+
+      /// 미리 fetch된 model로 초기화 — onAppear fetch 스킵
+      public init(model: WhatsNewModel) {
+        self.model = model
+        self.isLoading = false
+      }
     }
 
     // MARK: - Action
@@ -63,6 +70,8 @@ extension WhatsNew {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            // 이미 AppEntryFeature에서 fetch한 model이 있으면 네트워크 호출 스킵
+            if state.model != nil { return .none }
             let version = AppConstants.App.version
             return .run { send in
               do {

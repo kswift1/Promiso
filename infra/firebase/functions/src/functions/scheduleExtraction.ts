@@ -169,14 +169,17 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
     });
 
     const sanitizedText = text ? sanitizeUserData(text.trim()) : null;
-    if (imageBase64) {
-      console.log(
-        `📷 Extracting schedule from image (${imageBase64.length} chars)`
-      );
-    } else {
-      console.log(
-        `📋 Extracting schedule from text (${sanitizedText?.length ?? 0} chars)`
-      );
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+    if (isEmulator) {
+      if (imageBase64) {
+        console.log(
+          `📷 Extracting schedule from image (${imageBase64.length} chars)`
+        );
+      } else {
+        console.log(
+          `📋 Extracting schedule from text (${sanitizedText?.length ?? 0} chars)`
+        );
+      }
     }
 
     try {
@@ -213,9 +216,11 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
       const response = result.response;
       const responseText = response.text().trim();
 
-      console.log(
-        `🤖 Gemini response: ${responseText.substring(0, 200)}`
-      );
+      if (isEmulator) {
+        console.log(
+          `🤖 Gemini response: ${responseText.substring(0, 200)}`
+        );
+      }
 
       // 6. JSON 파싱
       const jsonText = extractJSON(responseText);
