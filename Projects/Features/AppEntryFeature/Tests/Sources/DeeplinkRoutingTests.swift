@@ -158,6 +158,7 @@ struct DeeplinkRoutingTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -347,6 +348,7 @@ struct PushNotificationDeeplinkTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.stringForKey = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
