@@ -168,6 +168,11 @@ public enum AppConstants {
 
     public static let pendingExtractionTextKey = "pendingExtractionText"
 
+    /// pending 텍스트가 있는지 확인 (삭제하지 않음)
+    public static var hasPendingExtractionText: Bool {
+      Foundation.UserDefaults(suiteName: suiteName)?.string(forKey: pendingExtractionTextKey) != nil
+    }
+
     /// pending 텍스트를 읽고 즉시 삭제 (consume)
     public static func consumePendingExtractionText() -> String? {
       let defaults = Foundation.UserDefaults(suiteName: suiteName)
