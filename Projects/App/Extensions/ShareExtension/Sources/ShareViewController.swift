@@ -165,9 +165,16 @@ final class ShareViewController: UIViewController {
       defaults?.set(text, forKey: "pendingExtractionText")
     case .image(let data):
       // App Group 공유 컨테이너에 파일로 저장
-      if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) {
-        let fileURL = containerURL.appendingPathComponent("pendingExtractionImage.jpg")
-        try? data.write(to: fileURL)
+      guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+        showError("공유 저장소에 접근할 수 없습니다")
+        return
+      }
+      let fileURL = containerURL.appendingPathComponent("pendingExtractionImage.jpg")
+      do {
+        try data.write(to: fileURL)
+      } catch {
+        showError("이미지를 공유하는 데 실패했습니다")
+        return
       }
     case .none:
       break
@@ -242,31 +249,50 @@ final class ShareViewController: UIViewController {
 
   private func loadImage(from provider: NSItemProvider) {
     provider.loadItem(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+      // URL인 경우 백그라운드에서 비동기 로드
+      if let url = data as? URL {
+        URLSession.shared.dataTask(with: url) { fileData, _, error in
+          DispatchQueue.main.async {
+            guard let fileData, error == nil else {
+              self?.showError("이미지를 불러올 수 없습니다")
+              return
+            }
+            self?.processImageData(fileData)
+          }
+        }.resume()
+        return
+      }
+
       DispatchQueue.main.async {
         var imageData: Data?
-
-        if let url = data as? URL {
-          imageData = try? Data(contentsOf: url)
-        } else if let data = data as? Data {
+        if let data = data as? Data {
           imageData = data
         } else if let image = data as? UIImage {
           imageData = image.jpegData(compressionQuality: 0.8)
         }
 
-        guard let imageData, let image = UIImage(data: imageData) else {
+        guard let imageData else {
           self?.showError("이미지를 불러올 수 없습니다")
           return
         }
-
-        // 4MB 초과 시 리사이즈
-        var finalData = imageData
-        if finalData.count > 4 * 1024 * 1024 {
-          finalData = image.jpegData(compressionQuality: 0.5) ?? imageData
-        }
-
-        self?.showImage(finalData, image: image)
+        self?.processImageData(imageData)
       }
     }
+  }
+
+  private func processImageData(_ imageData: Data) {
+    guard let image = UIImage(data: imageData) else {
+      showError("이미지를 불러올 수 없습니다")
+      return
+    }
+
+    // 4MB 초과 시 리사이즈
+    var finalData = imageData
+    if finalData.count > 4 * 1024 * 1024 {
+      finalData = image.jpegData(compressionQuality: 0.5) ?? imageData
+    }
+
+    showImage(finalData, image: image)
   }
 
   // MARK: - Display

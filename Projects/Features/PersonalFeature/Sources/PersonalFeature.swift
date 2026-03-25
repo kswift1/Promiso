@@ -246,7 +246,7 @@ extension PersonalMode {
         case recurringEventDeleteFailed(String)
         /// Share Extension 자동 추출 결과
         case deeplinkExtractionSuccess(PersonalEventModel)
-        case deeplinkExtractionFailed
+        case deeplinkExtractionFailed(originalText: String)
       }
     }
 
@@ -629,9 +629,12 @@ extension PersonalMode {
             state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
             return .none
 
-          case .deeplinkExtractionFailed:
-            // 추출 실패 시 ScheduleImport 시트로 fallback
-            return .send(.view(.openCreateEventWithExtraction))
+          case .deeplinkExtractionFailed(let originalText):
+            // 추출 실패 시 원본 텍스트를 유지한 채 ScheduleImport 시트로 fallback
+            var importState = ScheduleImport.Feature.State()
+            importState.inputText = originalText
+            state.scheduleImport = importState
+            return .none
           }
 
         // MARK: - ScheduleImport Delegate
@@ -749,7 +752,7 @@ extension PersonalMode.Feature {
           let event = try await scheduleExtractionClient.extractFromText(text)
           await send(.internal(.deeplinkExtractionSuccess(event)))
         } catch {
-          await send(.internal(.deeplinkExtractionFailed))
+          await send(.internal(.deeplinkExtractionFailed(originalText: text)))
         }
       }
     } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {

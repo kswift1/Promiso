@@ -154,16 +154,13 @@ public enum AppConstants {
 
   /// App Group 공유 데이터 (Extension ↔ 메인 앱)
   public enum AppGroup {
-    /// App Group suite name (환경별 자동 판별)
+    /// App Group suite name (Info.plist의 APP_GROUP_ID에서 읽기)
     public static var suiteName: String {
-      let bundleId = Bundle.main.bundleIdentifier ?? ""
-      if bundleId.contains(".dev") {
-        return "group.com.promiso.dev.shared"
-      } else if bundleId.contains(".stage") {
-        return "group.com.promiso.stage.shared"
-      } else {
+      guard let appGroupId = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String else {
+        assertionFailure("APP_GROUP_ID not found in Info.plist")
         return "group.com.promiso.shared"
       }
+      return appGroupId
     }
 
     public static let pendingExtractionTextKey = "pendingExtractionText"

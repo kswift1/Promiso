@@ -19,7 +19,7 @@ import {
 const SCHEDULE_EXTRACTION_PROMPT = `당신은 한국어 문자 메시지 또는 이미지에서 일정 정보를 추출하는 전문가입니다.
 
 입력된 텍스트 또는 이미지에서 다음 정보를 JSON 형태로 추출하세요:
-- title: 일정 제목 (간결하게 추론, 20자 이내)
+- title: 일정 제목 (간결하게 추론, 30자 이내)
 - startDate: 시작 날짜시간 (ISO 8601 형식, 예: "2026-03-27T09:00:00+09:00")
 - endDate: 종료 날짜시간 (ISO 8601 형식, 없으면 null)
 - location: 장소명 (없으면 null)
