@@ -185,7 +185,10 @@ public struct StepSheetContainer<
       return
     }
 
-    let isVisible = endFrame.minY < UIScreen.main.bounds.height
+    let screenHeight = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .first?.screen.bounds.height ?? endFrame.height
+    let isVisible = endFrame.minY < screenHeight
     if isKeyboardPresented != isVisible {
       withAnimation(.easeInOut(duration: duration)) {
         isKeyboardPresented = isVisible

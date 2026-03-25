@@ -188,6 +188,8 @@ extension EditSchedule {
             set: { store.send(.view(.setDescriptionBlocks($0))) }
           )
         )
+        .padding(16)
+        .adaptiveGlassCard()
       }
     }
 
@@ -212,7 +214,7 @@ extension EditSchedule {
             HStack(spacing: 12) {
               Image(systemName: "mappin.circle.fill")
                 .font(.system(size: 24))
-                .foregroundColor(Color.pmindigo.n500)
+                .foregroundStyle(Color.pmindigo.n500)
 
               VStack(alignment: .leading, spacing: 2) {
                 Text(location.name)
@@ -234,7 +236,7 @@ extension EditSchedule {
               } label: {
                 Image(systemName: "xmark.circle.fill")
                   .font(.system(size: 20))
-                  .foregroundStyle(Color(UIColor.systemGray3))
+                  .foregroundStyle(Color.pmgray.n400)
               }
               .buttonStyle(.plain)
             }
@@ -371,7 +373,7 @@ extension EditSchedule {
           } label: {
             Image(systemName: "minus.circle.fill")
               .font(.system(size: 32))
-              .foregroundColor(store.editedSchedule.minimumParticipants <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
+              .foregroundStyle(store.editedSchedule.minimumParticipants <= 2 ? Color.pmgray.n400 : Color.pmindigo.n500)
               .scaleEffect(isMinusPressed ? 0.85 : 1.0)
           }
           .buttonRepeatBehavior(.enabled)
@@ -387,12 +389,12 @@ extension EditSchedule {
           VStack(spacing: 4) {
             Text(LocalizedStrings.LiveSchedule.participantCount(store.editedSchedule.minimumParticipants))
               .font(.system(size: 36, weight: .bold))
-              .foregroundColor(.primary)
+              .foregroundStyle(.primary)
               .contentTransition(.numericText())
 
             Text(LocalizedStrings.Shared.maxMembers(store.maxMembers))
               .font(.system(size: 13))
-              .foregroundColor(.secondary)
+              .foregroundStyle(.secondary)
           }
           .frame(maxWidth: .infinity)
 
@@ -401,7 +403,7 @@ extension EditSchedule {
           } label: {
             Image(systemName: "plus.circle.fill")
               .font(.system(size: 32))
-              .foregroundColor(store.editedSchedule.minimumParticipants >= store.maxMembers ? Color(.systemGray4) : Color.pmindigo.n500)
+              .foregroundStyle(store.editedSchedule.minimumParticipants >= store.maxMembers ? Color.pmgray.n400 : Color.pmindigo.n500)
               .scaleEffect(isPlusPressed ? 0.85 : 1.0)
           }
           .buttonRepeatBehavior(.enabled)
@@ -420,11 +422,11 @@ extension EditSchedule {
         HStack(alignment: .top, spacing: 12) {
           Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 20))
-            .foregroundColor(Color.pmindigo.n500)
+            .foregroundStyle(Color.pmindigo.n500)
 
           Text(LocalizedStrings.Shared.minMembersDescription(store.editedSchedule.minimumParticipants))
             .font(.system(size: 14))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
 
           Spacer()
         }

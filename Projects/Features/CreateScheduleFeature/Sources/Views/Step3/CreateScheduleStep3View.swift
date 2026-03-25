@@ -45,7 +45,8 @@ struct CreateScheduleStep3View: View {
       .scrollDismissesKeyboard(.interactively)
       .onChange(of: isDescriptionFocused) { _, newValue in
         if newValue {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+          Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
             withAnimation {
               proxy.scrollTo("description", anchor: .top)
             }

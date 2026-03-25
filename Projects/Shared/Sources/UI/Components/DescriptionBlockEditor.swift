@@ -168,7 +168,7 @@ public struct DescriptionBlockEditor: View {
     .id("block-\(index)-item-0")
     .onChange(of: textContent) { _, _ in
       guard focusedItem == ItemFocus(blockIndex: index, itemIndex: 0) else { return }
-      DispatchQueue.main.async {
+      Task { @MainActor in
         withAnimation(.easeInOut(duration: 0.15)) {
           proxy.scrollTo("block-\(index)-item-0", anchor: .bottom)
         }
@@ -250,7 +250,7 @@ public struct DescriptionBlockEditor: View {
               let newItem = ChecklistItem(text: "")
               items.insert(newItem, at: itemIndex + 1)
               blocks[blockIndex].content = .checklist(items)
-              DispatchQueue.main.async {
+              Task { @MainActor in
                 focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
               }
             } else {
@@ -341,7 +341,7 @@ public struct DescriptionBlockEditor: View {
               items[itemIndex] = cleaned
               items.insert("", at: itemIndex + 1)
               blocks[blockIndex].content = .bulletList(items)
-              DispatchQueue.main.async {
+              Task { @MainActor in
                 focusedItem = ItemFocus(blockIndex: blockIndex, itemIndex: itemIndex + 1)
               }
             } else {

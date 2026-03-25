@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 // MARK: - Checklist Item
 
@@ -61,6 +62,8 @@ extension DescriptionBlock: Codable {
     default:
       // 알 수 없는 타입은 텍스트로 fallback
       let text = (try? container.decode(String.self, forKey: .content)) ?? ""
+      Logger(subsystem: "com.promiso", category: "DescriptionBlock")
+        .warning("알 수 없는 블록 타입: \(type, privacy: .public), 텍스트로 fallback")
       content = .text(text)
     }
   }

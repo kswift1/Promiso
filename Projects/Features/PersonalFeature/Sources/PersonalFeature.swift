@@ -40,7 +40,7 @@ extension PersonalMode {
       case .today: return .orange
       case .future: return .blue
       case .all: return .pmindigo.n500
-      case .past: return Color(UIColor.systemGray)
+      case .past: return Color.pmgray.n500
       }
     }
 
@@ -185,7 +185,7 @@ extension PersonalMode {
         let calendar = Calendar.current
         let todayCount = events.filter { calendar.isDateInToday($0.startAt) || $0.isOngoing }.count
         let futureCount = events.filter { !calendar.isDateInToday($0.startAt) && !$0.isOngoing }.count
-        var counts: [EventFilter: Int] = [
+        let counts: [EventFilter: Int] = [
           .today: todayCount,
           .future: futureCount,
           .all: events.count
