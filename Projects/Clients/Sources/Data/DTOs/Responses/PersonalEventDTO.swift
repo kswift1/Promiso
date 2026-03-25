@@ -66,7 +66,7 @@ extension PersonalEventDTO {
       emoji: model.emoji,
       // 하위 호환: 구버전 앱용으로 descriptionBlocks의 plainText를 description에 동기화
       description: model.descriptionBlocks.plainText ?? model.description,
-      descriptionBlocks: model.descriptionBlocks.isEmpty ? nil : model.descriptionBlocks,
+      descriptionBlocks: model.descriptionBlocks.nilIfAllEmpty,
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },
