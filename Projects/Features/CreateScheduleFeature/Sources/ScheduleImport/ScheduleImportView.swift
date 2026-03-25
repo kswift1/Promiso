@@ -9,6 +9,7 @@ import PhotosUI
 extension ScheduleImport {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var isImageFullscreen = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -22,18 +23,6 @@ extension ScheduleImport {
         .auroraBackground()
         .navigationTitle(LocalizedStrings.ScheduleImport.title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .navigationBarLeading) {
-            Button {
-              store.send(.view(.dismissTapped))
-            } label: {
-              Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Color.pmtext.secondary)
-            }
-            .contentShape(Rectangle())
-          }
-        }
       }
     }
 
@@ -58,14 +47,20 @@ extension ScheduleImport {
           if let error = store.extractionError {
             errorView(message: error)
           }
-
-          // Extract button
-          extractButton
         }
         .padding(16)
         .padding(.bottom, 24)
       }
       .scrollDismissesKeyboard(.interactively)
+      .safeAreaInset(edge: .bottom) {
+        StepBottomBar(configuration: .single(
+          title: LocalizedStrings.ScheduleImport.extractionExtract,
+          systemImage: "sparkles",
+          isLoading: store.isExtracting,
+          isDisabled: !store.canExtract,
+          action: { store.send(.view(.extractTapped)) }
+        ))
+      }
     }
 
     // MARK: - Mode Picker
@@ -150,8 +145,10 @@ extension ScheduleImport {
             .resizable()
             .scaledToFill()
             .frame(maxWidth: .infinity)
-            .frame(height: 300)
+            .frame(height: 400)
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .contentShape(Rectangle())
+            .onTapGesture { isImageFullscreen = true }
 
           // 제거 버튼
           Button {
@@ -169,6 +166,9 @@ extension ScheduleImport {
           .padding(10)
         }
         .adaptiveGlassCard()
+        .fullScreenCover(isPresented: $isImageFullscreen) {
+          LocalImageDetailView(image: uiImage) { isImageFullscreen = false }
+        }
 
         // 다른 사진으로 교체
         PhotosPicker(
@@ -264,40 +264,67 @@ extension ScheduleImport {
       .background(Color.pmerror.n500.opacity(0.1))
       .clipShape(RoundedRectangle(cornerRadius: 8))
     }
+  }
+}
 
-    // MARK: - Extract Button
+// MARK: - Local Image Detail View (기존 ZoomableImageView 재사용)
 
-    @ViewBuilder
-    private var extractButton: some View {
-      Button {
-        store.send(.view(.extractTapped))
-      } label: {
-        HStack(spacing: 6) {
-          if store.isExtracting {
-            ProgressView()
-              .controlSize(.small)
-              .tint(.white)
-          } else {
-            Image(systemName: "sparkles")
-              .font(.system(size: 15))
-          }
-          Text(LocalizedStrings.ScheduleImport.extractionExtract)
-            .font(.system(size: 16, weight: .semibold))
+private struct LocalImageDetailView: View {
+  let image: UIImage
+  let onDismiss: () -> Void
+
+  @State private var dragOffset: CGFloat = 0
+  @State private var isZoomed = false
+
+  private let dismissThreshold: CGFloat = 150
+  private let dismissVelocityThreshold: CGFloat = 500
+
+  var body: some View {
+    ZStack {
+      Color.black
+        .ignoresSafeArea()
+        .onTapGesture {
+          if !isZoomed { onDismiss() }
         }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(
-          store.canExtract
-            ? Color.pmindigo.n500
-            : Color.pmgray.n400
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+      ZoomableImageView(
+        image: image,
+        onZoomChanged: { zoomed in isZoomed = zoomed },
+        onDismissDrag: { offset in dragOffset = offset },
+        onDismissDragEnded: { translation, velocity in
+          if translation > dismissThreshold || velocity > dismissVelocityThreshold {
+            onDismiss()
+          } else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+              dragOffset = 0
+            }
+          }
+        }
+      )
+      .offset(y: isZoomed ? 0 : dragOffset)
+
+      VStack {
+        HStack {
+          Spacer()
+          Button {
+            onDismiss()
+          } label: {
+            Image(systemName: "xmark")
+              .font(.title3)
+              .fontWeight(.medium)
+              .foregroundStyle(.white)
+              .frame(width: 44, height: 44)
+              .background(.ultraThinMaterial.opacity(0.5))
+              .clipShape(Circle())
+          }
+          .opacity(isZoomed ? 0.0 : 1.0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        Spacer()
       }
-      .buttonStyle(.plain)
-      .contentShape(Rectangle())
-      .disabled(!store.canExtract)
     }
+    .background(ClearBackground())
   }
 }
 

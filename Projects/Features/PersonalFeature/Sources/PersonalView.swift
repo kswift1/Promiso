@@ -44,7 +44,7 @@ extension PersonalMode {
         item: $store.scope(state: \.scheduleImport, action: \.scheduleImport)
       ) { importStore in
         ScheduleImport.RootView(store: importStore)
-          .presentationDetents([.large])
+          .presentationDetents([.medium, .large])
           .presentationDragIndicator(.visible)
       }
       .sheet(

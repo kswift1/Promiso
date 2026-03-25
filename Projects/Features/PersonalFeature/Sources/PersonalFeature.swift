@@ -61,6 +61,7 @@ extension PersonalMode {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.recurringPersonalEventClient) var recurringPersonalEventClient
+    @Dependency(\.scheduleExtractionClient) var scheduleExtractionClient
 
     public init() {}
 
@@ -243,6 +244,9 @@ extension PersonalMode {
         case recurringEventsFailed(String)
         case recurringEventDeleted(String)
         case recurringEventDeleteFailed(String)
+        /// Share Extension 자동 추출 결과
+        case deeplinkExtractionSuccess(PersonalEventModel)
+        case deeplinkExtractionFailed
       }
     }
 
@@ -620,6 +624,14 @@ extension PersonalMode {
               position: .top
             )
             return .none
+
+          case .deeplinkExtractionSuccess(let event):
+            state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
+            return .none
+
+          case .deeplinkExtractionFailed:
+            // 추출 실패 시 ScheduleImport 시트로 fallback
+            return .send(.view(.openCreateEventWithExtraction))
           }
 
         // MARK: - ScheduleImport Delegate
@@ -726,18 +738,31 @@ extension PersonalMode {
 // MARK: - Deeplink Helpers
 
 extension PersonalMode.Feature {
-  /// Share Extension에서 공유된 데이터(텍스트/이미지)로 ScheduleImport 폼을 엽니다.
+  /// Share Extension에서 공유된 데이터로 일정을 추출합니다.
+  /// 텍스트: 바로 LLM 추출 → CreatePersonalEvent 폼 열기
+  /// 이미지: ScheduleImport 시트로 fallback (미리보기 필요)
   func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
-    var importState = ScheduleImport.Feature.State()
-
     if let text = AppConstants.AppGroup.consumePendingExtractionText() {
-      importState.inputText = text
+      // 텍스트 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
+      return .run { [scheduleExtractionClient] send in
+        do {
+          let event = try await scheduleExtractionClient.extractFromText(text)
+          await send(.internal(.deeplinkExtractionSuccess(event)))
+        } catch {
+          await send(.internal(.deeplinkExtractionFailed))
+        }
+      }
     } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {
+      // 이미지 → ScheduleImport 시트 (미리보기 + 수동 추출)
+      var importState = ScheduleImport.Feature.State()
       importState.selectedImage = imageData
       importState.inputMode = .image
+      state.scheduleImport = importState
+      return .none
     }
 
-    state.scheduleImport = importState
+    // pending 데이터 없음 → 빈 ScheduleImport 시트
+    state.scheduleImport = ScheduleImport.Feature.State()
     return .none
   }
 }
