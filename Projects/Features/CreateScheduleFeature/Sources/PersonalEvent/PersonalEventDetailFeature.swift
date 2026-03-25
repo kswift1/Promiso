@@ -17,6 +17,7 @@ extension PersonalEventDetail {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.mapClient) var mapClient
 
     public init() {}
 
@@ -26,6 +27,7 @@ extension PersonalEventDetail {
     public struct State: Equatable, Sendable {
       var event: PersonalEventModel
       var isDeleting: Bool = false
+      var showMapDetail: Bool = false
 
       var weatherInfo: WeatherInfo?
 
@@ -56,6 +58,9 @@ extension PersonalEventDetail {
         case editTapped
         case deleteTapped
         case toggleChecklist(blockId: String, itemId: String)
+        case directionsTapped
+        case mapTapped
+        case mapDetailDismissed
       }
 
       public enum Internal: Sendable {
@@ -135,6 +140,28 @@ extension PersonalEventDetail {
             } message: {
               TextState(LocalizedStrings.Shared.deleteEventConfirm(eventTitle))
             }
+            return .none
+
+          case .directionsTapped:
+            guard let location = state.event.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            let coordinate = Coordinate(latitude: lat, longitude: lng)
+            mapClient.openDirections(nil, coordinate, location.name, .car)
+            return .none
+
+          case .mapTapped:
+            guard state.event.location?.latitude != nil,
+                  state.event.location?.longitude != nil else {
+              return .none
+            }
+            state.showMapDetail = true
+            return .none
+
+          case .mapDetailDismissed:
+            state.showMapDetail = false
             return .none
 
           }
