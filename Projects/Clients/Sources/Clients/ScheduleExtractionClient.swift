@@ -242,6 +242,10 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
     event.title = String(title.prefix(30))
   }
 
+  if let emoji = data["emoji"] as? String, !emoji.isEmpty {
+    event.emoji = String(emoji.prefix(1))
+  }
+
   if let startDateStr = data["startDate"] as? String,
      let startDate = parseISO8601Date(startDateStr) {
     event.startAt = startDate

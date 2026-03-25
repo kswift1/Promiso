@@ -1842,6 +1842,8 @@ export interface ExtractScheduleRequest {
 export interface ExtractScheduleResponse {
   /** 일정 제목 (30자 이내) */
   title: string | null;
+  /** 일정에 맞는 이모지 (없으면 null) */
+  emoji: string | null;
   /** 시작 날짜시간 (ISO 8601) */
   startDate: string | null;
   /** 종료 날짜시간 (ISO 8601, 없으면 null) */
