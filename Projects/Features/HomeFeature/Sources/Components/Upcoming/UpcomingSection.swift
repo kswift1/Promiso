@@ -12,7 +12,6 @@ struct UpcomingSection: View {
   let isPro: Bool
   let recurringSummaries: [HomeModels.RecurringEventSummary]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
-  let onSeeAllTap: () -> Void
   let onCreatePersonalEventTap: () -> Void
   let onCreateScheduleTap: () -> Void
   let onCreateRecurringEventTap: () -> Void
@@ -64,21 +63,6 @@ struct UpcomingSection: View {
         .foregroundStyle(.primary)
 
       Spacer()
-
-      // "전체 >" 버튼 (5개 이상일 때만)
-      if items.count > maxDisplayCount {
-        Button(action: onSeeAllTap) {
-          HStack(spacing: 2) {
-            Text(LocalizedStrings.Common.all)
-              .font(.pmSubheadline)
-
-            Image(systemName: "chevron.right")
-              .font(.pmCaption)
-          }
-          .foregroundStyle(Color.pmindigo.n500)
-        }
-        .buttonStyle(.plain)
-      }
     }
   }
 
@@ -318,7 +302,6 @@ private struct DateGroup {
       .init(recurringEventId: "r2", title: "헬스장", emoji: "💪", recurrenceText: "매주 월, 수, 금", nextInstanceDate: Date().addingTimeInterval(172800)),
     ],
     onItemTap: { _ in },
-    onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
     onCreateRecurringEventTap: {},
@@ -335,7 +318,6 @@ private struct DateGroup {
     isPro: true,
     recurringSummaries: [],  // 두 emptyState 모두 표시
     onItemTap: { _ in },
-    onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
     onCreateRecurringEventTap: {},
@@ -356,7 +338,6 @@ private struct DateGroup {
       .init(recurringEventId: "r3", title: "영어 수업", emoji: "📚", recurrenceText: "매주 화, 목", nextInstanceDate: Date().addingTimeInterval(259200)),
     ],
     onItemTap: { _ in },
-    onSeeAllTap: {},
     onCreatePersonalEventTap: {},
     onCreateScheduleTap: {},
     onCreateRecurringEventTap: {},

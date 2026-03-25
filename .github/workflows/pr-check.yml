@@ -267,6 +267,12 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -skipPackagePluginValidation
 
+      - name: Boot Simulator
+        if: steps.changes.outputs.mode == 'selective'
+        run: |
+          xcrun simctl boot "iPhone 16" 2>/dev/null || true
+          xcrun simctl list devices booted
+
       - name: Build (Selective)
         if: steps.changes.outputs.mode == 'selective'
         run: |

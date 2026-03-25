@@ -388,7 +388,7 @@ struct CompactDayRow: View {
             }
             Text(weekday)
               .font(.system(size: 11, weight: .medium))
-              .foregroundColor(isSelected ? Color.pmindigo.n500 : .secondary)
+              .foregroundColor(weekdayTextColor)
           }
           .frame(width: 36)
 
@@ -781,7 +781,34 @@ struct CompactDayRow: View {
     if holidayName != nil {
       return .red.opacity(0.8)
     }
+    let weekdayComponent = scheduleViewCalendar.component(.weekday, from: date)
+    if weekdayComponent == 1 {
+      return .red.opacity(0.8)
+    }
+    if weekdayComponent == 7 {
+      return .blue.opacity(0.8)
+    }
     return .primary
+  }
+
+  private var weekdayTextColor: Color {
+    if isSelected {
+      return Color.pmindigo.n500
+    }
+    if isToday {
+      return Color.pmindigo.n500
+    }
+    if holidayName != nil {
+      return .red.opacity(0.8)
+    }
+    let weekdayComponent = scheduleViewCalendar.component(.weekday, from: date)
+    if weekdayComponent == 1 {
+      return .red.opacity(0.8)
+    }
+    if weekdayComponent == 7 {
+      return .blue.opacity(0.8)
+    }
+    return .secondary
   }
 }
 

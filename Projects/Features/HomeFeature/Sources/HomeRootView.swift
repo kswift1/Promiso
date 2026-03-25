@@ -337,9 +337,6 @@ extension Home {
                   store.send(.view(.recurringPersonalEventTapped(instance)))
                 }
               },
-              onSeeAllTap: {
-                store.send(.view(.seeAllUpcomingTapped))
-              },
               onCreatePersonalEventTap: {
                 store.send(.view(.emptyCreatePersonalEventTapped))
               },

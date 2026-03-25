@@ -83,7 +83,7 @@ public struct ScheduleDetailWeatherSection: View {
           shortTermContent
         }
       }
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
   }
 

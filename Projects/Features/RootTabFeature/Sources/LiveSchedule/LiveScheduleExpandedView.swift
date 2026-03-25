@@ -346,7 +346,7 @@ extension LiveSchedule {
         }
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
 
     // MARK: - Participant Avatars

@@ -253,8 +253,6 @@ extension Home {
         case pendingScheduleTapped(ScheduleModel)
         /// 다가오는 일정 카드 탭
         case upcomingScheduleTapped(ScheduleModel)
-        /// "전체 보기" 버튼 탭
-        case seeAllUpcomingTapped
         /// 그룹 필터 변경
         case groupFilterChanged(String?)
         /// 상태 필터 변경
@@ -413,8 +411,6 @@ extension Home {
         case navigateToSchedule(scheduleId: String, groupId: String)
         /// 그룹 탭의 특정 일정으로 네비게이션 (응답 필요 카드에서)
         case navigateToGroupWithSchedule(groupId: String, scheduleId: String)
-        /// 모든 일정 보기 화면으로 네비게이션
-        case navigateToAllSchedules
         /// 오버레이에서 일정 만들기 요청 (→ RootTab → GroupMain)
         case navigateToCreateSchedule
         /// Pro 플랜 업그레이드 요청
@@ -502,9 +498,6 @@ extension Home {
               groupMembers: groupMembers
             )))
             return .none
-
-          case .seeAllUpcomingTapped:
-            return .send(.delegate(.navigateToAllSchedules))
 
           case .groupFilterChanged(let groupId):
             state.selectedGroupId = groupId

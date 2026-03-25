@@ -168,7 +168,7 @@ struct ProOnboardingSetupView: View {
                 }
               }
             }
-            .adaptiveGlassCard()
+            .staticGlassCard()
           }
         }
       }
@@ -257,7 +257,7 @@ struct ProOnboardingSetupView: View {
     .padding(.horizontal, 10)
     .padding(.vertical, 8)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .adaptiveGlassCard()
+    .staticGlassCard()
   }
 
   @ViewBuilder
@@ -400,7 +400,7 @@ struct ProOnboardingSetupView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
           }
-          .adaptiveGlassCard()
+          .staticGlassCard()
         }
 
         VStack(alignment: .leading, spacing: 10) {
@@ -473,7 +473,7 @@ struct ProOnboardingSetupView: View {
               .buttonStyle(.plain)
             }
           }
-          .adaptiveGlassCard()
+          .staticGlassCard()
         }
       }
       .padding(.horizontal, 20)
@@ -549,7 +549,7 @@ struct ProOnboardingSetupView: View {
               .padding(.bottom, 6)
             }
           }
-          .adaptiveGlassCard()
+          .staticGlassCard()
         }
 
         VStack(alignment: .leading, spacing: 10) {
@@ -597,7 +597,7 @@ struct ProOnboardingSetupView: View {
               }
             }
           }
-          .adaptiveGlassCard()
+          .staticGlassCard()
         }
       }
       .padding(.horizontal, 20)
@@ -656,7 +656,7 @@ struct ProOnboardingSetupView: View {
       }
     }
     .padding(16)
-    .adaptiveGlassCard()
+    .staticGlassCard()
   }
 
   private func customTag(icon: String, text: String) -> some View {
@@ -742,7 +742,7 @@ struct ProOnboardingSetupView: View {
             )
           }
         }
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
       .padding(.horizontal, 20)
       .padding(.bottom, 100)

@@ -380,10 +380,6 @@ extension RootTab {
           }
           return .none
 
-        case .home(.delegate(.navigateToAllSchedules)):
-          // TODO: 모든 일정 보기 화면으로 이동 (추후 구현)
-          return .none
-
         case .home(.delegate(.navigateToCreateSchedule)):
           state.scheduleMode = .group
           state.selectedTab = .schedule(.group)

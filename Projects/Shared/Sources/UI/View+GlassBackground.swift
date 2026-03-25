@@ -51,6 +51,24 @@ extension View {
     }
   }
 
+  /// 정적 카드용 Glass Effect (shadow 포함, interactive 없음)
+  @ViewBuilder
+  public func staticGlassCard(cornerRadius: CGFloat = 16) -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+    } else {
+      self
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(
+          RoundedRectangle(cornerRadius: cornerRadius)
+            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+    }
+  }
+
   /// Pro Plan 전용 보라색 tinted Glass Card
   @ViewBuilder
   public func proGlassCard(cornerRadius: CGFloat = 16) -> some View {

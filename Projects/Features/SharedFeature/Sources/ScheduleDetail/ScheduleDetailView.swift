@@ -148,7 +148,7 @@ extension ScheduleDetail {
         ScheduleDetailStatusBadgeView(status: store.responseStatus)
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
 
     // MARK: - Schedule Section
@@ -235,7 +235,7 @@ extension ScheduleDetail {
             value: LocalizedStrings.Shared.membersCount(store.schedule.minimumParticipants)
           )
         }
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 
@@ -256,7 +256,7 @@ extension ScheduleDetail {
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
         }
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
       .fullScreenCover(isPresented: Binding(
         get: { selectedImageIndex != nil },
@@ -399,7 +399,7 @@ extension ScheduleDetail {
           onDecline: { store.send(.view(.rejectTapped)) }
         )
         .padding(16)
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 

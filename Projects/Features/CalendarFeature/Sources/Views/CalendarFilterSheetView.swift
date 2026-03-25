@@ -99,7 +99,7 @@ struct CalendarFilterSheetView: View {
     return Button { onGroupToggled(group.id) } label: {
       HStack(spacing: 6) {
         Circle()
-          .fill(isSelected ? groupColor : Color(.systemGray3))
+          .fill(isSelected ? .white : Color(.systemGray3))
           .frame(width: 8, height: 8)
         Text(group.name)
           .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
@@ -108,13 +108,9 @@ struct CalendarFilterSheetView: View {
       .padding(.leading, 10)
       .padding(.trailing, 12)
       .padding(.vertical, 8)
-      .background(Color(.systemGray6))
-      .foregroundColor(isSelected ? .primary : .secondary)
+      .background(isSelected ? groupColor : Color(.systemGray6))
+      .foregroundColor(isSelected ? .white : .secondary)
       .cornerRadius(20)
-      .overlay(
-        RoundedRectangle(cornerRadius: 20)
-          .stroke(isSelected ? groupColor : Color(.systemGray4), lineWidth: 1.5)
-      )
     }
     .buttonStyle(.plain)
   }
@@ -169,20 +165,16 @@ struct CalendarFilterSheetView: View {
       HStack(spacing: 6) {
         Image(systemName: filter.icon)
           .font(.system(size: 12))
-          .foregroundColor(isSelected ? filter.selectedColor : Color(.systemGray3))
+          .foregroundColor(isSelected ? .white : Color(.systemGray3))
         Text(filter.title)
           .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
-          .foregroundColor(isSelected ? .primary : .secondary)
+          .foregroundColor(isSelected ? .white : .secondary)
           .lineLimit(1)
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
-      .background(Color(.systemGray6))
+      .background(isSelected ? filter.selectedColor : Color(.systemGray6))
       .cornerRadius(20)
-      .overlay(
-        RoundedRectangle(cornerRadius: 20)
-          .stroke(isSelected ? filter.selectedColor : Color(.systemGray4), lineWidth: 1.5)
-      )
     }
     .buttonStyle(.plain)
   }
