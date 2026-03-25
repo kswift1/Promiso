@@ -406,6 +406,33 @@ describe("admin functions", () => {
               get: jest.fn().mockResolvedValue(
                 createMockDocument(id, usersData)
               ),
+              collection: jest.fn(() => ({
+                count: jest.fn(() => ({
+                  get: jest.fn().mockResolvedValue({
+                    data: () => ({count: 0}),
+                  }),
+                })),
+              })),
+            })),
+            orderBy: jest.fn(() => ({
+              startAfter: jest.fn(() => ({
+                limit: jest.fn((limitValue: number) => ({
+                  get: jest.fn().mockResolvedValue({
+                    docs: [...usersData.keys()]
+                      .sort()
+                      .slice(0, limitValue)
+                      .map((id) => createMockDocument(id, usersData)),
+                  }),
+                })),
+              })),
+              limit: jest.fn((limitValue: number) => ({
+                get: jest.fn().mockResolvedValue({
+                  docs: [...usersData.keys()]
+                    .sort()
+                    .slice(0, limitValue)
+                    .map((id) => createMockDocument(id, usersData)),
+                }),
+              })),
             })),
             limit: jest.fn((limitValue: number) => ({
               get: jest.fn().mockResolvedValue({
@@ -503,6 +530,12 @@ describe("admin functions", () => {
     };
     (configAdmin.firestore as any).FieldValue = {
       serverTimestamp: jest.fn(() => "__server_timestamp__"),
+    };
+    (firestoreSpy as any).FieldPath = {
+      documentId: jest.fn(() => "__document_id__"),
+    };
+    (configAdmin.firestore as any).FieldPath = {
+      documentId: jest.fn(() => "__document_id__"),
     };
 
     const functions = await import("../src/functions/admin");
@@ -845,6 +878,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
+      hasMore: false,
       results: [
         {
           userId: "user-a",
@@ -853,6 +887,7 @@ describe("admin functions", () => {
           email: "alpha@promiso.app",
           groupCount: 0,
           deviceCount: 0,
+          personalEventCount: 0,
           subscriptionStatus: null,
           overrideActive: false,
         },
@@ -863,6 +898,7 @@ describe("admin functions", () => {
           email: "beta@promiso.app",
           groupCount: 0,
           deviceCount: 0,
+          personalEventCount: 0,
           subscriptionStatus: null,
           overrideActive: false,
         },
@@ -907,6 +943,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
+      hasMore: false,
       results: [{
         userId: "user-a",
         name: null,
@@ -914,6 +951,7 @@ describe("admin functions", () => {
         email: "alpha@promiso.app",
         groupCount: 0,
         deviceCount: 0,
+        personalEventCount: 0,
         subscriptionStatus: "subscribed",
         overrideActive: true,
       }],
@@ -958,6 +996,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
+      hasMore: false,
       results: [{
         userId: "user-b",
         name: null,
@@ -965,6 +1004,7 @@ describe("admin functions", () => {
         email: "beta@promiso.app",
         groupCount: 0,
         deviceCount: 0,
+        personalEventCount: 0,
         subscriptionStatus: null,
         overrideActive: true,
       }],
@@ -1031,6 +1071,7 @@ describe("admin functions", () => {
 
     expect(result).toEqual({
       success: true,
+      hasMore: false,
       results: [{
         userId: "target-user",
         name: "성원",
@@ -1038,6 +1079,7 @@ describe("admin functions", () => {
         email: "kswen@promiso.app",
         groupCount: 2,
         deviceCount: 2,
+        personalEventCount: 0,
         subscriptionStatus: "subscribed",
         overrideActive: true,
       }],
@@ -1128,6 +1170,7 @@ describe("admin functions", () => {
         email: "kswen@promiso.app",
         groupCount: 1,
         deviceCount: 1,
+        personalEventCount: 0,
         subscriptionStatus: "subscribed",
         overrideActive: true,
       },
