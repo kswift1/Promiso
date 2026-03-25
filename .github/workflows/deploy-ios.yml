@@ -170,6 +170,7 @@ jobs:
       - name: Generate Project
         env:
           TUIST_ENV: ${{ needs.setup.outputs.environment }}
+          TUIST_CI: "true"
         run: tuist generate --no-open
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
