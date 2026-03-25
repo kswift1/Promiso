@@ -430,7 +430,7 @@ extension CreatePersonalEvent {
             if isCreate {
               effects.append(
                 .run { [appReviewClient, clock] _ in
-                  try? await clock.sleep(for: .seconds(2))
+                  try? await clock.sleep(for: Constants.appReviewRequestDelay)
                   await appReviewClient.requestReviewIfEligible()
                 }
                 .cancellable(id: CancelID.appReviewDelay)
@@ -550,6 +550,7 @@ extension CreatePersonalEvent {
     private enum Constants {
       static let weatherForecastMaxDays = 10
       static let weatherFetchDebounceMilliseconds = 500
+      static let appReviewRequestDelay: Duration = .seconds(2)
     }
 
     private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {

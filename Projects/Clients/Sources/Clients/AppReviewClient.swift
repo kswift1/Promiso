@@ -26,6 +26,12 @@ extension AppReviewClient: TestDependencyKey {
 // MARK: - Live
 
 extension AppReviewClient: DependencyKey {
+  private enum Eligibility {
+    static let minDaysSinceFirstLaunch: TimeInterval = 7 * 24 * 3600
+    static let minSessionCount = 3
+    static let cooldownInterval: TimeInterval = 90 * 24 * 3600
+  }
+
   public static let liveValue: AppReviewClient = {
     let defaults = UserDefaults.standard
 
@@ -46,18 +52,18 @@ extension AppReviewClient: DependencyKey {
         // 조건 1: 첫 실행 후 7일
         let firstLaunch = defaults.double(forKey: AppConstants.UserDefaults.firstLaunchDate)
         guard firstLaunch > 0,
-              now.timeIntervalSince1970 - firstLaunch >= 7 * 24 * 3600 else {
+              now.timeIntervalSince1970 - firstLaunch >= Eligibility.minDaysSinceFirstLaunch else {
           return
         }
 
         // 조건 2: 세션 3회 이상
         let sessions = defaults.integer(forKey: AppConstants.UserDefaults.sessionCount)
-        guard sessions >= 3 else { return }
+        guard sessions >= Eligibility.minSessionCount else { return }
 
         // 조건 3: 마지막 요청 후 90일
         let lastRequest = defaults.double(forKey: AppConstants.UserDefaults.lastReviewRequestDate)
         if lastRequest > 0 {
-          guard now.timeIntervalSince1970 - lastRequest >= 90 * 24 * 3600 else {
+          guard now.timeIntervalSince1970 - lastRequest >= Eligibility.cooldownInterval else {
             return
           }
         }
