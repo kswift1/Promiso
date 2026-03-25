@@ -832,7 +832,8 @@ function formatFieldValue(
   value: unknown
 ): string {
   switch (field) {
-  case "startAt": {
+  case "startAt":
+  case "endAt": {
     if (
       value &&
       typeof value === "object" &&
@@ -889,6 +890,7 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
     const fieldsToCheck = [
       "title",
       "startAt",
+      "endAt",
       "location",
       "description",
       "minimumParticipants",
@@ -896,7 +898,8 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
 
     const fieldLabels: { [key: string]: string } = {
       title: "제목",
-      startAt: "시간",
+      startAt: "시작 시간",
+      endAt: "종료 시간",
       location: "장소",
       description: "설명",
       minimumParticipants: "최소 인원",
