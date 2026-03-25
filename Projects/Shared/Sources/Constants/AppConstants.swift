@@ -247,6 +247,8 @@ public enum AppConstants {
     public static let hasSeenScheduleGuide = "promisoHasSeenScheduleGuide"
     /// 설정 기능 가이드 본 적 있는지
     public static let hasSeenSettingsGuide = "promisoHasSeenSettingsGuide"
+    /// 마지막으로 본 What's New 버전
+    public static let lastSeenWhatsNewVersion = "promisoLastSeenWhatsNewVersion"
   }
 
   // MARK: - Calendar Helpers
