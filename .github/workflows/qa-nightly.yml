@@ -1,0 +1,533 @@
+name: QA Nightly
+
+on:
+  schedule:
+    # Weekdays 18:00 KST
+    - cron: '0 9 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '검증 대상 git ref'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  QA_TARGET_REF: ${{ github.event.inputs.ref || vars.QA_TARGET_REF || 'release/v1.3.1' }}
+
+concurrency:
+  group: qa-nightly
+  cancel-in-progress: false
+
+jobs:
+  ios-curated:
+    runs-on: macos-15
+    timeout-minutes: 90
+    outputs:
+      qa_status: ${{ steps.curated.outputs.status }}
+      app_build_status: ${{ steps.curated.outputs.app_build_status }}
+      tested_modules: ${{ steps.curated.outputs.tested_modules }}
+      failed_modules: ${{ steps.curated.outputs.failed_modules }}
+      error_snippet: ${{ steps.curated.outputs.error_snippet }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.QA_TARGET_REF }}
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Tuist
+        uses: jdx/mise-action@v2
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/tuist
+            .build
+          key: ${{ runner.os }}-tuist-${{ hashFiles('**/Package.resolved', '**/Project.swift', '**/Tuist/**') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-
+
+      - name: Generate xcconfig files
+        env:
+          GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
+          GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
+          KAKAO_NATIVE_APP_KEY_DEV: ${{ secrets.KAKAO_NATIVE_APP_KEY_DEV }}
+          GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
+          GOOGLE_REVERSED_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_STAGE }}
+          KAKAO_NATIVE_APP_KEY_STAGE: ${{ secrets.KAKAO_NATIVE_APP_KEY_STAGE }}
+          GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
+          GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
+          KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
+          CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
+        run: |
+          chmod +x ./scripts/generate-xcconfig.sh
+          ./scripts/generate-xcconfig.sh
+
+      - name: Setup Firebase plist (Dev)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_DEV }}" | base64 --decode > \
+            Projects/App/Resources-Dev/GoogleService-Info.plist
+
+      - name: Setup Firebase plist (Stage)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_STAGE }}" | base64 --decode > \
+            Projects/App/Resources-Stage/GoogleService-Info.plist
+
+      - name: Setup Firebase plist (Prod)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PROD }}" | base64 --decode > \
+            Projects/App/Resources-Prod/GoogleService-Info.plist
+
+      - name: Install Dependencies
+        run: tuist install
+
+      - name: Generate Project
+        run: tuist generate --no-open
+
+      - name: Run Curated iOS QA
+        id: curated
+        continue-on-error: true
+        run: |
+          set -eo pipefail
+
+          DESTINATION='platform=iOS Simulator,name=iPhone 16,OS=latest'
+          MODULES=(
+            AppEntryFeature
+            RootTabFeature
+            HomeFeature
+            GroupFeature
+            AuthFeature
+            Clients
+            SettingsFeature
+          )
+
+          mkdir -p /tmp/qa-nightly-logs /tmp/qa-nightly-results
+
+          summarize_log() {
+            local file="$1"
+            python3 - "$file" <<'PY2'
+import pathlib, re, sys
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    sys.exit(0)
+text = path.read_text(errors='ignore').splitlines()
+pattern = re.compile(r'(error:|failed|FAIL|Assertion|Testing failed|\*\* TEST FAILED \*\*)', re.I)
+matches = [line.strip() for line in text if pattern.search(line)]
+selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
+print('\n'.join(selected))
+PY2
+          }
+
+          APP_BUILD_STATUS="pass"
+          if ! tuist build PromisoStage -- \
+            -destination "$DESTINATION" \
+            -skipPackagePluginValidation \
+            > /tmp/qa-nightly-logs/promiso-stage.log 2>&1; then
+            APP_BUILD_STATUS="fail"
+          fi
+
+          FAILED_MODULES=()
+          TESTED_MODULES=()
+          ERROR_SNIPPET=""
+
+          if [ "$APP_BUILD_STATUS" = "pass" ]; then
+            for module in "${MODULES[@]}"; do
+              TESTED_MODULES+=("$module")
+              if ! xcodebuild test \
+                -scheme "$module" \
+                -workspace Promiso.xcworkspace \
+                -destination "$DESTINATION" \
+                -skipPackagePluginValidation \
+                -resultBundlePath "/tmp/qa-nightly-results/${module}.xcresult" \
+                > "/tmp/qa-nightly-logs/${module}.log" 2>&1; then
+                FAILED_MODULES+=("$module")
+              fi
+            done
+          fi
+
+          TESTED_JOINED="${TESTED_MODULES[*]}"
+          if [ ${#FAILED_MODULES[@]} -gt 0 ]; then
+            FAILED_JOINED=$(printf "%s, " "${FAILED_MODULES[@]}")
+            FAILED_JOINED="${FAILED_JOINED%, }"
+            FIRST_FAILED_MODULE="${FAILED_MODULES[0]}"
+            MODULE_SNIPPET="$(summarize_log "/tmp/qa-nightly-logs/${FIRST_FAILED_MODULE}.log")"
+            ERROR_SNIPPET="[${FIRST_FAILED_MODULE}]
+${MODULE_SNIPPET}"
+          else
+            FAILED_JOINED=""
+          fi
+
+          STATUS="success"
+          if [ "$APP_BUILD_STATUS" != "pass" ] || [ ${#FAILED_MODULES[@]} -gt 0 ]; then
+            STATUS="failure"
+          fi
+
+          if [ "$APP_BUILD_STATUS" != "pass" ]; then
+            ERROR_SNIPPET="[PromisoStage build]
+$(summarize_log /tmp/qa-nightly-logs/promiso-stage.log)"
+          fi
+
+          {
+            echo "status=$STATUS"
+            echo "app_build_status=$APP_BUILD_STATUS"
+            echo "tested_modules=$TESTED_JOINED"
+            echo "failed_modules=$FAILED_JOINED"
+            echo "error_snippet<<EOF"
+            printf '%s
+' "$ERROR_SNIPPET"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "success" ]; then
+            exit 1
+          fi
+
+      - name: Upload iOS QA Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-nightly-ios-${{ github.run_id }}
+          path: |
+            /tmp/qa-nightly-logs
+            /tmp/qa-nightly-results
+          if-no-files-found: ignore
+
+      - name: Fail if Curated iOS QA Failed
+        if: steps.curated.outputs.status != 'success'
+        run: exit 1
+
+  admin-console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      qa_status: ${{ steps.verify.outputs.status }}
+      failure_step: ${{ steps.verify.outputs.failure_step }}
+      error_snippet: ${{ steps.verify.outputs.error_snippet }}
+
+    defaults:
+      run:
+        working-directory: apps/admin-console
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.QA_TARGET_REF }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/admin-console/package-lock.json
+
+      - name: Run Admin Console QA
+        id: verify
+        continue-on-error: true
+        run: |
+          set +e
+          summarize_log() {
+            local file="$1"
+            python3 - "$file" <<'PY2'
+import pathlib, re, sys
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    sys.exit(0)
+text = path.read_text(errors='ignore').splitlines()
+pattern = re.compile(r'(error|failed|ERR!|TS\d+:)', re.I)
+matches = [line.strip() for line in text if pattern.search(line)]
+selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
+print('\n'.join(selected))
+PY2
+          }
+
+          npm ci > /tmp/qa-nightly-admin-install.log 2>&1
+          INSTALL_EXIT=$?
+
+          BUILD_EXIT=0
+          if [ $INSTALL_EXIT -eq 0 ]; then
+            npm run build > /tmp/qa-nightly-admin-build.log 2>&1
+            BUILD_EXIT=$?
+          else
+            BUILD_EXIT=1
+          fi
+
+          STATUS="success"
+          FAILURE_STEP=""
+          ERROR_SNIPPET=""
+          if [ $INSTALL_EXIT -ne 0 ]; then
+            STATUS="failure"
+            FAILURE_STEP="npm ci"
+            ERROR_SNIPPET="$(summarize_log /tmp/qa-nightly-admin-install.log)"
+          elif [ $BUILD_EXIT -ne 0 ]; then
+            STATUS="failure"
+            FAILURE_STEP="npm run build"
+            ERROR_SNIPPET="$(summarize_log /tmp/qa-nightly-admin-build.log)"
+          fi
+
+          {
+            echo "status=$STATUS"
+            echo "failure_step=$FAILURE_STEP"
+            echo "error_snippet<<EOF"
+            printf '%s
+' "$ERROR_SNIPPET"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "success" ]; then
+            exit 1
+          fi
+
+      - name: Fail if Admin Console QA Failed
+        if: steps.verify.outputs.status != 'success'
+        run: exit 1
+
+  functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      qa_status: ${{ steps.verify.outputs.status }}
+      failure_step: ${{ steps.verify.outputs.failure_step }}
+      error_snippet: ${{ steps.verify.outputs.error_snippet }}
+
+    defaults:
+      run:
+        working-directory: infra/firebase/functions
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.QA_TARGET_REF }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: infra/firebase/functions/package-lock.json
+
+      - name: Run Functions QA
+        id: verify
+        continue-on-error: true
+        run: |
+          set +e
+          summarize_log() {
+            local file="$1"
+            python3 - "$file" <<'PY2'
+import pathlib, re, sys
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    sys.exit(0)
+text = path.read_text(errors='ignore').splitlines()
+pattern = re.compile(r'(error|failed|ERR!|TS\d+:)', re.I)
+matches = [line.strip() for line in text if pattern.search(line)]
+selected = matches[-5:] if matches else [line.strip() for line in text[-20:] if line.strip()][-5:]
+print('\n'.join(selected))
+PY2
+          }
+
+          npm ci > /tmp/qa-nightly-functions-install.log 2>&1
+          INSTALL_EXIT=$?
+
+          LINT_EXIT=0
+          BUILD_EXIT=0
+
+          if [ $INSTALL_EXIT -eq 0 ]; then
+            npm run lint > /tmp/qa-nightly-functions-lint.log 2>&1
+            LINT_EXIT=$?
+
+            npm run build > /tmp/qa-nightly-functions-build.log 2>&1
+            BUILD_EXIT=$?
+          else
+            LINT_EXIT=1
+            BUILD_EXIT=1
+          fi
+
+          STATUS="success"
+          FAILURE_STEP=""
+          ERROR_SNIPPET=""
+          if [ $INSTALL_EXIT -ne 0 ]; then
+            STATUS="failure"
+            FAILURE_STEP="npm ci"
+            ERROR_SNIPPET="$(summarize_log /tmp/qa-nightly-functions-install.log)"
+          elif [ $LINT_EXIT -ne 0 ]; then
+            STATUS="failure"
+            FAILURE_STEP="npm run lint"
+            ERROR_SNIPPET="$(summarize_log /tmp/qa-nightly-functions-lint.log)"
+          elif [ $BUILD_EXIT -ne 0 ]; then
+            STATUS="failure"
+            FAILURE_STEP="npm run build"
+            ERROR_SNIPPET="$(summarize_log /tmp/qa-nightly-functions-build.log)"
+          fi
+
+          {
+            echo "status=$STATUS"
+            echo "failure_step=$FAILURE_STEP"
+            echo "error_snippet<<EOF"
+            printf '%s
+' "$ERROR_SNIPPET"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "success" ]; then
+            exit 1
+          fi
+
+      - name: Fail if Functions QA Failed
+        if: steps.verify.outputs.status != 'success'
+        run: exit 1
+
+  summary:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - ios-curated
+      - admin-console
+      - functions
+
+    steps:
+      - name: Write Summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          # QA Nightly Summary
+
+          - Target ref: \`${{ env.QA_TARGET_REF }}\`
+          - Schedule: weekdays 18:00 KST / 09:00 UTC
+          - iOS curated status: \`${{ needs.ios-curated.result }}\`
+          - PromisoStage build: \`${{ needs.ios-curated.outputs.app_build_status || 'n/a' }}\`
+          - Tested iOS modules: \`${{ needs.ios-curated.outputs.tested_modules || 'n/a' }}\`
+          - Failed iOS modules: \`${{ needs.ios-curated.outputs.failed_modules || 'none' }}\`
+          - Admin Console status: \`${{ needs.admin-console.result }}\`
+          - Firebase Functions status: \`${{ needs.functions.result }}\`
+          EOF
+
+          if [ "${{ needs.ios-curated.result }}" != "success" ]; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+
+          ## iOS Failure Highlights
+
+          ```text
+          ${{ needs.ios-curated.outputs.error_snippet || 'No error snippet captured.' }}
+          ```
+          EOF
+          fi
+
+          if [ "${{ needs.admin-console.result }}" != "success" ]; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+
+          ## Admin Console Failure Highlights
+
+          - Failed step: \`${{ needs.admin-console.outputs.failure_step || 'unknown' }}\`
+
+          ```text
+          ${{ needs.admin-console.outputs.error_snippet || 'No error snippet captured.' }}
+          ```
+          EOF
+          fi
+
+          if [ "${{ needs.functions.result }}" != "success" ]; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+
+          ## Firebase Functions Failure Highlights
+
+          - Failed step: \`${{ needs.functions.outputs.failure_step || 'unknown' }}\`
+
+          ```text
+          ${{ needs.functions.outputs.error_snippet || 'No error snippet captured.' }}
+          ```
+          EOF
+          fi
+
+      - name: Notify Slack on Failure
+        if: always() && (needs.ios-curated.result == 'failure' || needs.admin-console.result == 'failure' || needs.functions.result == 'failure')
+        env:
+          SLACK_QA_WEBHOOK_URL: ${{ secrets.SLACK_QA_WEBHOOK_URL }}
+        run: |
+          IOS_STATUS="${{ needs.ios-curated.result }}"
+          ADMIN_STATUS="${{ needs.admin-console.result }}"
+          FUNCTIONS_STATUS="${{ needs.functions.result }}"
+
+          IOS_BADGE=$([ "$IOS_STATUS" = "success" ] && echo "pass" || echo "fail")
+          ADMIN_BADGE=$([ "$ADMIN_STATUS" = "success" ] && echo "pass" || echo "fail")
+          FUNCTIONS_BADGE=$([ "$FUNCTIONS_STATUS" = "success" ] && echo "pass" || echo "fail")
+
+          ERROR_COMBINED=""
+          if [ "$IOS_STATUS" = "failure" ]; then
+            SNIPPET="${{ needs.ios-curated.outputs.error_snippet }}"
+            if [ -n "$SNIPPET" ]; then
+              ERROR_COMBINED="${ERROR_COMBINED}[iOS]\n${SNIPPET}\n"
+            fi
+          fi
+          if [ "$ADMIN_STATUS" = "failure" ]; then
+            SNIPPET="${{ needs.admin-console.outputs.error_snippet }}"
+            if [ -n "$SNIPPET" ]; then
+              ERROR_COMBINED="${ERROR_COMBINED}[Admin]\n${SNIPPET}\n"
+            fi
+          fi
+          if [ "$FUNCTIONS_STATUS" = "failure" ]; then
+            SNIPPET="${{ needs.functions.outputs.error_snippet }}"
+            if [ -n "$SNIPPET" ]; then
+              ERROR_COMBINED="${ERROR_COMBINED}[Functions]\n${SNIPPET}\n"
+            fi
+          fi
+
+          if [ -z "$ERROR_COMBINED" ]; then
+            ERROR_COMBINED="(에러 스니펫 없음)"
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REF="${{ env.QA_TARGET_REF }}"
+
+          PAYLOAD=$(jq -n \
+            --arg ref "$REF" \
+            --arg ios "$IOS_BADGE" \
+            --arg admin "$ADMIN_BADGE" \
+            --arg functions "$FUNCTIONS_BADGE" \
+            --arg error "$ERROR_COMBINED" \
+            --arg run_url "$RUN_URL" \
+            '{
+              blocks: [
+                {
+                  type: "header",
+                  text: {type: "plain_text", text: "🔴 QA Nightly 실패"}
+                },
+                {
+                  type: "section",
+                  fields: [
+                    {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
+                    {type: "mrkdwn", text: ("*iOS:* " + $ios)},
+                    {type: "mrkdwn", text: ("*Admin:* " + $admin)},
+                    {type: "mrkdwn", text: ("*Functions:* " + $functions)}
+                  ]
+                },
+                {
+                  type: "section",
+                  text: {type: "mrkdwn", text: ("*에러 요약*\n```" + $error + "```")}
+                },
+                {
+                  type: "actions",
+                  elements: [
+                    {
+                      type: "button",
+                      text: {type: "plain_text", text: "Run 보기"},
+                      url: $run_url
+                    }
+                  ]
+                }
+              ]
+            }')
+
+          curl -fsSL -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$SLACK_QA_WEBHOOK_URL"

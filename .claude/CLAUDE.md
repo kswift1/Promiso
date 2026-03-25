@@ -3,7 +3,7 @@
 ## 절대 규칙 (메인 Claude 전용)
 
 > 아래 규칙은 **메인 Claude에만 적용**됩니다.
-> sub-agent(implementer, reviewer, test-writer, researcher)는 각자의 `.claude/agents/*.md` 프롬프트를 따릅니다.
+> sub-agent(implementer, reviewer, test-writer, researcher, qa)는 각자의 `.claude/agents/*.md` 프롬프트를 따릅니다.
 
 ```
 ❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행 (XS 제외)
@@ -67,7 +67,7 @@ Claude Code 추가 규칙:
 
 ---
 
-## 에이전트 (4개 + Explore)
+## 에이전트 (5개 + Explore)
 
 | 에이전트 | 역할 | 트리거 |
 |----------|------|--------|
@@ -75,6 +75,7 @@ Claude Code 추가 규칙:
 | `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | "리뷰해줘", 검증 단계 |
 | `test-writer` | Swift Testing 테스트 작성 | "테스트 작성" |
 | `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | "조사해줘", "레퍼런스" |
+| `qa` | QA 분석 (도메인 규칙 커버리지, 회귀 위험, 보안 검증) | "QA 분석", "커버리지 분석", "회귀 분석" |
 | `Explore` | 코드베이스 탐색 (읽기 전용) | 탐색 단계 |
 
 ### 모델 선택 가이드라인
@@ -93,6 +94,7 @@ Claude Code 추가 규칙:
 - 코드 리뷰, 검증 → `reviewer`
 - 테스트 작성 → `test-writer`
 - UI 레퍼런스, 최신 기술 조사 → `researcher`
+- 도메인 규칙 커버리지 분석, 회귀 위험 분석, 보안 규칙 검증 → `qa`
 - 코드베이스 분석 → `Explore`
 - 빌드 수정 → 에이전트 없이 직접 처리
 
