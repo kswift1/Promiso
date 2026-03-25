@@ -80,6 +80,14 @@ extension WhatsNew {
       }
     }
 
+    private var appIcon: UIImage? {
+      guard let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
+            let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
+            let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+            let iconName = iconFiles.last else { return nil }
+      return UIImage(named: iconName)
+    }
+
     // MARK: - Cover Page
 
     @ViewBuilder
@@ -101,11 +109,7 @@ extension WhatsNew {
             )
             .frame(width: 240, height: 240)
 
-          if let iconName = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
-             let primaryIcon = iconName["CFBundlePrimaryIcon"] as? [String: Any],
-             let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
-             let lastIcon = iconFiles.last,
-             let icon = UIImage(named: lastIcon) {
+          if let icon = appIcon {
             Image(uiImage: icon)
               .resizable()
               .aspectRatio(contentMode: .fit)
