@@ -30,10 +30,11 @@ extension WhatsNew {
     @ViewBuilder
     private func whatsNewContent(model: WhatsNewModel) -> some View {
       let isCover = store.currentIndex == 0
+      let isClosing = store.currentIndex == model.items.count + 1
       let itemIndex = store.currentIndex - 1
-      let currentItem = isCover ? nil : model.items[safe: itemIndex]
-      let totalPages = model.items.count + 1
-      let isLast = store.currentIndex == model.items.count
+      let currentItem = (isCover || isClosing) ? nil : model.items[safe: itemIndex]
+      let totalPages = model.items.count + 2  // 표지 + 아이템들 + 클로징
+      let isLast = isClosing
 
       ZStack(alignment: .bottom) {
         // Background
@@ -42,6 +43,9 @@ extension WhatsNew {
         if isCover {
           // 표지 페이지
           coverPage(version: model.version)
+        } else if isClosing {
+          // 클로징 페이지
+          closingPage()
         } else {
           // Item 페이지
           if let item = currentItem {
@@ -53,34 +57,10 @@ extension WhatsNew {
         }
 
         // Bottom panel (텍스트 + 인디케이터 + 버튼)
-        if !isCover {
+        if !isCover && !isClosing {
           VStack(spacing: 10) {
             if let item = currentItem {
               textSection(item: item)
-            }
-
-            if isLast {
-              HStack(spacing: 10) {
-                Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                  .font(.title3)
-                  .foregroundStyle(Color.pmindigo.n400)
-
-                VStack(alignment: .leading, spacing: 2) {
-                  Text("여러분의 목소리를 듣고 싶어요")
-                    .font(.footnote)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white.opacity(0.85))
-
-                  Text("이메일이나 카카오톡 채널로 자유롭게 알려주세요!")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
-                }
-              }
-              .padding(.horizontal, 14)
-              .padding(.vertical, 10)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-              .padding(.horizontal, 20)
             }
 
             if totalPages > 2 {
@@ -178,6 +158,75 @@ extension WhatsNew {
             }
           } label: {
             Text("살펴보기")
+              .fontWeight(.medium)
+              .frame(maxWidth: .infinity)
+              .frame(height: 44)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.pmindigo.n500)
+        }
+      }
+      .padding(.horizontal, 30)
+      .padding(.bottom, 60)
+    }
+
+    // MARK: - Closing Page
+
+    @ViewBuilder
+    private func closingPage() -> some View {
+      VStack(spacing: 0) {
+        Spacer()
+        Spacer()
+
+        Text("🙏")
+          .font(.system(size: 56))
+          .padding(.bottom, 24)
+
+        VStack(spacing: 12) {
+          Text("Promiso와 함께해주셔서 감사합니다")
+            .font(.title2)
+            .fontWeight(.bold)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.white)
+
+          VStack(spacing: 4) {
+            Text("더 나은 약속 경험을 위해 매일 고민하고 있습니다.")
+              .font(.callout)
+              .foregroundStyle(.white.opacity(0.7))
+
+            Text("불편한 점이나 원하는 기능이 있다면")
+              .font(.callout)
+              .foregroundStyle(.white.opacity(0.7))
+
+            Text("설정 → 지원에서 언제든 알려주세요.")
+              .font(.callout)
+              .foregroundStyle(.white.opacity(0.7))
+          }
+          .multilineTextAlignment(.center)
+        }
+
+        Spacer()
+        Spacer()
+        Spacer()
+
+        // 완료 버튼 (coverPage의 "살펴보기" 버튼과 동일 스타일)
+        if #available(iOS 26, *) {
+          Button {
+            store.send(.view(.nextTapped))
+          } label: {
+            Text(LocalizedStrings.Common.done)
+              .fontWeight(.medium)
+              .padding(.vertical, 6)
+          }
+          .tint(Color.pmindigo.n500)
+          .buttonStyle(.glassProminent)
+          .buttonSizing(.flexible)
+        } else {
+          Button {
+            store.send(.view(.nextTapped))
+          } label: {
+            Text(LocalizedStrings.Common.done)
               .fontWeight(.medium)
               .frame(maxWidth: .infinity)
               .frame(height: 44)
@@ -383,5 +432,17 @@ extension WhatsNew {
       .ignoresSafeArea()
     }
   }
+}
+
+// MARK: - Preview
+
+#Preview("What's New - Last Page") {
+  var state = WhatsNew.Feature.State(model: .example)
+  state.currentIndex = WhatsNewModel.example.items.count + 1
+  return WhatsNew.ContentView(
+    store: Store(initialState: state) {
+      WhatsNew.Feature()
+    }
+  )
 }
 
