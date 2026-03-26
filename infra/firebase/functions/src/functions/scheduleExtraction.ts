@@ -271,6 +271,26 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
             if (block.type === "text") return !!block.content;
             return block.items && block.items.length > 0;
           });
+
+        // 인접한 텍스트 블록 병합
+        if (descriptionBlocks.length > 1) {
+          descriptionBlocks = descriptionBlocks.reduce<
+            DescriptionBlockResponse[]
+          >(
+            (acc, block) => {
+              const last = acc[acc.length - 1];
+              if (block.type === "text" && last?.type === "text") {
+                last.content =
+                  (last.content ?? "") + "\n\n" + (block.content ?? "");
+              } else {
+                acc.push({...block});
+              }
+              return acc;
+            },
+            [],
+          );
+        }
+
         if (descriptionBlocks.length === 0) descriptionBlocks = null;
       }
 
