@@ -26742,6 +26742,24 @@
         }
       }
     },
+    "settings.support.mailAppUnavailable" : {
+      "comment" : "이메일 앱을 열 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to open email app"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이메일 앱을 열 수 없습니다"
+          }
+        }
+      }
+    },
     "settings.support.faq" : {
       "comment" : "자주 묻는 질문",
       "extractionState" : "manual",

@@ -59,8 +59,7 @@ extension Support {
     }
 
     public enum Internal: Equatable, Sendable {
-      case bugReportOpenResult(Bool)
-      case featureRequestOpenResult(Bool)
+      case mailOpenResult(Bool)
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -82,53 +81,16 @@ extension Support {
           }
 
         case .view(.bugReportTapped):
-          return .run { send in
-            await hapticFeedback.selection()
-            // 이메일 앱 열기
-            let email = AppConstants.App.supportEmail
-            let subject = Strings.BugReport.subject
-            let osVersion = await MainActor.run { UIDevice.current.systemVersion }
-            let body = Strings.BugReport.body(
-              version: AppConstants.App.version,
-              build: AppConstants.App.buildNumber,
-              device: Self.deviceModel(),
-              osVersion: osVersion
-            )
-
-            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-            if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
-              let opened = await openURL(url)
-              await send(.internal(.bugReportOpenResult(opened)))
-            } else {
-              await send(.internal(.bugReportOpenResult(false)))
-            }
-          }
+          return openMailClient(
+            subject: Strings.BugReport.subject,
+            bodyBuilder: Strings.BugReport.body
+          )
 
         case .view(.featureRequestTapped):
-          return .run { send in
-            await hapticFeedback.selection()
-            let email = AppConstants.App.supportEmail
-            let subject = Strings.FeatureRequest.subject
-            let osVersion = await MainActor.run { UIDevice.current.systemVersion }
-            let body = Strings.FeatureRequest.body(
-              version: AppConstants.App.version,
-              build: AppConstants.App.buildNumber,
-              device: Self.deviceModel(),
-              osVersion: osVersion
-            )
-
-            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-            if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
-              let opened = await openURL(url)
-              await send(.internal(.featureRequestOpenResult(opened)))
-            } else {
-              await send(.internal(.featureRequestOpenResult(false)))
-            }
-          }
+          return openMailClient(
+            subject: Strings.FeatureRequest.subject,
+            bodyBuilder: Strings.FeatureRequest.body
+          )
 
         case .view(.kakaoChannelTapped):
           return .run { _ in
@@ -151,15 +113,9 @@ extension Support {
           state.toastMessage = nil
           return .none
 
-        case .internal(.bugReportOpenResult(let opened)):
+        case .internal(.mailOpenResult(let opened)):
           if !opened {
-            state.toastMessage = ToastMessage(type: .error, title: "이메일 앱을 열 수 없습니다", position: .bottom)
-          }
-          return .none
-
-        case .internal(.featureRequestOpenResult(let opened)):
-          if !opened {
-            state.toastMessage = ToastMessage(type: .error, title: "이메일 앱을 열 수 없습니다", position: .bottom)
+            state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.SettingsStrings.mailAppUnavailable, position: .bottom)
           }
           return .none
 
@@ -170,6 +126,33 @@ extension Support {
     }
 
     // MARK: - Helpers
+
+    private func openMailClient(
+      subject: String,
+      bodyBuilder: (String, String, String, String) -> String
+    ) -> Effect<Action> {
+      .run { [hapticFeedback, openURL] send in
+        await hapticFeedback.selection()
+        let osVersion = await MainActor.run { UIDevice.current.systemVersion }
+        let body = bodyBuilder(
+          AppConstants.App.version,
+          AppConstants.App.buildNumber,
+          Self.deviceModel(),
+          osVersion
+        )
+
+        let email = AppConstants.App.supportEmail
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+          let opened = await openURL(url)
+          await send(.internal(.mailOpenResult(opened)))
+        } else {
+          await send(.internal(.mailOpenResult(false)))
+        }
+      }
+    }
 
     private static func deviceModel() -> String {
       var systemInfo = utsname()
