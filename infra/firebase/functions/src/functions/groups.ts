@@ -734,7 +734,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
  * 4. users/{userId}.groups[groupId].role 업데이트 (admin ↔ member)
  */
 export const transferGroupHost = onCall<TransferGroupHostRequest>(
-  {region: REGION, invoker: "public"},
+  {region: REGION},
   async (request): Promise<TransferGroupHostResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
@@ -934,7 +934,7 @@ export const onGroupImageUpdated = onDocumentUpdated(
  * 5. 추방자가 참여한 미래 약속에서 투표 제거 + isConfirmed 재계산
  */
 export const expelMember = onCall<ExpelMemberRequest>(
-  {region: REGION, invoker: "public"},
+  {region: REGION},
   async (request): Promise<ExpelMemberResponse> => {
     // 1. 인증 확인
     if (!request.auth) {

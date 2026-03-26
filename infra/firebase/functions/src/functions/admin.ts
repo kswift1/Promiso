@@ -177,8 +177,8 @@ const RELEASE_CONTROL_GROUPS: Record<ReleaseControlKey, string> = {
   forceUpdateVersion: "version-control",
   recommendedVersion: "version-control",
   appStoreURL: "version-control",
-  privacyPolicyURL: "leagal-policies",
-  termsOfServiceURL: "leagal-policies",
+  privacyPolicyURL: "legal-policies",
+  termsOfServiceURL: "legal-policies",
   supportEmail: "customer-support",
   notionFAQDatabaseId: "customer-support",
 };
