@@ -129,7 +129,7 @@ extension Support {
 
     private func openMailClient(
       subject: String,
-      bodyBuilder: (String, String, String, String) -> String
+      bodyBuilder: @escaping @Sendable (String, String, String, String) -> String
     ) -> Effect<Action> {
       .run { [hapticFeedback, openURL] send in
         await hapticFeedback.selection()
