@@ -54,6 +54,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 150
     needs: [resolve-ref]
+    env:
+      TUIST_ENV: stage
     outputs:
       qa_status: ${{ steps.full.outputs.status }}
       app_build_status: ${{ steps.full.outputs.app_build_status }}
@@ -119,8 +121,6 @@ jobs:
         run: tuist install
 
       - name: Generate Project
-        env:
-          TUIST_ENV: stage
         run: tuist generate --no-open
 
       - name: Run Full iOS QA
@@ -410,66 +410,66 @@ jobs:
 
     steps:
       - name: Write Summary
+        env:
+          TARGET_REF: ${{ needs.resolve-ref.outputs.target_ref }}
+          IOS_RESULT: ${{ needs.ios-full.result }}
+          IOS_APP_BUILD_STATUS: ${{ needs.ios-full.outputs.app_build_status || 'n/a' }}
+          IOS_TEST_STATUS: ${{ needs.ios-full.outputs.test_status || 'n/a' }}
+          IOS_ERROR_SNIPPET: ${{ needs.ios-full.outputs.error_snippet || 'No error snippet captured.' }}
+          ADMIN_RESULT: ${{ needs.admin-console.result }}
+          ADMIN_FAILURE_STEP: ${{ needs.admin-console.outputs.failure_step || 'unknown' }}
+          ADMIN_ERROR_SNIPPET: ${{ needs.admin-console.outputs.error_snippet || 'No error snippet captured.' }}
+          FUNCTIONS_RESULT: ${{ needs.functions.result }}
+          FUNCTIONS_FAILURE_STEP: ${{ needs.functions.outputs.failure_step || 'unknown' }}
+          FUNCTIONS_ERROR_SNIPPET: ${{ needs.functions.outputs.error_snippet || 'No error snippet captured.' }}
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          # QA Weekly Summary
+          {
+            printf '%s\n\n' '# QA Weekly Summary'
+            printf '%s\n' "- Target ref: \`$TARGET_REF\`"
+            printf '%s\n' '- Schedule: Monday 10:00 KST / 01:00 UTC'
+            printf '%s\n' "- iOS full status: \`$IOS_RESULT\`"
+            printf '%s\n' "- PromisoStage build: \`$IOS_APP_BUILD_STATUS\`"
+            printf '%s\n' "- Full test status: \`$IOS_TEST_STATUS\`"
+            printf '%s\n' "- Admin Console status: \`$ADMIN_RESULT\`"
+            printf '%s\n' "- Firebase Functions status: \`$FUNCTIONS_RESULT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          - Target ref: \`${{ needs.resolve-ref.outputs.target_ref }}\`
-          - Schedule: Monday 10:00 KST / 01:00 UTC
-          - iOS full status: \`${{ needs.ios-full.result }}\`
-          - PromisoStage build: \`${{ needs.ios-full.outputs.app_build_status || 'n/a' }}\`
-          - Full test status: \`${{ needs.ios-full.outputs.test_status || 'n/a' }}\`
-          - Admin Console status: \`${{ needs.admin-console.result }}\`
-          - Firebase Functions status: \`${{ needs.functions.result }}\`
-          EOF
-
-          if [ "${{ needs.ios-full.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## iOS Failure Highlights
-
-          ```text
-          ${{ needs.ios-full.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$IOS_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## iOS Failure Highlights'
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$IOS_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ "${{ needs.admin-console.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## Admin Console Failure Highlights
-
-          - Failed step: \`${{ needs.admin-console.outputs.failure_step || 'unknown' }}\`
-
-          ```text
-          ${{ needs.admin-console.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$ADMIN_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## Admin Console Failure Highlights'
+              printf '%s\n\n' "- Failed step: \`$ADMIN_FAILURE_STEP\`"
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$ADMIN_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ "${{ needs.functions.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## Firebase Functions Failure Highlights
-
-          - Failed step: \`${{ needs.functions.outputs.failure_step || 'unknown' }}\`
-
-          ```text
-          ${{ needs.functions.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$FUNCTIONS_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## Firebase Functions Failure Highlights'
+              printf '%s\n\n' "- Failed step: \`$FUNCTIONS_FAILURE_STEP\`"
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$FUNCTIONS_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Notify Slack
         if: always()
         env:
           SLACK_QA_WEBHOOK_URL: ${{ secrets.SLACK_QA_WEBHOOK_URL }}
+          IOS_RESULT: ${{ needs.ios-full.result }}
+          ADMIN_RESULT: ${{ needs.admin-console.result }}
+          FUNCTIONS_RESULT: ${{ needs.functions.result }}
+          IOS_ERROR_SNIPPET: ${{ needs.ios-full.outputs.error_snippet }}
+          ADMIN_ERROR_SNIPPET: ${{ needs.admin-console.outputs.error_snippet }}
+          FUNCTIONS_ERROR_SNIPPET: ${{ needs.functions.outputs.error_snippet }}
+          TARGET_REF: ${{ needs.resolve-ref.outputs.target_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          IOS_RESULT="${{ needs.ios-full.result }}"
-          ADMIN_RESULT="${{ needs.admin-console.result }}"
-          FUNCTIONS_RESULT="${{ needs.functions.result }}"
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
           status_emoji() {
             case "$1" in
               success)  echo "✅" ;;
@@ -489,64 +489,94 @@ jobs:
           fi
 
           if [ "$OVERALL_STATUS" = "success" ]; then
-            PAYLOAD=$(cat <<JSON
-          {
-            "blocks": [
-              {"type": "header", "text": {"type": "plain_text", "text": "✅ QA Weekly 성공"}},
-              {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": "*Ref:* \`${{ needs.resolve-ref.outputs.target_ref }}\`"},
-                {"type": "mrkdwn", "text": "*iOS:* ${IOS_EMOJI}"},
-                {"type": "mrkdwn", "text": "*Admin:* ${ADMIN_EMOJI}"},
-                {"type": "mrkdwn", "text": "*Functions:* ${FUNCTIONS_EMOJI}"}
-              ]},
-              {"type": "actions", "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": "Run 보기"}, "url": "${RUN_URL}"}
-              ]}
-            ]
-          }
-          JSON
-          )
+            PAYLOAD=$(jq -n \
+              --arg ref "$TARGET_REF" \
+              --arg ios "$IOS_EMOJI" \
+              --arg admin "$ADMIN_EMOJI" \
+              --arg functions "$FUNCTIONS_EMOJI" \
+              --arg run_url "$RUN_URL" \
+              '{
+                blocks: [
+                  {
+                    type: "header",
+                    text: {type: "plain_text", text: "✅ QA Weekly 성공"}
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
+                      {type: "mrkdwn", text: ("*iOS:* " + $ios)},
+                      {type: "mrkdwn", text: ("*Admin:* " + $admin)},
+                      {type: "mrkdwn", text: ("*Functions:* " + $functions)}
+                    ]
+                  },
+                  {
+                    type: "actions",
+                    elements: [
+                      {
+                        type: "button",
+                        text: {type: "plain_text", text: "Run 보기"},
+                        url: $run_url
+                      }
+                    ]
+                  }
+                ]
+              }')
           else
-            IOS_SNIPPET="${{ needs.ios-full.outputs.error_snippet }}"
-            ADMIN_SNIPPET="${{ needs.admin-console.outputs.error_snippet }}"
-            FUNCTIONS_SNIPPET="${{ needs.functions.outputs.error_snippet }}"
-
             ERROR_SUMMARY=""
-            if [ "$IOS_RESULT" != "success" ] && [ -n "$IOS_SNIPPET" ]; then
-              ERROR_SUMMARY="[iOS]\n${IOS_SNIPPET}"
+            if [ "$IOS_RESULT" != "success" ] && [ -n "$IOS_ERROR_SNIPPET" ]; then
+              ERROR_SUMMARY="[iOS]\n${IOS_ERROR_SNIPPET}"
             fi
-            if [ "$ADMIN_RESULT" != "success" ] && [ -n "$ADMIN_SNIPPET" ]; then
+            if [ "$ADMIN_RESULT" != "success" ] && [ -n "$ADMIN_ERROR_SNIPPET" ]; then
               if [ -n "$ERROR_SUMMARY" ]; then ERROR_SUMMARY="${ERROR_SUMMARY}\n"; fi
-              ERROR_SUMMARY="${ERROR_SUMMARY}[Admin]\n${ADMIN_SNIPPET}"
+              ERROR_SUMMARY="${ERROR_SUMMARY}[Admin]\n${ADMIN_ERROR_SNIPPET}"
             fi
-            if [ "$FUNCTIONS_RESULT" != "success" ] && [ -n "$FUNCTIONS_SNIPPET" ]; then
+            if [ "$FUNCTIONS_RESULT" != "success" ] && [ -n "$FUNCTIONS_ERROR_SNIPPET" ]; then
               if [ -n "$ERROR_SUMMARY" ]; then ERROR_SUMMARY="${ERROR_SUMMARY}\n"; fi
-              ERROR_SUMMARY="${ERROR_SUMMARY}[Functions]\n${FUNCTIONS_SNIPPET}"
+              ERROR_SUMMARY="${ERROR_SUMMARY}[Functions]\n${FUNCTIONS_ERROR_SNIPPET}"
             fi
             if [ -z "$ERROR_SUMMARY" ]; then
               ERROR_SUMMARY="No error snippet captured."
             fi
 
-            ERROR_SUMMARY_ESCAPED=$(printf '%s' "$ERROR_SUMMARY" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | sed 's/^"//;s/"$//')
-
-            PAYLOAD=$(cat <<JSON
-          {
-            "blocks": [
-              {"type": "header", "text": {"type": "plain_text", "text": "🔴 QA Weekly 실패"}},
-              {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": "*Ref:* \`${{ needs.resolve-ref.outputs.target_ref }}\`"},
-                {"type": "mrkdwn", "text": "*iOS:* ${IOS_EMOJI}"},
-                {"type": "mrkdwn", "text": "*Admin:* ${ADMIN_EMOJI}"},
-                {"type": "mrkdwn", "text": "*Functions:* ${FUNCTIONS_EMOJI}"}
-              ]},
-              {"type": "section", "text": {"type": "mrkdwn", "text": "*에러 요약*\n\`\`\`${ERROR_SUMMARY_ESCAPED}\`\`\`"}},
-              {"type": "actions", "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": "Run 보기"}, "url": "${RUN_URL}"}
-              ]}
-            ]
-          }
-          JSON
-          )
+            PAYLOAD=$(jq -n \
+              --arg ref "$TARGET_REF" \
+              --arg ios "$IOS_EMOJI" \
+              --arg admin "$ADMIN_EMOJI" \
+              --arg functions "$FUNCTIONS_EMOJI" \
+              --arg error "$ERROR_SUMMARY" \
+              --arg run_url "$RUN_URL" \
+              '{
+                blocks: [
+                  {
+                    type: "header",
+                    text: {type: "plain_text", text: "🔴 QA Weekly 실패"}
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
+                      {type: "mrkdwn", text: ("*iOS:* " + $ios)},
+                      {type: "mrkdwn", text: ("*Admin:* " + $admin)},
+                      {type: "mrkdwn", text: ("*Functions:* " + $functions)}
+                    ]
+                  },
+                  {
+                    type: "section",
+                    text: {type: "mrkdwn", text: ("*에러 요약*\n```" + $error + "```")}
+                  },
+                  {
+                    type: "actions",
+                    elements: [
+                      {
+                        type: "button",
+                        text: {type: "plain_text", text: "Run 보기"},
+                        url: $run_url
+                      }
+                    ]
+                  }
+                ]
+              }')
           fi
 
           curl -fsSL -X POST \

@@ -54,6 +54,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 90
     needs: [resolve-ref]
+    env:
+      TUIST_ENV: stage
     outputs:
       qa_status: ${{ steps.curated.outputs.status }}
       app_build_status: ${{ steps.curated.outputs.app_build_status }}
@@ -120,8 +122,6 @@ jobs:
         run: tuist install
 
       - name: Generate Project
-        env:
-          TUIST_ENV: stage
         run: tuist generate --no-open
 
       - name: Run Curated iOS QA
@@ -417,85 +417,87 @@ jobs:
 
     steps:
       - name: Write Summary
+        env:
+          TARGET_REF: ${{ needs.resolve-ref.outputs.target_ref }}
+          IOS_RESULT: ${{ needs.ios-curated.result }}
+          IOS_APP_BUILD_STATUS: ${{ needs.ios-curated.outputs.app_build_status || 'n/a' }}
+          IOS_TESTED_MODULES: ${{ needs.ios-curated.outputs.tested_modules || 'n/a' }}
+          IOS_FAILED_MODULES: ${{ needs.ios-curated.outputs.failed_modules || 'none' }}
+          IOS_ERROR_SNIPPET: ${{ needs.ios-curated.outputs.error_snippet || 'No error snippet captured.' }}
+          ADMIN_RESULT: ${{ needs.admin-console.result }}
+          ADMIN_FAILURE_STEP: ${{ needs.admin-console.outputs.failure_step || 'unknown' }}
+          ADMIN_ERROR_SNIPPET: ${{ needs.admin-console.outputs.error_snippet || 'No error snippet captured.' }}
+          FUNCTIONS_RESULT: ${{ needs.functions.result }}
+          FUNCTIONS_FAILURE_STEP: ${{ needs.functions.outputs.failure_step || 'unknown' }}
+          FUNCTIONS_ERROR_SNIPPET: ${{ needs.functions.outputs.error_snippet || 'No error snippet captured.' }}
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          # QA Nightly Summary
+          {
+            printf '%s\n\n' '# QA Nightly Summary'
+            printf '%s\n' "- Target ref: \`$TARGET_REF\`"
+            printf '%s\n' '- Schedule: weekdays 18:00 KST / 09:00 UTC'
+            printf '%s\n' "- iOS curated status: \`$IOS_RESULT\`"
+            printf '%s\n' "- PromisoStage build: \`$IOS_APP_BUILD_STATUS\`"
+            printf '%s\n' "- Tested iOS modules: \`$IOS_TESTED_MODULES\`"
+            printf '%s\n' "- Failed iOS modules: \`$IOS_FAILED_MODULES\`"
+            printf '%s\n' "- Admin Console status: \`$ADMIN_RESULT\`"
+            printf '%s\n' "- Firebase Functions status: \`$FUNCTIONS_RESULT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          - Target ref: \`${{ needs.resolve-ref.outputs.target_ref }}\`
-          - Schedule: weekdays 18:00 KST / 09:00 UTC
-          - iOS curated status: \`${{ needs.ios-curated.result }}\`
-          - PromisoStage build: \`${{ needs.ios-curated.outputs.app_build_status || 'n/a' }}\`
-          - Tested iOS modules: \`${{ needs.ios-curated.outputs.tested_modules || 'n/a' }}\`
-          - Failed iOS modules: \`${{ needs.ios-curated.outputs.failed_modules || 'none' }}\`
-          - Admin Console status: \`${{ needs.admin-console.result }}\`
-          - Firebase Functions status: \`${{ needs.functions.result }}\`
-          EOF
-
-          if [ "${{ needs.ios-curated.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## iOS Failure Highlights
-
-          ```text
-          ${{ needs.ios-curated.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$IOS_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## iOS Failure Highlights'
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$IOS_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ "${{ needs.admin-console.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## Admin Console Failure Highlights
-
-          - Failed step: \`${{ needs.admin-console.outputs.failure_step || 'unknown' }}\`
-
-          ```text
-          ${{ needs.admin-console.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$ADMIN_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## Admin Console Failure Highlights'
+              printf '%s\n\n' "- Failed step: \`$ADMIN_FAILURE_STEP\`"
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$ADMIN_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ "${{ needs.functions.result }}" != "success" ]; then
-            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-
-          ## Firebase Functions Failure Highlights
-
-          - Failed step: \`${{ needs.functions.outputs.failure_step || 'unknown' }}\`
-
-          ```text
-          ${{ needs.functions.outputs.error_snippet || 'No error snippet captured.' }}
-          ```
-          EOF
+          if [ "$FUNCTIONS_RESULT" != "success" ]; then
+            {
+              printf '%s\n\n' '' '## Firebase Functions Failure Highlights'
+              printf '%s\n\n' "- Failed step: \`$FUNCTIONS_FAILURE_STEP\`"
+              printf '%s\n%s\n%s\n' "\`\`\`text" "$FUNCTIONS_ERROR_SNIPPET" "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Notify Slack on Failure
         if: always() && (needs.ios-curated.result == 'failure' || needs.admin-console.result == 'failure' || needs.functions.result == 'failure')
         env:
           SLACK_QA_WEBHOOK_URL: ${{ secrets.SLACK_QA_WEBHOOK_URL }}
+          IOS_STATUS: ${{ needs.ios-curated.result }}
+          ADMIN_STATUS: ${{ needs.admin-console.result }}
+          FUNCTIONS_STATUS: ${{ needs.functions.result }}
+          IOS_ERROR_SNIPPET: ${{ needs.ios-curated.outputs.error_snippet }}
+          ADMIN_ERROR_SNIPPET: ${{ needs.admin-console.outputs.error_snippet }}
+          FUNCTIONS_ERROR_SNIPPET: ${{ needs.functions.outputs.error_snippet }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET_REF: ${{ needs.resolve-ref.outputs.target_ref }}
         run: |
-          IOS_STATUS="${{ needs.ios-curated.result }}"
-          ADMIN_STATUS="${{ needs.admin-console.result }}"
-          FUNCTIONS_STATUS="${{ needs.functions.result }}"
-
           IOS_BADGE=$([ "$IOS_STATUS" = "success" ] && echo "pass" || echo "fail")
           ADMIN_BADGE=$([ "$ADMIN_STATUS" = "success" ] && echo "pass" || echo "fail")
           FUNCTIONS_BADGE=$([ "$FUNCTIONS_STATUS" = "success" ] && echo "pass" || echo "fail")
 
           ERROR_COMBINED=""
           if [ "$IOS_STATUS" = "failure" ]; then
-            SNIPPET="${{ needs.ios-curated.outputs.error_snippet }}"
+            SNIPPET="$IOS_ERROR_SNIPPET"
             if [ -n "$SNIPPET" ]; then
               ERROR_COMBINED="${ERROR_COMBINED}[iOS]\n${SNIPPET}\n"
             fi
           fi
           if [ "$ADMIN_STATUS" = "failure" ]; then
-            SNIPPET="${{ needs.admin-console.outputs.error_snippet }}"
+            SNIPPET="$ADMIN_ERROR_SNIPPET"
             if [ -n "$SNIPPET" ]; then
               ERROR_COMBINED="${ERROR_COMBINED}[Admin]\n${SNIPPET}\n"
             fi
           fi
           if [ "$FUNCTIONS_STATUS" = "failure" ]; then
-            SNIPPET="${{ needs.functions.outputs.error_snippet }}"
+            SNIPPET="$FUNCTIONS_ERROR_SNIPPET"
             if [ -n "$SNIPPET" ]; then
               ERROR_COMBINED="${ERROR_COMBINED}[Functions]\n${SNIPPET}\n"
             fi
@@ -505,11 +507,8 @@ jobs:
             ERROR_COMBINED="(에러 스니펫 없음)"
           fi
 
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          REF="${{ needs.resolve-ref.outputs.target_ref }}"
-
           PAYLOAD=$(jq -n \
-            --arg ref "$REF" \
+            --arg ref "$TARGET_REF" \
             --arg ios "$IOS_BADGE" \
             --arg admin "$ADMIN_BADGE" \
             --arg functions "$FUNCTIONS_BADGE" \
