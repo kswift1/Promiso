@@ -1,6 +1,16 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
+// CI에서만 Manual Signing (로컬은 Automatic으로 match 없이 빌드 가능)
+// Tuist Environment 사용: CI workflow에서 TUIST_CI=true로 설정
+let isCI: Bool = {
+    if case .string = Environment.ci {
+        return true
+    }
+    return false
+}()
+let ciSigningStyle: SettingValue = .string(isCI ? "Manual" : "Automatic")
+
 // Helper for infoPlist with DisplayName
 func infoPlistWithDisplayName(_ displayName: String, environment: String = "prod") -> [String: Plist.Value] {
   var plist = AppConfig.infoPlist(for: environment)
@@ -49,7 +59,9 @@ let promisoDev = Target.target(
   scripts: [crashlyticsScript],
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
-    .target(name: "ScheduleWidgetExtension-Dev")
+    .target(name: "ScheduleWidgetExtension-Dev"),
+    .target(name: "ShareExtension-Dev"),
+    .target(name: "NotificationServiceExtension-Dev")
   ],
   settings: .settings(
     base: [
@@ -80,26 +92,28 @@ let promisoStage = Target.target(
   scripts: [crashlyticsScript],
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
-    .target(name: "ScheduleWidgetExtension-Stage")
+    .target(name: "ScheduleWidgetExtension-Stage"),
+    .target(name: "ShareExtension-Stage"),
+    .target(name: "NotificationServiceExtension-Stage")
   ],
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "DEEPLINK_SCHEME": .string("promiso-stage"),
       "DEEPLINK_WEB_HOST": .string("stage.promiso.app")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
-      .release(name: "Release", settings: [
+      ] : [:], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
+      ] : [:], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
     ]
   )
 )
@@ -117,25 +131,27 @@ let promisoProd = Target.target(
   scripts: [crashlyticsScript],
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
-    .target(name: "ScheduleWidgetExtension")
+    .target(name: "ScheduleWidgetExtension"),
+    .target(name: "ShareExtension"),
+    .target(name: "NotificationServiceExtension")
   ],
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual"),
+      "CODE_SIGN_STYLE": ciSigningStyle,
       "DEEPLINK_SCHEME": .string("promiso"),
       "DEEPLINK_WEB_HOST": .string("promiso.app")
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
-      .release(name: "Release", settings: [
+      ] : [:], xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+      ] : [:], xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
     ]
   )
 )
@@ -193,17 +209,17 @@ let liveActivityStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -232,17 +248,17 @@ let liveActivityProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.liveactivity"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -298,17 +314,17 @@ let scheduleWidgetStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -337,17 +353,249 @@ let scheduleWidgetProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.promisewidget"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
+    ]
+  )
+)
+
+// MARK: - Share Extension Targets
+
+let shareExtensionDev = Target.target(
+  name: "ShareExtension-Dev",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.dev.shareextension",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Share [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "DEEPLINK_SCHEME": "promiso-dev",
+    "APP_GROUP_ID": "group.com.promiso.dev.shared",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension-Dev.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .standard(base: [
+    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+    "CODE_SIGN_STYLE": .string("Automatic"),
+    "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
+  ])
+)
+
+let shareExtensionStage = Target.target(
+  name: "ShareExtension-Stage",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.stage.shareextension",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Share [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "DEEPLINK_SCHEME": "promiso-stage",
+    "APP_GROUP_ID": "group.com.promiso.stage.shared",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension-Stage.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": ciSigningStyle,
+      "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.shareextension"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.shareextension"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ] : [:])
+    ]
+  )
+)
+
+let shareExtensionProd = Target.target(
+  name: "ShareExtension",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "\(AppConfig.bundleId).shareextension",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Share",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "DEEPLINK_SCHEME": "promiso",
+    "APP_GROUP_ID": "group.com.promiso.shared",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": .boolean(true),
+          "NSExtensionActivationSupportsImageWithMaxCount": .integer(1)
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": ciSigningStyle,
+      "SWIFT_OBJC_BRIDGING_HEADER": .string("$(SRCROOT)/Extensions/ShareExtension/Sources/ShareExtension-Bridging-Header.h")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.shareextension"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.shareextension"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ] : [:])
+    ]
+  )
+)
+
+// MARK: - Notification Service Extension Targets
+
+let notificationServiceDev = Target.target(
+  name: "NotificationServiceExtension-Dev",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.dev.notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension-Dev.entitlements"),
+  dependencies: [],
+  settings: .standard(base: [
+    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+    "CODE_SIGN_STYLE": .string("Automatic")
+  ])
+)
+
+let notificationServiceStage = Target.target(
+  name: "NotificationServiceExtension-Stage",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.stage.notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension-Stage.entitlements"),
+  dependencies: [],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": ciSigningStyle
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ] : [:])
+    ]
+  )
+)
+
+let notificationServiceProd = Target.target(
+  name: "NotificationServiceExtension",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "\(AppConfig.bundleId).notificationservice",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso Notifications",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.usernotifications.service",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).NotificationService"
+    ]
+  ]),
+  sources: ["Extensions/NotificationServiceExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/NotificationServiceExtension/NotificationServiceExtension.entitlements"),
+  dependencies: [],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": ciSigningStyle
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.notificationservice"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ] : [:])
     ]
   )
 )
@@ -368,14 +616,14 @@ let environment: String = {
 let targets: [Target] = {
   switch environment {
   case "dev":
-    return [promisoDev, liveActivityDev, scheduleWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev, notificationServiceDev]
   case "stage":
-    return [promisoStage, liveActivityStage, scheduleWidgetStage]
+    return [promisoStage, liveActivityStage, scheduleWidgetStage, shareExtensionStage, notificationServiceStage]
   case "prod":
-    return [promisoProd, liveActivityProd, scheduleWidgetProd]
+    return [promisoProd, liveActivityProd, scheduleWidgetProd, shareExtensionProd, notificationServiceProd]
   default:
     // 잘못된 값이 들어오면 dev로 fallback
-    return [promisoDev, liveActivityDev, scheduleWidgetDev]
+    return [promisoDev, liveActivityDev, scheduleWidgetDev, shareExtensionDev, notificationServiceDev]
   }
 }()
 

@@ -275,12 +275,6 @@ struct RootTabFeatureTests {
     }
   }
 
-  @Test("Home navigateToAllSchedules delegate 시 아무 동작 안 함")
-  func homeNavigateToAllSchedules_doesNothing() async {
-    let store = makeStore(state: makeState(key: "home-all-schedules"))
-    await store.send(.home(.delegate(.navigateToAllSchedules)))
-  }
-
   // MARK: - LiveSchedule 테스트
 
   @Test("liveSchedule 없을 때 ETA 시트 요청 시 pending 플래그 설정")
@@ -1049,5 +1043,8 @@ private extension RootTabFeatureTests {
 
     dependencies.subscriptionClient.fetchStatus = { .none }
     dependencies.subscriptionClient.unifiedStatusStream = { AsyncStream { $0.finish() } }
+
+    dependencies.appReviewClient.recordFirstLaunchIfNeeded = { }
+    dependencies.appReviewClient.incrementSessionCount = { }
   }
 }

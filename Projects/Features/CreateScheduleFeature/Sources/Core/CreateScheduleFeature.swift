@@ -29,12 +29,14 @@ public enum CreateSchedule {
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.appReviewClient) var appReviewClient
 
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
       case conflictCheckDebounce
       case weatherFetchDebounce
+      case appReviewDelay
     }
     
     @ObservableState
@@ -84,9 +86,6 @@ public enum CreateSchedule {
       // 그룹 생성 sheet
       @Presents var createGroup: CreateGroup.Feature.State?
 
-      // pre-fill 정보 (퀵 일정에서 전달)
-      var prefillInfo: ScheduleExtractedInfo?
-
       public init(
         currentStep: CreateScheduleStep = .first,
         schedule: ScheduleModel = .empty,
@@ -102,7 +101,6 @@ public enum CreateSchedule {
         currentUserId: String = "",
         currentUser: UserPrivateModel? = nil,
         locationPicker: LocationPicker.Feature.State? = nil,
-        prefillInfo: ScheduleExtractedInfo? = nil,
         weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
@@ -119,7 +117,6 @@ public enum CreateSchedule {
         self.currentUserId = currentUserId
         self.currentUser = currentUser
         self.locationPicker = locationPicker
-        self.prefillInfo = prefillInfo
         self.weatherState = weatherState
       }
 
@@ -185,6 +182,7 @@ public enum CreateSchedule {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setDescriptionBlocks([DescriptionBlock])
         case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
@@ -374,6 +372,12 @@ public enum CreateSchedule {
             state.schedule.description = trimmed.isEmpty ? nil : trimmed
             return .none
 
+          case .setDescriptionBlocks(let blocks):
+            state.schedule.descriptionBlocks = blocks
+            // 하위 호환: description도 업데이트
+            state.schedule.description = blocks.plainText
+            return .none
+
           case .setTrackingStartMinutes(let minutes):
             state.schedule.trackingStartMinutesBefore = minutes
             return .none
@@ -552,7 +556,12 @@ public enum CreateSchedule {
               .send(.delegate(.scheduleCreated(id: id))),
               .run { [scheduleClient] _ in
                 try? await scheduleClient.startVoteLiveActivity(id)
+              },
+              .run { [appReviewClient, clock] _ in
+                try? await clock.sleep(for: Constants.appReviewRequestDelay)
+                await appReviewClient.requestReviewIfEligible()
               }
+              .cancellable(id: CancelID.appReviewDelay)
             )
 
           case .createScheduleResponse(.failure(let e)):
@@ -671,6 +680,7 @@ public enum CreateSchedule {
     private enum Constants {
       static let weatherForecastMaxDays = 10
       static let weatherFetchDebounceMilliseconds = 500
+      static let appReviewRequestDelay: Duration = .seconds(2)
     }
 
     private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {

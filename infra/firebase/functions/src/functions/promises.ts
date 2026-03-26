@@ -16,6 +16,8 @@ import {
   APNS_AUTH_KEY,
 } from "../config";
 import {isValidFirebaseStorageUrl} from "../utils/helpers";
+import {sendAPNsBroadcast} from "../utils/apns";
+import {getCurrentEnvironment} from "../utils/firestore";
 import {endVoteActivityInternal} from "./voteLiveActivity";
 import {
   CreatePromiseRequest,
@@ -127,6 +129,15 @@ export const createPromise = onCall<CreatePromiseRequest>(
       title: data.title,
       emoji: data.emoji || null,
       description: data.description || null,
+      descriptionBlocks: (() => {
+        if (data.descriptionBlocks && Array.isArray(data.descriptionBlocks)) {
+          if (data.descriptionBlocks.length > 20) {
+            throw new HttpsError("invalid-argument", "설명 블록은 최대 20개까지 허용됩니다");
+          }
+          return data.descriptionBlocks;
+        }
+        return null;
+      })(),
       hostId: userId,
       groupId: data.groupId,
       minimumParticipants: data.minimumParticipants,
@@ -179,7 +190,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
  * - Set-like 동작: 중복 자동 방지
  */
 export const respondPromise = onCall<RespondPromiseRequest>(
-  {region: REGION},
+  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
   async (request): Promise<RespondPromiseResponse> => {
     if (!request.auth) {
       throw new HttpsError(
@@ -261,6 +272,12 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       const isInAccepted = acceptedList.includes(userId);
       const isInDeclined = declinedList.includes(userId);
 
+      // voteChannelId 추출 (LiveActivity 브로드캐스트용)
+      const voteChannelId = (
+        promiseData.liveActivity as
+          {voteChannelId?: string} | undefined
+      )?.voteChannelId;
+
       // 이미 같은 상태면 스킵 (변경 없음 반환)
       if (
         (status === "accepted" && isInAccepted) ||
@@ -269,7 +286,7 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       ) {
         // 기존 상태 유지 - isConfirmed 계산
         const isConfirmed = acceptedList.length >= minimumParticipants;
-        return {isConfirmed, promiseData, noChange: true};
+        return {isConfirmed, promiseData, noChange: true, voteChannelId};
       }
 
       // 4. 새로운 accepted 배열 계산 (isConfirmed 계산용)
@@ -309,8 +326,111 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       transaction.update(promiseRef, updateData);
 
       // 캘린더 동기화용 데이터 반환
-      return {isConfirmed, promiseData, noChange: false};
+      return {isConfirmed, promiseData, noChange: false, voteChannelId};
     });
+
+    // LiveActivity 브로드캐스트 (투표 LiveActivity 활성 시)
+    if (!transactionResult.noChange && transactionResult.voteChannelId) {
+      try {
+        // 사용자 이름 조회
+        const userDoc = await db.collection("users").doc(userId).get();
+        const nickname = userDoc.data()?.nickname;
+        const userName =
+          (typeof nickname === "string" ? nickname : "") || "멤버";
+
+        // votes 서브컬렉션 업데이트
+        const broadcastPromiseRef =
+          db.collection("promises").doc(data.promiseId);
+        await broadcastPromiseRef
+          .collection("votes").doc(userId).set({
+            response: status,
+            userName,
+            respondedAt: FieldValue.serverTimestamp(),
+          });
+
+        // 전체 votes 읽기 → ContentState 빌드
+        const votesSnapshot =
+          await broadcastPromiseRef.collection("votes").get();
+        const acceptedMembers: {id: string; name: string}[] = [];
+        const declinedMembers: {id: string; name: string}[] = [];
+
+        votesSnapshot.forEach((doc) => {
+          const voteData = doc.data();
+          const member = {
+            id: doc.id,
+            name: (typeof voteData.userName === "string" ?
+              voteData.userName : "") || "멤버",
+          };
+          if (voteData.response === "accepted") {
+            acceptedMembers.push(member);
+          } else if (voteData.response === "declined") {
+            declinedMembers.push(member);
+          }
+        });
+
+        // 그룹 멤버 수 조회 (pendingCount 계산용)
+        const groupId =
+          transactionResult.promiseData.groupId as string;
+        const groupDoc =
+          await db.collection("groups").doc(groupId).get();
+        const memberIds =
+          (groupDoc.data()?.memberIds as string[]) || [];
+        const totalMemberCount = memberIds.length;
+        const respondedCount =
+          acceptedMembers.length + declinedMembers.length;
+        const isFinalized = respondedCount >= totalMemberCount;
+        const pendingCount =
+          Math.max(0, totalMemberCount - respondedCount);
+
+        const contentState = {
+          acceptedMembers,
+          declinedMembers,
+          pendingCount,
+          isFinalized,
+        };
+
+        // APNs Broadcast
+        const env = getCurrentEnvironment();
+        const isProduction = env !== "dev";
+
+        const payload = {
+          aps: {
+            "timestamp": Math.floor(Date.now() / 1000),
+            "event": isFinalized ? "end" : "update",
+            "content-state": contentState,
+            ...(isFinalized && {
+              "alert": {
+                "title": "투표가 마감되었습니다",
+                "body": `참여 ${acceptedMembers.length}명` +
+                  ` / 불참 ${declinedMembers.length}명`,
+              },
+            }),
+          },
+        };
+
+        const result = await sendAPNsBroadcast({
+          channelId: transactionResult.voteChannelId,
+          payload,
+          isProduction,
+        });
+
+        if (result.success) {
+          console.log(
+            "✅ respondPromise broadcast sent: " +
+              `channelId=${transactionResult.voteChannelId}`
+          );
+        } else {
+          console.error(
+            `❌ respondPromise broadcast failed: ${result.error}`
+          );
+        }
+      } catch (err) {
+        // 브로드캐스트 실패해도 respondPromise 자체는 성공 처리
+        console.warn(
+          `⚠️ respondPromise LiveActivity broadcast error: ${err}`
+        );
+      }
+    }
 
     // 응답 구성
     const response: RespondPromiseResponse = {
@@ -478,6 +598,17 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
 
     if (data.description !== undefined) {
       updateData.description = data.description || null;
+    }
+
+    if (data.descriptionBlocks !== undefined) {
+      const blocks = data.descriptionBlocks;
+      if (blocks && Array.isArray(blocks) && blocks.length > 20) {
+        throw new HttpsError(
+          "invalid-argument",
+          "설명 블록은 최대 20개까지 허용됩니다"
+        );
+      }
+      updateData.descriptionBlocks = data.descriptionBlocks || null;
     }
 
     if (data.startAt !== undefined && data.startAt !== null) {

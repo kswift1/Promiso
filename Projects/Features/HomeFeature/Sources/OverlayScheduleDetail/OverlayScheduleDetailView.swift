@@ -154,7 +154,7 @@ extension OverlayScheduleDetail {
         }
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
 
     // MARK: - Schedule Status Card (응답 + 참여 현황 통합)
@@ -311,7 +311,7 @@ extension OverlayScheduleDetail {
         .animation(.easeInOut(duration: 0.3), value: store.myVoteStatus)
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
 
     private func quickResponseButton(
@@ -365,7 +365,7 @@ extension OverlayScheduleDetail {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 
@@ -423,7 +423,7 @@ extension OverlayScheduleDetail {
           }
         }
         .padding(16)
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 

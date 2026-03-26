@@ -294,8 +294,10 @@ struct CreateScheduleReducerTests {
     let store = TestStore(initialState: state) {
       CreateSchedule.Feature()
     } withDependencies: {
+      $0.continuousClock = ImmediateClock()
       $0.analyticsClient.logEvent = { _, _ in }
       $0.scheduleClient.startVoteLiveActivity = { _ in }
+      $0.appReviewClient.requestReviewIfEligible = { }
     }
     store.exhaustivity = .off
 

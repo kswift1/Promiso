@@ -129,8 +129,10 @@ public struct ImageDetailView: View {
 
 // MARK: - Clear Background Helper
 
-struct ClearBackground: UIViewRepresentable {
-  func makeUIView(context: Context) -> UIView {
+public struct ClearBackground: UIViewRepresentable {
+  public init() {}
+
+  public func makeUIView(context: Context) -> UIView {
     let view = UIView()
     DispatchQueue.main.async {
       view.superview?.superview?.backgroundColor = .clear
@@ -138,5 +140,5 @@ struct ClearBackground: UIViewRepresentable {
     return view
   }
 
-  func updateUIView(_ uiView: UIView, context: Context) {}
+  public func updateUIView(_ uiView: UIView, context: Context) {}
 }

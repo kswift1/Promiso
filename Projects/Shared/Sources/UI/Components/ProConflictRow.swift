@@ -14,6 +14,7 @@ public struct ProConflictRow: View {
   let eventEmoji: String?
   let eventStartAt: Date
   let eventEndAt: Date?
+  let conflictsChecked: Bool
 
   @State private var showTooltip = false
 
@@ -24,7 +25,8 @@ public struct ProConflictRow: View {
     eventTitle: String = "",
     eventEmoji: String? = nil,
     eventStartAt: Date = .now,
-    eventEndAt: Date? = nil
+    eventEndAt: Date? = nil,
+    conflictsChecked: Bool = false
   ) {
     self.conflicts = conflicts
     self.isChecking = isChecking
@@ -33,6 +35,7 @@ public struct ProConflictRow: View {
     self.eventEmoji = eventEmoji
     self.eventStartAt = eventStartAt
     self.eventEndAt = eventEndAt
+    self.conflictsChecked = conflictsChecked
   }
 
   public var body: some View {
@@ -80,6 +83,18 @@ public struct ProConflictRow: View {
           conflicts: conflicts
         )
         .presentationCompactAdaptation(.popover)
+      }
+    } else if conflictsChecked {
+      HStack(spacing: 6) {
+        Image(systemName: "checkmark.circle")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmsuccess.n500)
+
+        Text(LocalizedStrings.ProPlan.noConflict)
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+
+        Spacer(minLength: 0)
       }
     }
   }

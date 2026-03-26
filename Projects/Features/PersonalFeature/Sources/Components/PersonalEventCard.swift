@@ -12,6 +12,7 @@ public struct PersonalEventCard: View {
   let weather: WeatherInfo?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
+  let conflictsChecked: Bool
   let onTap: () -> Void
   let onEdit: () -> Void
   let onDelete: () -> Void
@@ -21,6 +22,7 @@ public struct PersonalEventCard: View {
     weather: WeatherInfo? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
+    conflictsChecked: Bool = false,
     onTap: @escaping () -> Void,
     onEdit: @escaping () -> Void,
     onDelete: @escaping () -> Void
@@ -29,6 +31,7 @@ public struct PersonalEventCard: View {
     self.weather = weather
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
+    self.conflictsChecked = conflictsChecked
     self.onTap = onTap
     self.onEdit = onEdit
     self.onDelete = onDelete
@@ -55,7 +58,8 @@ public struct PersonalEventCard: View {
           conflicts: conflicts,
           isCheckingConflicts: isCheckingConflicts,
           eventTitle: event.title,
-          eventEmoji: event.emoji
+          eventEmoji: event.emoji,
+          conflictsChecked: conflictsChecked
         )
       }
       .padding(16)

@@ -17,6 +17,7 @@ extension PersonalEventDetail {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.mapClient) var mapClient
 
     public init() {}
 
@@ -26,6 +27,7 @@ extension PersonalEventDetail {
     public struct State: Equatable, Sendable {
       var event: PersonalEventModel
       var isDeleting: Bool = false
+      var showMapDetail: Bool = false
 
       var weatherInfo: WeatherInfo?
 
@@ -55,6 +57,10 @@ extension PersonalEventDetail {
         case onAppear
         case editTapped
         case deleteTapped
+        case toggleChecklist(blockId: String, itemId: String)
+        case directionsTapped
+        case mapTapped
+        case mapDetailDismissed
       }
 
       public enum Internal: Sendable {
@@ -103,6 +109,27 @@ extension PersonalEventDetail {
             )
             return .none
 
+          case let .toggleChecklist(blockId, itemId):
+            guard let blockIndex = state.event.descriptionBlocks.firstIndex(where: { $0.id == blockId }),
+                  case .checklist(var items) = state.event.descriptionBlocks[blockIndex].content,
+                  let itemIndex = items.firstIndex(where: { $0.id == itemId }) else {
+              return .none
+            }
+            items[itemIndex].isChecked.toggle()
+            state.event.descriptionBlocks[blockIndex].content = .checklist(items)
+            let updatedEvent = state.event
+            return .merge(
+              .run { _ in await hapticFeedback.light() },
+              .run { send in
+                do {
+                  try await personalEventClient.updateEvent(updatedEvent)
+                } catch {
+                  AppLogger.personal.error("❌ [Checklist] 체크리스트 업데이트 실패 — \(error)")
+                }
+              },
+              .send(.delegate(.eventUpdated(updatedEvent)))
+            )
+
           case .deleteTapped:
             let eventTitle = state.event.title
             state.deleteAlert = AlertState {
@@ -117,6 +144,28 @@ extension PersonalEventDetail {
             } message: {
               TextState(LocalizedStrings.Shared.deleteEventConfirm(eventTitle))
             }
+            return .none
+
+          case .directionsTapped:
+            guard let location = state.event.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            let coordinate = Coordinate(latitude: lat, longitude: lng)
+            mapClient.openDirections(nil, coordinate, location.name, .car)
+            return .none
+
+          case .mapTapped:
+            guard state.event.location?.latitude != nil,
+                  state.event.location?.longitude != nil else {
+              return .none
+            }
+            state.showMapDetail = true
+            return .none
+
+          case .mapDetailDismissed:
+            state.showMapDetail = false
             return .none
 
           }
@@ -168,7 +217,7 @@ extension PersonalEventDetail {
 
         case .alert(.presented(.confirmDelete)):
           state.isDeleting = true
-          return .run { [event = state.event, calendarSyncClient, imageUploadClient] send in
+          return .run { [event = state.event, personalEventClient, localNotificationClient, calendarSyncClient, imageUploadClient] send in
             do {
               try await personalEventClient.deleteEvent(event.id)
               await localNotificationClient.cancel(event.notificationId)

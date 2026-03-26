@@ -14,6 +14,11 @@ on:
         description: 'TestFlight 수정사항 (Release notes)'
         required: true
         type: string
+      reset_profiles:
+        description: 'Apple Portal 프로파일 초기화 후 재생성 (이름 충돌 해결용)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ios-${{ github.event.inputs.environment }}
@@ -170,11 +175,24 @@ jobs:
       - name: Generate Project
         env:
           TUIST_ENV: ${{ needs.setup.outputs.environment }}
+          TUIST_CI: "true"
         run: tuist generate --no-open
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 6. Fastlane 배포 (환경별 lane 실행)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Nuke Profiles (Reset)
+        if: ${{ github.event.inputs.reset_profiles == 'true' }}
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: ${{ format('~/private_keys/AuthKey_{0}.p8', secrets.APP_STORE_CONNECT_API_KEY_ID) }}
+        run: |
+          bundle install
+          bundle exec fastlane nuke_profiles
 
       - name: Sync Certificates (Widget Extensions)
         env:

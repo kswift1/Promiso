@@ -5,13 +5,13 @@ import PromisoShared
 
 /// 오늘 일정을 모두 마쳤을 때 표시하는 완료 메시지
 struct TodayScheduleCompleteView: View {
-  private let message: RandomMessage
+  @State private var message: RandomMessage
 
   init() {
-    self.message = TimeBasedMessageGenerator.generate(
+    self._message = State(initialValue: TimeBasedMessageGenerator.generate(
       timeMessages: Self.timeMessages,
       randomMessages: Self.randomMessages
-    )
+    ))
   }
 
   var body: some View {

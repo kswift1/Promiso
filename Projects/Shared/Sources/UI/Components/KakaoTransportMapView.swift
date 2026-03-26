@@ -11,8 +11,8 @@ public enum TransportMapData: Equatable {
   case driving(routePoints: [[Double]])
   /// 대중교통: 구간별 좌표 + 색상
   case transit(segments: [TransitRouteSegmentData])
-  /// 도보: 경로 없이 마커만
-  case walking
+  /// 도보: routePoints [[lng, lat], ...]
+  case walking(routePoints: [[Double]] = [])
 }
 
 // MARK: - TransitRouteSegmentData
@@ -25,11 +25,14 @@ public struct TransitRouteSegmentData: Equatable, Sendable {
   public let color: String?
   /// 교통 수단 (1=지하철, 2=버스, 3=도보)
   public let trafficType: Int
+  /// 도보 구간 점선 표시 여부
+  public let isWalking: Bool
 
-  public init(coords: [[Double]], color: String?, trafficType: Int) {
+  public init(coords: [[Double]], color: String?, trafficType: Int, isWalking: Bool = false) {
     self.coords = coords
     self.color = color
     self.trafficType = trafficType
+    self.isWalking = isWalking
   }
 }
 
@@ -38,7 +41,7 @@ public struct TransitRouteSegmentData: Equatable, Sendable {
 private enum MapColors {
   static var indigo: UIColor { UIColor(Color.pmindigo.n500) }
   static var error: UIColor { UIColor(Color.pmerror.n500) }
-  static var gray: UIColor { UIColor(Color.pmgray.n300) }
+  static var gray: UIColor { UIColor(Color.pmgray.n500) }
   static var bgGray: UIColor { UIColor(Color.pmgray.n100) }
 }
 
@@ -136,15 +139,15 @@ public struct KakaoTransportMapView: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ container: KMViewContainer, coordinator: Coordinator) {
-    coordinator.mapController?.pauseEngine()
-    coordinator.mapController?.resetEngine()
+    coordinator.cleanupMapController()
   }
 
   // MARK: - Coordinator
 
   public class Coordinator: NSObject, MapControllerDelegate {
     var mapController: KMController?
-    var currentData: TransportMapData = .walking
+
+    var currentData: TransportMapData = .walking()
     var pendingOriginLatitude: Double = 0
     var pendingOriginLongitude: Double = 0
     var pendingDestinationLatitude: Double = 0
@@ -152,6 +155,23 @@ public struct KakaoTransportMapView: UIViewRepresentable {
 
     private let routeLayerID = "transportRouteLayer"
     private let markerLayerID = "transportMarkerLayer"
+
+    deinit {
+      cleanupMapController()
+    }
+
+    func cleanupMapController() {
+      guard let controller = mapController else { return }
+      mapController = nil
+
+      controller.delegate = nil
+      controller.pauseEngine()
+      controller.resetEngine()
+
+      // KMController.dealloc → stopEngine → notification → dispose 재진입 크래시 방지
+      // SwiftUI update cycle 밖에서 release 되도록 수명 연장
+      DispatchQueue.main.async { _ = controller }
+    }
 
     func createEngine(
       container: KMViewContainer,
@@ -161,6 +181,8 @@ public struct KakaoTransportMapView: UIViewRepresentable {
       destinationLatitude: Double,
       destinationLongitude: Double
     ) {
+      guard mapController == nil else { return }
+
       currentData = data
       pendingOriginLatitude = originLatitude
       pendingOriginLongitude = originLongitude
@@ -195,8 +217,8 @@ public struct KakaoTransportMapView: UIViewRepresentable {
         addDrivingRoute(mapView: mapView, routePoints: routePoints)
       case .transit(let segments):
         addTransitRoutes(mapView: mapView, segments: segments)
-      case .walking:
-        break
+      case .walking(let routePoints):
+        addWalkingRoute(mapView: mapView, routePoints: routePoints)
       }
     }
 
@@ -231,6 +253,37 @@ public struct KakaoTransportMapView: UIViewRepresentable {
       route?.show()
     }
 
+    private func addWalkingRoute(mapView: KakaoMap, routePoints: [[Double]]) {
+      guard !routePoints.isEmpty else { return }
+
+      let manager = mapView.getRouteManager()
+      guard let layer = manager.addRouteLayer(layerID: routeLayerID, zOrder: 0) else { return }
+
+      let lineStyle = RouteStyle(styles: [
+        PerLevelRouteStyle(
+          width: 10,
+          color: MapColors.gray,
+          strokeWidth: 2,
+          strokeColor: MapColors.gray.withAlphaComponent(0.3),
+          level: 0
+        )
+      ])
+      let styleSet = RouteStyleSet(styleID: "walkingRouteStyle", styles: [lineStyle])
+      manager.addRouteStyleSet(styleSet)
+
+      let points = routePoints.compactMap { point -> MapPoint? in
+        guard point.count >= 2 else { return nil }
+        return MapPoint(longitude: point[0], latitude: point[1])
+      }
+      guard !points.isEmpty else { return }
+
+      let segment = RouteSegment(points: points, styleIndex: 0)
+      let routeOption = RouteOptions(routeID: "walkingRoute", styleID: "walkingRouteStyle", zOrder: 0)
+      routeOption.segments = [segment]
+      let route = layer.addRoute(option: routeOption)
+      route?.show()
+    }
+
     private func addTransitRoutes(mapView: KakaoMap, segments: [TransitRouteSegmentData]) {
       guard !segments.isEmpty else { return }
 
@@ -253,10 +306,10 @@ public struct KakaoTransportMapView: UIViewRepresentable {
         let strokeColor: UIColor
         let lineWidth: UInt
 
-        if segment.trafficType == 3 {
+        if segment.isWalking {
           lineColor = MapColors.gray
           strokeColor = MapColors.gray.withAlphaComponent(0.3)
-          lineWidth = 6
+          lineWidth = 10
         } else {
           lineColor = hexColor(segment.color)
           strokeColor = lineColor.withAlphaComponent(0.3)
@@ -342,8 +395,9 @@ public struct KakaoTransportMapView: UIViewRepresentable {
             lats.append(coord[1])
           }
         }
-      case .walking:
-        break
+      case .walking(let routePoints):
+        lats.append(contentsOf: routePoints.compactMap { $0.count >= 2 ? $0[1] : nil })
+        lngs.append(contentsOf: routePoints.compactMap { $0.count >= 2 ? $0[0] : nil })
       }
 
       guard let minLat = lats.min(),

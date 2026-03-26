@@ -14,6 +14,7 @@ import {ProPlanDashboardPage} from "./pages/ProPlanDashboardPage";
 import {PushJobsPage} from "./pages/PushJobsPage";
 import {ReleaseControlsPage} from "./pages/ReleaseControlsPage";
 import {UserTimelinePage} from "./pages/UserTimelinePage";
+import {WhatsNewPage} from "./pages/WhatsNewPage";
 import {UsersPage} from "./pages/UsersPage";
 
 function LoadingScreen() {
@@ -140,6 +141,14 @@ export function App() {
           element={
             <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
               <ReleaseControlsPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/whats-new"
+          element={
+            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
+              <WhatsNewPage />
             </RoleProtectedRoute>
           }
         />

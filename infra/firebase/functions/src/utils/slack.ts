@@ -52,6 +52,13 @@ interface SubscriptionGracePeriodNotificationParams {
   expirationDate: string | null;
 }
 
+interface SubscriptionAutoRenewDisabledNotificationParams {
+  uid: string;
+  nickname: string;
+  productId: string;
+  expirationDate: string | null;
+}
+
 interface SubscriptionPromoNotificationParams {
   uid: string;
   nickname: string;
@@ -390,6 +397,53 @@ export async function sendSlackSubscriptionPromoNotification(
           text: `⏰ ${now}  |  ` +
             `총 Pro 사용자: ${params.totalProUsers}명`,
         },
+      ],
+    },
+  ]);
+}
+
+/**
+ * 자동갱신 해제(구독 취소 예약) 시 Slack 알림 전송
+ *
+ * @param {SubscriptionAutoRenewDisabledNotificationParams} params 자동갱신 해제 정보
+ * @return {Promise<void>}
+ *
+ * @remarks
+ * - 프로덕션 환경에서만 실제 전송
+ * - 전송 실패 시에도 에러를 throw하지 않음
+ */
+export async function sendSlackSubscriptionAutoRenewDisabledNotification(
+  params: SubscriptionAutoRenewDisabledNotificationParams,
+): Promise<void> {
+  const planLabel = getPlanLabel(params.productId);
+  const now = new Date().toLocaleString("ko-KR", {timeZone: "Asia/Seoul"});
+  const locale = "ko-KR";
+  const tz = {timeZone: "Asia/Seoul"};
+  const expirationLabel = params.expirationDate ?
+    new Date(params.expirationDate).toLocaleString(locale, tz) :
+    "-";
+
+  await sendSlackNotification("자동갱신 해제 알림", [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "🔄 구독 자동갱신이 해제되었습니다",
+        emoji: true,
+      },
+    },
+    {
+      type: "section",
+      fields: [
+        {type: "mrkdwn", text: `*닉네임*\n${params.nickname}`},
+        {type: "mrkdwn", text: `*플랜 종류*\n${planLabel}`},
+        {type: "mrkdwn", text: `*만료일*\n${expirationLabel}`},
+      ],
+    },
+    {
+      type: "context",
+      elements: [
+        {type: "mrkdwn", text: `⏰ ${now}`},
       ],
     },
   ]);

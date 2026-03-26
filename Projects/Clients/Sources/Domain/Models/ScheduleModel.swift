@@ -10,6 +10,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
   public var title: String
   public var emoji: String?
   public var description: String?
+  public var descriptionBlocks: [DescriptionBlock]
 
   // MARK: - 관계
   public var hostId: String
@@ -46,6 +47,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     title: String = "",
     emoji: String? = nil,
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock] = [],
     hostId: String = "",
     groupId: String = "",
     group: GroupModel? = nil,
@@ -63,6 +65,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     self.title = title
     self.emoji = emoji
     self.description = description
+    self.descriptionBlocks = descriptionBlocks
     self.hostId = hostId
     self.groupId = groupId
     self.group = group
@@ -88,6 +91,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
     title: String = "Mock 일정",
     emoji: String? = "📌",
     description: String? = nil,
+    descriptionBlocks: [DescriptionBlock] = [],
     hostId: String = "mock-host-id",
     groupId: String = "mock-group-id",
     group: GroupModel? = nil,
@@ -110,6 +114,7 @@ public struct ScheduleModel: Identifiable, Equatable, Hashable, Sendable, Ranged
       title: title,
       emoji: emoji,
       description: description,
+      descriptionBlocks: descriptionBlocks,
       hostId: hostId,
       groupId: groupId,
       group: group,
@@ -136,6 +141,7 @@ extension ScheduleModel {
       title: dto.title,
       emoji: dto.emoji,
       description: dto.description,
+      descriptionBlocks: dto.descriptionBlocks ?? (dto.description.map { [DescriptionBlock(content: .text($0))] } ?? []),
       hostId: dto.hostId,
       groupId: dto.groupId,
       group: nil,
@@ -383,7 +389,11 @@ extension ScheduleModel {
     if let location = location {
       text += "📍 \(location.name)\n"
     }
-    if let description = description, !description.isEmpty {
+    if !descriptionBlocks.isEmpty {
+      if let blockText = descriptionBlocks.plainText {
+        text += "\n\(blockText)"
+      }
+    } else if let description = description, !description.isEmpty {
       text += "\n\(description)"
     }
     return text

@@ -112,6 +112,7 @@ extension RootTab {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.subscriptionClient) var subscriptionClient
+    @Dependency(\.appReviewClient) var appReviewClient
 
     private enum CancelID: Hashable {
       case subscriptionStatus
@@ -232,6 +233,8 @@ extension RootTab {
       case openCreateGroup
       /// 딥링크에서 ProPlan 화면 열기
       case openProPlan
+      /// Share Extension 텍스트 일정 추출 → 개인 탭 + CreatePersonalEvent 폼 열기
+      case openExtractSchedule
       /// Scene phase 변경 (포그라운드 복귀 시 구독 상태 갱신)
       case scenePhaseChanged(ScenePhase)
       /// 내부 액션
@@ -314,6 +317,13 @@ extension RootTab {
             .send(.internal(.observeSubscriptionStatus))
           ]
 
+          effects.append(
+            .run { [appReviewClient] _ in
+              appReviewClient.recordFirstLaunchIfNeeded()
+              appReviewClient.incrementSessionCount()
+            }
+          )
+
           if !state.hasInitialCalendarSyncBeenScheduled {
             effects.append(.send(.internal(.syncCalendar)))
           }
@@ -378,19 +388,10 @@ extension RootTab {
           }
           return .none
 
-        case .home(.delegate(.navigateToAllSchedules)):
-          // TODO: 모든 일정 보기 화면으로 이동 (추후 구현)
-          return .none
-
         case .home(.delegate(.navigateToCreateSchedule)):
           state.scheduleMode = .group
           state.selectedTab = .schedule(.group)
           return .send(.groupMain(.view(.openCreateScheduleIfPossible)))
-        case .home(.delegate(.createScheduleWithExtractedInfo(let info))):
-          // 그룹 탭으로 전환 → CreateSchedule 열기 (추출 정보 pre-fill)
-          state.scheduleMode = .group
-          state.selectedTab = .schedule(.group)
-          return .send(.groupMain(.view(.openCreateScheduleWithExtractedInfo(info))))
 
         case .home(.delegate(.proPlanRequested)):
           state.selectedTab = .settings
@@ -532,6 +533,11 @@ extension RootTab {
         case .openProPlan:
           state.selectedTab = .settings
           return .send(.settings(.view(.proPlanTapped)))
+
+        case .openExtractSchedule:
+          state.scheduleMode = .own
+          state.selectedTab = .schedule(.own)
+          return .send(.personalMode(.view(.openCreateEventWithExtraction)))
 
         case .internal(let internalAction):
           switch internalAction {

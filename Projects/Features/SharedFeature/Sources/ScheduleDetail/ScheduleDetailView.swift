@@ -129,7 +129,15 @@ extension ScheduleDetail {
             .font(.system(size: 20, weight: .bold))
             .foregroundStyle(.primary)
 
-          if let description = store.schedule.description, !description.isEmpty {
+          if !store.schedule.descriptionBlocks.isEmpty {
+            DescriptionBlockRenderer(
+              blocks: store.schedule.descriptionBlocks,
+              isExpanded: $isDescriptionExpanded,
+              onChecklistToggle: { blockId, itemId in
+                store.send(.view(.toggleChecklist(blockId: blockId, itemId: itemId)))
+              }
+            )
+          } else if let description = store.schedule.description, !description.isEmpty {
             ScheduleDetailExpandableText(text: description, isExpanded: $isDescriptionExpanded)
           }
         }
@@ -140,7 +148,7 @@ extension ScheduleDetail {
         ScheduleDetailStatusBadgeView(status: store.responseStatus)
       }
       .padding(16)
-      .adaptiveGlassCard()
+      .staticGlassCard()
     }
 
     // MARK: - Schedule Section
@@ -227,7 +235,7 @@ extension ScheduleDetail {
             value: LocalizedStrings.Shared.membersCount(store.schedule.minimumParticipants)
           )
         }
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 
@@ -248,7 +256,7 @@ extension ScheduleDetail {
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
         }
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
       .fullScreenCover(isPresented: Binding(
         get: { selectedImageIndex != nil },
@@ -391,7 +399,7 @@ extension ScheduleDetail {
           onDecline: { store.send(.view(.rejectTapped)) }
         )
         .padding(16)
-        .adaptiveGlassCard()
+        .staticGlassCard()
       }
     }
 

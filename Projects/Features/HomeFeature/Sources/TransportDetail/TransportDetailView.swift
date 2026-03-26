@@ -155,23 +155,88 @@ extension TransportDetail {
         if let driving = store.transportData.driving {
           return .driving(routePoints: driving.routePoints)
         }
-        return .walking
+        return .walking()
       case .transit:
         if let route = store.selectedTransitRoute {
-          let segments = route.subPaths.compactMap { subPath -> TransitRouteSegmentData? in
-            guard !subPath.passStopCoords.isEmpty else { return nil }
-            return TransitRouteSegmentData(
-              coords: subPath.passStopCoords,
-              color: subPath.laneColor,
-              trafficType: subPath.trafficType
-            )
+          let subPaths = route.subPaths
+          let segments = subPaths.enumerated().compactMap { index, subPath -> TransitRouteSegmentData? in
+            // 도보 구간에 MKDirections 실제 경로가 있으면 우선 사용
+            if subPath.trafficType == 3 && !subPath.walkingRoutePoints.isEmpty {
+              var routePoints = subPath.walkingRoutePoints
+
+              // 시작점을 마커/인접 정류장 좌표에 스냅
+              if let start = walkingStartCoordinate(at: index, in: subPaths) { routePoints[0] = start }
+              if let end = walkingEndCoordinate(at: index, in: subPaths) { routePoints[routePoints.count - 1] = end }
+
+              return TransitRouteSegmentData(
+                coords: routePoints,
+                color: nil,
+                trafficType: 3,
+                isWalking: true
+              )
+            }
+            if !subPath.passStopCoords.isEmpty {
+              return TransitRouteSegmentData(
+                coords: subPath.passStopCoords,
+                color: subPath.laneColor,
+                trafficType: subPath.trafficType,
+                isWalking: subPath.trafficType == 3
+              )
+            }
+            // 도보 구간: startX/Y → endX/Y, 없으면 인접 구간에서 추론
+            if subPath.trafficType == 3 {
+              if let start = walkingStartCoordinate(at: index, in: subPaths),
+                 let end = walkingEndCoordinate(at: index, in: subPaths) {
+                return TransitRouteSegmentData(
+                  coords: [start, end],
+                  color: nil,
+                  trafficType: 3,
+                  isWalking: true
+                )
+              }
+            }
+            return nil
           }
           return .transit(segments: segments)
         }
-        return .walking
+        return .walking()
       case .walking:
-        return .walking
+        return .walking(routePoints: store.transportData.walking.routePoints)
       }
+    }
+
+    private func walkingStartCoordinate(
+      at index: Int,
+      in subPaths: [HomeModels.TransportSubPath]
+    ) -> [Double]? {
+      let subPath = subPaths[index]
+      if let sx = subPath.startX, let sy = subPath.startY {
+        return [sx, sy]
+      } else if index > 0, let lastCoord = subPaths[index - 1].passStopCoords.last {
+        return lastCoord
+      } else if index > 0, let ex = subPaths[index - 1].endX, let ey = subPaths[index - 1].endY {
+        return [ex, ey]
+      } else if index == 0, let origin = store.originCoordinate {
+        return [origin.longitude, origin.latitude]
+      }
+      return nil
+    }
+
+    private func walkingEndCoordinate(
+      at index: Int,
+      in subPaths: [HomeModels.TransportSubPath]
+    ) -> [Double]? {
+      let subPath = subPaths[index]
+      if let ex = subPath.endX, let ey = subPath.endY {
+        return [ex, ey]
+      } else if index < subPaths.count - 1, let firstCoord = subPaths[index + 1].passStopCoords.first {
+        return firstCoord
+      } else if index < subPaths.count - 1, let sx = subPaths[index + 1].startX, let sy = subPaths[index + 1].startY {
+        return [sx, sy]
+      } else if index == subPaths.count - 1 {
+        return [store.destinationCoordinate.longitude, store.destinationCoordinate.latitude]
+      }
+      return nil
     }
 
     // MARK: - My Location Button

@@ -484,7 +484,8 @@ export async function sendPushNotificationInternal(params: {
     apns: {
       payload: {
         aps: {
-          sound: "default",
+          "sound": "default",
+          "mutable-content": 1,
           // TODO: 읽지 않은 알림 수로 동적 계산 필요
           // badge: 1,
         },
@@ -626,6 +627,12 @@ export const onPromiseCreated = onDocumentCreated(
     const hostDoc = await usersCollection.doc(hostId).get();
     const hostName = hostDoc.data()?.nickname as string || "누군가";
 
+    // 호스트 프로필 이미지 URL 추출
+    const hostProfile = hostDoc.data()?.profile as
+      { url: string; thumbUrl?: string | null } | undefined;
+    const imageUrl = hostProfile?.thumbUrl ||
+      hostProfile?.url || null;
+
     // 푸시 알림 전송
     const isLiveActivity =
       notificationMethod === "liveActivity";
@@ -643,7 +650,7 @@ export const onPromiseCreated = onDocumentCreated(
       promiseId,
       groupId,
       relatedUserId: hostId,
-      data: null,
+      data: imageUrl ? {imageUrl} : null,
     });
   },
 );
@@ -790,7 +797,14 @@ export const onGroupMemberJoined = onDocumentUpdated(
       if (recipientIds.length === 0) continue;
 
       const newMemberDoc = await usersCollection.doc(newMemberId).get();
-      const newMemberName = newMemberDoc.data()?.nickname as string || "누군가";
+      const newMemberName =
+        newMemberDoc.data()?.nickname as string || "누군가";
+
+      // 새 멤버 프로필 이미지 URL 추출
+      const memberProfile = newMemberDoc.data()?.profile as
+        { url: string; thumbUrl?: string | null } | undefined;
+      const imageUrl = memberProfile?.thumbUrl ||
+        memberProfile?.url || null;
 
       await sendPushNotificationInternal({
         userIds: recipientIds,
@@ -800,11 +814,54 @@ export const onGroupMemberJoined = onDocumentUpdated(
         promiseId: null,
         groupId,
         relatedUserId: newMemberId,
-        data: null,
+        data: imageUrl ? {imageUrl} : null,
       });
     }
   },
 );
+
+/**
+ * 필드 값을 사람이 읽을 수 있는 문자열로 변환
+ *
+ * @param {string} field - 필드명
+ * @param {unknown} value - 필드 값
+ * @return {string} 표시 문자열
+ */
+function formatFieldValue(
+  field: string,
+  value: unknown
+): string {
+  switch (field) {
+  case "startAt":
+  case "endAt": {
+    if (
+      value &&
+      typeof value === "object" &&
+      "toDate" in value
+    ) {
+      const ts = value as { toDate: () => Date };
+      return formatDateTime(ts.toDate());
+    }
+    return String(value ?? "");
+  }
+  case "location": {
+    if (value && typeof value === "object") {
+      const loc = value as { name?: string };
+      return loc.name || "";
+    }
+    return "";
+  }
+  case "description": {
+    const str = String(value ?? "");
+    return str.length > 20 ?
+      str.slice(0, 20) + "..." : str;
+  }
+  case "minimumParticipants":
+    return `${value ?? 0}명`;
+  default:
+    return String(value ?? "");
+  }
+}
 
 /**
  * 약속 정보 수정 시 참가자에게 알림
@@ -812,7 +869,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
  * @remarks
  * promises/{promiseId} 문서의 주요 정보가 변경되면 트리거됩니다.
  * - 제목, 시간, 장소, 설명, 최소인원 변경 감지
- * - 수락한 참가자들에게 알림 전송
+ * - 수락한 참가자들에게 변경 내용 상세 알림 전송
  */
 export const onPromiseInfoUpdated = onDocumentUpdated(
   {
@@ -829,22 +886,44 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
 
     const promiseId = event.params.promiseId;
 
-    // 주요 필드 변경 감지
+    // 주요 필드 변경 감지 및 변경 내용 수집
     const fieldsToCheck = [
       "title",
       "startAt",
+      "endAt",
       "location",
       "description",
       "minimumParticipants",
     ];
 
-    const hasChanges = fieldsToCheck.some((field) => {
-      const before = JSON.stringify(beforeData[field]);
-      const after = JSON.stringify(afterData[field]);
-      return before !== after;
-    });
+    const fieldLabels: { [key: string]: string } = {
+      title: "제목",
+      startAt: "시작 시간",
+      endAt: "종료 시간",
+      location: "장소",
+      description: "설명",
+      minimumParticipants: "최소 인원",
+    };
 
-    if (!hasChanges) {
+    const changes: Array<{
+      label: string;
+      before: string;
+      after: string;
+    }> = [];
+
+    for (const field of fieldsToCheck) {
+      const bVal = JSON.stringify(beforeData[field]);
+      const aVal = JSON.stringify(afterData[field]);
+      if (bVal !== aVal) {
+        changes.push({
+          label: fieldLabels[field] || field,
+          before: formatFieldValue(field, beforeData[field]),
+          after: formatFieldValue(field, afterData[field]),
+        });
+      }
+    }
+
+    if (changes.length === 0) {
       return; // 주요 정보 변경 없음
     }
 
@@ -860,15 +939,30 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
 
     console.log(`📝 Promise info updated: ${promiseId}`);
 
+    // 푸시 본문 생성
+    let body: string;
+    if (changes.length === 1) {
+      const c = changes[0];
+      body = `${c.label}: ${c.before} → ${c.after}`;
+    } else {
+      const labels = changes.map((c) => c.label).join(", ");
+      body = `${labels}이 변경됐어요`;
+    }
+
+    // data에 변경 정보 포함
+    const notificationData: { [key: string]: string } = {
+      changes: JSON.stringify(changes),
+    };
+
     await sendPushNotificationInternal({
       userIds: acceptedUsers,
       type: NotificationType.PromiseUpdated,
       title: `${title} 변경 📝`,
-      body: "약속 정보가 수정됐어요. 확인해주세요!",
+      body,
       promiseId,
       groupId,
       relatedUserId: null,
-      data: null,
+      data: notificationData,
     });
   },
 );

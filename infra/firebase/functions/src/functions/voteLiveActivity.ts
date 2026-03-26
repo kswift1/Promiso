@@ -27,6 +27,10 @@ import {
   sendAPNsBroadcast,
   createAPNsChannel,
 } from "../utils/apns";
+import {
+  verifyWidgetToken,
+  WIDGET_JWT_SECRET,
+} from "./widgetToken";
 
 // ============================================================================
 // Types
@@ -650,7 +654,7 @@ export const updateVoteResponse = onCall(
  *
  * Headers:
  * - X-User-Id: user ID (required)
- * - X-Auth-Token: Firebase ID Token (optional)
+ * - X-Auth-Token: Widget Token (preferred) or Firebase ID Token (fallback)
  *
  * Request Body:
  * ```json
@@ -663,7 +667,10 @@ export const updateVoteResponse = onCall(
  * ```
  */
 export const widgetVoteResponse = onRequest(
-  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
+  {region: REGION, secrets: [
+    APNS_KEY_ID, APNS_TEAM_ID,
+    APNS_AUTH_KEY, WIDGET_JWT_SECRET,
+  ]},
   async (req, res) => {
     // CORS headers
     res.set("Access-Control-Allow-Origin", "*");
@@ -709,25 +716,70 @@ export const widgetVoteResponse = onRequest(
       return;
     }
 
+    // Widget Token first, Firebase ID Token fallback
+    let authenticated = false;
     try {
-      const decodedToken = await admin.auth().verifyIdToken(authToken);
-      if (decodedToken.uid !== userId) {
+      const decoded = verifyWidgetToken(
+        authToken,
+        WIDGET_JWT_SECRET.value()
+      );
+      if (decoded.sub !== userId) {
         res.status(401).json({
-          error: {code: "unauthenticated", message: "Token uid mismatch"},
+          error: {
+            code: "unauthenticated",
+            message: "Token uid mismatch",
+          },
         });
         return;
       }
+      authenticated = true;
     } catch (error) {
-      console.error(
-        `❌ Widget vote auth token verification failed: ${error}`
+      if (
+        error instanceof Error &&
+        error.name !== "TokenExpiredError"
+      ) {
+        // 위변조 등 만료 외 오류는 즉시 거부
+        res.status(401).json({
+          error: {
+            code: "unauthenticated",
+            message: "Invalid token",
+          },
+        });
+        return;
+      }
+      console.warn(
+        "Widget Token expired, falling back to Firebase ID Token:",
+        error
       );
-      res.status(401).json({
-        error: {
-          code: "unauthenticated",
-          message: "Token verification failed",
-        },
-      });
-      return;
+    }
+
+    if (!authenticated) {
+      try {
+        const decodedToken = await admin
+          .auth().verifyIdToken(authToken);
+        if (decodedToken.uid !== userId) {
+          res.status(401).json({
+            error: {
+              code: "unauthenticated",
+              message: "Token uid mismatch",
+            },
+          });
+          return;
+        }
+        authenticated = true;
+      } catch (error) {
+        console.error(
+          "❌ Widget vote auth failed: " +
+          `${error}`
+        );
+        res.status(401).json({
+          error: {
+            code: "unauthenticated",
+            message: "Token verification failed",
+          },
+        });
+        return;
+      }
     }
 
     const {scheduleId, response, userName} = req.body as {

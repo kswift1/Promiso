@@ -12,7 +12,23 @@ git_branch("main")
 storage_mode("git")
 
 # 앱 식별자
-app_identifier(["com.promiso.dev", "com.promiso.stage", "com.promiso"])
+app_identifier([
+  "com.promiso.dev",
+  "com.promiso.dev.liveactivity",
+  "com.promiso.dev.promisewidget",
+  "com.promiso.dev.shareextension",
+  "com.promiso.dev.notificationservice",
+  "com.promiso.stage",
+  "com.promiso.stage.liveactivity",
+  "com.promiso.stage.promisewidget",
+  "com.promiso.stage.shareextension",
+  "com.promiso.stage.notificationservice",
+  "com.promiso",
+  "com.promiso.liveactivity",
+  "com.promiso.promisewidget",
+  "com.promiso.shareextension",
+  "com.promiso.notificationservice"
+])
 
 # Apple ID (App Store Connect)
 # 환경변수 FASTLANE_USER로 관리 (GitHub Secrets에 설정됨)

@@ -23,6 +23,7 @@ struct ScheduleCard: View {
   let weather: WeatherInfo?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
+  let conflictsChecked: Bool
 
   init(
     schedule: ScheduleModel,
@@ -33,6 +34,7 @@ struct ScheduleCard: View {
     weather: WeatherInfo? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false,
+    conflictsChecked: Bool = false,
     onTap: @escaping () -> Void,
     onAccept: @escaping () -> Void,
     onReject: @escaping () -> Void,
@@ -52,6 +54,7 @@ struct ScheduleCard: View {
     self.weather = weather
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
+    self.conflictsChecked = conflictsChecked
     self.onTap = onTap
     self.onAccept = onAccept
     self.onReject = onReject
@@ -389,7 +392,8 @@ struct ScheduleCard: View {
         conflicts: conflicts,
         isCheckingConflicts: isCheckingConflicts,
         eventTitle: schedule.title,
-        eventEmoji: schedule.displayEmoji
+        eventEmoji: schedule.displayEmoji,
+        conflictsChecked: conflictsChecked
       )
     }
     .padding(16)

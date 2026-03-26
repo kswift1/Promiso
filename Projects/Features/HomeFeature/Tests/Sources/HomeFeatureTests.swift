@@ -331,24 +331,6 @@ struct HomeFeatureTests {
     }
   }
 
-  // MARK: - 네비게이션 테스트
-
-  @Test("seeAllUpcomingTapped 시 delegate 전달")
-  func seeAllUpcomingTapped_sendsDelegate() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-see-all")) var currentUser = user
-
-    let store = TestStore(
-      initialState: Home.Feature.State(currentUser: $currentUser)
-    ) {
-      Home.Feature()
-    }
-
-    await store.send(.view(.seeAllUpcomingTapped))
-
-    await store.receive(\.delegate.navigateToAllSchedules)
-  }
-
   // MARK: - 알림 배지 테스트
 
   @Test("refreshNotificationBadge 시 알림 개수 조회")

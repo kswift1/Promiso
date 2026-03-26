@@ -246,6 +246,8 @@ public enum LocalizedStrings {
     public static var appSettings: String { String(localized: "settings.appSettings", bundle: bundle) }
     public static var support: String { String(localized: "settings.support", bundle: bundle) }
     public static var guide: String { String(localized: "settings.guide", bundle: bundle) }
+    public static var kakaoChannel: String { String(localized: "settings.kakaoChannel", bundle: bundle) }
+    public static var rateApp: String { String(localized: "settings.rateApp", bundle: bundle) }
     public static var info: String { String(localized: "settings.info", bundle: bundle) }
     public static var developer: String { String(localized: "settings.developer", bundle: bundle) }
 
@@ -408,6 +410,8 @@ public enum LocalizedStrings {
     public static var supportTitle: String { String(localized: "settings.support.title", bundle: bundle) }
     public static var faq: String { String(localized: "settings.support.faq", bundle: bundle) }
     public static var bugReport: String { String(localized: "settings.support.bugReport", bundle: bundle) }
+    public static var featureRequest: String { String(localized: "settings.support.featureRequest", bundle: bundle) }
+    public static var mailAppUnavailable: String { String(localized: "settings.support.mailAppUnavailable", bundle: bundle) }
 
     // FAQ
     public static var faqTitle: String { String(localized: "settings.faq.title", bundle: bundle) }
@@ -641,6 +645,12 @@ public enum LocalizedStrings {
     public static var userNetworkError: String { String(localized: "error.user.networkError", bundle: bundle) }
     public static var userAuthRequired: String { String(localized: "error.user.authRequired", bundle: bundle) }
     public static var userPermissionDenied: String { String(localized: "error.user.permissionDenied", bundle: bundle) }
+
+    // Schedule Extraction
+    public static var textTooLong: String { String(localized: "error.textTooLong", bundle: bundle) }
+    public static var emptyText: String { String(localized: "error.emptyText", bundle: bundle) }
+    public static var extractionFailed: String { String(localized: "error.extractionFailed", bundle: bundle) }
+    public static var imageTooLarge: String { String(localized: "error.imageTooLarge", bundle: bundle) }
 
     // Group Data Source
     public static var groupInvalidResponse: String { String(localized: "error.group.invalidResponse", bundle: bundle) }
@@ -1063,6 +1073,12 @@ public enum LocalizedStrings {
     }
     public static var updateAction: String { String(localized: "appEntry.update.action", bundle: bundle) }
     public static var updateLater: String { String(localized: "appEntry.update.later", bundle: bundle) }
+  }
+
+  // MARK: - WhatsNew
+  public enum WhatsNew {
+    public static var closingTitle: String { String(localized: "whatsNew.closing.title", bundle: bundle) }
+    public static var closingBody: String { String(localized: "whatsNew.closing.body", bundle: bundle) }
   }
 
   // MARK: - Profile
@@ -1830,6 +1846,7 @@ public enum LocalizedStrings {
     }
     public static var addPersonalEvent: String { String(localized: "personal.add.personalEvent", bundle: bundle) }
     public static var addRecurringEvent: String { String(localized: "personal.add.recurringEvent", bundle: bundle) }
+    public static var addFromPhotoText: String { String(localized: "personal.add.fromPhotoText", bundle: bundle) }
     public static var reminderTooSoonWarning: String {
       String(localized: "personal.event.reminderTooSoonWarning", bundle: bundle)
     }
@@ -1863,6 +1880,27 @@ public enum LocalizedStrings {
     public static var recurringDeleteSeriesMessage: String {
       String(localized: "personal.recurringDetail.deleteSeriesMessage", bundle: bundle)
     }
+
+    // Text Extraction
+    public static var extractFromText: String { String(localized: "personal.extraction.fromText", bundle: bundle) }
+    public static var extractionPlaceholder: String { String(localized: "personal.extraction.placeholder", bundle: bundle) }
+    public static var extractionPaste: String { String(localized: "personal.extraction.paste", bundle: bundle) }
+    public static var extractionExtract: String { String(localized: "personal.extraction.extract", bundle: bundle) }
+  }
+
+  // MARK: - ScheduleImport
+  public enum ScheduleImport {
+    public static var title: String { String(localized: "scheduleImport.title", bundle: bundle) }
+    public static var modeText: String { String(localized: "scheduleImport.mode.text", bundle: bundle) }
+    public static var modeImage: String { String(localized: "scheduleImport.mode.image", bundle: bundle) }
+    public static var selectPhoto: String { String(localized: "scheduleImport.image.selectPhoto", bundle: bundle) }
+    public static var selectPhotoHint: String { String(localized: "scheduleImport.image.selectPhotoHint", bundle: bundle) }
+    public static var removeImage: String { String(localized: "scheduleImport.image.removeImage", bundle: bundle) }
+    public static var changePhoto: String { String(localized: "scheduleImport.image.changePhoto", bundle: bundle) }
+    // Reuse from Personal extraction
+    public static var extractionPaste: String { String(localized: "personal.extraction.paste", bundle: bundle) }
+    public static var extractionExtract: String { String(localized: "personal.extraction.extract", bundle: bundle) }
+    public static var extractionPlaceholder: String { String(localized: "personal.extraction.placeholder", bundle: bundle) }
   }
 
   // MARK: - ProPlan
