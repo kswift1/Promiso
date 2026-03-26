@@ -37,8 +37,8 @@ extension PersonalMode {
 
     public var selectedColor: Color {
       switch self {
-      case .today: return .orange
-      case .future: return .blue
+      case .today: return Color.pmwarning.n500
+      case .future: return Color.pminfo.n500
       case .all: return .pmindigo.n500
       case .past: return Color.pmgray.n500
       }
@@ -83,6 +83,9 @@ extension PersonalMode {
 
       /// 일정 탭 기본 모드 (Settings에서 설정)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
+
+      /// 개인 캘린더 동기화 활성화 여부
+      @Shared(.appStorage(AppConstants.UserDefaults.personalCalendarSync)) var personalCalendarSyncEnabled: Bool = false
 
       @Presents var scheduleImport: ScheduleImport.Feature.State?
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
@@ -197,6 +200,7 @@ extension PersonalMode {
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
+      case delegate(DelegateAction)
       case scheduleImport(PresentationAction<ScheduleImport.Feature.Action>)
       case alert(PresentationAction<Alert>)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
@@ -209,6 +213,7 @@ extension PersonalMode {
         case confirmDelete
       }
 
+      @CasePathable
       public enum View: Sendable {
         case onAppear
         case refreshEvents
@@ -232,6 +237,7 @@ extension PersonalMode {
         case toastDismissed
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case subscribeToEvents
         case eventsUpdated([PersonalEventModel])
@@ -259,6 +265,11 @@ extension PersonalMode {
         case deeplinkExtractionSuccess(PersonalEventModel)
         case deeplinkExtractionFailed(originalText: String)
         case deeplinkExtractionImageFailed(imageData: Data)
+      }
+
+      @CasePathable
+      public enum DelegateAction: Sendable {
+        case switchToGroupMode
       }
     }
 
@@ -347,8 +358,7 @@ extension PersonalMode {
             return .none
 
           case .switchToGroupMode:
-            // RootTabFeature에서 처리
-            return .none
+            return .send(.delegate(.switchToGroupMode))
 
           case .openEventFromDeeplink(let eventId):
             return .run { send in
@@ -592,10 +602,8 @@ extension PersonalMode {
             return .none
 
           case .syncPersonalCalendar:
+            let enabled = state.personalCalendarSyncEnabled
             return .run(priority: .background) { [calendarSyncClient] _ in
-              let enabled = UserDefaults.standard.bool(
-                forKey: AppConstants.UserDefaults.personalCalendarSync
-              )
               let result = try? await calendarSyncClient.syncPersonalEvents(enabled)
               if let result {
                 AppLogger.calendar.info("📅 [Personal] syncCalendar 완료 - \(result.description)")
@@ -764,6 +772,9 @@ extension PersonalMode {
 
         case .alert:
           state.eventToDelete = nil
+          return .none
+
+        case .delegate:
           return .none
         }
       }

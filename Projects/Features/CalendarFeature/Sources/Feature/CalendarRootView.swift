@@ -490,11 +490,15 @@ extension CalendarFeature {
 
     // MARK: - Month Mode Header
 
-    private var monthModeHeader: some View {
+    private static let monthNameFormatter: DateFormatter = {
       let formatter = DateFormatter()
       formatter.locale = LocaleManager.appLocale
       formatter.setLocalizedDateFormatFromTemplate("MMMM")
-      let monthTitle = formatter.string(from: store.currentMonth)
+      return formatter
+    }()
+
+    private var monthModeHeader: some View {
+      let monthTitle = Self.monthNameFormatter.string(from: store.currentMonth)
 
       return HStack {
         Text("\(monthTitle) \(LocalizedStrings.Schedule.schedule)")

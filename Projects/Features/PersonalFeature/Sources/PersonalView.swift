@@ -264,7 +264,7 @@ extension PersonalMode {
         HStack(spacing: 8) {
           Image(systemName: "repeat")
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.teal)
+            .foregroundStyle(Color.pminfo.n500)
 
           Text(LocalizedStrings.Personal.recurringEventsSummaryTitle)
             .font(.system(size: 16, weight: .bold))
@@ -272,10 +272,10 @@ extension PersonalMode {
 
           Text("\(count)")
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.teal)
+            .foregroundStyle(Color.pminfo.n500)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(.teal.opacity(0.15))
+            .background(Color.pminfo.n500.opacity(0.15))
             .clipShape(Capsule())
 
           Spacer()
@@ -473,8 +473,8 @@ private struct RecurringEventCard: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.teal.opacity(0.1))
-            .foregroundStyle(.teal)
+            .background(Color.pminfo.n500.opacity(0.1))
+            .foregroundStyle(Color.pminfo.n500)
             .clipShape(Capsule())
           }
 

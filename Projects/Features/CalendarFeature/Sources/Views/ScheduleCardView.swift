@@ -11,11 +11,11 @@ import PromisoShared
 extension ScheduleResponseStatus {
   var color: Color {
     switch self {
-    case .needResponse: return .yellow
-    case .expired:      return Color(UIColor.systemGray3)
-    case .responded:    return .orange
-    case .confirmed:    return .green
-    case .failed:       return Color(UIColor.systemGray3)
+    case .needResponse: return Color.pmwarning.n500
+    case .expired:      return Color.pmgray.n300
+    case .responded:    return Color.pminfo.n500
+    case .confirmed:    return Color.pmsuccess.n500
+    case .failed:       return Color.pmgray.n300
     }
   }
 

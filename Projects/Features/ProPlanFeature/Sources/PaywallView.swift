@@ -53,7 +53,9 @@ extension ProPlan {
             GeometryReader { geo in
               Color.clear
                 .onChange(of: geo.frame(in: .global).minY) { _, minY in
-                  let screenHeight = UIScreen.main.bounds.height
+                  let screenHeight = (UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .first?.screen.bounds.height) ?? 852
                   if minY < screenHeight - 100, !isPricingExpanded, !hasAutoExpanded {
                     hasAutoExpanded = true
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
