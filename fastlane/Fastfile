@@ -377,6 +377,53 @@ platform :ios do
     UI.success("✅ Match setup complete for all environments")
   end
 
+  desc "Nuke all certificates and profiles from Apple Developer Portal, then regenerate"
+  lane :nuke_profiles do
+    # API Key 설정
+    api_key = nil
+    if ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"]
+      api_key = app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_filepath: ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"]
+      )
+    end
+
+    all_bundle_ids = [
+      "com.promiso.dev",
+      "com.promiso.dev.liveactivity",
+      "com.promiso.dev.promisewidget",
+      "com.promiso.dev.shareextension",
+      "com.promiso.dev.notificationservice",
+      "com.promiso.stage",
+      "com.promiso.stage.liveactivity",
+      "com.promiso.stage.promisewidget",
+      "com.promiso.stage.shareextension",
+      "com.promiso.stage.notificationservice",
+      "com.promiso",
+      "com.promiso.liveactivity",
+      "com.promiso.promisewidget",
+      "com.promiso.shareextension",
+      "com.promiso.notificationservice"
+    ]
+
+    # Apple Developer Portal에서 기존 프로파일/인증서 삭제
+    match_nuke(
+      type: "distribution",
+      app_identifier: all_bundle_ids,
+      api_key: api_key,
+      skip_confirmation: true
+    )
+    match_nuke(
+      type: "development",
+      app_identifier: all_bundle_ids,
+      api_key: api_key,
+      skip_confirmation: true
+    )
+
+    UI.success("🔥 Nuke complete. Run sync_certificates to regenerate.")
+  end
+
   desc "Sync code signing certificates and provisioning profiles"
   lane :sync_certificates do
     # API Key 설정
