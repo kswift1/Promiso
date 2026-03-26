@@ -22,13 +22,14 @@ public enum VersionCheckResult: Equatable, Sendable {
 // MARK: - Client
 
 /// Firebase Remote Config에서 앱 설정 정보를 가져오는 클라이언트
+@DependencyClient
 public struct AppConfigClient: Sendable {
   /// 앱 설정 조회
   public var fetchConfig: @Sendable () async throws -> AppConfigModel
   /// 현재 앱 버전과 비교하여 업데이트 필요 여부 확인
-  public var checkVersion: @Sendable () async -> VersionCheckResult
+  public var checkVersion: @Sendable () async -> VersionCheckResult = { .upToDate }
   /// 캐시 초기화 후 버전 체크 (앱스토어 복귀 시 사용)
-  public var checkVersionForced: @Sendable () async -> VersionCheckResult
+  public var checkVersionForced: @Sendable () async -> VersionCheckResult = { .upToDate }
 }
 
 // MARK: - Error

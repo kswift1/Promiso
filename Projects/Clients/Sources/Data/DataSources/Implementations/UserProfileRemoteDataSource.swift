@@ -287,7 +287,6 @@ private extension Encodable {
   /// Encodable을 Dictionary로 변환
   func asDictionary() throws -> [String: Any] {
     let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
     let data = try encoder.encode(self)
     guard let dictionary = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
       throw UserProfileError.invalidData
