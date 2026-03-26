@@ -373,6 +373,9 @@ extension Support {
 
       static func body(version: String, build: String, device: String, osVersion: String) -> String {
         """
+        보내주신 의견은 적극 검토하여 반영하도록 노력하겠습니다.
+        아래에 원하시는 기능을 자유롭게 작성해주세요.
+
 
         ---
         앱 버전: \(version) (\(build))
