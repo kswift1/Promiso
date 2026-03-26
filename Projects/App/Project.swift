@@ -1,9 +1,14 @@
-import Foundation
 import ProjectDescription
 import ProjectDescriptionHelpers
 
 // CI에서만 Manual Signing (로컬은 Automatic으로 match 없이 빌드 가능)
-let isCI = ProcessInfo.processInfo.environment["CI"] != nil
+// Tuist Environment 사용: CI workflow에서 TUIST_CI=true로 설정
+let isCI: Bool = {
+    if case .string = Environment.ci {
+        return true
+    }
+    return false
+}()
 let ciSigningStyle: SettingValue = .string(isCI ? "Manual" : "Automatic")
 
 // Helper for infoPlist with DisplayName
@@ -544,17 +549,17 @@ let notificationServiceStage = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.notificationservice"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.notificationservice"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
@@ -580,17 +585,17 @@ let notificationServiceProd = Target.target(
   settings: .settings(
     base: [
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": ciSigningStyle
     ],
     configurations: [
-      .debug(name: "Debug", settings: [
+      .debug(name: "Debug", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.notificationservice"),
         "CODE_SIGN_IDENTITY": .string("Apple Development")
-      ]),
-      .release(name: "Release", settings: [
+      ] : [:]),
+      .release(name: "Release", settings: isCI ? [
         "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.notificationservice"),
         "CODE_SIGN_IDENTITY": .string("Apple Distribution")
-      ])
+      ] : [:])
     ]
   )
 )
