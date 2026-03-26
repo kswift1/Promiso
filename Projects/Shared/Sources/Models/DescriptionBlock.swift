@@ -128,4 +128,24 @@ extension Array where Element == DescriptionBlock {
       .joined(separator: "\n\n")
     return text.isEmpty ? nil : text
   }
+
+  /// 인접한 텍스트 블록을 하나로 합침
+  public func mergingAdjacentTextBlocks() -> [DescriptionBlock] {
+    guard count > 1 else { return self }
+
+    var result: [DescriptionBlock] = []
+    for block in self {
+      if case .text(let newText) = block.content,
+         let lastIndex = result.indices.last,
+         case .text(let existingText) = result[lastIndex].content {
+        result[lastIndex] = DescriptionBlock(
+          id: result[lastIndex].id,
+          content: .text(existingText + "\n\n" + newText)
+        )
+      } else {
+        result.append(block)
+      }
+    }
+    return result
+  }
 }

@@ -283,8 +283,8 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
       }
     }
     if !blocks.isEmpty {
-      event.descriptionBlocks = blocks
-      event.description = blocks.plainText
+      event.descriptionBlocks = blocks.mergingAdjacentTextBlocks()
+      event.description = event.descriptionBlocks.plainText
     }
   }
 
