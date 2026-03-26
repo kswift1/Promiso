@@ -460,7 +460,7 @@ extension Auth {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
       if let windowScene = UIApplication.shared.connectedScenes
         .first(where: { ($0 as? UIWindowScene)?.activationState == .foregroundActive }) as? UIWindowScene,
-         let window = windowScene.windows.first {
+         let window = windowScene.windows.first(where: \.isKeyWindow) ?? windowScene.windows.first {
         return window
       }
       return UIWindow()
