@@ -409,7 +409,7 @@ platform :ios do
 
     # Apple Developer Portal에서 기존 프로파일/인증서 삭제
     match_nuke(
-      type: "distribution",
+      type: "appstore",
       app_identifier: all_bundle_ids,
       api_key: api_key,
       skip_confirmation: true
