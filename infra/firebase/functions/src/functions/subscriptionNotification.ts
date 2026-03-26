@@ -13,6 +13,7 @@ import {
   sendSlackSubscriptionGracePeriodNotification,
   sendSlackSubscriptionPromoNotification,
   sendSlackSubscriptionRecoveredNotification,
+  sendSlackSubscriptionAutoRenewDisabledNotification,
 } from "../utils/slack";
 
 const ACTIVE_STATUSES = ["subscribed", "lifetime"];
@@ -109,13 +110,47 @@ export const onSubscriptionWriteNotifySlack = onDocumentWritten(
     const isBeforeActive = ACTIVE_STATUSES.includes(beforeStatus);
     const isBeforeGracePeriod = beforeStatus === GRACE_PERIOD_STATUS;
 
-    // 상태 변화가 없으면 스킵
-    if (afterStatus === beforeStatus) return;
-
     const productId: string =
       typeof afterData.productId === "string" ?
         afterData.productId :
         (typeof beforeData?.productId === "string" ? beforeData.productId : "");
+
+    // 케이스 6: 자동갱신 해제 (DID_CHANGE_RENEWAL_STATUS, 중복 방지)
+    const isAutoRenewDisabled =
+      afterData.lastNotificationType === "DID_CHANGE_RENEWAL_STATUS" &&
+      beforeData?.lastNotificationType !== "DID_CHANGE_RENEWAL_STATUS";
+    if (isAutoRenewDisabled) {
+      try {
+        const db = admin.firestore();
+
+        const userDoc = await db
+          .collection("users").doc(uid).get();
+        const userData = userDoc.data();
+        const nickname: string =
+          typeof userData?.nickname === "string" ?
+            userData.nickname : uid;
+
+        const expirationDate =
+          typeof afterData.expirationDate === "string" ?
+            afterData.expirationDate : null;
+
+        await sendSlackSubscriptionAutoRenewDisabledNotification({
+          uid,
+          nickname,
+          productId,
+          expirationDate,
+        });
+      } catch (error) {
+        console.error(
+          `[SubscriptionNotification] autoRenewDisabled uid=${uid}`,
+          error,
+        );
+      }
+      return;
+    }
+
+    // 상태 변화가 없으면 스킵
+    if (afterStatus === beforeStatus) return;
 
     try {
       const db = admin.firestore();
