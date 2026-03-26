@@ -34,7 +34,7 @@ public struct DescriptionBlockEditor: View {
   public var body: some View {
     ScrollViewReader { proxy in
       VStack(alignment: .leading, spacing: 16) {
-        ForEach(blocks.indices, id: \.self) { index in
+        ForEach(Array(blocks.enumerated()), id: \.element.id) { index, _ in
           if blocks.count > 1 && index > 0 {
             Divider()
           }
@@ -119,7 +119,10 @@ public struct DescriptionBlockEditor: View {
 
         Button(role: .destructive) {
           withAnimation(.easeInOut(duration: 0.2)) {
-            _ = blocks.remove(at: index)
+            blocks.remove(at: index)
+            if blocks.isEmpty {
+              blocks.append(DescriptionBlock(content: .text("")))
+            }
           }
         } label: {
           Label("삭제", systemImage: "trash")
@@ -285,6 +288,8 @@ public struct DescriptionBlockEditor: View {
         Image(systemName: "xmark")
           .font(.system(size: 11))
           .foregroundStyle(Color(.systemGray3))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
     }
@@ -369,6 +374,8 @@ public struct DescriptionBlockEditor: View {
         Image(systemName: "xmark")
           .font(.system(size: 11))
           .foregroundStyle(Color(.systemGray3))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
     }
