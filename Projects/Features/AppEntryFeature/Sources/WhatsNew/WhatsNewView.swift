@@ -59,6 +59,30 @@ extension WhatsNew {
               textSection(item: item)
             }
 
+            if isLast {
+              HStack(spacing: 10) {
+                Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                  .font(.title3)
+                  .foregroundStyle(Color.pmindigo.n400)
+
+                VStack(alignment: .leading, spacing: 2) {
+                  Text("여러분의 목소리를 듣고 싶어요")
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white.opacity(0.85))
+
+                  Text("이메일이나 카카오톡 채널로 자유롭게 알려주세요!")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+                }
+              }
+              .padding(.horizontal, 14)
+              .padding(.vertical, 10)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+              .padding(.horizontal, 20)
+            }
+
             if totalPages > 2 {
               indicatorSection(count: model.items.count, currentIndex: itemIndex)
             }
