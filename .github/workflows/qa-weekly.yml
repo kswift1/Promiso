@@ -14,17 +14,46 @@ on:
 permissions:
   contents: read
 
-env:
-  QA_TARGET_REF: ${{ github.event.inputs.ref || vars.QA_TARGET_REF || 'release/v1.3.1' }}
-
 concurrency:
   group: qa-weekly
   cancel-in-progress: false
 
 jobs:
+  resolve-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      target_ref: ${{ steps.ref.outputs.target_ref }}
+    steps:
+      - name: Resolve QA target ref
+        id: ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          INPUT_REF="${{ github.event.inputs.ref }}"
+          if [ -n "$INPUT_REF" ]; then
+            echo "target_ref=$INPUT_REF" >> "$GITHUB_OUTPUT"
+            echo "Using manual ref: $INPUT_REF"
+            exit 0
+          fi
+
+          LATEST=$(gh api repos/${{ github.repository }}/branches \
+            --paginate -q '.[].name' \
+            | grep '^release/' \
+            | sort -V \
+            | tail -1)
+
+          if [ -z "$LATEST" ]; then
+            echo "::error::No release/* branch found"
+            exit 1
+          fi
+
+          echo "target_ref=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Using latest release branch: $LATEST"
+
   ios-full:
     runs-on: macos-15
     timeout-minutes: 150
+    needs: [resolve-ref]
     outputs:
       qa_status: ${{ steps.full.outputs.status }}
       app_build_status: ${{ steps.full.outputs.app_build_status }}
@@ -35,7 +64,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.QA_TARGET_REF }}
+          ref: ${{ needs.resolve-ref.outputs.target_ref }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -90,6 +119,8 @@ jobs:
         run: tuist install
 
       - name: Generate Project
+        env:
+          TUIST_ENV: stage
         run: tuist generate --no-open
 
       - name: Run Full iOS QA
@@ -177,6 +208,7 @@ jobs:
   admin-console:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [resolve-ref]
     outputs:
       qa_status: ${{ steps.verify.outputs.status }}
       failure_step: ${{ steps.verify.outputs.failure_step }}
@@ -190,7 +222,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.QA_TARGET_REF }}
+          ref: ${{ needs.resolve-ref.outputs.target_ref }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -259,6 +291,7 @@ jobs:
   functions:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    needs: [resolve-ref]
     outputs:
       qa_status: ${{ steps.verify.outputs.status }}
       failure_step: ${{ steps.verify.outputs.failure_step }}
@@ -272,7 +305,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.QA_TARGET_REF }}
+          ref: ${{ needs.resolve-ref.outputs.target_ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -370,6 +403,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - resolve-ref
       - ios-full
       - admin-console
       - functions
@@ -380,7 +414,7 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           # QA Weekly Summary
 
-          - Target ref: \`${{ env.QA_TARGET_REF }}\`
+          - Target ref: \`${{ needs.resolve-ref.outputs.target_ref }}\`
           - Schedule: Monday 10:00 KST / 01:00 UTC
           - iOS full status: \`${{ needs.ios-full.result }}\`
           - PromisoStage build: \`${{ needs.ios-full.outputs.app_build_status || 'n/a' }}\`
@@ -460,7 +494,7 @@ jobs:
             "blocks": [
               {"type": "header", "text": {"type": "plain_text", "text": "✅ QA Weekly 성공"}},
               {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": "*Ref:* \`${{ env.QA_TARGET_REF }}\`"},
+                {"type": "mrkdwn", "text": "*Ref:* \`${{ needs.resolve-ref.outputs.target_ref }}\`"},
                 {"type": "mrkdwn", "text": "*iOS:* ${IOS_EMOJI}"},
                 {"type": "mrkdwn", "text": "*Admin:* ${ADMIN_EMOJI}"},
                 {"type": "mrkdwn", "text": "*Functions:* ${FUNCTIONS_EMOJI}"}
@@ -500,7 +534,7 @@ jobs:
             "blocks": [
               {"type": "header", "text": {"type": "plain_text", "text": "🔴 QA Weekly 실패"}},
               {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": "*Ref:* \`${{ env.QA_TARGET_REF }}\`"},
+                {"type": "mrkdwn", "text": "*Ref:* \`${{ needs.resolve-ref.outputs.target_ref }}\`"},
                 {"type": "mrkdwn", "text": "*iOS:* ${IOS_EMOJI}"},
                 {"type": "mrkdwn", "text": "*Admin:* ${ADMIN_EMOJI}"},
                 {"type": "mrkdwn", "text": "*Functions:* ${FUNCTIONS_EMOJI}"}
