@@ -26,7 +26,6 @@ extension Support {
 
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.openURL) private var openURL
-    @Dependency(\.appReviewClient) private var appReviewClient
 
     public init() {}
 
@@ -106,7 +105,7 @@ extension Support {
         case .view(.rateAppTapped):
           return .run { _ in
             await hapticFeedback.selection()
-            await appReviewClient.requestReviewIfEligible()
+            await openURL(AppConstants.appStoreURL)
           }
 
         case .view(.toastDismissed):
