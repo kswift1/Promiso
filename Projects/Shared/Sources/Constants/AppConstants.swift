@@ -55,7 +55,7 @@ public struct AppConfigModel: Equatable, Sendable {
   public static let defaultConfig = AppConfigModel(
     forceUpdateVersion: "0.0.0",
     recommendedVersion: "0.0.0",
-    appStoreURL: "https://apps.apple.com/app/id1625074042",
+    appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
     privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02",
     termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b",
     supportEmail: "kswen0203@icloud.com",
