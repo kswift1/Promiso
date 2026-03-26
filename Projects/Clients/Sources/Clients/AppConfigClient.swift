@@ -118,7 +118,7 @@ extension AppConfigClient: DependencyKey {
     let defaults: [String: NSObject] = [
       RemoteConfigKeys.forceUpdateVersion: "0.0.0" as NSString,
       RemoteConfigKeys.recommendedVersion: "0.0.0" as NSString,
-      RemoteConfigKeys.appStoreURL: "https://apps.apple.com/app/id1625074042" as NSString,
+      RemoteConfigKeys.appStoreURL: "https://apps.apple.com/kr/app/id6757733720" as NSString,
       RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02" as NSString,
       RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b" as NSString,
       RemoteConfigKeys.supportEmail: "kswen0203@icloud.com" as NSString,

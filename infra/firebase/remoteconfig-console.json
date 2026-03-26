@@ -16,7 +16,7 @@
     },
     "appStoreURL": {
       "defaultValue": {
-        "value": "https://apps.apple.com/app/id1625074042"
+        "value": "https://apps.apple.com/kr/app/id6757733720"
       },
       "description": "App Store 앱 링크 (업데이트 버튼 클릭 시 이동)",
       "valueType": "STRING"
