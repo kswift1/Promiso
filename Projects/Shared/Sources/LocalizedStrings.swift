@@ -246,6 +246,8 @@ public enum LocalizedStrings {
     public static var appSettings: String { String(localized: "settings.appSettings", bundle: bundle) }
     public static var support: String { String(localized: "settings.support", bundle: bundle) }
     public static var guide: String { String(localized: "settings.guide", bundle: bundle) }
+    public static var kakaoChannel: String { String(localized: "settings.kakaoChannel", bundle: bundle) }
+    public static var rateApp: String { String(localized: "settings.rateApp", bundle: bundle) }
     public static var info: String { String(localized: "settings.info", bundle: bundle) }
     public static var developer: String { String(localized: "settings.developer", bundle: bundle) }
 

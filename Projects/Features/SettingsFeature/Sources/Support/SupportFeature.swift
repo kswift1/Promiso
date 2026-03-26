@@ -5,6 +5,7 @@
 //  Created by Claude on 2026-02-04.
 //
 
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import SwiftUI
@@ -25,6 +26,7 @@ extension Support {
 
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.openURL) private var openURL
+    @Dependency(\.appReviewClient) private var appReviewClient
 
     public init() {}
 
@@ -50,6 +52,8 @@ extension Support {
       case onAppear
       case faqTapped
       case bugReportTapped
+      case kakaoChannelTapped
+      case rateAppTapped
       case toastDismissed
     }
 
@@ -98,6 +102,20 @@ extension Support {
             } else {
               await send(.internal(.bugReportOpenResult(false)))
             }
+          }
+
+        case .view(.kakaoChannelTapped):
+          return .run { _ in
+            await hapticFeedback.selection()
+            if let url = URL(string: "http://pf.kakao.com/_wxgnVX") {
+              await openURL(url)
+            }
+          }
+
+        case .view(.rateAppTapped):
+          return .run { _ in
+            await hapticFeedback.selection()
+            await appReviewClient.requestReviewIfEligible()
           }
 
         case .view(.toastDismissed):
@@ -180,6 +198,64 @@ extension Support {
                   .frame(width: 24, height: 24)
 
                 Text(LocalizedStrings.SettingsStrings.bugReport)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 카카오톡 채널
+            Button {
+              store.send(.view(.kakaoChannelTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "bubble.left.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.kakaoChannel)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 앱 평가하기
+            Button {
+              store.send(.view(.rateAppTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "star.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.rateApp)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 

@@ -26652,6 +26652,42 @@
         }
       }
     },
+    "settings.kakaoChannel" : {
+      "comment" : "카카오톡 채널",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KakaoTalk Channel"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡 채널"
+          }
+        }
+      }
+    },
+    "settings.rateApp" : {
+      "comment" : "앱 평가하기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate This App"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 평가하기"
+          }
+        }
+      }
+    },
     "settings.support" : {
       "comment" : "지원",
       "extractionState" : "manual",
