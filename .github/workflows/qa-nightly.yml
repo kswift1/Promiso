@@ -466,8 +466,8 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Notify Slack on Failure
-        if: always() && (needs.ios-curated.result == 'failure' || needs.admin-console.result == 'failure' || needs.functions.result == 'failure')
+      - name: Notify Slack
+        if: always()
         env:
           SLACK_QA_WEBHOOK_URL: ${{ secrets.SLACK_QA_WEBHOOK_URL }}
           IOS_STATUS: ${{ needs.ios-curated.result }}
@@ -483,68 +483,110 @@ jobs:
           ADMIN_BADGE=$([ "$ADMIN_STATUS" = "success" ] && echo "pass" || echo "fail")
           FUNCTIONS_BADGE=$([ "$FUNCTIONS_STATUS" = "success" ] && echo "pass" || echo "fail")
 
-          ERROR_COMBINED=""
-          if [ "$IOS_STATUS" = "failure" ]; then
-            SNIPPET="$IOS_ERROR_SNIPPET"
-            if [ -n "$SNIPPET" ]; then
-              ERROR_COMBINED="${ERROR_COMBINED}[iOS]\n${SNIPPET}\n"
-            fi
-          fi
-          if [ "$ADMIN_STATUS" = "failure" ]; then
-            SNIPPET="$ADMIN_ERROR_SNIPPET"
-            if [ -n "$SNIPPET" ]; then
-              ERROR_COMBINED="${ERROR_COMBINED}[Admin]\n${SNIPPET}\n"
-            fi
-          fi
-          if [ "$FUNCTIONS_STATUS" = "failure" ]; then
-            SNIPPET="$FUNCTIONS_ERROR_SNIPPET"
-            if [ -n "$SNIPPET" ]; then
-              ERROR_COMBINED="${ERROR_COMBINED}[Functions]\n${SNIPPET}\n"
-            fi
+          if [ "$IOS_STATUS" = "success" ] && [ "$ADMIN_STATUS" = "success" ] && [ "$FUNCTIONS_STATUS" = "success" ]; then
+            OVERALL_STATUS="success"
+          else
+            OVERALL_STATUS="failure"
           fi
 
-          if [ -z "$ERROR_COMBINED" ]; then
-            ERROR_COMBINED="(에러 스니펫 없음)"
-          fi
+          if [ "$OVERALL_STATUS" = "success" ]; then
+            PAYLOAD=$(jq -n \
+              --arg ref "$TARGET_REF" \
+              --arg ios "$IOS_BADGE" \
+              --arg admin "$ADMIN_BADGE" \
+              --arg functions "$FUNCTIONS_BADGE" \
+              --arg run_url "$RUN_URL" \
+              '{
+                blocks: [
+                  {
+                    type: "header",
+                    text: {type: "plain_text", text: "✅ QA Nightly 성공"}
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
+                      {type: "mrkdwn", text: ("*iOS:* " + $ios)},
+                      {type: "mrkdwn", text: ("*Admin:* " + $admin)},
+                      {type: "mrkdwn", text: ("*Functions:* " + $functions)}
+                    ]
+                  },
+                  {
+                    type: "actions",
+                    elements: [
+                      {
+                        type: "button",
+                        text: {type: "plain_text", text: "Run 보기"},
+                        url: $run_url
+                      }
+                    ]
+                  }
+                ]
+              }')
+          else
+            ERROR_COMBINED=""
+            if [ "$IOS_STATUS" = "failure" ]; then
+              SNIPPET="$IOS_ERROR_SNIPPET"
+              if [ -n "$SNIPPET" ]; then
+                ERROR_COMBINED="${ERROR_COMBINED}[iOS]\n${SNIPPET}\n"
+              fi
+            fi
+            if [ "$ADMIN_STATUS" = "failure" ]; then
+              SNIPPET="$ADMIN_ERROR_SNIPPET"
+              if [ -n "$SNIPPET" ]; then
+                ERROR_COMBINED="${ERROR_COMBINED}[Admin]\n${SNIPPET}\n"
+              fi
+            fi
+            if [ "$FUNCTIONS_STATUS" = "failure" ]; then
+              SNIPPET="$FUNCTIONS_ERROR_SNIPPET"
+              if [ -n "$SNIPPET" ]; then
+                ERROR_COMBINED="${ERROR_COMBINED}[Functions]\n${SNIPPET}\n"
+              fi
+            fi
 
-          PAYLOAD=$(jq -n \
-            --arg ref "$TARGET_REF" \
-            --arg ios "$IOS_BADGE" \
-            --arg admin "$ADMIN_BADGE" \
-            --arg functions "$FUNCTIONS_BADGE" \
-            --arg error "$ERROR_COMBINED" \
-            --arg run_url "$RUN_URL" \
-            '{
-              blocks: [
-                {
-                  type: "header",
-                  text: {type: "plain_text", text: "🔴 QA Nightly 실패"}
-                },
-                {
-                  type: "section",
-                  fields: [
-                    {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
-                    {type: "mrkdwn", text: ("*iOS:* " + $ios)},
-                    {type: "mrkdwn", text: ("*Admin:* " + $admin)},
-                    {type: "mrkdwn", text: ("*Functions:* " + $functions)}
-                  ]
-                },
-                {
-                  type: "section",
-                  text: {type: "mrkdwn", text: ("*에러 요약*\n```" + $error + "```")}
-                },
-                {
-                  type: "actions",
-                  elements: [
-                    {
-                      type: "button",
-                      text: {type: "plain_text", text: "Run 보기"},
-                      url: $run_url
-                    }
-                  ]
-                }
-              ]
-            }')
+            if [ -z "$ERROR_COMBINED" ]; then
+              ERROR_COMBINED="(에러 스니펫 없음)"
+            fi
+
+            PAYLOAD=$(jq -n \
+              --arg ref "$TARGET_REF" \
+              --arg ios "$IOS_BADGE" \
+              --arg admin "$ADMIN_BADGE" \
+              --arg functions "$FUNCTIONS_BADGE" \
+              --arg error "$ERROR_COMBINED" \
+              --arg run_url "$RUN_URL" \
+              '{
+                blocks: [
+                  {
+                    type: "header",
+                    text: {type: "plain_text", text: "🔴 QA Nightly 실패"}
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      {type: "mrkdwn", text: ("*Ref:* `" + $ref + "`")},
+                      {type: "mrkdwn", text: ("*iOS:* " + $ios)},
+                      {type: "mrkdwn", text: ("*Admin:* " + $admin)},
+                      {type: "mrkdwn", text: ("*Functions:* " + $functions)}
+                    ]
+                  },
+                  {
+                    type: "section",
+                    text: {type: "mrkdwn", text: ("*에러 요약*\n```" + $error + "```")}
+                  },
+                  {
+                    type: "actions",
+                    elements: [
+                      {
+                        type: "button",
+                        text: {type: "plain_text", text: "Run 보기"},
+                        url: $run_url
+                      }
+                    ]
+                  }
+                ]
+              }')
+          fi
 
           curl -fsSL -X POST \
             -H "Content-Type: application/json" \
