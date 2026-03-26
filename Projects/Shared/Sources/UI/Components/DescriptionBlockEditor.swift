@@ -460,10 +460,7 @@ public struct DescriptionBlockEditor: View {
   ) -> some View {
     Button {
       withAnimation(.easeInOut(duration: 0.15)) {
-        blocks.removeAll { block in
-          guard case .text = block.content else { return false }
-          return block.isEmpty
-        }
+        blocks.removeAll { $0.isEmpty }
         blocks.append(DescriptionBlock(content: content))
       }
     } label: {
