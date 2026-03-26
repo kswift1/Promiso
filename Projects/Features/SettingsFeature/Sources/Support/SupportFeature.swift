@@ -135,7 +135,7 @@ extension Support {
             await hapticFeedback.selection()
             if let appURL = URL(string: "kakaoplus://plusfriend/chat/_wxgnVX") {
               let opened = await openURL(appURL)
-              if !opened, let webURL = URL(string: "http://pf.kakao.com/_wxgnVX") {
+              if !opened, let webURL = URL(string: "https://pf.kakao.com/_wxgnVX") {
                 await openURL(webURL)
               }
             }
@@ -151,10 +151,16 @@ extension Support {
           state.toastMessage = nil
           return .none
 
-        case .internal(.bugReportOpenResult):
+        case .internal(.bugReportOpenResult(let opened)):
+          if !opened {
+            state.toastMessage = ToastMessage(type: .error, title: "이메일 앱을 열 수 없습니다", position: .bottom)
+          }
           return .none
 
-        case .internal(.featureRequestOpenResult):
+        case .internal(.featureRequestOpenResult(let opened)):
+          if !opened {
+            state.toastMessage = ToastMessage(type: .error, title: "이메일 앱을 열 수 없습니다", position: .bottom)
+          }
           return .none
 
         case .delegate:

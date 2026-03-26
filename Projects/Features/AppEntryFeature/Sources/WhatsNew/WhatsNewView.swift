@@ -34,8 +34,6 @@ extension WhatsNew {
       let itemIndex = store.currentIndex - 1
       let currentItem = (isCover || isClosing) ? nil : model.items[safe: itemIndex]
       let totalPages = model.items.count + 2  // 표지 + 아이템들 + 클로징
-      let isLast = isClosing
-
       ZStack(alignment: .bottom) {
         // Background
         Color.black
@@ -67,7 +65,7 @@ extension WhatsNew {
               indicatorSection(count: model.items.count, currentIndex: itemIndex)
             }
 
-            buttonRow(isLast: isLast)
+            buttonRow(isLast: isClosing)
           }
           .padding(.top, 20)
           .padding(.horizontal, 15)
@@ -184,26 +182,16 @@ extension WhatsNew {
           .padding(.bottom, 24)
 
         VStack(spacing: 12) {
-          Text("Promiso와 함께해주셔서 감사합니다")
+          Text(LocalizedStrings.WhatsNew.closingTitle)
             .font(.title2)
             .fontWeight(.bold)
             .multilineTextAlignment(.center)
             .foregroundStyle(.white)
 
-          VStack(spacing: 4) {
-            Text("더 나은 약속 경험을 위해 매일 고민하고 있습니다.")
-              .font(.callout)
-              .foregroundStyle(.white.opacity(0.7))
-
-            Text("불편한 점이나 원하는 기능이 있다면")
-              .font(.callout)
-              .foregroundStyle(.white.opacity(0.7))
-
-            Text("설정 → 지원에서 언제든 알려주세요.")
-              .font(.callout)
-              .foregroundStyle(.white.opacity(0.7))
-          }
-          .multilineTextAlignment(.center)
+          Text(LocalizedStrings.WhatsNew.closingBody)
+            .font(.callout)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.white.opacity(0.7))
         }
 
         Spacer()

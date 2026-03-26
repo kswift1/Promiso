@@ -48,7 +48,6 @@ extension Home {
       case overlayPersonalEventFetch(Date)
       case briefingFetch
       case transportationFetch
-      case showGuide
     }
 
     // MARK: - State
