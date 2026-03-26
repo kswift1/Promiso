@@ -410,6 +410,7 @@ public enum LocalizedStrings {
     public static var supportTitle: String { String(localized: "settings.support.title", bundle: bundle) }
     public static var faq: String { String(localized: "settings.support.faq", bundle: bundle) }
     public static var bugReport: String { String(localized: "settings.support.bugReport", bundle: bundle) }
+    public static var featureRequest: String { String(localized: "settings.support.featureRequest", bundle: bundle) }
 
     // FAQ
     public static var faqTitle: String { String(localized: "settings.faq.title", bundle: bundle) }

@@ -26724,6 +26724,24 @@
         }
       }
     },
+    "settings.support.featureRequest" : {
+      "comment" : "기능 건의",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feature Request"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기능 건의"
+          }
+        }
+      }
+    },
     "settings.support.faq" : {
       "comment" : "자주 묻는 질문",
       "extractionState" : "manual",

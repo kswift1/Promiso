@@ -52,6 +52,7 @@ extension Support {
       case onAppear
       case faqTapped
       case bugReportTapped
+      case featureRequestTapped
       case kakaoChannelTapped
       case rateAppTapped
       case toastDismissed
@@ -59,6 +60,7 @@ extension Support {
 
     public enum Internal: Equatable, Sendable {
       case bugReportOpenResult(Bool)
+      case featureRequestOpenResult(Bool)
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -104,11 +106,38 @@ extension Support {
             }
           }
 
+        case .view(.featureRequestTapped):
+          return .run { send in
+            await hapticFeedback.selection()
+            let email = AppConstants.App.supportEmail
+            let subject = Strings.FeatureRequest.subject
+            let osVersion = await MainActor.run { UIDevice.current.systemVersion }
+            let body = Strings.FeatureRequest.body(
+              version: AppConstants.App.version,
+              build: AppConstants.App.buildNumber,
+              device: Self.deviceModel(),
+              osVersion: osVersion
+            )
+
+            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+            if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+              let opened = await openURL(url)
+              await send(.internal(.featureRequestOpenResult(opened)))
+            } else {
+              await send(.internal(.featureRequestOpenResult(false)))
+            }
+          }
+
         case .view(.kakaoChannelTapped):
           return .run { _ in
             await hapticFeedback.selection()
-            if let url = URL(string: "http://pf.kakao.com/_wxgnVX") {
-              await openURL(url)
+            if let appURL = URL(string: "kakaoplus://plusfriend/chat/_wxgnVX") {
+              let opened = await openURL(appURL)
+              if !opened, let webURL = URL(string: "http://pf.kakao.com/_wxgnVX") {
+                await openURL(webURL)
+              }
             }
           }
 
@@ -123,6 +152,9 @@ extension Support {
           return .none
 
         case .internal(.bugReportOpenResult):
+          return .none
+
+        case .internal(.featureRequestOpenResult):
           return .none
 
         case .delegate:
@@ -198,6 +230,35 @@ extension Support {
                   .frame(width: 24, height: 24)
 
                 Text(LocalizedStrings.SettingsStrings.bugReport)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 기능 건의
+            Button {
+              store.send(.view(.featureRequestTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "lightbulb.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.featureRequest)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
@@ -295,6 +356,20 @@ extension Support {
   private enum Strings {
     enum BugReport {
       static let subject = "[\(AppConstants.App.name)] 오류 제보"
+
+      static func body(version: String, build: String, device: String, osVersion: String) -> String {
+        """
+
+        ---
+        앱 버전: \(version) (\(build))
+        기기: \(device)
+        iOS: \(osVersion)
+        """
+      }
+    }
+
+    enum FeatureRequest {
+      static let subject = "[\(AppConstants.App.name)] 기능 건의"
 
       static func body(version: String, build: String, device: String, osVersion: String) -> String {
         """
