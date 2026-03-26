@@ -48,7 +48,6 @@ extension Home {
       case overlayPersonalEventFetch(Date)
       case briefingFetch
       case transportationFetch
-      case showGuide
     }
 
     // MARK: - State
@@ -449,20 +448,12 @@ extension Home {
             }
 
             // Firestore에서 직접 쿼리 (일정 + 개인 일정 + 반복 개인 일정 병렬)
-            let shouldShowGuide = !state.hasLoadedOnce && !userDefaultsClient.hasSeenHomeGuide
             return .merge(
               weatherEffect,
               .send(.internal(.fetchSchedules)),
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents)),
-              .send(.internal(.checkPermissions)),
-              shouldShowGuide
-                ? .run { send in
-                    try await Task.sleep(for: .seconds(1))
-                    await send(.view(.showGuide))
-                  }
-                  .cancellable(id: CancelID.showGuide, cancelInFlight: true)
-                : .none
+              .send(.internal(.checkPermissions))
             )
 
           case .refreshTriggered:

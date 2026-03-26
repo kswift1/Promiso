@@ -30,11 +30,10 @@ extension WhatsNew {
     @ViewBuilder
     private func whatsNewContent(model: WhatsNewModel) -> some View {
       let isCover = store.currentIndex == 0
+      let isClosing = store.currentIndex == model.items.count + 1
       let itemIndex = store.currentIndex - 1
-      let currentItem = isCover ? nil : model.items[safe: itemIndex]
-      let totalPages = model.items.count + 1
-      let isLast = store.currentIndex == model.items.count
-
+      let currentItem = (isCover || isClosing) ? nil : model.items[safe: itemIndex]
+      let totalPages = model.items.count + 2  // 표지 + 아이템들 + 클로징
       ZStack(alignment: .bottom) {
         // Background
         Color.black
@@ -42,6 +41,9 @@ extension WhatsNew {
         if isCover {
           // 표지 페이지
           coverPage(version: model.version)
+        } else if isClosing {
+          // 클로징 페이지
+          closingPage()
         } else {
           // Item 페이지
           if let item = currentItem {
@@ -53,7 +55,7 @@ extension WhatsNew {
         }
 
         // Bottom panel (텍스트 + 인디케이터 + 버튼)
-        if !isCover {
+        if !isCover && !isClosing {
           VStack(spacing: 10) {
             if let item = currentItem {
               textSection(item: item)
@@ -63,7 +65,7 @@ extension WhatsNew {
               indicatorSection(count: model.items.count, currentIndex: itemIndex)
             }
 
-            buttonRow(isLast: isLast)
+            buttonRow(isLast: isClosing)
           }
           .padding(.top, 20)
           .padding(.horizontal, 15)
@@ -154,6 +156,65 @@ extension WhatsNew {
             }
           } label: {
             Text("살펴보기")
+              .fontWeight(.medium)
+              .frame(maxWidth: .infinity)
+              .frame(height: 44)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.borderedProminent)
+          .tint(Color.pmindigo.n500)
+        }
+      }
+      .padding(.horizontal, 30)
+      .padding(.bottom, 60)
+    }
+
+    // MARK: - Closing Page
+
+    @ViewBuilder
+    private func closingPage() -> some View {
+      VStack(spacing: 0) {
+        Spacer()
+        Spacer()
+
+        Text("🙏")
+          .font(.system(size: 56))
+          .padding(.bottom, 24)
+
+        VStack(spacing: 12) {
+          Text(LocalizedStrings.WhatsNew.closingTitle)
+            .font(.title2)
+            .fontWeight(.bold)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.white)
+
+          Text(LocalizedStrings.WhatsNew.closingBody)
+            .font(.callout)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.white.opacity(0.7))
+        }
+
+        Spacer()
+        Spacer()
+        Spacer()
+
+        // 완료 버튼 (coverPage의 "살펴보기" 버튼과 동일 스타일)
+        if #available(iOS 26, *) {
+          Button {
+            store.send(.view(.nextTapped))
+          } label: {
+            Text(LocalizedStrings.Common.done)
+              .fontWeight(.medium)
+              .padding(.vertical, 6)
+          }
+          .tint(Color.pmindigo.n500)
+          .buttonStyle(.glassProminent)
+          .buttonSizing(.flexible)
+        } else {
+          Button {
+            store.send(.view(.nextTapped))
+          } label: {
+            Text(LocalizedStrings.Common.done)
               .fontWeight(.medium)
               .frame(maxWidth: .infinity)
               .frame(height: 44)
@@ -359,5 +420,17 @@ extension WhatsNew {
       .ignoresSafeArea()
     }
   }
+}
+
+// MARK: - Preview
+
+#Preview("What's New - Last Page") {
+  var state = WhatsNew.Feature.State(model: .example)
+  state.currentIndex = WhatsNewModel.example.items.count + 1
+  return WhatsNew.ContentView(
+    store: Store(initialState: state) {
+      WhatsNew.Feature()
+    }
+  )
 }
 

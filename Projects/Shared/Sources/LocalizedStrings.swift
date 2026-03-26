@@ -246,6 +246,8 @@ public enum LocalizedStrings {
     public static var appSettings: String { String(localized: "settings.appSettings", bundle: bundle) }
     public static var support: String { String(localized: "settings.support", bundle: bundle) }
     public static var guide: String { String(localized: "settings.guide", bundle: bundle) }
+    public static var kakaoChannel: String { String(localized: "settings.kakaoChannel", bundle: bundle) }
+    public static var rateApp: String { String(localized: "settings.rateApp", bundle: bundle) }
     public static var info: String { String(localized: "settings.info", bundle: bundle) }
     public static var developer: String { String(localized: "settings.developer", bundle: bundle) }
 
@@ -408,6 +410,8 @@ public enum LocalizedStrings {
     public static var supportTitle: String { String(localized: "settings.support.title", bundle: bundle) }
     public static var faq: String { String(localized: "settings.support.faq", bundle: bundle) }
     public static var bugReport: String { String(localized: "settings.support.bugReport", bundle: bundle) }
+    public static var featureRequest: String { String(localized: "settings.support.featureRequest", bundle: bundle) }
+    public static var mailAppUnavailable: String { String(localized: "settings.support.mailAppUnavailable", bundle: bundle) }
 
     // FAQ
     public static var faqTitle: String { String(localized: "settings.faq.title", bundle: bundle) }
@@ -1069,6 +1073,12 @@ public enum LocalizedStrings {
     }
     public static var updateAction: String { String(localized: "appEntry.update.action", bundle: bundle) }
     public static var updateLater: String { String(localized: "appEntry.update.later", bundle: bundle) }
+  }
+
+  // MARK: - WhatsNew
+  public enum WhatsNew {
+    public static var closingTitle: String { String(localized: "whatsNew.closing.title", bundle: bundle) }
+    public static var closingBody: String { String(localized: "whatsNew.closing.body", bundle: bundle) }
   }
 
   // MARK: - Profile

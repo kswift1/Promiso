@@ -5,6 +5,7 @@
 //  Created by Claude on 2026-02-04.
 //
 
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import SwiftUI
@@ -25,6 +26,7 @@ extension Support {
 
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.openURL) private var openURL
+    @Dependency(\.appReviewClient) private var appReviewClient
 
     public init() {}
 
@@ -50,11 +52,14 @@ extension Support {
       case onAppear
       case faqTapped
       case bugReportTapped
+      case featureRequestTapped
+      case kakaoChannelTapped
+      case rateAppTapped
       case toastDismissed
     }
 
     public enum Internal: Equatable, Sendable {
-      case bugReportOpenResult(Bool)
+      case mailOpenResult(Bool)
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -76,35 +81,42 @@ extension Support {
           }
 
         case .view(.bugReportTapped):
-          return .run { send in
+          return openMailClient(
+            subject: Strings.BugReport.subject,
+            bodyBuilder: Strings.BugReport.body
+          )
+
+        case .view(.featureRequestTapped):
+          return openMailClient(
+            subject: Strings.FeatureRequest.subject,
+            bodyBuilder: Strings.FeatureRequest.body
+          )
+
+        case .view(.kakaoChannelTapped):
+          return .run { _ in
             await hapticFeedback.selection()
-            // 이메일 앱 열기
-            let email = AppConstants.App.supportEmail
-            let subject = Strings.BugReport.subject
-            let osVersion = await MainActor.run { UIDevice.current.systemVersion }
-            let body = Strings.BugReport.body(
-              version: AppConstants.App.version,
-              build: AppConstants.App.buildNumber,
-              device: Self.deviceModel(),
-              osVersion: osVersion
-            )
-
-            let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-            if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
-              let opened = await openURL(url)
-              await send(.internal(.bugReportOpenResult(opened)))
-            } else {
-              await send(.internal(.bugReportOpenResult(false)))
+            if let appURL = URL(string: "kakaoplus://plusfriend/chat/_wxgnVX") {
+              let opened = await openURL(appURL)
+              if !opened, let webURL = URL(string: "https://pf.kakao.com/_wxgnVX") {
+                await openURL(webURL)
+              }
             }
+          }
+
+        case .view(.rateAppTapped):
+          return .run { _ in
+            await hapticFeedback.selection()
+            await appReviewClient.requestReviewIfEligible()
           }
 
         case .view(.toastDismissed):
           state.toastMessage = nil
           return .none
 
-        case .internal(.bugReportOpenResult):
+        case .internal(.mailOpenResult(let opened)):
+          if !opened {
+            state.toastMessage = ToastMessage(type: .error, title: LocalizedStrings.SettingsStrings.mailAppUnavailable, position: .bottom)
+          }
           return .none
 
         case .delegate:
@@ -114,6 +126,33 @@ extension Support {
     }
 
     // MARK: - Helpers
+
+    private func openMailClient(
+      subject: String,
+      bodyBuilder: (String, String, String, String) -> String
+    ) -> Effect<Action> {
+      .run { [hapticFeedback, openURL] send in
+        await hapticFeedback.selection()
+        let osVersion = await MainActor.run { UIDevice.current.systemVersion }
+        let body = bodyBuilder(
+          AppConstants.App.version,
+          AppConstants.App.buildNumber,
+          Self.deviceModel(),
+          osVersion
+        )
+
+        let email = AppConstants.App.supportEmail
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+          let opened = await openURL(url)
+          await send(.internal(.mailOpenResult(opened)))
+        } else {
+          await send(.internal(.mailOpenResult(false)))
+        }
+      }
+    }
 
     private static func deviceModel() -> String {
       var systemInfo = utsname()
@@ -194,6 +233,93 @@ extension Support {
               .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 기능 건의
+            Button {
+              store.send(.view(.featureRequestTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "lightbulb.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.featureRequest)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 카카오톡 채널
+            Button {
+              store.send(.view(.kakaoChannelTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "bubble.left.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.kakaoChannel)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .background(Color.white.opacity(0.12))
+
+            // 앱 평가하기
+            Button {
+              store.send(.view(.rateAppTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "star.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text(LocalizedStrings.SettingsStrings.rateApp)
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
           }
           .adaptiveGlassCard()
         }
@@ -222,6 +348,23 @@ extension Support {
 
       static func body(version: String, build: String, device: String, osVersion: String) -> String {
         """
+
+        ---
+        앱 버전: \(version) (\(build))
+        기기: \(device)
+        iOS: \(osVersion)
+        """
+      }
+    }
+
+    enum FeatureRequest {
+      static let subject = "[\(AppConstants.App.name)] 기능 건의"
+
+      static func body(version: String, build: String, device: String, osVersion: String) -> String {
+        """
+        보내주신 의견은 적극 검토하여 반영하도록 노력하겠습니다.
+        아래에 원하시는 기능을 자유롭게 작성해주세요.
+
 
         ---
         앱 버전: \(version) (\(build))
