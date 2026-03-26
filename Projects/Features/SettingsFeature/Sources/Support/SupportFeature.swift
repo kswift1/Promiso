@@ -105,7 +105,7 @@ extension Support {
         case .view(.rateAppTapped):
           return .run { _ in
             await hapticFeedback.selection()
-            await openURL(AppConstants.appStoreURL)
+            await openURL(AppConstants.App.appStoreURL)
           }
 
         case .view(.toastDismissed):
