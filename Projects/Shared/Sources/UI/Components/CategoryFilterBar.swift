@@ -94,7 +94,7 @@ public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
       .padding(.vertical, 10)
       .background(
         Capsule()
-          .fill(isSelected ? item.selectedColor : Color(UIColor.systemGray5))
+          .fill(isSelected ? item.selectedColor : Color(.systemGray5))
       )
       .overlay(alignment: .topTrailing) {
         // Count badge (0보다 클 때만 표시)
