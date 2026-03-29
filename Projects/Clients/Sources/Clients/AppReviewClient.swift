@@ -15,6 +15,8 @@ public struct AppReviewClient: Sendable {
   public var incrementSessionCount: @Sendable () -> Void
   /// 리뷰 요청 적격 여부 판단 (적격이면 요청일 기록 후 리뷰 요청)
   public var requestReviewIfEligible: @Sendable () async -> Void
+  /// 자격 조건 없이 바로 인앱 리뷰 요청 (설정 > 앱 평가하기용)
+  public var requestReview: @Sendable () async -> Void
 }
 
 // MARK: - Test / Preview
@@ -71,6 +73,15 @@ extension AppReviewClient: DependencyKey {
         // 적격 → 요청일 기록 + 리뷰 요청
         defaults.set(now.timeIntervalSince1970, forKey: AppConstants.UserDefaults.lastReviewRequestDate)
 
+        await MainActor.run {
+          guard let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
+            return
+          }
+          SKStoreReviewController.requestReview(in: scene)
+        }
+      },
+      requestReview: {
         await MainActor.run {
           guard let scene = UIApplication.shared.connectedScenes
             .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
