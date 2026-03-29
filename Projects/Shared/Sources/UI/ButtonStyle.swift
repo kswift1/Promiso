@@ -271,9 +271,11 @@ struct ButtonExamples: View {
 }
 #endif
 
+#if DEBUG
 #Preview("Adaptive Buttons") {
   ButtonExamples()
 }
+#endif
 
 #Preview("Interactive Styles") {
   VStack(spacing: 24) {
