@@ -1,11 +1,38 @@
 import SwiftUI
 
+// MARK: - Detected Item
+
+private struct DetectedItem: Identifiable {
+  enum Kind { case url, phone, address }
+  let id: String
+  let kind: Kind
+  let value: String
+  let url: URL?
+
+  var emoji: String {
+    switch kind {
+    case .url: "🔗"
+    case .phone: "📞"
+    case .address: "📍"
+    }
+  }
+
+  var label: String {
+    switch kind {
+    case .url: url?.host ?? value
+    case .phone: value
+    case .address: value
+    }
+  }
+}
+
 // MARK: - Description Block Renderer
 
 public struct DescriptionBlockRenderer: View {
   private let blocks: [DescriptionBlock]
   @Binding private var isExpanded: Bool
   private let onChecklistToggle: ((String, String) -> Void)?
+  @Environment(\.openURL) private var openURL
 
   public init(
     blocks: [DescriptionBlock],
@@ -15,6 +42,54 @@ public struct DescriptionBlockRenderer: View {
     self.blocks = blocks
     self._isExpanded = isExpanded
     self.onChecklistToggle = onChecklistToggle
+  }
+
+  // MARK: - Data Detection
+
+  private static let dataDetector: NSDataDetector? = {
+    let types: NSTextCheckingResult.CheckingType = [.link, .phoneNumber, .address]
+    return try? NSDataDetector(types: types.rawValue)
+  }()
+
+  private var allText: String {
+    blocks.flatMap { block -> [String] in
+      switch block.content {
+      case .text(let text): [text]
+      case .checklist(let items): items.map(\.text)
+      case .bulletList(let items): items
+      }
+    }
+    .joined(separator: "\n")
+  }
+
+  private var detectedItems: [DetectedItem] {
+    guard let detector = Self.dataDetector else { return [] }
+    let text = allText
+    let range = NSRange(text.startIndex..., in: text)
+    let matches = detector.matches(in: text, options: [], range: range)
+    var seen = Set<String>()
+    return matches.compactMap { match -> DetectedItem? in
+      switch match.resultType {
+      case .link:
+        guard let url = match.url else { return nil }
+        let key = url.absoluteString
+        guard seen.insert(key).inserted else { return nil }
+        return DetectedItem(id: key, kind: .url, value: key, url: url)
+      case .phoneNumber:
+        guard let phone = match.phoneNumber else { return nil }
+        guard seen.insert(phone).inserted else { return nil }
+        let cleaned = phone.replacingOccurrences(of: "[^0-9+]", with: "", options: .regularExpression)
+        return DetectedItem(id: phone, kind: .phone, value: phone, url: URL(string: "tel:\(cleaned)"))
+      case .address:
+        guard let range = Range(match.range, in: text) else { return nil }
+        let address = String(text[range])
+        guard seen.insert(address).inserted else { return nil }
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
+        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "\(AppConstants.ExternalURLs.kakaoMapSearchBase)\(encoded)"))
+      default:
+        return nil
+      }
+    }
   }
 
   // 더보기 표시 여부: 블록이 많거나 체크리스트 항목이 5개 초과이거나 텍스트 블록이 많으면 표시
@@ -36,6 +111,37 @@ public struct DescriptionBlockRenderer: View {
     VStack(alignment: .leading, spacing: 8) {
       ForEach(visibleBlocks) { block in
         blockView(block)
+      }
+
+      let items = detectedItems
+      if !items.isEmpty {
+        let layout = items.count > 1
+          ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+          : AnyLayout(HStackLayout(spacing: 6))
+        layout {
+          ForEach(items) { item in
+            if let url = item.url {
+              Button {
+                openURL(url)
+              } label: {
+                HStack(spacing: 3) {
+                  Text(item.emoji)
+                    .font(.system(size: 11))
+                  Text(item.label)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.secondary.opacity(0.2), lineWidth: 0.5))
+                .contentShape(Capsule())
+              }
+              .buttonStyle(.plain)
+            }
+          }
+        }
+        .padding(.top, 4)
       }
 
       if needsExpansion {
@@ -157,7 +263,7 @@ public struct DescriptionBlockRenderer: View {
   @Previewable @State var isExpanded = false
   return DescriptionBlockRenderer(
     blocks: [
-      DescriptionBlock(content: .text("강남역 2번 출구에서 만나요.")),
+      DescriptionBlock(content: .text("강남역 2번 출구에서 만나요. 문의: 010-1234-5678")),
       DescriptionBlock(content: .checklist([
         ChecklistItem(text: "지갑", isChecked: true),
         ChecklistItem(text: "신분증"),
@@ -166,7 +272,7 @@ public struct DescriptionBlockRenderer: View {
         ChecklistItem(text: "간식"),
         ChecklistItem(text: "물병")
       ])),
-      DescriptionBlock(content: .bulletList(["장소: 강남역", "시간: 오후 6시"]))
+      DescriptionBlock(content: .bulletList(["장소: 강남역", "시간: 오후 6시", "참고: https://naver.com"]))
     ],
     isExpanded: $isExpanded
   )
@@ -177,7 +283,7 @@ public struct DescriptionBlockRenderer: View {
   @Previewable @State var isExpanded = true
   return DescriptionBlockRenderer(
     blocks: [
-      DescriptionBlock(content: .text("강남역 2번 출구에서 만나요. 늦으면 연락주세요.")),
+      DescriptionBlock(content: .text("강남역 2번 출구에서 만나요. 늦으면 연락주세요. 문의: 010-1234-5678, https://naver.com")),
       DescriptionBlock(content: .checklist([
         ChecklistItem(text: "지갑", isChecked: true),
         ChecklistItem(text: "신분증"),
