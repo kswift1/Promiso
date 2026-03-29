@@ -26,6 +26,7 @@ extension Support {
 
     @Dependency(\.hapticFeedback) private var hapticFeedback
     @Dependency(\.openURL) private var openURL
+    @Dependency(\.appReviewClient) private var appReviewClient
 
     public init() {}
 
@@ -105,7 +106,7 @@ extension Support {
         case .view(.rateAppTapped):
           return .run { _ in
             await hapticFeedback.selection()
-            await openURL(AppConstants.App.appStoreURL)
+            await appReviewClient.requestReview()
           }
 
         case .view(.toastDismissed):
@@ -309,10 +310,6 @@ extension Support {
                   .foregroundStyle(Color.pmtext.primary)
 
                 Spacer()
-
-                Image(systemName: "arrow.up.forward")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
               }
               .padding(.horizontal, 16)
               .padding(.vertical, 14)
