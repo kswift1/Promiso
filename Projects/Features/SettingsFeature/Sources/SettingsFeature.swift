@@ -222,6 +222,8 @@ extension Settings {
       case toastDismissed
       /// 설명서 탭
       case guideTapped
+      /// 프로필 이미지 로드 실패
+      case imageLoadFailed(String)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -475,6 +477,9 @@ extension Settings {
           case .guideTapped:
             state.path.append(.guide(Guide.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
+
+          case .imageLoadFailed(let errorMessage):
+            return .send(.internal(.profileSaveFailed(errorMessage)))
 
           }
 

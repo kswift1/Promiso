@@ -757,8 +757,10 @@ private struct NotificationInfoPopover: View {
     .padding(.horizontal, 12)
     .offset(y: animateNotification ? 0 : -80)
     .clipped()
-    .task {
-      await loopAnimation()
+    .onAppear {
+      Task {
+        await loopAnimation()
+      }
     }
   }
 

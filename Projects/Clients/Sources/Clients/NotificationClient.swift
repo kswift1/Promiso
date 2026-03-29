@@ -6,6 +6,7 @@ import UserNotifications
 
 // MARK: - Client
 
+@DependencyClient
 public struct NotificationClient: Sendable {
   // MARK: - FCM Token Management
 

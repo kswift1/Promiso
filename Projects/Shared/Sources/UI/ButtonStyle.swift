@@ -220,10 +220,11 @@ public extension View {
 
 // MARK: - Usage
 
+#if DEBUG
 struct ButtonExamples: View {
   @State private var showCreateGroup = false
   @State private var showJoinGroup = false
-  
+
   var body: some View {
     VStack(spacing: 12) {
       // ✅ Primary Button
@@ -238,7 +239,7 @@ struct ButtonExamples: View {
         .frame(height: 52)
       }
       .adaptivePrimaryButton()
-      
+
       // ✅ Secondary Button
       Button(action: { showJoinGroup = true }) {
         HStack(spacing: 8) {
@@ -251,7 +252,7 @@ struct ButtonExamples: View {
         .frame(height: 52)
       }
       .adaptiveSecondaryButton()
-      
+
       // ✅ Destructive Button
       Button(action: {}) {
         HStack(spacing: 8) {
@@ -268,6 +269,7 @@ struct ButtonExamples: View {
     .padding(.horizontal, 40)
   }
 }
+#endif
 
 #Preview("Adaptive Buttons") {
   ButtonExamples()

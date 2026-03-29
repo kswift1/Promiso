@@ -86,6 +86,7 @@ extension AppEntry {
 
     // MARK: - Action
 
+    @CasePathable
     public enum Action {
       case view(ViewAction)
       case `internal`(InternalAction)
@@ -358,9 +359,7 @@ extension AppEntry {
               )
             )
             let providerIdentifier = userModel.provider.providerTypeIdentifier
-            let personalCalendarSyncEnabled = UserDefaults.standard.bool(
-              forKey: AppConstants.UserDefaults.personalCalendarSync
-            )
+            let personalCalendarSyncEnabled = userDefaultsClient.boolForKey(AppConstants.UserDefaults.personalCalendarSync)
             analyticsClient.setUserID(userModel.id)
             analyticsClient.setUserProperty(userModel.nickname, .nickname)
             analyticsClient.setUserProperty(providerIdentifier, .authProvider)

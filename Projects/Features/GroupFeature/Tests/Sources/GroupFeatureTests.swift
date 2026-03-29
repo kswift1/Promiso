@@ -279,6 +279,7 @@ struct GroupFeatureTests {
         RespondScheduleResult(scheduleId: "schedule-1", status: "accepted", isConfirmed: false, confirmedSchedule: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off
 
@@ -303,6 +304,7 @@ struct GroupFeatureTests {
         RespondScheduleResult(scheduleId: "schedule-1", status: "accepted", isConfirmed: false, confirmedSchedule: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.calendarSyncClient.removeSchedule = { _ in }
     }
     store.exhaustivity = .off

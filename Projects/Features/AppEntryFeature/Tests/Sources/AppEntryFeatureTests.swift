@@ -158,6 +158,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.whatsNewClient.fetchWhatsNew = { _ in nil }
@@ -306,6 +307,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.whatsNewClient.fetchWhatsNew = { _ in nil }
@@ -337,6 +339,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.whatsNewClient.fetchWhatsNew = { _ in nil }
@@ -429,6 +432,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -469,6 +473,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.setBool = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -496,6 +501,7 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.setBool = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)

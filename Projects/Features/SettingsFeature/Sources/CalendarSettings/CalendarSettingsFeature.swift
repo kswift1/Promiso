@@ -40,7 +40,8 @@ extension CalendarSettings {
       public var isRequestingAccess: Bool
       public var groups: [UserGroupInfo]
       public var updatingGroupIds: Set<String>
-      public var personalCalendarSyncEnabled: Bool
+      @Shared(.appStorage(AppConstants.UserDefaults.personalCalendarSync))
+      public var personalCalendarSyncEnabled: Bool = false
       public var toastMessage: ToastMessage?
 
       public init() {
@@ -48,9 +49,6 @@ extension CalendarSettings {
         self.isRequestingAccess = false
         self.groups = []
         self.updatingGroupIds = []
-        self.personalCalendarSyncEnabled = UserDefaults.standard.bool(
-          forKey: AppConstants.UserDefaults.personalCalendarSync
-        )
         self.toastMessage = nil
       }
     }
@@ -132,8 +130,7 @@ extension CalendarSettings {
           }
 
         case .view(.personalCalendarSyncToggled(let enabled)):
-          state.personalCalendarSyncEnabled = enabled
-          UserDefaults.standard.set(enabled, forKey: AppConstants.UserDefaults.personalCalendarSync)
+          state.$personalCalendarSyncEnabled.withLock { $0 = enabled }
           analyticsClient.setCalendarSyncEnabled(
             personalEnabled: enabled,
             groups: state.groups

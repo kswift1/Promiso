@@ -41,7 +41,7 @@ extension GroupMain {
       case .responded: return .blue
       case .confirmed: return .green
       case .all: return .pmindigo.n500
-      case .past: return Color(UIColor.systemGray)
+      case .past: return Color.pmgray.n500
       }
     }
 

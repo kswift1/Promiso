@@ -484,7 +484,7 @@ private struct ParticipantsAvatarView: View {
           .frame(width: 24, height: 24)
           .background(
             LinearGradient(
-              colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
+              colors: [Color.pmgray.n400, Color.pmgray.n500],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )

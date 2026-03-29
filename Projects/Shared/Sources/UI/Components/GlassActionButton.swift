@@ -78,8 +78,8 @@ public struct GlassActionButton: View {
             if isPrimary {
               LinearGradient(
                 colors: [
-                  Color(red: 0.6, green: 0.4, blue: 0.9),
-                  Color(red: 0.5, green: 0.3, blue: 0.8)
+                  Color.pmpurple.n500,
+                  Color.pmpurple.n600
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -115,7 +115,7 @@ public struct GlassActionButton: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(
           color: isPrimary
-          ? Color(red: 0.6, green: 0.4, blue: 0.9).opacity(0.3)
+          ? Color.pmpurple.n500.opacity(0.3)
           : Color.clear,
           radius: 12,
           y: 6

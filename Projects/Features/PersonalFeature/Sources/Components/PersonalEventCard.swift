@@ -158,7 +158,7 @@ public struct PersonalEventCard: View {
           Text(isReminderSent ? LocalizedStrings.Personal.reminderSent : reminderText(minutes))
             .font(.system(size: 13, weight: .medium))
         }
-        .foregroundStyle(isReminderSent ? .green : .secondary)
+        .foregroundStyle(isReminderSent ? Color.pmsuccess.n500 : Color.pmgray.n500)
       }
 
       Spacer()
@@ -224,10 +224,10 @@ private struct PersonalEventStatusBadge: View {
   }
 
   private var statusColor: Color {
-    if event.isOngoing { return .green }
-    if event.isPast { return Color(UIColor.systemGray) }
+    if event.isOngoing { return Color.pmsuccess.n500 }
+    if event.isPast { return Color.pmgray.n500 }
     let calendar = Calendar.current
-    if calendar.isDateInToday(event.startAt) { return .orange }
+    if calendar.isDateInToday(event.startAt) { return Color.pmwarning.n500 }
     return Color.pmindigo.n500
   }
 }

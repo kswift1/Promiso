@@ -439,7 +439,9 @@ extension AuthClient: DependencyKey {
         do {
           let token = try await user.getIDToken()
           WidgetAuthTokenStore.save(token: token, userId: user.uid)
-        } catch {}
+        } catch {
+          AppLogger.auth.error("Widget auth token 갱신 실패: \(error.localizedDescription)")
+        }
       },
       clearWidgetAuthToken: {
         WidgetAuthTokenStore.clear()
@@ -469,7 +471,9 @@ extension AuthClient: DependencyKey {
 
           // App Group에 저장
           WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
-        } catch {}
+        } catch {
+          AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
+        }
       },
       deleteAccount: {
         // 회원 탈퇴 - Firebase Function 호출

@@ -362,13 +362,11 @@ struct RootTabFeatureTests {
 
   @Test("observePushToStartToken 구독 시 token 수신 후 저장")
   func observePushToStartToken_emitsAndSavesToken() async {
-    let original = UserDefaults.standard.string(forKey: cacheKey)
-    UserDefaults.standard.removeObject(forKey: cacheKey)
-    defer { restoreCacheKey(original) }
-
     let recorder = TokenRecorder()
 
     let store = makeStore(state: makeState(key: "observe-push-token")) {
+      $0.userDefaultsClient.stringForKey = { _ in nil }
+      $0.userDefaultsClient.setString = { _, _ in }
       $0.liveActivityClient.observePushToStartTokenUpdates = {
         AsyncStream { continuation in
           continuation.yield("token-1")
@@ -388,13 +386,10 @@ struct RootTabFeatureTests {
 
   @Test("pushToStartTokenReceived 중복 토큰이면 저장 생략")
   func pushToStartTokenReceived_duplicate_skipsSave() async {
-    let original = UserDefaults.standard.string(forKey: cacheKey)
-    UserDefaults.standard.set("same-token", forKey: cacheKey)
-    defer { restoreCacheKey(original) }
-
     let recorder = CallCounter()
 
     let store = makeStore(state: makeState(key: "push-token-duplicate")) {
+      $0.userDefaultsClient.stringForKey = { _ in "same-token" }
       $0.notificationClient.saveLiveActivityPushToStartToken = { _ in
         await recorder.increment()
       }
@@ -782,16 +777,6 @@ struct RootTabFeatureTests {
 }
 
 private extension RootTabFeatureTests {
-  var cacheKey: String { "lastPushToStartToken" }
-
-  func restoreCacheKey(_ original: String?) {
-    if let original {
-      UserDefaults.standard.set(original, forKey: cacheKey)
-    } else {
-      UserDefaults.standard.removeObject(forKey: cacheKey)
-    }
-  }
-
   actor CallCounter {
     private var count = 0
 
@@ -1046,5 +1031,9 @@ private extension RootTabFeatureTests {
 
     dependencies.appReviewClient.recordFirstLaunchIfNeeded = { }
     dependencies.appReviewClient.incrementSessionCount = { }
+
+    dependencies.userDefaultsClient.boolForKey = { _ in false }
+    dependencies.userDefaultsClient.stringForKey = { _ in nil }
+    dependencies.userDefaultsClient.setString = { _, _ in }
   }
 }

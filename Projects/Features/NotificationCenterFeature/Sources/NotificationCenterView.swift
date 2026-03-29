@@ -11,7 +11,7 @@ import SwiftUI
 
 extension NotificationCenter {
   public struct RootView: View {
-    private var store: StoreOf<Feature>
+    @Bindable private var store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store

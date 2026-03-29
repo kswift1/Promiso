@@ -148,7 +148,7 @@ extension Settings {
               store.send(.view(.profileImageSelected(image.data)))
             }
           } catch {
-            store.send(.internal(.profileSaveFailed(SettingsError.imageLoadFailed.localizedDescription)))
+            store.send(.view(.imageLoadFailed(SettingsError.imageLoadFailed.localizedDescription)))
           }
         }
       }
