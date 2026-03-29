@@ -323,9 +323,7 @@ public struct KakaoInteractiveMapView: UIViewRepresentable {
           guard normalizedDiff > 1 else { continue }
           await MainActor.run {
             self.lastHeading = heading
-            // POI 부채꼴 회전 (radian)
-            self.userLocationPoi?.rotateAt(heading * .pi / 180.0, duration: 200)
-            // 카메라 회전 (moveCamera = 즉시, 애니메이션 큐잉 없음)
+            // 카메라 회전만 적용 — POI 아이콘은 화면 기준 고정이므로 별도 회전 불필요
             if let mapView = self.mapController?.getView("mapview") as? KakaoMap,
                let coord = self.lastUserCoordinate {
               self.updateHeadingCamera(mapView: mapView, coordinate: coord, headingDegrees: heading)
