@@ -77,15 +77,18 @@ public struct DescriptionBlockRenderer: View {
         return DetectedItem(id: key, kind: .url, value: key, url: url)
       case .phoneNumber:
         guard let phone = match.phoneNumber else { return nil }
-        guard seen.insert(phone).inserted else { return nil }
         let cleaned = phone.replacingOccurrences(of: "[^0-9+]", with: "", options: .regularExpression)
-        return DetectedItem(id: phone, kind: .phone, value: phone, url: URL(string: "tel:\(cleaned)"))
+        guard seen.insert(cleaned).inserted else { return nil }
+        return DetectedItem(id: cleaned, kind: .phone, value: phone, url: URL(string: "tel:\(cleaned)"))
       case .address:
         guard let range = Range(match.range, in: text) else { return nil }
         let address = String(text[range])
         guard seen.insert(address).inserted else { return nil }
-        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
-        return DetectedItem(id: address, kind: .address, value: address, url: URL(string: "\(AppConstants.ExternalURLs.kakaoMapSearchBase)\(encoded)"))
+        guard let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(AppConstants.ExternalURLs.kakaoMapSearchBase)\(encoded)") else {
+          return nil
+        }
+        return DetectedItem(id: address, kind: .address, value: address, url: url)
       default:
         return nil
       }
