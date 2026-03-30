@@ -34,6 +34,10 @@ extension ScheduleImport {
 
     public init() {}
 
+    // MARK: - Constants
+
+    public static let stepTransitionDelay: Duration = .milliseconds(300)
+
     // MARK: - Cancel IDs
 
     private enum CancelID { case extraction }
@@ -147,7 +151,7 @@ extension ScheduleImport {
             let text = state.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
             let imageData = state.selectedImage
             return .run { [scheduleExtractionClient] send in
-              try? await Task.sleep(for: .milliseconds(300))
+              try await Task.sleep(for: Self.stepTransitionDelay)
               await send(.internal(.extractionStepChanged(.analyzing)))
               do {
                 let event: PersonalEventModel

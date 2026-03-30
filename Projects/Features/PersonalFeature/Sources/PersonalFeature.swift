@@ -817,7 +817,7 @@ extension PersonalMode.Feature {
       // 텍스트 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
       state.deeplinkExtractionStep = .preparing
       return .run { [scheduleExtractionClient] send in
-        try? await Task.sleep(for: .milliseconds(300))
+        try await Task.sleep(for: ScheduleImport.Feature.stepTransitionDelay)
         await send(.internal(.deeplinkExtractionStepChanged(.analyzing)))
         do {
           let event = try await scheduleExtractionClient.extractFromText(text)
@@ -831,7 +831,7 @@ extension PersonalMode.Feature {
       // 이미지 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
       state.deeplinkExtractionStep = .preparing
       return .run { [scheduleExtractionClient] send in
-        try? await Task.sleep(for: .milliseconds(300))
+        try await Task.sleep(for: ScheduleImport.Feature.stepTransitionDelay)
         await send(.internal(.deeplinkExtractionStepChanged(.analyzing)))
         do {
           let event = try await scheduleExtractionClient.extractFromImage(imageData)
