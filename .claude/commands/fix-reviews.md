@@ -53,30 +53,8 @@
 2. 최소 범위로 코드 수정
 3. 검증은 `.ai/AI_WORKFLOW.md`의 구현(3단계) + 검증(4단계) 절차를 따른다
 
-### Phase 4: 커밋 전 확인
-
-#### 체크포인트 2: 사용자 확인
-수정 완료 후 아래를 정리해 확인 요청:
-```
-## 변경 요약
-- 수정한 리뷰 항목
-- 스킵/추후 항목과 사유
-- 변경 파일 목록
-- 빌드/테스트 결과
-
-## 커밋 예정
-- fix: 수정 내용 1
-- fix: 수정 내용 2
-
-## 답글 예정
-- 리뷰 #1: "완료: [SHA](링크)"
-- 리뷰 #2: "스킵: 사유"
-```
-
-사용자 승인 전에는 `git add`, `git commit`, `git push`, GitHub 답글을 수행하지 않는다.
-
-### Phase 5: 승인 후 후속 처리
-사용자 승인 후 진행:
+### Phase 4: 커밋 + 푸시 + 답글 (한 번에 처리)
+Phase 2에서 이미 수정 항목을 승인받았으므로, 추가 확인 없이 한 번에 처리한다:
 1. 리뷰 항목 단위 또는 논리 단위로 커밋
 2. `git push`
 3. 각 리뷰 코멘트에 답글:
@@ -84,8 +62,13 @@
    gh api repos/kswift1/Promiso/pulls/{pr}/comments/{id}/replies \
      -X POST -f body="완료: [SHA](https://github.com/kswift1/Promiso/commit/SHA)"
    ```
+4. 스킵 항목에도 답글:
+   ```bash
+   gh api repos/kswift1/Promiso/pulls/{pr}/comments/{id}/replies \
+     -X POST -f body="스킵: {사유}"
+   ```
 
-### Phase 6: 최종 요약
+### Phase 5: 최종 요약
 ```
 ## PR 리뷰 처리 완료
 
