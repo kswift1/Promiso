@@ -113,6 +113,7 @@ extension RootTab {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.subscriptionClient) var subscriptionClient
     @Dependency(\.appReviewClient) var appReviewClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     private enum CancelID: Hashable {
       case subscriptionStatus
@@ -181,14 +182,16 @@ extension RootTab {
       /// 일정 탭 기본 모드 (Settings에서 설정)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultScheduleTabMode)) var defaultScheduleTabMode: String = "group"
 
+      /// 캘린더 기본 표시 모드 (Settings에서 설정)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultCalendarDisplayMode)) var defaultCalendarDisplayMode: String = "month"
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
         // @Shared appStorage에서 일정 탭 기본 모드 읽기
         self.scheduleMode = _defaultScheduleTabMode.wrappedValue == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
-        let savedCalendarMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultCalendarDisplayMode)
-          .flatMap { CalendarDisplayMode(rawValue: $0) } ?? .month
+        let savedCalendarMode = CalendarDisplayMode(rawValue: _defaultCalendarDisplayMode.wrappedValue) ?? .month
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser, displayMode: savedCalendarMode)
         self.settings = Settings.Feature.State(currentUser: currentUser)
         self.personalMode = PersonalMode.Feature.State(currentUser: currentUser)
@@ -565,13 +568,13 @@ extension RootTab {
           case .pushToStartTokenReceived(let token):
             // Push to Start 토큰을 백엔드에 등록 (캐싱으로 중복 호출 방지)
             let cacheKey = CacheKeys.lastPushToStartToken
-            let lastToken = UserDefaults.standard.string(forKey: cacheKey)
+            let lastToken = userDefaultsClient.stringForKey(cacheKey)
             guard token != lastToken else { return .none }
 
-            return .run { _ in
+            return .run { [userDefaultsClient] _ in
               do {
                 try await notificationClient.saveLiveActivityPushToStartToken(token)
-                UserDefaults.standard.set(token, forKey: cacheKey)
+                userDefaultsClient.setString(token, cacheKey)
               } catch {
                 AppLogger.liveActivity.error("Push to Start 토큰 등록 실패: \(error.localizedDescription)")
               }
@@ -674,9 +677,7 @@ extension RootTab {
                 .filter { $0.notifications?.calendarSync ?? false }
                 .map { $0.id }
             )
-            let personalSyncEnabled = UserDefaults.standard.bool(
-              forKey: AppConstants.UserDefaults.personalCalendarSync
-            )
+            let personalSyncEnabled = userDefaultsClient.boolForKey(AppConstants.UserDefaults.personalCalendarSync)
             return .run(priority: .utility) { [calendarSyncClient] send in
               let allSucceeded = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
                 group.addTask {

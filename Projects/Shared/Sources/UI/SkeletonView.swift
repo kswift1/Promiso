@@ -20,7 +20,7 @@ public struct SkeletonView: View {
   public var body: some View {
     Rectangle()
       .fill(Color(.systemGray5))
-      .cornerRadius(cornerRadius)
+      .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
       .overlay(
         Rectangle()
           .fill(
@@ -37,7 +37,7 @@ public struct SkeletonView: View {
           .offset(x: isAnimating ? 400 : -400)
           .mask(
             Rectangle()
-              .cornerRadius(cornerRadius)
+              .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
           )
       )
       .onAppear {

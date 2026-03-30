@@ -149,9 +149,8 @@ struct ArrivalSharingSection: View {
         store.send(.view(.setTrackingStartMinutes(30)))
       }
     }
-    .task {
-      try? await Task.sleep(for: .seconds(1))
-      // UserDefaults에서 본 적 있는지 확인 후 처음이면 팝오버 표시
+    .onAppear {
+      // UserDefaults에서 본 적 있는지 확인 후 처음이면 팝오버 표시 (딜레이는 Reducer Effect에서 처리)
       store.send(.view(.arrivalSharingSectionAppeared))
     }
     .onChange(of: isCustomInputFocused) { _, isFocused in

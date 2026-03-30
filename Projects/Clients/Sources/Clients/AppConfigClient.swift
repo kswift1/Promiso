@@ -22,13 +22,14 @@ public enum VersionCheckResult: Equatable, Sendable {
 // MARK: - Client
 
 /// Firebase Remote Config에서 앱 설정 정보를 가져오는 클라이언트
+@DependencyClient
 public struct AppConfigClient: Sendable {
   /// 앱 설정 조회
   public var fetchConfig: @Sendable () async throws -> AppConfigModel
   /// 현재 앱 버전과 비교하여 업데이트 필요 여부 확인
-  public var checkVersion: @Sendable () async -> VersionCheckResult
+  public var checkVersion: @Sendable () async -> VersionCheckResult = { .upToDate }
   /// 캐시 초기화 후 버전 체크 (앱스토어 복귀 시 사용)
-  public var checkVersionForced: @Sendable () async -> VersionCheckResult
+  public var checkVersionForced: @Sendable () async -> VersionCheckResult = { .upToDate }
 }
 
 // MARK: - Error
@@ -118,7 +119,7 @@ extension AppConfigClient: DependencyKey {
     let defaults: [String: NSObject] = [
       RemoteConfigKeys.forceUpdateVersion: "0.0.0" as NSString,
       RemoteConfigKeys.recommendedVersion: "0.0.0" as NSString,
-      RemoteConfigKeys.appStoreURL: "https://apps.apple.com/app/id1625074042" as NSString,
+      RemoteConfigKeys.appStoreURL: AppConfigModel.defaultConfig.appStoreURL as NSString,
       RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02" as NSString,
       RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b" as NSString,
       RemoteConfigKeys.supportEmail: "kswen0203@icloud.com" as NSString,

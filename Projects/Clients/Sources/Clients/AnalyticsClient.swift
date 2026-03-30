@@ -5,6 +5,7 @@ import PromisoShared
 
 // MARK: - Client
 
+@DependencyClient
 public struct AnalyticsClient: Sendable {
   /// Analytics 이벤트 로깅
   public var logEvent: @Sendable (String, [String: Any]?) -> Void

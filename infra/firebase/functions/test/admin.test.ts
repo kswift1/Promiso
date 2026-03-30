@@ -124,7 +124,7 @@ describe("admin functions", () => {
               defaultValue: {value: "1.1.0"},
             },
             appStoreURL: {
-              defaultValue: {value: "https://apps.apple.com/app/id1625074042"},
+              defaultValue: {value: "https://apps.apple.com/kr/app/id6757733720"},
             },
           },
         },
@@ -1639,7 +1639,7 @@ describe("admin functions", () => {
       controls: expect.objectContaining({
         forceUpdateVersion: "1.0.0",
         recommendedVersion: "1.1.0",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://example.com/privacy",
         termsOfServiceURL: "https://example.com/terms",
         supportEmail: "support@promiso.app",
@@ -1697,7 +1697,7 @@ describe("admin functions", () => {
       data: {
         forceUpdateVersion: "1.0.0",
         recommendedVersion: "1.1.0",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://promiso.app/privacy",
         termsOfServiceURL: "https://promiso.app/terms",
         supportEmail: "help@promiso.app",
@@ -1753,7 +1753,7 @@ describe("admin functions", () => {
       data: {
         forceUpdateVersion: "1.2.0",
         recommendedVersion: "1.1.0",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://example.com/privacy",
         termsOfServiceURL: "https://example.com/terms",
         supportEmail: "support@promiso.app",
@@ -1782,7 +1782,7 @@ describe("admin functions", () => {
       data: {
         forceUpdateVersion: "1.2",
         recommendedVersion: "1.2.1",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://promiso.app/privacy",
         termsOfServiceURL: "https://promiso.app/terms",
         supportEmail: "support@promiso.app",
@@ -1810,7 +1810,7 @@ describe("admin functions", () => {
       data: {
         forceUpdateVersion: "1.2.0",
         recommendedVersion: "1.2.1",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://promiso.app/privacy",
         termsOfServiceURL: "https://promiso.app/terms",
         supportEmail: "support@promiso.app",
@@ -1829,7 +1829,7 @@ describe("admin functions", () => {
       controls: expect.objectContaining({
         forceUpdateVersion: "1.2.0",
         recommendedVersion: "1.2.1",
-        appStoreURL: "https://apps.apple.com/app/id1625074042",
+        appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
         privacyPolicyURL: "https://promiso.app/privacy",
         termsOfServiceURL: "https://promiso.app/terms",
         supportEmail: "support@promiso.app",

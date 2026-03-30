@@ -20,10 +20,10 @@ private enum FirebaseFunctionNames {
 
 // MARK: - Date Formatter 상수
 
-/// ISO8601 DateFormatter (Seoul 타임존, 쓰기용)
-private let iso8601FormatterWithSeoulTimeZone: ISO8601DateFormatter = {
+/// ISO8601 DateFormatter (현재 타임존, 쓰기용)
+private let iso8601FormatterWithCurrentTimeZone: ISO8601DateFormatter = {
   let formatter = ISO8601DateFormatter()
-  formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+  formatter.timeZone = TimeZone.current
   formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
   return formatter
 }()
@@ -60,7 +60,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     var callableData: [String: Any] = [
       "groupId": schedule.groupId,
       "title": schedule.title,
-      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: schedule.startAt),
+      "startAt": iso8601FormatterWithCurrentTimeZone.string(from: schedule.startAt),
       "minimumParticipants": schedule.minimumParticipants
     ]
 
@@ -83,7 +83,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     }
 
     if let endAt = schedule.endAt {
-      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithCurrentTimeZone.string(from: endAt)
     }
 
     if let location = schedule.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -191,7 +191,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     var callableData: [String: Any] = [
       "promiseId": schedule.id,
       "title": schedule.title,
-      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: schedule.startAt),
+      "startAt": iso8601FormatterWithCurrentTimeZone.string(from: schedule.startAt),
       "minimumParticipants": schedule.minimumParticipants
     ]
 
@@ -218,7 +218,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     }
 
     if let endAt = schedule.endAt {
-      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithCurrentTimeZone.string(from: endAt)
     } else {
       callableData["endAt"] = NSNull()
     }

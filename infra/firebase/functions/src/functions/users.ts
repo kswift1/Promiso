@@ -522,7 +522,7 @@ async function deleteCollectionByUserId(
  * 7. Firebase Auth 계정 삭제
  */
 export const deleteUser = onCall<DeleteUserRequest>(
-  {region: REGION, invoker: "public"},
+  {region: REGION},
   async (request): Promise<DeleteUserResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
@@ -551,18 +551,22 @@ export const deleteUser = onCall<DeleteUserRequest>(
         throw new HttpsError("internal", "사용자 데이터를 읽을 수 없습니다");
       }
 
-      // 3. 그룹 호스트 여부 확인
-      const userGroups = userData.groups as Record<string, unknown> | undefined;
+      // 3. 그룹 호스트 여부 확인 (병렬 조회)
+      const userGroups = userData.groups as
+        Record<string, unknown> | undefined;
       const groupIds = userGroups ? Object.keys(userGroups) : [];
 
-      for (const groupId of groupIds) {
-        const groupDoc = await groupsCollection.doc(groupId).get();
+      const groupDocs = await Promise.all(
+        groupIds.map((id) => groupsCollection.doc(id).get()),
+      );
+      for (const groupDoc of groupDocs) {
         if (groupDoc.exists) {
           const groupData = groupDoc.data();
           if (groupData?.createdBy === userId) {
             throw new HttpsError(
               "failed-precondition",
-              "그룹 호스트는 탈퇴할 수 없습니다. 먼저 호스트를 양도하거나 그룹을 삭제해주세요."
+              "그룹 호스트는 탈퇴할 수 없습니다. " +
+              "먼저 호스트를 양도하거나 그룹을 삭제해주세요.",
             );
           }
         }
@@ -587,13 +591,16 @@ export const deleteUser = onCall<DeleteUserRequest>(
         console.log(`🗑️ ${hostPromises.size} host promises deleted`);
       }
 
-      // 5. 그룹 멤버십 정리 (memberIds에서 제거)
-      for (const groupId of groupIds) {
-        const groupRef = groupsCollection.doc(groupId);
-        await groupRef.update({
-          memberIds: FieldValue.arrayRemove(userId),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+      // 5. 그룹 멤버십 정리 (memberIds에서 제거) - 배치 처리
+      if (groupIds.length > 0) {
+        const membershipBatch = db.batch();
+        for (const groupId of groupIds) {
+          membershipBatch.update(groupsCollection.doc(groupId), {
+            memberIds: FieldValue.arrayRemove(userId),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+        await membershipBatch.commit();
       }
       console.log(`🗑️ Removed from ${groupIds.length} groups`);
 

@@ -6,6 +6,8 @@ import ResourceKit
 import SwiftUI
 import UIKit
 
+private let kakaoYellowColor = Color(red: 254/255, green: 229/255, blue: 0/255)
+
 // MARK: - SheetsModifier
 
 struct SheetsModifier: ViewModifier {
@@ -534,7 +536,7 @@ struct InviteSheet: View {
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(Color(red: 254/255, green: 229/255, blue: 0/255))
+        .background(kakaoYellowColor)
         .foregroundStyle(.black)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       }

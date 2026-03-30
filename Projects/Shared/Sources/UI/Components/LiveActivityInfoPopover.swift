@@ -71,11 +71,11 @@ public struct LiveActivityInfoPopover: View {
       VStack(spacing: 4) {
         Text(LocalizedStrings.LiveSchedule.infoTitle)
           .font(.system(size: 17, weight: .bold))
-          .foregroundColor(.primary)
+          .foregroundStyle(.primary)
 
         Text(LocalizedStrings.LiveSchedule.infoSubtitle)
           .font(.system(size: 13))
-          .foregroundColor(.secondary)
+          .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
       }
 
@@ -92,10 +92,10 @@ public struct LiveActivityInfoPopover: View {
       HStack(spacing: 6) {
         Image(systemName: "sparkles")
           .font(.system(size: 12))
-          .foregroundColor(.purple)
+          .foregroundStyle(.purple)
         Text(LocalizedStrings.LiveSchedule.autoStartDescription)
           .font(.system(size: 12))
-          .foregroundColor(.secondary)
+          .foregroundStyle(.secondary)
       }
       .padding(.top, 4)
     }

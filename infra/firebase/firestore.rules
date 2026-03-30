@@ -14,12 +14,56 @@ service cloud.firestore {
       //
       // 참고: Firestore rules에서 동적 키의 중첩 필드 검증은 제한적이므로
       // 클라이언트 측에서 해당 필드 직접 수정을 금지하고 API 사용을 강제함
-      allow read, write: if request.auth != null
-                        && request.auth.uid == userId;
+      allow read: if request.auth != null
+                 && request.auth.uid == userId;
 
-      match /{subcollection}/{docId} {
+      // 생성은 인증된 본인만 가능
+      allow create: if request.auth != null
+                   && request.auth.uid == userId;
+
+      // 수정은 민감 필드(groups, role) 직접 변경 차단
+      allow update: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.data.diff(resource.data)
+                        .affectedKeys()
+                        .hasOnly([
+                          'nickname', 'profile', 'devices',
+                          'metaData', 'fcmToken', 'lastActiveAt'
+                        ]);
+
+      // 삭제는 Admin SDK에서만 가능
+      allow delete: if false;
+
+      // auth 서브컬렉션: 인증 정보 (클라이언트 쓰기 불가)
+      match /auth/{docId} {
+        allow read: if request.auth != null
+                   && request.auth.uid == userId;
+        allow write: if false;
+      }
+
+      // settings 서브컬렉션: 사용자 설정 (본인만 읽기/쓰기)
+      match /settings/{docId} {
         allow read, write: if request.auth != null
                           && request.auth.uid == userId;
+      }
+
+      // personalEvents 서브컬렉션: 개인 일정 (본인만 읽기/쓰기)
+      match /personalEvents/{docId} {
+        allow read, write: if request.auth != null
+                          && request.auth.uid == userId;
+      }
+
+      // recurringEvents 서브컬렉션: 반복 일정 (본인만 읽기/쓰기)
+      match /recurringEvents/{docId} {
+        allow read, write: if request.auth != null
+                          && request.auth.uid == userId;
+      }
+
+      // cache 서브컬렉션: 서버 캐시 (클라이언트 쓰기 불가)
+      match /cache/{docId} {
+        allow read: if request.auth != null
+                   && request.auth.uid == userId;
+        allow write: if false;
       }
     }
 

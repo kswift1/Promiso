@@ -102,10 +102,10 @@ private struct ZoomableImagePage: View {
         )
       } else if loadFailed {
         ZStack {
-          Color(UIColor.systemGray6).opacity(0.3)
+          Color(.systemGray6).opacity(0.3)
           Image(systemName: "exclamationmark.triangle")
             .font(.system(size: 40))
-            .foregroundStyle(Color(UIColor.systemGray3))
+            .foregroundStyle(Color(.systemGray3))
         }
         .frame(width: 200, height: 200)
         .clipShape(RoundedRectangle(cornerRadius: 16))

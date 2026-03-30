@@ -176,6 +176,7 @@ extension GroupMain {
       case view(ViewAction)
       case binding(BindingAction<State>)
       case `internal`(Internal)
+      case delegate(DelegateAction)
 
       case createSchedule(PresentationAction<CreateSchedule.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
@@ -273,6 +274,11 @@ extension GroupMain {
         case conflictSettingsLoaded(Int)
         case fetchWeather([ScheduleModel])
         case weatherBatchResponse([String: WeatherInfo])
+      }
+
+      @CasePathable
+      public enum DelegateAction: Sendable {
+        case switchToPersonalMode
       }
     }
 
@@ -597,7 +603,8 @@ extension GroupMain {
               let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
               state.allGroupSummaries = summaries
             }
-            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+
+            guard state.allGroupSummaries?.isEmpty == false else {
               // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
               return .none
             }
@@ -605,8 +612,7 @@ extension GroupMain {
             return .send(.view(.createNewSchedule))
 
           case .switchToPersonalMode:
-            // RootTabFeature에서 처리
-            return .none
+            return .send(.delegate(.switchToPersonalMode))
 
           case .showGuide:
             state.isShowingGuide = true
@@ -822,8 +828,8 @@ extension GroupMain {
             }
             analyticsClient.setGroupMembershipProperties(groupSummaries)
             analyticsClient.setCalendarSyncEnabled(
-              personalEnabled: UserDefaults.standard.bool(
-                forKey: AppConstants.UserDefaults.personalCalendarSync
+              personalEnabled: userDefaultsClient.boolForKey(
+                AppConstants.UserDefaults.personalCalendarSync
               ),
               groups: groupSummaries
             )
@@ -1174,8 +1180,8 @@ extension GroupMain {
             }
             analyticsClient.setGroupMembershipProperties(summaries)
             analyticsClient.setCalendarSyncEnabled(
-              personalEnabled: UserDefaults.standard.bool(
-                forKey: AppConstants.UserDefaults.personalCalendarSync
+              personalEnabled: userDefaultsClient.boolForKey(
+                AppConstants.UserDefaults.personalCalendarSync
               ),
               groups: summaries
             )
@@ -1198,8 +1204,8 @@ extension GroupMain {
             }
             analyticsClient.setGroupMembershipProperties(summaries)
             analyticsClient.setCalendarSyncEnabled(
-              personalEnabled: UserDefaults.standard.bool(
-                forKey: AppConstants.UserDefaults.personalCalendarSync
+              personalEnabled: userDefaultsClient.boolForKey(
+                AppConstants.UserDefaults.personalCalendarSync
               ),
               groups: summaries
             )
@@ -1535,6 +1541,9 @@ extension GroupMain {
           return .none
 
         case .path:
+          return .none
+
+        case .delegate:
           return .none
 
         case .binding:

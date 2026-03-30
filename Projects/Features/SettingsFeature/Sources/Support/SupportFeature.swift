@@ -106,7 +106,7 @@ extension Support {
         case .view(.rateAppTapped):
           return .run { _ in
             await hapticFeedback.selection()
-            await appReviewClient.requestReviewIfEligible()
+            await appReviewClient.requestReview()
           }
 
         case .view(.toastDismissed):
@@ -310,10 +310,6 @@ extension Support {
                   .foregroundStyle(Color.pmtext.primary)
 
                 Spacer()
-
-                Image(systemName: "arrow.up.forward")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
               }
               .padding(.horizontal, 16)
               .padding(.vertical, 14)

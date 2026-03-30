@@ -28,6 +28,7 @@ struct DeeplinkRoutingTests {
     } withDependencies: {
       $0.deeplinkClient.parseURL = { _ in .group(groupId: "group-123") }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -43,6 +44,7 @@ struct DeeplinkRoutingTests {
     } withDependencies: {
       $0.deeplinkClient.parseURL = { _ in .schedule(scheduleId: "schedule-1", groupId: "group-1") }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -158,6 +160,7 @@ struct DeeplinkRoutingTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.whatsNewClient.fetchWhatsNew = { _ in nil }
@@ -264,6 +267,7 @@ struct PushNotificationDeeplinkTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -278,6 +282,7 @@ struct PushNotificationDeeplinkTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -350,6 +355,7 @@ struct PushNotificationDeeplinkTests {
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.groupClient.fetchGroupSummaries = { [] }
+      $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
       $0.whatsNewClient.fetchWhatsNew = { _ in nil }

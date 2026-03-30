@@ -45,6 +45,7 @@ extension Auth {
       case delegate(Delegate)
     }
     
+    @CasePathable
     public enum View: Sendable {
       case appleLoginTapped
       case googleLoginTapped
@@ -457,11 +458,12 @@ extension Auth {
     var onComplete: ((Result<ASAuthorization, Error>) -> Void)?
     
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-      guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-            let window = windowScene.windows.first else {
-        fatalError("No window found")
+      if let windowScene = UIApplication.shared.connectedScenes
+        .first(where: { ($0 as? UIWindowScene)?.activationState == .foregroundActive }) as? UIWindowScene,
+         let window = windowScene.windows.first(where: \.isKeyWindow) ?? windowScene.windows.first {
+        return window
       }
-      return window
+      return UIWindow()
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {

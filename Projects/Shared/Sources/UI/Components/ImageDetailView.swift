@@ -100,7 +100,7 @@ public struct ImageDetailView: View {
     return Circle()
       .fill(
         LinearGradient(
-          colors: [Color(red: 0.3, green: 0.5, blue: 0.9), Color(red: 0.6, green: 0.4, blue: 0.8)],
+          colors: [Color.pmindigo.n400, Color.pmaurora.purple],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
