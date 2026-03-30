@@ -16,7 +16,7 @@ public enum AppConfig {
   public static let defaultRegions = ["en", "ko"]
   
   public static let teamId = "BAC795627G"
-  public static let marketingNumber: String = "1.3.2"
+  public static let marketingNumber: String = "1.4.0"
   
   public static func buildVersion(for environment: String = "dev") -> String {
     let now = Date()
