@@ -8,6 +8,22 @@ import PhotosUI
 
 public enum ScheduleImport {}
 
+// MARK: - ExtractionStep
+
+extension ScheduleImport {
+  public enum ExtractionStep: Equatable, Sendable {
+    case preparing
+    case analyzing
+
+    public var statusText: String {
+      switch self {
+      case .preparing: return LocalizedStrings.ScheduleImport.extractionStepPreparing
+      case .analyzing: return LocalizedStrings.ScheduleImport.extractionStepAnalyzing
+      }
+    }
+  }
+}
+
 // MARK: - Reducer
 
 extension ScheduleImport {
@@ -35,7 +51,7 @@ extension ScheduleImport {
     public struct State: Equatable, Sendable {
       public var inputText: String = ""
       public var selectedImage: Data? = nil
-      var isExtracting: Bool = false
+      var extractionStep: ExtractionStep? = nil
       var extractionError: String?
       public var inputMode: InputMode = .text
 
@@ -43,6 +59,8 @@ extension ScheduleImport {
         self.inputText = inputText
         self.inputMode = .text
       }
+
+      var isExtracting: Bool { extractionStep != nil }
 
       var canExtract: Bool {
         !isExtracting && (
@@ -77,6 +95,7 @@ extension ScheduleImport {
       case photoLoaded(Data?)
       case extractionSuccess(PersonalEventModel)
       case extractionFailed(String)
+      case extractionStepChanged(ExtractionStep)
     }
 
     @CasePathable
@@ -123,11 +142,13 @@ extension ScheduleImport {
 
           case .extractTapped:
             guard state.canExtract else { return .none }
-            state.isExtracting = true
+            state.extractionStep = .preparing
             state.extractionError = nil
             let text = state.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
             let imageData = state.selectedImage
             return .run { [scheduleExtractionClient] send in
+              try? await Task.sleep(for: .milliseconds(300))
+              await send(.internal(.extractionStepChanged(.analyzing)))
               do {
                 let event: PersonalEventModel
                 if let imageData {
@@ -164,16 +185,20 @@ extension ScheduleImport {
             return .run { _ in await hapticFeedback.selection() }
 
           case .extractionSuccess(let event):
-            state.isExtracting = false
+            state.extractionStep = nil
             return .merge(
               .run { _ in await hapticFeedback.success() },
               .send(.delegate(.extracted(event)))
             )
 
           case .extractionFailed(let message):
-            state.isExtracting = false
+            state.extractionStep = nil
             state.extractionError = message
             return .run { _ in await hapticFeedback.error() }
+
+          case .extractionStepChanged(let step):
+            state.extractionStep = step
+            return .none
           }
 
         // MARK: - Delegate

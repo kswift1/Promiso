@@ -19,6 +19,19 @@ extension ScheduleImport {
       NavigationStack {
         ZStack {
           content
+          if let step = store.extractionStep {
+            VStack(spacing: 16) {
+              ProgressView()
+                .controlSize(.large)
+                .tint(Color.pmindigo.n500)
+              Text(step.statusText)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.pmgray.n50.opacity(0.8))
+            .animation(.easeInOut(duration: 0.2), value: step)
+          }
         }
         .auroraBackground()
         .navigationTitle(LocalizedStrings.ScheduleImport.title)

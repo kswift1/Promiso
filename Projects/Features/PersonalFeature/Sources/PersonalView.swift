@@ -46,9 +46,10 @@ extension PersonalMode {
               ProgressView()
                 .controlSize(.large)
                 .tint(.white)
-              Text("일정을 추출하고 있어요...")
+              Text(store.deeplinkExtractionStep?.statusText ?? "")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white)
+                .animation(.easeInOut(duration: 0.2), value: store.deeplinkExtractionStep)
             }
             .padding(32)
             .background(.ultraThinMaterial)
