@@ -1,6 +1,6 @@
 # Firebase에서 Rust로 — 왜 Firebase를 떠나는가
 
-*Swift 개발자의 서버 마이그레이션기 #1*
+*iOS 앱 서버 마이그레이션기 #1 — 동기, 기술 선택, 마이그레이션 전략*
 
 ---
 
@@ -65,9 +65,11 @@ Claude 같은 AI와 함께 코딩하면, 러닝커브의 의미가 달라진다.
 | 성능 | **최고** — C/C++ 동급 | 좋음 | 보통 |
 | 안전성 | **최고** — 소유권 시스템으로 데이터레이스 원천 차단 | 좋음 | 약함 |
 
-Go가 Rust를 이기는 항목이 하나도 없다. Go의 가장 큰 장점은 "쉽다"인데, AI와 함께라면 그 장점이 사라진다.
+Go도 충분히 좋은 선택이다. 다만 Go의 가장 큰 강점인 "빠르게 익히고 바로 쓸 수 있다"는 점이, AI와 함께라면 Rust에서도 가능해진다. 그 전제 하에서는 성능과 안전성에서 앞서는 Rust를 선택하지 않을 이유가 없었다.
 
-> Rust를 고른 이유는 단순하다. 러닝커브를 빼면 Rust가 모든 면에서 낫다.
+그리고 솔직히 말하면, Rust를 써보고 싶었다. 막연한 동경이 있었고, 이번이 아니면 언제 해보겠나 싶었다. 합리적인 비교표가 결정을 뒷받침해주지만, 출발점에는 "이 언어로 뭔가 만들어보고 싶다"는 개인적인 사심이 있었다.
+
+> 기술 선택에는 항상 감정이 섞인다. 중요한 건 감정으로 시작하되, 근거로 검증하는 것이다.
 
 ---
 
@@ -106,36 +108,124 @@ Rust로 만든 서버는 다르다. Cloud Run 같은 컨테이너 서비스에 �
 
 ---
 
-## 이 시리즈에서 다룰 것
+## 어떻게 옮길 것인가 — 마이그레이션 전략
 
-이 시리즈는 **Swift iOS 개발자가 AI와 함께 Firebase 백엔드를 Rust 서버로 교체하는 전체 과정**을 기록한다.
+Firebase를 떠나기로 결심한 건 좋은데, 라이브 서비스를 어떻게 안전하게 옮길 것인가? 이게 진짜 문제다.
 
-기술 결정에서 삽질까지, 설계에서 배포까지. 모든 선택에는 비교군과 선택 근거가 따라온다.
+처음에는 빅뱅 — 전부 만들고 한 번에 전환하는 방식을 생각했다. 하지만 전환일에 문제가 터지면? 라이브 유저 전체가 영향을 받는다. 롤백도 쉽지 않다.
 
-다룰 내용을 간략히 정리하면:
+다행히 Promiso의 iOS 앱 아키텍처가 답을 갖고 있었다.
 
-- 아키텍처 설계와 기술 스택 선정
-- Axum으로 API 서버 구축
-- Firebase Auth를 자체 JWT 인증으로 교체
-- Firestore를 PostgreSQL로 데이터 마이그레이션
-- 50개+ Cloud Functions를 Rust API로 재작성
-- 실시간 업데이트, LiveActivity, 푸시 알림
-- Cloud Run 배포와 CI/CD
-- iOS 앱의 네트워크 레이어 교체
+### Branch by Abstraction
 
-다음 편에서는 전체 아키텍처를 설계한다. Firestore가 PostgreSQL이 되면 데이터 모델이 어떻게 바뀌는지, Cloud Functions가 Axum이 되면 API 구조가 어떻게 달라지는지.
+앱은 TCA(The Composable Architecture)를 쓰고 있다. 핵심은 **모든 백엔드 호출이 Client라는 추상화 레이어를 거친다**는 것이다. Feature(화면 로직)가 Firebase를 직접 부르지 않는다. 항상 Client를 통해서 부른다.
+
+이 구조 덕분에, Client 내부에서 "어디로 요청을 보낼지"를 바꿀 수 있다:
+
+```swift
+createGroup: { group in
+    if FeatureFlags.useRustAPI(.groups) {
+        // 새 Rust API로 요청
+        return try await apiClient.post("/groups", body: group)
+    } else {
+        // 기존 Firebase로 요청
+        return try await functions.httpsCallable("createGroup").call(data)
+    }
+}
+```
+
+Feature 레이어 코드는 **한 줄도 안 바뀐다.** Flag만 켜고 끄면 된다.
+
+> 빅뱅으로 개발하되, 전환은 점진적으로. 개발 속도와 전환 안전성을 둘 다 가져간다.
+
+### Dev → Stage → Prod
+
+앱이 Dev, Stage, Prod 세 환경으로 나뉘어 있다. 이걸 활용한다:
+
+```
+1) Dev 환경에서 Feature Flag 켜고 Rust API 테스트
+2) 문제 없으면 Stage 환경으로 확대
+3) Stage에서도 안정적이면 Prod 전환
+```
+
+각 단계에서 문제가 생기면 flag만 끄면 즉시 Firebase로 복귀한다.
+
+### TDD로 안전망 깔기
+
+마이그레이션할 때 가장 무서운 건 "Firebase에서는 되던 게 Rust에서 안 되는 것"이다. 이걸 방지하기 위해 TDD를 적용한다.
+
+Firebase Functions 코드에서 비즈니스 규칙을 추출하고, 그걸 **먼저 Rust 테스트로 작성**한다. 테스트가 전부 실패하는 상태(Red)에서 시작해서, 구현하면서 하나씩 통과(Green)시킨다.
+
+```
+Firebase 코드에서 규칙 추출
+  → "호스트만 그룹을 삭제할 수 있다"
+  → "호스트는 그룹을 나갈 수 없다 (양도 먼저)"
+  → "초대 코드는 6자리, 그룹당 고유"
+    ↓
+Rust 테스트로 변환 (구현 전)
+    ↓
+구현하면서 테스트 통과시키기
+```
+
+이러면 Firebase에서 동작하던 모든 규칙이 Rust에서도 보장된다.
 
 ---
 
-*다음 글: [#2 아키텍처 설계 — Firestore에서 PostgreSQL로, Functions에서 Axum으로]()*
+## AI와 함께 일하는 방식 — Claude Code
+
+"AI가 도와준다"는 말이 막연하게 들릴 수 있으니, 실제로 어떻게 쓰는지 짚고 넘어가자.
+
+이 마이그레이션은 Claude Code와 함께 진행한다. 단순히 코드를 물어보는 게 아니라, **워크플로우 자체를 스킬로 정의**해두고 반복 실행한다.
+
+Claude Code에는 역할별 에이전트가 있다. 코드를 탐색하는 Explore, Rust 코드를 작성하는 Rust Implementer, Swift 코드를 작성하는 Implementer, 코드를 검증하는 Reviewer. 각각 독립된 역할만 수행하고, 메인 Claude가 이들을 오케스트레이션한다. 나는 이 구조 위에 마이그레이션 전용 워크플로우를 정의해뒀다.
+
+앞서 설명한 TDD, Branch by Abstraction, 도메인 단위 전환이 이 워크플로우 안에 녹아있다. 도메인 하나(예: 그룹 API)를 옮길 때마다 같은 과정을 반복한다:
+
+```
+[도메인 단위 전환 — ADR-003]
+1. 현행 분석     — Explore가 Firebase 코드를 읽고 정리
+2. 규칙 추출     — 메인 Claude가 비즈니스 규칙 목록 작성 → 내가 검토/보완
+
+[TDD — Red/Green 사이클]
+3. 테스트 작성   — Rust Implementer가 규칙을 테스트로 변환 (Red)
+4. 기술 결정     — 메인 Claude가 비교표 작성 → 내가 이해한 후 결정
+5. 스키마 재설계  — 메인 Claude가 설계 → 내가 확인
+6. API 설계      — 메인 Claude가 설계 → 내가 확인
+7. 구현          — Rust Implementer가 코드 작성, 테스트 통과시키기 (Green)
+
+[Branch by Abstraction — ADR-002]
+8. iOS 연결      — Implementer가 기존 앱 코드에 Feature Flag 분기 추가
+9. 검증          — Reviewer가 코드 검증 + Dev 환경 테스트
+```
+
+내가 직접 하는 건 **결정과 검증**이다. 코드를 한 줄씩 치는 게 아니라, 에이전트가 분석한 결과를 검토하고, 비교표를 보고 판단하고, 최종 결과를 확인한다. 에이전트가 실행을, 내가 방향을 맡는다.
+
+기술 결정이 필요할 때는 ADR(Architecture Decision Record)로 기록한다. 6가지 기준으로 선택지를 비교하고, 왜 이걸 골랐는지 남긴다. 이 글의 "Rust vs Go vs TypeScript" 비교표도 ADR에서 나온 것이다.
+
+이 방식의 핵심은 **AI에게 맥락을 반복 설명할 필요가 없다**는 것이다. 워크플로우가 정의되어 있고, 과거 결정이 문서로 쌓여있으니, 새 세션에서도 일관된 방향으로 작업이 이어진다.
+
+---
+
+## 이 시리즈에서 다룰 것
+
+이 시리즈는 **iOS 개발자가 AI와 함께 Firebase 백엔드를 Rust 서버로 교체하는 전체 과정**을 기록한다.
+
+기술 결정에서 삽질까지, 설계에서 배포까지. 모든 선택에는 비교군과 선택 근거가 따라온다.
 
 ---
 
 ### 시리즈 목차
+
 1. **왜 Firebase를 떠나는가** ← 현재 글
-2. 아키텍처 설계
-3. 개발 환경 세팅
-4. *...계속*
+2. 서버 뼈대 잡기 — Axum + SQLx + PostgreSQL 환경 구축
+3. 인증 직접 구현 — Firebase Auth에서 Apple/Google OAuth + JWT로
+4. 스키마 재설계 — Firestore 비정규화에서 PostgreSQL 정규화로
+5. 핵심 API 전환 — 유저/그룹/약속 50개 Functions를 Rust로
+6. 실시간과 푸시 — Firestore Listener → WebSocket, FCM + APNs 직접 발송
+7. 고급 기능 — LiveActivity, 일정 충돌, 구독 검증, AI 브리핑
+8. 배포 파이프라인 — Cloud Run + GitHub Actions CI/CD
+9. 점진적 전환 — Branch by Abstraction으로 Dev → Stage → Prod
+10. 회고 — Firebase vs 자체 서버, 실제로 뭐가 달라졌나
 
 ---
 

@@ -104,7 +104,7 @@ Firestore 비정규화 → PostgreSQL 정규화:
 - 핸들러 (비즈니스 규칙 포함)
 - `cargo test`로 전부 통과(Green) 확인
 - `cargo build`로 빌드 확인
-- **메인 Claude가 직접 작성** (Rust 코드는 implementer 위임 예외)
+- **rust-implementer 에이전트에게 위임** (Rust 코드 작성)
 - 새로 등장하는 Rust 개념은 유저에게 Swift 비교로 설명
 
 ### Step 8 — iOS 연결
@@ -139,6 +139,6 @@ if FeatureFlags.useRustAPI(.{domain}) {
 
 ## 주의사항
 
-- Rust 코드 작성은 `.claude/CLAUDE.md`의 "S 이상 implementer 위임" 규칙의 예외
-- iOS 코드 (Projects/) 수정은 기존 워크플로우를 따름 (implementer 위임)
+- Rust 코드 작성은 **rust-implementer** 에이전트에게 위임
+- iOS 코드 (Projects/) 수정은 기존 **implementer** 에이전트에게 위임
 - 매 Step에서 유저에게 결과를 보여주고 확인받은 후 다음 Step으로 진행
