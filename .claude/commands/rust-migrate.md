@@ -20,7 +20,7 @@ Firebase 도메인을 Rust API로 마이그레이션합니다.
 
 해당 도메인의 Firebase 구현을 전부 읽는다:
 
-- `infra/firebase/functions/src/{domain}.ts` — Cloud Functions 코드
+- `infra/firebase/functions/src/functions/{domain}.ts` — Cloud Functions 코드
 - `infra/firebase/firestore.rules` — 해당 컬렉션 보안 규칙
 - `.ai/FIRESTORE_SCHEMA.md` — 해당 컬렉션 스키마
 - `Projects/Clients/Sources/Data/DataSources/` — 해당 RemoteDataSource
@@ -34,14 +34,15 @@ Firebase 도메인을 Rust API로 마이그레이션합니다.
 
 ### Step 2 — 비즈니스 규칙 추출
 
-코드에 묻혀있는 규칙을 명시적으로 뽑는다:
+먼저 `.ai/DOMAIN_RULES.md`와 `.ai/domain-rules/` 해당 도메인 규칙을 읽는다.
+그 다음 코드에 묻혀있는 규칙을 추가로 뽑는다:
 
 - 권한 규칙 (누가 뭘 할 수 있는가)
 - 유효성 검증 (입력 제약)
 - 사이드이펙트 (알림 발송, 비정규화 갱신 등)
 - 엣지 케이스 (호스트가 나가려고 하면? 등)
 
-**결과물**: 비즈니스 규칙 목록 (유저에게 보여주고 누락 확인)
+**결과물**: 비즈니스 규칙 목록 — 도메인 규칙 문서 + 코드에서 추출한 것 병합 (유저에게 보여주고 누락 확인)
 
 ### Step 3 — 테스트 작성 (Red)
 
@@ -68,13 +69,14 @@ async fn non_host_cannot_delete_group() { ... }
 
 **ADR 작성 규칙**:
 - `docs/adr/000-template.md` 포맷을 따름
-- **반드시 6가지 평가 기준으로 비교** (해당 결정 맥락에서 가중치 조정):
+- **기술 선택** (언어, 프레임워크, DB, 배포 등): 반드시 6가지 평가 기준으로 비교
   1. 스케일 비용
   2. 확장성
   3. 안정성
   4. 락인
   5. 성능
   6. 안전성
+- **프로세스 선택** (전략, 방법론 등): 해당 결정에 맞는 비교 기준 사용
 - 러닝커브, DX, 문서 품질은 평가 기준에서 제외 (AI 활용 전제)
 - **유저에게 비교표를 보여주고, 유저가 이해한 후 결정을 확정**한다
 

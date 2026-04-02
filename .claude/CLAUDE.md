@@ -67,11 +67,12 @@ Claude Code 추가 규칙:
 
 ---
 
-## 에이전트 (5개 + Explore)
+## 에이전트 (6개 + Explore)
 
 | 에이전트 | 역할 | 트리거 |
 |----------|------|--------|
-| `implementer` | 코드 작성 (Feature, View, Firebase, 리팩터링) | "만들어줘", "수정해줘" |
+| `implementer` | Swift/iOS 코드 작성 (Feature, View, Firebase, 리팩터링) | "만들어줘", "수정해줘" |
+| `rust-implementer` | Rust 백엔드 코드 작성 (Axum, SQLx, PostgreSQL) | `/rust-migrate` Step 3, 7 |
 | `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | "리뷰해줘", 검증 단계 |
 | `test-writer` | Swift Testing 테스트 작성 | "테스트 작성" |
 | `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | "조사해줘", "레퍼런스" |
@@ -90,7 +91,8 @@ Claude Code 추가 규칙:
 기본값: 판단이 어려우면 **sonnet** 사용.
 
 ### 자동 호출 규칙
-- Feature/View/API 코드 작성 → `implementer`
+- Feature/View/API 코드 작성 (Swift) → `implementer`
+- Rust 백엔드 코드 작성 → `rust-implementer`
 - 코드 리뷰, 검증 → `reviewer`
 - 테스트 작성 → `test-writer`
 - UI 레퍼런스, 최신 기술 조사 → `researcher`
@@ -123,6 +125,8 @@ Claude Code 추가 규칙:
 | `/release-notes` | 릴리스 노트 자동 생성 |
 | `/next-release` | 릴리스 후 다음 버전 준비 (머지, 태그, 브랜치, 버전 업데이트) |
 | `/verify-changes` | 크로스 레이어 정합성 검증 (커밋 전/PR 전 필수) |
+| `/rust-migrate` | Firebase → Rust 도메인 마이그레이션 실행 (TDD, 9 Step) |
+| `/rust-blog` | Firebase → Rust 마이그레이션 블로그 포스트 작성 |
 
 ---
 
