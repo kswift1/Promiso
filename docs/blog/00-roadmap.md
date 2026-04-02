@@ -17,7 +17,7 @@
 
 ## 메모
 
-- 한글: 티스토리 | 영어: Medium
+- 한글: velog | 영어: Medium
 - 시리즈명 (한): "Firebase에서 Rust로: iOS 앱 서버 마이그레이션기"
 - 시리즈명 (영): "From Firebase to Rust: An iOS App Server Migration"
 - Rust 프로젝트: `infra/rust-backend/`
