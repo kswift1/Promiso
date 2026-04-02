@@ -102,6 +102,7 @@ firebase-debug.log
 **/.env
 **/.env.*
 !**/.env.*.template
+!**/.env.example
 **/.env.local
 
 # Tuist/SwiftPM caches
@@ -111,3 +112,6 @@ Tuist/.build/
 *.zip
 Promiso-Config*.zip
 *.env.backup
+
+# Rust
+infra/rust-backend/target/
