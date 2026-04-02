@@ -52,6 +52,15 @@ Firebase 도메인을 Rust API로 마이그레이션합니다.
 - 정상 케이스 + 실패 케이스 (권한 없음, 유효성 위반 등)
 - `cargo test`로 전부 실패(Red) 확인
 
+**⚠️ DB 의존 테스트를 "나중에"로 미루지 않는다.**
+
+```
+□ 테스트 인프라(test DB pool, 트랜잭션 롤백)가 없으면 이 단계에서 먼저 구축
+□ 모든 비즈니스 규칙은 Red Phase에서 테스트가 존재해야 함
+□ "DB 필요하니까 나중에"는 금지 — 단위/통합 테스트 모두 이 단계에서 작성
+□ Step 2에서 추출한 규칙 목록과 테스트 1:1 대조하여 누락 확인
+```
+
 ```rust
 #[tokio::test]
 async fn host_can_delete_group() { ... }
@@ -117,6 +126,16 @@ Firestore 비정규화 → PostgreSQL 정규화:
 - `cargo build`로 빌드 확인
 - **rust-implementer 에이전트에게 위임** (Rust 코드 작성)
 - 새로 등장하는 Rust 개념은 유저에게 Swift 비교로 설명
+
+**⚠️ 구현 전 자기 검증 체크리스트**:
+
+```
+□ 실제 데이터(Firebase MCP)로 스키마 호환성 검증했나?
+□ "쉬운 해석"을 선택하고 있지 않은가? (DB 테스트 스킵, 1:1 복사 등)
+□ 각 컬럼/필드가 정말 필요한가? 실제 데이터에 존재하는가?
+□ 에러 응답이 기존 Firebase HttpsError 코드와 매핑되는가?
+□ public/private 응답 분리 — 민감 정보(email, provider)가 public에 노출되지 않는가?
+```
 
 ### Step 8 — iOS 연결
 
