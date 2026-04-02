@@ -138,6 +138,6 @@ Rust 테스트로 변환 (구현 전)
 
 모든 기술 결정은 ADR(Architecture Decision Record)로 기록한다. 이 글의 "Rust vs Go vs TypeScript" 비교표도 ADR에서 나온 것이다. 구체적인 워크플로우는 시리즈가 진행되면서 자연스럽게 드러날 것이다.
 
-*다음 글: #2 서버 뼈대 잡기 — Axum + SQLx + PostgreSQL 환경 구축*
+*다음 글: #2 서버 뼈대 잡기 — 인프라 선택부터 환경 구축까지*
 
 *Promiso — [App Store](https://apps.apple.com/kr/app/id6757733720) · [GitHub](https://github.com/kswift1/Promiso)*

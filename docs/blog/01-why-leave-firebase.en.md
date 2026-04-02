@@ -138,6 +138,6 @@ This migration uses Claude Code. Role-based agents handle code exploration, Rust
 
 Every tech decision is recorded as an ADR (Architecture Decision Record). The comparison table in this post came from an ADR. The detailed workflow will unfold naturally as the series progresses.
 
-*Next: #2 Building the Server Skeleton — Axum + SQLx + PostgreSQL Environment Setup*
+*Next: #2 Building the Server Skeleton — From Infrastructure Choices to Environment Setup*
 
 *Promiso — [App Store](https://apps.apple.com/kr/app/id6757733720) · [GitHub](https://github.com/kswift1/Promiso)*
