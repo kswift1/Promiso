@@ -6,7 +6,7 @@
 
 "Creating a schedule feels kind of slow."
 
-Reading that user feedback, I thought to myself: I know. It's the Cloud Functions cold start. When there's no traffic for a while, the instance spins down. The next request has to spin up a new one, and that takes seconds. A TypeScript function cold-starting in the Seoul region (asia-northeast3) takes 1 to 5 seconds. That's how long a user stares at a loading spinner after tapping "Create."
+Reading that user feedback, I thought to myself: I know. It's the Cloud Functions cold start. When there's no traffic for a while, the instance spins down. The next request has to spin up a new one, and that takes seconds. A Node.js Cloud Function (TypeScript) cold-starting in the Seoul region (asia-northeast3) felt like 1 to 5 seconds. That's how long a user stares at a loading spinner after tapping "Create."
 
 Can I fix this? Not really — not within Firebase. Setting min_instances keeps instances alive, but applying that across 50+ functions would blow up the bill. So I convinced myself it was "just a Firebase limitation" and moved on.
 
@@ -27,9 +27,9 @@ This isn't calling one Cloud Function. **The entire backend is Firebase.**
 
 Cold starts weren't the only problem.
 
-**Cost**: Firestore charges per read/write. For an app with many real-time listeners, costs grow faster than linearly with user count. PostgreSQL has fixed costs. Predictable and more efficient at scale.
+**Cost**: Firestore charges per read, write, and listener event. For an app with many real-time listeners, costs grow faster than linearly with user count. PostgreSQL-based services charge by instance and capacity, making costs more predictable and efficient at scale.
 
-**Scalability**: Firestore has a 1-write-per-second limit per document. No JOINs. So you have to denormalize — copy the same data to multiple places — and maintaining that is a nightmare. What takes one JOIN in SQL requires triggers and sync logic in Firestore.
+**Scalability**: Firestore is prone to contention on high-frequency updates to a single document. No JOINs. So you have to denormalize — copy the same data to multiple places — and maintaining that is a nightmare. What takes one JOIN in SQL requires triggers and sync logic in Firestore.
 
 **Lock-in**: Auth, Firestore, Functions, Storage — all Firebase. If pricing changes? If there's an outage? No alternatives.
 
