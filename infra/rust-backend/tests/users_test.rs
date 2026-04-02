@@ -394,3 +394,123 @@ async fn batch_get_users_success() {
     common::cleanup_test_user(&pool, "test_batch1").await;
     common::cleanup_test_user(&pool, "test_batch2").await;
 }
+
+// ============================================================
+// 통합 테스트: 공통 그룹 있을 때 타인 조회 (U8 성공 케이스)
+// ============================================================
+// groups 마이그레이션 전이라 group_members INSERT 미완성.
+// groups 마이그레이션 후 TODO 주석 부분을 채우면 의미가 완성된다.
+
+#[tokio::test]
+async fn u8_get_other_user_with_common_group_success() {
+    let pool = common::setup_test_pool().await;
+    common::cleanup_test_user(&pool, "test_req_grp").await;
+    common::cleanup_test_user(&pool, "test_tgt_grp").await;
+
+    common::create_test_user(&pool, "test_req_grp", "그룹요청자").await;
+    common::create_test_user(&pool, "test_tgt_grp", "그룹대상자").await;
+
+    // TODO: 공통 그룹 설정 (groups 마이그레이션 후 group_members INSERT 추가)
+
+    let result = user_service::get_user_public(&pool, "test_req_grp", "test_tgt_grp").await;
+    // groups 마이그레이션 후 이 테스트가 의미를 가짐
+    // 현재는 todo!()로 실패
+    assert!(result.is_ok());
+    let user = result.unwrap();
+    assert_eq!(user.nickname, "그룹대상자");
+    // public 응답에 email이 없어야 함 (PII 보호)
+
+    common::cleanup_test_user(&pool, "test_req_grp").await;
+    common::cleanup_test_user(&pool, "test_tgt_grp").await;
+}
+
+// ============================================================
+// 단위 테스트: provider 빈 이메일 거부
+// ============================================================
+
+#[tokio::test]
+async fn provider_empty_email_rejected() {
+    let pool = common::setup_test_pool().await;
+    common::cleanup_test_user(&pool, "test_prov_empty").await;
+
+    let req = CreateUserRequest {
+        name: None,
+        nickname: "프로바이더".to_string(),
+        provider: ProviderInfo {
+            provider_type: "google".to_string(),
+            provider_uid: "uid-123".to_string(),
+            email: "".to_string(), // 빈 이메일
+        },
+    };
+    let result = user_service::create_user(&pool, "test_prov_empty", req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+
+    common::cleanup_test_user(&pool, "test_prov_empty").await;
+}
+
+// ============================================================
+// 통합 테스트: notification_enabled 기본값 확인
+// ============================================================
+
+#[tokio::test]
+async fn notification_enabled_default_true() {
+    let pool = common::setup_test_pool().await;
+    common::cleanup_test_user(&pool, "test_notif").await;
+
+    let req = make_create_request("알림기본값");
+    let _ = user_service::create_user(&pool, "test_notif", req).await;
+
+    let profile = user_service::get_my_profile(&pool, "test_notif").await;
+    assert!(profile.is_ok());
+    assert!(profile.unwrap().notification_enabled);
+
+    common::cleanup_test_user(&pool, "test_notif").await;
+}
+
+// ============================================================
+// HTTP 레벨 테스트: 인증 없이 보호 라우트 호출 → 401
+// ============================================================
+// 현재 /api/v1/users/me 라우트가 미구현이므로 404가 올 수 있다.
+// users 라우트 + 미들웨어 구현 후 StatusCode::UNAUTHORIZED로 기대값을 수정한다.
+
+#[tokio::test]
+async fn auth_required_returns_401() {
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt; // oneshot
+
+    let pool = common::setup_test_pool().await;
+
+    let config = promiso_backend::config::Config::from_env();
+    let app = promiso_backend::routes::create_router(pool, &config);
+
+    // Authorization 헤더 없이 요청
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users/me")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ============================================================
+// 통합 테스트: 타인 조회 404
+// ============================================================
+
+#[tokio::test]
+async fn get_other_user_not_found() {
+    let pool = common::setup_test_pool().await;
+    common::cleanup_test_user(&pool, "test_404_req").await;
+
+    common::create_test_user(&pool, "test_404_req", "요청자사").await;
+
+    let result = user_service::get_user_public(&pool, "test_404_req", "nonexistent_user").await;
+    assert!(matches!(result, Err(AppError::NotFound(_))));
+
+    common::cleanup_test_user(&pool, "test_404_req").await;
+}
