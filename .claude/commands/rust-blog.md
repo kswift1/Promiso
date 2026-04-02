@@ -43,6 +43,7 @@ description: Firebase → Rust 마이그레이션 블로그 포스트 작성
   - **비교**: 바꾸고 나서 뭐가 달라졌는지
 - Rust 문법이 처음 나오면 Swift 비교 박스로 설명
 - 하단: 이전/다음 글 링크 (시리즈 목차는 넣지 않음)
+- 맨 아래: `*Promiso — [App Store](https://apps.apple.com/kr/app/id6757733720) · [GitHub](https://github.com/kswift1/Promiso)*`
 - 이미지 필요한 위치에 `[IMAGE: 설명]` 플레이스홀더 삽입
 
 **톤/스타일**: `docs/blog/STYLE_GUIDE.md`를 반드시 따른다.
