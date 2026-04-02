@@ -14,7 +14,7 @@ Can I fix this? Not really — not within Firebase. Setting min_instances keeps 
 
 ## The Limits of Firebase
 
-Promiso is a group-based scheduling iOS app. You create groups with friends, make plans, vote on them, and share locations. The entire thing runs on Firebase:
+Promiso is a personal and group scheduling iOS app. The entire thing runs on Firebase:
 
 - **Firebase Auth** — Apple/Google sign-in
 - **Firestore** — Main database (12+ collections)
@@ -33,21 +33,13 @@ Cold starts weren't the only problem.
 
 **Lock-in**: Auth, Firestore, Functions, Storage — all Firebase. If pricing changes? If there's an outage? No alternatives.
 
----
-
-## Build My Own Server?
-
-I get the limitations. But build my own server? I'm an iOS developer with two years of Swift experience. The server has always been Firebase's job. Building my own backend was a different universe.
-
-Rust was a language I vaguely wanted to try someday. The ownership system, memory safety without a GC, C-level performance with modern syntax. I was curious, but never seriously considered it. Learning Rust while building an iOS app? Too much to take on.
-
-Then AI changed that calculation entirely.
+Around this point, the thought of building my own server started creeping in.
 
 ---
 
-## AI Changed How We Choose Tech
+## How AI Changes the Way You Choose Tech
 
-When you code with an AI like Claude, the meaning of "learning curve" shifts. You don't need to memorize syntax. You don't need to internalize patterns one by one. **You just need to understand.** If you know *why* something works the way it does, AI handles the implementation. The "Google → Stack Overflow → copy → tweak" cycle that even 10-year veterans go through with a new language? Gone.
+When you code with an AI like Claude, the meaning of "learning curve" shifts. You don't need to memorize syntax. You don't need to internalize patterns one by one. **You just need to understand.** If you know *why* something works the way it does, AI handles the implementation.
 
 This isn't just about convenience. **It means the criteria for choosing technology fundamentally change.**
 
@@ -58,22 +50,7 @@ When picking a tech stack, people usually look at:
 - Is the community active?
 - How fast can I ship?
 
-What do these criteria have in common? They all assume **a human is writing the code.** When AI becomes your coding partner, these criteria lose most of their weight.
-
-So what's left? The pure fundamentals of the technology itself:
-
-1. **Cost at scale** — How much does it cost per user as you grow?
-2. **Scalability** — Can it handle 100x traffic without a rewrite?
-3. **Reliability** — How often does it break, and how fast can it recover?
-4. **Lock-in** — Can you switch to something else later?
-5. **Performance** — How fast does it handle a single request?
-6. **Safety** — How many bugs does it catch before production?
-
----
-
-## Rust vs Go vs TypeScript
-
-The current backend is TypeScript (Cloud Functions). If I'm moving to my own server, there were three candidates.
+These all assume **a human is writing the code.** When AI becomes your coding partner, these criteria lose their weight, and what remains is the fundamentals — cost at scale, scalability, reliability, lock-in, performance, safety. I compared three candidates on these criteria.
 
 | Criteria | Rust | Go | TypeScript |
 |----------|------|-----|-----------|
@@ -86,7 +63,7 @@ The current backend is TypeScript (Cloud Functions). If I'm moving to my own ser
 
 Go is a perfectly good choice. But Go's biggest strength — "easy to pick up and use right away" — becomes achievable with Rust too when you have AI. Given that premise, there was no reason not to choose Rust, which leads in both performance and safety.
 
-And honestly? I just wanted to use Rust. I'd had this vague fascination with the language, and I figured if not now, when? The comparison table backs up the decision, but the starting point was a personal desire to build something with this language.
+And honestly, I just wanted to use Rust. I'd had this vague fascination with the language, and I figured if not now, when? The comparison table backs up the decision, but the starting point was a personal desire to build something with this language.
 
 > There's always emotion in a tech decision. What matters is starting with emotion but validating with evidence.
 
@@ -157,16 +134,8 @@ This way, every rule that worked in Firebase is guaranteed to work in Rust.
 
 ## Working with AI
 
-This migration uses Claude Code. Role-based agents handle code exploration, Rust implementation, Swift implementation, and review. For each domain I migrate, I repeat the same workflow. My role is **deciding and verifying** — I review what agents analyze, make judgments from comparison tables, and confirm the final results.
+This migration uses Claude Code. Role-based agents handle code exploration, Rust implementation, Swift implementation, and review. For each domain I migrate, I repeat the same workflow. My role is deciding and verifying — I review what agents analyze, make judgments from comparison tables, and confirm the final results.
 
-Every tech decision is recorded as an ADR (Architecture Decision Record). The "Rust vs Go vs TypeScript" table in this post came from an ADR. The detailed workflow will unfold naturally as the series progresses.
-
----
-
-When the learning curve disappears, the criteria for choosing tech change. You stop asking "is it easy to learn?" and start asking "is it fundamentally better?" I answered that question with Rust.
-
-This series is the process of proving whether that answer was right.
-
----
+Every tech decision is recorded as an ADR (Architecture Decision Record). The comparison table in this post came from an ADR. The detailed workflow will unfold naturally as the series progresses.
 
 *Next: #2 Building the Server Skeleton — Axum + SQLx + PostgreSQL Environment Setup*
