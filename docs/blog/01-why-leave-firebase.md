@@ -214,19 +214,4 @@ Claude Code에는 역할별 에이전트가 있다. 코드를 탐색하는 Explo
 
 ---
 
-### 시리즈 목차
-
-1. **왜 Firebase를 떠나는가** ← 현재 글
-2. 서버 뼈대 잡기 — Axum + SQLx + PostgreSQL 환경 구축
-3. 인증 직접 구현 — Firebase Auth에서 Apple/Google OAuth + JWT로
-4. 스키마 재설계 — Firestore 비정규화에서 PostgreSQL 정규화로
-5. 핵심 API 전환 — 유저/그룹/약속 50개 Functions를 Rust로
-6. 실시간과 푸시 — Firestore Listener → WebSocket, FCM + APNs 직접 발송
-7. 고급 기능 — LiveActivity, 일정 충돌, 구독 검증, AI 브리핑
-8. 배포 파이프라인 — Cloud Run + GitHub Actions CI/CD
-9. 점진적 전환 — Branch by Abstraction으로 Dev → Stage → Prod
-10. 회고 — Firebase vs 자체 서버, 실제로 뭐가 달라졌나
-
----
-
-*"Firebase에서 Rust로: iOS 앱 서버 마이그레이션기" 시리즈를 연재합니다. 팔로우하시면 새 글을 받아보실 수 있습니다.*
+*다음 글: #2 서버 뼈대 잡기 — Axum + SQLx + PostgreSQL 환경 구축*
