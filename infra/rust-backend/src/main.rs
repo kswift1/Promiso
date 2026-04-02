@@ -29,7 +29,7 @@ async fn main() {
         .await
         .expect("Failed to connect to database pool");
 
-    let app = routes::create_router(pool);
+    let app = routes::create_router(pool, &config);
 
     let addr = format!("0.0.0.0:{}", config.port);
     tracing::info!("Starting server on {}", addr);
