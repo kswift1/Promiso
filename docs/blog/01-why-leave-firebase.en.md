@@ -10,25 +10,46 @@ Reading that user feedback, I thought to myself: I know. It's the Cloud Function
 
 Can I fix this? Not really — not within Firebase. Setting min_instances keeps instances alive, but applying that across 50+ functions would blow up the bill. So I convinced myself it was "just a Firebase limitation" and moved on.
 
-Then something changed.
+---
+
+## The Limits of Firebase
+
+Promiso is a group-based scheduling iOS app. You create groups with friends, make plans, vote on them, and share locations. The entire thing runs on Firebase:
+
+- **Firebase Auth** — Apple/Google sign-in
+- **Firestore** — Main database (12+ collections)
+- **Cloud Functions** — Business logic, 50+ functions (TypeScript)
+- **Firebase Storage** — Profile/group/event images
+- **FCM** — Push notifications
+- **Analytics, Crashlytics** — Monitoring
+
+This isn't calling one Cloud Function. **The entire backend is Firebase.**
+
+Cold starts weren't the only problem.
+
+**Cost**: Firestore charges per read/write. For an app with many real-time listeners, costs grow faster than linearly with user count. PostgreSQL has fixed costs. Predictable and more efficient at scale.
+
+**Scalability**: Firestore has a 1-write-per-second limit per document. No JOINs. So you have to denormalize — copy the same data to multiple places — and maintaining that is a nightmare. What takes one JOIN in SQL requires triggers and sync logic in Firestore.
+
+**Lock-in**: Auth, Firestore, Functions, Storage — all Firebase. If pricing changes? If there's an outage? No alternatives.
 
 ---
 
-## AI Changed the Game
+## Build My Own Server?
 
-I'm an iOS developer with two years of Swift experience. The server has always been Firebase's job. Auth, Firestore, Cloud Functions, Storage — I built my iOS app on top of Firebase's full stack. Building my own server? That was a different universe.
+I get the limitations. But build my own server? I'm an iOS developer with two years of Swift experience. The server has always been Firebase's job. Building my own backend was a different universe.
 
 Rust was a language I vaguely wanted to try someday. The ownership system, memory safety without a GC, C-level performance with modern syntax. I was curious, but never seriously considered it. Learning Rust while building an iOS app? Too much to take on.
 
 Then AI changed that calculation entirely.
 
+---
+
+## AI Changed How We Choose Tech
+
 When you code with an AI like Claude, the meaning of "learning curve" shifts. You don't need to memorize syntax. You don't need to internalize patterns one by one. **You just need to understand.** If you know *why* something works the way it does, AI handles the implementation. The "Google → Stack Overflow → copy → tweak" cycle that even 10-year veterans go through with a new language? Gone.
 
 This isn't just about convenience. **It means the criteria for choosing technology fundamentally change.**
-
----
-
-## Choosing Tech Without a Learning Curve
 
 When picking a tech stack, people usually look at:
 
@@ -47,8 +68,6 @@ So what's left? The pure fundamentals of the technology itself:
 4. **Lock-in** — Can you switch to something else later?
 5. **Performance** — How fast does it handle a single request?
 6. **Safety** — How many bugs does it catch before production?
-
-Evaluate with just these six criteria, and the results are interesting.
 
 ---
 
@@ -70,41 +89,6 @@ Go is a perfectly good choice. But Go's biggest strength — "easy to pick up an
 And honestly? I just wanted to use Rust. I'd had this vague fascination with the language, and I figured if not now, when? The comparison table backs up the decision, but the starting point was a personal desire to build something with this language.
 
 > There's always emotion in a tech decision. What matters is starting with emotion but validating with evidence.
-
----
-
-## Current State — Promiso on Firebase
-
-Let me pause to explain the scale of what I'm changing.
-
-Promiso is a group-based scheduling iOS app. You create groups with friends, make plans, vote on them, and share locations. The entire thing runs on Firebase:
-
-- **Firebase Auth** — Apple/Google sign-in
-- **Firestore** — Main database (12+ collections)
-- **Cloud Functions** — Business logic, 50+ functions (TypeScript)
-- **Firebase Storage** — Profile/group/event images
-- **FCM** — Push notifications
-- **Analytics, Crashlytics** — Monitoring
-
-This isn't calling one Cloud Function. **The entire backend is Firebase.** And I'm moving all of it to my own server.
-
----
-
-## Cold Starts, and the Problems Beyond
-
-Back to cold starts.
-
-Cloud Functions is serverless. It spins up an instance when a request comes in, and spins it down after a period of inactivity. That "spinning up" time is the cold start. To the user, it feels like the app has frozen.
-
-A Rust server is different. Deploy it to a container service like Cloud Run, and the binary starts in milliseconds. Requests are handled in microseconds. The "waiting" feeling disappears entirely.
-
-But cold starts weren't the only problem.
-
-**Cost**: Firestore charges per read/write. For an app with many real-time listeners, costs grow faster than linearly with user count. PostgreSQL has fixed costs. Predictable and more efficient at scale.
-
-**Scalability**: Firestore has a 1-write-per-second limit per document. No JOINs. So you have to denormalize — copy the same data to multiple places — and maintaining that is a nightmare. What takes one JOIN in SQL requires triggers and sync logic in Firestore.
-
-**Lock-in**: Auth, Firestore, Functions, Storage — all Firebase. If pricing changes? If there's an outage? No alternatives.
 
 ---
 
@@ -171,46 +155,17 @@ This way, every rule that worked in Firebase is guaranteed to work in Rust.
 
 ---
 
-## Working with AI — Claude Code
+## Working with AI
 
-"AI helps" might sound vague, so let me explain how it actually works.
+This migration uses Claude Code. Role-based agents handle code exploration, Rust implementation, Swift implementation, and review. For each domain I migrate, I repeat the same workflow. My role is **deciding and verifying** — I review what agents analyze, make judgments from comparison tables, and confirm the final results.
 
-This migration uses Claude Code. Not just asking questions about code — I **define the workflow as a skill** and run it repeatedly.
-
-Claude Code has role-based agents. Explore reads and analyzes code. Rust Implementer writes Rust code. Implementer writes Swift code. Reviewer validates. Each performs only its designated role, and the main Claude orchestrates them. I defined a migration-specific workflow on top of this structure.
-
-The TDD, Branch by Abstraction, and domain-by-domain approach I described above are all embedded in this workflow. For each domain (e.g., the Groups API), I repeat the same process:
-
-```
-[Domain-by-domain migration]
-1. Analyze current state — Explore reads Firebase code
-2. Extract rules         — Main Claude creates business rules → I review
-
-[TDD — Red/Green cycle]
-3. Write tests           — Rust Implementer converts rules to tests (Red)
-4. Tech decisions        — Main Claude creates comparison tables → I decide
-5. Schema redesign       — Main Claude designs → I confirm
-6. API design            — Main Claude designs → I confirm
-7. Implement             — Rust Implementer writes code, passes tests (Green)
-
-[Branch by Abstraction]
-8. iOS connection        — Implementer adds Feature Flag branch to app code
-9. Verify                — Reviewer validates + Dev environment testing
-```
-
-What I do is **decide and verify.** I'm not writing code line by line. I review what agents analyze, look at comparison tables and make judgments, and confirm the final results. The agents execute; I set the direction.
-
-When a tech decision is needed, I record it as an ADR (Architecture Decision Record). Compare options against six criteria, document why I chose what I chose. The "Rust vs Go vs TypeScript" table in this post came from an ADR.
-
-The key to this approach: **I don't need to re-explain context to the AI every time.** The workflow is defined, past decisions are documented, so new sessions continue in a consistent direction.
+Every tech decision is recorded as an ADR (Architecture Decision Record). The "Rust vs Go vs TypeScript" table in this post came from an ADR. The detailed workflow will unfold naturally as the series progresses.
 
 ---
 
-## What This Series Covers
+When the learning curve disappears, the criteria for choosing tech change. You stop asking "is it easy to learn?" and start asking "is it fundamentally better?" I answered that question with Rust.
 
-This series records **the entire process of an iOS developer replacing a Firebase backend with a Rust server, working alongside AI.**
-
-From tech decisions to debugging, from design to deployment. Every choice comes with alternatives considered and rationale documented.
+This series is the process of proving whether that answer was right.
 
 ---
 
