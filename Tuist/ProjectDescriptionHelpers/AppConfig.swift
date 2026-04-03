@@ -51,10 +51,11 @@ public enum AppConfig {
       appGroupId = "group.com.promiso.shared"
     }
 
-    // Dev/Stage: localhost HTTP 허용 (Rust 로컬 서버 연결)
+    // Dev/Stage: HTTP 허용 (Rust 로컬 서버 연결)
     var ats: Plist.Value = .dictionary([:])
     if environment != "prod" {
       ats = .dictionary([
+        "NSAllowsArbitraryLoads": .boolean(true),
         "NSAllowsLocalNetworking": .boolean(true)
       ])
     }

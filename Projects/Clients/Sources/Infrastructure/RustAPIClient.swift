@@ -7,7 +7,7 @@ public actor RustAPIClient {
   private let decoder: JSONDecoder
 
   public init(
-    baseURL: URL = URL(string: "http://localhost:8080")!,
+    baseURL: URL = URL(string: "http://192.168.0.2:8080")!,
     getAuthToken: @escaping () async throws -> String
   ) {
     self.baseURL = baseURL
@@ -47,7 +47,10 @@ public actor RustAPIClient {
     path: String,
     body: B?
   ) async throws -> T {
-    var urlRequest = URLRequest(url: baseURL.appendingPathComponent(path))
+    guard let url = URL(string: path, relativeTo: baseURL) else {
+      throw RustAPIError.invalidResponse
+    }
+    var urlRequest = URLRequest(url: url)
     urlRequest.httpMethod = method
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

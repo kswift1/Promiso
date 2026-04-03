@@ -31,7 +31,8 @@ async fn main() {
 
     let app = routes::create_router(pool, &config);
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    // [::]:port → IPv4 + IPv6 동시 바인딩 (iOS 시뮬레이터 호환)
+    let addr = format!("[::]:{}", config.port);
     tracing::info!("Starting server on {}", addr);
 
     let listener = TcpListener::bind(&addr).await.expect("Failed to bind address");
