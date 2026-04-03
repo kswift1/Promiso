@@ -5,7 +5,7 @@
 ## 시리즈 진행 상태
 
 - [x] #1 왜 Firebase를 떠나는가 — 동기, 기술 선택, 마이그레이션 전략
-- [ ] #2 서버 뼈대 잡기 — 인프라 선택(DB, 배포, 인증, 스토리지)부터 Axum + SQLx 환경 구축까지
+- [x] #2 서버 뼈대 잡기 — 인프라 선택(DB, 배포, 인증, 스토리지)부터 Axum + SQLx 환경 구축까지
 - [ ] #3 인증 직접 구현 — Firebase Auth에서 Apple/Google OAuth + JWT로
 - [ ] #4 스키마 재설계 — Firestore 비정규화에서 PostgreSQL 정규화로
 - [ ] #5 핵심 API 전환 — 유저/그룹/약속 50개 Functions를 Rust로
