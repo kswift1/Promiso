@@ -28,6 +28,17 @@
 - **타인 조회 공통 그룹 체크**: groups 도메인의 group_members 테이블 필요
 - **soft delete**: deleteUser 마이그레이션 시 ADR 결정
 
+## 미마이그레이션 Firestore 데이터 (다른 도메인에서 처리)
+
+| Firestore 필드 | 내용 | 처리 시점 |
+|---------------|------|----------|
+| `users/{uid}.devices` Map | FCM 토큰, pushToStartToken, platform, lastActiveAt | **notifications 도메인** 마이그레이션 시 `user_devices` 테이블로 |
+| `users/{uid}.groups` Map | 그룹 목록 (groupName, role, notifications 등) | **groups 도메인** 마이그레이션 시 `group_members` 조인 테이블로 |
+| `users/{uid}/settings/main` | groupSortOption, proSettings.briefing.* | **settings 별도 마이그레이션** 시 (JSONB 또는 컬럼) |
+| `users/{uid}/personalEvents/*` | 개인 일정 | **personalEvents 도메인** 마이그레이션 시 |
+| `users/{uid}/recurringEvents/*` | 반복 일정 규칙 | **personalEvents 도메인** 마이그레이션 시 |
+| `users/{uid}/cache/*` | 위젯 캐시 (deprecated) | 제거 예정 |
+
 ## 스키마
 
 `infra/rust-backend/migrations/002_users.sql` 참조
