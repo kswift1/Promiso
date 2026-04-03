@@ -6,7 +6,7 @@
 
 Deciding to go with Rust was the easy part. Actually spinning up a server meant a pile of decisions. Where does the DB go? Where does the server run? How do I handle auth? With Firebase, none of this was my problem. Firebase handled everything.
 
-Now I have to choose.
+Now I have to choose. But not everything at once. Every decision in this post is about finding *the minimum viable combination to start migrating domains right now* — not a final architecture, just Phase 1.
 
 ---
 
@@ -37,7 +37,15 @@ I reset my criteria. As a solo developer, what matters most is **"how little do 
 | Cost (initial) | $0 (scale-to-zero) | ~$4/mo | ~$5/mo |
 | Deploy | Docker + gcloud deploy | Dockerfile + flyctl | git push |
 
-Railway's DX is unbeatable — just git push and you're deployed. I was genuinely tempted. But no Seoul region killed it. Rust's cold start is under 100ms, so Cloud Run's scale-to-zero wasn't a concern either. I picked **Cloud Run — Seoul region + zero cost**.
+Railway's DX is unbeatable — just git push and you're deployed. I was genuinely tempted. But no Seoul region killed it.
+
+Cloud Run uses scale-to-zero, which means cold starts. That's exactly what drove me away from Firebase in the first post — so was I just walking into the same problem?
+
+Turns out, no. Node.js cold starts because it has to boot the V8 engine, load modules, and warm up the JIT. That's where the 1–5 seconds go. Rust compiles down to a native binary at build time. No separate runtime. The OS loads the binary into memory and it's ready. Under 100ms in my setup.
+
+I could've eliminated cold starts entirely. Cloud Run supports `min-instances=1` to keep an instance always warm. Firebase had the same option — but as I mentioned in the first post, applying it to 50+ functions sent costs through the roof. With a single Rust server, min-instances=1 would be a predictable, fixed cost. But right now there's no traffic to justify it. When there is, I'll flip it then.
+
+**Seoul region + zero cost.** Cloud Run it is.
 
 ---
 
@@ -47,7 +55,7 @@ PostgreSQL was already decided. The question was where to host it.
 
 Candidates: Neon (serverless), Supabase, Cloud SQL, Railway PG.
 
-I initially wanted Neon for everything — dev and production. Generous free tier, scale-to-zero, costs nothing when idle. The problem: **the closest Asian region is Singapore**. With Cloud Run in Seoul and the DB in Singapore, every query adds ~70ms. Three to four queries per API call, and you're looking at 200ms+ stacked latency.
+I initially wanted Neon for everything — dev and production. Generous free tier, scale-to-zero, costs nothing when idle. The problem: **the closest Asian region is Singapore**. With Cloud Run in Seoul and the DB in Singapore, every query adds ~70ms. Three to four queries per API call, and you're looking at 200ms+ stacked.
 
 Then I realized dev and production have different priorities.
 
@@ -58,7 +66,7 @@ Then I realized dev and production have different priorities.
 
 **Prod gets Cloud SQL (Seoul), Dev gets Neon (Singapore).**
 
-Cloud SQL connects to Cloud Run via VPC within the same GCP project. Server-to-DB latency drops to ~1ms. Automatic backups, automatic patches. The 70ms in Neon's dev environment? You don't feel it during development.
+Cloud SQL connects to Cloud Run via VPC within the same GCP project. Server-to-DB latency drops to ~1ms. Automatic backups, automatic patches. The 70ms overhead in Neon's dev environment? No meaningful impact while coding.
 
 Switching between environments is just one environment variable:
 
@@ -94,7 +102,7 @@ iOS app → Firebase Auth login (unchanged)
       → Rust verifies token + extracts uid
 ```
 
-Same for storage. iOS uploads to Firebase Storage, then tells Rust the file path. That's it.
+Storage is even simpler than auth. Auth requires Rust to actively verify tokens — the interface has to change. Storage doesn't. iOS uploads to Firebase Storage, then tells Rust the file path. Rust just stores a URL string. Existing user images don't need to be touched.
 
 **Don't change what doesn't need changing.** The specifics of token verification — Google public key caching, RS256 signature validation, claims extraction — come in the next post when I build the Users domain on top of this skeleton.
 
@@ -122,13 +130,32 @@ infra/rust-backend/
 
 Feels familiar if you're a Swift developer. Similar to TCA's Feature/Client/Model layers.
 
+`main.rs` creates the DB pool, wires it into the Axum router, and starts the server:
+
+```rust
+#[tokio::main]  // Like Swift's @main — the async entry point
+async fn main() {
+    let pool = PgPoolOptions::new()
+        .connect(&env::var("DATABASE_URL").unwrap())
+        .await
+        .expect("DB connection failed");
+
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .with_state(pool);  // Injects pool into all handlers — like Swift's @Dependency
+
+    let listener = TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+```
+
 I verified everything connects with a single health check endpoint:
 
 ```rust
 async fn health_check(State(pool): State<PgPool>) -> Json<Value> {
     let db_ok = sqlx::query("SELECT 1")
         .execute(&pool)
-        .await
+        .await      // Swift: await foo() / Rust: foo().await — reversed order
         .is_ok();
 
     Json(json!({
@@ -141,6 +168,22 @@ async fn health_check(State(pool): State<PgPool>) -> Json<Value> {
 `cargo run` → `curl localhost:8080/health` → `{"status":"healthy","db":true}`.
 
 Connected to Neon Singapore. Health check responds. The skeleton stands.
+
+---
+
+## Debugging: iOS Simulator Can't Reach localhost
+
+Ran the server, called it from the simulator. Connection refused.
+
+```
+Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server."
+```
+
+`curl localhost:8080/health` works fine from the terminal. Only the simulator can't reach it.
+
+I tried everything in order. Disabled ATS (App Transport Security) — nope. Switched `localhost` to `127.0.0.1` — nope. Added IPv6 support by binding to `[::]` — nope.
+
+Finally, using the Mac's LAN IP (`192.168.x.x`) directly worked. In my setup, the iOS 26 simulator didn't seem to properly route through the loopback interface. Not the cleanest fix, but fine for local development. Once deployed to Cloud Run, it'll use a real URL anyway.
 
 ---
 
@@ -165,29 +208,20 @@ pub enum AppError {
     PreconditionFailed(String), // → 412, "failed-precondition"
     Internal(String),           // → 500, "internal"
 }
+// Same structure as Swift's Error enum — each case carries an associated String
 ```
 
-Looks like Swift's `Error` enum. Each variant maps to an HTTP status code and a Firebase error code. Only `Internal` hides the detailed message from the client and logs it server-side.
-
----
-
-## Debugging: iOS Simulator Can't Reach localhost
-
-Ran the server, called it from the simulator. Connection refused.
-
-```
-Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server."
-```
-
-`curl localhost:8080/health` works fine from the terminal. Only the simulator can't reach it.
-
-I tried everything in order. Disabled ATS (App Transport Security) — nope. Switched `localhost` to `127.0.0.1` — nope. Added IPv6 support by binding to `[::]` — nope.
-
-Finally, plugging in the Mac's LAN IP (`192.168.x.x`) directly worked. Seems like the iOS 26 simulator doesn't properly route through the loopback interface. Not the cleanest fix, but good enough for local development. Once deployed to Cloud Run, it'll use a real URL anyway.
+Each variant maps to an HTTP status code and a Firebase error code. Only `Internal` hides the detailed message from the client and logs it server-side.
 
 ---
 
 ## What the Skeleton Means
+
+The stack so far:
+- **Server**: Cloud Run (Seoul region)
+- **DB**: Cloud SQL / Prod + Neon / Dev
+- **Auth**: Firebase Auth, kept (token verification only)
+- **Storage**: Firebase Storage, kept (path stored in Rust)
 
 With Firebase, `firebase init functions` was all you needed. Building your own server means deciding everything yourself, building everything yourself. It's tedious. But being able to choose means being able to optimize. Seoul region, 1ms database, zero dev costs — a combination impossible on Firebase.
 

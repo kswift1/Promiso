@@ -5,7 +5,7 @@ public actor RustAPIClient {
   /// 환경별 기본 URL
   /// - Dev: 시뮬레이터에서 로컬 서버 접근 불가하므로 LAN IP 사용
   /// - Prod: Cloud Run 배포 후 URL 변경
-  static let defaultBaseURL: URL = {
+  public static let defaultBaseURL: URL = {
     #if DEBUG
     return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #else
