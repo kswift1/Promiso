@@ -390,7 +390,6 @@ async fn notification_enabled_default_true(pool: PgPool) {
 // ============================================================
 // users 라우트 구현 시 활성화. 현재 라우트 미존재로 404 반환되어 테스트 신호가 부정확.
 
-#[ignore = "users 라우트 구현 후 활성화 — 현재 라우트 미존재로 404 반환"]
 #[sqlx::test(migrations = "./migrations")]
 async fn auth_required_returns_401(pool: PgPool) {
     use axum::body::Body;
