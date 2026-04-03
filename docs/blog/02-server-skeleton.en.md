@@ -41,9 +41,9 @@ Railway's DX is unbeatable — just git push and you're deployed. I was genuinel
 
 Cloud Run uses scale-to-zero, which means cold starts. That's exactly what drove me away from Firebase in the first post — so was I just walking into the same problem?
 
-Turns out, no. Node.js cold starts because it has to boot the V8 engine, load modules, and warm up the JIT. That's where the 1–5 seconds go. Rust compiles down to a native binary at build time. No separate runtime. The OS loads the binary into memory and it's ready. Under 100ms in my setup.
+Turns out, it wasn't the same kind of cold start. In the first post, Firebase Functions was cold-starting in 1–5 seconds. Cloud Run's own documentation explains part of why: dynamic languages like Node.js add module loading on top of container startup time. Rust, as a native binary, doesn't carry that overhead to the same degree. On my container, the added latency for the first request was under 100ms.
 
-I could've eliminated cold starts entirely. Cloud Run supports `min-instances=1` to keep an instance always warm. Firebase had the same option — but as I mentioned in the first post, applying it to 50+ functions sent costs through the roof. With a single Rust server, min-instances=1 would be a predictable, fixed cost. But right now there's no traffic to justify it. When there is, I'll flip it then.
+I could've eliminated cold starts entirely. `min-instances=1` keeps a warm instance always running. Firebase Functions had the same option — but costs stack per function, so with 50+ functions it got expensive fast. Cloud Run manages this at the service level, so the cost structure is much simpler. That said, there's no traffic to justify it right now. When there is, I'll flip it.
 
 **Seoul region + zero cost.** Cloud Run it is.
 
