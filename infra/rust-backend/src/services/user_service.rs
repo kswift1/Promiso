@@ -153,19 +153,25 @@ pub async fn update_user(
     if let Some(ref nickname) = req.nickname {
         let validated = validate_nickname(nickname)?;
 
-        sqlx::query("UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2")
-            .bind(&validated)
-            .bind(uid)
-            .execute(pool)
-            .await
-            .map_err(|e| {
-                if let sqlx::Error::Database(ref db_err) = e {
-                    if db_err.code().as_deref() == Some("23505") {
-                        return AppError::Conflict("이미 사용 중인 닉네임입니다".to_string());
-                    }
+        let result = sqlx::query(
+            "UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2",
+        )
+        .bind(&validated)
+        .bind(uid)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e {
+                if db_err.code().as_deref() == Some("23505") {
+                    return AppError::Conflict("이미 사용 중인 닉네임입니다".to_string());
                 }
-                AppError::Internal(e.to_string())
-            })?;
+            }
+            AppError::Internal(e.to_string())
+        })?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
+        }
     }
 
     Ok(())
@@ -192,12 +198,17 @@ pub async fn upload_profile_image(
     // 실제 Storage URL 생성은 Firebase Storage에서 처리 (ADR-007)
     let url = path;
 
-    sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&url)
-        .bind(uid)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let result =
+        sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&url)
+            .bind(uid)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
+    }
 
     Ok(url)
 }
@@ -230,6 +241,8 @@ pub async fn check_nickname_available(
 }
 
 /// 여러 사용자 조회 (public)
+/// TODO(U8): groups 마이그레이션 후 requester_uid를 받아 공통 그룹 체크 추가
+/// 현재는 인증된 사용자 전체 허용 (전환 기간 임시)
 pub async fn batch_get_users(
     pool: &PgPool,
     user_ids: &[String],
@@ -238,20 +251,24 @@ pub async fn batch_get_users(
         return Ok(vec![]);
     }
 
-    // ANY($1) 패턴으로 IN 쿼리
     let users = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ANY($1)")
         .bind(user_ids)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    Ok(users
-        .into_iter()
+    // 입력 순서 보존 (iOS가 순서를 기대할 수 있음)
+    let user_map: std::collections::HashMap<&str, &User> =
+        users.iter().map(|u| (u.id.as_str(), u)).collect();
+
+    Ok(user_ids
+        .iter()
+        .filter_map(|id| user_map.get(id.as_str()))
         .map(|u| UserPublicResponse {
-            user_id: u.id,
-            name: u.name,
-            nickname: u.nickname,
-            profile_url: u.profile_url,
+            user_id: u.id.clone(),
+            name: u.name.clone(),
+            nickname: u.nickname.clone(),
+            profile_url: u.profile_url.clone(),
             created_at: u.created_at,
         })
         .collect())
