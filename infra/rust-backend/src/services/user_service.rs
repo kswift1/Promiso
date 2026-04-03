@@ -75,18 +75,7 @@ pub async fn create_user(
     .bind(req.provider.email.trim())
     .fetch_one(pool)
     .await
-    .map_err(|e| {
-        if let sqlx::Error::Database(ref db_err) = e {
-            // PostgreSQL unique violation = 23505
-            if db_err.code().as_deref() == Some("23505") {
-                if db_err.message().contains("nickname") {
-                    return AppError::Conflict("이미 사용 중인 닉네임입니다".to_string());
-                }
-                return AppError::Conflict("이미 존재하는 사용자입니다".to_string());
-            }
-        }
-        AppError::Internal(e.to_string())
-    })?;
+    .map_err(|e| map_unique_violation(e, "이미 존재하는 사용자입니다"))?;
 
     Ok(CreateUserResponse {
         user_id: user.id,
@@ -160,14 +149,7 @@ pub async fn update_user(
         .bind(uid)
         .execute(pool)
         .await
-        .map_err(|e| {
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.code().as_deref() == Some("23505") {
-                    return AppError::Conflict("이미 사용 중인 닉네임입니다".to_string());
-                }
-            }
-            AppError::Internal(e.to_string())
-        })?;
+        .map_err(|e| map_unique_violation(e, "닉네임 변경 실패"))?;
 
         if result.rows_affected() == 0 {
             return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
@@ -270,6 +252,22 @@ pub async fn batch_get_users(
             nickname: u.nickname.clone(),
             profile_url: u.profile_url.clone(),
             created_at: u.created_at,
+            updated_at: u.updated_at,
         })
         .collect())
+}
+
+/// PostgreSQL unique violation(23505)을 constraint name으로 분기하는 헬퍼
+fn map_unique_violation(e: sqlx::Error, default_msg: &str) -> AppError {
+    if let sqlx::Error::Database(ref db_err) = e {
+        if db_err.code().as_deref() == Some("23505") {
+            // constraint name으로 분기 (메시지 문자열 의존 제거)
+            let constraint = db_err.constraint().unwrap_or("");
+            if constraint == "uq_users_nickname" {
+                return AppError::Conflict("이미 사용 중인 닉네임입니다".to_string());
+            }
+            return AppError::Conflict(default_msg.to_string());
+        }
+    }
+    AppError::Internal(e.to_string())
 }

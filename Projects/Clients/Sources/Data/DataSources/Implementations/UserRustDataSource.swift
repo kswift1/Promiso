@@ -19,6 +19,7 @@ private struct RustUserPublic: Decodable {
   let nickname: String
   let profileUrl: String?
   let createdAt: Date
+  let updatedAt: Date
 }
 
 private struct RustCreateUserResponse: Decodable {
@@ -157,10 +158,10 @@ extension RustUserPublic {
         ProfileImage(
           url: url,
           thumbUrl: nil,
-          updatedAt: createdAt
+          updatedAt: updatedAt
         )
       },
-      metadata: Metadata(createdAt: createdAt, updatedAt: createdAt)
+      metadata: Metadata(createdAt: createdAt, updatedAt: updatedAt)
     )
   }
 }

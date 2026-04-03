@@ -44,6 +44,7 @@ pub struct UserPublicResponse {
     pub nickname: String,
     pub profile_url: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
