@@ -269,37 +269,16 @@ async fn c5_update_max_members_floor_is_current_member_count(pool: PgPool) {
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
-#[sqlx::test(migrations = "./migrations")]
-async fn c6_update_group_http_rejects_unknown_name_field(pool: PgPool) {
-    // 이름 변경 불가 — PATCH에 name 필드를 보내면 400 (deny_unknown_fields)
-    use axum::body::Body;
-    use axum::http::{Request, StatusCode};
-    use tower::ServiceExt;
+#[test]
+fn c6_update_group_request_rejects_unknown_name_field() {
+    // 이름 변경 불가 — unknown field는 DTO 역직렬화 단계에서 거부되어야 함
+    let body = serde_json::json!({
+        "name": "새이름",
+        "description": "새 설명"
+    });
 
-    insert_test_user(&pool, "creator_c6", "호스트c6").await;
-    let group = create_test_group(&pool, "creator_c6", "이름불변").await;
-
-    let config = promiso_backend::config::Config::from_env();
-    let app = promiso_backend::routes::create_router(pool, &config);
-
-    let body = serde_json::json!({"name": "새이름"}).to_string();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("PATCH")
-                .uri(format!("/api/v1/groups/{}", group.group_id))
-                .header("content-type", "application/json")
-                // 인증 없이 전송 — Green phase에서 인증 mock 추가 후
-                // deny_unknown_fields에 의한 400 거부를 정확히 검증할 예정
-                .body(Body::from(body))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    // 현재: 인증 미통과로 401
-    // Green phase 목표: 인증 통과 후 unknown field "name"으로 400/422
-    assert_ne!(response.status(), StatusCode::OK);
+    let result = serde_json::from_value::<UpdateGroupRequest>(body);
+    assert!(result.is_err());
 }
 
 // ============================================================
@@ -406,8 +385,9 @@ async fn p3_transfer_by_non_host_rejected(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn p3_transfer_without_other_member_rejected(pool: PgPool) {
-    // 호스트 혼자인 그룹에서 양도 시도 → 거부 (G12: 다른 멤버 존재 필수)
+async fn p3_single_member_group_transfer_request_rejected(pool: PgPool) {
+    // 현재 API shape상 G12(다른 멤버 존재)와 G14(대상 멤버)를 완전히 분리하기 어렵다.
+    // 최소한 "혼자 있는 그룹에서는 양도 요청이 거부된다"는 동작은 고정한다.
     insert_test_user(&pool, "creator_p3s", "호스트solo").await;
     insert_test_user(&pool, "phantom_p3s", "허상대상").await;
 
@@ -997,6 +977,7 @@ async fn n1_update_notification_settings_success_and_persists(pool: PgPool) {
     assert_eq!(ns["promise"], false);
     assert_eq!(ns["group"], true);
     assert_eq!(ns["calendar_sync"], false);
+    assert!(!my_group.calendar_sync);
 }
 
 #[sqlx::test(migrations = "./migrations")]
