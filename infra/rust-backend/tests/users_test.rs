@@ -3,11 +3,10 @@
 //! 단위 테스트: validate_nickname (DB 불필요)
 //! 통합 테스트: create/get/update/check 등 (DB 필요)
 
-mod common;
-
 use promiso_backend::errors::AppError;
 use promiso_backend::models::user::*;
 use promiso_backend::services::user_service;
+use sqlx::PgPool;
 
 // ============================================================
 // 테스트 헬퍼
@@ -35,6 +34,19 @@ fn make_create_request_with_name(name: &str, nickname: &str) -> CreateUserReques
             email: "test@example.com".to_string(),
         },
     }
+}
+
+async fn insert_test_user(pool: &PgPool, id: &str, nickname: &str) {
+    sqlx::query(
+        "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email) \
+         VALUES ($1, $2, $3, 'google', 'test-uid', 'test@test.com')",
+    )
+    .bind(id)
+    .bind(nickname)
+    .bind(nickname)
+    .execute(pool)
+    .await
+    .expect("Failed to insert test user");
 }
 
 // ============================================================
@@ -112,26 +124,18 @@ fn nickname_valid_mixed() {
 // 통합 테스트: 유저 생성
 // ============================================================
 
-#[tokio::test]
-async fn create_user_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_create_1").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn create_user_success(pool: PgPool) {
     let req = make_create_request("테스트유저");
     let result = user_service::create_user(&pool, "test_create_1", req).await;
 
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.user_id, "test_create_1");
-
-    common::cleanup_test_user(&pool, "test_create_1").await;
 }
 
-#[tokio::test]
-async fn u10_create_user_name_fallback_to_nickname() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_u10").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u10_create_user_name_fallback_to_nickname(pool: PgPool) {
     // name 미제공 → nickname으로 대체되어야 함
     let req = make_create_request("폴백닉넴");
     let _ = user_service::create_user(&pool, "test_u10", req).await;
@@ -139,30 +143,20 @@ async fn u10_create_user_name_fallback_to_nickname() {
     let profile = user_service::get_my_profile(&pool, "test_u10").await;
     assert!(profile.is_ok());
     assert_eq!(profile.unwrap().name, "폴백닉넴");
-
-    common::cleanup_test_user(&pool, "test_u10").await;
 }
 
-#[tokio::test]
-async fn u10_create_user_name_provided() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_u10_name").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u10_create_user_name_provided(pool: PgPool) {
     let req = make_create_request_with_name("김성원", "성원닉넴");
     let _ = user_service::create_user(&pool, "test_u10_name", req).await;
 
     let profile = user_service::get_my_profile(&pool, "test_u10_name").await;
     assert!(profile.is_ok());
     assert_eq!(profile.unwrap().name, "김성원");
-
-    common::cleanup_test_user(&pool, "test_u10_name").await;
 }
 
-#[tokio::test]
-async fn u13_create_user_duplicate_rejected() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_dup").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u13_create_user_duplicate_rejected(pool: PgPool) {
     // 첫 번째 생성
     let req1 = make_create_request("중복테스트");
     let _ = user_service::create_user(&pool, "test_dup", req1).await;
@@ -172,20 +166,14 @@ async fn u13_create_user_duplicate_rejected() {
     let result = user_service::create_user(&pool, "test_dup", req2).await;
 
     assert!(matches!(result, Err(AppError::Conflict(_))));
-
-    common::cleanup_test_user(&pool, "test_dup").await;
 }
 
 // ============================================================
 // 통합 테스트: 닉네임 중복 (U5)
 // ============================================================
 
-#[tokio::test]
-async fn u5_nickname_unique_rejected() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_uniq1").await;
-    common::cleanup_test_user(&pool, "test_uniq2").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u5_nickname_unique_rejected(pool: PgPool) {
     // 유저1 생성
     let req1 = make_create_request("유니크닉");
     let _ = user_service::create_user(&pool, "test_uniq1", req1).await;
@@ -195,16 +183,10 @@ async fn u5_nickname_unique_rejected() {
     let result = user_service::create_user(&pool, "test_uniq2", req2).await;
 
     assert!(result.is_err()); // Conflict 또는 BadRequest
-
-    common::cleanup_test_user(&pool, "test_uniq1").await;
-    common::cleanup_test_user(&pool, "test_uniq2").await;
 }
 
-#[tokio::test]
-async fn u5_nickname_check_self_allowed() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_self_nick").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u5_nickname_check_self_allowed(pool: PgPool) {
     // 유저 생성
     let req = make_create_request("셀프닉넴");
     let _ = user_service::create_user(&pool, "test_self_nick", req).await;
@@ -214,16 +196,10 @@ async fn u5_nickname_check_self_allowed() {
         user_service::check_nickname_available(&pool, "test_self_nick", "셀프닉넴").await;
     assert!(check.is_ok());
     assert!(check.unwrap().available);
-
-    common::cleanup_test_user(&pool, "test_self_nick").await;
 }
 
-#[tokio::test]
-async fn u5_nickname_check_taken_by_other() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_taken1").await;
-    common::cleanup_test_user(&pool, "test_taken2").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn u5_nickname_check_taken_by_other(pool: PgPool) {
     // 유저1 생성
     let req = make_create_request("선점닉넴");
     let _ = user_service::create_user(&pool, "test_taken1", req).await;
@@ -233,20 +209,14 @@ async fn u5_nickname_check_taken_by_other() {
         user_service::check_nickname_available(&pool, "test_taken2", "선점닉넴").await;
     assert!(check.is_ok());
     assert!(!check.unwrap().available);
-
-    common::cleanup_test_user(&pool, "test_taken1").await;
-    common::cleanup_test_user(&pool, "test_taken2").await;
 }
 
 // ============================================================
 // 통합 테스트: 프로필 조회
 // ============================================================
 
-#[tokio::test]
-async fn get_my_profile_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_profile").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn get_my_profile_success(pool: PgPool) {
     let req = make_create_request("프로필조회");
     let _ = user_service::create_user(&pool, "test_profile", req).await;
 
@@ -257,14 +227,10 @@ async fn get_my_profile_success() {
     assert_eq!(profile.nickname, "프로필조회");
     assert_eq!(profile.email, "test@example.com");
     assert_eq!(profile.provider, "google");
-
-    common::cleanup_test_user(&pool, "test_profile").await;
 }
 
-#[tokio::test]
-async fn get_my_profile_not_found() {
-    let pool = common::setup_test_pool().await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn get_my_profile_not_found(pool: PgPool) {
     let result = user_service::get_my_profile(&pool, "nonexistent_user").await;
     assert!(matches!(result, Err(AppError::NotFound(_))));
 }
@@ -276,33 +242,23 @@ async fn get_my_profile_not_found() {
 // 이 테스트는 현재 컴파일/실행은 되지만 groups 마이그레이션 후 의미가 완성됨.
 // Red Phase에서는 todo!()로 실패하므로 문제 없음.
 
-#[tokio::test]
-async fn u8_get_other_user_no_common_group_rejected() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_requester").await;
-    common::cleanup_test_user(&pool, "test_target").await;
-
-    common::create_test_user(&pool, "test_requester", "요청자").await;
-    common::create_test_user(&pool, "test_target", "대상자").await;
+#[sqlx::test(migrations = "./migrations")]
+async fn u8_get_other_user_no_common_group_rejected(pool: PgPool) {
+    insert_test_user(&pool, "test_requester", "요청자").await;
+    insert_test_user(&pool, "test_target", "대상자").await;
 
     // 공통 그룹 없이 타인 조회 → 거부
     let result =
         user_service::get_user_public(&pool, "test_requester", "test_target").await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
-
-    common::cleanup_test_user(&pool, "test_requester").await;
-    common::cleanup_test_user(&pool, "test_target").await;
 }
 
 // ============================================================
 // 통합 테스트: 유저 수정 (U6)
 // ============================================================
 
-#[tokio::test]
-async fn update_nickname_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_update").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn update_nickname_success(pool: PgPool) {
     let req = make_create_request("수정전닉");
     let _ = user_service::create_user(&pool, "test_update", req).await;
 
@@ -317,8 +273,6 @@ async fn update_nickname_success() {
         .await
         .unwrap();
     assert_eq!(profile.nickname, "수정후닉");
-
-    common::cleanup_test_user(&pool, "test_update").await;
 }
 
 #[test]
@@ -337,11 +291,8 @@ fn u6_name_email_immutable() {
 // 통합 테스트: 프로필 이미지 업로드
 // ============================================================
 
-#[tokio::test]
-async fn upload_profile_image_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_upload").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_profile_image_success(pool: PgPool) {
     let req = make_create_request("업로드테스트");
     let _ = user_service::create_user(&pool, "test_upload", req).await;
 
@@ -351,15 +302,10 @@ async fn upload_profile_image_success() {
     let result =
         user_service::upload_profile_image(&pool, "test_upload", upload_req).await;
     assert!(result.is_ok());
-
-    common::cleanup_test_user(&pool, "test_upload").await;
 }
 
-#[tokio::test]
-async fn upload_profile_image_empty_path_rejected() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_upload_empty").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn upload_profile_image_empty_path_rejected(pool: PgPool) {
     let req = make_create_request("빈경로");
     let _ = user_service::create_user(&pool, "test_upload_empty", req).await;
 
@@ -369,30 +315,21 @@ async fn upload_profile_image_empty_path_rejected() {
     let result =
         user_service::upload_profile_image(&pool, "test_upload_empty", upload_req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
-
-    common::cleanup_test_user(&pool, "test_upload_empty").await;
 }
 
 // ============================================================
 // 통합 테스트: batch 조회
 // ============================================================
 
-#[tokio::test]
-async fn batch_get_users_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_batch1").await;
-    common::cleanup_test_user(&pool, "test_batch2").await;
-
-    common::create_test_user(&pool, "test_batch1", "배치유저1").await;
-    common::create_test_user(&pool, "test_batch2", "배치유저2").await;
+#[sqlx::test(migrations = "./migrations")]
+async fn batch_get_users_success(pool: PgPool) {
+    insert_test_user(&pool, "test_batch1", "배치유저1").await;
+    insert_test_user(&pool, "test_batch2", "배치유저2").await;
 
     let ids = vec!["test_batch1".to_string(), "test_batch2".to_string()];
     let result = user_service::batch_get_users(&pool, &ids).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 2);
-
-    common::cleanup_test_user(&pool, "test_batch1").await;
-    common::cleanup_test_user(&pool, "test_batch2").await;
 }
 
 // ============================================================
@@ -401,14 +338,10 @@ async fn batch_get_users_success() {
 // groups 마이그레이션 전이라 group_members INSERT 미완성.
 // groups 마이그레이션 후 TODO 주석 부분을 채우면 의미가 완성된다.
 
-#[tokio::test]
-async fn u8_get_other_user_with_common_group_success() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_req_grp").await;
-    common::cleanup_test_user(&pool, "test_tgt_grp").await;
-
-    common::create_test_user(&pool, "test_req_grp", "그룹요청자").await;
-    common::create_test_user(&pool, "test_tgt_grp", "그룹대상자").await;
+#[sqlx::test(migrations = "./migrations")]
+async fn u8_get_other_user_with_common_group_success(pool: PgPool) {
+    insert_test_user(&pool, "test_req_grp", "그룹요청자").await;
+    insert_test_user(&pool, "test_tgt_grp", "그룹대상자").await;
 
     // TODO: 공통 그룹 설정 (groups 마이그레이션 후 group_members INSERT 추가)
 
@@ -419,20 +352,14 @@ async fn u8_get_other_user_with_common_group_success() {
     let user = result.unwrap();
     assert_eq!(user.nickname, "그룹대상자");
     // public 응답에 email이 없어야 함 (PII 보호)
-
-    common::cleanup_test_user(&pool, "test_req_grp").await;
-    common::cleanup_test_user(&pool, "test_tgt_grp").await;
 }
 
 // ============================================================
 // 단위 테스트: provider 빈 이메일 거부
 // ============================================================
 
-#[tokio::test]
-async fn provider_empty_email_rejected() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_prov_empty").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn provider_empty_email_rejected(pool: PgPool) {
     let req = CreateUserRequest {
         name: None,
         nickname: "프로바이더".to_string(),
@@ -444,27 +371,20 @@ async fn provider_empty_email_rejected() {
     };
     let result = user_service::create_user(&pool, "test_prov_empty", req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
-
-    common::cleanup_test_user(&pool, "test_prov_empty").await;
 }
 
 // ============================================================
 // 통합 테스트: notification_enabled 기본값 확인
 // ============================================================
 
-#[tokio::test]
-async fn notification_enabled_default_true() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_notif").await;
-
+#[sqlx::test(migrations = "./migrations")]
+async fn notification_enabled_default_true(pool: PgPool) {
     let req = make_create_request("알림기본값");
     let _ = user_service::create_user(&pool, "test_notif", req).await;
 
     let profile = user_service::get_my_profile(&pool, "test_notif").await;
     assert!(profile.is_ok());
     assert!(profile.unwrap().notification_enabled);
-
-    common::cleanup_test_user(&pool, "test_notif").await;
 }
 
 // ============================================================
@@ -473,13 +393,11 @@ async fn notification_enabled_default_true() {
 // 현재 /api/v1/users/me 라우트가 미구현이므로 404가 올 수 있다.
 // users 라우트 + 미들웨어 구현 후 StatusCode::UNAUTHORIZED로 기대값을 수정한다.
 
-#[tokio::test]
-async fn auth_required_returns_401() {
+#[sqlx::test(migrations = "./migrations")]
+async fn auth_required_returns_401(pool: PgPool) {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // oneshot
-
-    let pool = common::setup_test_pool().await;
 
     let config = promiso_backend::config::Config::from_env();
     let app = promiso_backend::routes::create_router(pool, &config);
@@ -502,15 +420,10 @@ async fn auth_required_returns_401() {
 // 통합 테스트: 타인 조회 404
 // ============================================================
 
-#[tokio::test]
-async fn get_other_user_not_found() {
-    let pool = common::setup_test_pool().await;
-    common::cleanup_test_user(&pool, "test_404_req").await;
-
-    common::create_test_user(&pool, "test_404_req", "요청자사").await;
+#[sqlx::test(migrations = "./migrations")]
+async fn get_other_user_not_found(pool: PgPool) {
+    insert_test_user(&pool, "test_404_req", "요청자사").await;
 
     let result = user_service::get_user_public(&pool, "test_404_req", "nonexistent_user").await;
     assert!(matches!(result, Err(AppError::NotFound(_))));
-
-    common::cleanup_test_user(&pool, "test_404_req").await;
 }

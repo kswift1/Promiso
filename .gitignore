@@ -103,6 +103,7 @@ firebase-debug.log
 **/.env.*
 !**/.env.*.template
 !**/.env.example
+!**/.env.test
 **/.env.local
 
 # Tuist/SwiftPM caches
