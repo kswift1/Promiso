@@ -177,13 +177,20 @@ pub async fn upload_profile_image(
     uid: &str,
     req: UploadProfileImageRequest,
 ) -> Result<String, AppError> {
-    if req.image_path.trim().is_empty() {
+    let path = req.image_path.trim().to_string();
+
+    if path.is_empty() {
         return Err(AppError::BadRequest("이미지 경로는 필수입니다".to_string()));
     }
 
+    // 보안: 사용자 소유 경로인지 검증 (임의 파일 참조 방지)
+    let expected_prefix = format!("profile_images/{}/", uid);
+    if !path.starts_with(&expected_prefix) {
+        return Err(AppError::BadRequest("이미지 경로가 올바르지 않습니다".to_string()));
+    }
+
     // 실제 Storage URL 생성은 Firebase Storage에서 처리 (ADR-007)
-    // 여기서는 경로를 그대로 profile_url로 저장
-    let url = req.image_path.trim().to_string();
+    let url = path;
 
     sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
         .bind(&url)
