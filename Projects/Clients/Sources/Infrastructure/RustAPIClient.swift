@@ -7,11 +7,10 @@ public actor RustAPIClient {
   /// - Prod: Cloud Run 배포 후 URL 변경
   static let defaultBaseURL: URL = {
     #if DEBUG
-    // TODO: Cloud Run 배포 후 Dev 환경 URL로 변경
-    return URL(string: "http://192.168.0.2:8080")!
+    return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #else
-    // TODO: Cloud Run Prod URL
-    return URL(string: "https://promiso-api.run.app")!
+    // TODO: Prod Cloud Run URL (별도 프로젝트에 배포 후 변경)
+    return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #endif
   }()
 

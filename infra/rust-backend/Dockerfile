@@ -1,21 +1,11 @@
-# Stage 1: Chef - prepare recipe
-FROM rust:1.83-slim AS chef
-RUN cargo install cargo-chef
+# Stage 1: Builder
+FROM rust:1.88-slim AS builder
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# Stage 2: Planner - create recipe.json
-FROM chef AS planner
-COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
-
-# Stage 3: Builder - build with cached dependencies
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-# Stage 4: Runtime - minimal image
+# Stage 2: Runtime
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
