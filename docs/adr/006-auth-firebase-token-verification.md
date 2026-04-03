@@ -26,8 +26,10 @@ ADR-002에서 정한 전환 순서상 인증은 Phase C (위험 높음)로, 모�
 Rust 서버의 auth 미들웨어가 하는 일:
 1. `Authorization: Bearer <firebase_id_token>` 헤더에서 토큰 추출
 2. Firebase 공개 키로 서명 검증 (Google 공개 키 엔드포인트에서 캐싱)
-3. `uid`, `email`, `provider` 클레임 추출
+3. `uid`, `email` 클레임 추출 (전환 기간 최소 범위)
 4. 요청 컨텍스트에 주입
+
+> `provider` 정보(`firebase.sign_in_provider`, `firebase.identities`)는 전환 기간 동안 클라이언트 요청 body에서 받는다 (기존 Firebase Functions과 동일 방식). Phase C (자체 인증 전환) 시 토큰 클레임 기반으로 변경한다.
 
 iOS 앱은 기존 Firebase Auth 로그인 흐름을 그대로 유지한다. 변경 없음.
 
