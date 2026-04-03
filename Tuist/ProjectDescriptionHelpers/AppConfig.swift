@@ -51,7 +51,17 @@ public enum AppConfig {
       appGroupId = "group.com.promiso.shared"
     }
 
+    // Dev/Stage: HTTP 허용 (Rust 로컬 서버 연결)
+    var ats: Plist.Value = .dictionary([:])
+    if environment != "prod" {
+      ats = .dictionary([
+        "NSAllowsArbitraryLoads": .boolean(true),
+        "NSAllowsLocalNetworking": .boolean(true)
+      ])
+    }
+
     return [
+      "NSAppTransportSecurity": ats,
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion(for: environment)),
       "UILaunchScreen": .dictionary([
