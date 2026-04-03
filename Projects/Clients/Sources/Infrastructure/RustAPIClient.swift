@@ -2,12 +2,25 @@ import Foundation
 
 /// Rust 백엔드 API 호출 클라이언트
 public actor RustAPIClient {
+  /// 환경별 기본 URL
+  /// - Dev: 시뮬레이터에서 로컬 서버 접근 불가하므로 LAN IP 사용
+  /// - Prod: Cloud Run 배포 후 URL 변경
+  static let defaultBaseURL: URL = {
+    #if DEBUG
+    // TODO: Cloud Run 배포 후 Dev 환경 URL로 변경
+    return URL(string: "http://192.168.0.2:8080")!
+    #else
+    // TODO: Cloud Run Prod URL
+    return URL(string: "https://promiso-api.run.app")!
+    #endif
+  }()
+
   private let baseURL: URL
   private let getAuthToken: () async throws -> String
   private let decoder: JSONDecoder
 
   public init(
-    baseURL: URL = URL(string: "http://192.168.0.2:8080")!,
+    baseURL: URL = RustAPIClient.defaultBaseURL,
     getAuthToken: @escaping () async throws -> String
   ) {
     self.baseURL = baseURL

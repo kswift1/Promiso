@@ -24,9 +24,7 @@ extension FeatureFlagsClient: TestDependencyKey {
 extension FeatureFlagsClient: DependencyKey {
   public static let liveValue = Self(
     useRustAPI: { domain in
-      // TODO: 검증 완료 후 UserDefaults 토글로 복원
-      // UserDefaults.standard.bool(forKey: "rust_api_\(domain.rawValue)")
-      domain == .users  // users만 Rust ON, 나머지 OFF
+      UserDefaults.standard.bool(forKey: "rust_api_\(domain.rawValue)")
     }
   )
 }
