@@ -6,7 +6,7 @@ use serde::Serialize;
 /// 표준 성공 응답 wrapper
 ///
 /// 사용법:
-/// ```
+/// ```ignore
 /// async fn get_user() -> ApiResponse<User> {
 ///     let user = find_user().await?;
 ///     ApiResponse::ok(user)
