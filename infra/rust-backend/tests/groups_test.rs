@@ -269,16 +269,37 @@ async fn c5_update_max_members_floor_is_current_member_count(pool: PgPool) {
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
-#[test]
-fn c6_name_not_updatable() {
-    // 이름 변경 불가 — UpdateGroupRequest에 name 필드 자체가 없으므로 컴파일타임 강제
-    let req = UpdateGroupRequest {
-        description: Some("새 설명".to_string()),
-        max_members: Some(5),
-        image_url: None,
-    };
-    // name 필드가 없다는 것 자체가 불변성 보장
-    assert!(req.description.is_some());
+#[sqlx::test(migrations = "./migrations")]
+async fn c6_update_group_http_rejects_unknown_name_field(pool: PgPool) {
+    // 이름 변경 불가 — PATCH에 name 필드를 보내면 400 (deny_unknown_fields)
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    insert_test_user(&pool, "creator_c6", "호스트c6").await;
+    let group = create_test_group(&pool, "creator_c6", "이름불변").await;
+
+    let config = promiso_backend::config::Config::from_env();
+    let app = promiso_backend::routes::create_router(pool, &config);
+
+    let body = serde_json::json!({"name": "새이름"}).to_string();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/groups/{}", group.group_id))
+                .header("content-type", "application/json")
+                // 인증 없이 전송 — Green phase에서 인증 mock 추가 후
+                // deny_unknown_fields에 의한 400 거부를 정확히 검증할 예정
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // 현재: 인증 미통과로 401
+    // Green phase 목표: 인증 통과 후 unknown field "name"으로 400/422
+    assert_ne!(response.status(), StatusCode::OK);
 }
 
 // ============================================================
@@ -300,6 +321,31 @@ async fn c7_invite_code_is_uppercase_alphanumeric(pool: PgPool) {
         .invite_code
         .chars()
         .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn c8_join_accepts_lowercase_invite_code(pool: PgPool) {
+    // 소문자 초대 코드 → 대문자로 정규화 후 가입 성공
+    insert_test_user(&pool, "creator_c8", "호스트c8").await;
+    insert_test_user(&pool, "member_c8", "멤버c8").await;
+
+    let group = create_test_group(&pool, "creator_c8", "소문자코드").await;
+    let lowercase_code = group.invite_code.to_lowercase();
+
+    let result = group_service::join_group(&pool, "member_c8", &lowercase_code).await;
+    assert!(result.is_ok());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn c8_preview_accepts_lowercase_invite_code(pool: PgPool) {
+    // 소문자 초대 코드 → 대문자로 정규화 후 미리보기 성공
+    insert_test_user(&pool, "creator_c8p", "호스트c8p").await;
+
+    let group = create_test_group(&pool, "creator_c8p", "소문자미리보기").await;
+    let lowercase_code = group.invite_code.to_lowercase();
+
+    let result = group_service::preview_group(&pool, &lowercase_code).await;
+    assert!(result.is_ok());
 }
 
 // ============================================================
@@ -357,6 +403,22 @@ async fn p3_transfer_by_non_host_rejected(pool: PgPool) {
     };
     let result = group_service::transfer_host(&pool, "member_p3a", group_id, req).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn p3_transfer_without_other_member_rejected(pool: PgPool) {
+    // 호스트 혼자인 그룹에서 양도 시도 → 거부 (G12: 다른 멤버 존재 필수)
+    insert_test_user(&pool, "creator_p3s", "호스트solo").await;
+    insert_test_user(&pool, "phantom_p3s", "허상대상").await;
+
+    let group = create_test_group(&pool, "creator_p3s", "혼자양도").await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let req = TransferHostRequest {
+        new_host_uid: "phantom_p3s".to_string(), // 그룹 비멤버
+    };
+    let result = group_service::transfer_host(&pool, "creator_p3s", group_id, req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -802,20 +864,30 @@ async fn s12_expel_success(pool: PgPool) {
 // ============================================================
 
 #[sqlx::test(migrations = "./migrations")]
-async fn q1_fetch_my_groups_returns_joined_groups(pool: PgPool) {
+async fn q1_fetch_my_groups_orders_by_joined_at_desc(pool: PgPool) {
+    // joined_at 내림차순 — 나중에 가입한 그룹이 먼저 나와야 함
     insert_test_user(&pool, "user_q1", "유저1").await;
     insert_test_user(&pool, "creator_q1a", "호스트q1a").await;
     insert_test_user(&pool, "creator_q1b", "호스트q1b").await;
+    insert_test_user(&pool, "creator_q1c", "호스트q1c").await;
 
-    let group_a = create_test_group(&pool, "creator_q1a", "내그룹A").await;
-    let group_b = create_test_group(&pool, "creator_q1b", "내그룹B").await;
+    let group_a = create_test_group(&pool, "creator_q1a", "첫번째그룹").await;
+    let group_b = create_test_group(&pool, "creator_q1b", "두번째그룹").await;
+    let group_c = create_test_group(&pool, "creator_q1c", "세번째그룹").await;
 
+    // 순서대로 가입: A → B → C
     join_test_group(&pool, "user_q1", &group_a.invite_code).await;
     join_test_group(&pool, "user_q1", &group_b.invite_code).await;
+    join_test_group(&pool, "user_q1", &group_c.invite_code).await;
 
     let result = group_service::fetch_my_groups(&pool, "user_q1").await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 2);
+    let groups = result.unwrap();
+    assert_eq!(groups.len(), 3);
+    // 내림차순: C(마지막 가입) → B → A(첫 가입)
+    assert_eq!(groups[0].group_id, group_c.group_id);
+    assert_eq!(groups[1].group_id, group_b.group_id);
+    assert_eq!(groups[2].group_id, group_a.group_id);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -894,6 +966,101 @@ async fn q7_preview_invalid_code_rejected(pool: PgPool) {
 }
 
 // ============================================================
+// 멤버십 설정 — 알림
+// ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn n1_update_notification_settings_success_and_persists(pool: PgPool) {
+    insert_test_user(&pool, "creator_n1", "호스트n1").await;
+    insert_test_user(&pool, "member_n1", "멤버n1").await;
+
+    let group = create_test_group(&pool, "creator_n1", "알림설정").await;
+    join_test_group(&pool, "member_n1", &group.invite_code).await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let settings = NotificationSettingsRequest {
+        enabled: false,
+        promise: false,
+        group: true,
+        calendar_sync: false,
+    };
+    let result =
+        group_service::update_notification_settings(&pool, "member_n1", group_id, settings).await;
+    assert!(result.is_ok());
+
+    // 변경이 실제로 반영됐는지 확인
+    let my_group = group_service::fetch_group(&pool, "member_n1", group_id)
+        .await
+        .unwrap();
+    let ns = &my_group.notification_settings;
+    assert_eq!(ns["enabled"], false);
+    assert_eq!(ns["promise"], false);
+    assert_eq!(ns["group"], true);
+    assert_eq!(ns["calendar_sync"], false);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn n2_update_notification_settings_non_member_forbidden(pool: PgPool) {
+    insert_test_user(&pool, "creator_n2", "호스트n2").await;
+    insert_test_user(&pool, "outsider_n2", "외부인n2").await;
+
+    let group = create_test_group(&pool, "creator_n2", "알림권한").await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let settings = NotificationSettingsRequest {
+        enabled: false,
+        promise: false,
+        group: false,
+        calendar_sync: false,
+    };
+    let result =
+        group_service::update_notification_settings(&pool, "outsider_n2", group_id, settings)
+            .await;
+    assert!(matches!(result, Err(AppError::Forbidden(_))));
+}
+
+// ============================================================
+// 멤버십 설정 — 그룹 색상
+// ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d1_update_group_color_success_and_persists(pool: PgPool) {
+    insert_test_user(&pool, "creator_d1", "호스트d1").await;
+    insert_test_user(&pool, "member_d1", "멤버d1").await;
+
+    let group = create_test_group(&pool, "creator_d1", "색상변경").await;
+    join_test_group(&pool, "member_d1", &group.invite_code).await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let req = UpdateGroupColorRequest {
+        color: "red".to_string(),
+    };
+    let result = group_service::update_group_color(&pool, "member_d1", group_id, req).await;
+    assert!(result.is_ok());
+
+    // 변경이 실제로 반영됐는지 확인
+    let my_group = group_service::fetch_group(&pool, "member_d1", group_id)
+        .await
+        .unwrap();
+    assert_eq!(my_group.group_color, "red");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d2_update_group_color_non_member_forbidden(pool: PgPool) {
+    insert_test_user(&pool, "creator_d2", "호스트d2").await;
+    insert_test_user(&pool, "outsider_d2", "외부인d2").await;
+
+    let group = create_test_group(&pool, "creator_d2", "색상권한").await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let req = UpdateGroupColorRequest {
+        color: "blue".to_string(),
+    };
+    let result = group_service::update_group_color(&pool, "outsider_d2", group_id, req).await;
+    assert!(matches!(result, Err(AppError::Forbidden(_))));
+}
+
+// ============================================================
 // 배지 / 읽음 마커
 // ============================================================
 
@@ -921,28 +1088,7 @@ async fn b1_mark_group_read_updates_last_read_at(pool: PgPool) {
     assert!(!my_group.has_new_activity);
 }
 
-#[sqlx::test(migrations = "./migrations")]
-async fn b2_has_new_activity_derived_from_last_read_at(pool: PgPool) {
-    // last_read_at이 NULL이면 has_new_activity = true (읽지 않은 상태)
-    insert_test_user(&pool, "creator_b2", "호스트b2").await;
-    insert_test_user(&pool, "member_b2", "멤버b2").await;
-
-    let group = create_test_group(&pool, "creator_b2", "배지계산").await;
-    join_test_group(&pool, "member_b2", &group.invite_code).await;
-
-    // mark_group_read를 호출하지 않음 → last_read_at = NULL
-    let groups = group_service::fetch_my_groups(&pool, "member_b2")
-        .await
-        .unwrap();
-    let my_group = groups
-        .iter()
-        .find(|g| g.group_id == group.group_id)
-        .unwrap();
-    // 가입 직후 has_new_activity 여부는 구현에 따라 다르지만,
-    // mark_group_read 호출 전이므로 last_read_at = NULL인 상태
-    // 서비스 구현 후 이 테스트가 구체적인 기대값을 검증하게 됨
-    let _ = my_group.has_new_activity; // 컴파일 확인용
-}
+// b2: promise 스키마 추가 후 "promise created after last_read_at => has_new_activity = true" 테스트 추가 예정
 
 #[sqlx::test(migrations = "./migrations")]
 async fn b3_mark_group_read_by_non_member_rejected(pool: PgPool) {

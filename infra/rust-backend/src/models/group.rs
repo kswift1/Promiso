@@ -43,8 +43,10 @@ pub struct CreateGroupRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateGroupRequest {
     // 이름은 변경 불가 — 필드 자체를 제외하여 컴파일타임 강제
+    // deny_unknown_fields로 클라이언트가 name을 보내면 400 반환
     pub description: Option<String>,
     pub max_members: Option<i32>,
     pub image_url: Option<String>,
