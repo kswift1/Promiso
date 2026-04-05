@@ -648,12 +648,30 @@ async fn s6_join_default_notifications_on(pool: PgPool) {
             .await
             .unwrap();
 
-    let settings = &response.notification_settings;
-    assert_eq!(settings["enabled"], true);
-    assert_eq!(settings["promise"], true);
-    assert_eq!(settings["group"], true);
-    assert_eq!(settings["calendar_sync"], true);
-    assert!(response.calendar_sync);
+    let ns = &response.notification_settings;
+    assert!(ns.enabled);
+    assert!(ns.schedule.invitation);
+    assert!(ns.schedule.reminder);
+    assert!(ns.schedule.confirmed);
+    assert!(ns.schedule.cancelled);
+    assert!(ns.schedule.updated);
+    assert!(ns.schedule.attendance_response);
+    assert!(ns.group.update);
+    assert!(ns.calendar_sync);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn s6_join_default_group_color_is_purple_hex(pool: PgPool) {
+    insert_test_user(&pool, "creator_s6c", "호스트37c").await;
+    insert_test_user(&pool, "joiner_s6c", "가입자3c").await;
+
+    let group = create_test_group(&pool, "creator_s6c", "색상기본값").await;
+    let response =
+        group_service::join_group(&pool, "joiner_s6c", &group.invite_code)
+            .await
+            .unwrap();
+
+    assert_eq!(response.group_color, "#AF52DE");
 }
 
 // ============================================================
@@ -960,9 +978,16 @@ async fn n1_update_notification_settings_success_and_persists(pool: PgPool) {
 
     let settings = NotificationSettingsRequest {
         enabled: false,
-        promise: false,
-        group: true,
-        calendar_sync: false,
+        schedule: ScheduleNotificationSettings {
+            invitation: false,
+            reminder: true,
+            confirmed: false,
+            cancelled: true,
+            updated: false,
+            attendance_response: true,
+        },
+        group: GroupNotificationSettings { update: false },
+        calendar_sync: true,
     };
     let result =
         group_service::update_notification_settings(&pool, "member_n1", group_id, settings).await;
@@ -973,11 +998,10 @@ async fn n1_update_notification_settings_success_and_persists(pool: PgPool) {
         .await
         .unwrap();
     let ns = &my_group.notification_settings;
-    assert_eq!(ns["enabled"], false);
-    assert_eq!(ns["promise"], false);
-    assert_eq!(ns["group"], true);
-    assert_eq!(ns["calendar_sync"], false);
-    assert!(!my_group.calendar_sync);
+    assert!(!ns.enabled);
+    assert!(!ns.schedule.invitation);
+    assert!(ns.schedule.reminder);
+    assert!(!ns.group.update);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -990,8 +1014,15 @@ async fn n2_update_notification_settings_non_member_forbidden(pool: PgPool) {
 
     let settings = NotificationSettingsRequest {
         enabled: false,
-        promise: false,
-        group: false,
+        schedule: ScheduleNotificationSettings {
+            invitation: false,
+            reminder: false,
+            confirmed: false,
+            cancelled: false,
+            updated: false,
+            attendance_response: false,
+        },
+        group: GroupNotificationSettings { update: false },
         calendar_sync: false,
     };
     let result =
@@ -1014,7 +1045,7 @@ async fn d1_update_group_color_success_and_persists(pool: PgPool) {
     let group_id = Uuid::parse_str(&group.group_id).unwrap();
 
     let req = UpdateGroupColorRequest {
-        color: "red".to_string(),
+        color: "#FF3B30".to_string(),
     };
     let result = group_service::update_group_color(&pool, "member_d1", group_id, req).await;
     assert!(result.is_ok());
@@ -1023,7 +1054,7 @@ async fn d1_update_group_color_success_and_persists(pool: PgPool) {
     let my_group = group_service::fetch_group(&pool, "member_d1", group_id)
         .await
         .unwrap();
-    assert_eq!(my_group.group_color, "red");
+    assert_eq!(my_group.group_color, "#FF3B30");
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -1035,10 +1066,26 @@ async fn d2_update_group_color_non_member_forbidden(pool: PgPool) {
     let group_id = Uuid::parse_str(&group.group_id).unwrap();
 
     let req = UpdateGroupColorRequest {
-        color: "blue".to_string(),
+        color: "#007AFF".to_string(),
     };
     let result = group_service::update_group_color(&pool, "outsider_d2", group_id, req).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d3_update_group_color_outside_palette_rejected(pool: PgPool) {
+    insert_test_user(&pool, "creator_d3", "호스트d3").await;
+    insert_test_user(&pool, "member_d3", "멤버d3").await;
+
+    let group = create_test_group(&pool, "creator_d3", "색상팔레트").await;
+    join_test_group(&pool, "member_d3", &group.invite_code).await;
+    let group_id = Uuid::parse_str(&group.group_id).unwrap();
+
+    let req = UpdateGroupColorRequest {
+        color: "#123456".to_string(),
+    };
+    let result = group_service::update_group_color(&pool, "member_d3", group_id, req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
 // ============================================================

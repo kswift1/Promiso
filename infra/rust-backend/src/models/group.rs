@@ -12,9 +12,9 @@ pub struct Group {
     pub name: String,
     pub description: Option<String>,
     pub image_url: Option<String>,
-    pub max_members: i32,
+    pub max_members: i16,
     pub invite_code: String,
-    pub created_by: String,
+    pub last_activity_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -25,10 +25,17 @@ pub struct GroupMember {
     pub user_id: String,
     pub role: String,
     pub group_color: String,
-    pub notification_settings: serde_json::Value,
+    pub notifications_enabled: bool,
+    pub schedule_invitation: bool,
+    pub schedule_reminder: bool,
+    pub schedule_confirmed: bool,
+    pub schedule_cancelled: bool,
+    pub schedule_updated: bool,
+    pub attendance_response: bool,
+    pub group_update: bool,
     pub calendar_sync: bool,
-    pub last_read_at: Option<DateTime<Utc>>,
     pub joined_at: DateTime<Utc>,
+    pub last_read_at: DateTime<Utc>,
 }
 
 // ============================================================
@@ -39,7 +46,7 @@ pub struct GroupMember {
 pub struct CreateGroupRequest {
     pub name: String,
     pub description: Option<String>,
-    pub max_members: Option<i32>,
+    pub max_members: Option<i16>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +55,7 @@ pub struct UpdateGroupRequest {
     // 이름은 변경 불가 — 필드 자체를 제외하여 컴파일타임 강제
     // deny_unknown_fields로 클라이언트가 name을 보내면 400 반환
     pub description: Option<String>,
-    pub max_members: Option<i32>,
+    pub max_members: Option<i16>,
     pub image_url: Option<String>,
 }
 
@@ -72,11 +79,27 @@ pub struct BatchGetGroupsRequest {
     pub group_ids: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ScheduleNotificationSettings {
+    pub invitation: bool,
+    pub reminder: bool,
+    pub confirmed: bool,
+    pub cancelled: bool,
+    pub updated: bool,
+    #[serde(rename = "attendanceResponse")]
+    pub attendance_response: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GroupNotificationSettings {
+    pub update: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NotificationSettingsRequest {
     pub enabled: bool,
-    pub promise: bool,
-    pub group: bool,
+    pub schedule: ScheduleNotificationSettings,
+    pub group: GroupNotificationSettings,
     pub calendar_sync: bool,
 }
 
@@ -97,20 +120,43 @@ pub struct CreateGroupResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ScheduleNotificationSettingsResponse {
+    pub invitation: bool,
+    pub reminder: bool,
+    pub confirmed: bool,
+    pub cancelled: bool,
+    pub updated: bool,
+    #[serde(rename = "attendanceResponse")]
+    pub attendance_response: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GroupNotificationSettingsResponse {
+    pub update: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NotificationSettingsResponse {
+    pub enabled: bool,
+    pub schedule: ScheduleNotificationSettingsResponse,
+    pub group: GroupNotificationSettingsResponse,
+    pub calendar_sync: bool,
+}
+
+#[derive(Debug, Serialize)]
 pub struct GroupResponse {
     pub group_id: String,
     pub name: String,
     pub description: Option<String>,
     pub image_url: Option<String>,
-    pub max_members: i32,
+    pub max_members: i16,
     pub invite_code: String,
     pub created_by: String,
     pub member_count: i64,
     pub role: String,
     pub group_color: String,
-    pub notification_settings: serde_json::Value,
-    pub calendar_sync: bool,
-    pub last_read_at: Option<DateTime<Utc>>,
+    pub notification_settings: NotificationSettingsResponse,
+    pub last_read_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -121,7 +167,7 @@ pub struct GroupSummaryResponse {
     pub name: String,
     pub description: Option<String>,
     pub image_url: Option<String>,
-    pub max_members: i32,
+    pub max_members: i16,
     pub member_count: i64,
     pub role: String,
     pub group_color: String,
@@ -136,7 +182,7 @@ pub struct GroupPreviewResponse {
     pub description: Option<String>,
     pub image_url: Option<String>,
     pub member_count: i64,
-    pub max_members: i32,
+    pub max_members: i16,
     pub preview_members: Vec<GroupMemberPreview>,
 }
 
