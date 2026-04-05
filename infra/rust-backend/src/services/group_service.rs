@@ -44,6 +44,10 @@ const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const INVITE_CODE_LEN: usize = 6;
 const MAX_INVITE_CODE_RETRIES: usize = 5;
 
+const ROLE_ADMIN: &str = "admin";
+#[allow(dead_code)]
+const ROLE_MEMBER: &str = "member";
+
 const GROUP_COLOR_PALETTE: &[&str] = &[
     "#FF3B30", "#FF6F61", "#FF9500", "#FFCC00",
     "#84CC16", "#34C759", "#00C7BE", "#007AFF",
@@ -143,7 +147,7 @@ async fn check_admin(
     group_id: Uuid,
 ) -> Result<GroupMember, AppError> {
     let member = check_member(pool, user_uid, group_id).await?;
-    if member.role != "admin" {
+    if member.role != ROLE_ADMIN {
         return Err(AppError::Forbidden(
             "호스트만 수행할 수 있습니다".to_string(),
         ));
@@ -185,8 +189,27 @@ async fn build_group_response(
     .bind(user_uid)
     .fetch_optional(pool)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .ok_or_else(|| AppError::Forbidden("그룹 멤버가 아닙니다".to_string()))?;
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 결과 없음: 그룹 자체가 없는지 vs 멤버가 아닌지 구분
+    let row = match row {
+        Some(r) => r,
+        None => {
+            let group_exists = sqlx::query_as::<_, (Uuid,)>(
+                "SELECT id FROM groups WHERE id = $1",
+            )
+            .bind(group_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            return if group_exists.is_none() {
+                Err(AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))
+            } else {
+                Err(AppError::Forbidden("그룹 멤버가 아닙니다".to_string()))
+            };
+        }
+    };
 
     Ok(GroupResponse {
         group_id: row.id.to_string(),
@@ -447,7 +470,7 @@ pub async fn leave_group(
 ) -> Result<(), AppError> {
     let member = check_member(pool, user_uid, group_id).await?;
 
-    if member.role == "admin" {
+    if member.role == ROLE_ADMIN {
         return Err(AppError::PreconditionFailed(
             "호스트는 그룹을 탈퇴할 수 없습니다. 먼저 호스트를 양도해주세요.".to_string(),
         ));
@@ -625,7 +648,7 @@ pub async fn transfer_host(
     .map_err(|e| AppError::Internal(e.to_string()))?
     .ok_or_else(|| AppError::Forbidden("그룹 멤버가 아닙니다".to_string()))?;
 
-    if caller.0 != "admin" {
+    if caller.0 != ROLE_ADMIN {
         return Err(AppError::Forbidden(
             "호스트만 수행할 수 있습니다".to_string(),
         ));
@@ -698,9 +721,9 @@ pub async fn expel_member(
         ));
     }
 
-    // 대상이 그룹 멤버인지 확인
-    let target = sqlx::query_as::<_, (String,)>(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id = $2",
+    // 대상이 그룹 멤버인지 확인 + role 조회
+    let target = sqlx::query_as::<_, (String, String)>(
+        "SELECT user_id, role::TEXT as role FROM group_members WHERE group_id = $1 AND user_id = $2",
     )
     .bind(group_id)
     .bind(&req.target_uid)
@@ -708,10 +731,18 @@ pub async fn expel_member(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if target.is_none() {
-        return Err(AppError::BadRequest(
-            "추방 대상이 그룹 멤버가 아닙니다".to_string(),
-        ));
+    match &target {
+        None => {
+            return Err(AppError::BadRequest(
+                "추방 대상이 그룹 멤버가 아닙니다".to_string(),
+            ));
+        }
+        Some((_, role)) if role == ROLE_ADMIN => {
+            return Err(AppError::BadRequest(
+                "호스트는 추방할 수 없습니다. 먼저 호스트를 양도해주세요.".to_string(),
+            ));
+        }
+        _ => {}
     }
 
     sqlx::query("DELETE FROM group_members WHERE group_id = $1 AND user_id = $2")
@@ -784,19 +815,7 @@ pub async fn fetch_group(
     user_uid: &str,
     group_id: Uuid,
 ) -> Result<GroupResponse, AppError> {
-    // 그룹 존재 확인 -- 그룹이 없으면 NotFound
-    let group_exists = sqlx::query_as::<_, (Uuid,)>(
-        "SELECT id FROM groups WHERE id = $1",
-    )
-    .bind(group_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    if group_exists.is_none() {
-        return Err(AppError::NotFound("그룹을 찾을 수 없습니다".to_string()));
-    }
-
+    // build_group_response 내부에서 그룹 존재 + 멤버십 확인을 한 번에 처리
     build_group_response(pool, group_id, user_uid).await
 }
 

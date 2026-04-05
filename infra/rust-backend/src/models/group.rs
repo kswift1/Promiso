@@ -91,11 +91,6 @@ pub struct ExpelMemberRequest {
     pub target_uid: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BatchGetGroupsRequest {
-    pub group_ids: Vec<String>,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ScheduleNotificationSettings {
     pub invitation: bool,
