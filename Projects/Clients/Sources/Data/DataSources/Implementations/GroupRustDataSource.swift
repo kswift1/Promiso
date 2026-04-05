@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - Response DTOs
 
