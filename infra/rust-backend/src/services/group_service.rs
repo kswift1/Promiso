@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use rand::Rng;
+use rand::random_range;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -60,9 +60,8 @@ const GROUP_COLOR_PALETTE: &[&str] = &[
 // ============================================================
 
 fn generate_invite_code() -> String {
-    let mut rng = rand::thread_rng();
     (0..INVITE_CODE_LEN)
-        .map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char)
+        .map(|_| CHARSET[random_range(0..CHARSET.len())] as char)
         .collect()
 }
 
