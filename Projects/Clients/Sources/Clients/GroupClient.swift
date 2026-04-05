@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import FirebaseAuth
 import Foundation
 import PromisoShared
 
@@ -255,95 +256,196 @@ extension GroupClient: DependencyKey {
   public static let liveValue: GroupClient = {
     @Dependency(\.authClient) var authClient
     @Dependency(\.userProfileClient) var userProfileClient
+    @Dependency(\.featureFlags) var featureFlags
     let dataSource = GroupRemoteDataSource()
+    let rustDataSource = GroupRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw GroupClientError.unauthorized
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
 
     return Self(
       fetchGroups: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.fetchMyGroups()
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw GroupClientError.unauthorized
+          }
+          return try await dataSource.fetchGroups(userId: currentUser.uid)
         }
-
-        return try await dataSource.fetchGroups(userId: currentUser.uid)
       },
       fetchGroupSummaries: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.fetchGroupSummaries()
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw GroupClientError.unauthorized
+          }
+          return try await dataSource.fetchGroupSummaries(userId: currentUser.uid)
         }
-
-        return try await dataSource.fetchGroupSummaries(userId: currentUser.uid)
       },
       fetchGroupsByIds: { ids in
-        return try await dataSource.fetchGroupsByIds(ids: ids)
+        if featureFlags.useRustAPI(.groups) {
+          // Rust API는 /me 엔드포인트만 있으므로 개별 fetch를 병렬로 처리
+          return try await withThrowingTaskGroup(of: GroupModel.self) { group in
+            for id in ids {
+              group.addTask {
+                try await rustDataSource.fetchGroup(groupId: id)
+              }
+            }
+            var results: [GroupModel] = []
+            results.reserveCapacity(ids.count)
+            for try await model in group {
+              results.append(model)
+            }
+            return results
+          }
+        } else {
+          return try await dataSource.fetchGroupsByIds(ids: ids)
+        }
       },
       fetchGroup: { groupId in
-        return try await dataSource.fetchGroup(groupId: groupId)
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.fetchGroup(groupId: groupId)
+        } else {
+          return try await dataSource.fetchGroup(groupId: groupId)
+        }
       },
       fetchGroupMembers: { groupId in
-        let group = try await dataSource.fetchGroup(groupId: groupId)
-        return try await userProfileClient.getUsersByIds(group.memberIds)
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.fetchGroupMembers(groupId: groupId)
+        } else {
+          let group = try await dataSource.fetchGroup(groupId: groupId)
+          return try await userProfileClient.getUsersByIds(group.memberIds)
+        }
       },
       createGroup: { request in
-        return try await dataSource.createGroup(
-          name: request.name,
-          maxMembers: request.maxMembers,
-          description: request.description,
-          creatorId: request.creatorId,
-          photoData: request.photoData
-        )
+        if featureFlags.useRustAPI(.groups) {
+          // Rust API: 이미지 업로드는 Firebase Storage 유지 (ADR-007)
+          // 이미지 업로드 후 imageUrl을 updateGroup으로 전달하는 방식은 추후 구현
+          return try await rustDataSource.createGroup(
+            name: request.name,
+            maxMembers: request.maxMembers,
+            description: request.description
+          )
+        } else {
+          return try await dataSource.createGroup(
+            name: request.name,
+            maxMembers: request.maxMembers,
+            description: request.description,
+            creatorId: request.creatorId,
+            photoData: request.photoData
+          )
+        }
       },
       previewGroup: { inviteCode in
-        return try await dataSource.previewGroup(inviteCode: inviteCode)
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.previewGroup(inviteCode: inviteCode)
+        } else {
+          return try await dataSource.previewGroup(inviteCode: inviteCode)
+        }
       },
       joinGroup: { inviteCode in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
+        if featureFlags.useRustAPI(.groups) {
+          return try await rustDataSource.joinGroup(inviteCode: inviteCode)
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw GroupClientError.unauthorized
+          }
+          return try await dataSource.joinGroup(inviteCode: inviteCode, userId: currentUser.uid)
         }
-
-        return try await dataSource.joinGroup(inviteCode: inviteCode, userId: currentUser.uid)
       },
       leaveGroup: { groupId in
-        try await dataSource.leaveGroup(groupId: groupId)
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.leaveGroup(groupId: groupId)
+        } else {
+          try await dataSource.leaveGroup(groupId: groupId)
+        }
       },
       deleteGroup: { groupId in
-        try await dataSource.deleteGroup(groupId: groupId)
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.deleteGroup(groupId: groupId)
+        } else {
+          try await dataSource.deleteGroup(groupId: groupId)
+        }
       },
       updateGroup: { groupId, description, maxMembers, photoData in
-        return try await dataSource.updateGroup(
-          groupId: groupId,
-          description: description,
-          maxMembers: maxMembers,
-          photoData: photoData
-        )
+        if featureFlags.useRustAPI(.groups) {
+          // Rust API: photoData는 Firebase Storage로 업로드 후 imageUrl 전달
+          // 현재는 photoData를 무시하고 description/maxMembers만 업데이트
+          // TODO: Firebase Storage 업로드 후 imageUrl을 Rust API에 전달
+          return try await rustDataSource.updateGroup(
+            groupId: groupId,
+            description: description,
+            maxMembers: maxMembers,
+            imageUrl: nil
+          )
+        } else {
+          return try await dataSource.updateGroup(
+            groupId: groupId,
+            description: description,
+            maxMembers: maxMembers,
+            photoData: photoData
+          )
+        }
       },
       updateGroupNotificationSettings: { groupId, settings in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.updateNotificationSettings(
+            groupId: groupId,
+            settings: settings
+          )
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw GroupClientError.unauthorized
+          }
+          try await dataSource.updateGroupNotificationSettings(
+            groupId: groupId,
+            userId: currentUser.uid,
+            settings: settings
+          )
         }
-
-        try await dataSource.updateGroupNotificationSettings(
-          groupId: groupId,
-          userId: currentUser.uid,
-          settings: settings
-        )
       },
       updateGroupColor: { groupId, color in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.updateGroupColor(groupId: groupId, color: color)
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw GroupClientError.unauthorized
+          }
+          try await dataSource.updateGroupColor(
+            groupId: groupId,
+            userId: currentUser.uid,
+            color: color
+          )
         }
-        try await dataSource.updateGroupColor(
-          groupId: groupId,
-          userId: currentUser.uid,
-          color: color
-        )
       },
       clearGroupBadge: { groupId in
-        await dataSource.clearGroupBadge(groupId: groupId)
+        if featureFlags.useRustAPI(.groups) {
+          try? await rustDataSource.markGroupRead(groupId: groupId)
+        } else {
+          await dataSource.clearGroupBadge(groupId: groupId)
+        }
       },
       transferHost: { groupId, newHostId in
-        try await dataSource.transferHost(groupId: groupId, newHostId: newHostId)
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.transferHost(groupId: groupId, newHostUid: newHostId)
+        } else {
+          try await dataSource.transferHost(groupId: groupId, newHostId: newHostId)
+        }
       },
       expelMember: { groupId, memberId in
-        try await dataSource.expelMember(groupId: groupId, memberId: memberId)
+        if featureFlags.useRustAPI(.groups) {
+          try await rustDataSource.expelMember(groupId: groupId, targetUid: memberId)
+        } else {
+          try await dataSource.expelMember(groupId: groupId, memberId: memberId)
+        }
       }
     )
   }()
