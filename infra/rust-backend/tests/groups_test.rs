@@ -171,7 +171,7 @@ async fn c4_update_description_max_validated(pool: PgPool) {
 
     let desc_51 = "가".repeat(51);
     let req = UpdateGroupRequest {
-        description: Some(desc_51),
+        description: Some(Some(desc_51)),
         max_members: None,
         image_url: None,
     };
@@ -341,7 +341,7 @@ async fn p1_update_by_non_host_rejected(pool: PgPool) {
     let group_id = Uuid::parse_str(&group.group_id).unwrap();
 
     let req = UpdateGroupRequest {
-        description: Some("불법수정".to_string()),
+        description: Some(Some("불법수정".to_string())),
         max_members: None,
         image_url: None,
     };
@@ -709,7 +709,7 @@ async fn s8_update_success(pool: PgPool) {
     let group_id = Uuid::parse_str(&group.group_id).unwrap();
 
     let req = UpdateGroupRequest {
-        description: Some("새 설명".to_string()),
+        description: Some(Some("새 설명".to_string())),
         max_members: Some(7),
         image_url: None,
     };
@@ -732,7 +732,7 @@ async fn s9_update_partial_only_changed_fields(pool: PgPool) {
 
     // description만 수정, max_members는 None (변경 안 함)
     let req = UpdateGroupRequest {
-        description: Some("설명만 바꿈".to_string()),
+        description: Some(Some("설명만 바꿈".to_string())),
         max_members: None,
         image_url: None,
     };

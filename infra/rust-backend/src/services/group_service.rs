@@ -1,9 +1,44 @@
+use chrono::{DateTime, Utc};
 use rand::Rng;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::group::*;
+
+/// [H5] build_group_response 단일 쿼리 결과를 매핑하기 위한 내부 구조체
+#[derive(sqlx::FromRow)]
+struct GroupWithMembership {
+    // groups 테이블
+    id: Uuid,
+    name: String,
+    description: Option<String>,
+    image_url: Option<String>,
+    max_members: i16,
+    invite_code: String,
+    #[allow(dead_code)]
+    last_activity_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    // group_members 테이블
+    role: String,
+    group_color: String,
+    notifications_enabled: bool,
+    schedule_invitation: bool,
+    schedule_reminder: bool,
+    schedule_confirmed: bool,
+    schedule_cancelled: bool,
+    schedule_updated: bool,
+    attendance_response: bool,
+    group_update: bool,
+    calendar_sync: bool,
+    #[allow(dead_code)]
+    member_joined_at: DateTime<Utc>,
+    last_read_at: DateTime<Utc>,
+    // 서브쿼리 결과
+    admin_uid: Option<String>,
+    member_count: i64,
+}
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const INVITE_CODE_LEN: usize = 6;
@@ -80,7 +115,7 @@ fn validate_max_members(max_members: Option<i16>) -> Result<i16, AppError> {
 }
 
 /// 멤버십 확인 — 멤버가 아니면 Forbidden 반환
-async fn check_membership(
+async fn check_member(
     pool: &PgPool,
     user_uid: &str,
     group_id: Uuid,
@@ -107,7 +142,7 @@ async fn check_admin(
     user_uid: &str,
     group_id: Uuid,
 ) -> Result<GroupMember, AppError> {
-    let member = check_membership(pool, user_uid, group_id).await?;
+    let member = check_member(pool, user_uid, group_id).await?;
     if member.role != "admin" {
         return Err(AppError::Forbidden(
             "호스트만 수행할 수 있습니다".to_string(),
@@ -127,64 +162,61 @@ async fn get_member_count(pool: &PgPool, group_id: Uuid) -> Result<i64, AppError
     Ok(count.0)
 }
 
-/// GroupResponse 조립 헬퍼
+/// [H5] GroupResponse 조립 헬퍼 — 단일 쿼리로 group + membership + admin + member_count 통합
 async fn build_group_response(
     pool: &PgPool,
     group_id: Uuid,
     user_uid: &str,
 ) -> Result<GroupResponse, AppError> {
-    // 그룹 존재 확인
-    let group = sqlx::query_as::<_, Group>("SELECT * FROM groups WHERE id = $1")
-        .bind(group_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-        .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
-
-    // 요청자의 멤버십 조회
-    let member = check_membership(pool, user_uid, group_id).await?;
-
-    // admin(호스트) user_id 조회
-    let admin_uid: (String,) = sqlx::query_as(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND role = 'admin'::group_member_role",
+    let row = sqlx::query_as::<_, GroupWithMembership>(
+        "SELECT g.id, g.name, g.description, g.image_url, g.max_members, \
+                g.invite_code, g.last_activity_at, g.created_at, g.updated_at, \
+                gm.role::TEXT as role, gm.group_color, gm.notifications_enabled, \
+                gm.schedule_invitation, gm.schedule_reminder, gm.schedule_confirmed, \
+                gm.schedule_cancelled, gm.schedule_updated, gm.attendance_response, \
+                gm.group_update, gm.calendar_sync, gm.joined_at as member_joined_at, gm.last_read_at, \
+                (SELECT user_id FROM group_members WHERE group_id = g.id AND role = 'admin'::group_member_role) AS admin_uid, \
+                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count \
+         FROM groups g \
+         JOIN group_members gm ON g.id = gm.group_id AND gm.user_id = $2 \
+         WHERE g.id = $1",
     )
     .bind(group_id)
-    .fetch_one(pool)
+    .bind(user_uid)
+    .fetch_optional(pool)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // 멤버 수
-    let member_count = get_member_count(pool, group_id).await?;
+    .map_err(|e| AppError::Internal(e.to_string()))?
+    .ok_or_else(|| AppError::Forbidden("그룹 멤버가 아닙니다".to_string()))?;
 
     Ok(GroupResponse {
-        group_id: group.id.to_string(),
-        name: group.name,
-        description: group.description,
-        image_url: group.image_url,
-        max_members: group.max_members,
-        invite_code: group.invite_code,
-        created_by: admin_uid.0,
-        member_count,
-        role: member.role,
-        group_color: member.group_color,
+        group_id: row.id.to_string(),
+        name: row.name,
+        description: row.description,
+        image_url: row.image_url,
+        max_members: row.max_members,
+        invite_code: row.invite_code,
+        created_by: row.admin_uid.unwrap_or_default(),
+        member_count: row.member_count,
+        role: row.role,
+        group_color: row.group_color,
         notification_settings: NotificationSettingsResponse {
-            enabled: member.notifications_enabled,
+            enabled: row.notifications_enabled,
             schedule: ScheduleNotificationSettingsResponse {
-                invitation: member.schedule_invitation,
-                reminder: member.schedule_reminder,
-                confirmed: member.schedule_confirmed,
-                cancelled: member.schedule_cancelled,
-                updated: member.schedule_updated,
-                attendance_response: member.attendance_response,
+                invitation: row.schedule_invitation,
+                reminder: row.schedule_reminder,
+                confirmed: row.schedule_confirmed,
+                cancelled: row.schedule_cancelled,
+                updated: row.schedule_updated,
+                attendance_response: row.attendance_response,
             },
             group: GroupNotificationSettingsResponse {
-                update: member.group_update,
+                update: row.group_update,
             },
-            calendar_sync: member.calendar_sync,
+            calendar_sync: row.calendar_sync,
         },
-        last_read_at: member.last_read_at,
-        created_at: group.created_at,
-        updated_at: group.updated_at,
+        last_read_at: row.last_read_at,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
     })
 }
 
@@ -192,7 +224,7 @@ async fn build_group_response(
 // 서비스 함수
 // ============================================================
 
-/// 그룹 생성 -- 생성자가 admin으로 등록되고 초대 코드 발급
+/// [H1] 그룹 생성 -- 트랜잭션으로 groups INSERT + admin INSERT를 원자적으로 실행
 pub async fn create_group(
     pool: &PgPool,
     creator_uid: &str,
@@ -203,7 +235,13 @@ pub async fn create_group(
     let description = validate_description(&req.description)?;
     let max_members = validate_max_members(req.max_members)?;
 
-    // 초대 코드 생성 (충돌 시 재시도)
+    // 트랜잭션 시작
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 초대 코드 생성 (충돌 시 재시도) — 트랜잭션 안에서 실행
     let mut invite_code = generate_invite_code();
     let mut group_row: Option<Group> = None;
 
@@ -217,7 +255,7 @@ pub async fn create_group(
         .bind(&description)
         .bind(max_members)
         .bind(&invite_code)
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await;
 
         match result {
@@ -246,16 +284,21 @@ pub async fn create_group(
         AppError::Internal("초대 코드 생성에 실패했습니다".to_string())
     })?;
 
-    // 생성자를 admin으로 등록
+    // 생성자를 admin으로 등록 — 같은 트랜잭션
     sqlx::query(
         "INSERT INTO group_members (group_id, user_id, role) \
          VALUES ($1, $2, 'admin'::group_member_role)",
     )
     .bind(group.id)
     .bind(creator_uid)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 커밋
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(CreateGroupResponse {
         group_id: group.id.to_string(),
@@ -314,7 +357,7 @@ pub async fn preview_group(
     })
 }
 
-/// 초대 코드로 그룹 가입 -- 가입 시 알림 전체 ON + 캘린더 동기화 ON
+/// [H2] 초대 코드로 그룹 가입 -- 트랜잭션으로 원자적 read-check-write + PK 충돌 처리
 pub async fn join_group(
     pool: &PgPool,
     user_uid: &str,
@@ -322,7 +365,7 @@ pub async fn join_group(
 ) -> Result<GroupResponse, AppError> {
     let normalized = invite_code.trim().to_uppercase();
 
-    // 그룹 조회
+    // 그룹 조회 (트랜잭션 밖 -- 그룹 존재 확인은 읽기 전용)
     let group = sqlx::query_as::<_, Group>(
         "SELECT * FROM groups WHERE invite_code = $1",
     )
@@ -332,13 +375,19 @@ pub async fn join_group(
     .map_err(|e| AppError::Internal(e.to_string()))?
     .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
 
-    // 이미 멤버인지 확인
+    // 트랜잭션: 멤버십 확인 + 정원 확인 + INSERT를 원자적으로 실행
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 이미 멤버인지 확인 (트랜잭션 안에서)
     let existing = sqlx::query_as::<_, (String,)>(
         "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id = $2",
     )
     .bind(group.id)
     .bind(user_uid)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -346,22 +395,45 @@ pub async fn join_group(
         return Err(AppError::Conflict("이미 그룹에 가입되어 있습니다".to_string()));
     }
 
-    // 정원 확인
-    let member_count = get_member_count(pool, group.id).await?;
-    if member_count >= group.max_members as i64 {
+    // 정원 확인 (트랜잭션 안에서)
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+            .bind(group.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if count.0 >= group.max_members as i64 {
         return Err(AppError::BadRequest("그룹 정원이 가득 찼습니다".to_string()));
     }
 
-    // 멤버 추가 (기본값: role='member', 알림 전체 ON, 캘린더 동기화 ON)
-    sqlx::query(
+    // 멤버 추가 (PK 충돌 시 Conflict로 처리)
+    let insert_result = sqlx::query(
         "INSERT INTO group_members (group_id, user_id, role) \
          VALUES ($1, $2, 'member'::group_member_role)",
     )
     .bind(group.id)
     .bind(user_uid)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    .execute(&mut *tx)
+    .await;
+
+    match insert_result {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(ref db_err))
+            if db_err.code().as_deref() == Some("23505")
+                && db_err
+                    .constraint()
+                    .map_or(false, |c| c.contains("group_members_pkey")) =>
+        {
+            return Err(AppError::Conflict("이미 그룹에 가입되어 있습니다".to_string()));
+        }
+        Err(e) => return Err(AppError::Internal(e.to_string())),
+    }
+
+    // 커밋
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // 가입 후 GroupResponse 반환
     build_group_response(pool, group.id, user_uid).await
@@ -373,7 +445,7 @@ pub async fn leave_group(
     user_uid: &str,
     group_id: Uuid,
 ) -> Result<(), AppError> {
-    let member = check_membership(pool, user_uid, group_id).await?;
+    let member = check_member(pool, user_uid, group_id).await?;
 
     if member.role == "admin" {
         return Err(AppError::PreconditionFailed(
@@ -391,7 +463,7 @@ pub async fn leave_group(
     Ok(())
 }
 
-/// 그룹 정보 수정 -- 호스트만 가능, 이름 변경 불가
+/// [M1] 그룹 정보 수정 -- 호스트만 가능, Option<Option<String>>으로 null 클리어 지원
 pub async fn update_group(
     pool: &PgPool,
     user_uid: &str,
@@ -401,7 +473,10 @@ pub async fn update_group(
     check_admin(pool, user_uid, group_id).await?;
 
     // 검증: description
-    if let Some(ref desc) = req.description {
+    // Some(Some(val)) -> 값 변경 (검증 필요)
+    // Some(None) -> 삭제 (검증 불필요)
+    // None -> 변경 없음
+    if let Some(Some(ref desc)) = req.description {
         if desc.trim().chars().count() > 50 {
             return Err(AppError::BadRequest(
                 "그룹 설명은 50자 이하여야 합니다".to_string(),
@@ -429,7 +504,7 @@ pub async fn update_group(
     let mut set_clauses: Vec<String> = Vec::new();
     let mut param_index = 1u32;
 
-    // description은 항상 Some/None 모두 유효 (None이면 해제)
+    // description: Some(_) -> 변경 또는 삭제
     if req.description.is_some() {
         set_clauses.push(format!("description = ${}", param_index));
         param_index += 1;
@@ -438,6 +513,7 @@ pub async fn update_group(
         set_clauses.push(format!("max_members = ${}", param_index));
         param_index += 1;
     }
+    // image_url: Some(_) -> 변경 또는 삭제
     if req.image_url.is_some() {
         set_clauses.push(format!("image_url = ${}", param_index));
         param_index += 1;
@@ -448,7 +524,7 @@ pub async fn update_group(
         return Ok(());
     }
 
-    set_clauses.push(format!("updated_at = NOW()"));
+    set_clauses.push("updated_at = NOW()".to_string());
 
     let sql = format!(
         "UPDATE groups SET {} WHERE id = ${}",
@@ -458,19 +534,37 @@ pub async fn update_group(
 
     let mut query = sqlx::query(&sql);
 
-    if let Some(ref desc) = req.description {
-        let trimmed = desc.trim();
-        if trimmed.is_empty() {
-            query = query.bind(None::<String>);
-        } else {
-            query = query.bind(Some(trimmed.to_string()));
+    // description 바인딩: Option<Option<String>> -> Option<String>
+    if let Some(ref inner) = req.description {
+        match inner {
+            None => {
+                // Some(None) -> SET description = NULL
+                query = query.bind(None::<String>);
+            }
+            Some(desc) => {
+                let trimmed = desc.trim();
+                if trimmed.is_empty() {
+                    query = query.bind(None::<String>);
+                } else {
+                    query = query.bind(Some(trimmed.to_string()));
+                }
+            }
         }
     }
     if let Some(max) = req.max_members {
         query = query.bind(max);
     }
-    if let Some(ref url) = req.image_url {
-        query = query.bind(url.clone());
+    // image_url 바인딩: Option<Option<String>> -> Option<String>
+    if let Some(ref inner) = req.image_url {
+        match inner {
+            None => {
+                // Some(None) -> SET image_url = NULL
+                query = query.bind(None::<String>);
+            }
+            Some(url) => {
+                query = query.bind(Some(url.clone()));
+            }
+        }
     }
 
     query = query.bind(group_id);
@@ -500,29 +594,50 @@ pub async fn delete_group(
     Ok(())
 }
 
-/// 호스트 양도 -- 기존 호스트 -> member, 신규 호스트 -> admin
+/// [H3] 호스트 양도 -- 트랜잭션 안에서 모든 검증 + role 변경 + rows_affected 확인
 pub async fn transfer_host(
     pool: &PgPool,
     user_uid: &str,
     group_id: Uuid,
     req: TransferHostRequest,
 ) -> Result<(), AppError> {
-    check_admin(pool, user_uid, group_id).await?;
-
-    // 자기 자신에게 양도 불가
+    // 자기 자신에게 양도 불가 (트랜잭션 전 빠른 검증)
     if req.new_host_uid == user_uid {
         return Err(AppError::BadRequest(
             "자기 자신에게 호스트를 양도할 수 없습니다".to_string(),
         ));
     }
 
-    // 대상이 그룹 멤버인지 확인
+    // 트랜잭션 시작 — 모든 검증을 트랜잭션 안에서 수행
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // admin 확인 (트랜잭션 안에서)
+    let caller = sqlx::query_as::<_, (String,)>(
+        "SELECT role::TEXT FROM group_members WHERE group_id = $1 AND user_id = $2",
+    )
+    .bind(group_id)
+    .bind(user_uid)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?
+    .ok_or_else(|| AppError::Forbidden("그룹 멤버가 아닙니다".to_string()))?;
+
+    if caller.0 != "admin" {
+        return Err(AppError::Forbidden(
+            "호스트만 수행할 수 있습니다".to_string(),
+        ));
+    }
+
+    // 대상이 그룹 멤버인지 확인 (트랜잭션 안에서)
     let target = sqlx::query_as::<_, (String,)>(
         "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id = $2",
     )
     .bind(group_id)
     .bind(&req.new_host_uid)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -531,12 +646,6 @@ pub async fn transfer_host(
             "양도 대상이 그룹 멤버가 아닙니다".to_string(),
         ));
     }
-
-    // 트랜잭션: 기존 admin -> member, 신규 호스트 -> admin
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // 기존 호스트 -> member
     sqlx::query(
@@ -549,8 +658,8 @@ pub async fn transfer_host(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // 신규 호스트 -> admin
-    sqlx::query(
+    // 신규 호스트 -> admin (rows_affected 확인)
+    let result = sqlx::query(
         "UPDATE group_members SET role = 'admin'::group_member_role \
          WHERE group_id = $1 AND user_id = $2",
     )
@@ -559,6 +668,12 @@ pub async fn transfer_host(
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::BadRequest(
+            "양도 대상이 그룹 멤버가 아닙니다".to_string(),
+        ));
+    }
 
     tx.commit()
         .await
@@ -609,7 +724,7 @@ pub async fn expel_member(
     Ok(())
 }
 
-/// 내 그룹 목록 조회 -- joinedAt 내림차순, JOIN/aggregation 단일 쿼리
+/// [H4] 내 그룹 목록 조회 -- 서브쿼리로 member_count 포함, N+1 제거
 pub async fn fetch_my_groups(
     pool: &PgPool,
     user_uid: &str,
@@ -625,9 +740,11 @@ pub async fn fetch_my_groups(
         chrono::DateTime<chrono::Utc>, // g.last_activity_at
         chrono::DateTime<chrono::Utc>, // gm.last_read_at
         chrono::DateTime<chrono::Utc>, // gm.joined_at
+        i64,           // member_count
     )>(
         "SELECT g.id, g.name, g.description, g.image_url, g.max_members, \
-                gm.role::TEXT as role, gm.group_color, g.last_activity_at, gm.last_read_at, gm.joined_at \
+                gm.role::TEXT as role, gm.group_color, g.last_activity_at, gm.last_read_at, gm.joined_at, \
+                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count \
          FROM group_members gm \
          JOIN groups g ON gm.group_id = g.id \
          WHERE gm.user_id = $1 \
@@ -638,25 +755,25 @@ pub async fn fetch_my_groups(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let mut result = Vec::with_capacity(rows.len());
+    let result = rows
+        .into_iter()
+        .map(|(id, name, description, image_url, max_members, role, group_color, last_activity_at, last_read_at, joined_at, member_count)| {
+            let has_new_activity = last_activity_at > last_read_at;
 
-    for (id, name, description, image_url, max_members, role, group_color, last_activity_at, last_read_at, joined_at) in rows {
-        let member_count = get_member_count(pool, id).await?;
-        let has_new_activity = last_activity_at > last_read_at;
-
-        result.push(GroupSummaryResponse {
-            group_id: id.to_string(),
-            name,
-            description,
-            image_url,
-            max_members,
-            member_count,
-            role,
-            group_color,
-            has_new_activity,
-            joined_at,
-        });
-    }
+            GroupSummaryResponse {
+                group_id: id.to_string(),
+                name,
+                description,
+                image_url,
+                max_members,
+                member_count,
+                role,
+                group_color,
+                has_new_activity,
+                joined_at,
+            }
+        })
+        .collect();
 
     Ok(result)
 }
@@ -689,7 +806,7 @@ pub async fn fetch_group_members(
     user_uid: &str,
     group_id: Uuid,
 ) -> Result<Vec<GroupMemberResponse>, AppError> {
-    check_membership(pool, user_uid, group_id).await?;
+    check_member(pool, user_uid, group_id).await?;
 
     let members = sqlx::query_as::<_, (String, String, Option<String>, String, String, chrono::DateTime<chrono::Utc>)>(
         "SELECT gm.user_id, u.nickname, u.profile_url, gm.role::TEXT as role, gm.group_color, gm.joined_at \
@@ -724,7 +841,7 @@ pub async fn mark_group_read(
     user_uid: &str,
     group_id: Uuid,
 ) -> Result<(), AppError> {
-    check_membership(pool, user_uid, group_id).await?;
+    check_member(pool, user_uid, group_id).await?;
 
     sqlx::query(
         "UPDATE group_members SET last_read_at = NOW() \
@@ -746,7 +863,7 @@ pub async fn update_notification_settings(
     group_id: Uuid,
     settings: NotificationSettingsRequest,
 ) -> Result<(), AppError> {
-    check_membership(pool, user_uid, group_id).await?;
+    check_member(pool, user_uid, group_id).await?;
 
     sqlx::query(
         "UPDATE group_members SET \
@@ -786,7 +903,7 @@ pub async fn update_group_color(
     group_id: Uuid,
     req: UpdateGroupColorRequest,
 ) -> Result<(), AppError> {
-    check_membership(pool, user_uid, group_id).await?;
+    check_member(pool, user_uid, group_id).await?;
 
     // 팔레트 검증
     if !GROUP_COLOR_PALETTE.contains(&req.color.as_str()) {

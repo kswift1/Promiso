@@ -1,6 +1,16 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde::de::Deserializer;
 use sqlx::types::Uuid;
+
+/// JSON에서 필드 없음 → `None`, `"field": null` → `Some(None)`, `"field": "val"` → `Some(Some("val"))`
+/// `#[serde(default, deserialize_with = "deserialize_optional_field")]` 와 함께 사용
+pub fn deserialize_optional_field<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
+}
 
 // ============================================================
 // DB 모델
@@ -54,9 +64,16 @@ pub struct CreateGroupRequest {
 pub struct UpdateGroupRequest {
     // 이름은 변경 불가 — 필드 자체를 제외하여 컴파일타임 강제
     // deny_unknown_fields로 클라이언트가 name을 보내면 400 반환
-    pub description: Option<String>,
+    //
+    // Option<Option<String>> 패턴:
+    //   None          → 변경 없음 (JSON에서 필드 생략)
+    //   Some(None)    → 삭제 (JSON에서 "field": null)
+    //   Some(Some(v)) → 값 변경 (JSON에서 "field": "value")
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub description: Option<Option<String>>,
     pub max_members: Option<i16>,
-    pub image_url: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub image_url: Option<Option<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,7 +103,6 @@ pub struct ScheduleNotificationSettings {
     pub confirmed: bool,
     pub cancelled: bool,
     pub updated: bool,
-    #[serde(rename = "attendanceResponse")]
     pub attendance_response: bool,
 }
 
@@ -126,7 +142,6 @@ pub struct ScheduleNotificationSettingsResponse {
     pub confirmed: bool,
     pub cancelled: bool,
     pub updated: bool,
-    #[serde(rename = "attendanceResponse")]
     pub attendance_response: bool,
 }
 
