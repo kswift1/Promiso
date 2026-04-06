@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import FirebaseAuth
 import Foundation
 import PromisoShared
 import UIKit
@@ -121,31 +122,75 @@ extension NotificationClient: TestDependencyKey {
 extension NotificationClient: DependencyKey {
   public static let liveValue: NotificationClient = {
     @Dependency(\.authClient) var authClient
+    @Dependency(\.featureFlags) var featureFlags
     let dataSource = NotificationRemoteDataSource()
+    let rustDataSource = NotificationRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw NotificationClientError.authenticationRequired
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
+
+    /// 현재 디바이스 ID (UserDefaults에서 가져오거나 새로 생성)
+    func currentDeviceId() -> String {
+      let key = AppConstants.UserDefaults.deviceId
+      if let existingId = UserDefaults.standard.string(forKey: key) {
+        return existingId
+      }
+      let newId = UUID().uuidString
+      UserDefaults.standard.set(newId, forKey: key)
+      return newId
+    }
 
     return Self(
       saveFCMToken: { token in
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          let deviceId = currentDeviceId()
+          try await rustDataSource.saveFCMToken(deviceId: deviceId, token: token)
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.saveFCMToken(userId: currentUser.uid, token: token)
         }
-        try await dataSource.saveFCMToken(userId: currentUser.uid, token: token)
       },
 
       deleteFCMToken: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          let deviceId = currentDeviceId()
+          try await rustDataSource.deleteFCMToken(deviceId: deviceId)
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.deleteFCMToken(userId: currentUser.uid)
         }
-        try await dataSource.deleteFCMToken(userId: currentUser.uid)
       },
 
       saveLiveActivityPushToStartToken: { token in
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          let deviceId = currentDeviceId()
+          // Push to Start 토큰 저장 시 기존 FCM 토큰도 함께 전달 필요
+          // deviceId의 기존 FCM 토큰을 가져올 수 없으므로 빈 문자열 전달
+          // 서버에서 기존 토큰을 유지하는 upsert 로직 활용
+          try await rustDataSource.savePushToStartToken(
+            deviceId: deviceId,
+            fcmToken: "",
+            token: token
+          )
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.saveLiveActivityPushToStartToken(
+            userId: currentUser.uid,
+            token: token
+          )
         }
-        try await dataSource.saveLiveActivityPushToStartToken(
-          userId: currentUser.uid,
-          token: token
-        )
       },
 
       getAuthorizationStatus: {
@@ -174,47 +219,80 @@ extension NotificationClient: DependencyKey {
       },
 
       getNotifications: { filter, limit, lastCreatedAt in
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          // Rust API는 서버에서 인증된 사용자 기준으로 조회
+          // filter는 현재 Rust API에서 서버측 필터링 미지원이므로 전체 조회 후 클라이언트 필터링
+          var notifications = try await rustDataSource.getNotifications(
+            limit: limit,
+            lastCreatedAt: lastCreatedAt
+          )
+          if filter == .unread {
+            notifications = notifications.filter { !$0.isRead }
+          }
+          return notifications
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          return try await dataSource.getNotifications(
+            userId: currentUser.uid,
+            filter: filter,
+            limit: limit,
+            lastCreatedAt: lastCreatedAt
+          )
         }
-        return try await dataSource.getNotifications(
-          userId: currentUser.uid,
-          filter: filter,
-          limit: limit,
-          lastCreatedAt: lastCreatedAt
-        )
       },
 
       getUnreadCount: { userId in
-        return try await dataSource.getUnreadCount(userId: userId)
+        if featureFlags.useRustAPI(.notifications) {
+          return try await rustDataSource.getUnreadCount()
+        } else {
+          return try await dataSource.getUnreadCount(userId: userId)
+        }
       },
 
       markAsRead: { notificationId in
-        guard await authClient.currentUser() != nil else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          try await rustDataSource.markAsRead(notificationId: notificationId)
+        } else {
+          guard await authClient.currentUser() != nil else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.markAsRead(notificationId: notificationId)
         }
-        try await dataSource.markAsRead(notificationId: notificationId)
       },
 
       markAllAsRead: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          try await rustDataSource.markAllAsRead()
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.markAllAsRead(userId: currentUser.uid)
         }
-        try await dataSource.markAllAsRead(userId: currentUser.uid)
       },
 
       deleteNotifications: { notificationIds in
-        guard await authClient.currentUser() != nil else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          try await rustDataSource.deleteNotifications(notificationIds: notificationIds)
+        } else {
+          guard await authClient.currentUser() != nil else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.deleteNotifications(notificationIds: notificationIds)
         }
-        try await dataSource.deleteNotifications(notificationIds: notificationIds)
       },
 
       deleteAllNotifications: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
+        if featureFlags.useRustAPI(.notifications) {
+          try await rustDataSource.deleteAllNotifications()
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw NotificationClientError.authenticationRequired
+          }
+          try await dataSource.deleteAllNotifications(userId: currentUser.uid)
         }
-        try await dataSource.deleteAllNotifications(userId: currentUser.uid)
       },
 
       setBadgeCount: { count in
