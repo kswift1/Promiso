@@ -14,6 +14,18 @@ public actor RustAPIClient {
     #endif
   }()
 
+  private static let session: URLSession = {
+    #if DEBUG
+    return URLSession(
+      configuration: .default,
+      delegate: URLSessionProxyDelegate(),
+      delegateQueue: nil
+    )
+    #else
+    return URLSession.shared
+    #endif
+  }()
+
   private let baseURL: URL
   private let getAuthToken: () async throws -> String
   private let decoder: JSONDecoder
@@ -81,7 +93,7 @@ public actor RustAPIClient {
       urlRequest.httpBody = try encoder.encode(body)
     }
 
-    let (data, response) = try await URLSession.shared.data(for: urlRequest)
+    let (data, response) = try await Self.session.data(for: urlRequest)
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw RustAPIError.invalidResponse

@@ -27,6 +27,9 @@ public enum ExternalDeps: CaseIterable {
   /// Kakao SDK (Share)
   case kakaoShare
 
+  /// Network Debugging - Pulse
+  case pulse
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
@@ -74,6 +77,12 @@ public enum ExternalDeps: CaseIterable {
         .external(name: "KakaoSDKCommon"),
         .external(name: "KakaoSDKShare"),
         .external(name: "KakaoSDKTemplate"),
+      ]
+
+    case .pulse:
+      return [
+        .external(name: "Pulse"),
+        .external(name: "PulseUI"),
       ]
     }
   }
