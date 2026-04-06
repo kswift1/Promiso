@@ -23,5 +23,7 @@
 // KakaoSDKTemplate은 Content 타입이 ViewModifier.Content와 충돌하므로
 // @_exported하지 않고 KakaoShareClient.swift에서만 직접 import
 @_exported import Pulse
-@_exported import PulseUI
+// PulseUI는 UserSettings 타입이 프로젝트의 UserSettings와 충돌하므로
+// @_exported하지 않고 DeveloperSettingsFeature.swift에서만 직접 import
+// @_exported import PulseUI
 
