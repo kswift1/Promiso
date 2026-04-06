@@ -1053,22 +1053,18 @@ async fn n_t2_vote_confirmed_notifies_accepted(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn n_t3_vote_cancelled_notifies_accepted(pool: PgPool) {
+    // 2명 그룹, min=2: 1명 거절 → remaining(1) < min(2) → cancelled
     insert_test_user(&pool, "host_t3", "호스트T3").await;
     insert_test_user(&pool, "mem_t3a", "멤버T3A").await;
-    insert_test_user(&pool, "mem_t3b", "멤버T3B").await;
     let group_id = create_test_group(&pool, "host_t3", "취소그룹3").await;
     add_member_to_group(&pool, group_id, "mem_t3a").await;
-    add_member_to_group(&pool, group_id, "mem_t3b").await;
 
     register_test_device(&pool, "host_t3", "dev-t3h", "fcm-t3h").await;
-    register_test_device(&pool, "mem_t3a", "dev-t3a", "fcm-t3a").await;
 
     let schedule_id = create_test_schedule(&pool, group_id, "host_t3", "취소일정").await;
     let mock = MockPushSender::new();
 
-    // 이전: host accepted, mem_t3a accepted (확정 상태)
-    // 이후: mem_t3b가 declined → 가능인원(2) < minimum(2)가 아닌데,
-    //       mem_t3a가 declined하여 가능인원(1) < minimum(2)
+    // N10: remaining_possible = total_members(2) - declined(1) = 1 < min(2)
     let old_votes = vec![
         VoteInfo { user_id: "host_t3".to_string(), status: "accepted".to_string() },
         VoteInfo { user_id: "mem_t3a".to_string(), status: "accepted".to_string() },
@@ -1151,6 +1147,15 @@ async fn n_t4_schedule_updated_sends_diff(pool: PgPool) {
     register_test_device(&pool, "mem_t4", "dev-t4", "fcm-t4").await;
 
     let schedule_id = create_test_schedule(&pool, group_id, "host_t4", "수정일정").await;
+
+    // N6: accepted 유저만 수신하므로 vote 필요
+    sqlx::query("INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'accepted')")
+        .bind(schedule_id)
+        .bind("mem_t4")
+        .execute(&pool)
+        .await
+        .expect("Failed to insert vote");
+
     let mock = MockPushSender::new();
 
     let changes = vec![

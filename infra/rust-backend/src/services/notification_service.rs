@@ -592,11 +592,6 @@ pub async fn notify_schedule_votes_updated(
         .iter()
         .map(|v| (v.user_id.as_str(), v.status.as_str()))
         .collect();
-    let _new_map: HashMap<&str, &str> = new_votes
-        .iter()
-        .map(|v| (v.user_id.as_str(), v.status.as_str()))
-        .collect();
-
     // old accepted count
     let old_accepted_count = old_votes
         .iter()
@@ -641,13 +636,20 @@ pub async fn notify_schedule_votes_updated(
     });
 
     if has_new_decline {
-        // total = 전체 투표한 사람 수
-        let total = new_votes.len();
+        // N10: remaining possible = 전체 그룹 멤버 수 - 거절 수
+        let total_members: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM group_members WHERE group_id = $1",
+        )
+        .bind(group_id.unwrap())
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
         let declined_count = new_votes
             .iter()
             .filter(|v| v.status == "declined")
             .count();
-        let remaining_possible = total - declined_count;
+        let remaining_possible = total_members.0 as usize - declined_count;
 
         if remaining_possible < minimum_participants {
             // accepted 유저에게 cancelled 알림
@@ -700,10 +702,8 @@ pub async fn notify_schedule_info_updated(
     let schedule_title = schedule.0;
     let group_id = schedule.1;
 
-    // 수신 대상: accepted 유저 + 호스트(creator)를 포함한 그룹 멤버
-    // 투표가 없는 초기 상태에서도 그룹 멤버에게 알림이 가야 함
-    let user_ids: Vec<String> = if let Some(gid) = group_id {
-        // 그룹 멤버 중 accepted 유저 조회
+    // N6: ScheduleUpdated 수신 대상은 accepted 유저만 (fallback 없음)
+    let user_ids: Vec<String> = {
         let accepted_users: Vec<(String,)> = sqlx::query_as(
             "SELECT user_id FROM schedule_votes WHERE schedule_id = $1 AND status = 'accepted'",
         )
@@ -712,35 +712,7 @@ pub async fn notify_schedule_info_updated(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let mut ids: Vec<String> = accepted_users.into_iter().map(|(id,)| id).collect();
-
-        // accepted 유저가 없으면 그룹 전체 멤버에게 전송 (호스트 제외)
-        if ids.is_empty() {
-            let creator: Option<(String,)> = sqlx::query_as(
-                "SELECT user_id FROM schedules WHERE id = $1",
-            )
-            .bind(schedule_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-
-            let creator_id = creator.map(|(id,)| id).unwrap_or_default();
-
-            let members: Vec<(String,)> = sqlx::query_as(
-                "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2",
-            )
-            .bind(gid)
-            .bind(&creator_id)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-
-            ids = members.into_iter().map(|(id,)| id).collect();
-        }
-
-        ids
-    } else {
-        Vec::new()
+        accepted_users.into_iter().map(|(id,)| id).collect()
     };
 
     if user_ids.is_empty() {
