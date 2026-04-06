@@ -15,7 +15,10 @@ pub fn router() -> Router<PgPool> {
         .route("/api/v1/users", post(create_user))
         .route("/api/v1/users/me", get(get_my_profile).patch(update_user))
         .route("/api/v1/users/me/profile-image", post(upload_profile_image))
-        .route("/api/v1/users/nickname-check", get(check_nickname_available))
+        .route(
+            "/api/v1/users/nickname-check",
+            get(check_nickname_available),
+        )
         .route("/api/v1/users/batch", post(batch_get_users))
         .route("/api/v1/users/{id}", get(get_user_public))
 }
@@ -74,8 +77,7 @@ async fn check_nickname_available(
     State(pool): State<PgPool>,
     Query(query): Query<NicknameQuery>,
 ) -> Result<ApiResponse<NicknameCheckResponse>, AppError> {
-    let response =
-        user_service::check_nickname_available(&pool, &claims.uid, &query.q).await?;
+    let response = user_service::check_nickname_available(&pool, &claims.uid, &query.q).await?;
     ApiResponse::ok(response)
 }
 

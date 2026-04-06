@@ -270,4 +270,385 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 }
 ```
 
-*마지막 업데이트: 2026-04-05*
+## Schedules (인증 필요)
+
+### POST /api/v1/schedules
+
+- 설명: 일정 생성 (그룹일정 또는 개인일정)
+- 인증: 필수. 그룹일정: 그룹 멤버만. 개인일정: 누구나
+- 요청:
+  ```json
+  {
+    "schedule_type": "group",
+    "group_id": "uuid (group 필수)",
+    "title": "영화 관람",
+    "emoji": "🎬",
+    "description": "마블 신작",
+    "description_blocks": [{"type": "text", "content": "..."}],
+    "start_at": "ISO8601",
+    "end_at": "ISO8601 (optional)",
+    "location": {
+      "name": "CGV 강남",
+      "address": "서울 강남구 ... (optional)",
+      "latitude": 37.501 ,
+      "longitude": 127.026
+    },
+    "minimum_participants": 2,
+    "tracking_start_minutes_before": 30,
+    "image_urls": ["https://..."],
+    "reminder_minutes_before": 60
+  }
+  ```
+  - `group_id`: group 타입 필수, personal 타입이면 생략
+  - `minimum_participants`: group 타입 필수 (>= 1), personal이면 생략
+  - `tracking_start_minutes_before`, `image_urls`: group 전용
+  - `reminder_minutes_before`: personal 전용
+  - `location`: 선택. 있으면 `name` 필수
+  - `description_blocks`: 최대 20개
+  - `image_urls`: 최대 3개
+- 응답 201:
+  ```json
+  {
+    "data": {
+      "schedule_id": "uuid",
+      "title": "영화 관람",
+      "group_id": "uuid",
+      "start_at": "ISO8601",
+      "is_confirmed": false
+    }
+  }
+  ```
+  - 그룹일정: 호스트 자동 accepted (P16), is_confirmed 자동 계산 (P21)
+  - vote_deadline = start_at (P19)
+- 에러: 400 (유효성), 403 (그룹 멤버 아님), 404 (그룹 없음)
+
+### GET /api/v1/schedules/{id}
+
+- 설명: 일정 상세 조회
+- 인증: 필수. 그룹일정: 그룹 멤버만. 개인일정: 소유자만
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "id": "uuid",
+      "schedule_type": "group",
+      "title": "영화 관람",
+      "emoji": "🎬",
+      "description": "마블 신작",
+      "description_blocks": [...],
+      "start_at": "ISO8601",
+      "end_at": "ISO8601",
+      "location": { "name": "...", "address": "...", "latitude": 0, "longitude": 0 },
+      "created_at": "ISO8601",
+      "updated_at": "ISO8601",
+
+      "group_id": "uuid",
+      "host_id": "user_id",
+      "minimum_participants": 2,
+      "is_confirmed": true,
+      "vote_deadline": "ISO8601",
+      "tracking_start_minutes_before": 30,
+      "image_urls": ["..."],
+      "votes": {
+        "accepted": ["uid1", "uid2"],
+        "declined": ["uid3"]
+      },
+
+      "reminder_minutes_before": null
+    }
+  }
+  ```
+  - 그룹일정: `votes` 포함 (accepted/declined userId 배열)
+  - 개인일정: 그룹 전용 필드는 null
+- 에러: 403, 404
+
+### PATCH /api/v1/schedules/{id}
+
+- 설명: 일정 수정
+- 인증: 필수
+  - 그룹일정: 약속 호스트 OR 그룹 호스트 (P10), 시작 전만 (P12), LiveActivity 중 불가 (P14)
+  - 개인일정: 소유자만
+- 요청: 수정할 필드만 전송 (Option 패턴)
+  ```json
+  {
+    "title": "수정된 제목",
+    "emoji": "🍿",
+    "description": null,
+    "start_at": "ISO8601",
+    "end_at": "ISO8601",
+    "location": { "name": "새 장소" },
+    "minimum_participants": 3,
+    "tracking_start_minutes_before": 60,
+    "image_urls": ["..."],
+    "reminder_minutes_before": 30
+  }
+  ```
+  - `description`, `emoji`, `location`, `end_at`: `Option<Option<T>>` — 생략=변경없음, null=삭제, 값=변경
+  - start_at 변경 시: vote_deadline 동기화 (P30)
+  - title trim 후 빈 문자열 → 400
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 400 (유효성), 403 (권한 없음), 404, 409 (시작됨 또는 LA 실행 중)
+
+### DELETE /api/v1/schedules/{id}
+
+- 설명: 일정 삭제 (Hard Delete)
+- 인증: 필수
+  - 그룹일정: 약속 호스트 OR 그룹 호스트 (P11), 시작 전만 (P13)
+  - 개인일정: 소유자만
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 403, 404, 409 (이미 시작됨)
+
+### POST /api/v1/schedules/{id}/respond
+
+- 설명: 그룹일정 투표 응답
+- 인증: 필수 (같은 그룹 멤버, P15)
+- 요청:
+  ```json
+  { "status": "accepted | declined | pending" }
+  ```
+  - `accepted`: schedule_votes에 INSERT/UPDATE
+  - `declined`: schedule_votes에 INSERT/UPDATE
+  - `pending`: schedule_votes에서 DELETE (P28)
+  - 동일 상태 → no-op (P27)
+  - 트랜잭션 내 is_confirmed 재계산 (P29)
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "schedule_id": "uuid",
+      "status": "accepted",
+      "is_confirmed": true,
+      "confirmed_schedule": {
+        "id": "uuid",
+        "title": "영화 관람",
+        "emoji": "🎬",
+        "start_at": "ISO8601",
+        "end_at": "ISO8601",
+        "location": "CGV 강남",
+        "group_id": "uuid"
+      }
+    }
+  }
+  ```
+  - `confirmed_schedule`: is_confirmed && status==accepted 일 때만 포함 (캘린더 동기화용)
+- 에러: 400 (잘못된 status), 403 (멤버 아님), 404 (일정 없음)
+
+### GET /api/v1/groups/{group_id}/schedules
+
+- 설명: 그룹의 일정 목록 조회
+- 인증: 필수 (그룹 멤버)
+- 쿼리 파라미터:
+  - `status`: `active` (기본값, startAt >= today) | `past` (startAt < now)
+  - `limit`: 최대 개수 (기본 20)
+  - `cursor`: 페이지네이션 커서 (past용, startAt ISO8601)
+- 응답 200:
+  ```json
+  {
+    "data": [ScheduleResponse, ...],
+    "cursor": "ISO8601 | null"
+  }
+  ```
+  - active: startAt 오름차순
+  - past: startAt 내림차순
+- 에러: 403, 404
+
+### GET /api/v1/schedules/home
+
+- 설명: 홈화면 일정 (내 그룹들의 미래 일정, startAt 오름차순)
+- 인증: 필수
+- 쿼리 파라미터:
+  - `limit`: 최대 개수 (기본 20)
+- 응답 200:
+  ```json
+  { "data": [ScheduleResponse, ...] }
+  ```
+  - startAt >= now, 그룹일정만 (내가 속한 모든 그룹)
+  - 클라이언트가 today/upcoming 분리
+
+### GET /api/v1/schedules/calendar
+
+- 설명: 캘린더 날짜 범위 조회 (그룹 + 개인 + 반복)
+- 인증: 필수
+- 쿼리 파라미터:
+  - `start`: 시작 날짜 ISO8601 (필수)
+  - `end`: 종료 날짜 ISO8601 (필수)
+  - `accepted_only`: true이면 내가 accepted한 그룹일정만 (충돌 감지용)
+  - `timezone`: IANA timezone (반복일정 확장용, 기본 UTC)
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "schedules": [ScheduleResponse, ...],
+      "recurring_instances": [
+        {
+          "recurring_schedule_id": "uuid",
+          "title": "헬스장",
+          "emoji": "🏋️",
+          "date": "2026-04-07",
+          "start_time": { "hour": 19, "minute": 0 },
+          "end_time": { "hour": 20, "minute": 0 },
+          "location": { ... }
+        }
+      ]
+    }
+  }
+  ```
+  - 반복일정: 서버에서 규칙 확장하여 인스턴스 배열로 반환
+- 에러: 400 (범위 31일 초과)
+
+### GET /api/v1/schedules/calendar-sync
+
+- 설명: 캘린더 동기화용 경량 조회 (확정 + accepted + 미래)
+- 인증: 필수
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "uuid",
+        "title": "영화 관람",
+        "emoji": "🎬",
+        "start_at": "ISO8601",
+        "end_at": "ISO8601",
+        "location": "CGV 강남",
+        "group_id": "uuid"
+      }
+    ]
+  }
+  ```
+  - 최대 50개 (P44)
+  - 최소 필드만 반환 (배경 동기화 대역폭 절감)
+
+### POST /api/v1/schedules/check-conflicts
+
+- 설명: 일정 충돌 감지 (Pro 구독 필요)
+- 인증: 필수 (Pro)
+- 요청:
+  ```json
+  {
+    "start_at": "ISO8601",
+    "end_at": "ISO8601 (optional)",
+    "min_gap_minutes": 0,
+    "exclude_ids": ["uuid1"],
+    "timezone": "Asia/Seoul"
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "uuid",
+        "type": "group | personal | recurring",
+        "title": "기존 일정",
+        "emoji": "📅",
+        "start_at": "ISO8601",
+        "end_at": "ISO8601",
+        "overlap_minutes": 30,
+        "gap_minutes": -30
+      }
+    ]
+  }
+  ```
+  - overlap > 0: 겹침, gap < 0: 겹침, gap >= 0 && gap < minGap: 간격 부족
+  - 정렬: overlap 내림차순 → gap 오름차순
+- 에러: 400, 403 (Pro 아님)
+
+### POST /api/v1/schedules/extract
+
+- 설명: LLM 일정 추출 (Gemini)
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "text": "SMS 원문 (optional)",
+    "image_base64": "base64 (optional)",
+    "timezone": "Asia/Seoul"
+  }
+  ```
+  - `text` 또는 `image_base64` 중 하나 이상 필수
+  - text 최대 2000자, image 최대 4MB
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "title": "GS25 근무",
+      "emoji": "💼",
+      "start_date": "ISO8601",
+      "end_date": "ISO8601",
+      "location": "장소명",
+      "address": "상세 주소",
+      "description": "plain text",
+      "description_blocks": [...]
+    }
+  }
+  ```
+- 에러: 400 (입력 누락/초과), 500 (추출 실패)
+
+## Recurring Schedules (인증 필요)
+
+### POST /api/v1/recurring-schedules
+
+- 설명: 반복일정 생성
+- 인증: 필수 (본인 소유)
+- 요청:
+  ```json
+  {
+    "title": "헬스장",
+    "emoji": "🏋️",
+    "description": null,
+    "start_time": { "hour": 19, "minute": 0 },
+    "end_time": { "hour": 20, "minute": 0 },
+    "location": { "name": "강남 피트니스", "address": "..." },
+    "reminder_minutes_before": 30,
+    "frequency": "weekly",
+    "days_of_week": [2, 4, 6],
+    "day_of_month": null,
+    "series_start_date": "2026-04-01",
+    "series_end_date": null
+  }
+  ```
+  - frequency별 필수 필드: weekly → days_of_week, monthly → day_of_month
+  - daily → days_of_week/day_of_month 모두 null
+- 응답 201:
+  ```json
+  { "data": { "id": "uuid", "created_at": "ISO8601" } }
+  ```
+- 에러: 400 (유효성)
+
+### GET /api/v1/recurring-schedules
+
+- 설명: 내 반복일정 목록
+- 인증: 필수 (본인 소유만)
+- 응답 200:
+  ```json
+  { "data": [RecurringScheduleResponse, ...] }
+  ```
+
+### PATCH /api/v1/recurring-schedules/{id}
+
+- 설명: 반복일정 수정
+- 인증: 필수 (소유자만)
+- 요청: 수정할 필드만 전송
+  ```json
+  {
+    "title": "수정된 제목",
+    "excluded_dates": ["2026-04-07"],
+    "overrides": {
+      "2026-04-14": { "start_time": { "hour": 20, "minute": 0 } }
+    }
+  }
+  ```
+  - `excluded_dates`: 전체 교체 (배열)
+  - `overrides`: 전체 교체 (Map)
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 403 (소유자 아님), 404
+
+### DELETE /api/v1/recurring-schedules/{id}
+
+- 설명: 반복일정 삭제
+- 인증: 필수 (소유자만)
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 403, 404
+
+*마지막 업데이트: 2026-04-06*

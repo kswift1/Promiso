@@ -49,10 +49,8 @@ const ROLE_ADMIN: &str = "admin";
 const ROLE_MEMBER: &str = "member";
 
 const GROUP_COLOR_PALETTE: &[&str] = &[
-    "#FF3B30", "#FF6F61", "#FF9500", "#FFCC00",
-    "#84CC16", "#34C759", "#00C7BE", "#007AFF",
-    "#1E3F8A", "#AF52DE", "#C4B5FD", "#E040FB",
-    "#FF6B9D", "#C2185B", "#A0845C", "#8E8E93",
+    "#FF3B30", "#FF6F61", "#FF9500", "#FFCC00", "#84CC16", "#34C759", "#00C7BE", "#007AFF",
+    "#1E3F8A", "#AF52DE", "#C4B5FD", "#E040FB", "#FF6B9D", "#C2185B", "#A0845C", "#8E8E93",
 ];
 
 // ============================================================
@@ -156,12 +154,11 @@ async fn check_admin(
 
 /// 그룹 멤버 수 조회
 async fn get_member_count(pool: &PgPool, group_id: Uuid) -> Result<i64, AppError> {
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_one(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+        .bind(group_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(count.0)
 }
 
@@ -194,13 +191,11 @@ async fn build_group_response(
     let row = match row {
         Some(r) => r,
         None => {
-            let group_exists = sqlx::query_as::<_, (Uuid,)>(
-                "SELECT id FROM groups WHERE id = $1",
-            )
-            .bind(group_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            let group_exists = sqlx::query_as::<_, (Uuid,)>("SELECT id FROM groups WHERE id = $1")
+                .bind(group_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
             return if group_exists.is_none() {
                 Err(AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))
@@ -302,9 +297,8 @@ pub async fn create_group(
         }
     }
 
-    let group = group_row.ok_or_else(|| {
-        AppError::Internal("초대 코드 생성에 실패했습니다".to_string())
-    })?;
+    let group =
+        group_row.ok_or_else(|| AppError::Internal("초대 코드 생성에 실패했습니다".to_string()))?;
 
     // 생성자를 admin으로 등록 — 같은 트랜잭션
     sqlx::query(
@@ -336,14 +330,12 @@ pub async fn preview_group(
 ) -> Result<GroupPreviewResponse, AppError> {
     let normalized = invite_code.trim().to_uppercase();
 
-    let group = sqlx::query_as::<_, Group>(
-        "SELECT * FROM groups WHERE invite_code = $1",
-    )
-    .bind(&normalized)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
+    let group = sqlx::query_as::<_, Group>("SELECT * FROM groups WHERE invite_code = $1")
+        .bind(&normalized)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
 
     let member_count = get_member_count(pool, group.id).await?;
 
@@ -388,14 +380,12 @@ pub async fn join_group(
     let normalized = invite_code.trim().to_uppercase();
 
     // 그룹 조회 (트랜잭션 밖 -- 그룹 존재 확인은 읽기 전용)
-    let group = sqlx::query_as::<_, Group>(
-        "SELECT * FROM groups WHERE invite_code = $1",
-    )
-    .bind(&normalized)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
+    let group = sqlx::query_as::<_, Group>("SELECT * FROM groups WHERE invite_code = $1")
+        .bind(&normalized)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("그룹을 찾을 수 없습니다".to_string()))?;
 
     // 트랜잭션: 멤버십 확인 + 정원 확인 + INSERT를 원자적으로 실행
     let mut tx = pool
@@ -414,19 +404,22 @@ pub async fn join_group(
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if existing.is_some() {
-        return Err(AppError::Conflict("이미 그룹에 가입되어 있습니다".to_string()));
+        return Err(AppError::Conflict(
+            "이미 그룹에 가입되어 있습니다".to_string(),
+        ));
     }
 
     // 정원 확인 (트랜잭션 안에서)
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
-            .bind(group.id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+        .bind(group.id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if count.0 >= group.max_members as i64 {
-        return Err(AppError::BadRequest("그룹 정원이 가득 찼습니다".to_string()));
+        return Err(AppError::BadRequest(
+            "그룹 정원이 가득 찼습니다".to_string(),
+        ));
     }
 
     // 멤버 추가 (PK 충돌 시 Conflict로 처리)
@@ -447,7 +440,9 @@ pub async fn join_group(
                     .constraint()
                     .map_or(false, |c| c.contains("group_members_pkey")) =>
         {
-            return Err(AppError::Conflict("이미 그룹에 가입되어 있습니다".to_string()));
+            return Err(AppError::Conflict(
+                "이미 그룹에 가입되어 있습니다".to_string(),
+            ));
         }
         Err(e) => return Err(AppError::Internal(e.to_string())),
     }
@@ -462,11 +457,7 @@ pub async fn join_group(
 }
 
 /// 그룹 탈퇴 -- 호스트는 탈퇴 불가
-pub async fn leave_group(
-    pool: &PgPool,
-    user_uid: &str,
-    group_id: Uuid,
-) -> Result<(), AppError> {
+pub async fn leave_group(pool: &PgPool, user_uid: &str, group_id: Uuid) -> Result<(), AppError> {
     let member = check_member(pool, user_uid, group_id).await?;
 
     if member.role == ROLE_ADMIN {
@@ -600,11 +591,7 @@ pub async fn update_group(
 }
 
 /// 그룹 삭제 -- 호스트만 가능, cascade 처리
-pub async fn delete_group(
-    pool: &PgPool,
-    user_uid: &str,
-    group_id: Uuid,
-) -> Result<(), AppError> {
+pub async fn delete_group(pool: &PgPool, user_uid: &str, group_id: Uuid) -> Result<(), AppError> {
     check_admin(pool, user_uid, group_id).await?;
 
     sqlx::query("DELETE FROM groups WHERE id = $1")
@@ -787,22 +774,36 @@ pub async fn fetch_my_groups(
 
     let result = rows
         .into_iter()
-        .map(|(id, name, description, image_url, max_members, role, group_color, last_activity_at, last_read_at, joined_at, member_count)| {
-            let has_new_activity = last_activity_at > last_read_at;
-
-            GroupSummaryResponse {
-                group_id: id.to_string(),
+        .map(
+            |(
+                id,
                 name,
                 description,
                 image_url,
                 max_members,
-                member_count,
                 role,
                 group_color,
-                has_new_activity,
+                last_activity_at,
+                last_read_at,
                 joined_at,
-            }
-        })
+                member_count,
+            )| {
+                let has_new_activity = last_activity_at > last_read_at;
+
+                GroupSummaryResponse {
+                    group_id: id.to_string(),
+                    name,
+                    description,
+                    image_url,
+                    max_members,
+                    member_count,
+                    role,
+                    group_color,
+                    has_new_activity,
+                    joined_at,
+                }
+            },
+        )
         .collect();
 
     Ok(result)
@@ -840,16 +841,16 @@ pub async fn fetch_group_members(
 
     Ok(members
         .into_iter()
-        .map(|(user_id, nickname, profile_url, role, group_color, joined_at)| {
-            GroupMemberResponse {
+        .map(
+            |(user_id, nickname, profile_url, role, group_color, joined_at)| GroupMemberResponse {
                 user_id,
                 nickname,
                 profile_url,
                 role,
                 group_color,
                 joined_at,
-            }
-        })
+            },
+        )
         .collect())
 }
 
@@ -925,9 +926,7 @@ pub async fn update_group_color(
 
     // 팔레트 검증
     if !GROUP_COLOR_PALETTE.contains(&req.color.as_str()) {
-        return Err(AppError::BadRequest(
-            "허용되지 않은 색상입니다".to_string(),
-        ));
+        return Err(AppError::BadRequest("허용되지 않은 색상입니다".to_string()));
     }
 
     sqlx::query(

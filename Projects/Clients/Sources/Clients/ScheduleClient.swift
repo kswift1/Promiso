@@ -7,6 +7,7 @@
 //
 
 import ComposableArchitecture
+import FirebaseAuth
 import Foundation
 import Combine
 import PromisoShared
@@ -259,69 +260,161 @@ extension DependencyValues {
 
 extension ScheduleClient: DependencyKey {
   public static let liveValue: ScheduleClient = {
+    @Dependency(\.featureFlags) var featureFlags
     let dataSource: ScheduleRemoteDataSourceProtocol = ScheduleRemoteDataSource()
+    let rustDataSource = ScheduleRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw ScheduleClientError.unauthorized
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
 
     return ScheduleClient(
       createSchedule: { schedule in
-        guard !schedule.groupId.isEmpty else {
-          throw ScheduleClientError.invalidData(nil)
-        }
-
-        do {
-          return try await dataSource.createSchedule(schedule)
-        } catch {
-          throw ScheduleClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.createSchedule(schedule)
+        } else {
+          guard !schedule.groupId.isEmpty else {
+            throw ScheduleClientError.invalidData(nil)
+          }
+          do {
+            return try await dataSource.createSchedule(schedule)
+          } catch {
+            throw ScheduleClientError(from: error)
+          }
         }
       },
       updateSchedule: { schedule in
-        try await dataSource.updateSchedule(schedule)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.updateSchedule(schedule)
+        } else {
+          try await dataSource.updateSchedule(schedule)
+        }
       },
       deleteSchedule: { scheduleId in
-        try await dataSource.deleteSchedule(id: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.deleteSchedule(id: scheduleId)
+        } else {
+          try await dataSource.deleteSchedule(id: scheduleId)
+        }
       },
       getSchedule: { scheduleId in
-        try await dataSource.getSchedule(id: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getSchedule(id: scheduleId)
+        } else {
+          return try await dataSource.getSchedule(id: scheduleId)
+        }
       },
       getTodaySchedules: { groupIds in
-        try await dataSource.getTodaySchedules(groupIds: groupIds)
+        if featureFlags.useRustAPI(.promises) {
+          // Rust API: /home 엔드포인트로 대체 후 클라이언트에서 today 필터링
+          let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: 20)
+          let calendar = Calendar.current
+          let startOfDay = calendar.startOfDay(for: Date())
+          guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
+          return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
+        } else {
+          return try await dataSource.getTodaySchedules(groupIds: groupIds)
+        }
       },
       getUpcomingSchedules: { groupIds, limit in
-        try await dataSource.getUpcomingSchedules(groupIds: groupIds, limit: limit)
+        if featureFlags.useRustAPI(.promises) {
+          // Rust API: /home 엔드포인트로 대체
+          let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limit)
+          return Array(schedules.prefix(limit))
+        } else {
+          return try await dataSource.getUpcomingSchedules(groupIds: groupIds, limit: limit)
+        }
       },
       getActiveSchedules: { groupId, limit in
-        try await dataSource.getActiveSchedules(groupId: groupId, limit: limit)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
+        } else {
+          return try await dataSource.getActiveSchedules(groupId: groupId, limit: limit)
+        }
       },
       getPastSchedules: { groupId, limit, lastStartAt in
-        try await dataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
+        } else {
+          return try await dataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
+        }
       },
       getActiveScheduleCount: { groupId in
-        try await dataSource.getActiveScheduleCount(groupId: groupId)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getActiveScheduleCount(groupId: groupId)
+        } else {
+          return try await dataSource.getActiveScheduleCount(groupId: groupId)
+        }
       },
       getSchedulesByDateRange: { groupIds, startDate, endDate in
-        try await dataSource.getSchedulesByDateRange(groupIds: groupIds, startDate: startDate, endDate: endDate)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getSchedulesByDateRange(
+            groupIds: groupIds,
+            startDate: startDate,
+            endDate: endDate
+          )
+        } else {
+          return try await dataSource.getSchedulesByDateRange(
+            groupIds: groupIds,
+            startDate: startDate,
+            endDate: endDate
+          )
+        }
       },
       getHomeSchedules: { groupIds, limitPerChunk in
-        try await dataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
+        } else {
+          return try await dataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
+        }
       },
       subscribeToSchedules: { groupId, limit in
+        // Real-time listener: Firebase only (no Rust equivalent)
         dataSource.subscribeToActiveSchedules(groupId: groupId, limit: limit)
       },
       respondSchedule: { scheduleId, status in
-        return try await dataSource.respondToSchedule(
-          scheduleId: scheduleId,
-          status: status.rawValue
-        )
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.respondToSchedule(
+            scheduleId: scheduleId,
+            status: status.rawValue
+          )
+        } else {
+          return try await dataSource.respondToSchedule(
+            scheduleId: scheduleId,
+            status: status.rawValue
+          )
+        }
       },
       getAcceptedSchedulesByDateRange: { startDate, endDate in
-        do {
-          return try await dataSource.getAcceptedSchedulesByDateRange(startDate: startDate, endDate: endDate)
-        } catch {
-          throw ScheduleClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getAcceptedSchedulesByDateRange(
+            startDate: startDate,
+            endDate: endDate
+          )
+        } else {
+          do {
+            return try await dataSource.getAcceptedSchedulesByDateRange(
+              startDate: startDate,
+              endDate: endDate
+            )
+          } catch {
+            throw ScheduleClientError(from: error)
+          }
         }
       },
       getConfirmedSchedulesForCalendar: {
-        try await dataSource.getConfirmedSchedulesForCalendar()
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getConfirmedSchedulesForCalendar()
+        } else {
+          return try await dataSource.getConfirmedSchedulesForCalendar()
+        }
       },
+      // LiveActivity: Firebase only (no Rust equivalent yet)
       startLiveActivity: { scheduleId in
         try await dataSource.startLiveActivity(scheduleId: scheduleId)
       },

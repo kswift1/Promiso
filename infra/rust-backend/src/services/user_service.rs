@@ -134,22 +134,17 @@ pub async fn get_user_public(
 }
 
 /// 사용자 정보 수정 (닉네임) — U6: name/email은 UpdateUserRequest에 필드 자체가 없음
-pub async fn update_user(
-    pool: &PgPool,
-    uid: &str,
-    req: UpdateUserRequest,
-) -> Result<(), AppError> {
+pub async fn update_user(pool: &PgPool, uid: &str, req: UpdateUserRequest) -> Result<(), AppError> {
     if let Some(ref nickname) = req.nickname {
         let validated = validate_nickname(nickname)?;
 
-        let result = sqlx::query(
-            "UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2",
-        )
-        .bind(&validated)
-        .bind(uid)
-        .execute(pool)
-        .await
-        .map_err(|e| map_unique_violation(e, "닉네임 변경 실패"))?;
+        let result =
+            sqlx::query("UPDATE users SET nickname = $1, updated_at = NOW() WHERE id = $2")
+                .bind(&validated)
+                .bind(uid)
+                .execute(pool)
+                .await
+                .map_err(|e| map_unique_violation(e, "닉네임 변경 실패"))?;
 
         if result.rows_affected() == 0 {
             return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
@@ -174,19 +169,20 @@ pub async fn upload_profile_image(
     // 보안: 사용자 소유 경로인지 검증 (임의 파일 참조 방지)
     let expected_prefix = format!("profile_images/{}/", uid);
     if !path.starts_with(&expected_prefix) {
-        return Err(AppError::BadRequest("이미지 경로가 올바르지 않습니다".to_string()));
+        return Err(AppError::BadRequest(
+            "이미지 경로가 올바르지 않습니다".to_string(),
+        ));
     }
 
     // 실제 Storage URL 생성은 Firebase Storage에서 처리 (ADR-007)
     let url = path;
 
-    let result =
-        sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
-            .bind(&url)
-            .bind(uid)
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let result = sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
+        .bind(&url)
+        .bind(uid)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
@@ -204,16 +200,17 @@ pub async fn check_nickname_available(
     let trimmed = validate_nickname(nickname)?;
 
     // 같은 닉네임을 가진 사용자 검색 (본인 제외)
-    let existing = sqlx::query_scalar::<_, String>("SELECT id FROM users WHERE nickname = $1 LIMIT 1")
-        .bind(&trimmed)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let existing =
+        sqlx::query_scalar::<_, String>("SELECT id FROM users WHERE nickname = $1 LIMIT 1")
+            .bind(&trimmed)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let available = match existing {
-        None => true,                        // 아무도 안 씀
-        Some(ref id) if id == uid => true,   // 본인이 쓰고 있음
-        Some(_) => false,                    // 다른 사람이 쓰고 있음
+        None => true,                      // 아무도 안 씀
+        Some(ref id) if id == uid => true, // 본인이 쓰고 있음
+        Some(_) => false,                  // 다른 사람이 쓰고 있음
     };
 
     Ok(NicknameCheckResponse {
