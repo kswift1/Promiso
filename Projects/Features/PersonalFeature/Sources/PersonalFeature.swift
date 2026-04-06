@@ -421,24 +421,20 @@ extension PersonalMode {
             }
             return .merge(
               .run { send in
-                var hasReceived = false
-                let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
-                for await events in activeEventsStream {
-                  hasReceived = true
+                do {
+                  let events = try await personalEventClient.getActiveEvents(50)
                   await send(.internal(.eventsUpdated(events)))
-                }
-                // 스트림이 값 없이 종료된 경우 (Auth 미로그인, Firestore 에러 등)
-                if !hasReceived {
+                } catch {
+                  AppLogger.personal.error("[PersonalEvent] 활성 일정 조회 실패: \(error.localizedDescription)")
                   await send(.internal(.eventsUpdated([])))
                 }
-              }
-              .cancellable(id: CancelID.eventSubscription, cancelInFlight: true),
+              },
               .run { send in
                 do {
                   let ongoing = try await personalEventClient.getOngoingEvents(20)
                   await send(.internal(.ongoingEventsLoaded(ongoing)))
                 } catch {
-                  AppLogger.personal.error("📅 [PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
+                  AppLogger.personal.error("[PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
                 }
               }
             )
