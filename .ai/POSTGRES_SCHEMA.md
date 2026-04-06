@@ -354,9 +354,9 @@ CREATE TABLE recurring_schedules (
 | uq_groups_invite_code | groups | invite_code | UNIQUE | 초대 코드 충돌 방지 |
 | uq_group_members_single_admin | group_members | group_id WHERE role='admin' | PARTIAL UNIQUE | 그룹당 admin 1명 강제 |
 | idx_group_members_user_joined_at | group_members | (user_id, joined_at DESC) | INDEX | 내 그룹 목록 최신순 조회 최적화 |
-| idx_schedules_group_start | schedules | (group_id, start_at) WHERE type='group' | PARTIAL INDEX | 그룹일정 시간순 조회 |
-| idx_schedules_personal_start | schedules | (user_id, start_at) WHERE type='personal' | PARTIAL INDEX | 개인일정 시간순 조회 |
-| idx_schedules_confirmed | schedules | (start_at) WHERE type='group' AND is_confirmed | PARTIAL INDEX | 캘린더 동기화 (확정 미래 일정) |
+| idx_schedules_group_start | schedules | (group_id, start_at) WHERE schedule_type='group' | PARTIAL INDEX | 그룹일정 시간순 조회 |
+| idx_schedules_personal_start | schedules | (user_id, start_at) WHERE schedule_type='personal' | PARTIAL INDEX | 개인일정 시간순 조회 |
+| idx_schedules_confirmed | schedules | (start_at) WHERE schedule_type='group' AND is_confirmed | PARTIAL INDEX | 캘린더 동기화 (확정 미래 일정) |
 | idx_schedule_votes_user | schedule_votes | (user_id, status) | INDEX | 유저의 accepted 일정 조회 |
 | idx_recurring_user | recurring_schedules | (user_id) | INDEX | 유저의 반복일정 조회 |
 

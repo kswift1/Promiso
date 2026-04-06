@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde::Deserialize;
@@ -10,6 +12,31 @@ use crate::models::schedule::*;
 // ============================================================
 // 헬퍼
 // ============================================================
+
+/// 여러 일정의 투표 정보를 한 번의 쿼리로 조회하여 schedule_id별로 그룹화
+async fn fetch_votes_batched(
+    pool: &PgPool,
+    schedule_ids: &[Uuid],
+) -> Result<HashMap<Uuid, Vec<ScheduleVote>>, AppError> {
+    if schedule_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let votes = sqlx::query_as::<_, ScheduleVote>(
+        "SELECT schedule_id, user_id, status, responded_at \
+         FROM schedule_votes WHERE schedule_id = ANY($1)",
+    )
+    .bind(schedule_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let mut map: HashMap<Uuid, Vec<ScheduleVote>> = HashMap::new();
+    for vote in votes {
+        map.entry(vote.schedule_id).or_default().push(vote);
+    }
+    Ok(map)
+}
 
 /// 제목 유효성 검증: trim, 비어있지 않음, 최대 30자
 fn validate_title(title: &str) -> Result<String, AppError> {
@@ -1123,20 +1150,16 @@ pub async fn get_group_schedules(
         }
     };
 
-    // 각 일정의 투표 정보 조회
-    let mut data: Vec<ScheduleResponse> = Vec::with_capacity(schedules.len());
-    for schedule in &schedules {
-        let votes = sqlx::query_as::<_, ScheduleVote>(
-            "SELECT schedule_id, user_id, status, responded_at \
-             FROM schedule_votes WHERE schedule_id = $1",
-        )
-        .bind(schedule.id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        data.push(build_schedule_response(schedule, votes));
-    }
+    // 각 일정의 투표 정보 배치 조회
+    let schedule_ids: Vec<Uuid> = schedules.iter().map(|s| s.id).collect();
+    let mut votes_map = fetch_votes_batched(pool, &schedule_ids).await?;
+    let data: Vec<ScheduleResponse> = schedules
+        .iter()
+        .map(|s| {
+            let votes = votes_map.remove(&s.id).unwrap_or_default();
+            build_schedule_response(s, votes)
+        })
+        .collect();
 
     // 커서: 반환된 항목이 limit개이면 마지막 항목의 start_at
     let cursor = if schedules.len() as i64 >= limit {
@@ -1187,19 +1210,15 @@ pub async fn get_home_schedules(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let mut result: Vec<ScheduleResponse> = Vec::with_capacity(schedules.len());
-    for schedule in &schedules {
-        let votes = sqlx::query_as::<_, ScheduleVote>(
-            "SELECT schedule_id, user_id, status, responded_at \
-             FROM schedule_votes WHERE schedule_id = $1",
-        )
-        .bind(schedule.id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        result.push(build_schedule_response(schedule, votes));
-    }
+    let schedule_ids: Vec<Uuid> = schedules.iter().map(|s| s.id).collect();
+    let mut votes_map = fetch_votes_batched(pool, &schedule_ids).await?;
+    let result: Vec<ScheduleResponse> = schedules
+        .iter()
+        .map(|s| {
+            let votes = votes_map.remove(&s.id).unwrap_or_default();
+            build_schedule_response(s, votes)
+        })
+        .collect();
 
     Ok(result)
 }
@@ -1279,19 +1298,14 @@ pub async fn get_calendar_schedules(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // ScheduleResponse 빌드
+    // ScheduleResponse 빌드 (group_schedules는 배치 조회, personal_schedules는 votes 없음)
+    let group_ids_for_votes: Vec<Uuid> = group_schedules.iter().map(|s| s.id).collect();
+    let mut votes_map = fetch_votes_batched(pool, &group_ids_for_votes).await?;
+
     let mut schedules_response: Vec<ScheduleResponse> = Vec::new();
 
     for schedule in &group_schedules {
-        let votes = sqlx::query_as::<_, ScheduleVote>(
-            "SELECT schedule_id, user_id, status, responded_at \
-             FROM schedule_votes WHERE schedule_id = $1",
-        )
-        .bind(schedule.id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
+        let votes = votes_map.remove(&schedule.id).unwrap_or_default();
         schedules_response.push(build_schedule_response(schedule, votes));
     }
 
