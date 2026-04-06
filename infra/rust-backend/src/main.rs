@@ -35,6 +35,8 @@ async fn main() {
     let addr = format!("[::]:{}", config.port);
     tracing::info!("Starting server on {}", addr);
 
-    let listener = TcpListener::bind(&addr).await.expect("Failed to bind address");
+    let listener = TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind address");
     axum::serve(listener, app).await.expect("Server error");
 }

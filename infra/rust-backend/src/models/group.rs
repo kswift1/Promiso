@@ -1,11 +1,13 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use serde::de::Deserializer;
+use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 
 /// JSON에서 필드 없음 → `None`, `"field": null` → `Some(None)`, `"field": "val"` → `Some(Some("val"))`
 /// `#[serde(default, deserialize_with = "deserialize_optional_field")]` 와 함께 사용
-pub fn deserialize_optional_field<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+pub fn deserialize_optional_field<'de, D>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {

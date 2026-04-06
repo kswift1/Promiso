@@ -470,8 +470,7 @@ async fn p8_join_already_member_rejected(pool: PgPool) {
     let group = create_test_group(&pool, "creator_p8", "중복가입").await;
 
     // 이미 멤버인 호스트가 재가입 시도
-    let result =
-        group_service::join_group(&pool, "creator_p8", &group.invite_code).await;
+    let result = group_service::join_group(&pool, "creator_p8", &group.invite_code).await;
     assert!(matches!(result, Err(AppError::Conflict(_))));
 }
 
@@ -493,8 +492,7 @@ async fn p9_join_full_group_rejected(pool: PgPool) {
 
     // 세 번째 유저가 가입 시도 → 정원 초과
     insert_test_user(&pool, "member_p9b", "멤버27b").await;
-    let result =
-        group_service::join_group(&pool, "member_p9b", &group.invite_code).await;
+    let result = group_service::join_group(&pool, "member_p9b", &group.invite_code).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
@@ -630,10 +628,9 @@ async fn s5_join_role_is_member(pool: PgPool) {
     insert_test_user(&pool, "joiner_s5", "가입자2").await;
 
     let group = create_test_group(&pool, "creator_s5", "역할검증").await;
-    let response =
-        group_service::join_group(&pool, "joiner_s5", &group.invite_code)
-            .await
-            .unwrap();
+    let response = group_service::join_group(&pool, "joiner_s5", &group.invite_code)
+        .await
+        .unwrap();
     assert_eq!(response.role, "member");
 }
 
@@ -643,10 +640,9 @@ async fn s6_join_default_notifications_on(pool: PgPool) {
     insert_test_user(&pool, "joiner_s6", "가입자3").await;
 
     let group = create_test_group(&pool, "creator_s6", "알림기본값").await;
-    let response =
-        group_service::join_group(&pool, "joiner_s6", &group.invite_code)
-            .await
-            .unwrap();
+    let response = group_service::join_group(&pool, "joiner_s6", &group.invite_code)
+        .await
+        .unwrap();
 
     let ns = &response.notification_settings;
     assert!(ns.enabled);
@@ -666,10 +662,9 @@ async fn s6_join_default_group_color_is_purple_hex(pool: PgPool) {
     insert_test_user(&pool, "joiner_s6c", "가입자3c").await;
 
     let group = create_test_group(&pool, "creator_s6c", "색상기본값").await;
-    let response =
-        group_service::join_group(&pool, "joiner_s6c", &group.invite_code)
-            .await
-            .unwrap();
+    let response = group_service::join_group(&pool, "joiner_s6c", &group.invite_code)
+        .await
+        .unwrap();
 
     assert_eq!(response.group_color, "#AF52DE");
 }
@@ -691,10 +686,9 @@ async fn s7_leave_success(pool: PgPool) {
     assert!(result.is_ok());
 
     // 탈퇴 후 멤버 목록에서 제거됨
-    let members =
-        group_service::fetch_group_members(&pool, "creator_s7", group_id)
-            .await
-            .unwrap();
+    let members = group_service::fetch_group_members(&pool, "creator_s7", group_id)
+        .await
+        .unwrap();
     assert!(!members.iter().any(|m| m.user_id == "member_s7"));
 }
 
@@ -817,10 +811,9 @@ async fn s11_transfer_old_host_becomes_member(pool: PgPool) {
         .await
         .unwrap();
 
-    let members =
-        group_service::fetch_group_members(&pool, "new_host_s11b", group_id)
-            .await
-            .unwrap();
+    let members = group_service::fetch_group_members(&pool, "new_host_s11b", group_id)
+        .await
+        .unwrap();
 
     let old_host = members.iter().find(|m| m.user_id == "creator_s11b");
     let new_host = members.iter().find(|m| m.user_id == "new_host_s11b");
@@ -850,10 +843,9 @@ async fn s12_expel_success(pool: PgPool) {
     assert!(result.is_ok());
 
     // 추방 후 멤버 목록에서 제거됨
-    let members =
-        group_service::fetch_group_members(&pool, "creator_s12", group_id)
-            .await
-            .unwrap();
+    let members = group_service::fetch_group_members(&pool, "creator_s12", group_id)
+        .await
+        .unwrap();
     assert!(!members.iter().any(|m| m.user_id == "target_s12"));
 }
 
@@ -1026,8 +1018,7 @@ async fn n2_update_notification_settings_non_member_forbidden(pool: PgPool) {
         calendar_sync: false,
     };
     let result =
-        group_service::update_notification_settings(&pool, "outsider_n2", group_id, settings)
-            .await;
+        group_service::update_notification_settings(&pool, "outsider_n2", group_id, settings).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
 }
 
@@ -1126,8 +1117,7 @@ async fn b3_mark_group_read_by_non_member_rejected(pool: PgPool) {
     let group = create_test_group(&pool, "creator_b3", "읽음권한").await;
     let group_id = Uuid::parse_str(&group.group_id).unwrap();
 
-    let result =
-        group_service::mark_group_read(&pool, "outsider_b3", group_id).await;
+    let result = group_service::mark_group_read(&pool, "outsider_b3", group_id).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
 }
 

@@ -97,8 +97,7 @@ impl FirebaseAuth {
         {
             let mut cached = self.cached_keys.write().await;
             cached.keys = keys.clone();
-            cached.expires_at =
-                std::time::Instant::now() + std::time::Duration::from_secs(max_age);
+            cached.expires_at = std::time::Instant::now() + std::time::Duration::from_secs(max_age);
         }
 
         Ok(keys)

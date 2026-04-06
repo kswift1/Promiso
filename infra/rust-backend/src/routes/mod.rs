@@ -1,5 +1,6 @@
 mod groups;
 mod health;
+mod schedules;
 mod users;
 
 use axum::middleware;
@@ -15,12 +16,13 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     // 인증 필요한 라우트
     let authenticated_routes = users::router()
         .merge(groups::router())
+        .merge(schedules::router())
         .layer(middleware::from_fn(require_auth));
 
     Router::new()
-        .merge(health::router())             // /health — 인증 불필요
-        .merge(groups::public_router())      // /api/v1/groups/preview — 인증 불필요
-        .merge(authenticated_routes)         // /api/v1/users/*, /api/v1/groups/* — 인증 필요
+        .merge(health::router()) // /health — 인증 불필요
+        .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
+        .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(firebase_auth))
         .with_state(pool)
 }

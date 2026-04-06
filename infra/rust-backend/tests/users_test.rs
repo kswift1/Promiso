@@ -192,8 +192,7 @@ async fn u5_nickname_check_self_allowed(pool: PgPool) {
     let _ = user_service::create_user(&pool, "test_self_nick", req).await;
 
     // 본인 닉네임 체크 → 사용 가능
-    let check =
-        user_service::check_nickname_available(&pool, "test_self_nick", "셀프닉넴").await;
+    let check = user_service::check_nickname_available(&pool, "test_self_nick", "셀프닉넴").await;
     assert!(check.is_ok());
     assert!(check.unwrap().available);
 }
@@ -205,8 +204,7 @@ async fn u5_nickname_check_taken_by_other(pool: PgPool) {
     let _ = user_service::create_user(&pool, "test_taken1", req).await;
 
     // 유저2가 같은 닉네임 체크 → 사용 불가
-    let check =
-        user_service::check_nickname_available(&pool, "test_taken2", "선점닉넴").await;
+    let check = user_service::check_nickname_available(&pool, "test_taken2", "선점닉넴").await;
     assert!(check.is_ok());
     assert!(!check.unwrap().available);
 }
@@ -248,8 +246,7 @@ async fn u8_get_other_user_no_common_group_rejected(pool: PgPool) {
     insert_test_user(&pool, "test_target", "대상자").await;
 
     // 공통 그룹 없이 타인 조회 → 거부
-    let result =
-        user_service::get_user_public(&pool, "test_requester", "test_target").await;
+    let result = user_service::get_user_public(&pool, "test_requester", "test_target").await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
 }
 
@@ -299,8 +296,7 @@ async fn upload_profile_image_success(pool: PgPool) {
     let upload_req = UploadProfileImageRequest {
         image_path: "profile_images/test_upload/image.jpg".to_string(),
     };
-    let result =
-        user_service::upload_profile_image(&pool, "test_upload", upload_req).await;
+    let result = user_service::upload_profile_image(&pool, "test_upload", upload_req).await;
     assert!(result.is_ok());
 }
 
@@ -312,8 +308,7 @@ async fn upload_profile_image_empty_path_rejected(pool: PgPool) {
     let upload_req = UploadProfileImageRequest {
         image_path: "".to_string(),
     };
-    let result =
-        user_service::upload_profile_image(&pool, "test_upload_empty", upload_req).await;
+    let result = user_service::upload_profile_image(&pool, "test_upload_empty", upload_req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 

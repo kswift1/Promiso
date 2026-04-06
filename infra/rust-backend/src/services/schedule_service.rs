@@ -1,4 +1,5 @@
-use chrono::{Datelike, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono_tz::Tz;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -37,14 +38,178 @@ fn validate_description(description: &Option<String>) -> Result<(), AppError> {
     Ok(())
 }
 
+fn validate_start_at(start_at: DateTime<Utc>) -> Result<(), AppError> {
+    if start_at <= Utc::now() {
+        return Err(AppError::BadRequest(
+            "시작 시간은 현재보다 미래여야 합니다".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_end_at(start_at: DateTime<Utc>, end_at: Option<DateTime<Utc>>) -> Result<(), AppError> {
+    if let Some(end_at) = end_at {
+        if end_at <= start_at {
+            return Err(AppError::BadRequest(
+                "종료 시간은 시작 시간 이후여야 합니다".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_description_blocks(
+    description_blocks: &Option<serde_json::Value>,
+) -> Result<(), AppError> {
+    if let Some(blocks) = description_blocks {
+        if let Some(arr) = blocks.as_array() {
+            if arr.len() > 20 {
+                return Err(AppError::BadRequest(
+                    "설명 블록은 최대 20개까지 허용됩니다".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_image_urls(image_urls: &Option<Vec<String>>) -> Result<(), AppError> {
+    if let Some(urls) = image_urls {
+        if urls.len() > 3 {
+            return Err(AppError::BadRequest(
+                "이미지는 최대 3개까지 허용됩니다".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+async fn get_group_member_count(pool: &PgPool, group_id: Uuid) -> Result<i64, AppError> {
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+        .bind(group_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(count.0)
+}
+
+fn validate_group_minimum_participants(
+    minimum_participants: i16,
+    member_count: i64,
+) -> Result<(), AppError> {
+    if minimum_participants < 1 {
+        return Err(AppError::BadRequest(
+            "최소 참여 인원은 1명 이상이어야 합니다".to_string(),
+        ));
+    }
+
+    if minimum_participants == 1 && member_count > 1 {
+        return Err(AppError::BadRequest(
+            "최소 참여 인원 1명은 1인 그룹에서만 허용됩니다".to_string(),
+        ));
+    }
+
+    if minimum_participants < 2 && member_count <= 0 {
+        return Err(AppError::BadRequest(
+            "그룹 멤버 수가 유효하지 않습니다".to_string(),
+        ));
+    }
+
+    if minimum_participants < 2 && member_count == 1 {
+        return Ok(());
+    }
+
+    if minimum_participants < 2 {
+        return Err(AppError::BadRequest(
+            "최소 참여 인원은 2명 이상이어야 합니다".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn effective_end_at(start_at: DateTime<Utc>, end_at: Option<DateTime<Utc>>) -> DateTime<Utc> {
+    end_at.unwrap_or(start_at)
+}
+
+fn parse_timezone(timezone: Option<&str>) -> Result<Tz, AppError> {
+    timezone
+        .unwrap_or("UTC")
+        .parse::<Tz>()
+        .map_err(|_| AppError::BadRequest("유효하지 않은 timezone입니다".to_string()))
+}
+
+fn resolve_local_datetime(
+    timezone: Tz,
+    date: NaiveDate,
+    time: &TimeComponents,
+) -> Result<DateTime<Utc>, AppError> {
+    let local = NaiveDateTime::new(
+        date,
+        chrono::NaiveTime::from_hms_opt(time.hour as u32, time.minute as u32, 0).ok_or_else(
+            || AppError::Internal("반복 일정 시간 값이 유효하지 않습니다".to_string()),
+        )?,
+    );
+
+    let zoned = match timezone.from_local_datetime(&local) {
+        LocalResult::Single(dt) => dt,
+        LocalResult::Ambiguous(dt, _) => dt,
+        LocalResult::None => {
+            return Err(AppError::BadRequest(
+                "timezone 기준으로 반복 일정을 해석할 수 없습니다".to_string(),
+            ));
+        }
+    };
+
+    Ok(zoned.with_timezone(&Utc))
+}
+
+fn json_get<'a>(value: &'a serde_json::Value, keys: &[&str]) -> Option<&'a serde_json::Value> {
+    keys.iter().find_map(|key| value.get(*key))
+}
+
+fn parse_override_time(
+    override_entry: Option<&serde_json::Value>,
+    keys: &[&str],
+) -> Option<TimeComponents> {
+    let value = override_entry.and_then(|entry| json_get(entry, keys))?;
+    let hour = value.get("hour")?.as_i64()? as i16;
+    let minute = value.get("minute")?.as_i64()? as i16;
+
+    Some(TimeComponents { hour, minute })
+}
+
+fn parse_override_location(override_entry: Option<&serde_json::Value>) -> Option<LocationResponse> {
+    let value = override_entry.and_then(|entry| entry.get("location"))?;
+    let name = value.get("name")?.as_str()?.to_string();
+
+    Some(LocationResponse {
+        name,
+        address: value
+            .get("address")
+            .and_then(|v| v.as_str())
+            .map(|v| v.to_string()),
+        latitude: value.get("latitude").and_then(|v| v.as_f64()),
+        longitude: value.get("longitude").and_then(|v| v.as_f64()),
+    })
+}
+
 /// Schedule DB 행 + votes로 ScheduleResponse 빌드
 fn build_schedule_response(schedule: &Schedule, votes: Vec<ScheduleVote>) -> ScheduleResponse {
-    let location = schedule.location_name.as_ref().map(|name| LocationResponse {
-        name: name.clone(),
-        address: schedule.location_address.clone(),
-        latitude: schedule.location_latitude,
-        longitude: schedule.location_longitude,
-    });
+    let location = schedule
+        .location_name
+        .as_ref()
+        .map(|name| LocationResponse {
+            name: name.clone(),
+            address: schedule.location_address.clone(),
+            latitude: schedule.location_latitude,
+            longitude: schedule.location_longitude,
+        });
 
     let is_group = schedule.schedule_type == ScheduleType::Group;
 
@@ -131,15 +296,12 @@ pub async fn create_schedule(
     // 공통 검증
     let title = validate_title(&req.title)?;
     validate_description(&req.description)?;
+    validate_start_at(req.start_at)?;
+    validate_end_at(req.start_at, req.end_at)?;
+    validate_description_blocks(&req.description_blocks)?;
 
-    // end_at > start_at 검증 (strictly greater, equal is invalid)
-    if let Some(end_at) = req.end_at {
-        if end_at <= req.start_at {
-            return Err(AppError::BadRequest(
-                "종료 시간은 시작 시간 이후여야 합니다".to_string(),
-            ));
-        }
-    }
+    // P20: 기본 이모지
+    let emoji = req.emoji.unwrap_or_else(|| "\u{1F4C5}".to_string());
 
     match req.schedule_type {
         ScheduleType::Group => {
@@ -149,49 +311,25 @@ pub async fn create_schedule(
             })?;
 
             let minimum_participants = req.minimum_participants.ok_or_else(|| {
-                AppError::BadRequest(
-                    "그룹 일정에는 minimum_participants가 필요합니다".to_string(),
-                )
+                AppError::BadRequest("그룹 일정에는 minimum_participants가 필요합니다".to_string())
             })?;
 
-            if minimum_participants < 1 {
+            if req.reminder_minutes_before.is_some() {
                 return Err(AppError::BadRequest(
-                    "최소 참여 인원은 1명 이상이어야 합니다".to_string(),
+                    "그룹 일정에는 reminder_minutes_before를 설정할 수 없습니다".to_string(),
                 ));
             }
-
-            // description_blocks 최대 20
-            if let Some(ref blocks) = req.description_blocks {
-                if let Some(arr) = blocks.as_array() {
-                    if arr.len() > 20 {
-                        return Err(AppError::BadRequest(
-                            "설명 블록은 최대 20개까지 허용됩니다".to_string(),
-                        ));
-                    }
-                }
-            }
-
-            // image_urls 최대 3
-            if let Some(ref urls) = req.image_urls {
-                if urls.len() > 3 {
-                    return Err(AppError::BadRequest(
-                        "이미지는 최대 3개까지 허용됩니다".to_string(),
-                    ));
-                }
-            }
+            validate_image_urls(&req.image_urls)?;
 
             // 그룹 존재 확인
-            let group_exists =
-                sqlx::query_as::<_, (Uuid,)>("SELECT id FROM groups WHERE id = $1")
-                    .bind(group_id)
-                    .fetch_optional(pool)
-                    .await
-                    .map_err(|e| AppError::Internal(e.to_string()))?;
+            let group_exists = sqlx::query_as::<_, (Uuid,)>("SELECT id FROM groups WHERE id = $1")
+                .bind(group_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
             if group_exists.is_none() {
-                return Err(AppError::NotFound(
-                    "그룹을 찾을 수 없습니다".to_string(),
-                ));
+                return Err(AppError::NotFound("그룹을 찾을 수 없습니다".to_string()));
             }
 
             // 멤버십 확인
@@ -207,6 +345,9 @@ pub async fn create_schedule(
             if membership.is_none() {
                 return Err(AppError::Forbidden("그룹 멤버가 아닙니다".to_string()));
             }
+
+            let member_count = get_group_member_count(pool, group_id).await?;
+            validate_group_minimum_participants(minimum_participants, member_count)?;
 
             // is_confirmed: minimum_participants <= 1 이면 호스트 자동수락으로 즉시 확정
             let is_confirmed = minimum_participants <= 1;
@@ -234,7 +375,7 @@ pub async fn create_schedule(
             )
             .bind(user_id)
             .bind(&title)
-            .bind(&req.emoji)
+            .bind(Some(&emoji))
             .bind(&req.description)
             .bind(&req.description_blocks)
             .bind(req.start_at)
@@ -284,6 +425,15 @@ pub async fn create_schedule(
                 ));
             }
 
+            if req.minimum_participants.is_some()
+                || req.tracking_start_minutes_before.is_some()
+                || req.image_urls.is_some()
+            {
+                return Err(AppError::BadRequest(
+                    "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
+                ));
+            }
+
             let location_name = req.location.as_ref().map(|l| l.name.clone());
             let location_address = req.location.as_ref().and_then(|l| l.address.clone());
             let location_latitude = req.location.as_ref().and_then(|l| l.latitude);
@@ -299,7 +449,7 @@ pub async fn create_schedule(
             )
             .bind(user_id)
             .bind(&title)
-            .bind(&req.emoji)
+            .bind(Some(&emoji))
             .bind(&req.description)
             .bind(&req.description_blocks)
             .bind(req.start_at)
@@ -340,9 +490,9 @@ pub async fn get_schedule(
     // 권한 확인
     match schedule.schedule_type {
         ScheduleType::Group => {
-            let group_id = schedule.group_id.ok_or_else(|| {
-                AppError::Internal("그룹 일정에 group_id가 없습니다".to_string())
-            })?;
+            let group_id = schedule
+                .group_id
+                .ok_or_else(|| AppError::Internal("그룹 일정에 group_id가 없습니다".to_string()))?;
 
             let membership = sqlx::query_as::<_, (String,)>(
                 "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id = $2",
@@ -440,6 +590,57 @@ pub async fn update_schedule(
     // 제목 검증
     if let Some(ref title) = req.title {
         validate_title(title)?;
+    }
+
+    if let Some(description) = &req.description {
+        validate_description(description)?;
+    }
+
+    if let Some(description_blocks) = &req.description_blocks {
+        validate_description_blocks(description_blocks)?;
+    }
+
+    if let Some(image_urls) = &req.image_urls {
+        validate_image_urls(image_urls)?;
+    }
+
+    let next_start_at = req.start_at.unwrap_or(schedule.start_at);
+    let next_end_at = match req.end_at {
+        Some(end_at) => end_at,
+        None => schedule.end_at,
+    };
+
+    validate_start_at(next_start_at)?;
+    validate_end_at(next_start_at, next_end_at)?;
+
+    match schedule.schedule_type {
+        ScheduleType::Group => {
+            if req.reminder_minutes_before.is_some() {
+                return Err(AppError::BadRequest(
+                    "그룹 일정에는 reminder_minutes_before를 설정할 수 없습니다".to_string(),
+                ));
+            }
+        }
+        ScheduleType::Personal => {
+            if req.minimum_participants.is_some()
+                || req.tracking_start_minutes_before.is_some()
+                || req.image_urls.is_some()
+            {
+                return Err(AppError::BadRequest(
+                    "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
+                ));
+            }
+        }
+    }
+
+    if let Some(minimum_participants) = req.minimum_participants {
+        let group_id = schedule.group_id.ok_or_else(|| {
+            AppError::BadRequest(
+                "개인 일정에는 minimum_participants를 설정할 수 없습니다".to_string(),
+            )
+        })?;
+        let member_count = get_group_member_count(pool, group_id).await?;
+        validate_group_minimum_participants(minimum_participants, member_count)?;
     }
 
     // 동적 UPDATE 쿼리 빌드
@@ -591,8 +792,36 @@ pub async fn update_schedule(
     // WHERE id = $N
     query = query.bind(schedule_id);
 
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
     query
-        .execute(pool)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if let Some(minimum_participants) = req.minimum_participants {
+        let accepted_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM schedule_votes \
+             WHERE schedule_id = $1 AND status = 'accepted'::vote_status",
+        )
+        .bind(schedule_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let is_confirmed = accepted_count.0 >= minimum_participants as i64;
+        sqlx::query("UPDATE schedules SET is_confirmed = $1 WHERE id = $2")
+            .bind(is_confirmed)
+            .bind(schedule_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+    }
+
+    tx.commit()
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -694,9 +923,9 @@ pub async fn respond_schedule(
         ));
     }
 
-    let group_id = schedule.group_id.ok_or_else(|| {
-        AppError::Internal("그룹 일정에 group_id가 없습니다".to_string())
-    })?;
+    let group_id = schedule
+        .group_id
+        .ok_or_else(|| AppError::Internal("그룹 일정에 group_id가 없습니다".to_string()))?;
 
     // 멤버십 확인
     let membership = sqlx::query_as::<_, (String,)>(
@@ -712,6 +941,9 @@ pub async fn respond_schedule(
         return Err(AppError::Forbidden("그룹 멤버가 아닙니다".to_string()));
     }
 
+    // 전환 감지: 이전 확정 상태 캡처
+    let was_confirmed = schedule.is_confirmed.unwrap_or(false);
+
     // 트랜잭션
     let mut tx = pool
         .begin()
@@ -720,14 +952,12 @@ pub async fn respond_schedule(
 
     if status == "pending" {
         // P28: pending이면 투표 삭제
-        sqlx::query(
-            "DELETE FROM schedule_votes WHERE schedule_id = $1 AND user_id = $2",
-        )
-        .bind(schedule_id)
-        .bind(user_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        sqlx::query("DELETE FROM schedule_votes WHERE schedule_id = $1 AND user_id = $2")
+            .bind(schedule_id)
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
     } else {
         // P27: 이미 같은 상태면 no-op
         let current_vote = sqlx::query_as::<_, (String,)>(
@@ -739,9 +969,7 @@ pub async fn respond_schedule(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let already_same = current_vote
-            .as_ref()
-            .is_some_and(|(s,)| s == &status);
+        let already_same = current_vote.as_ref().is_some_and(|(s,)| s == &status);
 
         if !already_same {
             // UPSERT: INSERT ON CONFLICT UPDATE
@@ -784,8 +1012,8 @@ pub async fn respond_schedule(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // confirmed_schedule 빌드 (is_confirmed && status == "accepted")
-    let confirmed_schedule = if new_is_confirmed && status == "accepted" {
+    // confirmed_schedule 빌드 (미확정 → 확정 전환 시에만)
+    let confirmed_schedule = if !was_confirmed && new_is_confirmed && status == "accepted" {
         Some(CalendarSyncSchedule {
             id: schedule.id,
             title: schedule.title.clone(),
@@ -818,17 +1046,14 @@ pub async fn get_group_schedules(
     query: GroupScheduleQuery,
 ) -> Result<PaginatedScheduleResponse, AppError> {
     // 그룹 존재 확인
-    let group_exists =
-        sqlx::query_as::<_, (Uuid,)>("SELECT id FROM groups WHERE id = $1")
-            .bind(group_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let group_exists = sqlx::query_as::<_, (Uuid,)>("SELECT id FROM groups WHERE id = $1")
+        .bind(group_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if group_exists.is_none() {
-        return Err(AppError::NotFound(
-            "그룹을 찾을 수 없습니다".to_string(),
-        ));
+        return Err(AppError::NotFound("그룹을 찾을 수 없습니다".to_string()));
     }
 
     // 멤버십 확인
@@ -850,41 +1075,35 @@ pub async fn get_group_schedules(
     let now = Utc::now();
 
     let schedules = match status {
-        "past" => {
-            match query.cursor {
-                Some(cursor) => {
-                    sqlx::query_as::<_, Schedule>(
-                        "SELECT * FROM schedules \
+        "past" => match query.cursor {
+            Some(cursor) => sqlx::query_as::<_, Schedule>(
+                "SELECT * FROM schedules \
                          WHERE group_id = $1 AND schedule_type = 'group' \
                            AND start_at < $2 AND start_at < $3 \
                          ORDER BY start_at DESC \
                          LIMIT $4",
-                    )
-                    .bind(group_id)
-                    .bind(now)
-                    .bind(cursor)
-                    .bind(limit)
-                    .fetch_all(pool)
-                    .await
-                    .map_err(|e| AppError::Internal(e.to_string()))?
-                }
-                None => {
-                    sqlx::query_as::<_, Schedule>(
-                        "SELECT * FROM schedules \
+            )
+            .bind(group_id)
+            .bind(now)
+            .bind(cursor)
+            .bind(limit)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?,
+            None => sqlx::query_as::<_, Schedule>(
+                "SELECT * FROM schedules \
                          WHERE group_id = $1 AND schedule_type = 'group' \
                            AND start_at < $2 \
                          ORDER BY start_at DESC \
                          LIMIT $3",
-                    )
-                    .bind(group_id)
-                    .bind(now)
-                    .bind(limit)
-                    .fetch_all(pool)
-                    .await
-                    .map_err(|e| AppError::Internal(e.to_string()))?
-                }
-            }
-        }
+            )
+            .bind(group_id)
+            .bind(now)
+            .bind(limit)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?,
+        },
         _ => {
             // "active": start_at >= NOW(), ASC
             sqlx::query_as::<_, Schedule>(
@@ -937,16 +1156,15 @@ pub async fn get_home_schedules(
     let now = Utc::now();
 
     // 유저가 속한 그룹 ID 목록
-    let group_ids: Vec<Uuid> = sqlx::query_as::<_, (Uuid,)>(
-        "SELECT group_id FROM group_members WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .into_iter()
-    .map(|(id,)| id)
-    .collect();
+    let group_ids: Vec<Uuid> =
+        sqlx::query_as::<_, (Uuid,)>("SELECT group_id FROM group_members WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .into_iter()
+            .map(|(id,)| id)
+            .collect();
 
     if group_ids.is_empty() {
         return Ok(Vec::new());
@@ -991,18 +1209,18 @@ pub async fn get_calendar_schedules(
     query: CalendarQuery,
 ) -> Result<CalendarResponse, AppError> {
     let accepted_only = query.accepted_only.unwrap_or(false);
+    let timezone = parse_timezone(query.timezone.as_deref())?;
 
     // 유저가 속한 그룹 ID 목록
-    let group_ids: Vec<Uuid> = sqlx::query_as::<_, (Uuid,)>(
-        "SELECT group_id FROM group_members WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .into_iter()
-    .map(|(id,)| id)
-    .collect();
+    let group_ids: Vec<Uuid> =
+        sqlx::query_as::<_, (Uuid,)>("SELECT group_id FROM group_members WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .into_iter()
+            .map(|(id,)| id)
+            .collect();
 
     // 그룹일정 조회 (date range)
     let group_schedules = if group_ids.is_empty() {
@@ -1015,7 +1233,7 @@ pub async fn get_calendar_schedules(
              WHERE s.schedule_type = 'group' \
                AND s.group_id = ANY($1) \
                AND s.start_at < $2 \
-               AND (s.end_at > $3 OR s.end_at IS NULL) \
+               AND COALESCE(s.end_at, s.start_at) >= $3 \
                AND sv.user_id = $4 \
                AND sv.status = 'accepted' \
              ORDER BY s.start_at ASC",
@@ -1033,7 +1251,7 @@ pub async fn get_calendar_schedules(
              WHERE schedule_type = 'group' \
                AND group_id = ANY($1) \
                AND start_at < $2 \
-               AND (end_at > $3 OR end_at IS NULL) \
+               AND COALESCE(end_at, start_at) >= $3 \
              ORDER BY start_at ASC",
         )
         .bind(&group_ids)
@@ -1050,7 +1268,7 @@ pub async fn get_calendar_schedules(
          WHERE schedule_type = 'personal' \
            AND user_id = $1 \
            AND start_at < $2 \
-           AND (end_at > $3 OR end_at IS NULL) \
+           AND COALESCE(end_at, start_at) >= $3 \
          ORDER BY start_at ASC",
     )
     .bind(user_id)
@@ -1096,14 +1314,21 @@ pub async fn get_calendar_schedules(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let range_start = query.start.date_naive();
-    let range_end = query.end.date_naive();
+    let range_start = query.start.with_timezone(&timezone).date_naive();
+    let range_end = query.end.with_timezone(&timezone).date_naive();
 
     let mut recurring_instances: Vec<RecurringInstance> = Vec::new();
     for rs in &recurring_schedules {
-        let mut instances = expand_recurring_in_range(rs, range_start, range_end);
+        let mut instances = expand_recurring_in_range(rs, range_start, range_end, timezone);
         recurring_instances.append(&mut instances);
     }
+
+    recurring_instances.sort_by(|a, b| {
+        a.date
+            .cmp(&b.date)
+            .then(a.start_time.hour.cmp(&b.start_time.hour))
+            .then(a.start_time.minute.cmp(&b.start_time.minute))
+    });
 
     Ok(CalendarResponse {
         schedules: schedules_response,
@@ -1160,83 +1385,47 @@ pub async fn check_conflicts(
     req: CheckConflictsRequest,
 ) -> Result<Vec<ScheduleConflict>, AppError> {
     let min_gap = Duration::minutes(req.min_gap_minutes.unwrap_or(0) as i64);
+    let timezone = parse_timezone(req.timezone.as_deref())?;
     let exclude_ids = req.exclude_ids.unwrap_or_default();
+    let proposed_end = effective_end_at(req.start_at, req.end_at);
 
     // 검색 범위를 min_gap만큼 확장
     let search_start = req.start_at - min_gap;
-    let search_end = req.end_at.map(|e| e + min_gap);
+    let search_end = proposed_end + min_gap;
 
     // 유저의 accepted 그룹일정 조회
-    let group_schedules = match search_end {
-        Some(end) => {
-            sqlx::query_as::<_, Schedule>(
-                "SELECT s.* FROM schedules s \
-                 JOIN schedule_votes sv ON s.id = sv.schedule_id \
-                 WHERE sv.user_id = $1 \
-                   AND sv.status = 'accepted' \
-                   AND s.schedule_type = 'group' \
-                   AND s.start_at < $2 \
-                   AND (s.end_at > $3 OR s.end_at IS NULL) \
-                 ORDER BY s.start_at ASC",
-            )
-            .bind(user_id)
-            .bind(end)
-            .bind(search_start)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-        }
-        None => {
-            sqlx::query_as::<_, Schedule>(
-                "SELECT s.* FROM schedules s \
-                 JOIN schedule_votes sv ON s.id = sv.schedule_id \
-                 WHERE sv.user_id = $1 \
-                   AND sv.status = 'accepted' \
-                   AND s.schedule_type = 'group' \
-                   AND (s.end_at > $2 OR s.end_at IS NULL) \
-                 ORDER BY s.start_at ASC",
-            )
-            .bind(user_id)
-            .bind(search_start)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-        }
-    };
+    let group_schedules = sqlx::query_as::<_, Schedule>(
+        "SELECT s.* FROM schedules s \
+         JOIN schedule_votes sv ON s.id = sv.schedule_id \
+         WHERE sv.user_id = $1 \
+           AND sv.status = 'accepted' \
+           AND s.schedule_type = 'group' \
+           AND s.start_at <= $2 \
+           AND COALESCE(s.end_at, s.start_at) >= $3 \
+         ORDER BY s.start_at ASC",
+    )
+    .bind(user_id)
+    .bind(search_end)
+    .bind(search_start)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // 유저의 개인일정 조회
-    let personal_schedules = match search_end {
-        Some(end) => {
-            sqlx::query_as::<_, Schedule>(
-                "SELECT * FROM schedules \
-                 WHERE user_id = $1 \
-                   AND schedule_type = 'personal' \
-                   AND start_at < $2 \
-                   AND (end_at > $3 OR end_at IS NULL) \
-                 ORDER BY start_at ASC",
-            )
-            .bind(user_id)
-            .bind(end)
-            .bind(search_start)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-        }
-        None => {
-            sqlx::query_as::<_, Schedule>(
-                "SELECT * FROM schedules \
-                 WHERE user_id = $1 \
-                   AND schedule_type = 'personal' \
-                   AND (end_at > $2 OR end_at IS NULL) \
-                 ORDER BY start_at ASC",
-            )
-            .bind(user_id)
-            .bind(search_start)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-        }
-    };
+    let personal_schedules = sqlx::query_as::<_, Schedule>(
+        "SELECT * FROM schedules \
+         WHERE user_id = $1 \
+           AND schedule_type = 'personal' \
+           AND start_at <= $2 \
+           AND COALESCE(end_at, start_at) >= $3 \
+         ORDER BY start_at ASC",
+    )
+    .bind(user_id)
+    .bind(search_end)
+    .bind(search_start)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let all_schedules: Vec<&Schedule> = group_schedules
         .iter()
@@ -1244,34 +1433,39 @@ pub async fn check_conflicts(
         .filter(|s| !exclude_ids.contains(&s.id))
         .collect();
 
-    let proposed_start = req.start_at;
-    let proposed_end = req.end_at;
-
     let mut conflicts: Vec<ScheduleConflict> = Vec::new();
 
     for existing in &all_schedules {
-        let ex_start = existing.start_at;
-        let ex_end = existing.end_at;
-
+        let is_overlapping = ranges_overlap(
+            req.start_at,
+            Some(proposed_end),
+            existing.start_at,
+            Some(effective_end_at(existing.start_at, existing.end_at)),
+        );
         // overlap 계산
         let overlap_minutes = calculate_overlap_minutes(
-            proposed_start,
-            proposed_end,
-            ex_start,
-            ex_end,
+            req.start_at,
+            Some(proposed_end),
+            existing.start_at,
+            Some(effective_end_at(existing.start_at, existing.end_at)),
         );
 
         // gap 계산 (겹치지 않는 경우)
-        let gap_minutes = if overlap_minutes > 0 {
+        let gap_minutes = if is_overlapping {
             0
         } else {
-            calculate_gap_minutes(proposed_start, proposed_end, ex_start, ex_end)
+            calculate_gap_minutes(
+                req.start_at,
+                Some(proposed_end),
+                existing.start_at,
+                Some(effective_end_at(existing.start_at, existing.end_at)),
+            )
         };
 
         let min_gap_minutes_val = req.min_gap_minutes.unwrap_or(0) as i64;
 
         // 겹치거나, gap이 min_gap 미만이면 충돌
-        if overlap_minutes > 0 || gap_minutes < min_gap_minutes_val {
+        if is_overlapping || gap_minutes < min_gap_minutes_val {
             let conflict_type = match existing.schedule_type {
                 ScheduleType::Group => "group",
                 ScheduleType::Personal => "personal",
@@ -1290,6 +1484,83 @@ pub async fn check_conflicts(
         }
     }
 
+    let recurring_schedules = sqlx::query_as::<_, RecurringSchedule>(
+        "SELECT id, user_id, title, emoji, description, \
+         start_time_hour, start_time_minute, end_time_hour, end_time_minute, \
+         location_name, location_address, location_latitude, location_longitude, \
+         reminder_minutes_before, frequency AS \"frequency: RecurrenceFrequency\", \
+         days_of_week, day_of_month, \
+         series_start_date, series_end_date, excluded_dates, overrides, \
+         created_at, updated_at \
+         FROM recurring_schedules WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let recurring_range_start = search_start.with_timezone(&timezone).date_naive();
+    let recurring_range_end = search_end.with_timezone(&timezone).date_naive();
+
+    for recurring_schedule in &recurring_schedules {
+        for instance in expand_recurring_in_range(
+            recurring_schedule,
+            recurring_range_start,
+            recurring_range_end,
+            timezone,
+        ) {
+            let instance_start =
+                resolve_local_datetime(timezone, instance.date, &instance.start_time)?;
+            let instance_end = match instance.end_time.as_ref() {
+                Some(end_time) => {
+                    let end_at = resolve_local_datetime(timezone, instance.date, end_time)?;
+                    Some(if end_at <= instance_start {
+                        end_at + Duration::days(1)
+                    } else {
+                        end_at
+                    })
+                }
+                None => None,
+            };
+            let is_overlapping = ranges_overlap(
+                req.start_at,
+                Some(proposed_end),
+                instance_start,
+                Some(effective_end_at(instance_start, instance_end)),
+            );
+            let overlap_minutes = calculate_overlap_minutes(
+                req.start_at,
+                Some(proposed_end),
+                instance_start,
+                Some(effective_end_at(instance_start, instance_end)),
+            );
+            let gap_minutes = if is_overlapping {
+                0
+            } else {
+                calculate_gap_minutes(
+                    req.start_at,
+                    Some(proposed_end),
+                    instance_start,
+                    Some(effective_end_at(instance_start, instance_end)),
+                )
+            };
+            let min_gap_minutes_val = req.min_gap_minutes.unwrap_or(0) as i64;
+
+            if is_overlapping || gap_minutes < min_gap_minutes_val {
+                conflicts.push(ScheduleConflict {
+                    id: format!("{}:{}", instance.recurring_schedule_id, instance.date),
+                    conflict_type: "recurring".to_string(),
+                    title: instance.title,
+                    emoji: instance.emoji,
+                    start_at: instance_start,
+                    end_at: instance_end,
+                    overlap_minutes,
+                    gap_minutes,
+                });
+            }
+        }
+    }
+
     // overlap 내림차순, gap 오름차순 정렬
     conflicts.sort_by(|a, b| {
         b.overlap_minutes
@@ -1304,6 +1575,26 @@ pub async fn check_conflicts(
 // 충돌 계산 헬퍼
 // ============================================================
 
+fn ranges_overlap(
+    start_a: chrono::DateTime<Utc>,
+    end_a: Option<chrono::DateTime<Utc>>,
+    start_b: chrono::DateTime<Utc>,
+    end_b: Option<chrono::DateTime<Utc>>,
+) -> bool {
+    let end_a = effective_end_at(start_a, end_a);
+    let end_b = effective_end_at(start_b, end_b);
+
+    if start_a == end_a && start_b == end_b {
+        start_a == start_b
+    } else if start_a == end_a {
+        start_a >= start_b && start_a < end_b
+    } else if start_b == end_b {
+        start_b >= start_a && start_b < end_a
+    } else {
+        start_a < end_b && end_a > start_b
+    }
+}
+
 /// 두 시간 범위의 겹침 시간(분)을 계산
 fn calculate_overlap_minutes(
     start_a: chrono::DateTime<Utc>,
@@ -1311,9 +1602,8 @@ fn calculate_overlap_minutes(
     start_b: chrono::DateTime<Utc>,
     end_b: Option<chrono::DateTime<Utc>>,
 ) -> i64 {
-    // end가 None인 경우 start + 1시간으로 간주
-    let end_a = end_a.unwrap_or(start_a + Duration::hours(1));
-    let end_b = end_b.unwrap_or(start_b + Duration::hours(1));
+    let end_a = effective_end_at(start_a, end_a);
+    let end_b = effective_end_at(start_b, end_b);
 
     let overlap_start = start_a.max(start_b);
     let overlap_end = end_a.min(end_b);
@@ -1332,8 +1622,8 @@ fn calculate_gap_minutes(
     start_b: chrono::DateTime<Utc>,
     end_b: Option<chrono::DateTime<Utc>>,
 ) -> i64 {
-    let end_a = end_a.unwrap_or(start_a + Duration::hours(1));
-    let end_b = end_b.unwrap_or(start_b + Duration::hours(1));
+    let end_a = effective_end_at(start_a, end_a);
+    let end_b = effective_end_at(start_b, end_b);
 
     if end_a <= start_b {
         (start_b - end_a).num_minutes()
@@ -1353,6 +1643,7 @@ fn expand_recurring_in_range(
     schedule: &RecurringSchedule,
     range_start: NaiveDate,
     range_end: NaiveDate,
+    _timezone: Tz,
 ) -> Vec<RecurringInstance> {
     let mut instances = Vec::new();
 
@@ -1368,12 +1659,9 @@ fn expand_recurring_in_range(
         return instances;
     }
 
-    let excluded_dates: Vec<NaiveDate> = schedule
-        .excluded_dates
-        .clone()
-        .unwrap_or_default();
+    let excluded_dates: Vec<NaiveDate> = schedule.excluded_dates.clone().unwrap_or_default();
 
-    // 오버라이드 파싱: { "YYYY-MM-DD": { "start_time": {...}, "end_time": {...}, "cancelled": bool } }
+    // 오버라이드 파싱: current app payload uses camelCase, legacy/service payload may use snake_case.
     let overrides_map: serde_json::Map<String, serde_json::Value> = schedule
         .overrides
         .as_ref()
@@ -1386,8 +1674,7 @@ fn expand_recurring_in_range(
             RecurrenceFrequency::Daily => true,
             RecurrenceFrequency::Weekly => {
                 if let Some(ref days) = schedule.days_of_week {
-                    // chrono: Monday=1, Sunday=7 (iso_weekday)
-                    let weekday = current.weekday().number_from_monday() as i16;
+                    let weekday = current.weekday().number_from_sunday() as i16;
                     days.contains(&weekday)
                 } else {
                     false
@@ -1408,31 +1695,19 @@ fn expand_recurring_in_range(
 
             // 오버라이드에서 cancelled 확인
             let is_cancelled = override_entry
-                .and_then(|v| v.get("cancelled"))
+                .and_then(|v| json_get(v, &["isCancelled", "cancelled"]))
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
             if !is_cancelled {
                 // 오버라이드된 시간 또는 기본 시간
-                let start_time = override_entry
-                    .and_then(|v| v.get("start_time"))
-                    .and_then(|v| {
-                        let hour = v.get("hour")?.as_i64()? as i16;
-                        let minute = v.get("minute")?.as_i64()? as i16;
-                        Some(TimeComponents { hour, minute })
-                    })
+                let start_time = parse_override_time(override_entry, &["startTime", "start_time"])
                     .unwrap_or(TimeComponents {
                         hour: schedule.start_time_hour,
                         minute: schedule.start_time_minute,
                     });
 
-                let end_time = override_entry
-                    .and_then(|v| v.get("end_time"))
-                    .and_then(|v| {
-                        let hour = v.get("hour")?.as_i64()? as i16;
-                        let minute = v.get("minute")?.as_i64()? as i16;
-                        Some(TimeComponents { hour, minute })
-                    })
+                let end_time = parse_override_time(override_entry, &["endTime", "end_time"])
                     .or_else(|| {
                         schedule.end_time_hour.map(|h| TimeComponents {
                             hour: h,
@@ -1440,16 +1715,27 @@ fn expand_recurring_in_range(
                         })
                     });
 
-                let location = schedule.location_name.as_ref().map(|name| LocationResponse {
-                    name: name.clone(),
-                    address: schedule.location_address.clone(),
-                    latitude: schedule.location_latitude,
-                    longitude: schedule.location_longitude,
+                let location = parse_override_location(override_entry).or_else(|| {
+                    schedule
+                        .location_name
+                        .as_ref()
+                        .map(|name| LocationResponse {
+                            name: name.clone(),
+                            address: schedule.location_address.clone(),
+                            latitude: schedule.location_latitude,
+                            longitude: schedule.location_longitude,
+                        })
                 });
+
+                let title = override_entry
+                    .and_then(|v| v.get("title"))
+                    .and_then(|v| v.as_str())
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| schedule.title.clone());
 
                 instances.push(RecurringInstance {
                     recurring_schedule_id: schedule.id,
-                    title: schedule.title.clone(),
+                    title,
                     emoji: schedule.emoji.clone(),
                     date: current,
                     start_time,
@@ -1669,14 +1955,13 @@ pub async fn update_recurring_schedule(
     req: UpdateRecurringScheduleRequest,
 ) -> Result<(), AppError> {
     // 존재 확인
-    let existing = sqlx::query_as::<_, (String,)>(
-        "SELECT user_id FROM recurring_schedules WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .ok_or_else(|| AppError::NotFound("반복일정을 찾을 수 없습니다".to_string()))?;
+    let existing =
+        sqlx::query_as::<_, (String,)>("SELECT user_id FROM recurring_schedules WHERE id = $1")
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::NotFound("반복일정을 찾을 수 없습니다".to_string()))?;
 
     // 소유권 확인
     if existing.0 != user_id {
@@ -1965,14 +2250,13 @@ pub async fn delete_recurring_schedule(
     id: Uuid,
 ) -> Result<(), AppError> {
     // 존재 확인
-    let existing = sqlx::query_as::<_, (String,)>(
-        "SELECT user_id FROM recurring_schedules WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
-    .ok_or_else(|| AppError::NotFound("반복일정을 찾을 수 없습니다".to_string()))?;
+    let existing =
+        sqlx::query_as::<_, (String,)>("SELECT user_id FROM recurring_schedules WHERE id = $1")
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::NotFound("반복일정을 찾을 수 없습니다".to_string()))?;
 
     // 소유권 확인
     if existing.0 != user_id {
@@ -1997,7 +2281,25 @@ pub async fn delete_recurring_schedule(
 pub async fn extract_schedule(
     _pool: &PgPool,
     _user_id: &str,
-    _req: ExtractScheduleRequest,
+    req: ExtractScheduleRequest,
 ) -> Result<ExtractScheduleResponse, AppError> {
-    todo!()
+    if req.text.is_none() && req.image_base64.is_none() {
+        return Err(AppError::BadRequest(
+            "text 또는 image_base64 중 하나는 필요합니다".to_string(),
+        ));
+    }
+
+    if let Some(text) = &req.text {
+        if text.chars().count() > 2000 {
+            return Err(AppError::BadRequest(
+                "text는 2000자 이하여야 합니다".to_string(),
+            ));
+        }
+    }
+
+    parse_timezone(req.timezone.as_deref())?;
+
+    Err(AppError::BadRequest(
+        "일정 추출 기능은 아직 지원되지 않습니다".to_string(),
+    ))
 }

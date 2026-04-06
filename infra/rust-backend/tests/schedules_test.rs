@@ -1,9 +1,6 @@
-//! Schedules 도메인 비즈니스 규칙 테스트 (Red Phase)
-//!
-//! 모든 테스트는 컴파일은 되지만 실행 시 실패해야 한다.
-//! service 함수들이 todo!()를 반환하기 때문.
+//! Schedules 도메인 비즈니스 규칙 테스트
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use promiso_backend::errors::AppError;
 use promiso_backend::models::schedule::*;
 use promiso_backend::services::schedule_service;
@@ -39,27 +36,23 @@ async fn create_test_group(pool: &PgPool, creator_id: &str, name: &str) -> Uuid 
     .expect("Failed to create test group");
 
     // 생성자를 admin으로 추가 (groups 테이블에 host_uid 없음, group_members로 관리)
-    sqlx::query(
-        "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')",
-    )
-    .bind(row.0)
-    .bind(creator_id)
-    .execute(pool)
-    .await
-    .expect("Failed to add creator as admin");
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')")
+        .bind(row.0)
+        .bind(creator_id)
+        .execute(pool)
+        .await
+        .expect("Failed to add creator as admin");
 
     row.0
 }
 
 async fn add_member_to_group(pool: &PgPool, group_id: Uuid, user_id: &str) {
-    sqlx::query(
-        "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')",
-    )
-    .bind(group_id)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .expect("Failed to add member to group");
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')")
+        .bind(group_id)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .expect("Failed to add member to group");
 }
 
 fn make_group_schedule_request(
@@ -84,10 +77,7 @@ fn make_group_schedule_request(
     }
 }
 
-fn make_personal_schedule_request(
-    title: &str,
-    start_at: DateTime<Utc>,
-) -> CreateScheduleRequest {
+fn make_personal_schedule_request(title: &str, start_at: DateTime<Utc>) -> CreateScheduleRequest {
     CreateScheduleRequest {
         schedule_type: ScheduleType::Personal,
         group_id: None,
@@ -210,13 +200,12 @@ async fn create_group_schedule_vote_deadline_equals_start_at(pool: PgPool) {
         .expect("create should succeed");
 
     // DB에서 직접 vote_deadline 확인
-    let row: (DateTime<Utc>, DateTime<Utc>) = sqlx::query_as(
-        "SELECT start_at, vote_deadline FROM schedules WHERE id = $1",
-    )
-    .bind(response.schedule_id)
-    .fetch_one(&pool)
-    .await
-    .expect("query failed");
+    let row: (DateTime<Utc>, DateTime<Utc>) =
+        sqlx::query_as("SELECT start_at, vote_deadline FROM schedules WHERE id = $1")
+            .bind(response.schedule_id)
+            .fetch_one(&pool)
+            .await
+            .expect("query failed");
 
     assert_eq!(row.0, row.1);
 }
@@ -290,6 +279,32 @@ async fn create_group_schedule_min_participants_zero_fails(pool: PgPool) {
     req.minimum_participants = Some(0);
 
     let result = schedule_service::create_schedule(&pool, "host_mp0", req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn create_group_schedule_past_start_fails(pool: PgPool) {
+    // P4: 시작 시간은 현재보다 미래여야 함
+    insert_test_user(&pool, "host_past", "호스트과거").await;
+    let group_id = create_test_group(&pool, "host_past", "과거시작그룹").await;
+
+    let req = make_group_schedule_request(group_id, "과거시작일정", past_time(1));
+    let result = schedule_service::create_schedule(&pool, "host_past", req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn create_group_schedule_min_one_requires_single_member_group(pool: PgPool) {
+    // P6: minimum_participants=1은 1인 그룹에서만 허용
+    insert_test_user(&pool, "host_min_rule", "호스트MinRule").await;
+    insert_test_user(&pool, "member_min_rule", "멤버MinRule").await;
+    let group_id = create_test_group(&pool, "host_min_rule", "최소인원예외그룹").await;
+    add_member_to_group(&pool, group_id, "member_min_rule").await;
+
+    let mut req = make_group_schedule_request(group_id, "잘못된즉시확정", future_time(24));
+    req.minimum_participants = Some(1);
+
+    let result = schedule_service::create_schedule(&pool, "host_min_rule", req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
@@ -662,8 +677,7 @@ async fn update_schedule_host_success(pool: PgPool) {
         reminder_minutes_before: None,
     };
     let result =
-        schedule_service::update_schedule(&pool, "host_us", schedule.schedule_id, update_req)
-            .await;
+        schedule_service::update_schedule(&pool, "host_us", schedule.schedule_id, update_req).await;
     assert!(result.is_ok());
 }
 
@@ -802,13 +816,12 @@ async fn update_schedule_start_at_syncs_vote_deadline(pool: PgPool) {
         .expect("update should succeed");
 
     // DB에서 vote_deadline 확인
-    let row: (DateTime<Utc>, DateTime<Utc>) = sqlx::query_as(
-        "SELECT start_at, vote_deadline FROM schedules WHERE id = $1",
-    )
-    .bind(schedule.schedule_id)
-    .fetch_one(&pool)
-    .await
-    .expect("query failed");
+    let row: (DateTime<Utc>, DateTime<Utc>) =
+        sqlx::query_as("SELECT start_at, vote_deadline FROM schedules WHERE id = $1")
+            .bind(schedule.schedule_id)
+            .fetch_one(&pool)
+            .await
+            .expect("query failed");
 
     assert_eq!(row.0, row.1);
 }
@@ -873,6 +886,87 @@ async fn update_schedule_title_too_long_fails(pool: PgPool) {
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn update_schedule_start_at_past_fails(pool: PgPool) {
+    // P4/P12: 미래 일정도 과거로 옮길 수는 없음
+    insert_test_user(&pool, "host_usp", "호스트USP").await;
+    let group_id = create_test_group(&pool, "host_usp", "과거이동금지").await;
+
+    let req = make_group_schedule_request(group_id, "미래일정", future_time(24));
+    let schedule = schedule_service::create_schedule(&pool, "host_usp", req)
+        .await
+        .expect("create should succeed");
+
+    let update_req = UpdateScheduleRequest {
+        title: None,
+        emoji: None,
+        description: None,
+        description_blocks: None,
+        start_at: Some(past_time(1)),
+        end_at: None,
+        location: None,
+        minimum_participants: None,
+        tracking_start_minutes_before: None,
+        image_urls: None,
+        reminder_minutes_before: None,
+    };
+    let result =
+        schedule_service::update_schedule(&pool, "host_usp", schedule.schedule_id, update_req)
+            .await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn update_schedule_minimum_participants_recalculates_confirmed(pool: PgPool) {
+    // minimum_participants 변경 시 is_confirmed도 즉시 재계산되어야 함
+    insert_test_user(&pool, "host_umr", "호스트UMR").await;
+    insert_test_user(&pool, "member1_umr", "멤버1UMR").await;
+    insert_test_user(&pool, "member2_umr", "멤버2UMR").await;
+    let group_id = create_test_group(&pool, "host_umr", "확정재계산수정").await;
+    add_member_to_group(&pool, group_id, "member1_umr").await;
+    add_member_to_group(&pool, group_id, "member2_umr").await;
+
+    let req = make_group_schedule_request(group_id, "확정상태변경", future_time(24));
+    let schedule = schedule_service::create_schedule(&pool, "host_umr", req)
+        .await
+        .expect("create should succeed");
+
+    schedule_service::respond_schedule(
+        &pool,
+        "member1_umr",
+        schedule.schedule_id,
+        RespondScheduleRequest {
+            status: "accepted".to_string(),
+        },
+    )
+    .await
+    .expect("accept should succeed");
+
+    let update_req = UpdateScheduleRequest {
+        title: None,
+        emoji: None,
+        description: None,
+        description_blocks: None,
+        start_at: None,
+        end_at: None,
+        location: None,
+        minimum_participants: Some(3),
+        tracking_start_minutes_before: None,
+        image_urls: None,
+        reminder_minutes_before: None,
+    };
+    schedule_service::update_schedule(&pool, "host_umr", schedule.schedule_id, update_req)
+        .await
+        .expect("update should succeed");
+
+    let row: (bool,) = sqlx::query_as("SELECT is_confirmed FROM schedules WHERE id = $1")
+        .bind(schedule.schedule_id)
+        .fetch_one(&pool)
+        .await
+        .expect("query failed");
+    assert!(!row.0);
+}
+
 // ============================================================
 // 그룹일정 - 삭제
 // ============================================================
@@ -888,17 +982,15 @@ async fn delete_schedule_host_success(pool: PgPool) {
         .await
         .expect("create should succeed");
 
-    let result =
-        schedule_service::delete_schedule(&pool, "host_ds", schedule.schedule_id).await;
+    let result = schedule_service::delete_schedule(&pool, "host_ds", schedule.schedule_id).await;
     assert!(result.is_ok());
 
     // DB에서 삭제 확인
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM schedules WHERE id = $1")
-            .bind(schedule.schedule_id)
-            .fetch_one(&pool)
-            .await
-            .expect("query failed");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM schedules WHERE id = $1")
+        .bind(schedule.schedule_id)
+        .fetch_one(&pool)
+        .await
+        .expect("query failed");
     assert_eq!(count.0, 0);
 }
 
@@ -917,8 +1009,7 @@ async fn delete_schedule_group_host_success(pool: PgPool) {
         .expect("create should succeed");
 
     // 그룹 관리자가 삭제
-    let result =
-        schedule_service::delete_schedule(&pool, "admin_dg", schedule.schedule_id).await;
+    let result = schedule_service::delete_schedule(&pool, "admin_dg", schedule.schedule_id).await;
     assert!(result.is_ok());
 }
 
@@ -935,8 +1026,7 @@ async fn delete_schedule_non_host_fails(pool: PgPool) {
         .await
         .expect("create should succeed");
 
-    let result =
-        schedule_service::delete_schedule(&pool, "member_dnf", schedule.schedule_id).await;
+    let result = schedule_service::delete_schedule(&pool, "member_dnf", schedule.schedule_id).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
 }
 
@@ -1081,8 +1171,7 @@ async fn delete_personal_schedule_owner_only(pool: PgPool) {
         .await
         .expect("create should succeed");
 
-    let result =
-        schedule_service::delete_schedule(&pool, "other_dpo", schedule.schedule_id).await;
+    let result = schedule_service::delete_schedule(&pool, "other_dpo", schedule.schedule_id).await;
     assert!(matches!(result, Err(AppError::Forbidden(_))));
 }
 
@@ -1278,8 +1367,7 @@ async fn get_group_schedules_active(pool: PgPool) {
         limit: None,
         cursor: None,
     };
-    let result =
-        schedule_service::get_group_schedules(&pool, "host_gsa", group_id, query).await;
+    let result = schedule_service::get_group_schedules(&pool, "host_gsa", group_id, query).await;
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.data.len(), 2);
@@ -1311,8 +1399,7 @@ async fn get_group_schedules_past_with_pagination(pool: PgPool) {
         limit: Some(2),
         cursor: None,
     };
-    let result =
-        schedule_service::get_group_schedules(&pool, "host_gsp", group_id, query).await;
+    let result = schedule_service::get_group_schedules(&pool, "host_gsp", group_id, query).await;
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.data.len(), 2);
@@ -1374,12 +1461,21 @@ async fn get_calendar_sync_confirmed_only(pool: PgPool) {
     let group_id = create_test_group(&pool, "user_gcs", "캘린더동기화").await;
     add_member_to_group(&pool, group_id, "member_gcs").await;
 
-    // 확정 일정: min=1 → 호스트 수락으로 즉시 확정
-    let mut req1 = make_group_schedule_request(group_id, "확정일정", future_time(24));
-    req1.minimum_participants = Some(1);
-    schedule_service::create_schedule(&pool, "user_gcs", req1)
+    // 확정 일정: min=2, 멤버까지 수락
+    let req1 = make_group_schedule_request(group_id, "확정일정", future_time(24));
+    let confirmed_schedule = schedule_service::create_schedule(&pool, "user_gcs", req1)
         .await
         .expect("create confirmed should succeed");
+    schedule_service::respond_schedule(
+        &pool,
+        "member_gcs",
+        confirmed_schedule.schedule_id,
+        RespondScheduleRequest {
+            status: "accepted".to_string(),
+        },
+    )
+    .await
+    .expect("member accept should succeed");
 
     // 미확정 일정: min=2, 호스트만 수락
     let req2 = make_group_schedule_request(group_id, "미확정일정", future_time(48));
@@ -1393,4 +1489,165 @@ async fn get_calendar_sync_confirmed_only(pool: PgPool) {
     let synced = result.unwrap();
     assert_eq!(synced.len(), 1);
     assert_eq!(synced[0].title, "확정일정");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_calendar_schedules_zero_duration_without_end_at_only_on_start_day(pool: PgPool) {
+    insert_test_user(&pool, "user_gcz", "유저GCZ").await;
+
+    let start_at = Utc.with_ymd_and_hms(2026, 12, 1, 10, 0, 0).unwrap();
+    let req = make_personal_schedule_request("단발일정", start_at);
+    schedule_service::create_schedule(&pool, "user_gcz", req)
+        .await
+        .expect("create should succeed");
+
+    let same_day = schedule_service::get_calendar_schedules(
+        &pool,
+        "user_gcz",
+        CalendarQuery {
+            start: Utc.with_ymd_and_hms(2026, 12, 1, 0, 0, 0).unwrap(),
+            end: Utc.with_ymd_and_hms(2026, 12, 2, 0, 0, 0).unwrap(),
+            accepted_only: None,
+            timezone: Some("UTC".to_string()),
+        },
+    )
+    .await
+    .expect("same day query should succeed");
+    assert_eq!(same_day.schedules.len(), 1);
+
+    let next_day = schedule_service::get_calendar_schedules(
+        &pool,
+        "user_gcz",
+        CalendarQuery {
+            start: Utc.with_ymd_and_hms(2026, 12, 2, 0, 0, 0).unwrap(),
+            end: Utc.with_ymd_and_hms(2026, 12, 3, 0, 0, 0).unwrap(),
+            accepted_only: None,
+            timezone: Some("UTC".to_string()),
+        },
+    )
+    .await
+    .expect("next day query should succeed");
+    assert_eq!(next_day.schedules.len(), 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_calendar_schedules_recurring_respects_timezone_and_camelcase_overrides(pool: PgPool) {
+    insert_test_user(&pool, "user_gcr", "유저GCR").await;
+
+    sqlx::query(
+        "INSERT INTO recurring_schedules \
+         (user_id, title, start_time_hour, start_time_minute, frequency, days_of_week, \
+          series_start_date, overrides, location_name) \
+         VALUES ($1, $2, 9, 0, 'weekly', $3, $4, $5, $6)",
+    )
+    .bind("user_gcr")
+    .bind("기본제목")
+    .bind(vec![1_i16])
+    .bind(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap())
+    .bind(serde_json::json!({
+        "2026-04-05": {
+            "title": "오버라이드제목",
+            "startTime": { "hour": 17, "minute": 30 },
+            "location": { "name": "오버라이드장소" },
+            "isCancelled": false
+        }
+    }))
+    .bind("기본장소")
+    .execute(&pool)
+    .await
+    .expect("insert recurring schedule failed");
+
+    let response = schedule_service::get_calendar_schedules(
+        &pool,
+        "user_gcr",
+        CalendarQuery {
+            start: Utc.with_ymd_and_hms(2026, 4, 4, 16, 0, 0).unwrap(),
+            end: Utc.with_ymd_and_hms(2026, 4, 4, 18, 0, 0).unwrap(),
+            accepted_only: None,
+            timezone: Some("Asia/Seoul".to_string()),
+        },
+    )
+    .await
+    .expect("calendar query should succeed");
+
+    assert_eq!(response.recurring_instances.len(), 1);
+    let instance = &response.recurring_instances[0];
+    assert_eq!(instance.date, NaiveDate::from_ymd_opt(2026, 4, 5).unwrap());
+    assert_eq!(instance.title, "오버라이드제목");
+    assert_eq!(instance.start_time.hour, 17);
+    assert_eq!(instance.start_time.minute, 30);
+    assert_eq!(
+        instance
+            .location
+            .as_ref()
+            .map(|location| location.name.as_str()),
+        Some("오버라이드장소")
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn check_conflicts_includes_recurring_instances(pool: PgPool) {
+    insert_test_user(&pool, "user_ccr", "유저CCR").await;
+
+    sqlx::query(
+        "INSERT INTO recurring_schedules \
+         (user_id, title, start_time_hour, start_time_minute, frequency, series_start_date) \
+         VALUES ($1, $2, 10, 0, 'daily', $3)",
+    )
+    .bind("user_ccr")
+    .bind("매일운동")
+    .bind(NaiveDate::from_ymd_opt(2026, 12, 1).unwrap())
+    .execute(&pool)
+    .await
+    .expect("insert recurring schedule failed");
+
+    let conflicts = schedule_service::check_conflicts(
+        &pool,
+        "user_ccr",
+        CheckConflictsRequest {
+            start_at: Utc.with_ymd_and_hms(2026, 12, 2, 10, 0, 0).unwrap(),
+            end_at: Some(Utc.with_ymd_and_hms(2026, 12, 2, 11, 0, 0).unwrap()),
+            min_gap_minutes: Some(0),
+            exclude_ids: None,
+            timezone: Some("UTC".to_string()),
+        },
+    )
+    .await
+    .expect("conflict check should succeed");
+
+    assert!(conflicts
+        .iter()
+        .any(|conflict| conflict.conflict_type == "recurring"));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn check_conflicts_zero_duration_same_time_conflicts(pool: PgPool) {
+    insert_test_user(&pool, "user_ccz", "유저CCZ").await;
+
+    let start_at = Utc.with_ymd_and_hms(2026, 12, 3, 10, 0, 0).unwrap();
+    let created = schedule_service::create_schedule(
+        &pool,
+        "user_ccz",
+        make_personal_schedule_request("점일정", start_at),
+    )
+    .await
+    .expect("create should succeed");
+
+    let conflicts = schedule_service::check_conflicts(
+        &pool,
+        "user_ccz",
+        CheckConflictsRequest {
+            start_at,
+            end_at: None,
+            min_gap_minutes: Some(0),
+            exclude_ids: None,
+            timezone: Some("UTC".to_string()),
+        },
+    )
+    .await
+    .expect("conflict check should succeed");
+
+    assert!(conflicts.iter().any(|conflict| {
+        conflict.conflict_type == "personal" && conflict.id == created.schedule_id.to_string()
+    }));
 }
