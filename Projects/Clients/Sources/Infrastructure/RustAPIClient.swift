@@ -77,6 +77,7 @@ public actor RustAPIClient {
     if let body = body, !(body is Empty) {
       let encoder = JSONEncoder()
       encoder.keyEncodingStrategy = .convertToSnakeCase
+      encoder.dateEncodingStrategy = .iso8601
       urlRequest.httpBody = try encoder.encode(body)
     }
 
