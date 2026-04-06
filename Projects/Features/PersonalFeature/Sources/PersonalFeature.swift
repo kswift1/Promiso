@@ -422,10 +422,12 @@ extension PersonalMode {
             return .merge(
               .run { send in
                 do {
+                  AppLogger.personal.info("[PersonalEvent] getActiveEvents 호출 시작")
                   let events = try await personalEventClient.getActiveEvents(50)
+                  AppLogger.personal.info("[PersonalEvent] getActiveEvents 결과: \(events.count)개")
                   await send(.internal(.eventsUpdated(events)))
                 } catch {
-                  AppLogger.personal.error("[PersonalEvent] 활성 일정 조회 실패: \(error.localizedDescription)")
+                  AppLogger.personal.error("[PersonalEvent] 활성 일정 조회 실패: \(error)")
                   await send(.internal(.eventsUpdated([])))
                 }
               },
