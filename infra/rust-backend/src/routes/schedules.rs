@@ -14,6 +14,7 @@ pub fn router() -> Router<PgPool> {
     let schedule_routes = Router::new()
         .route("/", post(create_schedule))
         .route("/home", get(get_home_schedules))
+        .route("/personal/past", get(get_personal_past_schedules))
         .route("/calendar", get(get_calendar_schedules))
         .route("/calendar-sync", get(get_calendar_sync))
         .route("/check-conflicts", post(check_conflicts))
@@ -105,6 +106,21 @@ async fn get_home_schedules(
     Query(query): Query<HomeQuery>,
 ) -> Result<ApiResponse<Vec<ScheduleResponse>>, AppError> {
     let result = schedule_service::get_home_schedules(&pool, &claims.uid, query).await?;
+    ApiResponse::ok(result)
+}
+
+async fn get_personal_past_schedules(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Query(query): Query<PersonalPastQuery>,
+) -> Result<ApiResponse<Vec<ScheduleResponse>>, AppError> {
+    let result = schedule_service::get_personal_past_schedules(
+        &pool,
+        &claims.uid,
+        query.limit.unwrap_or(20),
+        query.cursor,
+    )
+    .await?;
     ApiResponse::ok(result)
 }
 

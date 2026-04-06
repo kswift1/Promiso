@@ -388,10 +388,10 @@ public actor ScheduleRustDataSource {
   // MARK: - Group Schedules
 
   public func getActiveSchedules(groupId: String, limit: Int) async throws -> [ScheduleModel] {
-    let response: [RustScheduleResponse] = try await api.get(
+    let response: RustPaginatedScheduleResponse = try await api.get(
       "/api/v1/groups/\(groupId)/schedules?status=active&limit=\(limit)"
     )
-    return response.map { $0.toScheduleModel() }
+    return response.data.map { $0.toScheduleModel() }
   }
 
   public func getPastSchedules(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [ScheduleModel] {
@@ -403,15 +403,15 @@ public actor ScheduleRustDataSource {
         .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
       path += "&cursor=\(cursorString)"
     }
-    let response: [RustScheduleResponse] = try await api.get(path)
-    return response.map { $0.toScheduleModel() }
+    let response: RustPaginatedScheduleResponse = try await api.get(path)
+    return response.data.map { $0.toScheduleModel() }
   }
 
   public func getActiveScheduleCount(groupId: String) async throws -> Int {
-    let schedules: [RustScheduleResponse] = try await api.get(
+    let response: RustPaginatedScheduleResponse = try await api.get(
       "/api/v1/groups/\(groupId)/schedules?status=active&limit=100"
     )
-    return schedules.count
+    return response.data.count
   }
 
   // MARK: - Home Schedules

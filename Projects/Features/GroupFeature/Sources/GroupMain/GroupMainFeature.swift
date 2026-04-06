@@ -965,16 +965,17 @@ extension GroupMain {
             if !state.schedulesState.isLoaded {
               state.schedulesState = .loading
             }
-            AppLogger.group.debug("[GroupMain] subscribeToSchedules 시작: groupId=\(groupId)")
+            AppLogger.group.debug("[GroupMain] fetchSchedules 시작: groupId=\(groupId)")
             return .run { [scheduleClient] send in
-              AppLogger.group.debug("[GroupMain] 리스너 연결 시작...")
-              for await schedules in scheduleClient.subscribeToSchedules(groupId, 20) {
+              do {
+                let schedules = try await scheduleClient.getActiveSchedules(groupId, 20)
                 AppLogger.group.debug("[GroupMain] schedules 수신: \(schedules.count)개")
                 await send(.internal(.schedulesUpdated(schedules)))
+              } catch {
+                AppLogger.group.error("[GroupMain] schedules 조회 실패: \(error.localizedDescription)")
+                await send(.internal(.schedulesUpdated([])))
               }
-              AppLogger.group.warning("[GroupMain] 리스너 스트림 종료됨")
             }
-            .cancellable(id: CancelID.scheduleSubscription, cancelInFlight: true)
 
           case .cancelSubscription:
             AppLogger.group.debug("[GroupMain] 백그라운드 진입 - 구독 취소")

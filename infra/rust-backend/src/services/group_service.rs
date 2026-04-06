@@ -915,6 +915,75 @@ pub async fn update_notification_settings(
     Ok(())
 }
 
+/// 여러 그룹 batch 조회 -- 사용자가 멤버인 그룹만 반환, 입력 순서 보존
+pub async fn get_groups_batch(
+    pool: &PgPool,
+    user_uid: &str,
+    ids: Vec<Uuid>,
+) -> Result<Vec<GroupResponse>, AppError> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let rows = sqlx::query_as::<_, GroupWithMembership>(
+        "SELECT g.id, g.name, g.description, g.image_url, g.max_members, \
+                g.invite_code, g.last_activity_at, g.created_at, g.updated_at, \
+                gm.role::TEXT as role, gm.group_color, gm.notifications_enabled, \
+                gm.schedule_invitation, gm.schedule_reminder, gm.schedule_confirmed, \
+                gm.schedule_cancelled, gm.schedule_updated, gm.attendance_response, \
+                gm.group_update, gm.calendar_sync, gm.joined_at as member_joined_at, gm.last_read_at, \
+                (SELECT user_id FROM group_members WHERE group_id = g.id AND role = 'admin'::group_member_role) AS admin_uid, \
+                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count \
+         FROM groups g \
+         JOIN group_members gm ON g.id = gm.group_id AND gm.user_id = $2 \
+         WHERE g.id = ANY($1)",
+    )
+    .bind(&ids)
+    .bind(user_uid)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 입력 순서 보존 (iOS가 순서를 기대할 수 있음)
+    let row_map: std::collections::HashMap<Uuid, &GroupWithMembership> =
+        rows.iter().map(|r| (r.id, r)).collect();
+
+    Ok(ids
+        .iter()
+        .filter_map(|id| row_map.get(id))
+        .map(|row| GroupResponse {
+            group_id: row.id.to_string(),
+            name: row.name.clone(),
+            description: row.description.clone(),
+            image_url: row.image_url.clone(),
+            max_members: row.max_members,
+            invite_code: row.invite_code.clone(),
+            created_by: row.admin_uid.clone().unwrap_or_default(),
+            member_count: row.member_count,
+            role: row.role.clone(),
+            group_color: row.group_color.clone(),
+            notification_settings: NotificationSettingsResponse {
+                enabled: row.notifications_enabled,
+                schedule: ScheduleNotificationSettingsResponse {
+                    invitation: row.schedule_invitation,
+                    reminder: row.schedule_reminder,
+                    confirmed: row.schedule_confirmed,
+                    cancelled: row.schedule_cancelled,
+                    updated: row.schedule_updated,
+                    attendance_response: row.attendance_response,
+                },
+                group: GroupNotificationSettingsResponse {
+                    update: row.group_update,
+                },
+                calendar_sync: row.calendar_sync,
+            },
+            last_read_at: row.last_read_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+        .collect())
+}
+
 /// 그룹 색상 업데이트
 pub async fn update_group_color(
     pool: &PgPool,

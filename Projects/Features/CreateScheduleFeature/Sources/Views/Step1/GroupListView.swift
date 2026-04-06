@@ -250,7 +250,7 @@ struct GroupCard: View {
   }
 
   private var hasTooFewMembers: Bool {
-    model.memberIds.isEmpty
+    model.memberCount == 0
   }
 
   private var isDisabled: Bool {
@@ -327,7 +327,7 @@ struct GroupCard: View {
               .font(.system(size: 17, weight: .semibold))
               .foregroundColor(isDisabled ? .secondary : .primary)
 
-            Text(LocalizedStrings.CreateSchedule.memberCount(model.memberIds.count))
+            Text(LocalizedStrings.CreateSchedule.memberCount(model.memberCount))
               .font(.system(size: 14))
               .foregroundColor(.secondary)
           }

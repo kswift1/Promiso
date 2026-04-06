@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "schedule_type", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ScheduleType {
     Group,
     Personal,
@@ -216,6 +217,12 @@ pub struct CalendarQuery {
 #[derive(Debug, Deserialize)]
 pub struct HomeQuery {
     pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PersonalPastQuery {
+    pub limit: Option<i64>,
+    pub cursor: Option<DateTime<Utc>>,
 }
 
 // ============================================================
