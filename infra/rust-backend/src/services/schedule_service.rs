@@ -59,7 +59,7 @@ pub async fn get_group_schedules(
     _user_id: &str,
     _group_id: Uuid,
     _query: GroupScheduleQuery,
-) -> Result<Vec<ScheduleResponse>, AppError> {
+) -> Result<PaginatedScheduleResponse, AppError> {
     todo!()
 }
 
@@ -75,7 +75,7 @@ pub async fn get_calendar_schedules(
     _pool: &PgPool,
     _user_id: &str,
     _query: CalendarQuery,
-) -> Result<Vec<ScheduleResponse>, AppError> {
+) -> Result<CalendarResponse, AppError> {
     todo!()
 }
 
@@ -127,5 +127,17 @@ pub async fn delete_recurring_schedule(
     _user_id: &str,
     _id: Uuid,
 ) -> Result<(), AppError> {
+    todo!()
+}
+
+// ============================================================
+// AI 일정 추출
+// ============================================================
+
+pub async fn extract_schedule(
+    _pool: &PgPool,
+    _user_id: &str,
+    _req: ExtractScheduleRequest,
+) -> Result<ExtractScheduleResponse, AppError> {
     todo!()
 }

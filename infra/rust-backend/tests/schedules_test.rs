@@ -29,17 +29,16 @@ async fn insert_test_user(pool: &PgPool, id: &str, nickname: &str) {
 
 async fn create_test_group(pool: &PgPool, creator_id: &str, name: &str) -> Uuid {
     let row: (Uuid,) = sqlx::query_as(
-        "INSERT INTO groups (name, host_uid, invite_code, max_members) \
-         VALUES ($1, $2, UPPER(SUBSTR(MD5(RANDOM()::TEXT), 1, 6)), 10) \
+        "INSERT INTO groups (name, invite_code, max_members, description, image_url, last_activity_at) \
+         VALUES ($1, UPPER(SUBSTR(MD5(RANDOM()::TEXT), 1, 6)), 10, NULL, NULL, NOW()) \
          RETURNING id",
     )
     .bind(name)
-    .bind(creator_id)
     .fetch_one(pool)
     .await
     .expect("Failed to create test group");
 
-    // 생성자를 admin으로 추가
+    // 생성자를 admin으로 추가 (groups 테이블에 host_uid 없음, group_members로 관리)
     sqlx::query(
         "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')",
     )
@@ -184,9 +183,11 @@ async fn create_group_schedule_host_auto_accepted(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn create_group_schedule_confirmed_when_min_is_1(pool: PgPool) {
-    // min_participants=1 → 호스트 자동수락으로 즉시 확정
+    // P6 예외: 1인 그룹에서만 minimum_participants=1 허용
+    // 그룹에 호스트만 존재 (멤버 추가 없음) → min=1, 호스트 자동수락으로 즉시 확정
     insert_test_user(&pool, "host_min1", "호스트Min1").await;
     let group_id = create_test_group(&pool, "host_min1", "즉시확정그룹").await;
+    // 다른 멤버를 추가하지 않음 — 1인 그룹
 
     let mut req = make_group_schedule_request(group_id, "즉시확정", future_time(24));
     req.minimum_participants = Some(1);
@@ -1182,6 +1183,18 @@ async fn create_recurring_monthly_out_of_range_fails(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn create_recurring_weekly_invalid_day_range_fails(pool: PgPool) {
+    // days_of_week 값은 1-7 범위여야 함 (0, 8은 범위 밖)
+    insert_test_user(&pool, "user1", "nick1").await;
+
+    let mut req = make_recurring_request("invalid weekday", RecurrenceFrequency::Weekly);
+    req.days_of_week = Some(vec![0, 8]); // 0 and 8 are out of 1-7 range
+
+    let result = schedule_service::create_recurring_schedule(&pool, "user1", req).await;
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn delete_recurring_schedule_owner_only(pool: PgPool) {
     // 소유자만 삭제 가능
     insert_test_user(&pool, "owner_drs", "소유자DRS").await;
@@ -1268,7 +1281,8 @@ async fn get_group_schedules_active(pool: PgPool) {
     let result =
         schedule_service::get_group_schedules(&pool, "host_gsa", group_id, query).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 2);
+    let response = result.unwrap();
+    assert_eq!(response.data.len(), 2);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -1300,7 +1314,10 @@ async fn get_group_schedules_past_with_pagination(pool: PgPool) {
     let result =
         schedule_service::get_group_schedules(&pool, "host_gsp", group_id, query).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 2);
+    let response = result.unwrap();
+    assert_eq!(response.data.len(), 2);
+    // cursor가 있으면 다음 페이지 존재
+    assert!(response.cursor.is_some());
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -305,7 +305,49 @@ pub struct ScheduleConflict {
 }
 
 #[derive(Debug, Serialize)]
+pub struct PaginatedScheduleResponse {
+    pub data: Vec<ScheduleResponse>,
+    pub cursor: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CalendarResponse {
+    pub schedules: Vec<ScheduleResponse>,
+    pub recurring_instances: Vec<RecurringInstance>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecurringInstance {
+    pub recurring_schedule_id: Uuid,
+    pub title: String,
+    pub emoji: Option<String>,
+    pub date: NaiveDate,
+    pub start_time: TimeComponents,
+    pub end_time: Option<TimeComponents>,
+    pub location: Option<LocationResponse>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct CreateRecurringScheduleResponse {
     pub id: Uuid,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExtractScheduleRequest {
+    pub text: Option<String>,
+    pub image_base64: Option<String>,
+    pub timezone: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExtractScheduleResponse {
+    pub title: Option<String>,
+    pub emoji: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub location: Option<String>,
+    pub address: Option<String>,
+    pub description: Option<String>,
+    pub description_blocks: Option<serde_json::Value>,
 }
