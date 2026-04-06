@@ -4,6 +4,7 @@
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import PulseUI
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -136,6 +137,29 @@ extension DeveloperSettings {
                   Text(isLiveScheduleEnabled ? LocalizedStrings.SettingsStrings.statusOn : LocalizedStrings.SettingsStrings.statusOff)
                     .font(.caption)
                     .foregroundStyle(isLiveScheduleEnabled ? .green : .secondary)
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+              .foregroundStyle(.primary)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              NavigationLink {
+                ConsoleView()
+              } label: {
+                HStack {
+                  Image(systemName: "network")
+                    .foregroundStyle(.green)
+                    .frame(width: 28)
+                  Text("Network Console")
+                  Spacer()
                   Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
