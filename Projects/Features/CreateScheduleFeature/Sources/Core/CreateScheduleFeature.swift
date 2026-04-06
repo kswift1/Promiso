@@ -356,7 +356,7 @@ public enum CreateSchedule {
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
-            guard let max = state.schedule.group?.maxMembers else { return .none }
+            guard let max = state.schedule.group?.memberCount else { return .none }
             let current = state.schedule.minimumParticipants
             if current < max { state.schedule.minimumParticipants = current + 1 }
             return .none

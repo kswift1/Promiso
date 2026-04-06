@@ -271,11 +271,10 @@ public actor RecurringPersonalEventRustDataSource {
 
     // Swift daysOfWeek (1=Sun~7=Sat) → Rust (0=Sun~6=Sat)
     let rustDaysOfWeek: [Int]?? = {
-      if let days = event.recurrence.daysOfWeek {
-        return .some(days.map { $0 - 1 })
-      } else {
-        return .some(nil)
+      guard let days = event.recurrence.daysOfWeek else {
+        return .none
       }
+      return .some(days.map { $0 - 1 })
     }()
 
     // overrides → EventOverrideBody (비어있으면 생략, 있으면 전송)
@@ -380,7 +379,7 @@ extension RustRecurringScheduleResponse {
       emoji: emoji,
       description: description,
       startTime: DateComponents(hour: startTimeHour, minute: startTimeMinute),
-      endTime: endTimeHour != nil ? DateComponents(hour: endTimeHour!, minute: endTimeMinute ?? 0) : nil,
+      endTime: endTimeHour.map { DateComponents(hour: $0, minute: endTimeMinute ?? 0) },
       location: locationModel,
       reminderMinutesBefore: reminderMinutesBefore,
       recurrence: recurrenceRule,
