@@ -1303,7 +1303,7 @@ pub async fn get_calendar_schedules(
         "SELECT id, user_id, title, emoji, description, \
          start_time_hour, start_time_minute, end_time_hour, end_time_minute, \
          location_name, location_address, location_latitude, location_longitude, \
-         reminder_minutes_before, frequency AS \"frequency: RecurrenceFrequency\", \
+         reminder_minutes_before, frequency, \
          days_of_week, day_of_month, \
          series_start_date, series_end_date, excluded_dates, overrides, \
          created_at, updated_at \
@@ -1488,7 +1488,7 @@ pub async fn check_conflicts(
         "SELECT id, user_id, title, emoji, description, \
          start_time_hour, start_time_minute, end_time_hour, end_time_minute, \
          location_name, location_address, location_latitude, location_longitude, \
-         reminder_minutes_before, frequency AS \"frequency: RecurrenceFrequency\", \
+         reminder_minutes_before, frequency, \
          days_of_week, day_of_month, \
          series_start_date, series_end_date, excluded_dates, overrides, \
          created_at, updated_at \
@@ -1933,7 +1933,7 @@ pub async fn get_recurring_schedules(
         "SELECT id, user_id, title, emoji, description, \
          start_time_hour, start_time_minute, end_time_hour, end_time_minute, \
          location_name, location_address, location_latitude, location_longitude, \
-         reminder_minutes_before, frequency AS \"frequency: RecurrenceFrequency\", \
+         reminder_minutes_before, frequency, \
          days_of_week, day_of_month, \
          series_start_date, series_end_date, excluded_dates, overrides, \
          created_at, updated_at \
