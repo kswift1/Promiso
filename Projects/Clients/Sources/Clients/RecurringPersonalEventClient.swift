@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import FirebaseAuth
 import Foundation
 import PromisoShared
 
@@ -111,45 +112,76 @@ extension DependencyValues {
 
 extension RecurringPersonalEventClient: DependencyKey {
   public static let liveValue: RecurringPersonalEventClient = {
+    @Dependency(\.featureFlags) var featureFlags
     let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
+    let rustDataSource = RecurringPersonalEventRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw RecurringPersonalEventClientError.unauthorized
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
 
     return RecurringPersonalEventClient(
       createEvent: { event in
         guard !event.title.isEmpty else {
           throw RecurringPersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
-        do {
-          return try await dataSource.createEvent(event)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.createEvent(event)
+        } else {
+          do {
+            return try await dataSource.createEvent(event)
+          } catch {
+            throw RecurringPersonalEventClientError(from: error)
+          }
         }
       },
       updateEvent: { event in
-        do {
-          try await dataSource.updateEvent(event)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.updateEvent(event)
+        } else {
+          do {
+            try await dataSource.updateEvent(event)
+          } catch {
+            throw RecurringPersonalEventClientError(from: error)
+          }
         }
       },
       deleteEvent: { eventId in
-        do {
-          try await dataSource.deleteEvent(id: eventId)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.deleteEvent(id: eventId)
+        } else {
+          do {
+            try await dataSource.deleteEvent(id: eventId)
+          } catch {
+            throw RecurringPersonalEventClientError(from: error)
+          }
         }
       },
       getEvent: { eventId in
-        do {
-          return try await dataSource.getEvent(id: eventId)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getEvent(id: eventId)
+        } else {
+          do {
+            return try await dataSource.getEvent(id: eventId)
+          } catch {
+            throw RecurringPersonalEventClientError(from: error)
+          }
         }
       },
       getAllEvents: {
-        do {
-          return try await dataSource.getAllEvents()
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
+        if featureFlags.useRustAPI(.promises) {
+          return try await rustDataSource.getAllEvents()
+        } else {
+          do {
+            return try await dataSource.getAllEvents()
+          } catch {
+            throw RecurringPersonalEventClientError(from: error)
+          }
         }
       }
     )
