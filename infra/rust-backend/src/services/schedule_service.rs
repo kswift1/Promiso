@@ -1,5 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
+use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -2278,11 +2279,236 @@ pub async fn delete_recurring_schedule(
 // AI 일정 추출
 // ============================================================
 
+/// Prompt injection 방어: 사용자 입력에서 위험한 마커 제거
+fn sanitize_user_data(input: &str) -> String {
+    let without_tags = input
+        .replace("<user-data>", "")
+        .replace("</user-data>", "")
+        .replace("<USER-DATA>", "")
+        .replace("</USER-DATA>", "");
+
+    without_tags
+        .replace("[system]", "")
+        .replace("[/system]", "")
+        .replace("[assistant]", "")
+        .replace("[/assistant]", "")
+        .replace("[user]", "")
+        .replace("[/user]", "")
+        .replace("[SYSTEM]", "")
+        .replace("[/SYSTEM]", "")
+        .replace("[ASSISTANT]", "")
+        .replace("[/ASSISTANT]", "")
+        .replace("[USER]", "")
+        .replace("[/USER]", "")
+}
+
+/// base64 문자열 앞부분에서 MIME 타입 감지
+fn detect_mime_type(base64: &str) -> &'static str {
+    if base64.starts_with("/9j/") {
+        "image/jpeg"
+    } else if base64.starts_with("iVBOR") {
+        "image/png"
+    } else if base64.starts_with("R0lGOD") {
+        "image/gif"
+    } else if base64.starts_with("UklGR") {
+        "image/webp"
+    } else {
+        "image/jpeg"
+    }
+}
+
+/// Gemini 응답에서 마크다운 코드블록을 제거하고 순수 JSON 추출
+fn extract_json_from_response(text: &str) -> String {
+    // ```json ... ``` 또는 ``` ... ``` 패턴 매칭
+    if let Some(start) = text.find("```") {
+        let after_backticks = &text[start + 3..];
+        // "json\n" 접두사 스킵
+        let content_start = if let Some(stripped) = after_backticks.strip_prefix("json") {
+            stripped
+        } else {
+            after_backticks
+        };
+        if let Some(end) = content_start.find("```") {
+            return content_start[..end].trim().to_string();
+        }
+    }
+    text.trim().to_string()
+}
+
+/// Gemini 파싱용 내부 응답 구조체
+#[derive(Deserialize)]
+struct GeminiResponse {
+    candidates: Option<Vec<GeminiCandidate>>,
+}
+
+#[derive(Deserialize)]
+struct GeminiCandidate {
+    content: Option<GeminiContent>,
+}
+
+#[derive(Deserialize)]
+struct GeminiContent {
+    parts: Option<Vec<GeminiPart>>,
+}
+
+#[derive(Deserialize)]
+struct GeminiPart {
+    text: Option<String>,
+}
+
+/// Gemini가 반환한 일정 JSON 파싱용
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ParsedSchedule {
+    title: Option<String>,
+    emoji: Option<String>,
+    start_date: Option<String>,
+    end_date: Option<String>,
+    location: Option<String>,
+    address: Option<String>,
+    description: Option<String>,
+    description_blocks: Option<Vec<serde_json::Value>>,
+}
+
+/// description_blocks 필터링 및 인접 text 블록 병합
+fn process_description_blocks(
+    raw_blocks: Vec<serde_json::Value>,
+) -> Option<serde_json::Value> {
+    // 유효한 블록만 필터
+    let valid_blocks: Vec<serde_json::Value> = raw_blocks
+        .into_iter()
+        .filter(|block| {
+            let block_type = block.get("type").and_then(|v| v.as_str());
+            match block_type {
+                Some("text") => block
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .is_some_and(|c| !c.is_empty()),
+                Some("checklist" | "bulletList") => block
+                    .get("items")
+                    .and_then(|v| v.as_array())
+                    .is_some_and(|items| !items.is_empty()),
+                _ => false,
+            }
+        })
+        .collect();
+
+    if valid_blocks.is_empty() {
+        return None;
+    }
+
+    // 인접 text 블록 병합
+    if valid_blocks.len() <= 1 {
+        return Some(serde_json::Value::Array(valid_blocks));
+    }
+
+    let mut merged: Vec<serde_json::Value> = Vec::new();
+    for block in valid_blocks {
+        let block_type = block.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        if block_type == "text" {
+            if let Some(last) = merged.last_mut() {
+                let last_type = last.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if last_type == "text" {
+                    let last_content = last
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let new_content = block
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let combined = format!("{}\n\n{}", last_content, new_content);
+                    *last = serde_json::json!({
+                        "type": "text",
+                        "content": combined,
+                    });
+                    continue;
+                }
+            }
+        }
+        merged.push(block);
+    }
+
+    if merged.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Array(merged))
+    }
+}
+
+/// description_blocks에서 plain text description 생성 (하위 호환)
+fn blocks_to_plain_description(blocks: &serde_json::Value) -> Option<String> {
+    let arr = blocks.as_array()?;
+    let parts: Vec<String> = arr
+        .iter()
+        .filter_map(|block| {
+            let block_type = block.get("type").and_then(|v| v.as_str())?;
+            match block_type {
+                "text" => block
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
+                "checklist" | "bulletList" => {
+                    let items = block.get("items").and_then(|v| v.as_array())?;
+                    let joined: String = items
+                        .iter()
+                        .filter_map(|i| i.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    if joined.is_empty() {
+                        None
+                    } else {
+                        Some(joined)
+                    }
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    let result = parts.join("\n").trim().to_string();
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+const SCHEDULE_EXTRACTION_PROMPT: &str = r#"당신은 한국어 문자 메시지 또는 이미지에서 일정 정보를 추출하는 전문가입니다.
+
+입력된 텍스트 또는 이미지에서 다음 정보를 JSON 형태로 추출하세요:
+- title: 일정 제목 (간결하게 추론, 30자 이내)
+- emoji: 일정 내용에 어울리는 이모지 1개 (예: 💼, 🏥, 🎉, 🏃, ☕️)
+- startDate: 시작 날짜시간 (ISO 8601 형식, 예: "2026-03-27T09:00:00+09:00")
+- endDate: 종료 날짜시간 (ISO 8601 형식, 없으면 null)
+- location: 장소명 (없으면 null)
+- address: 상세 주소 (없으면 null)
+- descriptionBlocks: 부가 정보를 구조화된 블록 배열로 분류 (없으면 null)
+  - { type: "text", content: "..." } — 일반 텍스트 정보 (급여, 연락처, 기타 안내)
+  - { type: "checklist", items: ["...", "..."] } — 준비물, 할 일 등 체크 가능한 항목
+  - { type: "bulletList", items: ["...", "..."] } — 나열형 정보 (여러 연락처, 여러 조건 등)
+
+규칙:
+- 반드시 JSON만 출력, 다른 텍스트 절대 금지
+- 연도가 없으면 현재 연도 기준으로 추론
+- "9시~18시" 같은 범위 표현은 startDate/endDate로 분리
+- 장소명과 상세 주소를 구분 (장소: "GS25 성남양우프레시점", 주소: "경기 성남시 수정구 논골로 29")
+- 준비물, 할 일 목록 등 체크 가능한 항목은 type: 'checklist'로 분류
+- 단일 정보(급여, 연락처 등)는 type: 'text'로, 같은 카테고리의 여러 항목 나열은 type: 'bulletList'로 분류
+- descriptionBlocks 하나의 블록에 여러 종류의 정보를 합치지 말고, 정보 종류별로 블록을 분리
+- title은 핵심 내용을 간결하게 (예: "GS25 진열 근무", "고용센터 초기상담")
+- 텍스트 또는 이미지(스크린샷, 포스터, 문자 캡처 등)에서 일정 정보를 추출
+- 이미지인 경우 텍스트를 먼저 인식한 후 동일한 규칙으로 추출
+
+현재 시각: {currentTime}
+"#;
+
 pub async fn extract_schedule(
     _pool: &PgPool,
     _user_id: &str,
     req: ExtractScheduleRequest,
 ) -> Result<ExtractScheduleResponse, AppError> {
+    // 1. 유효성 검사
     if req.text.is_none() && req.image_base64.is_none() {
         return Err(AppError::BadRequest(
             "text 또는 image_base64 중 하나는 필요합니다".to_string(),
@@ -2297,9 +2523,154 @@ pub async fn extract_schedule(
         }
     }
 
-    parse_timezone(req.timezone.as_deref())?;
+    if let Some(image_base64) = &req.image_base64 {
+        if image_base64.len() > 5_300_000 {
+            return Err(AppError::BadRequest(
+                "이미지 크기가 너무 큽니다 (최대 4MB)".to_string(),
+            ));
+        }
+    }
 
-    Err(AppError::BadRequest(
-        "일정 추출 기능은 아직 지원되지 않습니다".to_string(),
-    ))
+    // 2. API 키 확인
+    let api_key = std::env::var("GEMINI_API_KEY").map_err(|_| {
+        AppError::BadRequest("일정 추출 기능이 설정되지 않았습니다".to_string())
+    })?;
+
+    if api_key.is_empty() {
+        return Err(AppError::BadRequest(
+            "일정 추출 기능이 설정되지 않았습니다".to_string(),
+        ));
+    }
+
+    // 3. timezone 검증 및 현재 시각 계산
+    let safe_timezone: Tz = req
+        .timezone
+        .as_deref()
+        .unwrap_or("Asia/Seoul")
+        .parse::<Tz>()
+        .unwrap_or(chrono_tz::Asia::Seoul);
+
+    let now = Utc::now().with_timezone(&safe_timezone);
+    let current_time = now.format("%Y년 %m월 %d일 %A %H:%M").to_string();
+
+    let prompt = SCHEDULE_EXTRACTION_PROMPT.replace("{currentTime}", &current_time);
+
+    // 4. 입력 데이터 준비
+    let sanitized_text = req.text.as_ref().map(|t| sanitize_user_data(t.trim()));
+
+    // 5. Gemini API 요청 구성
+    let mut parts = Vec::new();
+
+    // 프롬프트
+    parts.push(serde_json::json!({ "text": prompt }));
+
+    // 이미지가 있으면 inlineData 추가
+    if let Some(image_base64) = &req.image_base64 {
+        let mime_type = detect_mime_type(image_base64);
+        parts.push(serde_json::json!({
+            "inlineData": {
+                "mimeType": mime_type,
+                "data": image_base64,
+            }
+        }));
+    }
+
+    // 텍스트가 있으면 user-data 태그로 추가
+    if let Some(sanitized) = &sanitized_text {
+        parts.push(serde_json::json!({
+            "text": format!("<user-data>{}</user-data>", sanitized)
+        }));
+    }
+
+    let request_body = serde_json::json!({
+        "contents": [{
+            "parts": parts
+        }]
+    });
+
+    // 6. Gemini API 호출
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
+        api_key
+    );
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Gemini API request failed: {}", e);
+            AppError::Internal("일정 추출에 실패했습니다".to_string())
+        })?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        tracing::error!("Gemini API error: status={}, body={}", status, body);
+        return Err(AppError::Internal(
+            "일정 추출에 실패했습니다".to_string(),
+        ));
+    }
+
+    let gemini_response: GeminiResponse = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Gemini response: {}", e);
+        AppError::Internal("일정 추출에 실패했습니다".to_string())
+    })?;
+
+    // 7. 응답 텍스트 추출
+    let response_text = gemini_response
+        .candidates
+        .as_ref()
+        .and_then(|c| c.first())
+        .and_then(|c| c.content.as_ref())
+        .and_then(|c| c.parts.as_ref())
+        .and_then(|p| p.first())
+        .and_then(|p| p.text.as_ref())
+        .ok_or_else(|| {
+            tracing::error!("Gemini response has no text content");
+            AppError::Internal("일정 추출에 실패했습니다".to_string())
+        })?;
+
+    // 8. JSON 파싱
+    let json_text = extract_json_from_response(response_text);
+    let parsed: ParsedSchedule = serde_json::from_str(&json_text).map_err(|e| {
+        tracing::error!(
+            "Failed to parse schedule JSON: {}, raw: {}",
+            e,
+            &json_text[..json_text.len().min(200)]
+        );
+        AppError::Internal("일정 추출에 실패했습니다".to_string())
+    })?;
+
+    // 9. description_blocks 처리
+    let description_blocks = parsed
+        .description_blocks
+        .and_then(process_description_blocks);
+
+    // 10. description 생성 (하위 호환)
+    let description = if let Some(ref blocks) = description_blocks {
+        blocks_to_plain_description(blocks)
+    } else {
+        parsed.description
+    };
+
+    tracing::info!(
+        "Extracted schedule: title={:?}, start={:?}",
+        parsed.title,
+        parsed.start_date
+    );
+
+    Ok(ExtractScheduleResponse {
+        title: parsed.title,
+        emoji: parsed.emoji,
+        start_date: parsed.start_date,
+        end_date: parsed.end_date,
+        location: parsed.location,
+        address: parsed.address,
+        description,
+        description_blocks,
+    })
 }
