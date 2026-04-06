@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
 use promiso_backend::errors::AppError;
 use promiso_backend::models::notification::*;
-use promiso_backend::services::notification_service;
+use promiso_backend::services::{group_service, notification_service};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -1319,6 +1319,8 @@ async fn b1_schedule_created_updates_last_activity(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn b2_clear_badge_via_mark_read(pool: PgPool) {
+    // Badge clear는 그룹 단위 mark-read (group_service)로만 수행
+    // mark_all_as_read는 알림 읽음 처리만 하고 badge에 영향 없음
     insert_test_user(&pool, "user_b2", "배지유저2").await;
     let group_id = create_test_group(&pool, "user_b2", "배지그룹2").await;
 
@@ -1332,19 +1334,10 @@ async fn b2_clear_badge_via_mark_read(pool: PgPool) {
     .await
     .expect("query");
 
-    // mark_all_as_read 호출 시 last_read_at도 갱신되어야 함
-    // 알림 삽입
-    sqlx::query(
-        "INSERT INTO notifications (user_id, notification_type, title, body, group_id) \
-         VALUES ($1, 'system', 'test', 'body', $2)",
-    )
-    .bind("user_b2")
-    .bind(group_id)
-    .execute(&pool)
-    .await
-    .expect("insert");
-
-    let _ = notification_service::mark_all_as_read(&pool, "user_b2").await;
+    // group_service::mark_group_read로 badge clear
+    group_service::mark_group_read(&pool, "user_b2", group_id)
+        .await
+        .expect("mark_group_read");
 
     let after: (DateTime<Utc>,) = sqlx::query_as(
         "SELECT last_read_at FROM group_members WHERE group_id = $1 AND user_id = $2",
@@ -1355,7 +1348,7 @@ async fn b2_clear_badge_via_mark_read(pool: PgPool) {
     .await
     .expect("query");
 
-    assert!(after.0 >= before.0);
+    assert!(after.0 > before.0);
 }
 
 #[sqlx::test(migrations = "./migrations")]

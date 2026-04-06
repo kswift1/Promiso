@@ -213,15 +213,6 @@ pub async fn mark_all_as_read(pool: &PgPool, user_uid: &str) -> Result<(), AppEr
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // Badge: 해당 유저가 속한 모든 그룹의 last_read_at 갱신
-    sqlx::query(
-        "UPDATE group_members SET last_read_at = NOW() WHERE user_id = $1",
-    )
-    .bind(user_uid)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
     Ok(())
 }
 
