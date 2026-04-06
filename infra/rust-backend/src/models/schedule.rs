@@ -219,6 +219,12 @@ pub struct HomeQuery {
     pub limit: Option<i64>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PersonalPastQuery {
+    pub limit: Option<i64>,
+    pub cursor: Option<DateTime<Utc>>,
+}
+
 // ============================================================
 // 응답 DTO
 // ============================================================

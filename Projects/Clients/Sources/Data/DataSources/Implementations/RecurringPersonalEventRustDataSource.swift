@@ -395,7 +395,7 @@ extension RustRecurringScheduleResponse {
     guard let string = string else { return nil }
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
-    formatter.timeZone = TimeZone.current
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
     return formatter.date(from: string)
   }
 }

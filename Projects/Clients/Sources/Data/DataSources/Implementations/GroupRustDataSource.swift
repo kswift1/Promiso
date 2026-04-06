@@ -167,6 +167,10 @@ private struct UpdateGroupColorBody: Encodable {
   let color: String
 }
 
+private struct BatchGroupsBody: Encodable {
+  let ids: [String]
+}
+
 // MARK: - GroupRustDataSource
 
 public actor GroupRustDataSource {
@@ -233,6 +237,12 @@ public actor GroupRustDataSource {
   public func fetchGroup(groupId: String) async throws -> GroupModel {
     let response: RustGroupResponse = try await api.get("/api/v1/groups/\(groupId)")
     return response.toModel()
+  }
+
+  public func fetchGroupsByIds(_ ids: [String]) async throws -> [GroupModel] {
+    let body = BatchGroupsBody(ids: ids)
+    let response: [RustGroupResponse] = try await api.post("/api/v1/groups/batch", body: body)
+    return response.map { $0.toModel() }
   }
 
   public func fetchGroupMembers(groupId: String) async throws -> [UserPublicModel] {

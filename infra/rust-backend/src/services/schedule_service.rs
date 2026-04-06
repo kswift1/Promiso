@@ -1223,6 +1223,48 @@ pub async fn get_home_schedules(
     Ok(result)
 }
 
+pub async fn get_personal_past_schedules(
+    pool: &PgPool,
+    user_id: &str,
+    limit: i64,
+    cursor: Option<DateTime<Utc>>,
+) -> Result<Vec<ScheduleResponse>, AppError> {
+    let now = Utc::now();
+    let limit = limit.min(50);
+
+    let schedules = if let Some(cursor) = cursor {
+        sqlx::query_as::<_, Schedule>(
+            "SELECT * FROM schedules \
+             WHERE user_id = $1 AND schedule_type = 'personal' AND start_at < $2 AND start_at < $3 \
+             ORDER BY start_at DESC LIMIT $4",
+        )
+        .bind(user_id)
+        .bind(now)
+        .bind(cursor)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+    } else {
+        sqlx::query_as::<_, Schedule>(
+            "SELECT * FROM schedules \
+             WHERE user_id = $1 AND schedule_type = 'personal' AND start_at < $2 \
+             ORDER BY start_at DESC LIMIT $3",
+        )
+        .bind(user_id)
+        .bind(now)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+    };
+
+    Ok(schedules
+        .iter()
+        .map(|s| build_schedule_response(s, Vec::new()))
+        .collect())
+}
+
 pub async fn get_calendar_schedules(
     pool: &PgPool,
     user_id: &str,
@@ -1814,10 +1856,10 @@ pub async fn create_recurring_schedule(
                             "days_of_week는 비어있을 수 없습니다".to_string(),
                         ));
                     }
-                    // 서비스 레벨 검증: 1-7 범위
-                    if days.iter().any(|&d| !(1..=7).contains(&d)) {
+                    // 서비스 레벨 검증: 0-6 범위 (0=Sun, 6=Sat)
+                    if days.iter().any(|&d| !(0..=6).contains(&d)) {
                         return Err(AppError::BadRequest(
-                            "days_of_week 값은 1-7 범위여야 합니다".to_string(),
+                            "days_of_week 값은 0-6 범위여야 합니다".to_string(),
                         ));
                     }
                 }

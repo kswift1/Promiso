@@ -121,6 +121,11 @@ pub struct UpdateGroupColorRequest {
     pub color: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BatchGroupsRequest {
+    pub ids: Vec<Uuid>,
+}
+
 // ============================================================
 // 응답 DTO
 // ============================================================

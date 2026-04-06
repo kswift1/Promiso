@@ -20,6 +20,7 @@ pub fn public_router() -> Router<PgPool> {
 pub fn router() -> Router<PgPool> {
     Router::new()
         .route("/api/v1/groups", post(create_group))
+        .route("/api/v1/groups/batch", post(get_groups_batch))
         .route("/api/v1/groups/join", post(join_group))
         .route("/api/v1/groups/me", get(fetch_my_groups))
         .route(
@@ -45,6 +46,15 @@ async fn create_group(
 ) -> Result<ApiResponse<CreateGroupResponse>, AppError> {
     let response = group_service::create_group(&pool, &claims.uid, req).await?;
     ApiResponse::created(response)
+}
+
+async fn get_groups_batch(
+    Extension(claims): Extension<Claims>,
+    State(pool): State<PgPool>,
+    Json(req): Json<BatchGroupsRequest>,
+) -> Result<ApiResponse<Vec<GroupResponse>>, AppError> {
+    let result = group_service::get_groups_batch(&pool, &claims.uid, req.ids).await?;
+    ApiResponse::ok(result)
 }
 
 #[derive(Deserialize)]

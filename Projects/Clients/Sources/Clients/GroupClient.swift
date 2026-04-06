@@ -292,20 +292,7 @@ extension GroupClient: DependencyKey {
       },
       fetchGroupsByIds: { ids in
         if featureFlags.useRustAPI(.groups) {
-          // Rust API는 /me 엔드포인트만 있으므로 개별 fetch를 병렬로 처리
-          return try await withThrowingTaskGroup(of: GroupModel.self) { group in
-            for id in ids {
-              group.addTask {
-                try await rustDataSource.fetchGroup(groupId: id)
-              }
-            }
-            var results: [GroupModel] = []
-            results.reserveCapacity(ids.count)
-            for try await model in group {
-              results.append(model)
-            }
-            return results
-          }
+          return try await rustDataSource.fetchGroupsByIds(ids)
         } else {
           return try await dataSource.fetchGroupsByIds(ids: ids)
         }

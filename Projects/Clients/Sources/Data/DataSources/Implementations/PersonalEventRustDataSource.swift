@@ -304,32 +304,16 @@ public actor PersonalEventRustDataSource {
   // MARK: - Past Events
 
   public func getPastEvents(limit: Int, lastStartAt: Date?) async throws -> [PersonalEventModel] {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-    let now = Date()
-    let farPast = Calendar.current.date(byAdding: .year, value: -1, to: now) ?? now
-    let startString = formatter.string(from: farPast)
-      .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    let endString = formatter.string(from: now)
-      .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-    let response: RustCalendarResponse = try await api.get(
-      "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)"
-    )
-
-    var events = response.schedules
-      .filter { $0.scheduleType == "personal" }
-      .map { $0.toPersonalEventModel() }
-      .sorted { $0.startAt > $1.startAt }
-
+    var path = "/api/v1/schedules/personal/past?limit=\(limit)"
     if let cursor = lastStartAt {
-      events = events.filter { $0.startAt < cursor }
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+      let cursorString = formatter.string(from: cursor)
+        .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+      path += "&cursor=\(cursorString)"
     }
-
-    return events
-      .prefix(limit)
-      .map { $0 }
+    let response: [RustPersonalScheduleResponse] = try await api.get(path)
+    return response.map { $0.toPersonalEventModel() }
   }
 
   // MARK: - Calendar
