@@ -17,6 +17,19 @@ pub enum SubscriptionStatus {
     Revoked,
 }
 
+impl SubscriptionStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Subscribed => "subscribed",
+            Self::Lifetime => "lifetime",
+            Self::Expired => "expired",
+            Self::GracePeriod => "grace_period",
+            Self::Revoked => "revoked",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "entitlement_source", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
