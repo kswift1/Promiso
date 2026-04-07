@@ -461,6 +461,49 @@ public actor ScheduleRustDataSource {
     return response.schedules.map { $0.toScheduleModel() }
   }
 
+  // MARK: - Live Activity
+
+  public func startLiveActivity(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/live-activity/start",
+      body: Optional<EmptyBody>.none
+    )
+  }
+
+  public func updateETA(
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws {
+    struct UpdateETABody: Encodable {
+      let channelId: String
+      let participants: [ParticipantState]
+      let trackingDurationMinutes: Int
+    }
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(channelId)/live-activity/eta",
+      body: UpdateETABody(
+        channelId: channelId,
+        participants: participants,
+        trackingDurationMinutes: trackingDurationMinutes
+      )
+    )
+  }
+
+  public func startVoteLiveActivity(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/vote/start",
+      body: Optional<EmptyBody>.none
+    )
+  }
+
+  public func finalizeVote(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/vote/finalize",
+      body: Optional<EmptyBody>.none
+    )
+  }
+
   // MARK: - Calendar Sync
 
   public func getConfirmedSchedulesForCalendar() async throws -> [CalendarSyncSchedule] {

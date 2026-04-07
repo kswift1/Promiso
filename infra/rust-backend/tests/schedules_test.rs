@@ -1328,6 +1328,151 @@ async fn get_recurring_schedules_returns_own_only(pool: PgPool) {
     assert_eq!(user2_list[0].title, "유저2반복");
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn update_recurring_schedule_success(pool: PgPool) {
+    insert_test_user(&pool, "owner_urs", "소유자URS").await;
+
+    let mut req = make_recurring_request("원본반복", RecurrenceFrequency::Daily);
+    req.description = Some("원본 설명".to_string());
+
+    let recurring = schedule_service::create_recurring_schedule(&pool, "owner_urs", req)
+        .await
+        .expect("create should succeed");
+
+    let update_req = UpdateRecurringScheduleRequest {
+        title: Some("  수정된 반복  ".to_string()),
+        emoji: Some(Some("📚".to_string())),
+        description: Some(Some("수정 설명".to_string())),
+        start_time: Some(TimeComponents {
+            hour: 8,
+            minute: 30,
+        }),
+        end_time: Some(Some(TimeComponents {
+            hour: 9,
+            minute: 45,
+        })),
+        location: Some(Some(LocationRequest {
+            name: "스터디카페".to_string(),
+            address: Some("서울".to_string()),
+            latitude: Some(37.0),
+            longitude: Some(127.0),
+        })),
+        reminder_minutes_before: Some(Some(15)),
+        frequency: Some(RecurrenceFrequency::Weekly),
+        days_of_week: Some(Some(vec![1, 3, 5])),
+        day_of_month: Some(None),
+        series_start_date: Some(NaiveDate::from_ymd_opt(2026, 2, 1).unwrap()),
+        series_end_date: Some(Some(NaiveDate::from_ymd_opt(2026, 3, 1).unwrap())),
+        excluded_dates: Some(vec![NaiveDate::from_ymd_opt(2026, 2, 8).unwrap()]),
+        overrides: Some(serde_json::json!({
+            "2026-02-10": {
+                "start_time": { "hour": 10, "minute": 0 }
+            }
+        })),
+    };
+
+    schedule_service::update_recurring_schedule(&pool, "owner_urs", recurring.id, update_req)
+        .await
+        .expect("update should succeed");
+
+    let rows = schedule_service::get_recurring_schedules(&pool, "owner_urs")
+        .await
+        .expect("get should succeed");
+    let updated = rows.into_iter().find(|row| row.id == recurring.id).unwrap();
+
+    assert_eq!(updated.title, "수정된 반복");
+    assert_eq!(updated.emoji.as_deref(), Some("📚"));
+    assert_eq!(updated.description.as_deref(), Some("수정 설명"));
+    assert_eq!(updated.start_time_hour, 8);
+    assert_eq!(updated.start_time_minute, 30);
+    assert_eq!(updated.end_time_hour, Some(9));
+    assert_eq!(updated.end_time_minute, Some(45));
+    assert_eq!(updated.location_name.as_deref(), Some("스터디카페"));
+    assert_eq!(updated.reminder_minutes_before, Some(15));
+    assert_eq!(updated.frequency, RecurrenceFrequency::Weekly);
+    assert_eq!(updated.days_of_week, Some(vec![1, 3, 5]));
+    assert_eq!(
+        updated.series_end_date,
+        Some(NaiveDate::from_ymd_opt(2026, 3, 1).unwrap())
+    );
+    assert_eq!(
+        updated.excluded_dates,
+        Some(vec![NaiveDate::from_ymd_opt(2026, 2, 8).unwrap()])
+    );
+    assert!(updated.overrides.is_some());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn update_recurring_schedule_owner_only(pool: PgPool) {
+    insert_test_user(&pool, "owner_uro", "소유자URO").await;
+    insert_test_user(&pool, "other_uro", "타인URO").await;
+
+    let req = make_recurring_request("소유자전용반복", RecurrenceFrequency::Daily);
+    let recurring = schedule_service::create_recurring_schedule(&pool, "owner_uro", req)
+        .await
+        .expect("create should succeed");
+
+    let result = schedule_service::update_recurring_schedule(
+        &pool,
+        "other_uro",
+        recurring.id,
+        UpdateRecurringScheduleRequest {
+            title: Some("수정 시도".to_string()),
+            emoji: None,
+            description: None,
+            start_time: None,
+            end_time: None,
+            location: None,
+            reminder_minutes_before: None,
+            frequency: None,
+            days_of_week: None,
+            day_of_month: None,
+            series_start_date: None,
+            series_end_date: None,
+            excluded_dates: None,
+            overrides: None,
+        },
+    )
+    .await;
+
+    assert!(matches!(result, Err(AppError::Forbidden(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn update_recurring_schedule_weekly_invalid_day_range_fails(pool: PgPool) {
+    insert_test_user(&pool, "owner_urw", "소유자URW").await;
+
+    let req = make_recurring_request("업데이트요일검증", RecurrenceFrequency::Daily);
+    let recurring = schedule_service::create_recurring_schedule(&pool, "owner_urw", req)
+        .await
+        .expect("create should succeed");
+
+    let result = schedule_service::update_recurring_schedule(
+        &pool,
+        "owner_urw",
+        recurring.id,
+        UpdateRecurringScheduleRequest {
+            title: None,
+            emoji: None,
+            description: None,
+            start_time: None,
+            end_time: None,
+            location: None,
+            reminder_minutes_before: None,
+            frequency: Some(RecurrenceFrequency::Weekly),
+            days_of_week: Some(Some(vec![0, 8])),
+            day_of_month: Some(None),
+            series_start_date: None,
+            series_end_date: None,
+            excluded_dates: None,
+            overrides: None,
+        },
+    )
+    .await;
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
 // ============================================================
 // 목록/조회
 // ============================================================
@@ -1371,6 +1516,99 @@ async fn get_group_schedules_active(pool: PgPool) {
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.data.len(), 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_personal_past_schedules_orders_desc_and_applies_cursor(pool: PgPool) {
+    insert_test_user(&pool, "owner_gpps", "소유자GPPS").await;
+    insert_test_user(&pool, "other_gpps", "타인GPPS").await;
+
+    for (title, start_at) in [
+        ("개인과거1", past_time(1)),
+        ("개인과거2", past_time(2)),
+        ("개인과거3", past_time(3)),
+    ] {
+        sqlx::query(
+            "INSERT INTO schedules (schedule_type, user_id, title, start_at) \
+             VALUES ('personal', $1, $2, $3)",
+        )
+        .bind("owner_gpps")
+        .bind(title)
+        .bind(start_at)
+        .execute(&pool)
+        .await
+        .expect("insert owner past schedule failed");
+    }
+
+    sqlx::query(
+        "INSERT INTO schedules (schedule_type, user_id, title, start_at) \
+         VALUES ('personal', $1, '타인과거', $2)",
+    )
+    .bind("other_gpps")
+    .bind(past_time(1))
+    .execute(&pool)
+    .await
+    .expect("insert other past schedule failed");
+
+    let first_page = schedule_service::get_personal_past_schedules(&pool, "owner_gpps", 2, None)
+        .await
+        .expect("first page should succeed");
+
+    assert_eq!(first_page.len(), 2);
+    assert_eq!(first_page[0].title, "개인과거1");
+    assert_eq!(first_page[1].title, "개인과거2");
+
+    let second_page = schedule_service::get_personal_past_schedules(
+        &pool,
+        "owner_gpps",
+        2,
+        Some(first_page[1].start_at),
+    )
+    .await
+    .expect("second page should succeed");
+
+    assert_eq!(second_page.len(), 1);
+    assert_eq!(second_page[0].title, "개인과거3");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn extract_schedule_requires_text_or_image(pool: PgPool) {
+    let result = schedule_service::extract_schedule(
+        &pool,
+        "extract_user",
+        ExtractScheduleRequest {
+            text: None,
+            image_base64: None,
+            timezone: None,
+        },
+    )
+    .await;
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn extract_schedule_requires_configured_api_key(pool: PgPool) {
+    let prev_key = std::env::var("GEMINI_API_KEY").ok();
+    std::env::remove_var("GEMINI_API_KEY");
+
+    let result = schedule_service::extract_schedule(
+        &pool,
+        "extract_user",
+        ExtractScheduleRequest {
+            text: Some("내일 오후 3시 회의".to_string()),
+            image_base64: None,
+            timezone: Some("Asia/Seoul".to_string()),
+        },
+    )
+    .await;
+
+    match prev_key {
+        Some(value) => std::env::set_var("GEMINI_API_KEY", value),
+        None => std::env::remove_var("GEMINI_API_KEY"),
+    }
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
 #[sqlx::test(migrations = "./migrations")]

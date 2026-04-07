@@ -9,7 +9,7 @@
 - [x] #3 그룹 API 구현 — Firestore → PostgreSQL 스키마 설계 + 초대/가입/권한 로직
 - [x] #4 일정 API 구현 — 개인일정/그룹일정 스키마 + 응답/확정 상태 머신
 - [x] #5 알림과 푸시 — FCM 직접 발송 + 배지 + 그룹별 설정
-- [ ] #6 실시간과 LiveActivity — SSE + APNs 직접 발송 + ETA 공유
+- [x] #6 실시간과 LiveActivity — SSE + APNs 직접 발송 + ETA 공유
 - [ ] #7 나머지 기능 — 위젯, 쿠폰, AI 브리핑, 배포 파이프라인
 - [ ] #8 점진적 전환 — Branch by Abstraction으로 Dev → Stage → Prod
 - [ ] #9 인증 자체 구현 — Firebase Auth → Apple/Google OAuth + JWT (선택적)

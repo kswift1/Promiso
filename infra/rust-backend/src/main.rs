@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use promiso_backend::config::Config;
 use promiso_backend::routes;
+use promiso_backend::services::apns_service::RealApnsSender;
+use promiso_backend::services::task_executor;
 
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -29,9 +33,19 @@ async fn main() {
         .await
         .expect("Failed to connect to database pool");
 
-    let app = routes::create_router(pool, &config);
+    // APNs sender (라우터 + 폴링 루프에서 공유)
+    let apns_sender = Arc::new(RealApnsSender::new(&config));
 
-    // [::]:port → IPv4 + IPv6 동시 바인딩 (iOS 시뮬레이터 호환)
+    let app = routes::create_router(pool.clone(), &config, apns_sender.clone());
+
+    // 백그라운드: scheduled_tasks 폴링 루프
+    let poll_pool = pool.clone();
+    let poll_apns = apns_sender.clone();
+    tokio::spawn(async move {
+        task_executor::start_polling_loop(poll_pool, poll_apns).await;
+    });
+
+    // [::]:port -> IPv4 + IPv6 동시 바인딩 (iOS 시뮬레이터 호환)
     let addr = format!("[::]:{}", config.port);
     tracing::info!("Starting server on {}", addr);
 
