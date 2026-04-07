@@ -1,10 +1,14 @@
+use std::collections::BTreeSet;
+
 use chrono::{DateTime, Utc};
+use serde::de::DeserializeOwned;
 use sqlx::PgPool;
 
 use crate::errors::AppError;
 use crate::models::subscription::{EntitlementResponse, SubscriptionStatus};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FirestoreSubscriptionRow {
     pub user_id: String,
     pub status: String,
@@ -19,14 +23,16 @@ pub struct FirestoreSubscriptionRow {
     pub last_offer_identifier: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FirestoreSubscriptionOwnerRow {
     pub original_transaction_id: String,
     pub user_id: String,
     pub product_id: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FirestoreEntitlementOverrideRow {
     pub user_id: String,
     pub is_active: bool,
@@ -37,6 +43,59 @@ pub struct FirestoreEntitlementOverrideRow {
     pub revoked_at: Option<String>,
     pub revoked_by: Option<String>,
     pub revoked_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BackfillSummary {
+    pub subscriptions: usize,
+    pub subscription_owners: usize,
+    pub entitlement_overrides: usize,
+    pub entitlements_recomputed: usize,
+}
+
+pub async fn run_jsonl_backfill(
+    pool: &PgPool,
+    subscriptions_jsonl: &str,
+    owners_jsonl: &str,
+    overrides_jsonl: &str,
+) -> Result<BackfillSummary, AppError> {
+    let subscription_rows =
+        parse_jsonl_rows::<FirestoreSubscriptionRow>(subscriptions_jsonl, "subscriptions")?;
+    let owner_rows =
+        parse_jsonl_rows::<FirestoreSubscriptionOwnerRow>(owners_jsonl, "subscriptionOwners")?;
+    let override_rows = parse_jsonl_rows::<FirestoreEntitlementOverrideRow>(
+        overrides_jsonl,
+        "entitlementOverrides",
+    )?;
+
+    let mut summary = BackfillSummary::default();
+    let mut entitlement_user_ids = BTreeSet::new();
+
+    for row in subscription_rows {
+        let user_id = row.user_id.clone();
+        backfill_subscription(pool, row).await?;
+        entitlement_user_ids.insert(user_id);
+        summary.subscriptions += 1;
+    }
+
+    for row in owner_rows {
+        backfill_subscription_owner(pool, row).await?;
+        summary.subscription_owners += 1;
+    }
+
+    for row in override_rows {
+        let user_id = row.user_id.clone();
+        backfill_entitlement_override(pool, row).await?;
+        entitlement_user_ids.insert(user_id);
+        summary.entitlement_overrides += 1;
+    }
+
+    for user_id in entitlement_user_ids {
+        recompute_entitlement(pool, &user_id).await?;
+        summary.entitlements_recomputed += 1;
+    }
+
+    Ok(summary)
 }
 
 pub async fn backfill_subscription(
@@ -165,4 +224,29 @@ fn parse_optional_rfc3339(value: &Option<String>) -> Result<Option<DateTime<Utc>
             .map_err(|_| AppError::BadRequest("invalid timestamp".to_string())),
         None => Ok(None),
     }
+}
+
+fn parse_jsonl_rows<T>(input: &str, label: &str) -> Result<Vec<T>, AppError>
+where
+    T: DeserializeOwned,
+{
+    input
+        .lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some((index + 1, trimmed))
+            }
+        })
+        .map(|(line_number, line)| {
+            serde_json::from_str::<T>(line).map_err(|error| {
+                AppError::BadRequest(format!(
+                    "invalid {label} jsonl at line {line_number}: {error}"
+                ))
+            })
+        })
+        .collect()
 }

@@ -151,8 +151,19 @@ extension DependencyValues {
 
 extension SubscriptionClient: DependencyKey {
   public static let liveValue: SubscriptionClient = {
+    @Dependency(\.featureFlags) var featureFlags
     let dataSource = StoreKitDataSource()
     let remoteDataSource = SubscriptionRemoteDataSource()
+    let rustDataSource = SubscriptionRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw SubscriptionError.verificationFailed
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
 
     return Self(
       fetchProducts: {
@@ -171,18 +182,90 @@ extension SubscriptionClient: DependencyKey {
         try await dataSource.restoreWithReceipt()
       },
       fetchStatus: {
-        try await remoteDataSource.fetchRemoteStatus()
+        if featureFlags.useRustAPI(.subscription) {
+          return try await rustDataSource.fetchStatus()
+        } else {
+          return try await remoteDataSource.fetchRemoteStatus()
+        }
       },
       fetchLocalStatus: {
         try await dataSource.fetchCurrentStatus()
       },
       verifyPurchase: { jwsString, productId, forceTransfer in
-        try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId, forceTransfer: forceTransfer)
+        if featureFlags.useRustAPI(.subscription) {
+          return try await rustDataSource.verifyPurchase(
+            transactionJWS: jwsString,
+            productId: productId,
+            forceTransfer: forceTransfer
+          )
+        } else {
+          return try await verifyPurchaseOnServer(
+            transactionJWS: jwsString,
+            productId: productId,
+            forceTransfer: forceTransfer
+          )
+        }
       },
       checkIntroOfferEligibility: {
         await dataSource.checkIntroOfferEligibility()
       },
       unifiedStatusStream: {
+        if featureFlags.useRustAPI(.subscription) {
+          actor StatusCache {
+            private var lastStatus: SubscriptionStatus?
+
+            func update(_ status: SubscriptionStatus) -> SubscriptionStatus? {
+              guard lastStatus != status else { return nil }
+              lastStatus = status
+              return status
+            }
+          }
+
+          let statusCache = StatusCache()
+
+          return AsyncStream { continuation in
+            let task = Task {
+              if let initialStatus = try? await rustDataSource.fetchStatus(),
+                 let statusToYield = await statusCache.update(initialStatus) {
+                continuation.yield(statusToYield)
+              }
+
+              await withTaskGroup(of: Void.self) { group in
+                // StoreKit 트랜잭션 변경 시 서버 authority를 다시 조회
+                group.addTask {
+                  for await _ in dataSource.statusStream() {
+                    guard !Task.isCancelled else { return }
+                    if let refreshedStatus = try? await rustDataSource.fetchStatus(),
+                       let statusToYield = await statusCache.update(refreshedStatus) {
+                      continuation.yield(statusToYield)
+                    }
+                  }
+                }
+
+                // Webhook/백엔드 상태 반영을 위해 주기적으로 서버 상태를 폴링
+                group.addTask {
+                  while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(30))
+                    guard !Task.isCancelled else { return }
+                    if let refreshedStatus = try? await rustDataSource.fetchStatus(),
+                       let statusToYield = await statusCache.update(refreshedStatus) {
+                      continuation.yield(statusToYield)
+                    }
+                  }
+                }
+
+                await group.waitForAll()
+              }
+
+              continuation.finish()
+            }
+
+            continuation.onTermination = { _ in
+              task.cancel()
+            }
+          }
+        }
+
         // Actor로 서버/StoreKit 상태 병합 시 공유 상태 보호
         actor StatusMerger {
           private var lastServerStatus: SubscriptionStatus?
@@ -256,7 +339,11 @@ extension SubscriptionClient: DependencyKey {
         await dataSource.fetchPurchaseDate()
       },
       fetchEntitlementInfo: {
-        try await remoteDataSource.fetchEntitlementInfo()
+        if featureFlags.useRustAPI(.subscription) {
+          return try await rustDataSource.fetchEntitlementInfo()
+        } else {
+          return try await remoteDataSource.fetchEntitlementInfo()
+        }
       },
       checkTrialStatus: {
         for await result in StoreKit.Transaction.currentEntitlements {
