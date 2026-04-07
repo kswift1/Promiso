@@ -82,10 +82,10 @@ async fn check_nickname_available(
 }
 
 async fn batch_get_users(
-    Extension(_claims): Extension<Claims>,
+    Extension(claims): Extension<Claims>,
     State(pool): State<PgPool>,
     Json(req): Json<BatchGetUsersRequest>,
 ) -> Result<ApiResponse<Vec<UserPublicResponse>>, AppError> {
-    let response = user_service::batch_get_users(&pool, &req.user_ids).await?;
+    let response = user_service::batch_get_users(&pool, &claims.uid, &req.user_ids).await?;
     ApiResponse::ok(response)
 }
