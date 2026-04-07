@@ -252,6 +252,6 @@ LiveActivity is where FCM can't help you. You send HTTP/2 requests directly to A
 
 What did change is how "execute later" works. Instead of Cloud Tasks as an external service, a single DB table and 30-second polling does the job. When the server restarts, it picks up pending work from the database. One fewer external dependency.
 
-*Next: #7 The Rest - Widgets, Coupons, AI Briefing, Deploy Pipeline*
+*Next: #7 Subscription and Entitlements - StoreKit validation, coupon/override flows, and rebuilding the read model*
 
 *Promiso - [App Store](https://apps.apple.com/kr/app/id6757733720) · [GitHub](https://github.com/kswift1/Promiso)*

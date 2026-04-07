@@ -252,6 +252,6 @@ LiveActivity는 FCM이 해주지 않는 영역이다. APNs에 직접 HTTP/2 요�
 
 달라진 건 "나중에 실행"하는 방식이다. Cloud Tasks라는 외부 서비스 대신 DB 테이블 하나와 30초 폴링으로 해결했다. 서버가 재시작되면 DB에서 밀린 작업을 꺼내 실행한다. 외부 의존이 하나 줄었다.
 
-*다음 글: #7 나머지 기능 - 위젯, 쿠폰, AI 브리핑, 배포 파이프라인*
+*다음 글: #7 구독과 Entitlements - StoreKit 검증, 쿠폰/오버라이드, read model 재구성*
 
 *Promiso - [App Store](https://apps.apple.com/kr/app/id6757733720) · [GitHub](https://github.com/kswift1/Promiso)*
