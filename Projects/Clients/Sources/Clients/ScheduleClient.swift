@@ -414,22 +414,41 @@ extension ScheduleClient: DependencyKey {
           return try await dataSource.getConfirmedSchedulesForCalendar()
         }
       },
-      // LiveActivity: Firebase only (no Rust equivalent yet)
       startLiveActivity: { scheduleId in
-        try await dataSource.startLiveActivity(scheduleId: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
+        } else {
+          try await dataSource.startLiveActivity(scheduleId: scheduleId)
+        }
       },
       startVoteLiveActivity: { scheduleId in
-        try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        } else {
+          try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        }
       },
       finalizeVote: { scheduleId in
-        try await dataSource.finalizeVote(scheduleId: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.finalizeVote(scheduleId: scheduleId)
+        } else {
+          try await dataSource.finalizeVote(scheduleId: scheduleId)
+        }
       },
       updateETA: { channelId, participants, trackingDurationMinutes in
-        try await dataSource.updateETA(
-          channelId: channelId,
-          participants: participants,
-          trackingDurationMinutes: trackingDurationMinutes
-        )
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.updateETA(
+            channelId: channelId,
+            participants: participants,
+            trackingDurationMinutes: trackingDurationMinutes
+          )
+        } else {
+          try await dataSource.updateETA(
+            channelId: channelId,
+            participants: participants,
+            trackingDurationMinutes: trackingDurationMinutes
+          )
+        }
       }
       // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
     )
