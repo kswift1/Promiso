@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Layer 3: Git Pre-commit Hook
+# infra/rust-backend/src/ 변경이 포함된 커밋에서
+# Red→Green 사이클이 완료되었는지 확인한다.
+
+# 커밋에 rust-backend/src/ 변경이 있는지 확인
+RUST_SRC_CHANGES=$(git diff --cached --name-only | grep "infra/rust-backend/src/" || true)
+
+# Rust 백엔드 src 변경이 없으면 통과
+if [ -z "$RUST_SRC_CHANGES" ]; then
+    exit 0
+fi
+
+# 테스트 파일만 변경된 경우 통과
+NON_TEST_CHANGES=$(echo "$RUST_SRC_CHANGES" | grep -v "_test\.rs$" | grep -v "/tests/" || true)
+if [ -z "$NON_TEST_CHANGES" ]; then
+    exit 0
+fi
+
+# .tdd-state 확인
+STATE_FILE="$(git rev-parse --show-toplevel)/.tdd-state"
+
+if [ ! -f "$STATE_FILE" ]; then
+    echo "" >&2
+    echo "TDD 커밋 게이트: 차단" >&2
+    echo "  변경 파일:" >&2
+    echo "$NON_TEST_CHANGES" | sed 's/^/    /' >&2
+    echo "  사유: .tdd-state 파일 없음. Red→Green 사이클을 거치지 않았습니다." >&2
+    echo "  해결: .ai/strict-coder/scripts/tdd-red.sh → tdd-green.sh 실행" >&2
+    echo "" >&2
+    exit 1
+fi
+
+PHASE=$(jq -r '.phase // "none"' "$STATE_FILE")
+RED_COMPLETE=$(jq -r '.red_complete // false' "$STATE_FILE")
+GREEN_COMPLETE=$(jq -r '.green_complete // false' "$STATE_FILE")
+LAST_RED=$(jq -r '.last_red_at // "없음"' "$STATE_FILE")
+
+# Green 완료 확인
+if [ "$GREEN_COMPLETE" != "true" ]; then
+    echo "" >&2
+    echo "TDD 커밋 게이트: 차단" >&2
+    echo "  변경 파일:" >&2
+    echo "$NON_TEST_CHANGES" | sed 's/^/    /' >&2
+    echo "  현재: phase=$PHASE, red=$RED_COMPLETE, green=$GREEN_COMPLETE" >&2
+    echo "  사유: Green이 완료되지 않았습니다." >&2
+    echo "  해결: .ai/strict-coder/scripts/tdd-green.sh 실행" >&2
+    echo "" >&2
+    exit 1
+fi
+
+# Red 증거 확인
+if [ "$LAST_RED" = "없음" ] || [ "$LAST_RED" = "null" ]; then
+    echo "" >&2
+    echo "TDD 커밋 게이트: 차단" >&2
+    echo "  사유: Red 증거 없는 Green. Red→Green 사이클을 거치지 않았습니다." >&2
+    echo "" >&2
+    exit 1
+fi
+
+# 통과
+exit 0

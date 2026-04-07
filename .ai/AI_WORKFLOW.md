@@ -52,6 +52,7 @@
 ### 1. 탐색 — 🟢 자동
 - 기존 코드 패턴과 의존성 방향 파악
 - 영향 범위와 직접 관련된 `.ai/domain-rules/*.md`만 읽기 (필수)
+- Rust 백엔드(`infra/rust-backend/`) 작업 시 `.ai/RUST_BACKEND_IMPLEMENTATION_RULES.md`, `.ai/REST_API.md`, `.ai/POSTGRES_SCHEMA.md`, `docs/migration/{domain}.md` 함께 확인
 - 영향받는 모듈/파일 식별 + 작업 규모 판단
 
 **탐색 도구 선택 기준**:

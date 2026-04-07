@@ -116,3 +116,6 @@ Promiso-Config*.zip
 
 # Rust
 infra/rust-backend/target/
+
+# TDD State (strict-coder)
+.tdd-state

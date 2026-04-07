@@ -6,6 +6,20 @@
     ],
     "deny": []
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.ai/strict-coder/hooks/tdd-gate.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "swiftui-expert@swiftui-expert-skill": true,
     "swift-concurrency@swift-concurrency-agent-skill": true
