@@ -423,25 +423,21 @@ promiso://schedule/{scheduleId}/eta
 
 ---
 
-## 백엔드 연동 (Firebase Functions)
+## 백엔드 연동 (Rust Backend)
 
-### Firebase Functions API
+### Rust API
 
-#### registerPushToStartToken
+#### saveLiveActivityPushToStartToken
 
 Push to Start 토큰 등록 (iOS 17.2+)
 
-```typescript
-// Request
-{
-  token: string;      // Push to Start 토큰
-  deviceId: string;   // 디바이스 고유 ID
-  env?: "stage" | "prod";
-}
+```http
+PUT /api/v1/devices/{deviceId}/live-activity-endpoint
+Content-Type: application/json
 
-// Response
 {
-  success: boolean;
+  "pushToStartToken": "<apns-push-to-start-token>",
+  "liveActivityPushToken": null
 }
 ```
 
@@ -449,19 +445,8 @@ Push to Start 토큰 등록 (iOS 17.2+)
 
 일정 참가자 전원에게 Push to Start APNs 전송
 
-```typescript
-// Request
-{
-  promiseId: string;
-  env?: "stage" | "prod";
-}
-
-// Response
-{
-  success: boolean;
-  successCount: number;
-  failureCount: number;
-}
+```http
+POST /api/v1/schedules/{scheduleId}/live-activity/start
 ```
 
 **권한**: 호스트만 호출 가능
@@ -470,29 +455,24 @@ Push to Start 토큰 등록 (iOS 17.2+)
 
 ETA 업데이트 후 모든 참가자에게 브로드캐스트
 
-```typescript
-// Request
-{
-  promiseId: string;
-  estimatedMinutes: number;  // 0=도착, N=N분 후
-  env?: "stage" | "prod";
-}
+```http
+POST /api/v1/schedules/{scheduleId}/live-activity/eta
+Content-Type: application/json
 
-// Response
 {
-  success: boolean;
-  successCount: number;
-  failureCount: number;
+  "channelId": "ch_abc123",
+  "participants": [...],
+  "trackingDurationMinutes": 30
 }
 ```
 
 **권한**: 모든 참가자 호출 가능
 
-종료는 공개 API가 아니라 내부 Cloud Tasks 함수(`executeLiveActivityEnd`)가 처리합니다.
+종료와 넛지는 공개 API가 아니라 Rust `live_activity_jobs` worker가 처리합니다.
 
 ---
 
-### 자동 예약 시작 (Cloud Tasks)
+### 자동 예약 시작 (Rust Worker)
 
 일정 생성 시 `trackingStartMinutesBefore`를 설정하면, 일정이 확정될 때 자동으로 LiveActivity 시작이 예약됩니다.
 
@@ -505,11 +485,11 @@ ETA 업데이트 후 모든 참가자에게 브로드캐스트
 2. 참가자들이 투표하여 일정 확정
    → votes.accepted.length >= minimumParticipants
 
-3. Firestore Trigger 실행 (onScheduleConfirmedScheduleLiveActivity)
-   → Cloud Task 예약: startAt - 60분
+3. Rust 서버가 `live_activity_jobs`를 재계산
+   → 시작 job 예약: startAt - 60분
 
 4. 예약 시간 도달
-   → executeLiveActivityStart 실행
+   → Rust worker가 start job 실행
    → 모든 참가자에게 Push to Start 전송
 ```
 
@@ -522,33 +502,34 @@ ETA 업데이트 후 모든 참가자에게 브로드캐스트
 | 2시간 전 | 120 |
 | 3시간 전 | 180 |
 
-#### Firestore 필드
+#### 저장 구조
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (일정 N분 전) |
-| `liveActivitySchedule.scheduled` | Boolean | 예약 완료 여부 |
-| `liveActivitySchedule.started` | Boolean | Push to Start 전송 성공 후 시작 처리 여부 |
-| `liveActivitySchedule.scheduledAt` | Timestamp? | 예약된 실행 시각 |
-| `liveActivitySchedule.version` | String | 최신 예약만 통과시키는 버전 UUID |
+| `schedules.live_activity_channel_id` | TEXT? | 현재 APNs Broadcast 채널 |
+| `schedules.live_activity_started_at` | TIMESTAMPTZ? | Push to Start 성공 시각 |
+| `schedules.live_activity_nudge_sent_at` | TIMESTAMPTZ? | ETA 넛지 발송 시각 |
+| `schedules.live_activity_ended_at` | TIMESTAMPTZ? | 종료 시각 |
+| `live_activity_jobs` | TABLE | start/end/nudge 예약 작업 |
 
 ---
 
 ### APNs 인증 설정
 
-Firebase Secret Manager에 다음 시크릿 등록 필요:
+Rust 서버 env에 다음 값 설정 필요:
 
-| Secret Name | 설명 |
-|-------------|------|
+| Env | 설명 |
+|-----|------|
 | `APNS_KEY_ID` | APNs Auth Key ID (10자리) |
 | `APNS_TEAM_ID` | Apple Developer Team ID (10자리) |
 | `APNS_AUTH_KEY` | APNs Auth Key (.p8 파일 내용) |
+| `APNS_AUTH_KEY_PATH` | APNs Auth Key 파일 경로 (대안) |
 
 ```bash
-# 시크릿 등록 예시
-firebase functions:secrets:set APNS_KEY_ID
-firebase functions:secrets:set APNS_TEAM_ID
-firebase functions:secrets:set APNS_AUTH_KEY
+APNS_KEY_ID=ABC123XYZ
+APNS_TEAM_ID=TEAM123XYZ
+APNS_AUTH_KEY_PATH=/absolute/path/to/AuthKey_ABC123XYZ.p8
+# 또는 APNS_AUTH_KEY='-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'
 ```
 
 ---
@@ -675,12 +656,12 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 
 ### Backend
 
-- [x] Firebase Functions: registerPushToStartToken
-- [x] Firebase Functions: startLiveActivity
-- [x] Firebase Functions: updateETA
-- [x] Firebase Functions: executeLiveActivityEnd
-- [ ] APNs 인증 설정 (P8 키 + Firebase Secret Manager)
-- [x] Firestore 스키마 업데이트 (liveActivities 컬렉션)
+- [x] Rust API: `PUT /api/v1/devices/{deviceId}/live-activity-endpoint`
+- [x] Rust API: `POST /api/v1/schedules/{id}/live-activity/start`
+- [x] Rust API: `POST /api/v1/schedules/{id}/live-activity/eta`
+- [x] Rust worker: start/end/nudge 예약 처리
+- [ ] APNs 인증 설정
+- [x] PostgreSQL 스키마 업데이트 (`live_activity_endpoints`, `live_activity_jobs`)
 
 ### Future Features (TODO)
 

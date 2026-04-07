@@ -1,6 +1,5 @@
 import Foundation
 import FirebaseFirestore
-import FirebaseFunctions
 import PromisoShared
 import UIKit
 
@@ -11,13 +10,6 @@ private struct ChangeDTO: Decodable {
   let label: String
   let before: String
   let after: String
-}
-
-// MARK: - Firebase 상수
-
-private enum FirebaseConstants {
-  static let region = "asia-northeast3"
-  static let registerPushToStartToken = "registerPushToStartToken"
 }
 
 // MARK: - Data Source
@@ -116,35 +108,6 @@ public actor NotificationRemoteDataSource {
     }
 
     return token
-  }
-
-  // MARK: - LiveActivity Push to Start Token
-
-  /// LiveActivity Push to Start 토큰 저장 (앱 단위 통합)
-  /// - Parameters:
-  ///   - userId: 사용자 ID
-  ///   - token: Push to Start 토큰
-  public func saveLiveActivityPushToStartToken(
-    userId: String,
-    token: String
-  ) async throws {
-    let functions = DefaultFunctionsProvider().functions
-    let callable = functions.httpsCallable(FirebaseConstants.registerPushToStartToken)
-
-    let callableData: [String: Any] = [
-      "token": token,
-      "deviceId": deviceId
-    ]
-
-    do {
-      _ = try await callable.call(callableData)
-      AppLogger.liveActivity.info(
-        "✅ Push to Start 토큰 등록 성공 (userId: \(userId), deviceId: \(self.deviceId))"
-      )
-    } catch {
-      AppLogger.liveActivity.error("❌ Push to Start 토큰 등록 실패: \(error.localizedDescription)")
-      throw error
-    }
   }
 
   // MARK: - Notification List

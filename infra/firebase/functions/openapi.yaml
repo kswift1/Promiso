@@ -1507,75 +1507,6 @@ paths:
                       message: 푸시 알림 전송 중 오류가 발생했습니다
 
   # ========================================
-  # LiveActivity
-  # ========================================
-
-  /registerPushToStartToken:
-    post:
-      tags:
-        - LiveActivity
-      summary: Push to Start 토큰 등록
-      description: |
-        iOS 17.2+ 디바이스에서 Push to Start 토큰을 등록합니다.
-        앱 시작 시 자동으로 호출되어 백엔드에서 LiveActivity를 원격으로 시작할 수 있게 합니다.
-
-        **인증 필수**: Firebase Authentication 토큰 필요
-      operationId: registerPushToStartToken
-      security:
-        - firebaseAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - data
-              properties:
-                data:
-                  $ref: '#/components/schemas/RegisterPushToStartTokenRequest'
-            examples:
-              basic:
-                summary: 토큰 등록
-                value:
-                  data:
-                    token: "abc123def456..."
-                    deviceId: "device-uuid-1234"
-                    env: stage
-
-      responses:
-        '200':
-          description: 토큰 등록 성공
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  result:
-                    $ref: '#/components/schemas/RegisterPushToStartTokenResponse'
-              examples:
-                success:
-                  value:
-                    result:
-                      success: true
-
-        '400':
-          description: 잘못된 파라미터
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FunctionsError'
-              examples:
-                missingToken:
-                  value:
-                    error:
-                      code: invalid-argument
-                      message: token과 deviceId는 필수입니다
-
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-
-  # ========================================
   # Widget
   # ========================================
 
@@ -3628,44 +3559,6 @@ components:
           additionalProperties:
             type: string
           description: 추가 데이터
-
-    # ========================================
-    # LiveActivity
-    # ========================================
-
-    RegisterPushToStartTokenRequest:
-      type: object
-      required:
-        - token
-        - deviceId
-      properties:
-        token:
-          type: string
-          description: Push to Start 토큰 (APNs)
-          example: "abc123def456..."
-
-        deviceId:
-          type: string
-          description: 디바이스 고유 ID (UUID)
-          example: "device-uuid-1234"
-
-        env:
-          type: string
-          enum:
-            - stage
-            - prod
-          nullable: true
-          description: 환경 구분
-
-    RegisterPushToStartTokenResponse:
-      type: object
-      required:
-        - success
-      properties:
-        success:
-          type: boolean
-          description: 등록 성공 여부
-          example: true
 
     # ========================================
     # Error

@@ -159,17 +159,8 @@ extension NotificationClient: DependencyKey {
       },
 
       saveLiveActivityPushToStartToken: { token in
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.saveLiveActivityPushToStartToken(token)
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.saveLiveActivityPushToStartToken(
-            userId: currentUser.uid,
-            token: token
-          )
-        }
+        // Live Activity는 Rust/APNs 경로만 유지한다.
+        try await rustDataSource.saveLiveActivityPushToStartToken(token)
       },
 
       getAuthorizationStatus: {

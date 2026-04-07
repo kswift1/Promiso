@@ -54,13 +54,6 @@ export {
 } from "./functions/notifications";
 
 // ============================================================================
-// LiveActivity Token Functions
-// ============================================================================
-export {
-  registerPushToStartToken,
-} from "./functions/liveActivity";
-
-// ============================================================================
 // Emoji Functions
 // ============================================================================
 export {generateEmoji} from "./functions/emoji";
