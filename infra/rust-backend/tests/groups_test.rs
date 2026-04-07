@@ -955,6 +955,36 @@ async fn q7_preview_invalid_code_rejected(pool: PgPool) {
     assert!(matches!(result, Err(AppError::NotFound(_))));
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn q8_get_groups_batch_preserves_order_and_filters_non_members(pool: PgPool) {
+    insert_test_user(&pool, "batch_host", "배치호스트").await;
+    insert_test_user(&pool, "batch_member", "배치멤버").await;
+    insert_test_user(&pool, "batch_outsider", "배치외부인").await;
+
+    let first_group = create_test_group(&pool, "batch_host", "첫번째그룹").await;
+    let second_group = create_test_group(&pool, "batch_host", "두번째그룹").await;
+    let outsider_group = create_test_group(&pool, "batch_outsider", "외부그룹").await;
+
+    let first_group_id = Uuid::parse_str(&first_group.group_id).unwrap();
+    let second_group_id = Uuid::parse_str(&second_group.group_id).unwrap();
+    let outsider_group_id = Uuid::parse_str(&outsider_group.group_id).unwrap();
+
+    join_test_group(&pool, "batch_member", &first_group.invite_code).await;
+    join_test_group(&pool, "batch_member", &second_group.invite_code).await;
+
+    let result = group_service::get_groups_batch(
+        &pool,
+        "batch_member",
+        vec![second_group_id, outsider_group_id, first_group_id],
+    )
+    .await
+    .expect("batch fetch should succeed");
+
+    assert_eq!(result.len(), 2);
+    assert_eq!(result[0].group_id, second_group.group_id);
+    assert_eq!(result[1].group_id, first_group.group_id);
+}
+
 // ============================================================
 // 멤버십 설정 — 알림
 // ============================================================
@@ -1132,9 +1162,8 @@ async fn auth_required_groups_returns_401(pool: PgPool) {
     use tower::ServiceExt; // oneshot
 
     let config = promiso_backend::config::Config::from_env();
-    let apns_sender = std::sync::Arc::new(
-        promiso_backend::services::apns_service::RealApnsSender::new(&config),
-    );
+    let apns_sender =
+        std::sync::Arc::new(promiso_backend::services::apns_service::RealApnsSender::new(&config));
     let app = promiso_backend::routes::create_router(pool, &config, apns_sender);
 
     let response = app
