@@ -1,11 +1,9 @@
-//! Subscription backfill Red tests
+//! Subscription backfill tests
 //!
 //! 목표:
 //! - Firebase production 데이터를 PostgreSQL authority로 1회 백필할 수 있어야 한다.
 //! - subscriptions / subscription_owners / entitlement_overrides는 보존하고,
 //!   entitlements는 복사하지 않고 재계산해야 한다.
-//!
-//! 현재는 Rust backfill 서비스가 아직 없으므로 Red 상태가 정상이다.
 
 use chrono::{Duration, Utc};
 use promiso_backend::models::subscription::{EntitlementSource, SubscriptionStatus};
@@ -162,5 +160,8 @@ async fn recompute_entitlement_does_not_copy_firestore_entitlement_row(pool: PgP
         .expect("entitlement recompute should succeed");
 
     assert!(!entitlement.has_pro);
-    assert_eq!(entitlement.subscription_status, Some(SubscriptionStatus::Expired));
+    assert_eq!(
+        entitlement.subscription_status,
+        Some(SubscriptionStatus::Expired)
+    );
 }

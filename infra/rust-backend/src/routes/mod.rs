@@ -1,3 +1,4 @@
+pub mod admin;
 mod groups;
 mod health;
 mod live_activity;
@@ -28,6 +29,7 @@ pub fn create_router(
 
     // 인증 필요한 라우트
     let authenticated_routes = users::router()
+        .merge(admin::router())
         .merge(groups::router())
         .merge(schedules::router())
         .merge(notifications::router())

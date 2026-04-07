@@ -1,17 +1,15 @@
-//! Admin subscription cutover Red tests
+//! Admin subscription cutover tests
 //!
 //! 목표:
 //! - Firebase callable이 담당하던 summary/timeline/override 로직을 Rust 서비스로 옮긴다.
 //! - 권한 검사, 입력 검증, audit log 기록을 서버 테스트로 먼저 고정한다.
-//!
-//! 현재는 Rust admin subscription 서비스가 아직 없으므로 Red 상태가 정상이다.
 
 use chrono::{Duration, Utc};
 use promiso_backend::errors::AppError;
 use promiso_backend::services::admin_subscription_service::{
-    build_dashboard_summary, build_pro_plan_dashboard, get_user_summary, get_user_timeline,
-    grant_entitlement_override, revoke_entitlement_override, GrantEntitlementOverrideRequest,
-    RevokeEntitlementOverrideRequest,
+    build_dashboard_summary, build_pro_plan_dashboard, get_user_summary, get_user_summary_with_filters,
+    get_user_timeline, grant_entitlement_override, revoke_entitlement_override,
+    GrantEntitlementOverrideRequest, RevokeEntitlementOverrideRequest,
 };
 use sqlx::PgPool;
 
@@ -33,7 +31,7 @@ async fn insert_user(pool: &PgPool, id: &str, name: &str, nickname: &str) {
 async fn insert_admin(pool: &PgPool, id: &str, role: &str) {
     sqlx::query(
         "INSERT INTO admin_users (user_id, email, role, enabled)
-         VALUES ($1, $2, $3, true)",
+         VALUES ($1, $2, $3::admin_role, true)",
     )
     .bind(id)
     .bind(format!("{id}@promiso.test"))
@@ -84,12 +82,50 @@ async fn user_summary_search_by_email_returns_matching_user(pool: PgPool) {
     insert_admin(&pool, "admin_support_1", "support").await;
     insert_user(&pool, "summary_user_1", "홍길동", "길동").await;
 
-    let result = get_user_summary(&pool, "admin_support_1", "summary_user_1@promiso.test", "email")
-        .await
-        .expect("user summary should succeed");
+    let result = get_user_summary(
+        &pool,
+        "admin_support_1",
+        "summary_user_1@promiso.test",
+        "email",
+    )
+    .await
+    .expect("user summary should succeed");
 
     assert_eq!(result.results.len(), 1);
     assert_eq!(result.results[0].user_id, "summary_user_1");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn user_summary_filters_override_state_and_honors_limit(pool: PgPool) {
+    insert_admin(&pool, "admin_support_filter_1", "support").await;
+    insert_user(&pool, "filter_user_1", "필터1", "닉1").await;
+    insert_user(&pool, "filter_user_2", "필터2", "닉2").await;
+
+    sqlx::query(
+        "INSERT INTO entitlement_overrides
+            (user_id, is_active, override_type, reason, created_by)
+         VALUES ('filter_user_1', true, 'manual_pro_grant', 'manual support', 'admin_support_filter_1')",
+    )
+    .execute(&pool)
+    .await
+    .expect("Failed to insert override");
+
+    let result = get_user_summary_with_filters(
+        &pool,
+        "admin_support_filter_1",
+        None,
+        "all",
+        "all",
+        "active",
+        1,
+        None,
+    )
+    .await
+    .expect("filtered user summary should succeed");
+
+    assert_eq!(result.results.len(), 1);
+    assert_eq!(result.results[0].user_id, "filter_user_1");
+    assert_eq!(result.has_more, false);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -118,10 +154,10 @@ async fn user_timeline_returns_summary_subscription_override_and_audit_logs(pool
 
     sqlx::query(
         "INSERT INTO admin_audit_logs
-            (actor_id, action, target_id, target_type, created_at)
+            (actor_id, action, target_id, target_type, before_data, after_data, created_at)
          VALUES
-            ('admin_support_2', 'grant_entitlement_override', 'timeline_user_1', 'user', NOW()),
-            ('admin_support_2', 'touch_user', 'timeline_user_1', 'user', NOW() - interval '1 hour')",
+            ('admin_support_2', 'grant_entitlement_override', 'timeline_user_1', 'user', '{\"before\":true}', '{\"after\":true}', NOW()),
+            ('admin_support_2', 'touch_user', 'timeline_user_1', 'user', NULL, NULL, NOW() - interval '1 hour')",
     )
     .execute(&pool)
     .await
@@ -135,6 +171,11 @@ async fn user_timeline_returns_summary_subscription_override_and_audit_logs(pool
     assert_eq!(timeline.subscription.status.as_deref(), Some("subscribed"));
     assert!(timeline.r#override.is_some());
     assert_eq!(timeline.audit_logs.len(), 2);
+    assert_eq!(timeline.audit_logs[0].action.as_deref(), Some("grant_entitlement_override"));
+    assert_eq!(timeline.audit_logs[0].actor_id.as_deref(), Some("admin_support_2"));
+    assert_eq!(timeline.audit_logs[0].target_type.as_deref(), Some("user"));
+    assert!(timeline.audit_logs[0].id.len() > 0);
+    assert!(timeline.audit_logs[0].before.is_some());
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -274,10 +315,10 @@ async fn revoke_override_disables_row_and_writes_audit_log(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn pro_plan_dashboard_counts_products_grace_period_and_offer_codes(pool: PgPool) {
     insert_admin(&pool, "admin_owner_2", "owner").await;
-    insert_user(&pool, "plan_user_monthly", "월간", "월").await;
-    insert_user(&pool, "plan_user_yearly", "연간", "연").await;
-    insert_user(&pool, "plan_user_lifetime", "평생", "평").await;
-    insert_user(&pool, "plan_user_grace", "유예", "유").await;
+    insert_user(&pool, "plan_user_monthly", "월간", "월간").await;
+    insert_user(&pool, "plan_user_yearly", "연간", "연간").await;
+    insert_user(&pool, "plan_user_lifetime", "평생", "평생").await;
+    insert_user(&pool, "plan_user_grace", "유예", "유예").await;
 
     sqlx::query(
         "INSERT INTO subscriptions
@@ -313,5 +354,16 @@ async fn pro_plan_dashboard_counts_products_grace_period_and_offer_codes(pool: P
     assert_eq!(dashboard.breakdown.yearly.count, 1);
     assert_eq!(dashboard.breakdown.lifetime.count, 1);
     assert_eq!(dashboard.breakdown.grace_period.count, 1);
+    assert_eq!(dashboard.overview.total_users, 4);
+    assert_eq!(dashboard.overview.pro_users, 4);
+    assert_eq!(dashboard.overview.pro_subscription_users, 4);
+    assert_eq!(dashboard.revenue.estimated_mrr, 7150);
+    assert_eq!(dashboard.coupons.total, 0);
     assert_eq!(dashboard.offer_codes.total_redemptions, 1);
+    assert_eq!(dashboard.offer_codes.recent_redemptions.len(), 1);
+    assert_eq!(
+        dashboard.offer_codes.recent_redemptions[0].offer_identifier,
+        "SPRING2026"
+    );
+    assert_eq!(dashboard.recent_activities.len(), 4);
 }

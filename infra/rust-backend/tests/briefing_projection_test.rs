@@ -1,11 +1,9 @@
-//! Briefing projection cutover Red tests
+//! Briefing projection cutover tests
 //!
 //! 목표:
 //! - subscription/override 기반 Pro 판정이 Rust authority에서 briefing projection으로 이어져야 한다.
 //! - settings + entitlement 조건이 맞지 않으면 projection이 생성되면 안 된다.
 //! - 다음 dispatch 시각 계산은 timezone 기준으로 안정적으로 동작해야 한다.
-//!
-//! 현재는 briefing projection Rust 서비스/스키마가 아직 없으므로 Red 상태가 정상이다.
 
 use chrono::{TimeZone, Utc};
 use promiso_backend::models::subscription::EntitlementResponse;
@@ -99,10 +97,13 @@ fn projection_not_created_for_invalid_notification_hour() {
 fn next_dispatch_at_uses_first_future_matching_hour_in_timezone() {
     let now = Utc.with_ymd_and_hms(2026, 4, 7, 0, 15, 0).unwrap();
 
-    let next_dispatch = compute_next_dispatch_at(now, "Asia/Seoul", 9)
-        .expect("next dispatch should be computed");
+    let next_dispatch =
+        compute_next_dispatch_at(now, "Asia/Seoul", 9).expect("next dispatch should be computed");
 
-    assert_eq!(next_dispatch, Utc.with_ymd_and_hms(2026, 4, 8, 0, 0, 0).unwrap());
+    assert_eq!(
+        next_dispatch,
+        Utc.with_ymd_and_hms(2026, 4, 8, 0, 0, 0).unwrap()
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -137,7 +138,8 @@ async fn reconcile_projection_persists_projection_row(pool: PgPool) {
         .expect("projection should exist");
 
     let saved: BriefingProjection = sqlx::query_as(
-        "SELECT user_id, notification_hour, timezone, language, style, next_dispatch_at
+        "SELECT user_id, notification_hour, timezone, language, style, next_dispatch_at,
+                default_location_title, default_location_latitude, default_location_longitude
          FROM briefing_subscriptions
          WHERE user_id = $1",
     )
