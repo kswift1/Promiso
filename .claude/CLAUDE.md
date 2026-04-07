@@ -72,7 +72,7 @@ Claude Code 추가 규칙:
 | 에이전트 | 역할 | 트리거 |
 |----------|------|--------|
 | `implementer` | Swift/iOS 코드 작성 (Feature, View, Firebase, 리팩터링) | "만들어줘", "수정해줘" |
-| `rust-implementer` | Rust 백엔드 코드 작성 (Axum, SQLx, PostgreSQL) | `/rust-migrate` Step 3, 7 |
+| `rust-implementer` | Rust 백엔드 코드 작성 (Axum, SQLx, PostgreSQL) | `/rust-migrate` Step 6, 7 |
 | `reviewer` | 리뷰 (코드 품질, 성능, 접근성, Firebase, 보안) | "리뷰해줘", 검증 단계 |
 | `test-writer` | Swift Testing 테스트 작성 | "테스트 작성" |
 | `researcher` | 조사 (UI 레퍼런스, 최신 기술, App Store) | "조사해줘", "레퍼런스" |

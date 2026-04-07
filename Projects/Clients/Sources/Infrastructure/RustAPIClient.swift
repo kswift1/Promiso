@@ -64,6 +64,10 @@ public actor RustAPIClient {
     try await request(method: "PATCH", path: path, body: body)
   }
 
+  public func put<B: Encodable, T: Decodable>(_ path: String, body: B) async throws -> T {
+    try await request(method: "PUT", path: path, body: body)
+  }
+
   public func delete<T: Decodable>(_ path: String) async throws -> T {
     try await request(method: "DELETE", path: path, body: nil as Empty?)
   }
