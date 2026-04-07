@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::group::*;
+use crate::models::notification::PushSender;
+use crate::services::notification_service;
 
 /// [H5] build_group_response 단일 쿼리 결과를 매핑하기 위한 내부 구조체
 #[derive(sqlx::FromRow)]
@@ -377,6 +379,24 @@ pub async fn join_group(
     user_uid: &str,
     invite_code: &str,
 ) -> Result<GroupResponse, AppError> {
+    join_group_impl(pool, None, user_uid, invite_code).await
+}
+
+pub async fn join_group_with_push_sender(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    user_uid: &str,
+    invite_code: &str,
+) -> Result<GroupResponse, AppError> {
+    join_group_impl(pool, Some(push_sender), user_uid, invite_code).await
+}
+
+async fn join_group_impl(
+    pool: &PgPool,
+    push_sender: Option<&dyn PushSender>,
+    user_uid: &str,
+    invite_code: &str,
+) -> Result<GroupResponse, AppError> {
     let normalized = invite_code.trim().to_uppercase();
 
     // 그룹 조회 (트랜잭션 밖 -- 그룹 존재 확인은 읽기 전용)
@@ -451,6 +471,20 @@ pub async fn join_group(
     tx.commit()
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if let Some(push_sender) = push_sender {
+        if let Err(error) =
+            notification_service::notify_group_member_joined(pool, push_sender, group.id, user_uid)
+                .await
+        {
+            tracing::error!(
+                "Failed to notify group join for group {} and user {}: {}",
+                group.id,
+                user_uid,
+                error
+            );
+        }
+    }
 
     // 가입 후 GroupResponse 반환
     build_group_response(pool, group.id, user_uid).await

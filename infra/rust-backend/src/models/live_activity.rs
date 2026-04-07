@@ -2,131 +2,123 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-// ============================================================
-// APNs 페이로드
-// ============================================================
+use crate::errors::AppError;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ApnsPayload {
-    pub event: String, // "start", "update", "end"
-    pub content_state: serde_json::Value,
-    pub channel_id: Option<String>,
-    pub dismissal_date: Option<i64>,
-    pub alert: Option<ApnsAlert>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "live_activity_job_type", rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
+pub enum LiveActivityJobType {
+    Start,
+    End,
+    Nudge,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ApnsAlert {
-    pub title: String,
-    pub body: String,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "live_activity_job_status", rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
+pub enum LiveActivityJobStatus {
+    Pending,
+    Succeeded,
+    Failed,
+    Cancelled,
 }
 
-// ============================================================
-// APNs 결과
-// ============================================================
-
-#[derive(Debug, Clone)]
-pub struct ApnsResult {
-    pub success_count: i32,
-    pub failure_count: i32,
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct LiveActivityJob {
+    pub id: Uuid,
+    pub schedule_id: Uuid,
+    pub job_type: LiveActivityJobType,
+    pub scheduled_at: DateTime<Utc>,
+    pub status: LiveActivityJobStatus,
+    pub locked_until: Option<DateTime<Utc>>,
+    pub attempts: i32,
+    pub payload: Option<serde_json::Value>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
-// ============================================================
-// APNs trait
-// ============================================================
-
-#[async_trait::async_trait]
-pub trait ApnsSender: Send + Sync {
-    async fn send_push_to_start(
-        &self,
-        tokens: &[String],
-        payload: &ApnsPayload,
-    ) -> ApnsResult;
-    async fn create_channel(&self) -> Result<String, crate::errors::AppError>;
-    async fn send_broadcast(
-        &self,
-        channel_id: &str,
-        payload: &ApnsPayload,
-    ) -> ApnsResult;
-}
-
-// ============================================================
-// 요청 DTO
-// ============================================================
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateETARequest {
-    pub channel_id: String,
-    pub participants: Vec<ParticipantState>,
-    pub tracking_duration_minutes: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ParticipantState {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LiveActivityParticipant {
     pub id: String,
     pub name: String,
-    pub estimated_arrival_minutes: Option<i32>, // null=waiting, 0=arrived, >0=N minutes
+    pub estimated_arrival_minutes: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct VoteRespondRequest {
-    pub response: String, // "accepted" | "declined"
-    pub user_name: Option<String>,
-}
-
-// ============================================================
-// 응답 DTO
-// ============================================================
-
-#[derive(Debug, Serialize)]
-pub struct LiveActivityResponse {
-    pub success: bool,
-    pub success_count: i32,
-    pub failure_count: i32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct VoteStartResponse {
-    pub success: bool,
-    pub success_count: i32,
-    pub failure_count: i32,
-    pub channel_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VoteMember {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VoteLiveActivityMember {
     pub id: String,
     pub name: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct VoteContentState {
-    pub accepted: Vec<VoteMember>,
-    pub declined: Vec<VoteMember>,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VoteLiveActivityContentState {
+    pub accepted_members: Vec<VoteLiveActivityMember>,
+    pub declined_members: Vec<VoteLiveActivityMember>,
     pub pending_count: i32,
     pub is_finalized: bool,
 }
 
-#[derive(Debug, Serialize)]
-pub struct VoteRespondResponse {
-    pub success: bool,
-    pub content_state: VoteContentState,
+#[derive(Debug, Deserialize)]
+pub struct UpdateScheduleLiveActivityRequest {
+    pub channel_id: String,
+    pub participants: Vec<LiveActivityParticipant>,
+    pub tracking_duration_minutes: Option<i16>,
 }
 
-// ============================================================
-// DB 모델 -- scheduled_tasks 테이블
-// ============================================================
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct ScheduledTask {
-    pub id: Uuid,
-    pub task_type: String,
+#[derive(Debug, Deserialize)]
+pub struct WidgetUpdateScheduleLiveActivityRequest {
     pub schedule_id: Uuid,
-    pub execute_at: DateTime<Utc>,
-    pub payload: serde_json::Value,
-    pub status: String,
-    pub retry_count: i16,
-    pub max_retries: i16,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub channel_id: String,
+    pub participants: Vec<LiveActivityParticipant>,
+    pub tracking_duration_minutes: Option<i16>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WidgetVoteLiveActivityRequest {
+    pub schedule_id: Uuid,
+    pub channel_id: Option<String>,
+    pub response: String,
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StartScheduleLiveActivityResponse {
+    pub success: bool,
+    pub success_count: i32,
+    pub failure_count: i32,
+    pub channel_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateScheduleLiveActivityResponse {
+    pub success: bool,
+    pub success_count: i32,
+    pub failure_count: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateVoteLiveActivityResponse {
+    pub success: bool,
+    pub content_state: VoteLiveActivityContentState,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LiveActivityJobPayload {
+    pub channel_id: Option<String>,
+}
+
+#[async_trait::async_trait]
+pub trait LiveActivitySender: Send + Sync {
+    async fn create_channel(&self) -> Result<String, AppError>;
+    async fn send_push_to_start(
+        &self,
+        push_to_start_token: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), AppError>;
+    async fn send_broadcast(
+        &self,
+        channel_id: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), AppError>;
 }

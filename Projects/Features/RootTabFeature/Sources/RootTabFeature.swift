@@ -449,6 +449,7 @@ extension RootTab {
           }
 
           let channelId = attributes.channelId
+          let scheduleId = attributes.scheduleId
           let trackingDurationMinutes = attributes.trackingDurationMinutes
           let userId = attributes.currentUserId
 
@@ -469,7 +470,12 @@ extension RootTab {
           // 서버 API 호출 → APNs Broadcast로 모든 참가자(나 포함) 업데이트
           return .run { [scheduleClient] _ in
             do {
-              try await scheduleClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
+              try await scheduleClient.updateETA(
+                scheduleId,
+                channelId,
+                updatedParticipants,
+                trackingDurationMinutes
+              )
               AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
             } catch {
               AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")

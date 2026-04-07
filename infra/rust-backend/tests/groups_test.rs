@@ -5,8 +5,10 @@
 
 use promiso_backend::errors::AppError;
 use promiso_backend::models::group::*;
+use promiso_backend::models::notification::{FcmMessage, PushResult, PushSender};
 use promiso_backend::services::group_service;
 use sqlx::PgPool;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 // ============================================================
@@ -41,6 +43,61 @@ async fn join_test_group(pool: &PgPool, user_id: &str, invite_code: &str) -> Gro
     group_service::join_group(pool, user_id, invite_code)
         .await
         .expect("Failed to join test group")
+}
+
+async fn register_test_device(pool: &PgPool, user_id: &str, device_id: &str, fcm_token: &str) {
+    let device: (Uuid,) = sqlx::query_as(
+        "INSERT INTO devices (user_id, device_id, platform) \
+         VALUES ($1, $2, 'ios') \
+         RETURNING id",
+    )
+    .bind(user_id)
+    .bind(device_id)
+    .fetch_one(pool)
+    .await
+    .expect("Failed to register test device");
+
+    sqlx::query(
+        "INSERT INTO notification_endpoints (device_id, provider, token) \
+         VALUES ($1, 'fcm', $2)",
+    )
+    .bind(device.0)
+    .bind(fcm_token)
+    .execute(pool)
+    .await
+    .expect("Failed to register test notification endpoint");
+}
+
+struct MockPushSender {
+    calls: Arc<Mutex<Vec<(Vec<String>, FcmMessage)>>>,
+}
+
+impl MockPushSender {
+    fn new() -> Self {
+        Self {
+            calls: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    fn call_count(&self) -> usize {
+        self.calls.lock().unwrap().len()
+    }
+}
+
+#[async_trait::async_trait]
+impl PushSender for MockPushSender {
+    async fn send_multicast(&self, tokens: &[String], message: &FcmMessage) -> PushResult {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((tokens.to_vec(), message.clone()));
+
+        PushResult {
+            success: true,
+            success_count: tokens.len() as i32,
+            failure_count: 0,
+        }
+    }
 }
 
 // ============================================================
@@ -623,6 +680,35 @@ async fn s4_join_success(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn s4a_join_with_push_sender_notifies_existing_members(pool: PgPool) {
+    insert_test_user(&pool, "creator_s4a", "호스트35a").await;
+    insert_test_user(&pool, "joiner_s4a", "가입자1a").await;
+
+    let group = create_test_group(&pool, "creator_s4a", "가입알림").await;
+    register_test_device(&pool, "creator_s4a", "device-join", "fcm-join").await;
+
+    let mock = MockPushSender::new();
+    let response =
+        group_service::join_group_with_push_sender(&pool, &mock, "joiner_s4a", &group.invite_code)
+            .await
+            .expect("join should succeed");
+
+    assert_eq!(response.role, "member");
+    assert_eq!(mock.call_count(), 1);
+
+    let group_id = Uuid::parse_str(&response.group_id).expect("group id should be valid");
+    let notification_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM notifications WHERE group_id = $1 AND notification_type = 'group_update'",
+    )
+    .bind(group_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count should succeed");
+
+    assert_eq!(notification_count.0, 1);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn s5_join_role_is_member(pool: PgPool) {
     insert_test_user(&pool, "creator_s5", "호스트36").await;
     insert_test_user(&pool, "joiner_s5", "가입자2").await;
@@ -1161,15 +1247,10 @@ async fn auth_required_groups_returns_401(pool: PgPool) {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // oneshot
 
+    std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
+    std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
     let config = promiso_backend::config::Config::from_env();
-    let apns_sender =
-        std::sync::Arc::new(promiso_backend::services::apns_service::RealApnsSender::new(&config));
-    let app_store_verifier: promiso_backend::services::app_store_service::SharedAppStoreVerifier =
-        std::sync::Arc::new(
-            promiso_backend::services::app_store_service::RealAppStoreVerifier::new(&config),
-        );
-    let app =
-        promiso_backend::routes::create_router(pool, &config, apns_sender, app_store_verifier);
+    let app = promiso_backend::routes::create_router(pool, &config);
 
     let response = app
         .oneshot(

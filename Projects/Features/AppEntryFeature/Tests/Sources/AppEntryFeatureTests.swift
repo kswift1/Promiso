@@ -52,7 +52,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -94,7 +94,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -205,7 +205,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -228,7 +228,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -600,7 +600,7 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.notificationClient.deleteFCMToken = { }
+      $0.notificationClient.deleteCurrentDeviceRegistration = { }
       $0.authClient.logout = { }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
@@ -622,7 +622,7 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.notificationClient.deleteFCMToken = { throw LogoutError.failed }
+      $0.notificationClient.deleteCurrentDeviceRegistration = { throw LogoutError.failed }
       $0.authClient.logout = { throw LogoutError.failed }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
@@ -654,7 +654,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { true }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-1")))
@@ -667,7 +667,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { false }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-2")))
@@ -681,7 +681,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { true }
-      $0.notificationClient.saveFCMToken = { _ in throw SaveError.failed }
+      $0.notificationClient.saveNotificationToken = { _ in throw SaveError.failed }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-3")))
@@ -712,7 +712,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { false }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

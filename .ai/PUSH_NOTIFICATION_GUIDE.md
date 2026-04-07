@@ -138,7 +138,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 | 항목 | 값 |
 |------|-----|
-| **트리거** | `executeLiveActivityStart` 또는 `startLiveActivity` |
+| **트리거** | Rust `live_activity_jobs.start` 또는 `POST /api/v1/schedules/{id}/live-activity/start` |
 | **Title** | `{이모지} {약속제목}` |
 | **Body** | `실시간 공유가 시작되었습니다` |
 | **수신자** | 수락한 참가자 전원 |
@@ -149,7 +149,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 | 항목 | 값 |
 |------|-----|
-| **트리거** | `executeETASharingNudge` |
+| **트리거** | Rust `live_activity_jobs.nudge` |
 | **조건** | LiveActivity 시작 후 `trackingMinutes / 2` 경과 |
 | **Title** | `⏰ {약속제목} {남은분}분 전!` |
 | **Body** | `잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!` |
@@ -158,7 +158,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 ---
 
-### 3. 첫 도착 (updateETA)
+### 3. 첫 도착 (Rust ETA broadcast)
 
 | 항목 | 값 |
 |------|-----|
@@ -169,7 +169,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 ---
 
-### 4. 모두 도착 (updateETA)
+### 4. 모두 도착 (Rust ETA broadcast)
 
 | 항목 | 값 |
 |------|-----|

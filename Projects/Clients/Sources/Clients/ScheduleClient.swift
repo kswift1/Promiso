@@ -147,6 +147,7 @@ public struct ScheduleClient: Sendable {
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   public var updateETA: @Sendable (
+    _ scheduleId: String,
     _ channelId: String,
     _ participants: [ParticipantState],
     _ trackingDurationMinutes: Int
@@ -240,7 +241,7 @@ extension ScheduleClient: TestDependencyKey {
     finalizeVote: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
-    updateETA: { _, _, _  in
+    updateETA: { _, _, _, _  in
       try await Task.sleep(for: .seconds(0.3))
     }
     // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
@@ -414,41 +415,23 @@ extension ScheduleClient: DependencyKey {
           return try await dataSource.getConfirmedSchedulesForCalendar()
         }
       },
+      // Live Activity는 Rust/APNs 경로만 유지한다.
       startLiveActivity: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
-        } else {
-          try await dataSource.startLiveActivity(scheduleId: scheduleId)
-        }
+        try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
       },
       startVoteLiveActivity: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
-        } else {
-          try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
-        }
+        try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
       },
       finalizeVote: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.finalizeVote(scheduleId: scheduleId)
-        } else {
-          try await dataSource.finalizeVote(scheduleId: scheduleId)
-        }
+        try await rustDataSource.finalizeVote(scheduleId: scheduleId)
       },
-      updateETA: { channelId, participants, trackingDurationMinutes in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.updateETA(
-            channelId: channelId,
-            participants: participants,
-            trackingDurationMinutes: trackingDurationMinutes
-          )
-        } else {
-          try await dataSource.updateETA(
-            channelId: channelId,
-            participants: participants,
-            trackingDurationMinutes: trackingDurationMinutes
-          )
-        }
+      updateETA: { scheduleId, channelId, participants, trackingDurationMinutes in
+        try await rustDataSource.updateETA(
+          scheduleId: scheduleId,
+          channelId: channelId,
+          participants: participants,
+          trackingDurationMinutes: trackingDurationMinutes
+        )
       }
       // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
     )

@@ -427,15 +427,10 @@ async fn auth_required_returns_401(pool: PgPool) {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // oneshot
 
+    std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
+    std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
     let config = promiso_backend::config::Config::from_env();
-    let apns_sender =
-        std::sync::Arc::new(promiso_backend::services::apns_service::RealApnsSender::new(&config));
-    let app_store_verifier: promiso_backend::services::app_store_service::SharedAppStoreVerifier =
-        std::sync::Arc::new(
-            promiso_backend::services::app_store_service::RealAppStoreVerifier::new(&config),
-        );
-    let app =
-        promiso_backend::routes::create_router(pool, &config, apns_sender, app_store_verifier);
+    let app = promiso_backend::routes::create_router(pool, &config);
 
     // Authorization 헤더 없이 요청
     let response = app

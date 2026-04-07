@@ -4,13 +4,15 @@ pub struct Config {
     pub port: u16,
     pub firebase_project_id: String,
     pub app_store_apple_id: Option<i64>,
-
-    // APNs
-    pub apns_key_id: String,
-    pub apns_team_id: String,
-    pub apns_auth_key: String,
-    pub apns_bundle_id: String,
+    pub google_application_credentials: Option<String>,
+    pub firebase_service_account_json: Option<String>,
+    pub apns_key_id: Option<String>,
+    pub apns_team_id: Option<String>,
+    pub apns_auth_key: Option<String>,
+    pub apns_auth_key_path: Option<String>,
+    pub apns_bundle_id: Option<String>,
     pub apns_environment: String,
+    pub widget_jwt_secret: Option<String>,
 }
 
 impl Config {
@@ -21,6 +23,8 @@ impl Config {
 
         let database_pool_url =
             std::env::var("DATABASE_POOL_URL").unwrap_or_else(|_| database_url.clone());
+        let apns_environment =
+            std::env::var("APNS_ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
 
         Self {
             database_url,
@@ -35,23 +39,23 @@ impl Config {
                 .ok()
                 .and_then(|value| value.parse().ok())
                 .or_else(|| {
-                    if std::env::var("APNS_ENVIRONMENT")
-                        .unwrap_or_else(|_| "development".to_string())
-                        == "production"
-                    {
+                    if apns_environment == "production" {
                         Some(1625074042)
                     } else {
                         None
                     }
                 }),
-            apns_key_id: std::env::var("APNS_KEY_ID").unwrap_or_default(),
-            apns_team_id: std::env::var("APNS_TEAM_ID").unwrap_or_default(),
+            google_application_credentials: std::env::var("GOOGLE_APPLICATION_CREDENTIALS").ok(),
+            firebase_service_account_json: std::env::var("FIREBASE_SERVICE_ACCOUNT_JSON").ok(),
+            apns_key_id: std::env::var("APNS_KEY_ID").ok(),
+            apns_team_id: std::env::var("APNS_TEAM_ID").ok(),
             apns_auth_key: std::env::var("APNS_AUTH_KEY")
-                .unwrap_or_default()
-                .replace("\\n", "\n"),
-            apns_bundle_id: std::env::var("APNS_BUNDLE_ID").unwrap_or_default(),
-            apns_environment: std::env::var("APNS_ENVIRONMENT")
-                .unwrap_or_else(|_| "development".to_string()),
+                .ok()
+                .map(|value| value.replace("\\n", "\n")),
+            apns_auth_key_path: std::env::var("APNS_AUTH_KEY_PATH").ok(),
+            apns_bundle_id: std::env::var("APNS_BUNDLE_ID").ok(),
+            apns_environment,
+            widget_jwt_secret: std::env::var("WIDGET_JWT_SECRET").ok(),
         }
     }
 }

@@ -164,8 +164,16 @@ CREATE TABLE schedules (
   minimum_participants          SMALLINT,
   is_confirmed                  BOOLEAN,
   vote_deadline                 TIMESTAMPTZ,
+  vote_live_activity_channel_id TEXT,
+  vote_live_activity_started_at TIMESTAMPTZ,
+  vote_live_activity_finalized_at TIMESTAMPTZ,
+  vote_live_activity_ended_at   TIMESTAMPTZ,
   tracking_start_minutes_before SMALLINT,
   image_urls                    TEXT[],
+  live_activity_channel_id      TEXT,
+  live_activity_started_at      TIMESTAMPTZ,
+  live_activity_nudge_sent_at   TIMESTAMPTZ,
+  live_activity_ended_at        TIMESTAMPTZ,
 
   -- 개인일정 전용 (group이면 NULL)
   reminder_minutes_before       SMALLINT,
@@ -214,8 +222,16 @@ CREATE TABLE schedules (
 | minimum_participants | SMALLINT | >= 1 | 최소 확정 인원 |
 | is_confirmed | BOOLEAN | | accepted >= minimum_participants |
 | vote_deadline | TIMESTAMPTZ | | 투표 마감 시각 (기본 = start_at) |
+| vote_live_activity_channel_id | TEXT | nullable | 현재 활성 Vote Live Activity broadcast channel |
+| vote_live_activity_started_at | TIMESTAMPTZ | nullable | Vote Push to Start 성공 시각 |
+| vote_live_activity_finalized_at | TIMESTAMPTZ | nullable | Vote Live Activity 최종 종료 처리 시각 |
+| vote_live_activity_ended_at | TIMESTAMPTZ | nullable | Vote Live Activity end broadcast 완료 시각 |
 | tracking_start_minutes_before | SMALLINT | nullable | LiveActivity 시작 시간 (분) |
 | image_urls | TEXT[] | 최대 3개 | 첨부 이미지 URL |
+| live_activity_channel_id | TEXT | nullable | 현재 활성 Live Activity broadcast channel |
+| live_activity_started_at | TIMESTAMPTZ | nullable | Push to Start 성공 시각 |
+| live_activity_nudge_sent_at | TIMESTAMPTZ | nullable | ETA 넛지 발송 시각 |
+| live_activity_ended_at | TIMESTAMPTZ | nullable | 종료 broadcast 완료 시각 |
 | reminder_minutes_before | SMALLINT | nullable | 개인일정 알림 (분) |
 
 | Firestore 원본 | 비고 |
@@ -225,7 +241,10 @@ CREATE TABLE schedules (
 | `votes` Map (accepted/declined) | schedule_votes 테이블로 분리 |
 | `isConfirmed` 비정규화 | 유지 (캘린더 쿼리 성능) |
 | `votes.until` | vote_deadline 컬럼으로 매핑 |
-| `liveActivitySchedule`, `badgesCleared` | 제거 (#7, #5에서 별도 마이그레이션) |
+| `liveActivity.voteChannelId` | `vote_live_activity_channel_id` |
+| `liveActivity.voteStartedAt / voteFinalizedAt / voteEndedAt` | `vote_live_activity_*` 컬럼으로 분리 |
+| `liveActivitySchedule` | 별도 job/state 컬럼(`live_activity_*`, `live_activity_jobs`)으로 재구성 |
+| `badgesCleared` | 제거 (#5에서 별도 마이그레이션) |
 | `users/{uid}/scheduleSlots/{date}` | 제거 (SQL 인덱스 쿼리로 대체, 비정규화 불필요) |
 
 ## schedule_votes
@@ -259,6 +278,133 @@ CREATE TABLE schedule_votes (
 | `promises/{id}.votes.accepted[]` | status = 'accepted' |
 | `promises/{id}.votes.declined[]` | status = 'declined' |
 | pending (memberIds - accepted - declined) | 테이블 부재로 계산 |
+
+## live_activity_jobs
+
+Rust 서버가 일정 Live Activity의 예약 시작, 자동 종료, ETA nudge를 처리하는 DB-backed job 큐.
+
+```sql
+CREATE TYPE live_activity_job_type AS ENUM ('start', 'end', 'nudge');
+CREATE TYPE live_activity_job_status AS ENUM ('pending', 'succeeded', 'failed', 'cancelled');
+
+CREATE TABLE live_activity_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id UUID NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+  job_type live_activity_job_type NOT NULL,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  status live_activity_job_status NOT NULL DEFAULT 'pending',
+  locked_until TIMESTAMPTZ,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  payload JSONB,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| schedule_id | UUID | 대상 일정 |
+| job_type | ENUM | `start` / `end` / `nudge` |
+| scheduled_at | TIMESTAMPTZ | 실행 예정 시각 |
+| status | ENUM | pending/succeeded/failed/cancelled |
+| locked_until | TIMESTAMPTZ | worker claim lease |
+| attempts | INTEGER | 재시도 횟수 |
+| payload | JSONB | end job의 channel_id 등 추가 데이터 |
+
+## notifications
+
+일반 알림 저장과 디바이스/푸시 endpoint 관리. `devices`는 메타데이터만, 실제 전송 토큰은 채널별 endpoint 테이블로 분리한다.
+
+```sql
+CREATE TYPE notification_type AS ENUM (
+  'schedule_invitation',
+  'schedule_reminder',
+  'schedule_confirmed',
+  'schedule_cancelled',
+  'schedule_updated',
+  'location_sharing_reminder',
+  'group_invitation',
+  'group_update',
+  'attendance_response',
+  'system'
+);
+
+CREATE TYPE notification_provider AS ENUM ('fcm');
+
+CREATE TABLE devices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_id TEXT NOT NULL,
+  platform TEXT NOT NULL DEFAULT 'ios',
+  last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT uq_devices_user_device UNIQUE (user_id, device_id),
+  CONSTRAINT chk_device_platform CHECK (platform IN ('ios', 'android'))
+);
+
+CREATE TABLE notification_endpoints (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  provider notification_provider NOT NULL,
+  token TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT uq_notification_endpoints_provider_token UNIQUE (provider, token),
+  CONSTRAINT uq_notification_endpoints_device_provider UNIQUE (device_id, provider)
+);
+
+CREATE TABLE live_activity_endpoints (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  push_to_start_token TEXT,
+  live_activity_push_token TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT uq_live_activity_endpoints_device UNIQUE (device_id),
+  CONSTRAINT uq_live_activity_endpoints_push_to_start UNIQUE (push_to_start_token),
+  CONSTRAINT uq_live_activity_endpoints_live_activity_push UNIQUE (live_activity_push_token),
+  CONSTRAINT chk_live_activity_endpoints_has_token CHECK (
+    push_to_start_token IS NOT NULL OR live_activity_push_token IS NOT NULL
+  )
+);
+
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  notification_type notification_type NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  schedule_id UUID REFERENCES schedules(id) ON DELETE SET NULL,
+  group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  related_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  is_delivered BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  read_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  data JSONB
+);
+```
+
+| 테이블 | 핵심 컬럼 | 설명 |
+|-------|----------|------|
+| devices | user_id, device_id, platform | 디바이스 메타데이터. 토큰 없음 |
+| notification_endpoints | device_id, provider, token | 일반 앱 알림 전송 endpoint. 현재 provider=`fcm` |
+| live_activity_endpoints | device_id, push_to_start_token, live_activity_push_token | ActivityKit/APNs 전용 토큰 |
+| notifications | user_id, notification_type, title, body | 알림함 레코드 + 전달 상태 |
+
+| Firestore 원본 | 비고 |
+|---------------|------|
+| `users/{uid}.devices.{deviceId}.platform/lastActiveAt` | `devices` 메타데이터로 이동 |
+| `users/{uid}.devices.{deviceId}.fcmToken` | `notification_endpoints`로 이동 |
+| `users/{uid}.devices.{deviceId}.pushToStartToken` | `live_activity_endpoints.push_to_start_token`로 이동 |
+| `users/{uid}.devices.{deviceId}.liveActivityPushToken` | `live_activity_endpoints.live_activity_push_token`로 이동 |
+| `notifications/{id}` | `notifications` 테이블로 이동 |
 
 ## recurring_schedules
 
@@ -353,18 +499,33 @@ CREATE TABLE recurring_schedules (
 | uq_users_nickname | users | nickname | UNIQUE | 닉네임 중복 방지 (constraint name으로 에러 분기) |
 | uq_groups_invite_code | groups | invite_code | UNIQUE | 초대 코드 충돌 방지 |
 | uq_group_members_single_admin | group_members | group_id WHERE role='admin' | PARTIAL UNIQUE | 그룹당 admin 1명 강제 |
+| uq_devices_user_device | devices | (user_id, device_id) | UNIQUE | 유저별 디바이스 row 1개 보장 |
+| uq_notification_endpoints_provider_token | notification_endpoints | (provider, token) | UNIQUE | 같은 FCM 토큰 중복 방지 |
+| uq_notification_endpoints_device_provider | notification_endpoints | (device_id, provider) | UNIQUE | 디바이스당 provider 1개 endpoint |
+| uq_live_activity_endpoints_device | live_activity_endpoints | device_id | UNIQUE | 디바이스당 Live Activity endpoint 1개 |
 | idx_group_members_user_joined_at | group_members | (user_id, joined_at DESC) | INDEX | 내 그룹 목록 최신순 조회 최적화 |
+| idx_devices_user_id | devices | user_id | INDEX | 유저의 디바이스 조회 |
 | idx_schedules_group_start | schedules | (group_id, start_at) WHERE schedule_type='group' | PARTIAL INDEX | 그룹일정 시간순 조회 |
 | idx_schedules_personal_start | schedules | (user_id, start_at) WHERE schedule_type='personal' | PARTIAL INDEX | 개인일정 시간순 조회 |
 | idx_schedules_confirmed | schedules | (start_at) WHERE schedule_type='group' AND is_confirmed | PARTIAL INDEX | 캘린더 동기화 (확정 미래 일정) |
 | idx_schedule_votes_user | schedule_votes | (user_id, status) | INDEX | 유저의 accepted 일정 조회 |
+| idx_live_activity_jobs_pending | live_activity_jobs | scheduled_at WHERE status='pending' | PARTIAL INDEX | due job polling |
+| idx_live_activity_jobs_schedule | live_activity_jobs | (schedule_id, job_type, status) | INDEX | 일정별 job 조회/취소 |
 | idx_recurring_user | recurring_schedules | (user_id) | INDEX | 유저의 반복일정 조회 |
+| idx_notifications_user_created | notifications | (user_id, created_at DESC) | INDEX | 알림함 최신순 조회 |
+| idx_notifications_user_unread | notifications | (user_id, is_read) WHERE is_read = FALSE | PARTIAL INDEX | 안 읽은 알림 조회 |
+| idx_notifications_schedule_id | notifications | schedule_id WHERE schedule_id IS NOT NULL | PARTIAL INDEX | 일정 기반 알림 조회 |
+| idx_notifications_group_id | notifications | group_id WHERE group_id IS NOT NULL | PARTIAL INDEX | 그룹 기반 알림 조회 |
 
 ## 타입
 
 | 타입명 | 종류 | 값 | 설명 |
 |--------|------|-----|------|
 | group_member_role | ENUM | 'admin', 'member' | 그룹 내 역할 |
+| live_activity_job_type | ENUM | 'start', 'end', 'nudge' | Live Activity worker job 종류 |
+| live_activity_job_status | ENUM | 'pending', 'succeeded', 'failed', 'cancelled' | Live Activity worker job 상태 |
+| notification_provider | ENUM | 'fcm' | 일반 알림 전송 provider |
+| notification_type | ENUM | schedule/group/system 알림 10종 | 알림 카테고리 |
 | schedule_type | ENUM | 'group', 'personal' | 일정 구분 |
 | vote_status | ENUM | 'accepted', 'declined' | 투표 상태 (pending = 부재) |
 | recurrence_frequency | ENUM | 'daily', 'weekly', 'monthly' | 반복 주기 |
@@ -388,4 +549,4 @@ WHERE s.schedule_type = 'personal' AND s.user_id = $1
 -- + recurring_schedules는 앱 레벨에서 규칙 기반 확장
 ```
 
-*마지막 업데이트: 2026-04-06*
+*마지막 업데이트: 2026-04-07*

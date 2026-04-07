@@ -10,69 +10,251 @@ use crate::models::notification::*;
 // 디바이스 관리
 // ============================================================
 
-pub async fn upsert_device(
-    pool: &PgPool,
-    user_uid: &str,
-    req: UpsertDeviceRequest,
-) -> Result<DeviceResponse, AppError> {
-    // 유저 존재 확인
-    let user_exists: Option<(String,)> =
-        sqlx::query_as("SELECT id FROM users WHERE id = $1")
-            .bind(user_uid)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+async fn ensure_user_exists(pool: &PgPool, user_uid: &str) -> Result<(), AppError> {
+    let user_exists: Option<(String,)> = sqlx::query_as("SELECT id FROM users WHERE id = $1")
+        .bind(user_uid)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if user_exists.is_none() {
         return Err(AppError::NotFound("사용자를 찾을 수 없습니다".to_string()));
     }
 
-    // Risk 3: 같은 fcm_token을 가진 다른 유저의 row를 삭제 (소유권 이전)
-    sqlx::query("DELETE FROM devices WHERE fcm_token = $1 AND user_id != $2")
-        .bind(&req.fcm_token)
+    Ok(())
+}
+
+async fn find_device(pool: &PgPool, user_uid: &str, device_id: &str) -> Result<Device, AppError> {
+    sqlx::query_as::<_, Device>("SELECT * FROM devices WHERE user_id = $1 AND device_id = $2")
         .bind(user_uid)
-        .execute(pool)
+        .bind(device_id)
+        .fetch_optional(pool)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("디바이스를 찾을 수 없습니다".to_string()))
+}
+
+fn normalize_token(token: Option<String>) -> Option<String> {
+    token.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+pub async fn upsert_device(
+    pool: &PgPool,
+    user_uid: &str,
+    req: UpsertDeviceRequest,
+) -> Result<DeviceResponse, AppError> {
+    ensure_user_exists(pool, user_uid).await?;
 
     let platform = req.platform.unwrap_or_else(|| "ios".to_string());
 
     let device = sqlx::query_as::<_, Device>(
-        "INSERT INTO devices (user_id, device_id, fcm_token, platform, push_to_start_token, live_activity_push_token) \
-         VALUES ($1, $2, $3, $4, $5, $6) \
+        "INSERT INTO devices (user_id, device_id, platform) \
+         VALUES ($1, $2, $3) \
          ON CONFLICT (user_id, device_id) DO UPDATE SET \
-           fcm_token = EXCLUDED.fcm_token, \
            platform = EXCLUDED.platform, \
-           push_to_start_token = EXCLUDED.push_to_start_token, \
-           live_activity_push_token = EXCLUDED.live_activity_push_token, \
            updated_at = NOW(), \
            last_active_at = NOW() \
          RETURNING *",
     )
     .bind(user_uid)
     .bind(&req.device_id)
-    .bind(&req.fcm_token)
     .bind(&platform)
-    .bind(&req.push_to_start_token)
-    .bind(&req.live_activity_push_token)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(DeviceResponse {
         device_id: device.device_id,
-        fcm_token: device.fcm_token,
         platform: device.platform,
         last_active_at: device.last_active_at,
         created_at: device.created_at,
     })
 }
 
-pub async fn delete_device(
+pub async fn upsert_notification_endpoint(
+    pool: &PgPool,
+    user_uid: &str,
+    device_id: &str,
+    provider: NotificationProvider,
+    req: UpsertNotificationEndpointRequest,
+) -> Result<NotificationEndpointResponse, AppError> {
+    ensure_user_exists(pool, user_uid).await?;
+    let device = find_device(pool, user_uid, device_id).await?;
+
+    let token = req.token.trim();
+    if token.is_empty() {
+        return Err(AppError::BadRequest(
+            "알림 토큰은 비어 있을 수 없습니다".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "DELETE FROM notification_endpoints \
+         WHERE provider = $1 AND token = $2 AND device_id != $3",
+    )
+    .bind(&provider)
+    .bind(token)
+    .bind(device.id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let endpoint = sqlx::query_as::<_, NotificationEndpoint>(
+        "INSERT INTO notification_endpoints (device_id, provider, token) \
+         VALUES ($1, $2, $3) \
+         ON CONFLICT (device_id, provider) DO UPDATE SET \
+           token = EXCLUDED.token, \
+           updated_at = NOW() \
+         RETURNING *",
+    )
+    .bind(device.id)
+    .bind(&provider)
+    .bind(token)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("UPDATE devices SET updated_at = NOW(), last_active_at = NOW() WHERE id = $1")
+        .bind(device.id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(NotificationEndpointResponse {
+        device_id: device.device_id,
+        provider: endpoint.provider,
+        token: endpoint.token,
+        updated_at: endpoint.updated_at,
+    })
+}
+
+pub async fn delete_notification_endpoint(
+    pool: &PgPool,
+    user_uid: &str,
+    device_id: &str,
+    provider: NotificationProvider,
+) -> Result<(), AppError> {
+    let device = find_device(pool, user_uid, device_id).await?;
+
+    let result =
+        sqlx::query("DELETE FROM notification_endpoints WHERE device_id = $1 AND provider = $2")
+            .bind(device.id)
+            .bind(&provider)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "알림 endpoint를 찾을 수 없습니다".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+pub async fn upsert_live_activity_endpoint(
+    pool: &PgPool,
+    user_uid: &str,
+    device_id: &str,
+    req: UpsertLiveActivityEndpointRequest,
+) -> Result<LiveActivityEndpointResponse, AppError> {
+    ensure_user_exists(pool, user_uid).await?;
+    let device = find_device(pool, user_uid, device_id).await?;
+
+    let push_to_start_token = normalize_token(req.push_to_start_token);
+    let live_activity_push_token = normalize_token(req.live_activity_push_token);
+
+    if push_to_start_token.is_none() && live_activity_push_token.is_none() {
+        return Err(AppError::BadRequest(
+            "Live Activity endpoint에는 최소 하나의 토큰이 필요합니다".to_string(),
+        ));
+    }
+
+    if let Some(ref token) = push_to_start_token {
+        sqlx::query(
+            "DELETE FROM live_activity_endpoints \
+             WHERE push_to_start_token = $1 AND device_id != $2",
+        )
+        .bind(token)
+        .bind(device.id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    }
+
+    if let Some(ref token) = live_activity_push_token {
+        sqlx::query(
+            "DELETE FROM live_activity_endpoints \
+             WHERE live_activity_push_token = $1 AND device_id != $2",
+        )
+        .bind(token)
+        .bind(device.id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    }
+
+    let endpoint = sqlx::query_as::<_, LiveActivityEndpoint>(
+        "INSERT INTO live_activity_endpoints (device_id, push_to_start_token, live_activity_push_token) \
+         VALUES ($1, $2, $3) \
+         ON CONFLICT (device_id) DO UPDATE SET \
+           push_to_start_token = COALESCE(EXCLUDED.push_to_start_token, live_activity_endpoints.push_to_start_token), \
+           live_activity_push_token = COALESCE(EXCLUDED.live_activity_push_token, live_activity_endpoints.live_activity_push_token), \
+           updated_at = NOW() \
+         RETURNING *",
+    )
+    .bind(device.id)
+    .bind(push_to_start_token)
+    .bind(live_activity_push_token)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("UPDATE devices SET updated_at = NOW(), last_active_at = NOW() WHERE id = $1")
+        .bind(device.id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(LiveActivityEndpointResponse {
+        device_id: device.device_id,
+        push_to_start_token: endpoint.push_to_start_token,
+        live_activity_push_token: endpoint.live_activity_push_token,
+        updated_at: endpoint.updated_at,
+    })
+}
+
+pub async fn delete_live_activity_endpoint(
     pool: &PgPool,
     user_uid: &str,
     device_id: &str,
 ) -> Result<(), AppError> {
+    let device = find_device(pool, user_uid, device_id).await?;
+
+    let result = sqlx::query("DELETE FROM live_activity_endpoints WHERE device_id = $1")
+        .bind(device.id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Live Activity endpoint를 찾을 수 없습니다".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+pub async fn delete_device(pool: &PgPool, user_uid: &str, device_id: &str) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM devices WHERE user_id = $1 AND device_id = $2")
         .bind(user_uid)
         .bind(device_id)
@@ -81,7 +263,9 @@ pub async fn delete_device(
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("디바이스를 찾을 수 없습니다".to_string()));
+        return Err(AppError::NotFound(
+            "디바이스를 찾을 수 없습니다".to_string(),
+        ));
     }
 
     Ok(())
@@ -134,9 +318,9 @@ pub async fn get_notifications(
     let responses = notifications
         .into_iter()
         .map(|n| {
-            let data = n.data.and_then(|v| {
-                serde_json::from_value::<HashMap<String, String>>(v).ok()
-            });
+            let data = n
+                .data
+                .and_then(|v| serde_json::from_value::<HashMap<String, String>>(v).ok());
             NotificationResponse {
                 id: n.id,
                 notification_type: n.notification_type,
@@ -160,13 +344,12 @@ pub async fn get_unread_count(
     pool: &PgPool,
     user_uid: &str,
 ) -> Result<UnreadCountResponse, AppError> {
-    let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE",
-    )
-    .bind(user_uid)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE")
+            .bind(user_uid)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(UnreadCountResponse { count: count.0 })
 }
@@ -187,9 +370,7 @@ pub async fn mark_as_read(
     match owner {
         None => return Err(AppError::NotFound("알림을 찾을 수 없습니다".to_string())),
         Some((uid,)) if uid != user_uid => {
-            return Err(AppError::Forbidden(
-                "다른 사용자의 알림입니다".to_string(),
-            ));
+            return Err(AppError::Forbidden("다른 사용자의 알림입니다".to_string()));
         }
         _ => {}
     }
@@ -226,13 +407,12 @@ pub async fn delete_notifications(
     }
 
     // 소유권 확인: 모든 알림이 현재 유저의 것인지 확인
-    let owners: Vec<(Uuid, String)> = sqlx::query_as(
-        "SELECT id, user_id FROM notifications WHERE id = ANY($1)",
-    )
-    .bind(&req.notification_ids)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let owners: Vec<(Uuid, String)> =
+        sqlx::query_as("SELECT id, user_id FROM notifications WHERE id = ANY($1)")
+            .bind(&req.notification_ids)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     for (_, owner_id) in &owners {
         if owner_id != user_uid {
@@ -308,6 +488,27 @@ fn bypasses_settings(ntype: &NotificationType) -> bool {
     )
 }
 
+const CHANGE_LABEL_KEY: &str = "label";
+const CHANGE_BEFORE_KEY: &str = "before";
+const CHANGE_AFTER_KEY: &str = "after";
+
+const CHANGE_LABEL_TITLE: &str = "제목";
+const CHANGE_LABEL_START_AT: &str = "시작 시간";
+const CHANGE_LABEL_LOCATION: &str = "장소";
+const CHANGE_LABEL_DESCRIPTION: &str = "설명";
+const CHANGE_LABEL_MINIMUM_PARTICIPANTS: &str = "최소 인원";
+
+fn change_label(field: &str) -> &str {
+    match field {
+        "title" => CHANGE_LABEL_TITLE,
+        "start_at" => CHANGE_LABEL_START_AT,
+        "location" => CHANGE_LABEL_LOCATION,
+        "description" => CHANGE_LABEL_DESCRIPTION,
+        "minimum_participants" => CHANGE_LABEL_MINIMUM_PARTICIPANTS,
+        _ => field,
+    }
+}
+
 pub async fn send_push_internal(
     pool: &PgPool,
     push_sender: &dyn PushSender,
@@ -315,9 +516,7 @@ pub async fn send_push_internal(
 ) -> Result<PushResult, AppError> {
     // 1. 검증
     if params.user_ids.is_empty() {
-        return Err(AppError::BadRequest(
-            "수신자가 비어있습니다".to_string(),
-        ));
+        return Err(AppError::BadRequest("수신자가 비어있습니다".to_string()));
     }
     if params.title.trim().is_empty() {
         return Err(AppError::BadRequest(
@@ -431,7 +630,10 @@ pub async fn send_push_internal(
     }
 
     let tokens: Vec<(String,)> = sqlx::query_as(
-        "SELECT fcm_token FROM devices WHERE user_id = ANY($1)",
+        "SELECT ne.token \
+         FROM notification_endpoints ne \
+         JOIN devices d ON d.id = ne.device_id \
+         WHERE d.user_id = ANY($1) AND ne.provider = 'fcm'",
     )
     .bind(&fcm_eligible_user_ids)
     .fetch_all(pool)
@@ -464,7 +666,8 @@ pub async fn send_push_internal(
     // 7. delivered 업데이트: 전송 성공한 알림의 is_delivered=true
     if push_result.success_count > 0 {
         // fcm_eligible 유저들의 notification_id를 갱신
-        let eligible_set: HashSet<&str> = fcm_eligible_user_ids.iter().map(|s| s.as_str()).collect();
+        let eligible_set: HashSet<&str> =
+            fcm_eligible_user_ids.iter().map(|s| s.as_str()).collect();
         let delivered_ids: Vec<Uuid> = notification_ids
             .iter()
             .filter(|(_, uid)| eligible_set.contains(uid.as_str()))
@@ -499,34 +702,29 @@ pub async fn notify_schedule_created(
     creator_id: &str,
 ) -> Result<(), AppError> {
     // schedule 정보 조회
-    let schedule: (String,) = sqlx::query_as(
-        "SELECT title FROM schedules WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let schedule: (String,) = sqlx::query_as("SELECT title FROM schedules WHERE id = $1")
+        .bind(schedule_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     let schedule_title = schedule.0;
 
     // creator 닉네임 조회
-    let creator: (String,) = sqlx::query_as(
-        "SELECT nickname FROM users WHERE id = $1",
-    )
-    .bind(creator_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let creator: (String,) = sqlx::query_as("SELECT nickname FROM users WHERE id = $1")
+        .bind(creator_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     let creator_nickname = creator.0;
 
     // 그룹 멤버 조회 (creator 제외)
-    let members: Vec<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2",
-    )
-    .bind(group_id)
-    .bind(creator_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let members: Vec<(String,)> =
+        sqlx::query_as("SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2")
+            .bind(group_id)
+            .bind(creator_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let member_ids: Vec<String> = members.into_iter().map(|(id,)| id).collect();
 
@@ -566,13 +764,12 @@ pub async fn notify_schedule_votes_updated(
     new_votes: &[VoteInfo],
 ) -> Result<(), AppError> {
     // schedule 정보 조회
-    let schedule: (String, Option<i16>, Option<Uuid>) = sqlx::query_as(
-        "SELECT title, minimum_participants, group_id FROM schedules WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let schedule: (String, Option<i16>, Option<Uuid>) =
+        sqlx::query_as("SELECT title, minimum_participants, group_id FROM schedules WHERE id = $1")
+            .bind(schedule_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let schedule_title = schedule.0;
     let minimum_participants = schedule.1.unwrap_or(2) as usize;
@@ -584,16 +781,10 @@ pub async fn notify_schedule_votes_updated(
         .map(|v| (v.user_id.as_str(), v.status.as_str()))
         .collect();
     // old accepted count
-    let old_accepted_count = old_votes
-        .iter()
-        .filter(|v| v.status == "accepted")
-        .count();
+    let old_accepted_count = old_votes.iter().filter(|v| v.status == "accepted").count();
 
     // new accepted count
-    let new_accepted_count = new_votes
-        .iter()
-        .filter(|v| v.status == "accepted")
-        .count();
+    let new_accepted_count = new_votes.iter().filter(|v| v.status == "accepted").count();
 
     // new accepted users
     let new_accepted_users: Vec<String> = new_votes
@@ -621,25 +812,20 @@ pub async fn notify_schedule_votes_updated(
     }
 
     // Cancelled: 새로운 decline이 있고, remaining possible < min
-    let has_new_decline = new_votes.iter().any(|v| {
-        v.status == "declined"
-            && old_map.get(v.user_id.as_str()) != Some(&"declined")
-    });
+    let has_new_decline = new_votes
+        .iter()
+        .any(|v| v.status == "declined" && old_map.get(v.user_id.as_str()) != Some(&"declined"));
 
     if has_new_decline {
         // N10: remaining possible = 전체 그룹 멤버 수 - 거절 수
-        let total_members: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM group_members WHERE group_id = $1",
-        )
-        .bind(group_id.unwrap())
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        let total_members: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+                .bind(group_id.unwrap())
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let declined_count = new_votes
-            .iter()
-            .filter(|v| v.status == "declined")
-            .count();
+        let declined_count = new_votes.iter().filter(|v| v.status == "declined").count();
         let remaining_possible = total_members.0 as usize - declined_count;
 
         if remaining_possible < minimum_participants {
@@ -671,7 +857,13 @@ pub async fn notify_schedule_info_updated(
     changes: &[FieldChange],
 ) -> Result<(), AppError> {
     // 감지 대상 필드만 필터 (endAt은 무시 - 결정 1-B)
-    let monitored_fields = ["title", "start_at", "location", "description", "minimum_participants"];
+    let monitored_fields = [
+        "title",
+        "start_at",
+        "location",
+        "description",
+        "minimum_participants",
+    ];
     let relevant_changes: Vec<&FieldChange> = changes
         .iter()
         .filter(|c| monitored_fields.contains(&c.field.as_str()))
@@ -682,13 +874,12 @@ pub async fn notify_schedule_info_updated(
     }
 
     // schedule 정보 조회
-    let schedule: (String, Option<Uuid>) = sqlx::query_as(
-        "SELECT title, group_id FROM schedules WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let schedule: (String, Option<Uuid>) =
+        sqlx::query_as("SELECT title, group_id FROM schedules WHERE id = $1")
+            .bind(schedule_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let schedule_title = schedule.0;
     let group_id = schedule.1;
@@ -715,12 +906,15 @@ pub async fn notify_schedule_info_updated(
         .iter()
         .map(|c| {
             let mut map = HashMap::new();
-            map.insert("field".to_string(), c.field.clone());
+            map.insert(
+                CHANGE_LABEL_KEY.to_string(),
+                change_label(&c.field).to_string(),
+            );
             if let Some(ref old) = c.old_value {
-                map.insert("old_value".to_string(), old.clone());
+                map.insert(CHANGE_BEFORE_KEY.to_string(), old.clone());
             }
             if let Some(ref new) = c.new_value {
-                map.insert("new_value".to_string(), new.clone());
+                map.insert(CHANGE_AFTER_KEY.to_string(), new.clone());
             }
             map
         })
@@ -755,34 +949,29 @@ pub async fn notify_group_member_joined(
     new_member_id: &str,
 ) -> Result<(), AppError> {
     // new_member 닉네임 조회
-    let member: (String,) = sqlx::query_as(
-        "SELECT nickname FROM users WHERE id = $1",
-    )
-    .bind(new_member_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let member: (String,) = sqlx::query_as("SELECT nickname FROM users WHERE id = $1")
+        .bind(new_member_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     let new_member_nickname = member.0;
 
     // 그룹 이름 조회
-    let group: (String,) = sqlx::query_as(
-        "SELECT name FROM groups WHERE id = $1",
-    )
-    .bind(group_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let group: (String,) = sqlx::query_as("SELECT name FROM groups WHERE id = $1")
+        .bind(group_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     let group_name = group.0;
 
     // 기존 멤버 조회 (new_member 제외)
-    let existing_members: Vec<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2",
-    )
-    .bind(group_id)
-    .bind(new_member_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let existing_members: Vec<(String,)> =
+        sqlx::query_as("SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2")
+            .bind(group_id)
+            .bind(new_member_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let member_ids: Vec<String> = existing_members.into_iter().map(|(id,)| id).collect();
 
@@ -794,10 +983,7 @@ pub async fn notify_group_member_joined(
         user_ids: member_ids,
         notification_type: NotificationType::GroupUpdate,
         title: "새 멤버 가입".to_string(),
-        body: format!(
-            "{}님이 {}에 참여했어요!",
-            new_member_nickname, group_name
-        ),
+        body: format!("{}님이 {}에 참여했어요!", new_member_nickname, group_name),
         schedule_id: None,
         group_id: Some(group_id),
         related_user_id: Some(new_member_id.to_string()),

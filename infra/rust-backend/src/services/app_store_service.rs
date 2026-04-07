@@ -137,7 +137,10 @@ impl RealAppStoreVerifier {
             Ok(root_certificates) => Some(SignedDataVerifier::new(
                 root_certificates,
                 environment,
-                config.apns_bundle_id.clone(),
+                config
+                    .apns_bundle_id
+                    .clone()
+                    .unwrap_or_else(|| derive_apns_bundle_id(&config.firebase_project_id)),
                 config.app_store_apple_id,
             )),
             Err(error) if allow_decode_fallback => {
@@ -184,6 +187,16 @@ impl RealAppStoreVerifier {
                 "App Store verifier is not configured".to_string(),
             )),
         }
+    }
+}
+
+fn derive_apns_bundle_id(firebase_project_id: &str) -> String {
+    if firebase_project_id.contains("-dev") {
+        "com.promiso.dev".to_string()
+    } else if firebase_project_id.contains("-stage") {
+        "com.promiso.stage".to_string()
+    } else {
+        "com.promiso".to_string()
     }
 }
 

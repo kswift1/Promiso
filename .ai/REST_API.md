@@ -14,6 +14,8 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
+| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id, X-Auth-Token optional) |
+| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id, X-Auth-Token required) |
 
 ## Users (인증 필요)
 
@@ -431,7 +433,100 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   }
   ```
   - `confirmed_schedule`: is_confirmed && status==accepted 일 때만 포함 (캘린더 동기화용)
+  - 활성 Vote Live Activity가 있으면 현재 상태로 APNs update/end broadcast를 함께 전송
 - 에러: 400 (잘못된 status), 403 (멤버 아님), 404 (일정 없음)
+
+### POST /api/v1/schedules/{id}/vote-live-activity/start
+
+- 설명: 호스트가 투표 Live Activity를 시작. APNs channel 생성 후 그룹 멤버 디바이스로 Push to Start 전송
+- 인증: 필수 (호스트만)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "success_count": 3,
+      "failure_count": 0,
+      "channel_id": "apple-vote-channel-id"
+    }
+  }
+  ```
+- 비고:
+  - 호스트 투표는 accepted로 강제 동기화
+  - deadline = `min(start_at - tracking_start_minutes_before, now + 8h)`
+- 에러: 403 (호스트 아님), 409 (이미 진행 중), 412 (시간 경과/토큰 없음), 404
+
+### POST /api/v1/schedules/{id}/vote-live-activity/finalize
+
+- 설명: 호스트가 투표 Live Activity를 종료. 현재 vote 상태를 기반으로 end broadcast 전송
+- 인증: 필수 (호스트만)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "content_state": {
+        "accepted_members": [{ "id": "uid1", "name": "호스트" }],
+        "declined_members": [],
+        "pending_count": 2,
+        "is_finalized": true
+      }
+    }
+  }
+  ```
+- 비고:
+  - business vote를 닫는 기능이 아니라 Live Activity 종료용 상태 동기화 API
+- 에러: 403, 404
+
+### POST /api/v1/schedules/{id}/live-activity/start
+
+- 설명: 호스트가 즉시 Live Activity를 시작. APNs channel 생성 후 accepted 참가자 디바이스로 Push to Start 전송
+- 인증: 필수 (호스트만)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "success_count": 2,
+      "failure_count": 0,
+      "channel_id": "apple-channel-id"
+    }
+  }
+  ```
+- 에러: 403 (호스트 아님), 412 (APNs 미구성/Push to Start 토큰 없음/미확정 일정), 404
+
+### POST /api/v1/schedules/{id}/live-activity/eta
+
+- 설명: accepted 참가자가 ETA를 갱신하고 APNs broadcast update 전송
+- 인증: 필수 (accepted 참가자만)
+- 요청:
+  ```json
+  {
+    "channel_id": "apple-channel-id",
+    "participants": [
+      { "id": "uid1", "name": "호스트", "estimated_arrival_minutes": 5 },
+      { "id": "uid2", "name": "멤버", "estimated_arrival_minutes": null }
+    ],
+    "tracking_duration_minutes": 30
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "success_count": 1,
+      "failure_count": 0
+    }
+  }
+  ```
+- 비고:
+  - 첫 도착/모두 도착 시 alert payload 포함
+  - 모두 도착이면 환경별 지연 종료 job 예약
+- 에러: 403 (accepted 참가자 아님), 409 (channel mismatch), 404
 
 ### GET /api/v1/groups/{group_id}/schedules
 
@@ -651,4 +746,206 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 응답 200: `{ "data": { "success": true } }`
 - 에러: 403, 404
 
-*마지막 업데이트: 2026-04-06*
+## Notifications (인증 필요)
+
+### PUT /api/v1/devices
+
+- 설명: 현재 디바이스 메타데이터 upsert. 토큰은 저장하지 않음
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "device_id": "device-uuid",
+    "platform": "ios"
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "device_id": "device-uuid",
+      "platform": "ios",
+      "last_active_at": "ISO8601",
+      "created_at": "ISO8601"
+    }
+  }
+  ```
+
+### DELETE /api/v1/devices/{device_id}
+
+- 설명: 현재 디바이스 등록 삭제. 일반 알림 endpoint와 Live Activity endpoint도 cascade 삭제
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 404
+
+### DELETE /api/v1/devices
+
+- 설명: 내 모든 디바이스 등록 삭제
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+
+### PUT /api/v1/devices/{device_id}/notification-endpoints/{provider}
+
+- 설명: 일반 앱 알림 endpoint 등록/갱신
+- 인증: 필수
+- 경로 파라미터:
+  - `provider`: 현재 `fcm`만 지원
+- 요청:
+  ```json
+  { "token": "fcm-registration-token" }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "device_id": "device-uuid",
+      "provider": "fcm",
+      "token": "fcm-registration-token",
+      "updated_at": "ISO8601"
+    }
+  }
+  ```
+- 에러: 400 (빈 토큰), 404 (디바이스 없음)
+
+### DELETE /api/v1/devices/{device_id}/notification-endpoints/{provider}
+
+- 설명: 일반 앱 알림 endpoint 삭제
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 404
+
+### PUT /api/v1/devices/{device_id}/live-activity-endpoint
+
+- 설명: Live Activity용 APNs endpoint 등록/갱신
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "push_to_start_token": "apns-push-to-start-token",
+    "live_activity_push_token": null
+  }
+  ```
+  - 둘 중 하나는 반드시 필요
+  - 필드 생략 시 기존 값을 유지
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "device_id": "device-uuid",
+      "push_to_start_token": "apns-push-to-start-token",
+      "live_activity_push_token": null,
+      "updated_at": "ISO8601"
+    }
+  }
+  ```
+- 에러: 400 (둘 다 비어 있음), 404 (디바이스 없음)
+
+### DELETE /api/v1/devices/{device_id}/live-activity-endpoint
+
+- 설명: Live Activity endpoint 삭제
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 404
+
+### POST /api/v1/live-activity/widget/eta
+
+- 설명: Widget Extension 전용 ETA broadcast endpoint
+- 인증:
+  - `X-User-Id` 헤더 필수
+  - `X-Auth-Token` 헤더는 선택. 있으면 Firebase ID Token 또는 widget token 검증 후 uid 일치 확인
+- 요청:
+  ```json
+  {
+    "schedule_id": "uuid",
+    "channel_id": "apple-channel-id",
+    "participants": [
+      { "id": "uid1", "name": "호스트", "estimated_arrival_minutes": 0 }
+    ],
+    "tracking_duration_minutes": 30
+  }
+  ```
+- 응답 200: `POST /api/v1/schedules/{id}/live-activity/eta`와 동일
+- 에러: 401 (X-User-Id 누락, token uid mismatch), 403, 404
+
+### POST /api/v1/live-activity/widget/vote
+
+- 설명: Widget Extension 전용 투표 응답 endpoint. schedule vote 저장 후 활성 Vote Live Activity가 있으면 APNs update/end broadcast 전송
+- 인증:
+  - `X-User-Id` 헤더 필수
+  - `X-Auth-Token` 헤더 필수. Firebase ID Token 또는 widget token 허용
+- 요청:
+  ```json
+  {
+    "schedule_id": "uuid",
+    "channel_id": "apple-vote-channel-id",
+    "response": "accepted"
+  }
+  ```
+  - `response`: `accepted | declined | pending`
+  - `channel_id`는 stale intent 검사용으로 전달되지만 서버 상태가 source of truth
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "content_state": {
+        "accepted_members": [{ "id": "uid1", "name": "호스트" }],
+        "declined_members": [{ "id": "uid2", "name": "멤버" }],
+        "pending_count": 0,
+        "is_finalized": true
+      }
+    }
+  }
+  ```
+  - 활성 Vote Live Activity가 없으면 `{ "data": { "success": true } }`
+- 에러: 400 (잘못된 response), 401 (header/token mismatch), 403, 404
+
+### GET /api/v1/notifications
+
+- 설명: 내 알림 목록 조회
+- 인증: 필수
+- 쿼리 파라미터:
+  - `limit`: 기본 20
+  - `before`: ISO8601 커서
+- 응답 200: `{ "data": [NotificationResponse, ...] }`
+
+### GET /api/v1/notifications/unread-count
+
+- 설명: 안 읽은 알림 수
+- 인증: 필수
+- 응답 200:
+  ```json
+  { "data": { "count": 3 } }
+  ```
+
+### PATCH /api/v1/notifications/{id}/read
+
+- 설명: 단일 알림 읽음 처리
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 403, 404
+
+### POST /api/v1/notifications/mark-all-read
+
+- 설명: 전체 알림 읽음 처리
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+
+### POST /api/v1/notifications/delete-batch
+
+- 설명: 알림 일괄 삭제
+- 인증: 필수
+- 요청:
+  ```json
+  { "notification_ids": ["uuid-1", "uuid-2"] }
+  ```
+- 응답 200: `{ "data": { "success": true } }`
+- 에러: 403
+
+### DELETE /api/v1/notifications
+
+- 설명: 전체 알림 삭제
+- 인증: 필수
+- 응답 200: `{ "data": { "success": true } }`
+
+*마지막 업데이트: 2026-04-07*

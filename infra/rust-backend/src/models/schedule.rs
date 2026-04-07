@@ -55,19 +55,18 @@ pub struct Schedule {
     pub minimum_participants: Option<i16>,
     pub is_confirmed: Option<bool>,
     pub vote_deadline: Option<DateTime<Utc>>,
+    pub vote_live_activity_channel_id: Option<String>,
+    pub vote_live_activity_started_at: Option<DateTime<Utc>>,
+    pub vote_live_activity_finalized_at: Option<DateTime<Utc>>,
+    pub vote_live_activity_ended_at: Option<DateTime<Utc>>,
     pub tracking_start_minutes_before: Option<i16>,
     pub image_urls: Option<Vec<String>>,
+    pub live_activity_channel_id: Option<String>,
+    pub live_activity_started_at: Option<DateTime<Utc>>,
+    pub live_activity_nudge_sent_at: Option<DateTime<Utc>>,
+    pub live_activity_ended_at: Option<DateTime<Utc>>,
     // 개인일정 전용
     pub reminder_minutes_before: Option<i16>,
-    // LiveActivity 관련 (007 마이그레이션)
-    pub la_scheduled: bool,
-    pub la_started: bool,
-    pub la_scheduled_at: Option<DateTime<Utc>>,
-    pub la_schedule_version: Option<Uuid>,
-    pub vote_channel_id: Option<String>,
-    pub vote_started_at: Option<DateTime<Utc>>,
-    pub vote_ended_at: Option<DateTime<Utc>>,
-    pub vote_finalized: bool,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]

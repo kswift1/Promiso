@@ -23,6 +23,12 @@ pub enum NotificationType {
     System,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "notification_provider", rename_all = "snake_case")]
+pub enum NotificationProvider {
+    Fcm,
+}
+
 // ============================================================
 // DB 모델
 // ============================================================
@@ -32,11 +38,28 @@ pub struct Device {
     pub id: Uuid,
     pub user_id: String,
     pub device_id: String,
-    pub fcm_token: String,
     pub platform: String,
+    pub last_active_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct NotificationEndpoint {
+    pub id: Uuid,
+    pub device_id: Uuid,
+    pub provider: NotificationProvider,
+    pub token: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct LiveActivityEndpoint {
+    pub id: Uuid,
+    pub device_id: Uuid,
     pub push_to_start_token: Option<String>,
     pub live_activity_push_token: Option<String>,
-    pub last_active_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -66,8 +89,16 @@ pub struct Notification {
 #[derive(Debug, Deserialize)]
 pub struct UpsertDeviceRequest {
     pub device_id: String,
-    pub fcm_token: String,
     pub platform: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpsertNotificationEndpointRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpsertLiveActivityEndpointRequest {
     pub push_to_start_token: Option<String>,
     pub live_activity_push_token: Option<String>,
 }
@@ -102,10 +133,25 @@ pub struct SendPushRequest {
 #[derive(Debug, Serialize)]
 pub struct DeviceResponse {
     pub device_id: String,
-    pub fcm_token: String,
     pub platform: String,
     pub last_active_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NotificationEndpointResponse {
+    pub device_id: String,
+    pub provider: NotificationProvider,
+    pub token: String,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LiveActivityEndpointResponse {
+    pub device_id: String,
+    pub push_to_start_token: Option<String>,
+    pub live_activity_push_token: Option<String>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]

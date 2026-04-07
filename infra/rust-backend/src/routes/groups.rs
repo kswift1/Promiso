@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, Query, State};
 use axum::routing::{get, patch, post};
 use axum::{Extension, Json, Router};
@@ -8,6 +10,7 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::auth::Claims;
 use crate::models::group::*;
+use crate::models::notification::PushSender;
 use crate::response::ApiResponse;
 use crate::services::group_service;
 
@@ -73,9 +76,16 @@ async fn preview_group(
 async fn join_group(
     Extension(claims): Extension<Claims>,
     State(pool): State<PgPool>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     Json(req): Json<JoinGroupRequest>,
 ) -> Result<ApiResponse<GroupResponse>, AppError> {
-    let response = group_service::join_group(&pool, &claims.uid, &req.invite_code).await?;
+    let response = group_service::join_group_with_push_sender(
+        &pool,
+        push_sender.as_ref(),
+        &claims.uid,
+        &req.invite_code,
+    )
+    .await?;
     ApiResponse::ok(response)
 }
 
