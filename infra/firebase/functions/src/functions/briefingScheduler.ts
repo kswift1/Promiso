@@ -11,11 +11,10 @@ import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {getFunctions} from "firebase-admin/functions";
 import {
   admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
-  ODSAY_API_KEY, KAKAO_REST_API_KEY,
+  ODSAY_API_KEY, KAKAO_REST_API_KEY, RUST_DATABASE_URL,
 } from "../config";
 import {generateBriefingInternal} from "./briefing";
 import {DeviceInfo} from "../types/api";
-import {isEntitlementOverrideActive} from "../utils/helpers";
 import {
   BRIEFING_SUBSCRIPTIONS_COLLECTION,
   BriefingTaskPayload,
@@ -23,6 +22,7 @@ import {
   computeNextDispatchAt,
   isCurrentBriefingTaskEligible,
 } from "../utils/briefingScheduler";
+import {loadRustEntitlementState} from "../utils/rustEntitlements";
 
 // MARK: - Scheduler (매 시간 정각 실행)
 
@@ -115,7 +115,13 @@ export const executeBriefingNotification =
   onTaskDispatched<BriefingTaskPayload>(
     {
       region: REGION,
-      secrets: [GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY],
+      secrets: [
+        GEMINI_API_KEY,
+        KMA_API_KEY,
+        ODSAY_API_KEY,
+        KAKAO_REST_API_KEY,
+        RUST_DATABASE_URL,
+      ],
       retryConfig: {
         maxAttempts: 2,
         minBackoffSeconds: 30,
@@ -188,16 +194,7 @@ async function loadEntitlementState(uid: string): Promise<{
   subscriptionStatus: unknown;
   overrideActive: boolean;
 }> {
-  const db = admin.firestore();
-  const [subscriptionSnapshot, overrideSnapshot] = await Promise.all([
-    db.collection("subscriptions").doc(uid).get(),
-    db.collection("entitlementOverrides").doc(uid).get(),
-  ]);
-
-  return {
-    subscriptionStatus: subscriptionSnapshot.data()?.status,
-    overrideActive: isEntitlementOverrideActive(overrideSnapshot.data()),
-  };
+  return loadRustEntitlementState(uid);
 }
 
 /**

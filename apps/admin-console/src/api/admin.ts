@@ -1,5 +1,6 @@
 import {httpsCallable} from "firebase/functions";
 import {firebaseFunctions} from "../lib/firebase";
+import {rustApiGet, rustApiPost} from "../lib/rustApi";
 
 export type AdminUserSearchField = "all" | "userId" | "email" | "nickname";
 export type AdminSubscriptionFilter = "all" | "subscribed" | "not_subscribed";
@@ -367,16 +368,11 @@ export async function getAdminUserSummary(params: {
   limit?: number;
   startAfter?: string;
 }): Promise<{ results: AdminUserSummary[]; hasMore: boolean }> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    GetAdminUserSummaryRequest,
-    GetAdminUserSummaryResponse
-  >(firebaseFunctions, "getAdminUserSummary");
-  const result = await callable(params);
-  return { results: result.data.results, hasMore: result.data.hasMore };
+  const result = await rustApiGet<{
+    results: AdminUserSummary[];
+    hasMore: boolean;
+  }>("/api/v1/admin/users", params);
+  return result;
 }
 
 export async function getAdminUsers(): Promise<AdminAccount[]> {
@@ -430,21 +426,10 @@ export async function getAdminUserTimeline(params: {
   userId: string;
   limit?: number;
 }): Promise<AdminUserTimeline> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    GetAdminUserTimelineRequest,
-    GetAdminUserTimelineResponse
-  >(firebaseFunctions, "getAdminUserTimeline");
-  const result = await callable(params);
-  return {
-    summary: result.data.summary,
-    subscription: result.data.subscription,
-    override: result.data.override,
-    auditLogs: result.data.auditLogs,
-  };
+  return rustApiGet<AdminUserTimeline>(
+    `/api/v1/admin/users/${encodeURIComponent(params.userId)}/timeline`,
+    {limit: params.limit}
+  );
 }
 
 export async function grantEntitlementOverride(params: {
@@ -452,30 +437,14 @@ export async function grantEntitlementOverride(params: {
   reason: string;
   expiresAt?: string | null;
 }): Promise<void> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    GrantEntitlementOverrideRequest,
-    GrantEntitlementOverrideResponse
-  >(firebaseFunctions, "grantEntitlementOverride");
-  await callable(params);
+  await rustApiPost<{success: true}>("/api/v1/admin/entitlements/grant", params);
 }
 
 export async function revokeEntitlementOverride(params: {
   userId: string;
   reason?: string | null;
 }): Promise<void> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    RevokeEntitlementOverrideRequest,
-    RevokeEntitlementOverrideResponse
-  >(firebaseFunctions, "revokeEntitlementOverride");
-  await callable(params);
+  await rustApiPost<{success: true}>("/api/v1/admin/entitlements/revoke", params);
 }
 
 export async function sendAdminPush(params: {
@@ -613,16 +582,10 @@ export async function getAdminAuditLogs(params?: {
 
 export async function getAdminDashboardSummary():
 Promise<AdminDashboardSummary> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    Record<string, never>,
-    GetAdminDashboardSummaryResponse
-  >(firebaseFunctions, "getAdminDashboardSummary");
-  const result = await callable({});
-  return result.data.summary;
+  const result = await rustApiGet<{summary: AdminDashboardSummary}>(
+    "/api/v1/admin/dashboard/summary"
+  );
+  return result.summary;
 }
 
 export async function getAdminAnalyticsSummary(params?: {
@@ -781,16 +744,10 @@ type GetAdminProPlanDashboardResponse = {
 };
 
 export async function getAdminProPlanDashboard(): Promise<AdminProPlanDashboard> {
-  if (!firebaseFunctions) {
-    throw new Error("Firebase Functions is not configured");
-  }
-
-  const callable = httpsCallable<
-    Record<string, never>,
-    GetAdminProPlanDashboardResponse
-  >(firebaseFunctions, "getAdminProPlanDashboard");
-  const result = await callable({});
-  return result.data.dashboard;
+  const result = await rustApiGet<{dashboard: AdminProPlanDashboard}>(
+    "/api/v1/admin/pro-plan/dashboard"
+  );
+  return result.dashboard;
 }
 
 export async function expireCoupon(code: string): Promise<void> {

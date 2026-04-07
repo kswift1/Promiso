@@ -331,12 +331,14 @@ async fn batch_get_users_success(pool: PgPool) {
     .await
     .unwrap();
     for uid in &["test_batch_req", "test_batch1", "test_batch2"] {
-        sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')")
-            .bind(group_id.0)
-            .bind(uid)
-            .execute(&pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')",
+        )
+        .bind(group_id.0)
+        .bind(uid)
+        .execute(&pool)
+        .await
+        .unwrap();
     }
 
     let ids = vec!["test_batch1".to_string(), "test_batch2".to_string()];
@@ -425,6 +427,8 @@ async fn auth_required_returns_401(pool: PgPool) {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // oneshot
 
+    std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
+    std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
     let config = promiso_backend::config::Config::from_env();
     let app = promiso_backend::routes::create_router(pool, &config);
 

@@ -1247,6 +1247,8 @@ async fn auth_required_groups_returns_401(pool: PgPool) {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // oneshot
 
+    std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
+    std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
     let config = promiso_backend::config::Config::from_env();
     let app = promiso_backend::routes::create_router(pool, &config);
 

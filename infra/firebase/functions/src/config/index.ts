@@ -32,6 +32,9 @@ export const APNS_AUTH_KEY = defineSecret("APNS_AUTH_KEY");
 // Gemini API 시크릿
 export const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
+// Rust/PostgreSQL authority 접근용 시크릿
+export const RUST_DATABASE_URL = defineSecret("RUST_DATABASE_URL");
+
 // Slack Webhook 시크릿 (가입 알림용)
 export const SLACK_WEBHOOK_URL = defineSecret("SLACK_WEBHOOK_URL");
 
