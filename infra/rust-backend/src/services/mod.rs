@@ -9,4 +9,5 @@ pub mod slack_service;
 pub mod subscription_backfill_service;
 pub mod subscription_service;
 pub mod user_service;
+pub mod user_settings_service;
 pub mod vote_live_activity_service;
