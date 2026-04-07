@@ -59,6 +59,15 @@ pub struct Schedule {
     pub image_urls: Option<Vec<String>>,
     // 개인일정 전용
     pub reminder_minutes_before: Option<i16>,
+    // LiveActivity 관련 (007 마이그레이션)
+    pub la_scheduled: bool,
+    pub la_started: bool,
+    pub la_scheduled_at: Option<DateTime<Utc>>,
+    pub la_schedule_version: Option<Uuid>,
+    pub vote_channel_id: Option<String>,
+    pub vote_started_at: Option<DateTime<Utc>>,
+    pub vote_ended_at: Option<DateTime<Utc>>,
+    pub vote_finalized: bool,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
