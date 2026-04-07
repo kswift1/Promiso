@@ -1,3 +1,4 @@
+pub mod apns_service;
 pub mod group_service;
 pub mod live_activity_service;
 pub mod notification_service;

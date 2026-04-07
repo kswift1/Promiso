@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, State};
 use axum::routing::post;
 use axum::{Extension, Json, Router};
@@ -8,36 +10,8 @@ use crate::errors::AppError;
 use crate::middleware::auth::Claims;
 use crate::models::live_activity::*;
 use crate::response::ApiResponse;
+use crate::services::apns_service::RealApnsSender;
 use crate::services::live_activity_service;
-
-// ApnsSender는 아직 실제 구현체가 없으므로 stub 사용
-// TODO: 실제 APNs HTTP/2 구현체로 교체 (ADR-009)
-struct StubApnsSender;
-
-#[async_trait::async_trait]
-impl ApnsSender for StubApnsSender {
-    async fn send_push_to_start(&self, _tokens: &[String], _payload: &ApnsPayload) -> ApnsResult {
-        ApnsResult {
-            success_count: 0,
-            failure_count: 0,
-        }
-    }
-    async fn create_channel(&self) -> Result<String, AppError> {
-        Err(AppError::Internal(
-            "APNs not configured".to_string(),
-        ))
-    }
-    async fn send_broadcast(
-        &self,
-        _channel_id: &str,
-        _payload: &ApnsPayload,
-    ) -> ApnsResult {
-        ApnsResult {
-            success_count: 0,
-            failure_count: 0,
-        }
-    }
-}
 
 pub fn router() -> Router<PgPool> {
     let la_routes = Router::new()
@@ -61,22 +35,23 @@ pub fn router() -> Router<PgPool> {
 async fn start_live_activity(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
 ) -> Result<ApiResponse<LiveActivityResponse>, AppError> {
-    let apns = StubApnsSender;
-    let result = live_activity_service::start_live_activity(&pool, &apns, &claims.uid, id).await?;
+    let result =
+        live_activity_service::start_live_activity(&pool, apns.as_ref(), &claims.uid, id).await?;
     ApiResponse::ok(result)
 }
 
 async fn update_eta(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateETARequest>,
 ) -> Result<ApiResponse<LiveActivityResponse>, AppError> {
-    let apns = StubApnsSender;
     let result =
-        live_activity_service::update_eta(&pool, &apns, &claims.uid, id, req).await?;
+        live_activity_service::update_eta(&pool, apns.as_ref(), &claims.uid, id, req).await?;
     ApiResponse::ok(result)
 }
 
@@ -87,41 +62,43 @@ async fn update_eta(
 async fn start_vote(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
 ) -> Result<ApiResponse<VoteStartResponse>, AppError> {
-    let apns = StubApnsSender;
-    let result = live_activity_service::start_vote(&pool, &apns, &claims.uid, id).await?;
+    let result =
+        live_activity_service::start_vote(&pool, apns.as_ref(), &claims.uid, id).await?;
     ApiResponse::ok(result)
 }
 
 async fn respond_vote(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
     Json(req): Json<VoteRespondRequest>,
 ) -> Result<ApiResponse<VoteRespondResponse>, AppError> {
-    let apns = StubApnsSender;
     let result =
-        live_activity_service::respond_vote(&pool, &apns, &claims.uid, id, req).await?;
+        live_activity_service::respond_vote(&pool, apns.as_ref(), &claims.uid, id, req).await?;
     ApiResponse::ok(result)
 }
 
 async fn finalize_vote(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
 ) -> Result<ApiResponse<VoteRespondResponse>, AppError> {
-    let apns = StubApnsSender;
-    let result = live_activity_service::finalize_vote(&pool, &apns, &claims.uid, id).await?;
+    let result =
+        live_activity_service::finalize_vote(&pool, apns.as_ref(), &claims.uid, id).await?;
     ApiResponse::ok(result)
 }
 
 async fn end_vote(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(apns): Extension<Arc<RealApnsSender>>,
     Path(id): Path<Uuid>,
 ) -> Result<ApiResponse<()>, AppError> {
-    let apns = StubApnsSender;
-    live_activity_service::end_vote(&pool, &apns, &claims.uid, id).await?;
+    live_activity_service::end_vote(&pool, apns.as_ref(), &claims.uid, id).await?;
     ApiResponse::ok(())
 }
