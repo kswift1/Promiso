@@ -1,4 +1,7 @@
 pub mod admin_subscription_service;
+pub mod gemini_client;
+pub mod transportation_client;
+pub mod weather_client;
 pub mod briefing_service;
 pub mod app_store_service;
 pub mod briefing_projection_service;

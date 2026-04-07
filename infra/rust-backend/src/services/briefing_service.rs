@@ -462,11 +462,27 @@ pub async fn generate_briefing(
     // 3. 오늘 일정 조회
     let schedules = fetch_today_schedules(pool, user_id, today, &req.timezone).await?;
 
-    // 4. 날씨 조회 — stub (외부 API 연동 전)
-    let _weather_forecasts: Vec<WeatherForecast> = vec![];
+    // 4. 날씨 조회 (환경변수 없으면 스킵)
+    let weather_forecasts: Vec<WeatherForecast> =
+        if let (Some(kma_key), Some(loc)) = (
+            std::env::var("KMA_API_KEY").ok(),
+            req.location.as_ref(),
+        ) {
+            crate::services::weather_client::fetch_weather(
+                loc.latitude,
+                loc.longitude,
+                &kma_key,
+            )
+            .await
+        } else {
+            vec![]
+        };
 
-    // weather_matches: 각 일정에 대한 날씨 정보 (현재 모두 None)
-    let weather_matches: Vec<Option<String>> = schedules.iter().map(|_| None).collect();
+    // weather_matches: 각 일정에 대한 날씨 정보
+    let weather_matches: Vec<Option<String>> = schedules
+        .iter()
+        .map(|s| match_weather_to_schedule(&weather_forecasts, &s.start_at))
+        .collect();
 
     // 5. 캐시 키 계산
     let prompt_key = compute_prompt_key(
@@ -503,8 +519,8 @@ pub async fn generate_briefing(
         }
     }
 
-    // 7. 교통 정보 — stub (외부 API 연동 전)
-    let travel_info: Option<String> = None;
+    // 7. 교통 정보 (환경변수 없으면 스킵)
+    let travel_info: Option<String> = build_travel_info(req.location.as_ref(), &schedules).await;
 
     // 8. 오늘 일정 0개면 upcoming 조회
     let upcoming_str: Option<String> = if schedules.is_empty() {
@@ -522,11 +538,14 @@ pub async fn generate_briefing(
     let date_time_str = now_local.format("%Y-%m-%d %H:%M").to_string();
     let location_title = req.location.as_ref().and_then(|l| l.title.as_deref());
 
+    // 날씨 요약 문자열 조합 (일정이 있으면 첫 번째 일정 날씨 사용)
+    let weather_summary: Option<String> = weather_matches.iter().find_map(|w| w.clone());
+
     let prompt = build_prompt(
         &req.language,
         &date_time_str,
         location_title,
-        None, // 날씨 stub
+        weather_summary.as_deref(),
         &schedules,
         travel_info.as_deref(),
         &req.timezone,
@@ -535,8 +554,15 @@ pub async fn generate_briefing(
         upcoming_str.as_deref(),
     );
 
-    // 10. Gemini 호출 — stub (fallback 반환)
-    let (summary, detail) = call_gemini_stub(&prompt);
+    // 10. Gemini 호출 (환경변수 없으면 stub fallback)
+    let (summary, detail) = if let Some(gemini_key) = std::env::var("GEMINI_API_KEY").ok() {
+        match crate::services::gemini_client::call_gemini(&prompt, &gemini_key).await {
+            Ok(text) => crate::services::gemini_client::parse_gemini_response(&text),
+            Err(()) => call_gemini_stub(&prompt),
+        }
+    } else {
+        call_gemini_stub(&prompt)
+    };
 
     // 11. briefing_cache에 저장 (UPSERT)
     sqlx::query(
@@ -572,6 +598,78 @@ fn call_gemini_stub(_prompt: &str) -> (String, String) {
         "오늘 하루도 화이팅!".to_string(),
         "브리핑 서비스가 준비 중입니다. 곧 더 나은 서비스로 찾아올게요.".to_string(),
     )
+}
+
+/// 교통 정보 문자열 조합 (환경변수 없으면 None 반환)
+async fn build_travel_info(
+    location: Option<&BriefingLocation>,
+    schedules: &[BriefingScheduleItem],
+) -> Option<String> {
+    let from = location?;
+
+    // 위치 좌표가 있는 첫 번째 일정 찾기
+    let to = schedules
+        .iter()
+        .find(|s| s.latitude.is_some() && s.longitude.is_some())?;
+    let to_lat = to.latitude?;
+    let to_lng = to.longitude?;
+
+    let odsay_key = std::env::var("ODSAY_API_KEY").ok();
+    let kakao_key = std::env::var("KAKAO_REST_API_KEY").ok();
+
+    // 둘 다 없으면 스킵
+    if odsay_key.is_none() && kakao_key.is_none() {
+        return None;
+    }
+
+    let mut parts: Vec<String> = Vec::new();
+
+    if let Some(ref okey) = odsay_key {
+        let routes = crate::services::transportation_client::fetch_transit(
+            from.latitude,
+            from.longitude,
+            to_lat,
+            to_lng,
+            okey,
+        )
+        .await;
+
+        if !routes.is_empty() {
+            let best = &routes[0];
+            let desc = if best.description.is_empty() {
+                "대중교통".to_string()
+            } else {
+                best.description.clone()
+            };
+            parts.push(format!(
+                "대중교통: {}분 ({}회 환승, {}원) [{}]",
+                best.total_time, best.transfer_count, best.payment, desc
+            ));
+        }
+    }
+
+    if let Some(ref kkey) = kakao_key {
+        if let Some(driving) = crate::services::transportation_client::fetch_driving(
+            from.latitude,
+            from.longitude,
+            to_lat,
+            to_lng,
+            kkey,
+        )
+        .await
+        {
+            parts.push(format!(
+                "자동차: {}분 ({:.1}km, 통행료 {}원)",
+                driving.duration_minutes, driving.distance_km, driving.toll
+            ));
+        }
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("\n"))
+    }
 }
 
 /// 오늘 일정 조회 (그룹 accepted + 개인 + 반복 확장)
