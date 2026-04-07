@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 use chrono::Utc;
+use futures::future::join_all;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use reqwest::Client;
 use tracing;
@@ -15,7 +16,7 @@ pub struct RealApnsSender {
     client: Client,
     key_id: String,
     team_id: String,
-    auth_key: String,
+    encoding_key: Option<EncodingKey>,
     bundle_id: String,
     push_host: String,
     channel_host: String,
@@ -34,11 +35,23 @@ impl RealApnsSender {
             .build()
             .expect("Failed to create HTTP client");
 
+        let encoding_key = if !config.apns_auth_key.is_empty() {
+            match EncodingKey::from_ec_pem(config.apns_auth_key.as_bytes()) {
+                Ok(key) => Some(key),
+                Err(e) => {
+                    tracing::error!("APNs key parse error at init: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Self {
             client,
             key_id: config.apns_key_id.clone(),
             team_id: config.apns_team_id.clone(),
-            auth_key: config.apns_auth_key.clone(),
+            encoding_key,
             bundle_id: config.apns_bundle_id.clone(),
             channel_host: push_host.clone(),
             push_host,
@@ -47,7 +60,7 @@ impl RealApnsSender {
     }
 
     pub fn is_configured(&self) -> bool {
-        !self.key_id.is_empty() && !self.team_id.is_empty() && !self.auth_key.is_empty()
+        !self.key_id.is_empty() && !self.team_id.is_empty() && self.encoding_key.is_some()
     }
 
     fn generate_jwt(&self) -> Result<String, AppError> {
@@ -73,10 +86,12 @@ impl RealApnsSender {
             "iat": now,
         });
 
-        let key = EncodingKey::from_ec_pem(self.auth_key.as_bytes())
-            .map_err(|e| AppError::Internal(format!("APNs key error: {}", e)))?;
+        let key = self
+            .encoding_key
+            .as_ref()
+            .ok_or_else(|| AppError::Internal("APNs encoding key not configured".to_string()))?;
 
-        let token = encode(&header, &claims, &key)
+        let token = encode(&header, &claims, key)
             .map_err(|e| AppError::Internal(format!("APNs JWT error: {}", e)))?;
 
         // Cache the token (1 hour expiry)
@@ -121,23 +136,30 @@ impl ApnsSender for RealApnsSender {
         let topic = format!("{}.push-type.liveactivity", self.bundle_id);
         let body = serde_json::to_string(payload).unwrap_or_default();
 
+        let futures: Vec<_> = tokens
+            .iter()
+            .map(|token| {
+                let url = format!("{}/3/device/{}", self.push_host, token);
+                let req = self
+                    .client
+                    .post(&url)
+                    .header("authorization", format!("bearer {}", jwt))
+                    .header("apns-push-type", "liveactivity")
+                    .header("apns-topic", &topic)
+                    .header("apns-priority", "10")
+                    .header("content-type", "application/json")
+                    .body(body.clone());
+                let token = token.clone();
+                async move { (token, req.send().await) }
+            })
+            .collect();
+
+        let results = join_all(futures).await;
+
         let mut success = 0i32;
         let mut failure = 0i32;
 
-        for token in tokens {
-            let url = format!("{}/3/device/{}", self.push_host, token);
-            let result = self
-                .client
-                .post(&url)
-                .header("authorization", format!("bearer {}", jwt))
-                .header("apns-push-type", "liveactivity")
-                .header("apns-topic", &topic)
-                .header("apns-priority", "10")
-                .header("content-type", "application/json")
-                .body(body.clone())
-                .send()
-                .await;
-
+        for (token, result) in results {
             match result {
                 Ok(resp) if resp.status().is_success() => success += 1,
                 Ok(resp) => {

@@ -273,6 +273,14 @@ pub async fn update_eta(
 
     // 모두 도착: delayed_end_live_activity task (5분 후)
     if arrived_count == total_count && total_count > 1 {
+        // 기존 pending delayed_end 태스크 취소 (동시 호출 시 중복 방지)
+        scheduled_task_service::cancel_pending_tasks(
+            pool,
+            schedule_id,
+            Some("delayed_end_live_activity"),
+        )
+        .await?;
+
         let delayed_end_at = Utc::now() + Duration::minutes(5);
         scheduled_task_service::create_task(
             pool,
