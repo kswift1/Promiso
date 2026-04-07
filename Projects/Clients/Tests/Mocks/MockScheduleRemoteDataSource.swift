@@ -41,10 +41,6 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   private(set) var subscribeToActiveSchedulesCallCount = 0
   private(set) var getHomeSchedulesCallCount = 0
   private(set) var getConfirmedSchedulesForCalendarCallCount = 0
-  private(set) var startLiveActivityCallCount = 0
-  private(set) var startVoteLiveActivityCallCount = 0
-  private(set) var finalizeVoteCallCount = 0
-  private(set) var updateETACallCount = 0
 
   // MARK: - Captured Arguments
 
@@ -71,10 +67,6 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   var subscribeToActiveSchedulesHandler: ((String, Int) -> AsyncStream<[ScheduleModel]>)?
   var getHomeSchedulesHandler: (([String], Int) async throws -> [ScheduleModel])?
   var getConfirmedSchedulesForCalendarHandler: (() async throws -> [CalendarSyncSchedule])?
-  var startLiveActivityHandler: ((String) async throws -> Void)?
-  var startVoteLiveActivityHandler: ((String) async throws -> Void)?
-  var finalizeVoteHandler: ((String) async throws -> Void)?
-  var updateETAHandler: ((String, String, [ParticipantState], Int) async throws -> Void)?
 
   // MARK: - Reset
 
@@ -95,10 +87,6 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     subscribeToActiveSchedulesCallCount = 0
     getHomeSchedulesCallCount = 0
     getConfirmedSchedulesForCalendarCallCount = 0
-    startLiveActivityCallCount = 0
-    startVoteLiveActivityCallCount = 0
-    finalizeVoteCallCount = 0
-    updateETACallCount = 0
 
     createScheduleArguments = []
     respondToScheduleArguments = []
@@ -246,40 +234,5 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
       return try await handler()
     }
     return []
-  }
-
-  // MARK: - Live Activity
-
-  func startLiveActivity(scheduleId: String) async throws {
-    startLiveActivityCallCount += 1
-    if let handler = startLiveActivityHandler {
-      try await handler(scheduleId)
-    }
-  }
-
-  func startVoteLiveActivity(scheduleId: String) async throws {
-    startVoteLiveActivityCallCount += 1
-    if let handler = startVoteLiveActivityHandler {
-      try await handler(scheduleId)
-    }
-  }
-
-  func finalizeVote(scheduleId: String) async throws {
-    finalizeVoteCallCount += 1
-    if let handler = finalizeVoteHandler {
-      try await handler(scheduleId)
-    }
-  }
-
-  func updateETA(
-    scheduleId: String,
-    channelId: String,
-    participants: [ParticipantState],
-    trackingDurationMinutes: Int
-  ) async throws {
-    updateETACallCount += 1
-    if let handler = updateETAHandler {
-      try await handler(scheduleId, channelId, participants, trackingDurationMinutes)
-    }
   }
 }

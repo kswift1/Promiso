@@ -11,10 +11,6 @@ private enum FirebaseFunctionNames {
   static let respondSchedule = "respondPromise"
   static let updateSchedule = "updatePromise"
   static let deleteSchedule = "deletePromise"
-  static let startLiveActivity = "startLiveActivity"
-  static let startVoteLiveActivity = "startVoteLiveActivity"
-  static let finalizeVote = "finalizeVote"
-  static let updateETA = "updateETA"
   static let getConfirmedSchedulesForCalendar = "getConfirmedPromisesForCalendar"
 }
 
@@ -569,71 +565,6 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
 
     return allSchedules.sorted { $0.startAt < $1.startAt }
   }
-
-  // MARK: - Live Activity
-
-  /// LiveActivity 시작 요청
-  /// Firebase Functions의 startLiveActivity를 호출하여 Push to Start APNs 전송
-  public func startLiveActivity(scheduleId: String) async throws {
-    let callableData: [String: Any] = [
-      "promiseId": scheduleId
-    ]
-
-    _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
-  }
-
-  /// 투표 LiveActivity 시작 요청
-  /// Firebase Functions의 startVoteLiveActivity를 호출하여 투표 LiveActivity APNs 전송
-  public func startVoteLiveActivity(scheduleId: String) async throws {
-    let callableData: [String: Any] = [
-      "scheduleId": scheduleId
-    ]
-
-    _ = try await functions.httpsCallable(FirebaseFunctionNames.startVoteLiveActivity).call(callableData)
-  }
-
-  /// 투표 마감 요청 (호스트 전용)
-  /// Firebase Functions의 finalizeVote를 호출하여 투표를 마감하고 일정을 확정합니다
-  public func finalizeVote(scheduleId: String) async throws {
-    let callableData: [String: Any] = ["scheduleId": scheduleId]
-    _ = try await functions.httpsCallable(FirebaseFunctionNames.finalizeVote).call(callableData)
-  }
-
-  /// ETA 업데이트 요청
-  /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
-  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
-  public func updateETA(
-    scheduleId: String,
-    channelId: String,
-    participants: [ParticipantState],
-    trackingDurationMinutes: Int
-  ) async throws {
-    // participants를 서버 형식으로 변환
-    let participantsData: [[String: Any]] = participants.map { p in
-      var dict: [String: Any] = [
-        "id": p.id,
-        "name": p.name
-      ]
-      if let eta = p.estimatedArrivalMinutes {
-        dict["estimatedArrivalMinutes"] = eta
-      } else {
-        dict["estimatedArrivalMinutes"] = NSNull()
-      }
-      return dict
-    }
-
-    let callableData: [String: Any] = [
-      "promiseId": scheduleId,
-      "channelId": channelId,
-      "participants": participantsData,
-      "trackingDurationMinutes": trackingDurationMinutes
-    ]
-
-    _ = try await functions.httpsCallable(FirebaseFunctionNames.updateETA).call(callableData)
-  }
-
-  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
-  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 
   // MARK: - Calendar Sync
 

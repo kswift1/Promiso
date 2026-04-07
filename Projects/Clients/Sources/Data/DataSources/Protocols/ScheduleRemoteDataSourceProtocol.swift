@@ -37,26 +37,4 @@ public protocol ScheduleRemoteDataSourceProtocol {
   // MARK: - Calendar Sync
   /// 캘린더 동기화용 확정 일정 조회 (미래 일정만)
   func getConfirmedSchedulesForCalendar() async throws -> [CalendarSyncSchedule]
-
-  // MARK: - Live Activity
-  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
-  func startLiveActivity(scheduleId: String) async throws
-
-  /// 투표 LiveActivity 시작 요청 (Firebase Function 호출)
-  func startVoteLiveActivity(scheduleId: String) async throws
-
-  /// 투표 마감 요청 (호스트 전용)
-  func finalizeVote(scheduleId: String) async throws
-
-  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
-  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
-  func updateETA(
-    scheduleId: String,
-    channelId: String,
-    participants: [ParticipantState],
-    trackingDurationMinutes: Int
-  ) async throws
-
-  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
-  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 }

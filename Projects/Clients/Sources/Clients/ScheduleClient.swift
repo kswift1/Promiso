@@ -415,43 +415,23 @@ extension ScheduleClient: DependencyKey {
           return try await dataSource.getConfirmedSchedulesForCalendar()
         }
       },
+      // Live Activity는 Rust/APNs 경로만 유지한다.
       startLiveActivity: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
-        } else {
-          try await dataSource.startLiveActivity(scheduleId: scheduleId)
-        }
+        try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
       },
       startVoteLiveActivity: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
-        } else {
-          try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
-        }
+        try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
       },
       finalizeVote: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.finalizeVote(scheduleId: scheduleId)
-        } else {
-          try await dataSource.finalizeVote(scheduleId: scheduleId)
-        }
+        try await rustDataSource.finalizeVote(scheduleId: scheduleId)
       },
       updateETA: { scheduleId, channelId, participants, trackingDurationMinutes in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.updateETA(
-            scheduleId: scheduleId,
-            channelId: channelId,
-            participants: participants,
-            trackingDurationMinutes: trackingDurationMinutes
-          )
-        } else {
-          try await dataSource.updateETA(
-            scheduleId: scheduleId,
-            channelId: channelId,
-            participants: participants,
-            trackingDurationMinutes: trackingDurationMinutes
-          )
-        }
+        try await rustDataSource.updateETA(
+          scheduleId: scheduleId,
+          channelId: channelId,
+          participants: participants,
+          trackingDurationMinutes: trackingDurationMinutes
+        )
       }
       // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
     )
