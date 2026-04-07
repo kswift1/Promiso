@@ -4,6 +4,7 @@ mod live_activity;
 mod notifications;
 mod schedules;
 mod users;
+mod widget;
 
 use std::sync::Arc;
 
@@ -15,9 +16,8 @@ use crate::config::Config;
 use crate::middleware::auth::{require_auth, FirebaseAuth};
 use crate::services::apns_service::RealApnsSender;
 
-pub fn create_router(pool: PgPool, config: &Config) -> Router {
+pub fn create_router(pool: PgPool, config: &Config, apns_sender: Arc<RealApnsSender>) -> Router {
     let firebase_auth = FirebaseAuth::new(config.firebase_project_id.clone());
-    let apns_sender = Arc::new(RealApnsSender::new(config));
 
     // 인증 필요한 라우트
     let authenticated_routes = users::router()
@@ -30,6 +30,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
+        .merge(widget::router()) // /api/v1/widget/* — 인증 불필요 (자체 헤더 검증)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(apns_sender))
         .layer(axum::Extension(firebase_auth))
