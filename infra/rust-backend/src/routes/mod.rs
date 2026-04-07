@@ -1,5 +1,6 @@
 mod groups;
 mod health;
+mod live_activity;
 mod notifications;
 mod schedules;
 mod users;
@@ -19,6 +20,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(groups::router())
         .merge(schedules::router())
         .merge(notifications::router())
+        .merge(live_activity::router())
         .layer(middleware::from_fn(require_auth));
 
     Router::new()
