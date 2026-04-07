@@ -1,4 +1,5 @@
 pub mod admin;
+mod briefing;
 mod groups;
 mod health;
 mod notifications;
@@ -33,6 +34,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(schedules::router())
         .merge(notifications::router())
         .merge(subscriptions::router())
+        .merge(briefing::router())
         .layer(axum::Extension(app_store_verifier.clone()))
         .layer(axum::Extension(live_activity_sender.clone()))
         .layer(axum::Extension(push_sender))
