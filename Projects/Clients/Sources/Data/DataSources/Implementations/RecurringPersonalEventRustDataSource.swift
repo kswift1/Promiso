@@ -206,6 +206,14 @@ public actor RecurringPersonalEventRustDataSource {
     self.api = api
   }
 
+  static func rustDaysOfWeek(from swiftDaysOfWeek: [Int]?) -> [Int]? {
+    swiftDaysOfWeek
+  }
+
+  static func swiftDaysOfWeek(from rustDaysOfWeek: [Int]?) -> [Int]? {
+    rustDaysOfWeek
+  }
+
   // MARK: - Create
 
   public func createEvent(_ event: RecurringPersonalEventModel) async throws -> String {
@@ -219,8 +227,8 @@ public actor RecurringPersonalEventRustDataSource {
       )
     }
 
-    // Swift daysOfWeek (1=Sun~7=Sat) → Rust (0=Sun~6=Sat)
-    let rustDaysOfWeek = event.recurrence.daysOfWeek?.map { $0 - 1 }
+    // Swift/Backend daysOfWeek 모두 1=Sun~7=Sat 기준을 사용
+    let rustDaysOfWeek = Self.rustDaysOfWeek(from: event.recurrence.daysOfWeek)
 
     let body = CreateRecurringScheduleBody(
       title: event.title,
@@ -269,12 +277,12 @@ public actor RecurringPersonalEventRustDataSource {
       }
     }()
 
-    // Swift daysOfWeek (1=Sun~7=Sat) → Rust (0=Sun~6=Sat)
+    // Swift/Backend daysOfWeek 모두 1=Sun~7=Sat 기준을 사용
     let rustDaysOfWeek: [Int]?? = {
       guard let days = event.recurrence.daysOfWeek else {
         return .none
       }
-      return .some(days.map { $0 - 1 })
+      return .some(Self.rustDaysOfWeek(from: days))
     }()
 
     // overrides → EventOverrideBody (비어있으면 생략, 있으면 전송)
@@ -347,8 +355,8 @@ extension RustRecurringScheduleResponse {
     // frequency → RecurrenceRule
     let freq = RecurrenceRule.Frequency(rawValue: frequency) ?? .daily
 
-    // Rust daysOfWeek (0=Sun~6=Sat) → Swift (1=Sun~7=Sat)
-    let swiftDaysOfWeek = daysOfWeek?.map { $0 + 1 }
+    // Swift/Backend daysOfWeek 모두 1=Sun~7=Sat 기준을 사용
+    let swiftDaysOfWeek = RecurringPersonalEventRustDataSource.swiftDaysOfWeek(from: daysOfWeek)
 
     let recurrenceRule = RecurrenceRule(
       frequency: freq,
