@@ -415,7 +415,6 @@ extension ScheduleClient: DependencyKey {
           return try await dataSource.getConfirmedSchedulesForCalendar()
         }
       },
-      // LiveActivity: Firebase only (no Rust equivalent yet)
       startLiveActivity: { scheduleId in
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
@@ -424,10 +423,18 @@ extension ScheduleClient: DependencyKey {
         }
       },
       startVoteLiveActivity: { scheduleId in
-        try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        } else {
+          try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        }
       },
       finalizeVote: { scheduleId in
-        try await dataSource.finalizeVote(scheduleId: scheduleId)
+        if featureFlags.useRustAPI(.promises) {
+          try await rustDataSource.finalizeVote(scheduleId: scheduleId)
+        } else {
+          try await dataSource.finalizeVote(scheduleId: scheduleId)
+        }
       },
       updateETA: { scheduleId, channelId, participants, trackingDurationMinutes in
         if featureFlags.useRustAPI(.promises) {

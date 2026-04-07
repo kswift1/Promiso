@@ -15,6 +15,7 @@
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
 | POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id, X-Auth-Token optional) |
+| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id, X-Auth-Token required) |
 
 ## Users (인증 필요)
 
@@ -432,7 +433,52 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   }
   ```
   - `confirmed_schedule`: is_confirmed && status==accepted 일 때만 포함 (캘린더 동기화용)
+  - 활성 Vote Live Activity가 있으면 현재 상태로 APNs update/end broadcast를 함께 전송
 - 에러: 400 (잘못된 status), 403 (멤버 아님), 404 (일정 없음)
+
+### POST /api/v1/schedules/{id}/vote-live-activity/start
+
+- 설명: 호스트가 투표 Live Activity를 시작. APNs channel 생성 후 그룹 멤버 디바이스로 Push to Start 전송
+- 인증: 필수 (호스트만)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "success_count": 3,
+      "failure_count": 0,
+      "channel_id": "apple-vote-channel-id"
+    }
+  }
+  ```
+- 비고:
+  - 호스트 투표는 accepted로 강제 동기화
+  - deadline = `min(start_at - tracking_start_minutes_before, now + 8h)`
+- 에러: 403 (호스트 아님), 409 (이미 진행 중), 412 (시간 경과/토큰 없음), 404
+
+### POST /api/v1/schedules/{id}/vote-live-activity/finalize
+
+- 설명: 호스트가 투표 Live Activity를 종료. 현재 vote 상태를 기반으로 end broadcast 전송
+- 인증: 필수 (호스트만)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "content_state": {
+        "accepted_members": [{ "id": "uid1", "name": "호스트" }],
+        "declined_members": [],
+        "pending_count": 2,
+        "is_finalized": true
+      }
+    }
+  }
+  ```
+- 비고:
+  - business vote를 닫는 기능이 아니라 Live Activity 종료용 상태 동기화 API
+- 에러: 403, 404
 
 ### POST /api/v1/schedules/{id}/live-activity/start
 
@@ -820,6 +866,39 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   ```
 - 응답 200: `POST /api/v1/schedules/{id}/live-activity/eta`와 동일
 - 에러: 401 (X-User-Id 누락, token uid mismatch), 403, 404
+
+### POST /api/v1/live-activity/widget/vote
+
+- 설명: Widget Extension 전용 투표 응답 endpoint. schedule vote 저장 후 활성 Vote Live Activity가 있으면 APNs update/end broadcast 전송
+- 인증:
+  - `X-User-Id` 헤더 필수
+  - `X-Auth-Token` 헤더 필수. Firebase ID Token 또는 widget token 허용
+- 요청:
+  ```json
+  {
+    "schedule_id": "uuid",
+    "channel_id": "apple-vote-channel-id",
+    "response": "accepted"
+  }
+  ```
+  - `response`: `accepted | declined | pending`
+  - `channel_id`는 stale intent 검사용으로 전달되지만 서버 상태가 source of truth
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "content_state": {
+        "accepted_members": [{ "id": "uid1", "name": "호스트" }],
+        "declined_members": [{ "id": "uid2", "name": "멤버" }],
+        "pending_count": 0,
+        "is_finalized": true
+      }
+    }
+  }
+  ```
+  - 활성 Vote Live Activity가 없으면 `{ "data": { "success": true } }`
+- 에러: 400 (잘못된 response), 401 (header/token mismatch), 403, 404
 
 ### GET /api/v1/notifications
 

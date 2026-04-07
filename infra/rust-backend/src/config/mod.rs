@@ -10,6 +10,7 @@ pub struct Config {
     pub apns_auth_key: Option<String>,
     pub apns_auth_key_path: Option<String>,
     pub apns_bundle_id: Option<String>,
+    pub widget_jwt_secret: Option<String>,
 }
 
 impl Config {
@@ -37,6 +38,7 @@ impl Config {
             apns_auth_key: std::env::var("APNS_AUTH_KEY").ok(),
             apns_auth_key_path: std::env::var("APNS_AUTH_KEY_PATH").ok(),
             apns_bundle_id: std::env::var("APNS_BUNDLE_ID").ok(),
+            widget_jwt_secret: std::env::var("WIDGET_JWT_SECRET").ok(),
         }
     }
 }

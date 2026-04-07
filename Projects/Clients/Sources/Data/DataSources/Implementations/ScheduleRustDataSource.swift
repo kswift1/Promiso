@@ -493,6 +493,20 @@ public actor ScheduleRustDataSource {
     )
   }
 
+  public func startVoteLiveActivity(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/vote-live-activity/start",
+      body: EmptyBody()
+    )
+  }
+
+  public func finalizeVote(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/vote-live-activity/finalize",
+      body: EmptyBody()
+    )
+  }
+
   public func updateETA(
     scheduleId: String,
     channelId: String,

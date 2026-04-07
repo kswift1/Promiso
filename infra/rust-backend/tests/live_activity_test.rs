@@ -5,7 +5,7 @@ use promiso_backend::models::live_activity::{
 };
 use promiso_backend::models::notification::{FcmMessage, NotificationType, PushResult, PushSender};
 use promiso_backend::models::schedule::Schedule;
-use promiso_backend::services::live_activity_service;
+use promiso_backend::services::{live_activity_service, vote_live_activity_service};
 use sqlx::PgPool;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
@@ -93,6 +93,19 @@ async fn accept_schedule(pool: &PgPool, schedule_id: Uuid, user_id: &str) {
     .execute(pool)
     .await
     .expect("Failed to insert accepted vote");
+}
+
+async fn vote_schedule(pool: &PgPool, schedule_id: Uuid, user_id: &str, status: &str) {
+    sqlx::query(
+        "INSERT INTO schedule_votes (schedule_id, user_id, status) \
+         VALUES ($1, $2, $3::vote_status)",
+    )
+    .bind(schedule_id)
+    .bind(user_id)
+    .bind(status)
+    .execute(pool)
+    .await
+    .expect("Failed to insert vote");
 }
 
 async fn register_push_to_start_token(pool: &PgPool, user_id: &str, device_id: &str, token: &str) {
@@ -491,4 +504,194 @@ async fn process_due_nudge_job_sends_location_sharing_push(pool: PgPool) {
 
     let schedule = load_schedule(&pool, schedule_id).await;
     assert!(schedule.live_activity_nudge_sent_at.is_some());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn start_vote_live_activity_stores_channel_and_sends_push_to_start(pool: PgPool) {
+    insert_test_user(&pool, "host_vote_start", "호스트").await;
+    insert_test_user(&pool, "member_vote_start", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_start", "투표 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_start").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_start",
+        group_id,
+        "투표 시작 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    sqlx::query("UPDATE schedules SET is_confirmed = FALSE WHERE id = $1")
+        .bind(schedule_id)
+        .execute(&pool)
+        .await
+        .expect("Failed to reset confirmed flag");
+
+    register_push_to_start_token(
+        &pool,
+        "host_vote_start",
+        "host-vote-device",
+        "vote-token-host",
+    )
+    .await;
+    register_push_to_start_token(
+        &pool,
+        "member_vote_start",
+        "member-vote-device",
+        "vote-token-member",
+    )
+    .await;
+
+    let live_sender = MockLiveActivitySender::new();
+    let response = vote_live_activity_service::start_vote_live_activity(
+        &pool,
+        &live_sender,
+        schedule_id,
+        "host_vote_start",
+    )
+    .await
+    .expect("vote live activity should start");
+
+    assert_eq!(response.success_count, 2);
+    assert_eq!(response.failure_count, 0);
+    assert_eq!(response.channel_id.as_deref(), Some("channel-test-1"));
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert_eq!(
+        schedule.vote_live_activity_channel_id.as_deref(),
+        Some("channel-test-1")
+    );
+    assert!(schedule.vote_live_activity_started_at.is_some());
+
+    let sender_state = live_sender.state();
+    assert_eq!(sender_state.push_to_start_calls.len(), 2);
+    assert_eq!(
+        sender_state.push_to_start_calls[0].1["aps"]["attributes-type"],
+        serde_json::json!("VoteActivityAttributes")
+    );
+    assert_eq!(
+        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["pending_count"],
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["accepted_members"][0]["id"],
+        serde_json::json!("host_vote_start")
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn broadcast_vote_state_if_active_marks_vote_activity_finished(pool: PgPool) {
+    insert_test_user(&pool, "host_vote_broadcast", "호스트").await;
+    insert_test_user(&pool, "member_vote_broadcast", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_broadcast", "투표 브로드캐스트 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_broadcast").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_broadcast",
+        group_id,
+        "투표 브로드캐스트 일정",
+        Utc::now() + Duration::minutes(45),
+        Some(30),
+        2,
+    )
+    .await;
+    vote_schedule(&pool, schedule_id, "host_vote_broadcast", "accepted").await;
+    vote_schedule(&pool, schedule_id, "member_vote_broadcast", "declined").await;
+
+    sqlx::query(
+        "UPDATE schedules SET vote_live_activity_channel_id = $1, vote_live_activity_started_at = NOW() \
+         WHERE id = $2",
+    )
+    .bind("vote-channel-broadcast")
+    .bind(schedule_id)
+    .execute(&pool)
+    .await
+    .expect("Failed to mark vote live activity started");
+
+    let live_sender = MockLiveActivitySender::new();
+    let response = vote_live_activity_service::broadcast_vote_state_if_active(
+        &pool,
+        &live_sender,
+        schedule_id,
+    )
+    .await
+    .expect("vote broadcast should succeed")
+    .expect("vote activity should be active");
+
+    assert!(response.content_state.is_finalized);
+    assert_eq!(response.content_state.pending_count, 0);
+
+    let sender_state = live_sender.state();
+    assert_eq!(sender_state.broadcast_calls.len(), 1);
+    assert_eq!(
+        sender_state.broadcast_calls[0].1["aps"]["event"],
+        serde_json::json!("end")
+    );
+    assert_eq!(
+        sender_state.broadcast_calls[0].1["aps"]["alert"]["title"],
+        serde_json::json!("투표가 마감되었습니다")
+    );
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert!(schedule.vote_live_activity_channel_id.is_none());
+    assert!(schedule.vote_live_activity_finalized_at.is_some());
+    assert!(schedule.vote_live_activity_ended_at.is_some());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn finalize_vote_live_activity_ends_with_host_alert(pool: PgPool) {
+    insert_test_user(&pool, "host_vote_finalize", "호스트").await;
+    insert_test_user(&pool, "member_vote_finalize", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_finalize", "투표 마감 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_finalize").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_finalize",
+        group_id,
+        "투표 마감 일정",
+        Utc::now() + Duration::minutes(60),
+        Some(30),
+        2,
+    )
+    .await;
+    vote_schedule(&pool, schedule_id, "host_vote_finalize", "accepted").await;
+
+    sqlx::query(
+        "UPDATE schedules SET vote_live_activity_channel_id = $1, vote_live_activity_started_at = NOW() \
+         WHERE id = $2",
+    )
+    .bind("vote-channel-finalize")
+    .bind(schedule_id)
+    .execute(&pool)
+    .await
+    .expect("Failed to mark vote live activity started");
+
+    let live_sender = MockLiveActivitySender::new();
+    let response = vote_live_activity_service::finalize_vote_live_activity(
+        &pool,
+        &live_sender,
+        schedule_id,
+        "host_vote_finalize",
+    )
+    .await
+    .expect("vote finalize should succeed");
+
+    assert!(response.content_state.is_finalized);
+    assert_eq!(response.content_state.pending_count, 1);
+
+    let sender_state = live_sender.state();
+    assert_eq!(sender_state.broadcast_calls.len(), 1);
+    assert_eq!(
+        sender_state.broadcast_calls[0].1["aps"]["alert"]["title"],
+        serde_json::json!("호스트가 투표를 마감했습니다")
+    );
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert!(schedule.vote_live_activity_channel_id.is_none());
+    assert!(schedule.vote_live_activity_finalized_at.is_some());
+    assert!(schedule.vote_live_activity_ended_at.is_some());
 }

@@ -164,6 +164,10 @@ CREATE TABLE schedules (
   minimum_participants          SMALLINT,
   is_confirmed                  BOOLEAN,
   vote_deadline                 TIMESTAMPTZ,
+  vote_live_activity_channel_id TEXT,
+  vote_live_activity_started_at TIMESTAMPTZ,
+  vote_live_activity_finalized_at TIMESTAMPTZ,
+  vote_live_activity_ended_at   TIMESTAMPTZ,
   tracking_start_minutes_before SMALLINT,
   image_urls                    TEXT[],
   live_activity_channel_id      TEXT,
@@ -218,6 +222,10 @@ CREATE TABLE schedules (
 | minimum_participants | SMALLINT | >= 1 | 최소 확정 인원 |
 | is_confirmed | BOOLEAN | | accepted >= minimum_participants |
 | vote_deadline | TIMESTAMPTZ | | 투표 마감 시각 (기본 = start_at) |
+| vote_live_activity_channel_id | TEXT | nullable | 현재 활성 Vote Live Activity broadcast channel |
+| vote_live_activity_started_at | TIMESTAMPTZ | nullable | Vote Push to Start 성공 시각 |
+| vote_live_activity_finalized_at | TIMESTAMPTZ | nullable | Vote Live Activity 최종 종료 처리 시각 |
+| vote_live_activity_ended_at | TIMESTAMPTZ | nullable | Vote Live Activity end broadcast 완료 시각 |
 | tracking_start_minutes_before | SMALLINT | nullable | LiveActivity 시작 시간 (분) |
 | image_urls | TEXT[] | 최대 3개 | 첨부 이미지 URL |
 | live_activity_channel_id | TEXT | nullable | 현재 활성 Live Activity broadcast channel |
@@ -233,6 +241,8 @@ CREATE TABLE schedules (
 | `votes` Map (accepted/declined) | schedule_votes 테이블로 분리 |
 | `isConfirmed` 비정규화 | 유지 (캘린더 쿼리 성능) |
 | `votes.until` | vote_deadline 컬럼으로 매핑 |
+| `liveActivity.voteChannelId` | `vote_live_activity_channel_id` |
+| `liveActivity.voteStartedAt / voteFinalizedAt / voteEndedAt` | `vote_live_activity_*` 컬럼으로 분리 |
 | `liveActivitySchedule` | 별도 job/state 컬럼(`live_activity_*`, `live_activity_jobs`)으로 재구성 |
 | `badgesCleared` | 제거 (#5에서 별도 마이그레이션) |
 | `users/{uid}/scheduleSlots/{date}` | 제거 (SQL 인덱스 쿼리로 대체, 비정규화 불필요) |

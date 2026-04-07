@@ -45,6 +45,20 @@ pub struct LiveActivityParticipant {
     pub estimated_arrival_minutes: Option<i32>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VoteLiveActivityMember {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VoteLiveActivityContentState {
+    pub accepted_members: Vec<VoteLiveActivityMember>,
+    pub declined_members: Vec<VoteLiveActivityMember>,
+    pub pending_count: i32,
+    pub is_finalized: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct UpdateScheduleLiveActivityRequest {
     pub channel_id: String,
@@ -60,6 +74,14 @@ pub struct WidgetUpdateScheduleLiveActivityRequest {
     pub tracking_duration_minutes: Option<i16>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WidgetVoteLiveActivityRequest {
+    pub schedule_id: Uuid,
+    pub channel_id: Option<String>,
+    pub response: String,
+    pub user_name: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct StartScheduleLiveActivityResponse {
     pub success: bool,
@@ -73,6 +95,12 @@ pub struct UpdateScheduleLiveActivityResponse {
     pub success: bool,
     pub success_count: i32,
     pub failure_count: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateVoteLiveActivityResponse {
+    pub success: bool,
+    pub content_state: VoteLiveActivityContentState,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
