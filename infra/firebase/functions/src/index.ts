@@ -139,6 +139,7 @@ export {
 export {
   onUserSettingsSyncBriefingSubscription,
   onEntitlementSyncBriefingSubscription,
+  scheduledReconcileBriefingSubscriptions,
 } from "./functions/briefingSubscriptionProjection";
 
 // ============================================================================
