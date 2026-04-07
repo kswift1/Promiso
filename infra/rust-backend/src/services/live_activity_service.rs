@@ -83,13 +83,16 @@ async fn count_accepted(pool: &PgPool, schedule_id: Uuid) -> Result<i64, AppErro
     Ok(row.0)
 }
 
-/// vote 결과 (accepted / declined 리스트) 조회
-async fn get_vote_lists(
+/// vote 결과 (accepted / declined 리스트) 조회 -- VoteMember (id + name) 포함
+async fn get_vote_lists_with_names(
     pool: &PgPool,
     schedule_id: Uuid,
-) -> Result<(Vec<String>, Vec<String>), AppError> {
-    let rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT user_id, status::TEXT FROM schedule_votes WHERE schedule_id = $1",
+) -> Result<(Vec<VoteMember>, Vec<VoteMember>), AppError> {
+    let rows: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT sv.user_id, u.nickname, sv.status::TEXT \
+         FROM schedule_votes sv \
+         JOIN users u ON u.id = sv.user_id \
+         WHERE sv.schedule_id = $1",
     )
     .bind(schedule_id)
     .fetch_all(pool)
@@ -98,10 +101,11 @@ async fn get_vote_lists(
 
     let mut accepted = Vec::new();
     let mut declined = Vec::new();
-    for (user_id, status) in rows {
+    for (user_id, name, status) in rows {
+        let member = VoteMember { id: user_id, name };
         match status.as_str() {
-            "accepted" => accepted.push(user_id),
-            "declined" => declined.push(user_id),
+            "accepted" => accepted.push(member),
+            "declined" => declined.push(member),
             _ => {}
         }
     }
@@ -154,13 +158,14 @@ pub async fn start_live_activity(
     let accepted_users = get_accepted_user_ids(pool, schedule_id).await?;
     let tokens = collect_push_to_start_tokens(pool, &accepted_users).await?;
 
-    // APNs Push to Start 전송
+    // APNs 채널 생성 + Push to Start 전송
+    let channel_id = apns.create_channel().await?;
     let payload = ApnsPayload {
         event: "start".to_string(),
         content_state: serde_json::json!({
             "schedule_id": schedule_id.to_string(),
         }),
-        channel_id: None,
+        channel_id: Some(channel_id),
         dismissal_date: None,
         alert: None,
     };
@@ -231,7 +236,7 @@ pub async fn update_eta(
         .filter(|p| p.estimated_arrival_minutes == Some(0))
         .count() as i32;
 
-    // alert: 첫 번째 도착자일 때만 (arrivedCount == 1 && totalCount > 1)
+    // alert: 첫 번째 도착자 또는 모두 도착 시
     let alert = if arrived_count == 1 && total_count > 1 {
         // 첫 도착자 이름 찾기
         let first_arrived = req
@@ -241,6 +246,12 @@ pub async fn update_eta(
         first_arrived.map(|p| ApnsAlert {
             title: "도착 알림".to_string(),
             body: format!("{}님이 도착했습니다!", p.name),
+        })
+    } else if arrived_count == total_count && total_count > 1 {
+        // 모두 도착 alert
+        Some(ApnsAlert {
+            title: "모두 도착!".to_string(),
+            body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다".to_string(),
         })
     } else {
         None
@@ -432,6 +443,18 @@ pub async fn start_vote(
         AppError::Internal("Schedule has no group_id".to_string())
     })?;
 
+    // 호스트 이름 조회
+    let host_row: Option<(String,)> = sqlx::query_as(
+        "SELECT nickname FROM users WHERE id = $1",
+    )
+    .bind(user_uid)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let host_name = host_row.map(|(n,)| n).unwrap_or_default();
+
+    let total_members = count_group_members(pool, group_id).await? as i32;
+
     let member_rows: Vec<(String,)> = sqlx::query_as(
         "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2",
     )
@@ -447,12 +470,17 @@ pub async fn start_vote(
     let payload = ApnsPayload {
         event: "start".to_string(),
         content_state: serde_json::json!({
-            "schedule_id": schedule_id.to_string(),
-            "type": "vote",
+            "accepted": [{"id": user_uid, "name": host_name}],
+            "declined": [],
+            "pendingCount": total_members - 1,
+            "isFinalized": false,
         }),
         channel_id: Some(channel_id.clone()),
-        dismissal_date: None,
-        alert: None,
+        dismissal_date: Some(vote_ended_at.timestamp()),
+        alert: Some(ApnsAlert {
+            title: "참여 투표".to_string(),
+            body: "참여 여부를 확인해주세요".to_string(),
+        }),
     };
 
     let apns_result = if !tokens.is_empty() {
@@ -501,7 +529,13 @@ pub async fn respond_vote(
         ));
     }
 
-    // UPSERT vote
+    // 트랜잭션 시작
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // UPSERT vote (tx 사용)
     sqlx::query(
         "INSERT INTO schedule_votes (schedule_id, user_id, status) \
          VALUES ($1, $2, $3::vote_status) \
@@ -511,33 +545,64 @@ pub async fn respond_vote(
     .bind(schedule_id)
     .bind(user_uid)
     .bind(&req.response)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // 투표 결과 조회
-    let (accepted, declined) = get_vote_lists(pool, schedule_id).await?;
-    let total_member_count = count_group_members(pool, group_id).await? as i32;
+    // 투표 결과 조회 (tx 사용, 인라인 -- VoteMember)
+    let rows: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT sv.user_id, u.nickname, sv.status::TEXT \
+         FROM schedule_votes sv \
+         JOIN users u ON u.id = sv.user_id \
+         WHERE sv.schedule_id = $1",
+    )
+    .bind(schedule_id)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let mut accepted = Vec::new();
+    let mut declined = Vec::new();
+    for (user_id, name, status) in rows {
+        let member = VoteMember { id: user_id, name };
+        match status.as_str() {
+            "accepted" => accepted.push(member),
+            "declined" => declined.push(member),
+            _ => {}
+        }
+    }
+
+    // count (tx 사용)
+    let row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
+            .bind(group_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let total_member_count = row.0 as i32;
     let responded_count = (accepted.len() + declined.len()) as i32;
 
     // 자동 확정: 모든 멤버가 응답했으면
     let is_finalized = responded_count >= total_member_count;
 
     if is_finalized {
-        sqlx::query(
-            "UPDATE schedules SET vote_finalized = true WHERE id = $1",
-        )
-        .bind(schedule_id)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        sqlx::query("UPDATE schedules SET vote_finalized = true WHERE id = $1")
+            .bind(schedule_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
     }
 
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
     // broadcast
+    let pending_count = (total_member_count - responded_count).max(0);
     let content_state = VoteContentState {
         accepted: accepted.clone(),
         declined: declined.clone(),
-        total_member_count,
+        pending_count,
         is_finalized,
     };
 
@@ -581,16 +646,18 @@ pub async fn finalize_vote(
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // 투표 결과 조회
-    let (accepted, declined) = get_vote_lists(pool, schedule_id).await?;
+    let (accepted, declined) = get_vote_lists_with_names(pool, schedule_id).await?;
     let group_id = schedule.group_id.ok_or_else(|| {
         AppError::Internal("Schedule has no group_id".to_string())
     })?;
     let total_member_count = count_group_members(pool, group_id).await? as i32;
+    let responded_count = (accepted.len() + declined.len()) as i32;
+    let pending_count = (total_member_count - responded_count).max(0);
 
     let content_state = VoteContentState {
         accepted: accepted.clone(),
         declined: declined.clone(),
-        total_member_count,
+        pending_count,
         is_finalized: true,
     };
 
@@ -602,7 +669,14 @@ pub async fn finalize_vote(
                 .map_err(|e| AppError::Internal(e.to_string()))?,
             channel_id: Some(ch.clone()),
             dismissal_date: None,
-            alert: None,
+            alert: Some(ApnsAlert {
+                title: "호스트가 투표를 마감했습니다".to_string(),
+                body: format!(
+                    "참여 {}명 / 불참 {}명",
+                    accepted.len(),
+                    declined.len()
+                ),
+            }),
         };
         apns.send_broadcast(ch, &payload).await;
     }
@@ -637,9 +711,25 @@ pub async fn end_vote(
 
     // broadcast end event (이전 channel_id가 있었으면)
     if let Some(ref ch) = old_channel_id {
+        let (accepted, declined) = get_vote_lists_with_names(pool, schedule_id).await?;
+        let group_id = schedule
+            .group_id
+            .ok_or_else(|| AppError::Internal("no group_id".into()))?;
+        let total_member_count = count_group_members(pool, group_id).await? as i32;
+        let responded_count = (accepted.len() + declined.len()) as i32;
+        let pending_count = (total_member_count - responded_count).max(0);
+
+        let content_state = VoteContentState {
+            accepted,
+            declined,
+            pending_count,
+            is_finalized: true,
+        };
+
         let payload = ApnsPayload {
             event: "end".to_string(),
-            content_state: serde_json::json!({}),
+            content_state: serde_json::to_value(&content_state)
+                .map_err(|e| AppError::Internal(e.to_string()))?,
             channel_id: Some(ch.clone()),
             dismissal_date: None,
             alert: None,

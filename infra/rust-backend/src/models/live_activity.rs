@@ -93,11 +93,17 @@ pub struct VoteStartResponse {
     pub channel_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoteMember {
+    pub id: String,
+    pub name: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct VoteContentState {
-    pub accepted: Vec<String>,
-    pub declined: Vec<String>,
-    pub total_member_count: i32,
+    pub accepted: Vec<VoteMember>,
+    pub declined: Vec<VoteMember>,
+    pub pending_count: i32,
     pub is_finalized: bool,
 }
 

@@ -45,6 +45,14 @@ impl MockApnsSender {
     fn last_broadcast_payload(&self) -> Option<(String, ApnsPayload)> {
         self.broadcast_calls.lock().unwrap().last().cloned()
     }
+
+    fn last_push_to_start_payload(&self) -> Option<ApnsPayload> {
+        self.push_to_start_calls
+            .lock()
+            .unwrap()
+            .last()
+            .map(|(_, p)| p.clone())
+    }
 }
 
 #[async_trait::async_trait]
@@ -248,6 +256,14 @@ async fn r1_host_can_start_live_activity(pool: PgPool) {
     let resp = result.unwrap();
     assert!(resp.success);
     assert!(apns.push_to_start_count() > 0);
+
+    // PTS payload에 channel_id가 포함되어야 함
+    let pts_payload = apns.last_push_to_start_payload();
+    assert!(pts_payload.is_some(), "Should have PTS payload");
+    assert!(
+        pts_payload.unwrap().channel_id.is_some(),
+        "PTS payload should include channel_id"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -705,6 +721,15 @@ async fn r15_all_arrived_schedules_delayed_end(pool: PgPool) {
     let result =
         live_activity_service::update_eta(&pool, &apns, "host_r15", schedule_id, req).await;
     assert!(result.is_ok());
+
+    // broadcast payload에 "모두 도착" alert이 포함되어야 함
+    let last = apns.last_broadcast_payload();
+    assert!(last.is_some(), "Should broadcast update");
+    let (_, payload) = last.unwrap();
+    assert!(
+        payload.alert.is_some(),
+        "All arrived should trigger an alert"
+    );
 
     // Check that a delayed end task (5 min) is scheduled
     let tasks: Vec<(String,)> = sqlx::query_as(
