@@ -7,7 +7,10 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::models::notification::{FieldChange, PushSender, VoteInfo};
 use crate::models::schedule::*;
+use crate::services::live_activity_service;
+use crate::services::notification_service;
 
 // ============================================================
 // 헬퍼
@@ -163,6 +166,107 @@ fn validate_group_minimum_participants(
 
 fn effective_end_at(start_at: DateTime<Utc>, end_at: Option<DateTime<Utc>>) -> DateTime<Utc> {
     end_at.unwrap_or(start_at)
+}
+
+async fn fetch_vote_infos(pool: &PgPool, schedule_id: Uuid) -> Result<Vec<VoteInfo>, AppError> {
+    let votes: Vec<(String, String)> =
+        sqlx::query_as("SELECT user_id, status::TEXT FROM schedule_votes WHERE schedule_id = $1")
+            .bind(schedule_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(votes
+        .into_iter()
+        .map(|(user_id, status)| VoteInfo { user_id, status })
+        .collect())
+}
+
+fn format_optional_string(value: Option<&String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn format_schedule_location(schedule: &Schedule) -> Option<String> {
+    format_optional_string(schedule.location_name.as_ref())
+}
+
+fn format_request_location(location: Option<&LocationRequest>) -> Option<String> {
+    location
+        .map(|location| location.name.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn collect_schedule_changes(schedule: &Schedule, req: &UpdateScheduleRequest) -> Vec<FieldChange> {
+    let mut changes = Vec::new();
+
+    if let Some(title) = &req.title {
+        let new_value = title.trim().to_string();
+        if schedule.title != new_value {
+            changes.push(FieldChange {
+                field: "title".to_string(),
+                old_value: Some(schedule.title.clone()),
+                new_value: Some(new_value),
+            });
+        }
+    }
+
+    if let Some(start_at) = req.start_at {
+        let new_value = start_at.to_rfc3339();
+        let old_value = schedule.start_at.to_rfc3339();
+        if old_value != new_value {
+            changes.push(FieldChange {
+                field: "start_at".to_string(),
+                old_value: Some(old_value),
+                new_value: Some(new_value),
+            });
+        }
+    }
+
+    if let Some(location) = &req.location {
+        let old_value = format_schedule_location(schedule);
+        let new_value = match location {
+            Some(location) => format_request_location(Some(location)),
+            None => None,
+        };
+        if old_value != new_value {
+            changes.push(FieldChange {
+                field: "location".to_string(),
+                old_value,
+                new_value,
+            });
+        }
+    }
+
+    if let Some(description) = &req.description {
+        let old_value = format_optional_string(schedule.description.as_ref());
+        let new_value = match description {
+            Some(description) => format_optional_string(Some(description)),
+            None => None,
+        };
+        if old_value != new_value {
+            changes.push(FieldChange {
+                field: "description".to_string(),
+                old_value,
+                new_value,
+            });
+        }
+    }
+
+    if let Some(minimum_participants) = req.minimum_participants {
+        let old_value = schedule.minimum_participants.map(|value| value.to_string());
+        let new_value = Some(minimum_participants.to_string());
+        if old_value != new_value {
+            changes.push(FieldChange {
+                field: "minimum_participants".to_string(),
+                old_value,
+                new_value,
+            });
+        }
+    }
+
+    changes
 }
 
 fn parse_timezone(timezone: Option<&str>) -> Result<Tz, AppError> {
@@ -321,6 +425,24 @@ pub async fn create_schedule(
     user_id: &str,
     req: CreateScheduleRequest,
 ) -> Result<CreateScheduleResponse, AppError> {
+    create_schedule_impl(pool, None, user_id, req).await
+}
+
+pub async fn create_schedule_with_push_sender(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    user_id: &str,
+    req: CreateScheduleRequest,
+) -> Result<CreateScheduleResponse, AppError> {
+    create_schedule_impl(pool, Some(push_sender), user_id, req).await
+}
+
+async fn create_schedule_impl(
+    pool: &PgPool,
+    push_sender: Option<&dyn PushSender>,
+    user_id: &str,
+    req: CreateScheduleRequest,
+) -> Result<CreateScheduleResponse, AppError> {
     // 공통 검증
     let title = validate_title(&req.title)?;
     validate_description(&req.description)?;
@@ -436,6 +558,32 @@ pub async fn create_schedule(
             tx.commit()
                 .await
                 .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            if let Some(push_sender) = push_sender {
+                if let Err(error) = notification_service::notify_schedule_created(
+                    pool,
+                    push_sender,
+                    schedule.id,
+                    group_id,
+                    user_id,
+                )
+                .await
+                {
+                    tracing::error!(
+                        "Failed to notify schedule creation for schedule {}: {}",
+                        schedule.id,
+                        error
+                    );
+                }
+            }
+
+            if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule.id).await {
+                tracing::error!(
+                    "Failed to sync live activity jobs after schedule create {}: {}",
+                    schedule.id,
+                    error
+                );
+            }
 
             Ok(CreateScheduleResponse {
                 schedule_id: schedule.id,
@@ -563,6 +711,26 @@ pub async fn update_schedule(
     schedule_id: Uuid,
     req: UpdateScheduleRequest,
 ) -> Result<(), AppError> {
+    update_schedule_impl(pool, None, user_id, schedule_id, req).await
+}
+
+pub async fn update_schedule_with_push_sender(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: UpdateScheduleRequest,
+) -> Result<(), AppError> {
+    update_schedule_impl(pool, Some(push_sender), user_id, schedule_id, req).await
+}
+
+async fn update_schedule_impl(
+    pool: &PgPool,
+    push_sender: Option<&dyn PushSender>,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: UpdateScheduleRequest,
+) -> Result<(), AppError> {
     // 일정 조회
     let schedule = sqlx::query_as::<_, Schedule>("SELECT * FROM schedules WHERE id = $1")
         .bind(schedule_id)
@@ -570,6 +738,8 @@ pub async fn update_schedule(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
         .ok_or_else(|| AppError::NotFound("일정을 찾을 수 없습니다".to_string()))?;
+
+    let field_changes = collect_schedule_changes(&schedule, &req);
 
     // 권한 확인
     match schedule.schedule_type {
@@ -853,6 +1023,36 @@ pub async fn update_schedule(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+    if let (Some(push_sender), ScheduleType::Group) = (push_sender, schedule.schedule_type.clone())
+    {
+        if !field_changes.is_empty() {
+            if let Err(error) = notification_service::notify_schedule_info_updated(
+                pool,
+                push_sender,
+                schedule_id,
+                &field_changes,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to notify schedule update for schedule {}: {}",
+                    schedule_id,
+                    error
+                );
+            }
+        }
+    }
+
+    if schedule.schedule_type == ScheduleType::Group {
+        if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule_id).await {
+            tracing::error!(
+                "Failed to sync live activity jobs after schedule update {}: {}",
+                schedule_id,
+                error
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -928,6 +1128,26 @@ pub async fn respond_schedule(
     schedule_id: Uuid,
     req: RespondScheduleRequest,
 ) -> Result<RespondScheduleResponse, AppError> {
+    respond_schedule_impl(pool, None, user_id, schedule_id, req).await
+}
+
+pub async fn respond_schedule_with_push_sender(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: RespondScheduleRequest,
+) -> Result<RespondScheduleResponse, AppError> {
+    respond_schedule_impl(pool, Some(push_sender), user_id, schedule_id, req).await
+}
+
+async fn respond_schedule_impl(
+    pool: &PgPool,
+    push_sender: Option<&dyn PushSender>,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: RespondScheduleRequest,
+) -> Result<RespondScheduleResponse, AppError> {
     // status 검증
     let status = req.status.trim().to_lowercase();
     if status != "accepted" && status != "declined" && status != "pending" {
@@ -968,6 +1188,8 @@ pub async fn respond_schedule(
     if membership.is_none() {
         return Err(AppError::Forbidden("그룹 멤버가 아닙니다".to_string()));
     }
+
+    let old_votes = fetch_vote_infos(pool, schedule_id).await?;
 
     // 전환 감지: 이전 확정 상태 캡처
     let was_confirmed = schedule.is_confirmed.unwrap_or(false);
@@ -1039,6 +1261,33 @@ pub async fn respond_schedule(
     tx.commit()
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if let Some(push_sender) = push_sender {
+        let new_votes = fetch_vote_infos(pool, schedule_id).await?;
+        if let Err(error) = notification_service::notify_schedule_votes_updated(
+            pool,
+            push_sender,
+            schedule_id,
+            &old_votes,
+            &new_votes,
+        )
+        .await
+        {
+            tracing::error!(
+                "Failed to notify schedule vote update for schedule {}: {}",
+                schedule_id,
+                error
+            );
+        }
+    }
+
+    if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule_id).await {
+        tracing::error!(
+            "Failed to sync live activity jobs after schedule response {}: {}",
+            schedule_id,
+            error
+        );
+    }
 
     // confirmed_schedule 빌드 (미확정 → 확정 전환 시에만)
     let confirmed_schedule = if !was_confirmed && new_is_confirmed && status == "accepted" {
@@ -2427,9 +2676,7 @@ struct ParsedSchedule {
 }
 
 /// description_blocks 필터링 및 인접 text 블록 병합
-fn process_description_blocks(
-    raw_blocks: Vec<serde_json::Value>,
-) -> Option<serde_json::Value> {
+fn process_description_blocks(raw_blocks: Vec<serde_json::Value>) -> Option<serde_json::Value> {
     // 유효한 블록만 필터
     let valid_blocks: Vec<serde_json::Value> = raw_blocks
         .into_iter()
@@ -2465,14 +2712,8 @@ fn process_description_blocks(
             if let Some(last) = merged.last_mut() {
                 let last_type = last.get("type").and_then(|v| v.as_str()).unwrap_or("");
                 if last_type == "text" {
-                    let last_content = last
-                        .get("content")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    let new_content = block
-                        .get("content")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let last_content = last.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    let new_content = block.get("content").and_then(|v| v.as_str()).unwrap_or("");
                     let combined = format!("{}\n\n{}", last_content, new_content);
                     *last = serde_json::json!({
                         "type": "text",
@@ -2588,9 +2829,8 @@ pub async fn extract_schedule(
     }
 
     // 2. API 키 확인
-    let api_key = std::env::var("GEMINI_API_KEY").map_err(|_| {
-        AppError::BadRequest("일정 추출 기능이 설정되지 않았습니다".to_string())
-    })?;
+    let api_key = std::env::var("GEMINI_API_KEY")
+        .map_err(|_| AppError::BadRequest("일정 추출 기능이 설정되지 않았습니다".to_string()))?;
 
     if api_key.is_empty() {
         return Err(AppError::BadRequest(
@@ -2666,9 +2906,7 @@ pub async fn extract_schedule(
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         tracing::error!("Gemini API error: status={}, body={}", status, body);
-        return Err(AppError::Internal(
-            "일정 추출에 실패했습니다".to_string(),
-        ));
+        return Err(AppError::Internal("일정 추출에 실패했습니다".to_string()));
     }
 
     let gemini_response: GeminiResponse = response.json().await.map_err(|e| {

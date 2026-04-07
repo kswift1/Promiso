@@ -265,6 +265,12 @@ private struct RespondScheduleBody: Encodable {
   let status: String
 }
 
+private struct UpdateScheduleLiveActivityBody: Encodable {
+  let channelId: String
+  let participants: [ParticipantState]
+  let trackingDurationMinutes: Int
+}
+
 private struct EmptyBody: Encodable {}
 
 // MARK: - ScheduleRustDataSource
@@ -476,6 +482,32 @@ public actor ScheduleRustDataSource {
         groupId: item.groupId
       )
     }
+  }
+
+  // MARK: - Live Activity
+
+  public func startLiveActivity(scheduleId: String) async throws {
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/live-activity/start",
+      body: EmptyBody()
+    )
+  }
+
+  public func updateETA(
+    scheduleId: String,
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws {
+    let body = UpdateScheduleLiveActivityBody(
+      channelId: channelId,
+      participants: participants,
+      trackingDurationMinutes: trackingDurationMinutes
+    )
+    let _: RustSuccessResponse = try await api.post(
+      "/api/v1/schedules/\(scheduleId)/live-activity/eta",
+      body: body
+    )
   }
 }
 

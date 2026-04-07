@@ -74,7 +74,7 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   var startLiveActivityHandler: ((String) async throws -> Void)?
   var startVoteLiveActivityHandler: ((String) async throws -> Void)?
   var finalizeVoteHandler: ((String) async throws -> Void)?
-  var updateETAHandler: ((String, [ParticipantState], Int) async throws -> Void)?
+  var updateETAHandler: ((String, String, [ParticipantState], Int) async throws -> Void)?
 
   // MARK: - Reset
 
@@ -272,13 +272,14 @@ final class MockScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   }
 
   func updateETA(
+    scheduleId: String,
     channelId: String,
     participants: [ParticipantState],
     trackingDurationMinutes: Int
   ) async throws {
     updateETACallCount += 1
     if let handler = updateETAHandler {
-      try await handler(channelId, participants, trackingDurationMinutes)
+      try await handler(scheduleId, channelId, participants, trackingDurationMinutes)
     }
   }
 }

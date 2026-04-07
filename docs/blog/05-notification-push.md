@@ -16,6 +16,10 @@ Firestore 트리거는 마법처럼 동작한다.
 
 Rust로 옮기면서 질문은 같다. 이 복잡도 중 얼마가 비즈니스 규칙이고 얼마가 Firestore의 이벤트 드리븐 모델에서 온 것인가.
 
+> 업데이트 (2026-04-07)
+>
+> 이후 Live Activity의 APNs 토큰과 일반 알림의 FCM 토큰 경계를 더 명확히 하기 위해 저장 구조를 `devices` + `notification_endpoints` + `live_activity_endpoints`로 다시 분리했다. 최신 구조는 [ADR-009](../adr/009-push-channel-separation.md)를 따른다. 아래 본문은 #5 시점의 설명을 유지한다.
+
 ---
 
 ## 트리거에서 함수 호출로

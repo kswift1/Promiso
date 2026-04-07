@@ -2,9 +2,11 @@
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use promiso_backend::errors::AppError;
+use promiso_backend::models::notification::{FcmMessage, PushResult, PushSender};
 use promiso_backend::models::schedule::*;
 use promiso_backend::services::schedule_service;
 use sqlx::PgPool;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 // ============================================================
@@ -53,6 +55,61 @@ async fn add_member_to_group(pool: &PgPool, group_id: Uuid, user_id: &str) {
         .execute(pool)
         .await
         .expect("Failed to add member to group");
+}
+
+async fn register_test_device(pool: &PgPool, user_id: &str, device_id: &str, fcm_token: &str) {
+    let device: (Uuid,) = sqlx::query_as(
+        "INSERT INTO devices (user_id, device_id, platform) \
+         VALUES ($1, $2, 'ios') \
+         RETURNING id",
+    )
+    .bind(user_id)
+    .bind(device_id)
+    .fetch_one(pool)
+    .await
+    .expect("Failed to register test device");
+
+    sqlx::query(
+        "INSERT INTO notification_endpoints (device_id, provider, token) \
+         VALUES ($1, 'fcm', $2)",
+    )
+    .bind(device.0)
+    .bind(fcm_token)
+    .execute(pool)
+    .await
+    .expect("Failed to register test notification endpoint");
+}
+
+struct MockPushSender {
+    calls: Arc<Mutex<Vec<(Vec<String>, FcmMessage)>>>,
+}
+
+impl MockPushSender {
+    fn new() -> Self {
+        Self {
+            calls: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    fn call_count(&self) -> usize {
+        self.calls.lock().unwrap().len()
+    }
+}
+
+#[async_trait::async_trait]
+impl PushSender for MockPushSender {
+    async fn send_multicast(&self, tokens: &[String], message: &FcmMessage) -> PushResult {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((tokens.to_vec(), message.clone()));
+
+        PushResult {
+            success: true,
+            success_count: tokens.len() as i32,
+            failure_count: 0,
+        }
+    }
 }
 
 fn make_group_schedule_request(
@@ -144,6 +201,35 @@ async fn create_group_schedule_success(pool: PgPool) {
     assert_eq!(response.group_id, Some(group_id));
     // min_participants=2, 호스트만 수락 → 미확정
     assert_eq!(response.is_confirmed, Some(false));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn create_group_schedule_with_push_sender_notifies_members(pool: PgPool) {
+    insert_test_user(&pool, "host_push_create", "호스트생성").await;
+    insert_test_user(&pool, "member_push_create", "멤버생성").await;
+    let group_id = create_test_group(&pool, "host_push_create", "생성알림그룹").await;
+    add_member_to_group(&pool, group_id, "member_push_create").await;
+    register_test_device(&pool, "member_push_create", "device-create", "fcm-create").await;
+
+    let req = make_group_schedule_request(group_id, "생성 알림 일정", future_time(24));
+    let mock = MockPushSender::new();
+
+    let response =
+        schedule_service::create_schedule_with_push_sender(&pool, &mock, "host_push_create", req)
+            .await
+            .expect("create should succeed");
+
+    assert_eq!(mock.call_count(), 1);
+
+    let notification_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM notifications WHERE schedule_id = $1 AND notification_type = 'schedule_invitation'",
+    )
+    .bind(response.schedule_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count should succeed");
+
+    assert_eq!(notification_count.0, 1);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -374,6 +460,55 @@ async fn create_group_schedule_image_urls_max_3(pool: PgPool) {
 // ============================================================
 // 그룹일정 - 응답 (투표)
 // ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn respond_schedule_with_push_sender_notifies_confirmation(pool: PgPool) {
+    insert_test_user(&pool, "host_push_respond", "호스트응답").await;
+    insert_test_user(&pool, "member_push_respond", "멤버응답").await;
+    let group_id = create_test_group(&pool, "host_push_respond", "응답알림그룹").await;
+    add_member_to_group(&pool, group_id, "member_push_respond").await;
+    register_test_device(
+        &pool,
+        "member_push_respond",
+        "device-respond",
+        "fcm-respond",
+    )
+    .await;
+
+    let schedule = schedule_service::create_schedule(
+        &pool,
+        "host_push_respond",
+        make_group_schedule_request(group_id, "응답 알림 일정", future_time(24)),
+    )
+    .await
+    .expect("create should succeed");
+
+    let mock = MockPushSender::new();
+    let response = schedule_service::respond_schedule_with_push_sender(
+        &pool,
+        &mock,
+        "member_push_respond",
+        schedule.schedule_id,
+        RespondScheduleRequest {
+            status: "accepted".to_string(),
+        },
+    )
+    .await
+    .expect("respond should succeed");
+
+    assert!(response.is_confirmed);
+    assert_eq!(mock.call_count(), 1);
+
+    let notification_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM notifications WHERE schedule_id = $1 AND notification_type = 'schedule_confirmed'",
+    )
+    .bind(schedule.schedule_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count should succeed");
+
+    assert!(notification_count.0 >= 1);
+}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn respond_schedule_accept_success(pool: PgPool) {
@@ -651,6 +786,67 @@ async fn respond_schedule_invalid_status_fails(pool: PgPool) {
 // ============================================================
 // 그룹일정 - 수정
 // ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn update_schedule_with_push_sender_notifies_accepted_members(pool: PgPool) {
+    insert_test_user(&pool, "host_push_update", "호스트수정").await;
+    insert_test_user(&pool, "member_push_update", "멤버수정").await;
+    let group_id = create_test_group(&pool, "host_push_update", "수정알림그룹").await;
+    add_member_to_group(&pool, group_id, "member_push_update").await;
+    register_test_device(&pool, "member_push_update", "device-update", "fcm-update").await;
+
+    let schedule = schedule_service::create_schedule(
+        &pool,
+        "host_push_update",
+        make_group_schedule_request(group_id, "수정 전 일정", future_time(24)),
+    )
+    .await
+    .expect("create should succeed");
+
+    sqlx::query(
+        "INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'accepted')",
+    )
+    .bind(schedule.schedule_id)
+    .bind("member_push_update")
+    .execute(&pool)
+    .await
+    .expect("vote insert should succeed");
+
+    let mock = MockPushSender::new();
+    schedule_service::update_schedule_with_push_sender(
+        &pool,
+        &mock,
+        "host_push_update",
+        schedule.schedule_id,
+        UpdateScheduleRequest {
+            title: Some("수정 후 일정".to_string()),
+            emoji: None,
+            description: None,
+            description_blocks: None,
+            start_at: Some(future_time(30)),
+            end_at: None,
+            location: None,
+            minimum_participants: None,
+            tracking_start_minutes_before: None,
+            image_urls: None,
+            reminder_minutes_before: None,
+        },
+    )
+    .await
+    .expect("update should succeed");
+
+    assert_eq!(mock.call_count(), 1);
+
+    let notification_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM notifications WHERE schedule_id = $1 AND notification_type = 'schedule_updated'",
+    )
+    .bind(schedule.schedule_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count should succeed");
+
+    assert_eq!(notification_count.0, 2);
+}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn update_schedule_host_success(pool: PgPool) {

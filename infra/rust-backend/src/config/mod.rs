@@ -3,6 +3,13 @@ pub struct Config {
     pub database_pool_url: String,
     pub port: u16,
     pub firebase_project_id: String,
+    pub google_application_credentials: Option<String>,
+    pub firebase_service_account_json: Option<String>,
+    pub apns_key_id: Option<String>,
+    pub apns_team_id: Option<String>,
+    pub apns_auth_key: Option<String>,
+    pub apns_auth_key_path: Option<String>,
+    pub apns_bundle_id: Option<String>,
 }
 
 impl Config {
@@ -23,6 +30,13 @@ impl Config {
                 .expect("PORT must be a valid number"),
             firebase_project_id: std::env::var("FIREBASE_PROJECT_ID")
                 .expect("FIREBASE_PROJECT_ID must be set"),
+            google_application_credentials: std::env::var("GOOGLE_APPLICATION_CREDENTIALS").ok(),
+            firebase_service_account_json: std::env::var("FIREBASE_SERVICE_ACCOUNT_JSON").ok(),
+            apns_key_id: std::env::var("APNS_KEY_ID").ok(),
+            apns_team_id: std::env::var("APNS_TEAM_ID").ok(),
+            apns_auth_key: std::env::var("APNS_AUTH_KEY").ok(),
+            apns_auth_key_path: std::env::var("APNS_AUTH_KEY_PATH").ok(),
+            apns_bundle_id: std::env::var("APNS_BUNDLE_ID").ok(),
         }
     }
 }

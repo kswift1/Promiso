@@ -310,7 +310,7 @@ extension AppEntry {
               }
 
               do {
-                try await notificationClient.saveFCMToken(token)
+                try await notificationClient.saveNotificationToken(token)
                 await send(.internal(.fcmTokenSaved))
               } catch {
                 AppLogger.notification.error("FCM 토큰 저장 실패: \(error.localizedDescription)")
@@ -514,7 +514,7 @@ extension AppEntry {
             analyticsClient.setUserProperty(nil, .calendarSyncEnabled)
 
             do {
-              try await notificationClient.deleteFCMToken()
+              try await notificationClient.deleteCurrentDeviceRegistration()
             } catch {
               AppLogger.notification.error("FCM 토큰 삭제 실패: \(error.localizedDescription)")
             }

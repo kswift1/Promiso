@@ -1,14 +1,22 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, Query, State};
+use axum::http::HeaderMap;
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Json, Router};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::middleware::auth::Claims;
+use crate::middleware::auth::{Claims, FirebaseAuth};
+use crate::models::live_activity::{
+    LiveActivitySender, StartScheduleLiveActivityResponse, UpdateScheduleLiveActivityRequest,
+    UpdateScheduleLiveActivityResponse, WidgetUpdateScheduleLiveActivityRequest,
+};
+use crate::models::notification::PushSender;
 use crate::models::schedule::*;
 use crate::response::ApiResponse;
-use crate::services::schedule_service;
+use crate::services::{live_activity_service, schedule_service};
 
 pub fn router() -> Router<PgPool> {
     let schedule_routes = Router::new()
@@ -22,7 +30,9 @@ pub fn router() -> Router<PgPool> {
         .route("/{id}", get(get_schedule))
         .route("/{id}", patch(update_schedule))
         .route("/{id}", delete(delete_schedule))
-        .route("/{id}/respond", post(respond_schedule));
+        .route("/{id}/respond", post(respond_schedule))
+        .route("/{id}/live-activity/start", post(start_live_activity))
+        .route("/{id}/live-activity/eta", post(update_live_activity_eta));
 
     let recurring_routes = Router::new()
         .route("/", post(create_recurring_schedule))
@@ -36,18 +46,29 @@ pub fn router() -> Router<PgPool> {
     Router::new()
         .nest("/api/v1/schedules", schedule_routes)
         .nest("/api/v1/recurring-schedules", recurring_routes)
-        .nest(
-            "/api/v1/groups/{group_id}/schedules",
-            group_schedule_routes,
-        )
+        .nest("/api/v1/groups/{group_id}/schedules", group_schedule_routes)
+}
+
+pub fn public_router() -> Router<PgPool> {
+    Router::new().route(
+        "/api/v1/live-activity/widget/eta",
+        post(widget_update_live_activity_eta),
+    )
 }
 
 async fn create_schedule(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     Json(req): Json<CreateScheduleRequest>,
 ) -> Result<ApiResponse<CreateScheduleResponse>, AppError> {
-    let result = schedule_service::create_schedule(&pool, &claims.uid, req).await?;
+    let result = schedule_service::create_schedule_with_push_sender(
+        &pool,
+        push_sender.as_ref(),
+        &claims.uid,
+        req,
+    )
+    .await?;
     ApiResponse::created(result)
 }
 
@@ -63,10 +84,18 @@ async fn get_schedule(
 async fn update_schedule(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateScheduleRequest>,
 ) -> Result<ApiResponse<serde_json::Value>, AppError> {
-    schedule_service::update_schedule(&pool, &claims.uid, id, req).await?;
+    schedule_service::update_schedule_with_push_sender(
+        &pool,
+        push_sender.as_ref(),
+        &claims.uid,
+        id,
+        req,
+    )
+    .await?;
     ApiResponse::ok(serde_json::json!({"success": true}))
 }
 
@@ -82,10 +111,91 @@ async fn delete_schedule(
 async fn respond_schedule(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     Path(id): Path<Uuid>,
     Json(req): Json<RespondScheduleRequest>,
 ) -> Result<ApiResponse<RespondScheduleResponse>, AppError> {
-    let result = schedule_service::respond_schedule(&pool, &claims.uid, id, req).await?;
+    let result = schedule_service::respond_schedule_with_push_sender(
+        &pool,
+        push_sender.as_ref(),
+        &claims.uid,
+        id,
+        req,
+    )
+    .await?;
+    ApiResponse::ok(result)
+}
+
+async fn start_live_activity(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Extension(live_activity_sender): Extension<Arc<dyn LiveActivitySender>>,
+    Path(id): Path<Uuid>,
+) -> Result<ApiResponse<StartScheduleLiveActivityResponse>, AppError> {
+    let result = live_activity_service::start_schedule_live_activity(
+        &pool,
+        live_activity_sender.as_ref(),
+        id,
+        &claims.uid,
+    )
+    .await?;
+    ApiResponse::ok(result)
+}
+
+async fn update_live_activity_eta(
+    State(pool): State<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Extension(live_activity_sender): Extension<Arc<dyn LiveActivitySender>>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateScheduleLiveActivityRequest>,
+) -> Result<ApiResponse<UpdateScheduleLiveActivityResponse>, AppError> {
+    let result = live_activity_service::update_schedule_live_activity(
+        &pool,
+        live_activity_sender.as_ref(),
+        id,
+        &claims.uid,
+        req,
+    )
+    .await?;
+    ApiResponse::ok(result)
+}
+
+async fn widget_update_live_activity_eta(
+    State(pool): State<PgPool>,
+    Extension(firebase_auth): Extension<FirebaseAuth>,
+    Extension(live_activity_sender): Extension<Arc<dyn LiveActivitySender>>,
+    headers: HeaderMap,
+    Json(req): Json<WidgetUpdateScheduleLiveActivityRequest>,
+) -> Result<ApiResponse<UpdateScheduleLiveActivityResponse>, AppError> {
+    let user_id = headers
+        .get("x-user-id")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| AppError::Unauthorized("X-User-Id header is required".to_string()))?;
+
+    if let Some(auth_token) = headers
+        .get("x-auth-token")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.trim().is_empty())
+    {
+        let claims = firebase_auth.verify_token(auth_token).await?;
+        if claims.uid != user_id {
+            return Err(AppError::Unauthorized("Token uid mismatch".to_string()));
+        }
+    }
+
+    let result = live_activity_service::update_schedule_live_activity_from_widget(
+        &pool,
+        live_activity_sender.as_ref(),
+        req.schedule_id,
+        user_id,
+        UpdateScheduleLiveActivityRequest {
+            channel_id: req.channel_id,
+            participants: req.participants,
+            tracking_duration_minutes: req.tracking_duration_minutes,
+        },
+    )
+    .await?;
     ApiResponse::ok(result)
 }
 
@@ -95,8 +205,7 @@ async fn get_group_schedules(
     Path(group_id): Path<Uuid>,
     Query(query): Query<GroupScheduleQuery>,
 ) -> Result<ApiResponse<PaginatedScheduleResponse>, AppError> {
-    let result =
-        schedule_service::get_group_schedules(&pool, &claims.uid, group_id, query).await?;
+    let result = schedule_service::get_group_schedules(&pool, &claims.uid, group_id, query).await?;
     ApiResponse::ok(result)
 }
 
@@ -164,8 +273,7 @@ async fn create_recurring_schedule(
     Extension(claims): Extension<Claims>,
     Json(req): Json<CreateRecurringScheduleRequest>,
 ) -> Result<ApiResponse<CreateRecurringScheduleResponse>, AppError> {
-    let result =
-        schedule_service::create_recurring_schedule(&pool, &claims.uid, req).await?;
+    let result = schedule_service::create_recurring_schedule(&pool, &claims.uid, req).await?;
     ApiResponse::created(result)
 }
 

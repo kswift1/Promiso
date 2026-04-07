@@ -107,16 +107,26 @@ async fn add_member_to_group(pool: &PgPool, group_id: Uuid, user_id: &str) {
 }
 
 async fn register_test_device(pool: &PgPool, user_id: &str, device_id: &str, fcm_token: &str) {
-    sqlx::query(
-        "INSERT INTO devices (user_id, device_id, fcm_token, platform) \
-         VALUES ($1, $2, $3, 'ios')",
+    let device: (Uuid,) = sqlx::query_as(
+        "INSERT INTO devices (user_id, device_id, platform) \
+         VALUES ($1, $2, 'ios') \
+         RETURNING id",
     )
     .bind(user_id)
     .bind(device_id)
+    .fetch_one(pool)
+    .await
+    .expect("Failed to register test device");
+
+    sqlx::query(
+        "INSERT INTO notification_endpoints (device_id, provider, token) \
+         VALUES ($1, 'fcm', $2)",
+    )
+    .bind(device.0)
     .bind(fcm_token)
     .execute(pool)
     .await
-    .expect("Failed to register test device");
+    .expect("Failed to register test notification endpoint");
 }
 
 async fn insert_test_notification(
@@ -177,16 +187,12 @@ async fn d1_register_device_success(pool: PgPool) {
 
     let req = UpsertDeviceRequest {
         device_id: "device-001".to_string(),
-        fcm_token: "fcm-token-001".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     let result = notification_service::upsert_device(&pool, "user_d1", req).await;
     assert!(result.is_ok());
     let resp = result.unwrap();
     assert_eq!(resp.device_id, "device-001");
-    assert_eq!(resp.fcm_token, "fcm-token-001");
     assert_eq!(resp.platform, "ios");
 }
 
@@ -196,17 +202,11 @@ async fn d2_register_multiple_devices_same_user(pool: PgPool) {
 
     let req1 = UpsertDeviceRequest {
         device_id: "device-a".to_string(),
-        fcm_token: "fcm-a".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     let req2 = UpsertDeviceRequest {
         device_id: "device-b".to_string(),
-        fcm_token: "fcm-b".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     let r1 = notification_service::upsert_device(&pool, "user_d2", req1).await;
     assert!(r1.is_ok());
@@ -218,42 +218,52 @@ async fn d2_register_multiple_devices_same_user(pool: PgPool) {
 async fn d3_register_device_user_not_found(pool: PgPool) {
     let req = UpsertDeviceRequest {
         device_id: "device-ghost".to_string(),
-        fcm_token: "fcm-ghost".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     let result = notification_service::upsert_device(&pool, "nonexistent_user", req).await;
     assert!(matches!(result, Err(AppError::NotFound(_))));
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn d4_upsert_device_updates_existing(pool: PgPool) {
+async fn d4_upsert_notification_endpoint_updates_existing(pool: PgPool) {
     insert_test_user(&pool, "user_d4", "디바이스유저4").await;
 
-    let req1 = UpsertDeviceRequest {
-        device_id: "device-upsert".to_string(),
-        fcm_token: "old-token".to_string(),
-        platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
-    };
-    notification_service::upsert_device(&pool, "user_d4", req1)
-        .await
-        .expect("first upsert should succeed");
+    notification_service::upsert_device(
+        &pool,
+        "user_d4",
+        UpsertDeviceRequest {
+            device_id: "device-upsert".to_string(),
+            platform: Some("ios".to_string()),
+        },
+    )
+    .await
+    .expect("device upsert should succeed");
 
-    // 같은 device_id로 새 fcm_token
-    let req2 = UpsertDeviceRequest {
-        device_id: "device-upsert".to_string(),
-        fcm_token: "new-token".to_string(),
-        platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
-    };
-    let result = notification_service::upsert_device(&pool, "user_d4", req2).await;
+    notification_service::upsert_notification_endpoint(
+        &pool,
+        "user_d4",
+        "device-upsert",
+        NotificationProvider::Fcm,
+        UpsertNotificationEndpointRequest {
+            token: "old-token".to_string(),
+        },
+    )
+    .await
+    .expect("first endpoint upsert should succeed");
+
+    let result = notification_service::upsert_notification_endpoint(
+        &pool,
+        "user_d4",
+        "device-upsert",
+        NotificationProvider::Fcm,
+        UpsertNotificationEndpointRequest {
+            token: "new-token".to_string(),
+        },
+    )
+    .await;
     assert!(result.is_ok());
     let resp = result.unwrap();
-    assert_eq!(resp.fcm_token, "new-token");
+    assert_eq!(resp.token, "new-token");
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -262,10 +272,7 @@ async fn d5_delete_device_success(pool: PgPool) {
 
     let req = UpsertDeviceRequest {
         device_id: "device-del".to_string(),
-        fcm_token: "fcm-del".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     notification_service::upsert_device(&pool, "user_d5", req)
         .await
@@ -281,17 +288,11 @@ async fn d6_delete_all_devices_on_logout(pool: PgPool) {
 
     let req1 = UpsertDeviceRequest {
         device_id: "dev-logout-1".to_string(),
-        fcm_token: "fcm-logout-1".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     let req2 = UpsertDeviceRequest {
         device_id: "dev-logout-2".to_string(),
-        fcm_token: "fcm-logout-2".to_string(),
         platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
     };
     notification_service::upsert_device(&pool, "user_d6", req1)
         .await
@@ -313,36 +314,62 @@ async fn d6_delete_all_devices_on_logout(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn d7_upsert_device_transfers_fcm_token_ownership(pool: PgPool) {
-    // Risk 3: 같은 fcm_token이 다른 유저에 있으면 이전 row 삭제
+async fn d7_upsert_notification_endpoint_transfers_token_ownership(pool: PgPool) {
+    // 같은 FCM 토큰이 다른 디바이스에 있으면 이전 endpoint를 삭제
     insert_test_user(&pool, "user_d7a", "유저D7A").await;
     insert_test_user(&pool, "user_d7b", "유저D7B").await;
 
-    let req_a = UpsertDeviceRequest {
-        device_id: "dev-transfer-a".to_string(),
-        fcm_token: "shared-fcm-token".to_string(),
-        platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
-    };
-    notification_service::upsert_device(&pool, "user_d7a", req_a)
-        .await
-        .expect("user_a upsert");
+    notification_service::upsert_device(
+        &pool,
+        "user_d7a",
+        UpsertDeviceRequest {
+            device_id: "dev-transfer-a".to_string(),
+            platform: Some("ios".to_string()),
+        },
+    )
+    .await
+    .expect("user_a device upsert");
 
-    // 다른 유저가 같은 fcm_token으로 등록
-    let req_b = UpsertDeviceRequest {
-        device_id: "dev-transfer-b".to_string(),
-        fcm_token: "shared-fcm-token".to_string(),
-        platform: Some("ios".to_string()),
-        push_to_start_token: None,
-        live_activity_push_token: None,
-    };
-    let result = notification_service::upsert_device(&pool, "user_d7b", req_b).await;
+    notification_service::upsert_notification_endpoint(
+        &pool,
+        "user_d7a",
+        "dev-transfer-a",
+        NotificationProvider::Fcm,
+        UpsertNotificationEndpointRequest {
+            token: "shared-fcm-token".to_string(),
+        },
+    )
+    .await
+    .expect("user_a endpoint upsert");
+
+    notification_service::upsert_device(
+        &pool,
+        "user_d7b",
+        UpsertDeviceRequest {
+            device_id: "dev-transfer-b".to_string(),
+            platform: Some("ios".to_string()),
+        },
+    )
+    .await
+    .expect("user_b device upsert");
+
+    let result = notification_service::upsert_notification_endpoint(
+        &pool,
+        "user_d7b",
+        "dev-transfer-b",
+        NotificationProvider::Fcm,
+        UpsertNotificationEndpointRequest {
+            token: "shared-fcm-token".to_string(),
+        },
+    )
+    .await;
     assert!(result.is_ok());
 
-    // user_d7a의 디바이스에서 해당 fcm_token이 사라졌는지 확인
     let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM devices WHERE user_id = $1 AND fcm_token = $2",
+        "SELECT COUNT(*) \
+         FROM notification_endpoints ne \
+         JOIN devices d ON d.id = ne.device_id \
+         WHERE d.user_id = $1 AND ne.token = $2",
     )
     .bind("user_d7a")
     .bind("shared-fcm-token")
@@ -350,6 +377,53 @@ async fn d7_upsert_device_transfers_fcm_token_ownership(pool: PgPool) {
     .await
     .expect("count query failed");
     assert_eq!(count.0, 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d8_upsert_live_activity_endpoint_without_notification_token(pool: PgPool) {
+    insert_test_user(&pool, "user_d8", "유저D8").await;
+
+    notification_service::upsert_device(
+        &pool,
+        "user_d8",
+        UpsertDeviceRequest {
+            device_id: "dev-live-1".to_string(),
+            platform: Some("ios".to_string()),
+        },
+    )
+    .await
+    .expect("device upsert");
+
+    let result = notification_service::upsert_live_activity_endpoint(
+        &pool,
+        "user_d8",
+        "dev-live-1",
+        UpsertLiveActivityEndpointRequest {
+            push_to_start_token: Some("push-to-start-1".to_string()),
+            live_activity_push_token: None,
+        },
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(
+        response.push_to_start_token.as_deref(),
+        Some("push-to-start-1")
+    );
+
+    let count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) \
+         FROM live_activity_endpoints lae \
+         JOIN devices d ON d.id = lae.device_id \
+         WHERE d.user_id = $1 AND lae.push_to_start_token = $2",
+    )
+    .bind("user_d8")
+    .bind("push-to-start-1")
+    .fetch_one(&pool)
+    .await
+    .expect("count query failed");
+    assert_eq!(count.0, 1);
 }
 
 // ============================================================
@@ -530,13 +604,12 @@ async fn n_crud6_mark_all_as_read(pool: PgPool) {
     assert!(result.is_ok());
 
     // 미읽음 0개 확인
-    let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE",
-    )
-    .bind("user_nc6")
-    .fetch_one(&pool)
-    .await
-    .expect("count");
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE")
+            .bind("user_nc6")
+            .fetch_one(&pool)
+            .await
+            .expect("count");
     assert_eq!(count.0, 0);
 }
 
@@ -565,12 +638,11 @@ async fn n_crud7_delete_notifications_success(pool: PgPool) {
     assert!(result.is_ok());
 
     // 1개 남음
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
-            .bind("user_nc7")
-            .fetch_one(&pool)
-            .await
-            .expect("count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
+        .bind("user_nc7")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
     assert_eq!(count.0, 1);
 }
 
@@ -613,12 +685,11 @@ async fn n_crud9_delete_all_notifications(pool: PgPool) {
     let result = notification_service::delete_all_notifications(&pool, "user_nc9").await;
     assert!(result.is_ok());
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
-            .bind("user_nc9")
-            .fetch_one(&pool)
-            .await
-            .expect("count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
+        .bind("user_nc9")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
     assert_eq!(count.0, 0);
 }
 
@@ -750,12 +821,11 @@ async fn n_fcm3_push_always_saves_to_db(pool: PgPool) {
     assert!(result.is_ok());
 
     // DB에 알림이 저장되었는지 확인
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
-            .bind("user_fcm3")
-            .fetch_one(&pool)
-            .await
-            .expect("count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
+        .bind("user_fcm3")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
     assert_eq!(count.0, 1);
 }
 
@@ -791,12 +861,11 @@ async fn n_fcm4_push_skipped_group_disabled(pool: PgPool) {
     assert!(result.is_ok());
 
     // DB에 알림은 저장됨
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
-            .bind("user_fcm4")
-            .fetch_one(&pool)
-            .await
-            .expect("count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1")
+        .bind("user_fcm4")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
     assert_eq!(count.0, 1);
 
     // FCM은 전송되지 않음
@@ -958,13 +1027,11 @@ async fn n_t1_schedule_created_notifies_except_host(pool: PgPool) {
     assert!(result.is_ok());
 
     // 호스트 제외 2명에게 알림
-    let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM notifications WHERE schedule_id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_one(&pool)
-    .await
-    .expect("count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE schedule_id = $1")
+        .bind(schedule_id)
+        .fetch_one(&pool)
+        .await
+        .expect("count");
     assert_eq!(count.0, 2);
 
     // 호스트에게는 알림 없음
@@ -1022,12 +1089,19 @@ async fn n_t2_vote_confirmed_notifies_accepted(pool: PgPool) {
     let schedule_id = create_test_schedule(&pool, group_id, "host_t2", "확정일정").await;
     let mock = MockPushSender::new();
 
-    let old_votes = vec![
-        VoteInfo { user_id: "host_t2".to_string(), status: "accepted".to_string() },
-    ];
+    let old_votes = vec![VoteInfo {
+        user_id: "host_t2".to_string(),
+        status: "accepted".to_string(),
+    }];
     let new_votes = vec![
-        VoteInfo { user_id: "host_t2".to_string(), status: "accepted".to_string() },
-        VoteInfo { user_id: "mem_t2a".to_string(), status: "accepted".to_string() },
+        VoteInfo {
+            user_id: "host_t2".to_string(),
+            status: "accepted".to_string(),
+        },
+        VoteInfo {
+            user_id: "mem_t2a".to_string(),
+            status: "accepted".to_string(),
+        },
     ];
 
     let result = notification_service::notify_schedule_votes_updated(
@@ -1066,12 +1140,24 @@ async fn n_t3_vote_cancelled_notifies_accepted(pool: PgPool) {
 
     // N10: remaining_possible = total_members(2) - declined(1) = 1 < min(2)
     let old_votes = vec![
-        VoteInfo { user_id: "host_t3".to_string(), status: "accepted".to_string() },
-        VoteInfo { user_id: "mem_t3a".to_string(), status: "accepted".to_string() },
+        VoteInfo {
+            user_id: "host_t3".to_string(),
+            status: "accepted".to_string(),
+        },
+        VoteInfo {
+            user_id: "mem_t3a".to_string(),
+            status: "accepted".to_string(),
+        },
     ];
     let new_votes = vec![
-        VoteInfo { user_id: "host_t3".to_string(), status: "accepted".to_string() },
-        VoteInfo { user_id: "mem_t3a".to_string(), status: "declined".to_string() },
+        VoteInfo {
+            user_id: "host_t3".to_string(),
+            status: "accepted".to_string(),
+        },
+        VoteInfo {
+            user_id: "mem_t3a".to_string(),
+            status: "declined".to_string(),
+        },
     ];
 
     let result = notification_service::notify_schedule_votes_updated(
@@ -1108,12 +1194,24 @@ async fn n_t3a_vote_cancelled_requires_new_decline(pool: PgPool) {
 
     // 이전과 이후 모두 동일한 거절 상태
     let old_votes = vec![
-        VoteInfo { user_id: "host_t3a".to_string(), status: "accepted".to_string() },
-        VoteInfo { user_id: "mem_t3a2".to_string(), status: "declined".to_string() },
+        VoteInfo {
+            user_id: "host_t3a".to_string(),
+            status: "accepted".to_string(),
+        },
+        VoteInfo {
+            user_id: "mem_t3a2".to_string(),
+            status: "declined".to_string(),
+        },
     ];
     let new_votes = vec![
-        VoteInfo { user_id: "host_t3a".to_string(), status: "accepted".to_string() },
-        VoteInfo { user_id: "mem_t3a2".to_string(), status: "declined".to_string() },
+        VoteInfo {
+            user_id: "host_t3a".to_string(),
+            status: "accepted".to_string(),
+        },
+        VoteInfo {
+            user_id: "mem_t3a2".to_string(),
+            status: "declined".to_string(),
+        },
     ];
 
     let result = notification_service::notify_schedule_votes_updated(
@@ -1149,12 +1247,14 @@ async fn n_t4_schedule_updated_sends_diff(pool: PgPool) {
     let schedule_id = create_test_schedule(&pool, group_id, "host_t4", "수정일정").await;
 
     // N6: accepted 유저만 수신하므로 vote 필요
-    sqlx::query("INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'accepted')")
-        .bind(schedule_id)
-        .bind("mem_t4")
-        .execute(&pool)
-        .await
-        .expect("Failed to insert vote");
+    sqlx::query(
+        "INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'accepted')",
+    )
+    .bind(schedule_id)
+    .bind("mem_t4")
+    .execute(&pool)
+    .await
+    .expect("Failed to insert vote");
 
     let mock = MockPushSender::new();
 
@@ -1171,13 +1271,9 @@ async fn n_t4_schedule_updated_sends_diff(pool: PgPool) {
         },
     ];
 
-    let result = notification_service::notify_schedule_info_updated(
-        &pool,
-        &mock,
-        schedule_id,
-        &changes,
-    )
-    .await;
+    let result =
+        notification_service::notify_schedule_info_updated(&pool, &mock, schedule_id, &changes)
+            .await;
     assert!(result.is_ok());
 
     // schedule_updated 알림 생성 확인
@@ -1202,21 +1298,15 @@ async fn n_t4a_schedule_updated_ignores_end_at(pool: PgPool) {
     let schedule_id = create_test_schedule(&pool, group_id, "host_t4a", "endAt일정").await;
     let mock = MockPushSender::new();
 
-    let changes = vec![
-        FieldChange {
-            field: "end_at".to_string(),
-            old_value: None,
-            new_value: Some("2026-04-10T18:00:00Z".to_string()),
-        },
-    ];
+    let changes = vec![FieldChange {
+        field: "end_at".to_string(),
+        old_value: None,
+        new_value: Some("2026-04-10T18:00:00Z".to_string()),
+    }];
 
-    let result = notification_service::notify_schedule_info_updated(
-        &pool,
-        &mock,
-        schedule_id,
-        &changes,
-    )
-    .await;
+    let result =
+        notification_service::notify_schedule_info_updated(&pool, &mock, schedule_id, &changes)
+            .await;
     assert!(result.is_ok());
 
     // 알림 0건
@@ -1245,13 +1335,8 @@ async fn n_t5_member_joined_notifies_existing(pool: PgPool) {
     add_member_to_group(&pool, group_id, "new_t5").await;
 
     let mock = MockPushSender::new();
-    let result = notification_service::notify_group_member_joined(
-        &pool,
-        &mock,
-        group_id,
-        "new_t5",
-    )
-    .await;
+    let result =
+        notification_service::notify_group_member_joined(&pool, &mock, group_id, "new_t5").await;
     assert!(result.is_ok());
 
     // 기존 멤버(host + existing)에게 알림, 신규 멤버 제외
@@ -1265,14 +1350,13 @@ async fn n_t5_member_joined_notifies_existing(pool: PgPool) {
     assert_eq!(count.0, 2); // host_t5, existing_t5
 
     // 신규 멤버에게는 알림 없음
-    let new_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM notifications WHERE group_id = $1 AND user_id = $2",
-    )
-    .bind(group_id)
-    .bind("new_t5")
-    .fetch_one(&pool)
-    .await
-    .expect("count");
+    let new_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE group_id = $1 AND user_id = $2")
+            .bind(group_id)
+            .bind("new_t5")
+            .fetch_one(&pool)
+            .await
+            .expect("count");
     assert_eq!(new_count.0, 0);
 }
 
@@ -1357,13 +1441,11 @@ async fn b3_badge_check_via_timestamp_comparison(pool: PgPool) {
     let group_id = create_test_group(&pool, "user_b3", "배지그룹3").await;
 
     // last_activity_at을 미래로 업데이트 (새 활동 발생 시뮬레이션)
-    sqlx::query(
-        "UPDATE groups SET last_activity_at = NOW() + INTERVAL '1 hour' WHERE id = $1",
-    )
-    .bind(group_id)
-    .execute(&pool)
-    .await
-    .expect("update");
+    sqlx::query("UPDATE groups SET last_activity_at = NOW() + INTERVAL '1 hour' WHERE id = $1")
+        .bind(group_id)
+        .execute(&pool)
+        .await
+        .expect("update");
 
     // last_activity_at > last_read_at 이면 has_new_activity = true
     let row: (DateTime<Utc>, DateTime<Utc>) = sqlx::query_as(

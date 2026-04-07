@@ -41,13 +41,13 @@ public actor NotificationRemoteDataSource {
     self.db = db
   }
 
-  // MARK: - FCM Token Management
+  // MARK: - Notification Token Management
 
-  /// FCM 토큰 저장
+  /// 일반 알림 토큰 저장
   /// - Parameters:
   ///   - userId: 사용자 ID
-  ///   - token: FCM 토큰
-  public func saveFCMToken(userId: String, token: String) async throws {
+  ///   - token: 현재는 FCM 토큰
+  public func saveNotificationToken(userId: String, token: String) async throws {
     let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
     let platform = await MainActor.run { UIDevice.current.systemName.lowercased() }
@@ -70,9 +70,9 @@ public actor NotificationRemoteDataSource {
     AppLogger.notification.debug("FCM Token saved for user: \(userId), device: \(self.deviceId)")
   }
 
-  /// FCM 토큰 삭제 (현재 디바이스)
+  /// 현재 디바이스 등록 삭제
   /// - Parameter userId: 사용자 ID
-  public func deleteFCMToken(userId: String) async throws {
+  public func deleteCurrentDeviceRegistration(userId: String) async throws {
     let usersCollection = db.collection("users")
     let userRef = usersCollection.document(userId)
 

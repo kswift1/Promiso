@@ -57,6 +57,10 @@ pub struct Schedule {
     pub vote_deadline: Option<DateTime<Utc>>,
     pub tracking_start_minutes_before: Option<i16>,
     pub image_urls: Option<Vec<String>>,
+    pub live_activity_channel_id: Option<String>,
+    pub live_activity_started_at: Option<DateTime<Utc>>,
+    pub live_activity_nudge_sent_at: Option<DateTime<Utc>>,
+    pub live_activity_ended_at: Option<DateTime<Utc>>,
     // 개인일정 전용
     pub reminder_minutes_before: Option<i16>,
 }

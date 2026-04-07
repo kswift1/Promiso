@@ -51,6 +51,7 @@ public protocol ScheduleRemoteDataSourceProtocol {
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   func updateETA(
+    scheduleId: String,
     channelId: String,
     participants: [ParticipantState],
     trackingDurationMinutes: Int

@@ -603,6 +603,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
   /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   public func updateETA(
+    scheduleId: String,
     channelId: String,
     participants: [ParticipantState],
     trackingDurationMinutes: Int
@@ -622,6 +623,7 @@ public class ScheduleRemoteDataSource: ScheduleRemoteDataSourceProtocol {
     }
 
     let callableData: [String: Any] = [
+      "promiseId": scheduleId,
       "channelId": channelId,
       "participants": participantsData,
       "trackingDurationMinutes": trackingDurationMinutes
