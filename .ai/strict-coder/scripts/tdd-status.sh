@@ -18,7 +18,8 @@ RED_COMPLETE=$(jq -r '.red_complete' "$STATE_FILE")
 GREEN_COMPLETE=$(jq -r '.green_complete' "$STATE_FILE")
 LAST_RED=$(jq -r '.last_red_at // "없음"' "$STATE_FILE")
 LAST_GREEN=$(jq -r '.last_green_at // "없음"' "$STATE_FILE")
-TEST_CMD=$(jq -r '.test_command // "없음"' "$STATE_FILE")
+MANIFEST=$(jq -r '.manifest_path // "없음"' "$STATE_FILE")
+TEST_ARGS=$(jq -r '.test_args // "없음"' "$STATE_FILE")
 FAILED=$(jq -r '.failed_count // 0' "$STATE_FILE")
 
 echo "📋 TDD 상태"
@@ -27,5 +28,6 @@ echo "  red_complete:   $RED_COMPLETE"
 echo "  green_complete: $GREEN_COMPLETE"
 echo "  last_red_at:    $LAST_RED"
 echo "  last_green_at:  $LAST_GREEN"
-echo "  test_command:   $TEST_CMD"
+echo "  manifest_path:  $MANIFEST"
+echo "  test_args:      $TEST_ARGS"
 echo "  failed_count:   $FAILED"

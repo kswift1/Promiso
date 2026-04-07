@@ -48,7 +48,8 @@ jq -n \
     --arg red_complete "true" \
     --arg green_complete "false" \
     --arg last_red_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg test_command "cargo test --manifest-path $RUST_DIR/Cargo.toml $*" \
+    --arg manifest_path "$RUST_DIR/Cargo.toml" \
+    --arg test_args "$*" \
     --argjson failed_count "$FAILED_COUNT" \
     '{
         phase: $phase,
@@ -56,7 +57,8 @@ jq -n \
         green_complete: ($green_complete == "true"),
         last_red_at: $last_red_at,
         last_green_at: null,
-        test_command: $test_command,
+        manifest_path: $manifest_path,
+        test_args: $test_args,
         failed_count: $failed_count
     }' > "$STATE_FILE"
 

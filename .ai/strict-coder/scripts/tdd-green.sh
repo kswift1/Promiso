@@ -4,7 +4,7 @@ set -euo pipefail
 # Layer 2: TDD Green Phase
 # Red 상태를 확인한 뒤 테스트를 실행하고 통과를 확인한다.
 # 사용법: ./tdd-green.sh
-# .tdd-state의 test_command를 그대로 재실행한다.
+# .tdd-state의 manifest_path와 test_args를 사용해 cargo test를 직접 실행한다.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -18,7 +18,8 @@ fi
 
 PHASE=$(jq -r '.phase' "$STATE_FILE")
 RED_COMPLETE=$(jq -r '.red_complete' "$STATE_FILE")
-TEST_COMMAND=$(jq -r '.test_command' "$STATE_FILE")
+MANIFEST_PATH=$(jq -r '.manifest_path' "$STATE_FILE")
+TEST_ARGS=$(jq -r '.test_args' "$STATE_FILE")
 
 # Red 상태 확인
 if [ "$PHASE" != "red" ]; then
@@ -32,11 +33,12 @@ if [ "$RED_COMPLETE" != "true" ]; then
 fi
 
 echo "🟢 Green Phase: 테스트 실행 중..."
-echo "  명령: $TEST_COMMAND"
+echo "  명령: cargo test --manifest-path $MANIFEST_PATH $TEST_ARGS"
 echo ""
 
-# Red 때와 동일한 명령으로 테스트 실행
-TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1) || true
+# eval 없이 직접 실행 — 셸 인젝션 방지
+# shellcheck disable=SC2086
+TEST_OUTPUT=$(cargo test --manifest-path "$MANIFEST_PATH" $TEST_ARGS 2>&1) || true
 FAILED_COUNT=$(echo "$TEST_OUTPUT" | grep -c "FAILED" || echo "0")
 
 echo "$TEST_OUTPUT"
