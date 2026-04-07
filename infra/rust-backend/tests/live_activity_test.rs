@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
+use http_body_util::BodyExt;
 use promiso_backend::models::live_activity::{
     LiveActivityJob, LiveActivityJobPayload, LiveActivityJobStatus, LiveActivityJobType,
     LiveActivityParticipant, LiveActivitySender, UpdateScheduleLiveActivityRequest,
@@ -694,4 +695,48 @@ async fn finalize_vote_live_activity_ends_with_host_alert(pool: PgPool) {
     assert!(schedule.vote_live_activity_channel_id.is_none());
     assert!(schedule.vote_live_activity_finalized_at.is_some());
     assert!(schedule.vote_live_activity_ended_at.is_some());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn widget_eta_requires_auth_token_header(pool: PgPool) {
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
+    std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
+
+    let config = promiso_backend::config::Config::from_env();
+    let app = promiso_backend::routes::create_router(pool, &config);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/live-activity/widget/eta")
+                .header("content-type", "application/json")
+                .header("x-user-id", "user_123")
+                .body(Body::from(
+                    serde_json::json!({
+                        "schedule_id": Uuid::new_v4(),
+                        "channel_id": "channel-test",
+                        "participants": [{
+                            "id": "user_123",
+                            "name": "테스터",
+                            "estimated_arrival_minutes": 5
+                        }],
+                        "tracking_duration_minutes": 30
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .expect("request should complete");
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body_text = String::from_utf8(body.to_vec()).expect("body should be utf8");
+    assert!(body_text.contains("X-Auth-Token header is required"));
 }

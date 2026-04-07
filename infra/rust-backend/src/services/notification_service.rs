@@ -488,13 +488,23 @@ fn bypasses_settings(ntype: &NotificationType) -> bool {
     )
 }
 
+const CHANGE_LABEL_KEY: &str = "label";
+const CHANGE_BEFORE_KEY: &str = "before";
+const CHANGE_AFTER_KEY: &str = "after";
+
+const CHANGE_LABEL_TITLE: &str = "제목";
+const CHANGE_LABEL_START_AT: &str = "시작 시간";
+const CHANGE_LABEL_LOCATION: &str = "장소";
+const CHANGE_LABEL_DESCRIPTION: &str = "설명";
+const CHANGE_LABEL_MINIMUM_PARTICIPANTS: &str = "최소 인원";
+
 fn change_label(field: &str) -> &str {
     match field {
-        "title" => "제목",
-        "start_at" => "시작 시간",
-        "location" => "장소",
-        "description" => "설명",
-        "minimum_participants" => "최소 인원",
+        "title" => CHANGE_LABEL_TITLE,
+        "start_at" => CHANGE_LABEL_START_AT,
+        "location" => CHANGE_LABEL_LOCATION,
+        "description" => CHANGE_LABEL_DESCRIPTION,
+        "minimum_participants" => CHANGE_LABEL_MINIMUM_PARTICIPANTS,
         _ => field,
     }
 }
@@ -896,12 +906,15 @@ pub async fn notify_schedule_info_updated(
         .iter()
         .map(|c| {
             let mut map = HashMap::new();
-            map.insert("label".to_string(), change_label(&c.field).to_string());
+            map.insert(
+                CHANGE_LABEL_KEY.to_string(),
+                change_label(&c.field).to_string(),
+            );
             if let Some(ref old) = c.old_value {
-                map.insert("before".to_string(), old.clone());
+                map.insert(CHANGE_BEFORE_KEY.to_string(), old.clone());
             }
             if let Some(ref new) = c.new_value {
-                map.insert("after".to_string(), new.clone());
+                map.insert(CHANGE_AFTER_KEY.to_string(), new.clone());
             }
             map
         })

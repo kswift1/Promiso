@@ -270,16 +270,15 @@ async fn widget_update_live_activity_eta(
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| AppError::Unauthorized("X-User-Id header is required".to_string()))?;
 
-    if let Some(auth_token) = headers
+    let auth_token = headers
         .get("x-auth-token")
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty())
-    {
-        let claims =
-            verify_widget_or_firebase_token(&firebase_auth, &widget_auth, auth_token).await?;
-        if claims.uid != user_id {
-            return Err(AppError::Unauthorized("Token uid mismatch".to_string()));
-        }
+        .ok_or_else(|| AppError::Unauthorized("X-Auth-Token header is required".to_string()))?;
+
+    let claims = verify_widget_or_firebase_token(&firebase_auth, &widget_auth, auth_token).await?;
+    if claims.uid != user_id {
+        return Err(AppError::Unauthorized("Token uid mismatch".to_string()));
     }
 
     let result = live_activity_service::update_schedule_live_activity_from_widget(
