@@ -318,11 +318,29 @@ async fn upload_profile_image_empty_path_rejected(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn batch_get_users_success(pool: PgPool) {
+    insert_test_user(&pool, "test_batch_req", "배치요청자").await;
     insert_test_user(&pool, "test_batch1", "배치유저1").await;
     insert_test_user(&pool, "test_batch2", "배치유저2").await;
 
+    // 공통 그룹 설정
+    let group_id: (uuid::Uuid,) = sqlx::query_as(
+        "INSERT INTO groups (name, invite_code, max_members, last_activity_at) \
+         VALUES ('batch_group', 'BATCH1', 10, NOW()) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    for uid in &["test_batch_req", "test_batch1", "test_batch2"] {
+        sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')")
+            .bind(group_id.0)
+            .bind(uid)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
     let ids = vec!["test_batch1".to_string(), "test_batch2".to_string()];
-    let result = user_service::batch_get_users(&pool, &ids).await;
+    let result = user_service::batch_get_users(&pool, "test_batch_req", &ids).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 2);
 }
@@ -330,16 +348,32 @@ async fn batch_get_users_success(pool: PgPool) {
 // ============================================================
 // 통합 테스트: 공통 그룹 있을 때 타인 조회 (U8 성공 케이스)
 // ============================================================
-// groups 마이그레이션 전이라 group_members INSERT 미완성.
-// groups 마이그레이션 후 TODO 주석 부분을 채우면 의미가 완성된다.
 
-#[ignore = "groups 마이그레이션 후 활성화 — group_members 테이블 필요"]
 #[sqlx::test(migrations = "./migrations")]
 async fn u8_get_other_user_with_common_group_success(pool: PgPool) {
     insert_test_user(&pool, "test_req_grp", "그룹요청자").await;
     insert_test_user(&pool, "test_tgt_grp", "그룹대상자").await;
 
-    // TODO: 공통 그룹 설정 (groups 마이그레이션 후 group_members INSERT 추가)
+    // 공통 그룹 설정
+    let group_id: (uuid::Uuid,) = sqlx::query_as(
+        "INSERT INTO groups (name, invite_code, max_members, last_activity_at) \
+         VALUES ('u8_group', 'U8TEST', 10, NOW()) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')")
+        .bind(group_id.0)
+        .bind("test_req_grp")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')")
+        .bind(group_id.0)
+        .bind("test_tgt_grp")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let result = user_service::get_user_public(&pool, "test_req_grp", "test_tgt_grp").await;
     assert!(result.is_ok());

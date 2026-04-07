@@ -1856,10 +1856,10 @@ pub async fn create_recurring_schedule(
                             "days_of_week는 비어있을 수 없습니다".to_string(),
                         ));
                     }
-                    // 서비스 레벨 검증: 0-6 범위 (0=Sun, 6=Sat)
-                    if days.iter().any(|&d| !(0..=6).contains(&d)) {
+                    // 서비스 레벨 검증: 1-7 범위 (1=일, 7=토)
+                    if days.iter().any(|&d| !(1..=7).contains(&d)) {
                         return Err(AppError::BadRequest(
-                            "days_of_week 값은 0-6 범위여야 합니다".to_string(),
+                            "days_of_week 값은 1-7 범위여야 합니다".to_string(),
                         ));
                     }
                 }

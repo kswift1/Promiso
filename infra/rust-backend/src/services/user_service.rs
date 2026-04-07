@@ -106,31 +106,47 @@ pub async fn get_my_profile(pool: &PgPool, uid: &str) -> Result<UserPrivateRespo
 }
 
 /// 타인 프로필 조회 (public, 공통 그룹 체크)
-/// groups 마이그레이션 전이므로 현재는 항상 Forbidden 반환 (공통 그룹 체크 불가)
 pub async fn get_user_public(
     pool: &PgPool,
     requester_uid: &str,
     target_uid: &str,
 ) -> Result<UserPublicResponse, AppError> {
     // 대상 사용자 존재 확인
-    let _user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
         .bind(target_uid)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
         .ok_or_else(|| AppError::NotFound("사용자를 찾을 수 없습니다".to_string()))?;
 
-    // U8: 공통 그룹 체크 — groups 마이그레이션 전이므로 항상 거부
-    // TODO: groups 마이그레이션 후 group_members JOIN으로 교체
-    // SELECT EXISTS(
-    //   SELECT 1 FROM group_members gm1
-    //   JOIN group_members gm2 ON gm1.group_id = gm2.group_id
-    //   WHERE gm1.user_id = $1 AND gm2.user_id = $2
-    // )
-    let _ = requester_uid; // 컴파일러 경고 방지
-    Err(AppError::Forbidden(
-        "같은 그룹에 속한 사용자만 조회할 수 있습니다".to_string(),
-    ))
+    // U8: 공통 그룹 체크 — 같은 그룹에 속한 사용자만 조회 가능
+    let shares_group: (bool,) = sqlx::query_as(
+        "SELECT EXISTS(\
+           SELECT 1 FROM group_members gm1 \
+           JOIN group_members gm2 ON gm1.group_id = gm2.group_id \
+           WHERE gm1.user_id = $1 AND gm2.user_id = $2\
+         )",
+    )
+    .bind(requester_uid)
+    .bind(target_uid)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !shares_group.0 {
+        return Err(AppError::Forbidden(
+            "같은 그룹에 속한 사용자만 조회할 수 있습니다".to_string(),
+        ));
+    }
+
+    Ok(UserPublicResponse {
+        user_id: user.id,
+        name: user.name,
+        nickname: user.nickname,
+        profile_url: user.profile_url,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+    })
 }
 
 /// 사용자 정보 수정 (닉네임) — U6: name/email은 UpdateUserRequest에 필드 자체가 없음
@@ -219,22 +235,28 @@ pub async fn check_nickname_available(
     })
 }
 
-/// 여러 사용자 조회 (public)
-/// TODO(U8): groups 마이그레이션 후 requester_uid를 받아 공통 그룹 체크 추가
-/// 현재는 인증된 사용자 전체 허용 (전환 기간 임시)
+/// 여러 사용자 조회 (public, 공통 그룹 필터링)
 pub async fn batch_get_users(
     pool: &PgPool,
+    requester_uid: &str,
     user_ids: &[String],
 ) -> Result<Vec<UserPublicResponse>, AppError> {
     if user_ids.is_empty() {
         return Ok(vec![]);
     }
 
-    let users = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ANY($1)")
-        .bind(user_ids)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    // 요청자와 공통 그룹에 속한 사용자만 조회
+    let users = sqlx::query_as::<_, User>(
+        "SELECT DISTINCT u.* FROM users u \
+         JOIN group_members gm1 ON gm1.user_id = u.id \
+         JOIN group_members gm2 ON gm2.group_id = gm1.group_id \
+         WHERE u.id = ANY($1) AND gm2.user_id = $2",
+    )
+    .bind(user_ids)
+    .bind(requester_uid)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // 입력 순서 보존 (iOS가 순서를 기대할 수 있음)
     let user_map: std::collections::HashMap<&str, &User> =
