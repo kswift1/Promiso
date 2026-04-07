@@ -84,7 +84,7 @@ async function request<T>(
   }
 
   const payload = (await response.json()) as RustApiEnvelope<T>;
-  if (payload.data == null) {
+  if (payload.data === undefined) {
     throw new Error("Rust API returned no data");
   }
 

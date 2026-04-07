@@ -152,6 +152,7 @@ extension DependencyValues {
 extension SubscriptionClient: DependencyKey {
   public static let liveValue: SubscriptionClient = {
     @Dependency(\.featureFlags) var featureFlags
+    let logger = Logger(subsystem: "com.promiso", category: "SubscriptionClient")
     let dataSource = StoreKitDataSource()
     let remoteDataSource = SubscriptionRemoteDataSource()
     let rustDataSource = SubscriptionRustDataSource(
@@ -225,9 +226,16 @@ extension SubscriptionClient: DependencyKey {
 
           return AsyncStream { continuation in
             let task = Task {
-              if let initialStatus = try? await rustDataSource.fetchStatus(),
-                 let statusToYield = await statusCache.update(initialStatus) {
-                continuation.yield(statusToYield)
+              do {
+                let initialStatus = try await rustDataSource.fetchStatus()
+                if let statusToYield = await statusCache.update(initialStatus) {
+                  continuation.yield(statusToYield)
+                }
+              } catch {
+                logger.error("Initial Rust subscription status fetch failed: \(error.localizedDescription, privacy: .public)")
+                if let fallbackStatus = await statusCache.update(.none) {
+                  continuation.yield(fallbackStatus)
+                }
               }
 
               await withTaskGroup(of: Void.self) { group in

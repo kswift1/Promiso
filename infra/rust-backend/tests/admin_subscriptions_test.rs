@@ -93,6 +93,9 @@ async fn user_summary_search_by_email_returns_matching_user(pool: PgPool) {
 
     assert_eq!(result.results.len(), 1);
     assert_eq!(result.results[0].user_id, "summary_user_1");
+    assert_eq!(result.results[0].group_count, 0);
+    assert_eq!(result.results[0].device_count, 0);
+    assert_eq!(result.results[0].personal_event_count, 0);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -125,7 +128,73 @@ async fn user_summary_filters_override_state_and_honors_limit(pool: PgPool) {
 
     assert_eq!(result.results.len(), 1);
     assert_eq!(result.results[0].user_id, "filter_user_1");
+    assert!(result.results[0].override_active);
     assert_eq!(result.has_more, false);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn user_summary_includes_joined_counts_and_subscription_status(pool: PgPool) {
+    insert_admin(&pool, "admin_support_join_1", "support").await;
+    insert_user(&pool, "joined_user_1", "조인유저", "조인닉").await;
+
+    let group_id: (uuid::Uuid,) = sqlx::query_as(
+        "INSERT INTO groups (name, invite_code)
+         VALUES ('테스트그룹', 'ABC123')
+         RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to insert group");
+
+    sqlx::query(
+        "INSERT INTO group_members (group_id, user_id, role)
+         VALUES ($1, $2, 'member')",
+    )
+    .bind(group_id.0)
+    .bind("joined_user_1")
+    .execute(&pool)
+    .await
+    .expect("Failed to insert group member");
+
+    sqlx::query(
+        "INSERT INTO devices (user_id, device_id, platform)
+         VALUES ($1, 'device_joined_user_1', 'ios')",
+    )
+    .bind("joined_user_1")
+    .execute(&pool)
+    .await
+    .expect("Failed to insert device");
+
+    sqlx::query(
+        "INSERT INTO schedules (schedule_type, user_id, title, start_at, reminder_minutes_before)
+         VALUES ('personal', $1, '개인일정', NOW(), 30)",
+    )
+    .bind("joined_user_1")
+    .execute(&pool)
+    .await
+    .expect("Failed to insert personal schedule");
+
+    sqlx::query(
+        "INSERT INTO subscriptions (user_id, status, product_id, original_transaction_id, updated_at)
+         VALUES ($1, 'subscribed', 'com.promiso.pro.monthly', 'otx_joined_user_1', NOW())",
+    )
+    .bind("joined_user_1")
+    .execute(&pool)
+    .await
+    .expect("Failed to insert subscription");
+
+    let result = get_user_summary(&pool, "admin_support_join_1", "joined_user_1", "userId")
+        .await
+        .expect("user summary should succeed");
+
+    assert_eq!(result.results.len(), 1);
+    assert_eq!(result.results[0].group_count, 1);
+    assert_eq!(result.results[0].device_count, 1);
+    assert_eq!(result.results[0].personal_event_count, 1);
+    assert_eq!(
+        result.results[0].subscription_status.as_deref(),
+        Some("subscribed")
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

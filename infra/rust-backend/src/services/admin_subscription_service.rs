@@ -302,10 +302,34 @@ pub async fn get_user_summary_with_filters(
     };
 
     let mut builder = QueryBuilder::<Postgres>::new(
-        "SELECT u.id, u.name, u.nickname, u.email
+        "SELECT u.id, u.name, u.nickname, u.email,
+                COALESCE(group_counts.group_count, 0) AS group_count,
+                COALESCE(device_counts.device_count, 0) AS device_count,
+                COALESCE(personal_counts.personal_event_count, 0) AS personal_event_count,
+                s.status::text AS subscription_status,
+                COALESCE(
+                    eo.is_active = TRUE AND (eo.expires_at IS NULL OR eo.expires_at >= NOW()),
+                    FALSE
+                ) AS override_active
          FROM users u
          LEFT JOIN subscriptions s ON s.user_id = u.id
          LEFT JOIN entitlement_overrides eo ON eo.user_id = u.id
+         LEFT JOIN (
+            SELECT user_id, COUNT(*) AS group_count
+            FROM group_members
+            GROUP BY user_id
+         ) group_counts ON group_counts.user_id = u.id
+         LEFT JOIN (
+            SELECT user_id, COUNT(*) AS device_count
+            FROM devices
+            GROUP BY user_id
+         ) device_counts ON device_counts.user_id = u.id
+         LEFT JOIN (
+            SELECT user_id, COUNT(*) AS personal_event_count
+            FROM schedules
+            WHERE schedule_type = 'personal'
+            GROUP BY user_id
+         ) personal_counts ON personal_counts.user_id = u.id
          WHERE 1 = 1",
     );
 
@@ -372,14 +396,24 @@ pub async fn get_user_summary_with_filters(
     });
 
     let users = builder
-        .build_query_as::<BasicUserRecord>()
+        .build_query_as::<UserSummaryRow>()
         .fetch_all(pool)
         .await?;
 
     let has_more = normalized_query.is_none() && users.len() as i64 > requested_limit;
     let mut results = Vec::with_capacity(users.len().min(requested_limit as usize));
     for user in users.into_iter().take(requested_limit as usize) {
-        results.push(build_user_summary(pool, &user).await?);
+        results.push(UserSummary {
+            user_id: user.id,
+            name: Some(user.name),
+            nickname: Some(user.nickname),
+            email: Some(user.email),
+            group_count: user.group_count,
+            device_count: user.device_count,
+            personal_event_count: user.personal_event_count,
+            subscription_status: user.subscription_status,
+            override_active: user.override_active,
+        });
     }
 
     Ok(UserSummaryResult { results, has_more })
@@ -689,6 +723,19 @@ struct BasicUserRecord {
     name: String,
     nickname: String,
     email: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct UserSummaryRow {
+    id: String,
+    name: String,
+    nickname: String,
+    email: String,
+    group_count: i64,
+    device_count: i64,
+    personal_event_count: i64,
+    subscription_status: Option<String>,
+    override_active: bool,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
