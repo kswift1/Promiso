@@ -29,6 +29,88 @@
 | POST | `/api/v1/users/batch` | 여러 유저 조회 (public) | body: {user_ids: [...]} |
 | GET | `/api/v1/users/{id}` | 타인 프로필 (public) | 공통 그룹 체크 (groups 마이그레이션 후) |
 
+## User Settings (인증 필요)
+
+### GET /api/v1/users/me/settings
+
+- 설명: 본인 설정 조회. row가 없으면 기본값 반환 (DB 삽입 없음)
+- 인증: 필수
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "group_sort_type": "joinedRecent",
+      "group_sort_order": null,
+      "conflict_threshold_min": 0,
+      "briefing": {
+        "style": null,
+        "notification_hour": null,
+        "timezone": null,
+        "language": null,
+        "available_transports": ["transit", "car"],
+        "default_location": null
+      }
+    }
+  }
+  ```
+  - `group_sort_type`: `"joinedRecent"` | `"joinedOldest"` | `"nameAscending"` | `"nameDescending"` | `"custom"`
+  - `group_sort_order`: `custom` 정렬 시 그룹 ID 배열, 나머지는 null
+  - `conflict_threshold_min`: 충돌 감지 최소 간격(분). 0 = 겹칠 때만 감지
+  - `briefing.available_transports`: 최소 1개 이상. 기본 `["transit", "car"]`
+  - `briefing.default_location`: `{ name, address?, latitude?, longitude? }` 또는 null
+
+### PATCH /api/v1/users/me/settings
+
+- 설명: 설정 부분 수정. 변경할 필드만 전송 (Option 패턴)
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "group_sort_type": "custom",
+    "group_sort_order": ["uuid-1", "uuid-2"],
+    "conflict_threshold_min": 10,
+    "briefing_style": "friendly",
+    "briefing_notification_hour": 8,
+    "briefing_timezone": "Asia/Seoul",
+    "briefing_language": "ko",
+    "briefing_available_transports": ["transit"],
+    "briefing_default_location": {
+      "name": "집",
+      "address": "서울 강남구...",
+      "latitude": 37.123,
+      "longitude": 127.456
+    }
+  }
+  ```
+  - 필드 생략 — 변경 없음
+  - `group_sort_order`: `null` 전송 시 NULL로 초기화
+  - `briefing_notification_hour`: `null` 전송 시 `briefing_timezone`, `briefing_language`도 함께 삭제 (US-7/8)
+  - `briefing_default_location`: `null` 전송 시 위치 전체 삭제
+  - `briefing_available_transports`: 빈 배열 불가 (400)
+  - `briefing_style` 허용값: `"friendly"` | `"humorous"` | `"concise"` | `"motivational"` | `"calm"`
+- 사이드이펙트: `briefing_subscriptions` projection 자동 재계산 (US-12)
+- 응답 200: UserSettingsResponse (GET과 동일 구조)
+- 에러: 400 (허용값 외 group_sort_type/briefing_style, 빈 available_transports, 빈 location.name)
+
+### POST /api/v1/users/me/settings/initialize-pro
+
+- 설명: Pro 전환 시 브리핑 기본값 일괄 세팅
+- 인증: 필수
+- 요청:
+  ```json
+  { "timezone": "Asia/Seoul" }
+  ```
+  - `timezone` 미전송 시 기본값 `"Asia/Seoul"` 적용
+- 세팅되는 기본값:
+  - `briefing_notification_hour`: 8
+  - `briefing_style`: `"friendly"`
+  - `briefing_timezone`: 요청 timezone
+  - `briefing_language`: `"ko"`
+  - `conflict_threshold_min`: 0
+  - `briefing_available_transports`: `["transit", "car"]`
+- 사이드이펙트: `briefing_subscriptions` projection 자동 재계산 (US-12)
+- 응답 200: UserSettingsResponse (GET과 동일 구조)
+
 ## Groups
 
 ### 인증 불필요
@@ -948,4 +1030,4 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증: 필수
 - 응답 200: `{ "data": { "success": true } }`
 
-*마지막 업데이트: 2026-04-07*
+*마지막 업데이트: 2026-04-08*

@@ -516,6 +516,13 @@ CREATE TABLE recurring_schedules (
 | idx_notifications_user_unread | notifications | (user_id, is_read) WHERE is_read = FALSE | PARTIAL INDEX | 안 읽은 알림 조회 |
 | idx_notifications_schedule_id | notifications | schedule_id WHERE schedule_id IS NOT NULL | PARTIAL INDEX | 일정 기반 알림 조회 |
 | idx_notifications_group_id | notifications | group_id WHERE group_id IS NOT NULL | PARTIAL INDEX | 그룹 기반 알림 조회 |
+| idx_subscriptions_status | subscriptions | status | INDEX | 구독 상태별 조회 |
+| idx_subscriptions_offer_updated_at | subscriptions | (last_offer_type, updated_at DESC) | INDEX | 오퍼 기반 집계 |
+| idx_subscription_owners_user_id | subscription_owners | user_id | INDEX | 유저의 구독 소유권 조회 |
+| idx_entitlements_has_pro | entitlements | has_pro | INDEX | Pro 유저 목록 |
+| idx_entitlement_overrides_active | entitlement_overrides | is_active | INDEX | 활성 오버라이드 조회 |
+| idx_admin_audit_logs_target_created_at | admin_audit_logs | (target_id, created_at DESC) | INDEX | 대상별 감사 로그 최신순 |
+| idx_briefing_subscriptions_next_dispatch_at | briefing_subscriptions | next_dispatch_at | INDEX | 브리핑 발송 스케줄러 polling |
 
 ## 타입
 
@@ -529,6 +536,181 @@ CREATE TABLE recurring_schedules (
 | schedule_type | ENUM | 'group', 'personal' | 일정 구분 |
 | vote_status | ENUM | 'accepted', 'declined' | 투표 상태 (pending = 부재) |
 | recurrence_frequency | ENUM | 'daily', 'weekly', 'monthly' | 반복 주기 |
+| subscription_status | ENUM | 'none', 'subscribed', 'lifetime', 'expired', 'grace_period', 'revoked' | App Store 구독 상태 |
+| entitlement_source | ENUM | 'subscription', 'override', 'none' | Pro 권한 출처 |
+| admin_role | ENUM | 'owner', 'support', 'marketer' | 관리자 역할 |
+
+## user_settings
+
+브리핑, 그룹 정렬, 충돌 감지 설정을 유저별로 저장. row가 없으면 기본값으로 동작하므로 조회 시 INSERT 하지 않는다.
+
+```sql
+CREATE TABLE user_settings (
+    user_id                              TEXT PRIMARY KEY,
+    briefing_notification_hour           SMALLINT,
+    briefing_timezone                    TEXT,
+    briefing_language                    TEXT,
+    briefing_style                       TEXT,
+    briefing_default_location_title      TEXT,
+    briefing_default_location_latitude   DOUBLE PRECISION,
+    briefing_default_location_longitude  DOUBLE PRECISION,
+    -- migration 012 추가 컬럼
+    group_sort_type                      TEXT NOT NULL DEFAULT 'joinedRecent',
+    group_sort_order                     TEXT[],
+    conflict_threshold_min               SMALLINT NOT NULL DEFAULT 0,
+    briefing_available_transports        TEXT[] NOT NULL DEFAULT '{transit,car}',
+    briefing_location_address            TEXT,
+    created_at                           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                           TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_group_sort_type CHECK (
+        group_sort_type IN ('joinedRecent', 'joinedOldest', 'nameAscending', 'nameDescending', 'custom')
+    ),
+    CONSTRAINT chk_conflict_threshold CHECK (conflict_threshold_min >= 0),
+    CONSTRAINT chk_briefing_hour CHECK (
+        briefing_notification_hour IS NULL OR briefing_notification_hour BETWEEN 0 AND 23
+    ),
+    CONSTRAINT chk_briefing_style CHECK (
+        briefing_style IS NULL OR briefing_style IN ('friendly', 'humorous', 'concise', 'motivational', 'calm')
+    ),
+    CONSTRAINT chk_briefing_transports_not_empty CHECK (
+        array_length(briefing_available_transports, 1) >= 1
+    )
+);
+```
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| user_id | TEXT | PK | Firebase Auth UID |
+| briefing_notification_hour | SMALLINT | nullable, 0–23 | 브리핑 알림 시각 (시). NULL = 브리핑 비활성 |
+| briefing_timezone | TEXT | nullable | IANA timezone. hour NULL 시 함께 삭제 |
+| briefing_language | TEXT | nullable | 브리핑 언어 코드. hour NULL 시 함께 삭제 |
+| briefing_style | TEXT | nullable, 5가지 enum | 브리핑 문체 |
+| briefing_default_location_title | TEXT | nullable | 기본 출발지 이름 |
+| briefing_default_location_latitude | DOUBLE PRECISION | nullable | 기본 출발지 위도 |
+| briefing_default_location_longitude | DOUBLE PRECISION | nullable | 기본 출발지 경도 |
+| briefing_location_address | TEXT | nullable | 기본 출발지 도로명 주소 |
+| group_sort_type | TEXT | NOT NULL, 5가지 enum, default 'joinedRecent' | 그룹 목록 정렬 기준 |
+| group_sort_order | TEXT[] | nullable | custom 정렬 시 그룹 ID 배열 |
+| conflict_threshold_min | SMALLINT | NOT NULL, >= 0, default 0 | 충돌 감지 최소 간격(분) |
+| briefing_available_transports | TEXT[] | NOT NULL, 최소 1개, default '{transit,car}' | 브리핑에서 사용할 교통수단 |
+
+## briefing_subscriptions
+
+브리핑 발송 스케줄러가 사용하는 projection 테이블. `user_settings` + `entitlements` 를 합산하여 자동 재계산된다.
+
+```sql
+CREATE TABLE briefing_subscriptions (
+    user_id                    TEXT PRIMARY KEY,
+    notification_hour          SMALLINT    NOT NULL,
+    timezone                   TEXT        NOT NULL,
+    language                   TEXT        NOT NULL,
+    style                      TEXT        NOT NULL,
+    next_dispatch_at           TIMESTAMPTZ NOT NULL,
+    default_location_title     TEXT,
+    default_location_latitude  DOUBLE PRECISION,
+    default_location_longitude DOUBLE PRECISION,
+    updated_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+> row가 있으면 해당 시각에 브리핑 발송. `user_settings.briefing_notification_hour`가 NULL이거나 Pro entitlement가 없으면 row 삭제.
+
+## subscriptions
+
+App Store 서버 알림 기반 구독 상태. `entitlements`가 read model (권한 판정 전용).
+
+```sql
+CREATE TYPE subscription_status AS ENUM (
+    'none', 'subscribed', 'lifetime', 'expired', 'grace_period', 'revoked'
+);
+
+CREATE TYPE entitlement_source AS ENUM ('subscription', 'override', 'none');
+
+CREATE TYPE admin_role AS ENUM ('owner', 'support', 'marketer');
+
+CREATE TABLE subscriptions (
+    user_id                       TEXT                PRIMARY KEY,
+    status                        subscription_status NOT NULL,
+    product_id                    TEXT,
+    original_transaction_id       TEXT,
+    expiration_date               TIMESTAMPTZ,
+    purchase_date                 TIMESTAMPTZ,
+    latest_app_store_signed_date  BIGINT,
+    latest_transaction_id         TEXT,
+    last_notification_type        TEXT,
+    last_offer_type               INTEGER,
+    last_offer_identifier         TEXT,
+    created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE subscription_owners (
+    original_transaction_id  TEXT        PRIMARY KEY,
+    user_id                  TEXT        NOT NULL,
+    product_id               TEXT        NOT NULL,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE entitlement_overrides (
+    user_id           TEXT        PRIMARY KEY,
+    is_active         BOOLEAN     NOT NULL DEFAULT FALSE,
+    override_type     TEXT        NOT NULL,
+    reason            TEXT,
+    expires_at        TIMESTAMPTZ,
+    created_by        TEXT,
+    revoked_at        TIMESTAMPTZ,
+    revoked_by        TEXT,
+    revoked_reason    TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE entitlements (
+    user_id                TEXT                PRIMARY KEY,
+    has_pro                BOOLEAN             NOT NULL,
+    source                 entitlement_source  NOT NULL,
+    subscription_status    subscription_status,
+    product_id             TEXT,
+    expiration_date        TIMESTAMPTZ,
+    override_active        BOOLEAN             NOT NULL,
+    override_expires_at    TIMESTAMPTZ,
+    override_type          TEXT,
+    last_offer_type        INTEGER,
+    last_offer_identifier  TEXT,
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE admin_users (
+    user_id      TEXT       PRIMARY KEY,
+    email        TEXT,
+    role         admin_role NOT NULL,
+    enabled      BOOLEAN    NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE admin_audit_logs (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_id     TEXT        NOT NULL,
+    action       TEXT        NOT NULL,
+    target_id    TEXT,
+    target_type  TEXT,
+    before_data  JSONB,
+    after_data   JSONB,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+| 테이블 | 역할 |
+|--------|------|
+| subscriptions | App Store 원본 상태 저장. `status`: none/subscribed/lifetime/expired/grace_period/revoked |
+| subscription_owners | `original_transaction_id` → `user_id` 소유권 매핑 (가족 공유 등 중복 방지) |
+| entitlement_overrides | 운영자가 수동으로 Pro 권한을 부여/회수하는 오버라이드 |
+| entitlements | 권한 판정 read model. `has_pro = TRUE`이면 Pro 기능 허용 |
+| admin_users | 관리자 계정. role: owner/support/marketer |
+| admin_audit_logs | 관리자 작업 이력 |
 
 ## scheduleSlots 제거 근거
 
@@ -549,4 +731,4 @@ WHERE s.schedule_type = 'personal' AND s.user_id = $1
 -- + recurring_schedules는 앱 레벨에서 규칙 기반 확장
 ```
 
-*마지막 업데이트: 2026-04-07*
+*마지막 업데이트: 2026-04-08*
