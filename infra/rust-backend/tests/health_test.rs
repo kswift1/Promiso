@@ -1,11 +1,8 @@
-use std::sync::Arc;
-
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use promiso_backend::config::Config;
 use promiso_backend::routes;
-use promiso_backend::services::apns_service::RealApnsSender;
 use sqlx::PgPool;
 use tower::ServiceExt;
 
@@ -15,8 +12,7 @@ async fn health_returns_healthy_when_db_is_available(pool: PgPool) {
     std::env::set_var("FIREBASE_PROJECT_ID", "test-project");
 
     let config = Config::from_env();
-    let apns_sender = Arc::new(RealApnsSender::new(&config));
-    let app = routes::create_router(pool, &config, apns_sender);
+    let app = routes::create_router(pool, &config);
 
     let response = app
         .oneshot(

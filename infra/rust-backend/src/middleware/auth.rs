@@ -6,7 +6,7 @@ use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
 use axum::response::Response;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::errors::AppError;
@@ -26,11 +26,24 @@ struct FirebaseClaims {
     email: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct WidgetClaims {
+    sub: String,
+    scope: String,
+    exp: usize,
+    iat: Option<usize>,
+}
+
 #[derive(Clone)]
 pub struct FirebaseAuth {
     project_id: String,
     cached_keys: Arc<RwLock<CachedKeys>>,
     http_client: reqwest::Client,
+}
+
+#[derive(Clone)]
+pub struct WidgetAuth {
+    secret: Option<String>,
 }
 
 struct CachedKeys {
@@ -138,6 +151,55 @@ impl FirebaseAuth {
     }
 }
 
+impl WidgetAuth {
+    pub fn new(secret: Option<String>) -> Self {
+        Self { secret }
+    }
+
+    pub fn verify_token(&self, token: &str) -> Result<Claims, AppError> {
+        let secret = self.secret.as_ref().ok_or_else(|| {
+            AppError::Unauthorized("Widget token verification is not configured".to_string())
+        })?;
+
+        let token_data = decode::<WidgetClaims>(
+            token,
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &Validation::new(Algorithm::HS256),
+        )
+        .map_err(|e| AppError::Unauthorized(format!("Widget token validation failed: {e}")))?;
+
+        if token_data.claims.sub.is_empty() {
+            return Err(AppError::Unauthorized("Empty sub claim".to_string()));
+        }
+
+        if token_data.claims.scope != "widget:read" {
+            return Err(AppError::Forbidden(
+                "Invalid widget token scope".to_string(),
+            ));
+        }
+
+        Ok(Claims {
+            uid: token_data.claims.sub,
+            email: None,
+        })
+    }
+}
+
+pub async fn verify_widget_or_firebase_token(
+    firebase_auth: &FirebaseAuth,
+    widget_auth: &WidgetAuth,
+    token: &str,
+) -> Result<Claims, AppError> {
+    let header = decode_header(token)
+        .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
+
+    if header.alg == Algorithm::HS256 {
+        return widget_auth.verify_token(token);
+    }
+
+    firebase_auth.verify_token(token).await
+}
+
 pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, AppError> {
     let firebase_auth = request
         .extensions()
@@ -158,4 +220,64 @@ pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, 
 
     request.extensions_mut().insert(claims);
     Ok(next.run(request).await)
+}
+
+#[cfg(test)]
+mod tests {
+    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{AppError, WidgetAuth, WidgetClaims};
+
+    #[test]
+    fn widget_auth_verifies_valid_token() {
+        let widget_auth = WidgetAuth::new(Some("test-secret".to_string()));
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should work")
+            .as_secs() as usize;
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &WidgetClaims {
+                sub: "user_123".to_string(),
+                scope: "widget:read".to_string(),
+                exp: now + 3600,
+                iat: Some(now),
+            },
+            &EncodingKey::from_secret("test-secret".as_bytes()),
+        )
+        .expect("token should encode");
+
+        let claims = widget_auth
+            .verify_token(&token)
+            .expect("token should verify");
+
+        assert_eq!(claims.uid, "user_123");
+    }
+
+    #[test]
+    fn widget_auth_rejects_invalid_scope() {
+        let widget_auth = WidgetAuth::new(Some("test-secret".to_string()));
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should work")
+            .as_secs() as usize;
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &WidgetClaims {
+                sub: "user_123".to_string(),
+                scope: "widget:write".to_string(),
+                exp: now + 3600,
+                iat: Some(now),
+            },
+            &EncodingKey::from_secret("test-secret".as_bytes()),
+        )
+        .expect("token should encode");
+
+        let error = widget_auth
+            .verify_token(&token)
+            .expect_err("invalid scope should fail");
+
+        assert!(matches!(error, AppError::Forbidden(_)));
+    }
 }

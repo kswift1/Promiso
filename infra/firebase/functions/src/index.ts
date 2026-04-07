@@ -54,31 +54,6 @@ export {
 } from "./functions/notifications";
 
 // ============================================================================
-// LiveActivity Functions
-// ============================================================================
-export {
-  registerPushToStartToken,
-  startLiveActivity,
-  updateETA,
-  widgetUpdateETA,
-  executeLiveActivityStart,
-  executeLiveActivityEnd,
-  executeETASharingNudge,
-  onPromiseConfirmedScheduleLiveActivity,
-} from "./functions/liveActivity";
-
-// ============================================================================
-// Vote LiveActivity Functions
-// ============================================================================
-export {
-  startVoteLiveActivity,
-  updateVoteResponse,
-  widgetVoteResponse,
-  finalizeVote,
-  endVoteLiveActivity,
-} from "./functions/voteLiveActivity";
-
-// ============================================================================
 // Emoji Functions
 // ============================================================================
 export {generateEmoji} from "./functions/emoji";

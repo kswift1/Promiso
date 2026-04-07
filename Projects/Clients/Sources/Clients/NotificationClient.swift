@@ -9,14 +9,14 @@ import UserNotifications
 
 @DependencyClient
 public struct NotificationClient: Sendable {
-  // MARK: - FCM Token Management
+  // MARK: - Device Registration
 
-  /// FCM 토큰 Firestore 저장
-  /// - Parameter token: FCM 토큰
-  public var saveFCMToken: @Sendable (_ token: String) async throws -> Void
+  /// 일반 알림용 토큰 저장
+  /// - Parameter token: 현재는 FCM registration token
+  public var saveNotificationToken: @Sendable (_ token: String) async throws -> Void
 
-  /// FCM 토큰 삭제 (로그아웃 시)
-  public var deleteFCMToken: @Sendable () async throws -> Void
+  /// 현재 디바이스 등록 삭제 (로그아웃 시)
+  public var deleteCurrentDeviceRegistration: @Sendable () async throws -> Void
 
   /// LiveActivity Push to Start 토큰 저장 (앱 단위 통합)
   /// - Parameter token: Push to Start 토큰
@@ -83,8 +83,8 @@ public struct NotificationClient: Sendable {
 
 extension NotificationClient: TestDependencyKey {
   public static let previewValue = Self(
-    saveFCMToken: { _ in },
-    deleteFCMToken: { },
+    saveNotificationToken: { _ in },
+    deleteCurrentDeviceRegistration: { },
     saveLiveActivityPushToStartToken: { _ in },
     getAuthorizationStatus: { .authorized },
     requestAuthorization: { true },
@@ -99,8 +99,8 @@ extension NotificationClient: TestDependencyKey {
   )
 
   public static let testValue = Self(
-    saveFCMToken: unimplemented("\(Self.self).saveFCMToken"),
-    deleteFCMToken: unimplemented("\(Self.self).deleteFCMToken"),
+    saveNotificationToken: unimplemented("\(Self.self).saveNotificationToken"),
+    deleteCurrentDeviceRegistration: unimplemented("\(Self.self).deleteCurrentDeviceRegistration"),
     saveLiveActivityPushToStartToken: unimplemented(
       "\(Self.self).saveLiveActivityPushToStartToken"
     ),
@@ -135,62 +135,32 @@ extension NotificationClient: DependencyKey {
       )
     )
 
-    /// 현재 디바이스 ID (UserDefaults에서 가져오거나 새로 생성)
-    func currentDeviceId() -> String {
-      let key = AppConstants.UserDefaults.deviceId
-      if let existingId = UserDefaults.standard.string(forKey: key) {
-        return existingId
-      }
-      let newId = UUID().uuidString
-      UserDefaults.standard.set(newId, forKey: key)
-      return newId
-    }
-
     return Self(
-      saveFCMToken: { token in
+      saveNotificationToken: { token in
         if featureFlags.useRustAPI(.notifications) {
-          let deviceId = currentDeviceId()
-          try await rustDataSource.saveFCMToken(deviceId: deviceId, token: token)
+          try await rustDataSource.saveNotificationToken(token)
         } else {
           guard let currentUser = await authClient.currentUser() else {
             throw NotificationClientError.authenticationRequired
           }
-          try await dataSource.saveFCMToken(userId: currentUser.uid, token: token)
+          try await dataSource.saveNotificationToken(userId: currentUser.uid, token: token)
         }
       },
 
-      deleteFCMToken: {
+      deleteCurrentDeviceRegistration: {
         if featureFlags.useRustAPI(.notifications) {
-          let deviceId = currentDeviceId()
-          try await rustDataSource.deleteFCMToken(deviceId: deviceId)
+          try await rustDataSource.deleteCurrentDevice()
         } else {
           guard let currentUser = await authClient.currentUser() else {
             throw NotificationClientError.authenticationRequired
           }
-          try await dataSource.deleteFCMToken(userId: currentUser.uid)
+          try await dataSource.deleteCurrentDeviceRegistration(userId: currentUser.uid)
         }
       },
 
       saveLiveActivityPushToStartToken: { token in
-        if featureFlags.useRustAPI(.notifications) {
-          let deviceId = currentDeviceId()
-          // Push to Start 토큰 저장 시 기존 FCM 토큰도 함께 전달 필요
-          // deviceId의 기존 FCM 토큰을 가져올 수 없으므로 빈 문자열 전달
-          // 서버에서 기존 토큰을 유지하는 upsert 로직 활용
-          try await rustDataSource.savePushToStartToken(
-            deviceId: deviceId,
-            fcmToken: "",
-            token: token
-          )
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.saveLiveActivityPushToStartToken(
-            userId: currentUser.uid,
-            token: token
-          )
-        }
+        // Live Activity는 Rust/APNs 경로만 유지한다.
+        try await rustDataSource.saveLiveActivityPushToStartToken(token)
       },
 
       getAuthorizationStatus: {

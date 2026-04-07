@@ -98,7 +98,7 @@ struct VoteResponseIntent: LiveActivityIntent {
       return .result()
     }
 
-    // Firebase Functions HTTP 호출
+    // Rust API 호출
     await callVoteResponseFunction(
       channelId: channelId,
       scheduleId: scheduleId,
@@ -112,7 +112,7 @@ struct VoteResponseIntent: LiveActivityIntent {
   }
 }
 
-// MARK: - Firebase Functions HTTP Client
+// MARK: - Rust API HTTP Client
 
 private func callVoteResponseFunction(
   channelId: String,
@@ -122,17 +122,12 @@ private func callVoteResponseFunction(
   totalMemberCount: Int,
   currentStateJSON: String
 ) async {
-  let region = "asia-northeast3"
-  let functionName = "widgetVoteResponse"
-  let projectId = LiveActivityIntentKey.firebaseProjectId
-
-  // 에뮬레이터 분기: App Group에 에뮬레이터 호스트가 있으면 로컬, 없으면 프로덕션
   let baseURL: String
   if let emulatorHost = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
     .string(forKey: LiveActivityIntentKey.emulatorHostKey), !emulatorHost.isEmpty {
-    baseURL = "http://\(emulatorHost):5001/\(projectId)/\(region)/\(functionName)"
+    baseURL = "http://\(emulatorHost):8080/api/v1/live-activity/widget/vote"
   } else {
-    baseURL = "https://\(region)-\(projectId).cloudfunctions.net/\(functionName)"
+    baseURL = "\(LiveActivityIntentKey.rustAPIBaseURL)/api/v1/live-activity/widget/vote"
   }
 
   guard let url = URL(string: baseURL) else { return }

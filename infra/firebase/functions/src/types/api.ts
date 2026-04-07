@@ -1335,30 +1335,6 @@ export interface UpdateETAResponse {
 // EndLiveActivityRequest 제거됨 - APNs dismissal-date로 auto-dismiss 처리
 // EndLiveActivityResponse 제거됨
 
-/**
- * LiveActivity Push to Start 토큰 등록 요청
- *
- * @remarks
- * - 인증 필수 (Firebase Auth)
- * - iOS 17.2+ 디바이스에서 앱 시작 시 호출
- * - pushToStartToken 필드에 통합 저장 (Activity 타입 무관)
- */
-export interface RegisterPushToStartTokenRequest {
-  /** Push to Start 토큰 */
-  token: string;
-
-  /** 디바이스 ID */
-  deviceId: string;
-}
-
-/**
- * LiveActivity Push to Start 토큰 등록 응답
- */
-export interface RegisterPushToStartTokenResponse {
-  /** 성공 여부 */
-  success: boolean;
-}
-
 // ============================================================================
 // LiveActivity Update 토큰 등록 - 제거됨
 // ============================================================================

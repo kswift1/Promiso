@@ -426,10 +426,7 @@ async fn auth_required_returns_401(pool: PgPool) {
     use tower::ServiceExt; // oneshot
 
     let config = promiso_backend::config::Config::from_env();
-    let apns_sender = std::sync::Arc::new(
-        promiso_backend::services::apns_service::RealApnsSender::new(&config),
-    );
-    let app = promiso_backend::routes::create_router(pool, &config, apns_sender);
+    let app = promiso_backend::routes::create_router(pool, &config);
 
     // Authorization 헤더 없이 요청
     let response = app

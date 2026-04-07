@@ -1,749 +1,877 @@
+use std::sync::Arc;
+
 use chrono::{Duration, Utc};
+use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::live_activity::*;
-use crate::models::schedule::Schedule;
-use crate::services::scheduled_task_service;
+use crate::models::live_activity::{
+    LiveActivityJob, LiveActivityJobPayload, LiveActivityJobStatus, LiveActivityJobType,
+    LiveActivityParticipant, LiveActivitySender, StartScheduleLiveActivityResponse,
+    UpdateScheduleLiveActivityRequest, UpdateScheduleLiveActivityResponse,
+};
+use crate::models::notification::{NotificationType, PushSender, SendPushRequest};
+use crate::models::schedule::{Schedule, ScheduleType};
+use crate::services::notification_service;
 
-// ============================================================
-// 내부 헬퍼
-// ============================================================
+const DEFAULT_TRACKING_DURATION_MINUTES: i16 = 30;
+const DEFAULT_END_MINUTES_AFTER_START: i64 = 30;
+const JOB_BATCH_SIZE: i64 = 10;
+const JOB_LOCK_SECONDS: i64 = 60;
+const JOB_MAX_ATTEMPTS: i32 = 3;
+const WORKER_POLL_INTERVAL_SECONDS: u64 = 5;
 
-/// schedules 테이블에서 id로 Schedule 조회. 없으면 NotFound.
-async fn fetch_schedule(pool: &PgPool, schedule_id: Uuid) -> Result<Schedule, AppError> {
-    sqlx::query_as::<_, Schedule>("SELECT * FROM schedules WHERE id = $1")
-        .bind(schedule_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-        .ok_or_else(|| AppError::NotFound("일정을 찾을 수 없습니다".to_string()))
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct GroupSummary {
+    name: String,
+    image_url: Option<String>,
 }
 
-/// schedule.user_id == user_uid 확인. 아니면 Forbidden.
-fn ensure_host(schedule: &Schedule, user_uid: &str, action: &str) -> Result<(), AppError> {
-    if schedule.user_id != user_uid {
-        return Err(AppError::Forbidden(format!(
-            "Only host can {}",
-            action
-        )));
-    }
-    Ok(())
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct AcceptedParticipantRow {
+    id: String,
+    nickname: String,
 }
 
-/// accepted 유저들의 push_to_start_token 수집
-async fn collect_push_to_start_tokens(
-    pool: &PgPool,
-    user_ids: &[String],
-) -> Result<Vec<String>, AppError> {
-    if user_ids.is_empty() {
-        return Ok(Vec::new());
-    }
-    let rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT push_to_start_token FROM devices \
-         WHERE user_id = ANY($1) AND push_to_start_token IS NOT NULL",
-    )
-    .bind(user_ids)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    Ok(rows.into_iter().map(|(t,)| t).collect())
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct PushToStartTarget {
+    user_id: String,
+    push_to_start_token: String,
 }
 
-/// schedule_votes에서 accepted 유저 목록 조회
-async fn get_accepted_user_ids(
-    pool: &PgPool,
-    schedule_id: Uuid,
-) -> Result<Vec<String>, AppError> {
-    let rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM schedule_votes \
-         WHERE schedule_id = $1 AND status = 'accepted'",
-    )
-    .bind(schedule_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+pub async fn sync_schedule_jobs(pool: &PgPool, schedule_id: Uuid) -> Result<(), AppError> {
+    let schedule = load_schedule(pool, schedule_id).await?;
 
-    Ok(rows.into_iter().map(|(id,)| id).collect())
-}
-
-/// schedule_votes에서 accepted count 조회
-async fn count_accepted(pool: &PgPool, schedule_id: Uuid) -> Result<i64, AppError> {
-    let row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM schedule_votes \
-         WHERE schedule_id = $1 AND status = 'accepted'",
-    )
-    .bind(schedule_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    Ok(row.0)
-}
-
-/// vote 결과 (accepted / declined 리스트) 조회 -- VoteMember (id + name) 포함
-async fn get_vote_lists_with_names(
-    pool: &PgPool,
-    schedule_id: Uuid,
-) -> Result<(Vec<VoteMember>, Vec<VoteMember>), AppError> {
-    let rows: Vec<(String, String, String)> = sqlx::query_as(
-        "SELECT sv.user_id, u.nickname, sv.status::TEXT \
-         FROM schedule_votes sv \
-         JOIN users u ON u.id = sv.user_id \
-         WHERE sv.schedule_id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    let mut accepted = Vec::new();
-    let mut declined = Vec::new();
-    for (user_id, name, status) in rows {
-        let member = VoteMember { id: user_id, name };
-        match status.as_str() {
-            "accepted" => accepted.push(member),
-            "declined" => declined.push(member),
-            _ => {}
-        }
-    }
-    Ok((accepted, declined))
-}
-
-/// group_members count for a group
-async fn count_group_members(pool: &PgPool, group_id: Uuid) -> Result<i64, AppError> {
-    let row: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_one(pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    Ok(row.0)
-}
-
-// ============================================================
-// Schedule LiveActivity
-// ============================================================
-
-pub async fn start_live_activity(
-    pool: &PgPool,
-    apns: &dyn ApnsSender,
-    user_uid: &str,
-    schedule_id: Uuid,
-) -> Result<LiveActivityResponse, AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 권한: 호스트만 시작 가능
-    ensure_host(&schedule, user_uid, "start live activity")?;
-
-    // 참가자 수 확인
-    let accepted_count = count_accepted(pool, schedule_id).await?;
-    let minimum = schedule.minimum_participants.unwrap_or(2) as i64;
-
-    if accepted_count < minimum {
-        // 인원 부족: 성공 반환하지만 APNs 전송 안 함
-        return Ok(LiveActivityResponse {
-            success: true,
-            success_count: 0,
-            failure_count: 0,
-        });
-    }
-
-    // tracking 기본값 30
-    let tracking_minutes = schedule.tracking_start_minutes_before.unwrap_or(30) as i64;
-
-    // accepted 유저들의 push_to_start_token 수집
-    let accepted_users = get_accepted_user_ids(pool, schedule_id).await?;
-    let tokens = collect_push_to_start_tokens(pool, &accepted_users).await?;
-
-    // APNs 채널 생성 + Push to Start 전송
-    let channel_id = apns.create_channel().await?;
-    let payload = ApnsPayload {
-        event: "start".to_string(),
-        content_state: serde_json::json!({
-            "schedule_id": schedule_id.to_string(),
-        }),
-        channel_id: Some(channel_id),
-        dismissal_date: None,
-        alert: None,
-    };
-
-    let apns_result = if !tokens.is_empty() {
-        apns.send_push_to_start(&tokens, &payload).await
-    } else {
-        ApnsResult {
-            success_count: 0,
-            failure_count: 0,
-        }
-    };
-
-    // 종료 task: start_at + 30분
-    let end_execute_at = schedule.start_at + Duration::minutes(30);
-    scheduled_task_service::create_task(
-        pool,
-        "end_live_activity",
-        schedule_id,
-        end_execute_at,
-        serde_json::json!({"action": "end_live_activity"}),
-    )
-    .await?;
-
-    // 넛지 task: now + tracking/2분, 약속당 1개
-    let nudge_execute_at = Utc::now() + Duration::minutes(tracking_minutes / 2);
-    let nudge_payload = serde_json::json!({
-        "action": "nudge",
-        "user_ids": accepted_users,
-    });
-    scheduled_task_service::create_task(
-        pool,
-        "nudge",
-        schedule_id,
-        nudge_execute_at,
-        nudge_payload,
-    )
-    .await?;
-
-    // la_started = true 업데이트
-    sqlx::query("UPDATE schedules SET la_started = true WHERE id = $1")
-        .bind(schedule_id)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    Ok(LiveActivityResponse {
-        success: true,
-        success_count: apns_result.success_count,
-        failure_count: apns_result.failure_count,
-    })
-}
-
-pub async fn update_eta(
-    pool: &PgPool,
-    apns: &dyn ApnsSender,
-    _user_uid: &str,
-    schedule_id: Uuid,
-    req: UpdateETARequest,
-) -> Result<LiveActivityResponse, AppError> {
-    let _schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 참가자 상태 분석
-    let total_count = req.participants.len() as i32;
-    let arrived_count = req
-        .participants
-        .iter()
-        .filter(|p| p.estimated_arrival_minutes == Some(0))
-        .count() as i32;
-
-    // alert: 첫 번째 도착자 또는 모두 도착 시
-    let alert = if arrived_count == 1 && total_count > 1 {
-        // 첫 도착자 이름 찾기
-        let first_arrived = req
-            .participants
-            .iter()
-            .find(|p| p.estimated_arrival_minutes == Some(0));
-        first_arrived.map(|p| ApnsAlert {
-            title: "도착 알림".to_string(),
-            body: format!("{}님이 도착했습니다!", p.name),
-        })
-    } else if arrived_count == total_count && total_count > 1 {
-        // 모두 도착 alert
-        Some(ApnsAlert {
-            title: "모두 도착!".to_string(),
-            body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다".to_string(),
-        })
-    } else {
-        None
-    };
-
-    // content_state 구성
-    let content_state = serde_json::to_value(&req.participants)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    let payload = ApnsPayload {
-        event: "update".to_string(),
-        content_state,
-        channel_id: Some(req.channel_id.clone()),
-        dismissal_date: None,
-        alert,
-    };
-
-    let apns_result = apns.send_broadcast(&req.channel_id, &payload).await;
-
-    // 모두 도착: delayed_end_live_activity task (5분 후)
-    if arrived_count == total_count && total_count > 1 {
-        // 기존 pending delayed_end 태스크 취소 (동시 호출 시 중복 방지)
-        scheduled_task_service::cancel_pending_tasks(
-            pool,
-            schedule_id,
-            Some("delayed_end_live_activity"),
-        )
-        .await?;
-
-        let delayed_end_at = Utc::now() + Duration::minutes(5);
-        scheduled_task_service::create_task(
-            pool,
-            "delayed_end_live_activity",
-            schedule_id,
-            delayed_end_at,
-            serde_json::json!({"action": "delayed_end_live_activity"}),
-        )
-        .await?;
-    }
-
-    Ok(LiveActivityResponse {
-        success: true,
-        success_count: apns_result.success_count,
-        failure_count: apns_result.failure_count,
-    })
-}
-
-pub async fn schedule_live_activity(
-    pool: &PgPool,
-    schedule_id: Uuid,
-) -> Result<(), AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 이미 시작된 경우 무시
-    if schedule.la_started {
+    if schedule.schedule_type != ScheduleType::Group {
         return Ok(());
     }
 
-    // 기존 pending tasks 취소 (재스케줄 지원)
-    scheduled_task_service::cancel_pending_tasks(pool, schedule_id, None).await?;
+    let accepted_participants = load_accepted_participants(pool, schedule_id).await?;
+    let accepted_count = accepted_participants.len() as i64;
+    let minimum_participants = schedule.minimum_participants.unwrap_or(2) as i64;
+    let tracking_minutes = schedule.tracking_start_minutes_before;
+    let now = Utc::now();
+    let already_started =
+        schedule.live_activity_started_at.is_some() && schedule.live_activity_ended_at.is_none();
+    let is_confirmed = accepted_count >= minimum_participants;
 
-    // 새 version 생성
-    let new_version = Uuid::new_v4();
+    if already_started {
+        return Ok(());
+    }
 
-    // tracking 기본값 30
-    let tracking_minutes = schedule.tracking_start_minutes_before.unwrap_or(30) as i64;
+    if !is_confirmed || tracking_minutes.is_none() || schedule.start_at <= now {
+        cancel_pending_jobs(
+            pool,
+            schedule_id,
+            &[
+                LiveActivityJobType::Start,
+                LiveActivityJobType::End,
+                LiveActivityJobType::Nudge,
+            ],
+        )
+        .await?;
 
-    // DB 업데이트
-    sqlx::query(
-        "UPDATE schedules SET la_scheduled = true, la_scheduled_at = NOW(), \
-         la_schedule_version = $1 WHERE id = $2",
-    )
-    .bind(new_version)
-    .bind(schedule_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+        sqlx::query(
+            "UPDATE schedules SET live_activity_channel_id = NULL, \
+             live_activity_started_at = NULL, live_activity_nudge_sent_at = NULL, \
+             live_activity_ended_at = NULL WHERE id = $1",
+        )
+        .bind(schedule_id)
+        .execute(pool)
+        .await?;
 
-    // scheduled_tasks에 start_live_activity task INSERT
-    let execute_at = schedule.start_at - Duration::minutes(tracking_minutes);
-    scheduled_task_service::create_task(
+        return Ok(());
+    }
+
+    let scheduled_at = schedule.start_at - Duration::minutes(tracking_minutes.unwrap() as i64);
+    replace_pending_job(
         pool,
-        "start_live_activity",
         schedule_id,
-        execute_at,
-        serde_json::json!({
-            "action": "start_live_activity",
-            "version": new_version.to_string(),
-        }),
+        LiveActivityJobType::Start,
+        scheduled_at,
+        None,
+    )
+    .await?;
+    cancel_pending_jobs(
+        pool,
+        schedule_id,
+        &[LiveActivityJobType::End, LiveActivityJobType::Nudge],
     )
     .await?;
 
     Ok(())
 }
 
-pub async fn cancel_live_activity_schedule(
+pub async fn start_schedule_live_activity(
     pool: &PgPool,
+    sender: &dyn LiveActivitySender,
     schedule_id: Uuid,
-) -> Result<(), AppError> {
-    // la_scheduled 리셋
-    sqlx::query(
-        "UPDATE schedules SET la_scheduled = false, la_scheduled_at = NULL, \
-         la_schedule_version = NULL WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    user_id: &str,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    let schedule = load_schedule(pool, schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
 
-    // pending tasks 취소
-    scheduled_task_service::cancel_pending_tasks(pool, schedule_id, None).await?;
+    if schedule.user_id != user_id {
+        return Err(AppError::Forbidden(
+            "호스트만 Live Activity를 시작할 수 있습니다".to_string(),
+        ));
+    }
+
+    execute_start_job(pool, sender, &schedule).await
+}
+
+pub async fn update_schedule_live_activity(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    schedule_id: Uuid,
+    user_id: &str,
+    req: UpdateScheduleLiveActivityRequest,
+) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
+    update_schedule_live_activity_internal(pool, sender, schedule_id, user_id, req).await
+}
+
+pub async fn update_schedule_live_activity_from_widget(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    schedule_id: Uuid,
+    user_id: &str,
+    req: UpdateScheduleLiveActivityRequest,
+) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
+    update_schedule_live_activity_internal(pool, sender, schedule_id, user_id, req).await
+}
+
+pub fn spawn_worker(
+    pool: PgPool,
+    live_activity_sender: Arc<dyn LiveActivitySender>,
+    push_sender: Arc<dyn PushSender>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        loop {
+            if let Err(error) =
+                process_due_jobs(&pool, live_activity_sender.as_ref(), push_sender.as_ref()).await
+            {
+                tracing::error!("Failed to process due live activity jobs: {error}");
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(
+                WORKER_POLL_INTERVAL_SECONDS,
+            ))
+            .await;
+        }
+    })
+}
+
+pub async fn process_due_jobs(
+    pool: &PgPool,
+    live_activity_sender: &dyn LiveActivitySender,
+    push_sender: &dyn PushSender,
+) -> Result<(), AppError> {
+    let jobs = claim_due_jobs(pool).await?;
+
+    for job in jobs {
+        let result = match job.job_type {
+            LiveActivityJobType::Start => process_start_job(pool, live_activity_sender, &job).await,
+            LiveActivityJobType::End => process_end_job(pool, live_activity_sender, &job).await,
+            LiveActivityJobType::Nudge => process_nudge_job(pool, push_sender, &job).await,
+        };
+
+        match result {
+            Ok(()) => mark_job_succeeded(pool, job.id).await?,
+            Err(error) => handle_job_failure(pool, &job, &error.to_string()).await?,
+        }
+    }
 
     Ok(())
 }
 
-// ============================================================
-// Vote LiveActivity
-// ============================================================
-
-pub async fn start_vote(
+async fn update_schedule_live_activity_internal(
     pool: &PgPool,
-    apns: &dyn ApnsSender,
-    user_uid: &str,
+    sender: &dyn LiveActivitySender,
     schedule_id: Uuid,
-) -> Result<VoteStartResponse, AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
+    user_id: &str,
+    req: UpdateScheduleLiveActivityRequest,
+) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
+    let schedule = load_schedule(pool, schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
+    ensure_accepted_participant(pool, schedule_id, user_id).await?;
 
-    // 권한: 호스트만
-    ensure_host(&schedule, user_uid, "start vote")?;
+    if req.channel_id.trim().is_empty() {
+        return Err(AppError::BadRequest("channel_id는 필수입니다".to_string()));
+    }
 
-    // 유효성: 과거 일정
-    if schedule.start_at <= Utc::now() {
-        return Err(AppError::PreconditionFailed(
-            "이미 시작된 일정에는 투표를 시작할 수 없습니다".to_string(),
+    if req.participants.is_empty() {
+        return Err(AppError::BadRequest(
+            "participants는 비어 있을 수 없습니다".to_string(),
         ));
     }
 
-    // 유효성: vote_deadline 지남
-    if let Some(deadline) = schedule.vote_deadline {
-        if deadline <= Utc::now() {
-            return Err(AppError::PreconditionFailed(
-                "투표 마감 기한이 지났습니다".to_string(),
+    if !req
+        .participants
+        .iter()
+        .any(|participant| participant.id == user_id)
+    {
+        return Err(AppError::Forbidden(
+            "본인의 ETA만 갱신할 수 있습니다".to_string(),
+        ));
+    }
+
+    if let Some(channel_id) = &schedule.live_activity_channel_id {
+        if channel_id != &req.channel_id {
+            return Err(AppError::Conflict(
+                "활성 Live Activity 채널이 일치하지 않습니다".to_string(),
             ));
         }
     }
 
-    // 유효성: 이미 투표 진행 중
-    if schedule.vote_channel_id.is_some() {
-        return Err(AppError::Conflict(
-            "이미 투표가 진행 중입니다".to_string(),
+    let accepted_ids = load_accepted_participants(pool, schedule_id)
+        .await?
+        .into_iter()
+        .map(|participant| participant.id)
+        .collect::<std::collections::HashSet<_>>();
+
+    if req
+        .participants
+        .iter()
+        .any(|participant| !accepted_ids.contains(&participant.id))
+    {
+        return Err(AppError::Forbidden(
+            "accepted 참가자만 ETA를 갱신할 수 있습니다".to_string(),
         ));
     }
 
-    // APNs 채널 생성
-    let channel_id = apns.create_channel().await?;
+    let tracking_duration_minutes = req
+        .tracking_duration_minutes
+        .unwrap_or(DEFAULT_TRACKING_DURATION_MINUTES);
+    let arrived_participants = req
+        .participants
+        .iter()
+        .filter(|participant| participant.estimated_arrival_minutes == Some(0))
+        .collect::<Vec<_>>();
+    let arrived_count = arrived_participants.len();
+    let total_count = req.participants.len();
+    let current_user_just_arrived = arrived_participants
+        .iter()
+        .any(|participant| participant.id == user_id);
 
-    // vote_ended_at 계산: min(start_at - tracking*60초, now + 8시간)
-    let tracking_minutes = schedule.tracking_start_minutes_before.unwrap_or(0) as i64;
-    let deadline_by_tracking = if tracking_minutes > 0 {
-        schedule.start_at - Duration::minutes(tracking_minutes)
+    let alert = if arrived_count == 1 && total_count > 1 && current_user_just_arrived {
+        Some(json!({
+            "title": "🎉 첫 도착!",
+            "body": "가장 먼저 도착했어요!"
+        }))
+    } else if arrived_count == total_count && total_count > 1 {
+        Some(json!({
+            "title": "✅ 모두 도착!",
+            "body": "모든 멤버들이 도착했어요! 잠시 후 종료됩니다"
+        }))
     } else {
-        schedule.start_at
-    };
-    let deadline_by_max = Utc::now() + Duration::hours(8);
-    let vote_ended_at = if deadline_by_tracking < deadline_by_max {
-        deadline_by_tracking
-    } else {
-        deadline_by_max
+        None
     };
 
-    // DB 업데이트
+    let payload = build_update_payload(tracking_duration_minutes, &req.participants, alert.clone());
+    sender.send_broadcast(&req.channel_id, &payload).await?;
+
+    if schedule.live_activity_channel_id.is_none() {
+        sqlx::query(
+            "UPDATE schedules SET live_activity_channel_id = $1, updated_at = NOW() WHERE id = $2",
+        )
+        .bind(&req.channel_id)
+        .bind(schedule_id)
+        .execute(pool)
+        .await?;
+    }
+
+    if arrived_count == total_count && total_count > 1 {
+        let delay_minutes = match current_environment() {
+            RuntimeEnvironment::Dev => 1,
+            RuntimeEnvironment::Stage => 3,
+            RuntimeEnvironment::Release => 5,
+        };
+
+        replace_pending_job(
+            pool,
+            schedule_id,
+            LiveActivityJobType::End,
+            Utc::now() + Duration::minutes(delay_minutes),
+            Some(LiveActivityJobPayload {
+                channel_id: Some(req.channel_id.clone()),
+            }),
+        )
+        .await?;
+    }
+
+    Ok(UpdateScheduleLiveActivityResponse {
+        success: true,
+        success_count: 1,
+        failure_count: 0,
+    })
+}
+
+async fn process_start_job(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    job: &LiveActivityJob,
+) -> Result<(), AppError> {
+    let schedule = load_schedule(pool, job.schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
+
+    if schedule.live_activity_started_at.is_some() && schedule.live_activity_ended_at.is_none() {
+        return Ok(());
+    }
+
+    let response = execute_start_job(pool, sender, &schedule).await?;
+    if response.success_count == 0 {
+        return Err(AppError::Internal(
+            "No successful Live Activity push-to-start delivery".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+async fn process_end_job(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    job: &LiveActivityJob,
+) -> Result<(), AppError> {
+    let schedule = load_schedule(pool, job.schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
+
+    if schedule.live_activity_ended_at.is_some() {
+        return Ok(());
+    }
+
+    let payload: Option<LiveActivityJobPayload> = job
+        .payload
+        .as_ref()
+        .map(|payload| serde_json::from_value(payload.clone()))
+        .transpose()
+        .map_err(|error| {
+            AppError::Internal(format!("Invalid live activity end job payload: {error}"))
+        })?;
+
+    let channel_id = payload
+        .and_then(|payload| payload.channel_id)
+        .or_else(|| schedule.live_activity_channel_id.clone())
+        .ok_or_else(|| AppError::BadRequest("Live Activity channel_id가 없습니다".to_string()))?;
+
+    let tracking_duration_minutes = schedule
+        .tracking_start_minutes_before
+        .unwrap_or(DEFAULT_TRACKING_DURATION_MINUTES);
+    let payload = build_end_payload(tracking_duration_minutes);
+
+    sender.send_broadcast(&channel_id, &payload).await?;
+
     sqlx::query(
-        "UPDATE schedules SET vote_channel_id = $1, vote_started_at = NOW(), \
-         vote_ended_at = $2 WHERE id = $3",
+        "UPDATE schedules SET live_activity_ended_at = NOW(), updated_at = NOW() WHERE id = $1",
+    )
+    .bind(schedule.id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn process_nudge_job(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    job: &LiveActivityJob,
+) -> Result<(), AppError> {
+    let schedule = load_schedule(pool, job.schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
+
+    if schedule.live_activity_nudge_sent_at.is_some() || Utc::now() >= schedule.start_at {
+        return Ok(());
+    }
+
+    let accepted_participants = load_accepted_participants(pool, schedule.id).await?;
+    if accepted_participants.is_empty() {
+        return Ok(());
+    }
+
+    let remaining_minutes = ((schedule.start_at - Utc::now()).num_seconds() + 59) / 60;
+    let safe_title = schedule.title.chars().take(100).collect::<String>();
+    notification_service::send_push_internal(
+        pool,
+        push_sender,
+        SendPushRequest {
+            user_ids: accepted_participants
+                .into_iter()
+                .map(|participant| participant.id)
+                .collect(),
+            notification_type: NotificationType::LocationSharingReminder,
+            title: format!("⏰ {safe_title} {}분 전!", remaining_minutes.max(0)),
+            body: "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!"
+                .to_string(),
+            schedule_id: Some(schedule.id),
+            group_id: schedule.group_id,
+            related_user_id: None,
+            data: None,
+        },
+    )
+    .await?;
+
+    sqlx::query(
+        "UPDATE schedules SET live_activity_nudge_sent_at = NOW(), updated_at = NOW() WHERE id = $1",
+    )
+    .bind(schedule.id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn execute_start_job(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    schedule: &Schedule,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    ensure_group_schedule(schedule)?;
+
+    let group_id = schedule
+        .group_id
+        .ok_or_else(|| AppError::Internal("그룹 일정에 group_id가 없습니다".to_string()))?;
+    let accepted_participants = load_accepted_participants(pool, schedule.id).await?;
+    let accepted_count = accepted_participants.len() as i64;
+    let minimum_participants = schedule.minimum_participants.unwrap_or(2) as i64;
+
+    if accepted_count < minimum_participants {
+        return Err(AppError::PreconditionFailed(
+            "확정된 일정만 Live Activity를 시작할 수 있습니다".to_string(),
+        ));
+    }
+
+    let tracking_duration_minutes = schedule
+        .tracking_start_minutes_before
+        .unwrap_or(DEFAULT_TRACKING_DURATION_MINUTES);
+    let targets = load_push_to_start_targets(
+        pool,
+        &accepted_participants
+            .iter()
+            .map(|participant| participant.id.clone())
+            .collect::<Vec<_>>(),
+    )
+    .await?;
+
+    if targets.is_empty() {
+        return Err(AppError::PreconditionFailed(
+            "Push to Start 토큰이 등록된 디바이스가 없습니다".to_string(),
+        ));
+    }
+
+    let group =
+        sqlx::query_as::<_, GroupSummary>("SELECT name, image_url FROM groups WHERE id = $1")
+            .bind(group_id)
+            .fetch_optional(pool)
+            .await?
+            .unwrap_or(GroupSummary {
+                name: String::new(),
+                image_url: None,
+            });
+
+    let host_name = accepted_participants
+        .iter()
+        .find(|participant| participant.id == schedule.user_id)
+        .map(|participant| participant.name.clone())
+        .unwrap_or_else(|| "호스트".to_string());
+
+    let channel_id = sender.create_channel().await?;
+    let participants = accepted_participants
+        .iter()
+        .map(|participant| LiveActivityParticipant {
+            id: participant.id.clone(),
+            name: participant.name.clone(),
+            estimated_arrival_minutes: None,
+        })
+        .collect::<Vec<_>>();
+
+    let emoji = schedule.emoji.clone().unwrap_or_else(|| "📅".to_string());
+    let mut success_count = 0;
+    let mut failure_count = 0;
+
+    for target in &targets {
+        let payload = build_start_payload(
+            schedule,
+            target.user_id.as_str(),
+            &channel_id,
+            tracking_duration_minutes,
+            &participants,
+            &emoji,
+            &host_name,
+            group.name.as_str(),
+            group.image_url.as_deref(),
+        );
+
+        match sender
+            .send_push_to_start(&target.push_to_start_token, &payload)
+            .await
+        {
+            Ok(()) => success_count += 1,
+            Err(error) => {
+                failure_count += 1;
+                tracing::error!(
+                    "Failed to send Live Activity push-to-start for schedule {} user {}: {}",
+                    schedule.id,
+                    target.user_id,
+                    error
+                );
+            }
+        }
+    }
+
+    if success_count == 0 {
+        return Err(AppError::Internal(
+            "Push to Start delivery failed for all devices".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE schedules SET live_activity_channel_id = $1, live_activity_started_at = NOW(), \
+         live_activity_nudge_sent_at = NULL, live_activity_ended_at = NULL, updated_at = NOW() \
+         WHERE id = $2",
     )
     .bind(&channel_id)
-    .bind(vote_ended_at)
-    .bind(schedule_id)
+    .bind(schedule.id)
     .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    .await?;
 
-    // 호스트 자동 수락
-    sqlx::query(
-        "INSERT INTO schedule_votes (schedule_id, user_id, status) \
-         VALUES ($1, $2, 'accepted'::vote_status) \
-         ON CONFLICT (schedule_id, user_id) DO UPDATE SET status = 'accepted'::vote_status",
-    )
-    .bind(schedule_id)
-    .bind(user_uid)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    cancel_pending_jobs(pool, schedule.id, &[LiveActivityJobType::Start]).await?;
 
-    // 그룹 멤버 디바이스에서 push_to_start_token 수집 (호스트 제외)
-    let group_id = schedule.group_id.ok_or_else(|| {
-        AppError::Internal("Schedule has no group_id".to_string())
-    })?;
-
-    // 호스트 이름 조회
-    let host_row: Option<(String,)> = sqlx::query_as(
-        "SELECT nickname FROM users WHERE id = $1",
-    )
-    .bind(user_uid)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-    let host_name = host_row.map(|(n,)| n).unwrap_or_default();
-
-    let total_members = count_group_members(pool, group_id).await? as i32;
-
-    let member_rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id != $2",
-    )
-    .bind(group_id)
-    .bind(user_uid)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    let member_ids: Vec<String> = member_rows.into_iter().map(|(id,)| id).collect();
-    let tokens = collect_push_to_start_tokens(pool, &member_ids).await?;
-
-    let payload = ApnsPayload {
-        event: "start".to_string(),
-        content_state: serde_json::json!({
-            "accepted": [{"id": user_uid, "name": host_name}],
-            "declined": [],
-            "pendingCount": total_members - 1,
-            "isFinalized": false,
+    let end_at = schedule.start_at + Duration::minutes(DEFAULT_END_MINUTES_AFTER_START);
+    replace_pending_job(
+        pool,
+        schedule.id,
+        LiveActivityJobType::End,
+        end_at,
+        Some(LiveActivityJobPayload {
+            channel_id: Some(channel_id.clone()),
         }),
-        channel_id: Some(channel_id.clone()),
-        dismissal_date: Some(vote_ended_at.timestamp()),
-        alert: Some(ApnsAlert {
-            title: "참여 투표".to_string(),
-            body: "참여 여부를 확인해주세요".to_string(),
-        }),
-    };
+    )
+    .await?;
 
-    let apns_result = if !tokens.is_empty() {
-        apns.send_push_to_start(&tokens, &payload).await
-    } else {
-        ApnsResult {
-            success_count: 0,
-            failure_count: 0,
-        }
-    };
+    replace_pending_job(
+        pool,
+        schedule.id,
+        LiveActivityJobType::Nudge,
+        Utc::now() + Duration::minutes((tracking_duration_minutes / 2) as i64),
+        None,
+    )
+    .await?;
 
-    Ok(VoteStartResponse {
-        success: true,
-        success_count: apns_result.success_count,
-        failure_count: apns_result.failure_count,
+    Ok(StartScheduleLiveActivityResponse {
+        success: failure_count == 0,
+        success_count,
+        failure_count,
         channel_id: Some(channel_id),
     })
 }
 
-pub async fn respond_vote(
-    pool: &PgPool,
-    apns: &dyn ApnsSender,
-    user_uid: &str,
-    schedule_id: Uuid,
-    req: VoteRespondRequest,
-) -> Result<VoteRespondResponse, AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 권한: 그룹 멤버인지 확인
-    let group_id = schedule.group_id.ok_or_else(|| {
-        AppError::Internal("Schedule has no group_id".to_string())
-    })?;
-
-    let is_member: Option<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM group_members WHERE group_id = $1 AND user_id = $2",
+async fn claim_due_jobs(pool: &PgPool) -> Result<Vec<LiveActivityJob>, AppError> {
+    sqlx::query_as::<_, LiveActivityJob>(
+        "WITH due_jobs AS ( \
+           SELECT id \
+           FROM live_activity_jobs \
+           WHERE status = 'pending'::live_activity_job_status \
+             AND scheduled_at <= NOW() \
+             AND (locked_until IS NULL OR locked_until < NOW()) \
+           ORDER BY scheduled_at \
+           LIMIT $1 \
+           FOR UPDATE SKIP LOCKED \
+         ) \
+         UPDATE live_activity_jobs jobs \
+         SET locked_until = NOW() + ($2::TEXT || ' seconds')::INTERVAL, \
+             attempts = attempts + 1, \
+             updated_at = NOW() \
+         FROM due_jobs \
+         WHERE jobs.id = due_jobs.id \
+         RETURNING jobs.*",
     )
-    .bind(group_id)
-    .bind(user_uid)
-    .fetch_optional(pool)
+    .bind(JOB_BATCH_SIZE)
+    .bind(JOB_LOCK_SECONDS)
+    .fetch_all(pool)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    .map_err(Into::into)
+}
 
-    if is_member.is_none() {
+async fn mark_job_succeeded(pool: &PgPool, job_id: Uuid) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE live_activity_jobs \
+         SET status = 'succeeded'::live_activity_job_status, locked_until = NULL, updated_at = NOW() \
+         WHERE id = $1",
+    )
+    .bind(job_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn handle_job_failure(
+    pool: &PgPool,
+    job: &LiveActivityJob,
+    error: &str,
+) -> Result<(), AppError> {
+    let next_status = if job.attempts >= JOB_MAX_ATTEMPTS {
+        LiveActivityJobStatus::Failed
+    } else {
+        LiveActivityJobStatus::Pending
+    };
+
+    sqlx::query(
+        "UPDATE live_activity_jobs \
+         SET status = $2, locked_until = NULL, last_error = $3, updated_at = NOW() \
+         WHERE id = $1",
+    )
+    .bind(job.id)
+    .bind(next_status)
+    .bind(error)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn replace_pending_job(
+    pool: &PgPool,
+    schedule_id: Uuid,
+    job_type: LiveActivityJobType,
+    scheduled_at: chrono::DateTime<Utc>,
+    payload: Option<LiveActivityJobPayload>,
+) -> Result<(), AppError> {
+    cancel_pending_jobs(pool, schedule_id, std::slice::from_ref(&job_type)).await?;
+
+    sqlx::query(
+        "INSERT INTO live_activity_jobs (schedule_id, job_type, scheduled_at, payload) \
+         VALUES ($1, $2, $3, $4)",
+    )
+    .bind(schedule_id)
+    .bind(job_type)
+    .bind(scheduled_at)
+    .bind(
+        payload
+            .map(|payload| serde_json::to_value(payload))
+            .transpose()
+            .map_err(|error| {
+                AppError::Internal(format!(
+                    "Failed to encode live activity job payload: {error}"
+                ))
+            })?,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn cancel_pending_jobs(
+    pool: &PgPool,
+    schedule_id: Uuid,
+    job_types: &[LiveActivityJobType],
+) -> Result<(), AppError> {
+    if job_types.is_empty() {
+        return Ok(());
+    }
+
+    sqlx::query(
+        "UPDATE live_activity_jobs \
+         SET status = 'cancelled'::live_activity_job_status, locked_until = NULL, updated_at = NOW() \
+         WHERE schedule_id = $1 \
+           AND job_type = ANY($2) \
+           AND status = 'pending'::live_activity_job_status",
+    )
+    .bind(schedule_id)
+    .bind(job_types)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn load_schedule(pool: &PgPool, schedule_id: Uuid) -> Result<Schedule, AppError> {
+    sqlx::query_as::<_, Schedule>("SELECT * FROM schedules WHERE id = $1")
+        .bind(schedule_id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("일정을 찾을 수 없습니다".to_string()))
+}
+
+async fn ensure_accepted_participant(
+    pool: &PgPool,
+    schedule_id: Uuid,
+    user_id: &str,
+) -> Result<(), AppError> {
+    let accepted = sqlx::query_scalar::<_, i32>(
+        "SELECT 1 \
+         FROM schedule_votes \
+         WHERE schedule_id = $1 \
+           AND user_id = $2 \
+           AND status = 'accepted'::vote_status",
+    )
+    .bind(schedule_id)
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+
+    if accepted.is_none() {
         return Err(AppError::Forbidden(
-            "그룹 멤버만 투표에 응답할 수 있습니다".to_string(),
+            "accepted 참가자만 Live Activity를 사용할 수 있습니다".to_string(),
         ));
     }
 
-    // 트랜잭션 시작
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    Ok(())
+}
 
-    // UPSERT vote (tx 사용)
-    sqlx::query(
-        "INSERT INTO schedule_votes (schedule_id, user_id, status) \
-         VALUES ($1, $2, $3::vote_status) \
-         ON CONFLICT (schedule_id, user_id) DO UPDATE SET \
-           status = $3::vote_status, responded_at = NOW()",
-    )
-    .bind(schedule_id)
-    .bind(user_uid)
-    .bind(&req.response)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // 투표 결과 조회 (tx 사용, 인라인 -- VoteMember)
-    let rows: Vec<(String, String, String)> = sqlx::query_as(
-        "SELECT sv.user_id, u.nickname, sv.status::TEXT \
+async fn load_accepted_participants(
+    pool: &PgPool,
+    schedule_id: Uuid,
+) -> Result<Vec<LiveActivityParticipant>, AppError> {
+    let rows = sqlx::query_as::<_, AcceptedParticipantRow>(
+        "SELECT u.id, u.nickname \
          FROM schedule_votes sv \
          JOIN users u ON u.id = sv.user_id \
-         WHERE sv.schedule_id = $1",
+         WHERE sv.schedule_id = $1 \
+           AND sv.status = 'accepted'::vote_status \
+         ORDER BY sv.responded_at, u.id",
     )
     .bind(schedule_id)
-    .fetch_all(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    .fetch_all(pool)
+    .await?;
 
-    let mut accepted = Vec::new();
-    let mut declined = Vec::new();
-    for (user_id, name, status) in rows {
-        let member = VoteMember { id: user_id, name };
-        match status.as_str() {
-            "accepted" => accepted.push(member),
-            "declined" => declined.push(member),
-            _ => {}
-        }
-    }
-
-    // count (tx 사용)
-    let row: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    let total_member_count = row.0 as i32;
-    let responded_count = (accepted.len() + declined.len()) as i32;
-
-    // 자동 확정: 모든 멤버가 응답했으면
-    let is_finalized = responded_count >= total_member_count;
-
-    if is_finalized {
-        sqlx::query("UPDATE schedules SET vote_finalized = true WHERE id = $1")
-            .bind(schedule_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    }
-
-    tx.commit()
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // broadcast
-    let pending_count = (total_member_count - responded_count).max(0);
-    let content_state = VoteContentState {
-        accepted: accepted.clone(),
-        declined: declined.clone(),
-        pending_count,
-        is_finalized,
-    };
-
-    if let Some(ref ch) = schedule.vote_channel_id {
-        let event = if is_finalized { "end" } else { "update" };
-        let payload = ApnsPayload {
-            event: event.to_string(),
-            content_state: serde_json::to_value(&content_state)
-                .map_err(|e| AppError::Internal(e.to_string()))?,
-            channel_id: Some(ch.clone()),
-            dismissal_date: None,
-            alert: None,
-        };
-        apns.send_broadcast(ch, &payload).await;
-    }
-
-    Ok(VoteRespondResponse {
-        success: true,
-        content_state,
-    })
+    Ok(rows
+        .into_iter()
+        .map(|row| LiveActivityParticipant {
+            id: row.id,
+            name: row.nickname,
+            estimated_arrival_minutes: None,
+        })
+        .collect())
 }
 
-pub async fn finalize_vote(
+async fn load_push_to_start_targets(
     pool: &PgPool,
-    apns: &dyn ApnsSender,
-    user_uid: &str,
-    schedule_id: Uuid,
-) -> Result<VoteRespondResponse, AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 권한: 호스트만
-    ensure_host(&schedule, user_uid, "finalize vote")?;
-
-    // DB 업데이트
-    sqlx::query(
-        "UPDATE schedules SET vote_finalized = true, vote_ended_at = NOW() WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // 투표 결과 조회
-    let (accepted, declined) = get_vote_lists_with_names(pool, schedule_id).await?;
-    let group_id = schedule.group_id.ok_or_else(|| {
-        AppError::Internal("Schedule has no group_id".to_string())
-    })?;
-    let total_member_count = count_group_members(pool, group_id).await? as i32;
-    let responded_count = (accepted.len() + declined.len()) as i32;
-    let pending_count = (total_member_count - responded_count).max(0);
-
-    let content_state = VoteContentState {
-        accepted: accepted.clone(),
-        declined: declined.clone(),
-        pending_count,
-        is_finalized: true,
-    };
-
-    // broadcast end event
-    if let Some(ref ch) = schedule.vote_channel_id {
-        let payload = ApnsPayload {
-            event: "end".to_string(),
-            content_state: serde_json::to_value(&content_state)
-                .map_err(|e| AppError::Internal(e.to_string()))?,
-            channel_id: Some(ch.clone()),
-            dismissal_date: None,
-            alert: Some(ApnsAlert {
-                title: "호스트가 투표를 마감했습니다".to_string(),
-                body: format!(
-                    "참여 {}명 / 불참 {}명",
-                    accepted.len(),
-                    declined.len()
-                ),
-            }),
-        };
-        apns.send_broadcast(ch, &payload).await;
+    user_ids: &[String],
+) -> Result<Vec<PushToStartTarget>, AppError> {
+    if user_ids.is_empty() {
+        return Ok(Vec::new());
     }
 
-    Ok(VoteRespondResponse {
-        success: true,
-        content_state,
-    })
+    sqlx::query_as::<_, PushToStartTarget>(
+        "SELECT d.user_id, la.push_to_start_token \
+         FROM live_activity_endpoints la \
+         JOIN devices d ON d.id = la.device_id \
+         WHERE d.user_id = ANY($1) \
+           AND la.push_to_start_token IS NOT NULL",
+    )
+    .bind(user_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(Into::into)
 }
 
-pub async fn end_vote(
-    pool: &PgPool,
-    apns: &dyn ApnsSender,
-    user_uid: &str,
-    schedule_id: Uuid,
-) -> Result<(), AppError> {
-    let schedule = fetch_schedule(pool, schedule_id).await?;
-
-    // 권한: 호스트만
-    ensure_host(&schedule, user_uid, "end vote")?;
-
-    let old_channel_id = schedule.vote_channel_id.clone();
-
-    // DB 업데이트: vote_ended_at 설정, vote_channel_id NULL
-    sqlx::query(
-        "UPDATE schedules SET vote_ended_at = NOW(), vote_channel_id = NULL WHERE id = $1",
-    )
-    .bind(schedule_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // broadcast end event (이전 channel_id가 있었으면)
-    if let Some(ref ch) = old_channel_id {
-        let (accepted, declined) = get_vote_lists_with_names(pool, schedule_id).await?;
-        let group_id = schedule
-            .group_id
-            .ok_or_else(|| AppError::Internal("no group_id".into()))?;
-        let total_member_count = count_group_members(pool, group_id).await? as i32;
-        let responded_count = (accepted.len() + declined.len()) as i32;
-        let pending_count = (total_member_count - responded_count).max(0);
-
-        let content_state = VoteContentState {
-            accepted,
-            declined,
-            pending_count,
-            is_finalized: true,
-        };
-
-        let payload = ApnsPayload {
-            event: "end".to_string(),
-            content_state: serde_json::to_value(&content_state)
-                .map_err(|e| AppError::Internal(e.to_string()))?,
-            channel_id: Some(ch.clone()),
-            dismissal_date: None,
-            alert: None,
-        };
-        apns.send_broadcast(ch, &payload).await;
+fn ensure_group_schedule(schedule: &Schedule) -> Result<(), AppError> {
+    if schedule.schedule_type != ScheduleType::Group {
+        return Err(AppError::BadRequest(
+            "그룹 일정만 Live Activity를 사용할 수 있습니다".to_string(),
+        ));
     }
-
     Ok(())
+}
+
+fn build_start_payload(
+    schedule: &Schedule,
+    current_user_id: &str,
+    channel_id: &str,
+    tracking_duration_minutes: i16,
+    participants: &[LiveActivityParticipant],
+    emoji: &str,
+    host_name: &str,
+    group_name: &str,
+    group_image_url: Option<&str>,
+) -> serde_json::Value {
+    json!({
+        "aps": {
+            "timestamp": Utc::now().timestamp(),
+            "event": "start",
+            "input-push-channel": channel_id,
+            "attributes-type": "ScheduleActivityAttributes",
+            "attributes": {
+                "trackingDurationMinutes": tracking_duration_minutes,
+                "scheduleId": schedule.id.to_string(),
+                "currentUserId": current_user_id,
+                "emoji": emoji,
+                "title": schedule.title,
+                "location": schedule.location_name,
+                "latitude": schedule.location_latitude,
+                "longitude": schedule.location_longitude,
+                "scheduledTime": schedule.start_at.timestamp() as f64,
+                "hostId": schedule.user_id,
+                "hostName": host_name,
+                "channelId": channel_id,
+                "groupName": if group_name.is_empty() { None::<String> } else { Some(group_name.to_string()) },
+                "groupImageUrl": group_image_url,
+            },
+            "content-state": {
+                "trackingDurationMinutes": tracking_duration_minutes,
+                "participants": participants,
+            },
+            "alert": {
+                "title": format!("{emoji} {}", schedule.title),
+                "body": "실시간 공유가 시작되었습니다"
+            }
+        }
+    })
+}
+
+fn build_update_payload(
+    tracking_duration_minutes: i16,
+    participants: &[LiveActivityParticipant],
+    alert: Option<serde_json::Value>,
+) -> serde_json::Value {
+    let mut payload = json!({
+        "aps": {
+            "timestamp": Utc::now().timestamp(),
+            "event": "update",
+            "content-state": {
+                "trackingDurationMinutes": tracking_duration_minutes,
+                "participants": participants,
+            }
+        }
+    });
+
+    if let Some(alert) = alert {
+        payload["aps"]["alert"] = alert;
+    }
+
+    payload
+}
+
+fn build_end_payload(tracking_duration_minutes: i16) -> serde_json::Value {
+    json!({
+        "aps": {
+            "timestamp": Utc::now().timestamp(),
+            "event": "end",
+            "dismissal-date": Utc::now().timestamp() - 60,
+            "content-state": {
+                "trackingDurationMinutes": tracking_duration_minutes,
+                "participants": [],
+            }
+        }
+    })
+}
+
+#[derive(Debug, Clone, Copy)]
+enum RuntimeEnvironment {
+    Dev,
+    Stage,
+    Release,
+}
+
+fn current_environment() -> RuntimeEnvironment {
+    let project_id = std::env::var("FIREBASE_PROJECT_ID").unwrap_or_default();
+    if project_id.contains("-dev") {
+        RuntimeEnvironment::Dev
+    } else if project_id.contains("-stage") {
+        RuntimeEnvironment::Stage
+    } else {
+        RuntimeEnvironment::Release
+    }
 }

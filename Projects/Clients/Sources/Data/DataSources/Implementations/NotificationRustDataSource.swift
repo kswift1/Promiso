@@ -21,14 +21,6 @@ private struct RustUnreadCountResponse: Decodable {
   let count: Int
 }
 
-private struct RustDeviceResponse: Decodable {
-  let deviceId: String
-  let fcmToken: String
-  let platform: String
-  let lastActiveAt: Date
-  let createdAt: Date
-}
-
 private struct RustSuccessResponse: Decodable {
   let success: Bool?
 }
@@ -37,8 +29,14 @@ private struct RustSuccessResponse: Decodable {
 
 private struct UpsertDeviceBody: Encodable {
   let deviceId: String
-  let fcmToken: String
   let platform: String?
+}
+
+private struct UpsertNotificationEndpointBody: Encodable {
+  let token: String
+}
+
+private struct UpsertLiveActivityEndpointBody: Encodable {
   let pushToStartToken: String?
   let liveActivityPushToken: String?
 }
@@ -79,24 +77,27 @@ public actor NotificationRustDataSource {
 
   // MARK: - Device Management
 
-  /// FCM 토큰 저장
-  /// - Parameters:
-  ///   - deviceId: 디바이스 ID
-  ///   - token: FCM 토큰
-  public func saveFCMToken(deviceId: String, token: String) async throws {
+  private func ensureDeviceExists() async throws {
     let body = UpsertDeviceBody(
       deviceId: deviceId,
-      fcmToken: token,
-      platform: "ios",
-      pushToStartToken: nil,
-      liveActivityPushToken: nil
+      platform: "ios"
     )
     let _: RustSuccessResponse = try await api.put("/api/v1/devices", body: body)
   }
 
-  /// FCM 토큰 삭제 (현재 디바이스)
-  /// - Parameter deviceId: 디바이스 ID
-  public func deleteFCMToken(deviceId: String) async throws {
+  /// 일반 알림용 토큰 저장
+  /// - Parameter token: 현재는 FCM 토큰
+  public func saveNotificationToken(_ token: String) async throws {
+    try await ensureDeviceExists()
+    let body = UpsertNotificationEndpointBody(token: token)
+    let _: RustSuccessResponse = try await api.put(
+      "/api/v1/devices/\(deviceId)/notification-endpoints/fcm",
+      body: body
+    )
+  }
+
+  /// 현재 디바이스 등록 삭제
+  public func deleteCurrentDevice() async throws {
     let _: RustSuccessResponse = try await api.delete("/api/v1/devices/\(deviceId)")
   }
 
@@ -106,23 +107,17 @@ public actor NotificationRustDataSource {
   }
 
   /// Push to Start 토큰 저장
-  /// - Parameters:
-  ///   - deviceId: 디바이스 ID
-  ///   - fcmToken: FCM 토큰
-  ///   - token: Push to Start 토큰
-  public func savePushToStartToken(
-    deviceId: String,
-    fcmToken: String,
-    token: String
-  ) async throws {
-    let body = UpsertDeviceBody(
-      deviceId: deviceId,
-      fcmToken: fcmToken,
-      platform: "ios",
+  /// - Parameter token: Push to Start 토큰
+  public func saveLiveActivityPushToStartToken(_ token: String) async throws {
+    try await ensureDeviceExists()
+    let body = UpsertLiveActivityEndpointBody(
       pushToStartToken: token,
       liveActivityPushToken: nil
     )
-    let _: RustSuccessResponse = try await api.put("/api/v1/devices", body: body)
+    let _: RustSuccessResponse = try await api.put(
+      "/api/v1/devices/\(deviceId)/live-activity-endpoint",
+      body: body
+    )
   }
 
   // MARK: - Notification List

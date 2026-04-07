@@ -16,6 +16,10 @@ The notification system was built on top of these triggers. Five Firestore trigg
 
 Moving to Rust, the question was the same as before. How much of this complexity is business logic, and how much comes from Firestore's event-driven model?
 
+> Update (2026-04-07)
+>
+> We later split token storage into `devices` + `notification_endpoints` + `live_activity_endpoints` to make the boundary between general FCM alerts and APNs-based Live Activity tokens explicit. The current design follows [ADR-009](../adr/009-push-channel-separation.md). The rest of this post keeps the original #5 narrative intact.
+
 ---
 
 ## From Triggers to Function Calls

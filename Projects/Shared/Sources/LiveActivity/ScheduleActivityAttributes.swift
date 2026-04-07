@@ -291,6 +291,15 @@ public enum LiveActivityIntentKey {
 
   /// APNs 환경 저장 키 (Widget에서 백엔드 호출 시 사용)
   public static let apnsEnvironmentKey = "apns.environment"
+
+  /// Rust API Base URL 저장 키 (Widget에서 Cloud Run 호출 시 사용)
+  public static let rustApiBaseUrlKey = "rust.api.baseUrl"
+
+  /// Rust API Base URL
+  public static var rustAPIBaseURL: String {
+    UserDefaults(suiteName: suiteName)?.string(forKey: rustApiBaseUrlKey)
+      ?? "https://promiso-api-809932911903.asia-northeast3.run.app"
+  }
 }
 
 /// 도착 예상 시간 업데이트 정보
