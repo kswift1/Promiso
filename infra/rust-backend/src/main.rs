@@ -3,6 +3,7 @@ use std::sync::Arc;
 use promiso_backend::config::Config;
 use promiso_backend::routes;
 use promiso_backend::services::apns_service::RealApnsSender;
+use promiso_backend::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
 use promiso_backend::services::task_executor;
 
 use tokio::net::TcpListener;
@@ -35,8 +36,14 @@ async fn main() {
 
     // APNs sender (라우터 + 폴링 루프에서 공유)
     let apns_sender = Arc::new(RealApnsSender::new(&config));
+    let app_store_verifier: SharedAppStoreVerifier = Arc::new(RealAppStoreVerifier::new(&config));
 
-    let app = routes::create_router(pool.clone(), &config, apns_sender.clone());
+    let app = routes::create_router(
+        pool.clone(),
+        &config,
+        apns_sender.clone(),
+        app_store_verifier,
+    );
 
     // 백그라운드: scheduled_tasks 폴링 루프
     let poll_pool = pool.clone();

@@ -331,12 +331,14 @@ async fn batch_get_users_success(pool: PgPool) {
     .await
     .unwrap();
     for uid in &["test_batch_req", "test_batch1", "test_batch2"] {
-        sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')")
-            .bind(group_id.0)
-            .bind(uid)
-            .execute(&pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'member')",
+        )
+        .bind(group_id.0)
+        .bind(uid)
+        .execute(&pool)
+        .await
+        .unwrap();
     }
 
     let ids = vec!["test_batch1".to_string(), "test_batch2".to_string()];
@@ -426,10 +428,14 @@ async fn auth_required_returns_401(pool: PgPool) {
     use tower::ServiceExt; // oneshot
 
     let config = promiso_backend::config::Config::from_env();
-    let apns_sender = std::sync::Arc::new(
-        promiso_backend::services::apns_service::RealApnsSender::new(&config),
-    );
-    let app = promiso_backend::routes::create_router(pool, &config, apns_sender);
+    let apns_sender =
+        std::sync::Arc::new(promiso_backend::services::apns_service::RealApnsSender::new(&config));
+    let app_store_verifier: promiso_backend::services::app_store_service::SharedAppStoreVerifier =
+        std::sync::Arc::new(
+            promiso_backend::services::app_store_service::RealAppStoreVerifier::new(&config),
+        );
+    let app =
+        promiso_backend::routes::create_router(pool, &config, apns_sender, app_store_verifier);
 
     // Authorization 헤더 없이 요청
     let response = app

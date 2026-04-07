@@ -3,6 +3,7 @@ pub struct Config {
     pub database_pool_url: String,
     pub port: u16,
     pub firebase_project_id: String,
+    pub app_store_apple_id: Option<i64>,
 
     // APNs
     pub apns_key_id: String,
@@ -30,6 +31,19 @@ impl Config {
                 .expect("PORT must be a valid number"),
             firebase_project_id: std::env::var("FIREBASE_PROJECT_ID")
                 .expect("FIREBASE_PROJECT_ID must be set"),
+            app_store_apple_id: std::env::var("APP_STORE_APPLE_ID")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .or_else(|| {
+                    if std::env::var("APNS_ENVIRONMENT")
+                        .unwrap_or_else(|_| "development".to_string())
+                        == "production"
+                    {
+                        Some(1625074042)
+                    } else {
+                        None
+                    }
+                }),
             apns_key_id: std::env::var("APNS_KEY_ID").unwrap_or_default(),
             apns_team_id: std::env::var("APNS_TEAM_ID").unwrap_or_default(),
             apns_auth_key: std::env::var("APNS_AUTH_KEY")

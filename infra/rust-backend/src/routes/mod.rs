@@ -3,6 +3,7 @@ mod health;
 mod live_activity;
 mod notifications;
 mod schedules;
+mod subscriptions;
 mod users;
 mod widget;
 
@@ -15,8 +16,14 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::middleware::auth::{require_auth, FirebaseAuth};
 use crate::services::apns_service::RealApnsSender;
+use crate::services::app_store_service::SharedAppStoreVerifier;
 
-pub fn create_router(pool: PgPool, config: &Config, apns_sender: Arc<RealApnsSender>) -> Router {
+pub fn create_router(
+    pool: PgPool,
+    config: &Config,
+    apns_sender: Arc<RealApnsSender>,
+    app_store_verifier: SharedAppStoreVerifier,
+) -> Router {
     let firebase_auth = FirebaseAuth::new(config.firebase_project_id.clone());
 
     // 인증 필요한 라우트
@@ -24,15 +31,18 @@ pub fn create_router(pool: PgPool, config: &Config, apns_sender: Arc<RealApnsSen
         .merge(groups::router())
         .merge(schedules::router())
         .merge(notifications::router())
+        .merge(subscriptions::router())
         .merge(live_activity::router())
         .layer(middleware::from_fn(require_auth));
 
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
+        .merge(subscriptions::public_router()) // /api/v1/subscriptions/apple-notifications
         .merge(widget::router()) // /api/v1/widget/* — 인증 불필요 (자체 헤더 검증)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(apns_sender))
+        .layer(axum::Extension(app_store_verifier))
         .layer(axum::Extension(firebase_auth))
         .with_state(pool)
 }

@@ -1164,7 +1164,12 @@ async fn auth_required_groups_returns_401(pool: PgPool) {
     let config = promiso_backend::config::Config::from_env();
     let apns_sender =
         std::sync::Arc::new(promiso_backend::services::apns_service::RealApnsSender::new(&config));
-    let app = promiso_backend::routes::create_router(pool, &config, apns_sender);
+    let app_store_verifier: promiso_backend::services::app_store_service::SharedAppStoreVerifier =
+        std::sync::Arc::new(
+            promiso_backend::services::app_store_service::RealAppStoreVerifier::new(&config),
+        );
+    let app =
+        promiso_backend::routes::create_router(pool, &config, apns_sender, app_store_verifier);
 
     let response = app
         .oneshot(
