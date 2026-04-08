@@ -48,8 +48,7 @@ public enum ExternalDeps: CaseIterable {
         "FirebaseCrashlytics",
         "FirebaseStorage",
         "FirebaseFunctions",
-        "FirebaseMessaging",
-        "FirebaseRemoteConfig"
+        "FirebaseMessaging"
       ].map { .external(name: $0) }
 
     case .googleSDK:
