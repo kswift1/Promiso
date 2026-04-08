@@ -13,7 +13,7 @@ import UIKit
 
 private struct RustWidgetTokenResponse: Decodable {
   let widgetToken: String
-  let expiresAt: String  // ISO 8601
+  let expiresAt: Int64  // epoch seconds
 }
 
 private struct RustWidgetRevokeResponse: Decodable {
@@ -484,14 +484,8 @@ extension AuthClient: DependencyKey {
               body: WidgetTokenBody(deviceId: deviceId)
             )
 
-            // ISO 8601 → TimeInterval 변환
-            let isoFormatter = ISO8601DateFormatter()
-            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            let expiryDate = isoFormatter.date(from: response.expiresAt)
-              ?? isoFormatter.date(from: response.expiresAt.replacingOccurrences(of: "\\.\\d+", with: "", options: .regularExpression))
-              ?? Date().addingTimeInterval(30 * 24 * 60 * 60)  // fallback: 30일
-
-            WidgetTokenStore.save(token: response.widgetToken, expiresAt: expiryDate.timeIntervalSince1970)
+            // Rust API는 epoch seconds(Int64)를 반환
+            WidgetTokenStore.save(token: response.widgetToken, expiresAt: TimeInterval(response.expiresAt))
             AppLogger.auth.info("Widget token 발급 완료 (Rust)")
           } catch {
             AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")

@@ -143,6 +143,8 @@ pub fn match_weather_to_schedule(
             chrono::NaiveDate::from_ymd_opt(year, month, day)?,
             chrono::NaiveTime::from_hms_opt(hour, min, 0)?,
         );
+        // TODO: KMA 예보 시각은 KST(UTC+9) 기준이므로 and_local_timezone(KST)으로 변환 필요
+        // 현재는 UTC로 처리 중 — 별도 TDD 사이클에서 테스트와 함께 수정 예정
         Some(dt.and_utc().timestamp())
     };
 
