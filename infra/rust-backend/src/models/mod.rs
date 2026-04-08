@@ -1,3 +1,4 @@
+pub mod app_config;
 pub mod group;
 pub mod live_activity;
 pub mod notification;

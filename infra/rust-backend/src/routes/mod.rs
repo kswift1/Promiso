@@ -1,4 +1,5 @@
 pub mod admin;
+mod app_config;
 mod briefing;
 mod emoji;
 mod groups;
@@ -55,6 +56,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
 
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
+        .merge(app_config::router()) // /api/v1/app-config — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
         .merge(places::router()) // /api/v1/places/* — 인증 불필요
         .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)

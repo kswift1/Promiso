@@ -1,4 +1,5 @@
 pub mod admin_subscription_service;
+pub mod app_config_service;
 pub mod emoji_service;
 pub mod places_service;
 pub mod widget_service;
