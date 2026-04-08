@@ -2,6 +2,7 @@ pub mod admin;
 mod briefing;
 mod groups;
 mod health;
+pub mod internal;
 mod notifications;
 mod schedules;
 mod subscriptions;
@@ -49,6 +50,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
+        .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)
         .merge(public_routes)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(widget_auth))

@@ -1,4 +1,5 @@
 pub mod admin_subscription_service;
+pub mod briefing_scheduler_service;
 pub mod gemini_client;
 pub mod transportation_client;
 pub mod weather_client;
