@@ -27,7 +27,7 @@
 |---|---|---|---|
 | `onGroupImageUpdated` | 그룹 이미지 변경 시 전체 멤버의 `users/{uid}.groups` Map에 `imageUrl` 동기화 | 비정규화 제거 — `group_members` JOIN으로 항상 최신 이미지 조회 | ✅ 불필요 |
 | 그룹 삭제 시 Storage 이미지 삭제 | Functions에서 Storage 파일 제거 | ⚠️ Storage 마이그레이션 시 처리 (현재 Firebase Storage 유지) | ❌ 보류 |
-| 그룹 삭제 시 약속 cascade | Functions에서 promises 컬렉션 삭제 | DB FK CASCADE로 처리 예정 (schedules 도메인 마이그레이션 후) | ❌ 보류 |
+| 그룹 삭제 시 약속 cascade | Functions에서 promises 컬렉션 삭제 | `schedules.group_id REFERENCES groups(id) ON DELETE CASCADE` 로 DB가 보장 | ✅ 완료 |
 
 ## Firestore 스키마 → PostgreSQL 매핑
 
@@ -51,30 +51,29 @@
 
 | GroupClient 메서드 | 현재 (Firebase) | 전환 후 (Rust REST) | 상태 |
 |---|---|---|---|
-| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ❌ 미전환 |
-| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ❌ 미전환 |
-| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ❌ 미전환 |
-| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ❌ 미전환 |
-| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ❌ 미전환 |
-| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ❌ 미전환 |
-| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ❌ 미전환 |
-| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ❌ 미전환 |
-| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ❌ 미전환 |
-| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ❌ 미전환 |
-| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ❌ 미전환 |
-| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ❌ 미전환 |
-| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ❌ 미전환 |
-| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ❌ 미전환 |
-| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ❌ 미전환 |
-| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ❌ 미전환 |
+| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Feature Flag 연결 완료 |
+| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Feature Flag 연결 완료 |
+| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ✅ Feature Flag 연결 완료 |
+| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
+| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ✅ Feature Flag 연결 완료 |
+| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ⚠️ Feature Flag 연결 완료, 그룹 이미지 업로드는 Firebase Storage 유지 |
+| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ✅ Feature Flag 연결 완료 |
+| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ✅ Feature Flag 연결 완료 |
+| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ✅ Feature Flag 연결 완료 |
+| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
+| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ⚠️ Feature Flag 연결 완료, 그룹 이미지 업로드는 Firebase Storage 유지 |
+| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ✅ Feature Flag 연결 완료 |
+| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ✅ Feature Flag 연결 완료 |
+| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ✅ Feature Flag 연결 완료 |
+| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ✅ Feature Flag 연결 완료 |
+| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ✅ Feature Flag 연결 완료 |
 
 ## 보류 항목
 
 - **Storage 이미지**: Firebase Storage 유지. Storage 마이그레이션 시 image_url 경로 전환
-- **그룹 삭제 cascade (약속)**: schedules 도메인 마이그레이션 후 DB FK CASCADE 추가
-- **타인 프로필 공통 그룹 체크**: `GET /api/v1/users/{id}` 핸들러에서 `group_members` 테이블 조인으로 구현 가능. groups 마이그레이션 완료 후 활성화
+- **그룹 생성/수정 이미지 업로드**: `photoData`는 아직 Firebase Storage 경유 후 별도 URL 전달 방식이 필요
 
 ## 검증 현황
 
-- Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (57개 테스트)
-- iOS 클라이언트: 미전환 (Firebase 직접 호출 유지)
+- Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (67개 테스트)
+- iOS 클라이언트: `GroupClient` Feature Flag 경로 연결 완료
