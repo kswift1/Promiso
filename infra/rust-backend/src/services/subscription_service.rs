@@ -151,8 +151,9 @@ pub async fn verify_purchase(
         .expiration_date
         .map(|d| d.to_rfc3339());
     let webhook_url = std::env::var("SLACK_WEBHOOK_URL").unwrap_or_default();
+    let (nickname, total_pro_users, price) =
+        fetch_slack_context(pool, user_id, &payload.product_id).await;
     notify_subscription_slack(
-        pool,
         &webhook_url,
         user_id,
         before_status.as_deref(),
@@ -161,6 +162,9 @@ pub async fn verify_purchase(
         before_last_notification_type.as_deref(),
         &payload.product_id,
         slack_expiration.as_deref(),
+        nickname,
+        total_pro_users,
+        price,
     )
     .await;
 
@@ -274,8 +278,10 @@ pub async fn handle_apple_notification(
     let before_last_notification_type = current_record
         .as_ref()
         .and_then(|r| r.last_notification_type.clone());
+    let (nickname, total_pro_users, price) =
+        fetch_slack_context(pool, &owner_record.user_id, &notification.transaction.product_id)
+            .await;
     notify_subscription_slack(
-        pool,
         &webhook_url,
         &owner_record.user_id,
         before_status.as_deref(),
@@ -284,6 +290,9 @@ pub async fn handle_apple_notification(
         before_last_notification_type.as_deref(),
         &notification.transaction.product_id,
         slack_expiration_date.as_deref(),
+        nickname,
+        total_pro_users,
+        price,
     )
     .await;
 
@@ -302,8 +311,9 @@ pub async fn reconcile_entitlement(
 
 /// 구독 상태 변경 후 Slack 알림을 발송한다.
 /// webhook_url이 비어있으면 스킵. 발송 실패 시 로그만 남기고 에러를 전파하지 않는다.
+///
+/// nickname, total_pro_users, price는 호출자가 미리 조회하여 전달한다 (레이어 경계 준수).
 pub async fn notify_subscription_slack(
-    pool: &PgPool,
     webhook_url: &str,
     user_id: &str,
     before_status: Option<&str>,
@@ -312,6 +322,9 @@ pub async fn notify_subscription_slack(
     before_last_notification_type: Option<&str>,
     product_id: &str,
     expiration_date: Option<&str>,
+    nickname: Option<String>,
+    total_pro_users: Option<u32>,
+    price: Option<String>,
 ) {
     // SN-10: webhook URL 비어있으면 스킵
     if webhook_url.is_empty() {
@@ -331,7 +344,31 @@ pub async fn notify_subscription_slack(
         return;
     };
 
-    // DB에서 닉네임 조회
+    let message_ctx = SlackMessageContext {
+        nickname,
+        product_id: product_id.to_string(),
+        price,
+        pro_user_count: total_pro_users,
+        expiration_date: expiration_date.map(str::to_string),
+        promo_code: None,
+    };
+    let message = build_slack_message(&notification_type, &message_ctx);
+
+    // SN-9: 발송 실패 시 로그만
+    if let Err(()) = send_slack_notification(webhook_url, &message).await {
+        tracing::warn!(
+            "Slack notification failed for user {user_id}, type {:?}",
+            notification_type
+        );
+    }
+}
+
+/// Slack 알림에 필요한 사용자 정보를 DB에서 조회한다.
+async fn fetch_slack_context(
+    pool: &PgPool,
+    user_id: &str,
+    product_id: &str,
+) -> (Option<String>, Option<u32>, Option<String>) {
     let nickname = sqlx::query_scalar::<_, String>("SELECT nickname FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(pool)
@@ -339,8 +376,7 @@ pub async fn notify_subscription_slack(
         .ok()
         .flatten();
 
-    // DB에서 Pro 유저 수 조회
-    let pro_user_count = sqlx::query_scalar::<_, i64>(
+    let total_pro_users = sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*) FROM entitlements WHERE has_pro = true",
     )
     .fetch_one(pool)
@@ -356,26 +392,11 @@ pub async fn notify_subscription_slack(
     } else if product_id.contains("lifetime") {
         Some("39,000원".to_string())
     } else {
+        tracing::warn!("Unknown product_id pattern: {product_id}");
         None
     };
 
-    let message_ctx = SlackMessageContext {
-        nickname,
-        product_id: product_id.to_string(),
-        price,
-        pro_user_count,
-        expiration_date: expiration_date.map(str::to_string),
-        promo_code: None,
-    };
-    let message = build_slack_message(&notification_type, &message_ctx);
-
-    // SN-9: 발송 실패 시 로그만
-    if let Err(()) = send_slack_notification(webhook_url, &message).await {
-        tracing::warn!(
-            "Slack notification failed for user {user_id}, type {:?}",
-            notification_type
-        );
-    }
+    (nickname, total_pro_users, price)
 }
 
 fn derive_status_from_transaction(transaction: &VerifiedTransaction) -> DerivedSubscriptionState {

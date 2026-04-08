@@ -177,7 +177,7 @@ extension MapClient: DependencyKey {
 
     return Self(
       searchPlaces: { query in
-        if featureFlags.useRustAPI(.promises) {
+        if featureFlags.useRustAPI(.places) {
           // Rust API: GET /api/v1/places/search?q={query}&size={size}
           return try await rustDataSource.searchPlaces(query: query)
         } else {

@@ -19,5 +19,5 @@ ALTER TABLE user_settings
     briefing_style IS NULL OR briefing_style IN ('friendly', 'humorous', 'concise', 'motivational', 'calm')
   ),
   ADD CONSTRAINT chk_briefing_transports_not_empty CHECK (
-    array_length(briefing_available_transports, 1) >= 1
+    cardinality(briefing_available_transports) >= 1
   );

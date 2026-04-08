@@ -23,7 +23,14 @@ async fn search_places(
     Query(query): Query<PlacesSearchQuery>,
 ) -> Result<ApiResponse<Vec<PlaceResult>>, AppError> {
     // api_key는 Green Phase에서 config extension으로 주입
-    let api_key = std::env::var("KAKAO_REST_API_KEY").unwrap_or_default();
+    let api_key = match std::env::var("KAKAO_REST_API_KEY") {
+        Ok(v) if !v.is_empty() => v,
+        _ => {
+            return Err(AppError::Internal(
+                "KAKAO_REST_API_KEY not configured".to_string(),
+            ))
+        }
+    };
     let size = query.size.unwrap_or(15).min(45);
     let result = places_service::search_places(&query.q, size, &api_key).await?;
     ApiResponse::ok(result)

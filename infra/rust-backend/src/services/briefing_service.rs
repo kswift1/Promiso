@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
@@ -209,7 +207,7 @@ pub fn build_prompt(
     weather: Option<&str>,
     schedules: &[BriefingScheduleItem],
     travel_info: Option<&str>,
-    timezone: &str,
+    _timezone: &str,
     style: &str,
     available_transports: &[String],
     upcoming: Option<&str>,
@@ -447,22 +445,10 @@ pub async fn generate_briefing(
     let available_transports = settings.briefing.available_transports.clone();
     let notification_hour = settings.briefing.notification_hour;
 
-    // 2. entitlements에서 Pro 여부 확인
-    let entitlement = sqlx::query_as::<_, crate::models::subscription::EntitlementRecord>(
-        "SELECT * FROM entitlements WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
-    let _is_pro = entitlement
-        .as_ref()
-        .map(|e| e.has_pro || e.override_active)
-        .unwrap_or(false);
-
-    // 3. 오늘 일정 조회
+    // 2. 오늘 일정 조회
     let schedules = fetch_today_schedules(pool, user_id, today, &req.timezone).await?;
 
-    // 4. 날씨 조회 (환경변수 없으면 스킵)
+    // 3. 날씨 조회 (환경변수 없으면 스킵)
     let weather_forecasts: Vec<WeatherForecast> =
         if let (Some(kma_key), Some(loc)) = (
             std::env::var("KMA_API_KEY").ok(),
@@ -484,7 +470,7 @@ pub async fn generate_briefing(
         .map(|s| match_weather_to_schedule(&weather_forecasts, &s.start_at))
         .collect();
 
-    // 5. 캐시 키 계산
+    // 4. 캐시 키 계산
     let prompt_key = compute_prompt_key(
         &schedules,
         &style,
@@ -494,7 +480,7 @@ pub async fn generate_briefing(
         &req.timezone,
     );
 
-    // 6. briefing_cache 조회 (force_refresh 아닐 때)
+    // 5. briefing_cache 조회 (force_refresh 아닐 때)
     if !force_refresh {
         let cached = sqlx::query_as::<_, BriefingCacheRow>(
             "SELECT prompt_key, summary, detail \
@@ -519,10 +505,10 @@ pub async fn generate_briefing(
         }
     }
 
-    // 7. 교통 정보 (환경변수 없으면 스킵)
+    // 6. 교통 정보 (환경변수 없으면 스킵)
     let travel_info: Option<String> = build_travel_info(req.location.as_ref(), &schedules).await;
 
-    // 8. 오늘 일정 0개면 upcoming 조회
+    // 7. 오늘 일정 0개면 upcoming 조회
     let upcoming_str: Option<String> = if schedules.is_empty() {
         let upcoming = fetch_upcoming_schedules(pool, user_id, today).await?;
         upcoming.map(|(date, items)| {
@@ -533,7 +519,7 @@ pub async fn generate_briefing(
         None
     };
 
-    // 9. 프롬프트 조립 (날씨/위치/날짜 포함)
+    // 8. 프롬프트 조립 (날씨/위치/날짜 포함)
     let now_local = Utc::now();
     let date_time_str = now_local.format("%Y-%m-%d %H:%M").to_string();
     let location_title = req.location.as_ref().and_then(|l| l.title.as_deref());
@@ -554,7 +540,7 @@ pub async fn generate_briefing(
         upcoming_str.as_deref(),
     );
 
-    // 10. Gemini 호출 (환경변수 없으면 stub fallback)
+    // 9. Gemini 호출 (환경변수 없으면 stub fallback)
     let (summary, detail) = if let Some(gemini_key) = std::env::var("GEMINI_API_KEY").ok() {
         match crate::services::gemini_client::call_gemini(&prompt, &gemini_key).await {
             Ok(text) => crate::services::gemini_client::parse_gemini_response(&text),
@@ -564,7 +550,7 @@ pub async fn generate_briefing(
         call_gemini_stub(&prompt)
     };
 
-    // 11. briefing_cache에 저장 (UPSERT)
+    // 10. briefing_cache에 저장 (UPSERT)
     sqlx::query(
         "INSERT INTO briefing_cache (user_id, date_key, prompt_key, summary, detail, updated_at) \
          VALUES ($1, $2, $3, $4, $5, NOW()) \

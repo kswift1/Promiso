@@ -245,6 +245,13 @@ pub fn build_slack_message(
     }
 }
 
+/// Slack HTTP 클라이언트 — 프로세스당 한 번만 생성
+fn slack_http_client() -> &'static reqwest::Client {
+    use std::sync::OnceLock;
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(reqwest::Client::new)
+}
+
 /// Slack webhook으로 메시지를 발송한다.
 ///
 /// SN-9: 실패 시 경고 로그만 남기고 에러를 반환한다 (메인 흐름 비차단은 호출자 책임).
@@ -257,7 +264,7 @@ pub async fn send_slack_notification(
         return Ok(());
     }
 
-    let client = reqwest::Client::new();
+    let client = slack_http_client();
     match client.post(webhook_url).json(message).send().await {
         Ok(resp) if resp.status().is_success() => Ok(()),
         Ok(resp) => {

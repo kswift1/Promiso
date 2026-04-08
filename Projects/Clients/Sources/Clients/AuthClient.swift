@@ -345,6 +345,7 @@ extension AuthClient: DependencyKey {
   public static let liveValue: AuthClient = {
     let session = InMemoryAuthSession.shared
     let provider = PlatformAuthProvider()
+    let featureFlags = FeatureFlagsClient.liveValue
 
     return AuthClient(
       logout: {
@@ -464,7 +465,6 @@ extension AuthClient: DependencyKey {
           return
         }
 
-        let featureFlags = FeatureFlagsClient.liveValue
         let useRust = featureFlags.useRustAPI(.widget)
 
         let deviceId = await MainActor.run {

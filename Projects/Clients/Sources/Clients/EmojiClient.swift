@@ -127,7 +127,7 @@ extension EmojiClient: DependencyKey {
         let startTime = CFAbsoluteTimeGetCurrent()
         AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(sanitizedTitle)")
 
-        if featureFlags.useRustAPI(.promises) {
+        if featureFlags.useRustAPI(.emoji) {
           // Rust API: POST /api/v1/emoji/generate
           do {
             guard let user = Auth.auth().currentUser else {

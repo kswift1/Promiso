@@ -37,8 +37,15 @@ async fn dispatch_briefings_handler(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    // 2. SCHEDULER_SECRET 환경변수
-    let expected = std::env::var("SCHEDULER_SECRET").unwrap_or_default();
+    // 2. SCHEDULER_SECRET 환경변수 — 미설정 또는 빈 값이면 서버 설정 오류
+    let expected = match std::env::var("SCHEDULER_SECRET") {
+        Ok(v) if !v.is_empty() => v,
+        _ => {
+            return Err(AppError::Internal(
+                "SCHEDULER_SECRET not configured".to_string(),
+            ))
+        }
+    };
 
     // 3. 검증
     if !verify_scheduler_secret(provided, &expected) {

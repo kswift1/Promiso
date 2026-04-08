@@ -184,6 +184,8 @@ extension RustSettingsResponse {
       )
     }
 
+    // TODO: Rust GET /users/me/settings 응답에 notification_enabled 필드 추가 필요
+    // 현재 서버 응답에 해당 필드가 없으므로 임시로 true 고정. 서버 응답 확장 후 제거할 것.
     return UserSettings(
       notificationEnabled: true,
       groupSortOption: groupSortOption,

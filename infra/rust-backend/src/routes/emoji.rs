@@ -29,7 +29,14 @@ async fn generate_emoji(
     Json(req): Json<GenerateEmojiRequest>,
 ) -> Result<ApiResponse<GenerateEmojiResponse>, AppError> {
     // api_key는 Green Phase에서 config extension으로 주입
-    let api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+    let api_key = match std::env::var("GEMINI_API_KEY") {
+        Ok(v) if !v.is_empty() => v,
+        _ => {
+            return Err(AppError::Internal(
+                "GEMINI_API_KEY not configured".to_string(),
+            ))
+        }
+    };
     let emoji = emoji_service::generate_emoji(&req.title, &api_key).await?;
     ApiResponse::ok(GenerateEmojiResponse { emoji })
 }

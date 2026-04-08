@@ -23,14 +23,14 @@ private struct RustPlaceItem: Decodable {
 
 /// Rust API places/search 데이터소스
 /// GET /api/v1/places/search?q={query}&size={size}  (인증 불필요)
-actor PlacesRustDataSource {
+public actor PlacesRustDataSource {
   private let api: RustAPIClient
 
-  init(api: RustAPIClient) {
+  public init(api: RustAPIClient) {
     self.api = api
   }
 
-  func searchPlaces(query: String, size: Int = 15) async throws -> [Place] {
+  public func searchPlaces(query: String, size: Int = 15) async throws -> [Place] {
     guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
       return []
     }

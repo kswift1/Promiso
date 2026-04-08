@@ -223,6 +223,9 @@ pub async fn update_settings(
     let clear_hour_tz_lang = matches!(req.briefing_notification_hour, Some(None));
 
     // ---- UPSERT (partial update) ----
+    // 트랜잭션으로 감싸 SELECT → UPSERT → reconcile을 원자적으로 처리
+    let mut tx = pool.begin().await?;
+
     // 먼저 현재 row를 읽어 기본값을 구성한 뒤 덮어쓰기
     let current = sqlx::query_as::<_, UserSettingsRow>(
         "SELECT group_sort_type, group_sort_order, conflict_threshold_min,
@@ -237,7 +240,7 @@ pub async fn update_settings(
          WHERE user_id = $1",
     )
     .bind(user_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     // 기존 값 or 기본값
@@ -353,8 +356,10 @@ pub async fn update_settings(
     .bind(new_loc_lat)
     .bind(new_loc_lng)
     .bind(&new_loc_address)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     // ---- US-12: projection 재계산 ----
     briefing_projection_service::reconcile_projection(pool, user_id, Utc::now()).await?;
@@ -369,6 +374,8 @@ pub async fn initialize_pro_defaults(
     user_id: &str,
     timezone: &str,
 ) -> Result<UserSettingsResponse, AppError> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query(
         "INSERT INTO user_settings
              (user_id, briefing_notification_hour, briefing_style,
@@ -387,8 +394,10 @@ pub async fn initialize_pro_defaults(
     )
     .bind(user_id)
     .bind(timezone)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     // ---- US-12: projection 재계산 ----
     briefing_projection_service::reconcile_projection(pool, user_id, Utc::now()).await?;

@@ -167,7 +167,11 @@ public enum WidgetDataManager {
   private static let functionsBaseURL = "https://asia-northeast3-\(LiveActivityIntentKey.firebaseProjectId).cloudfunctions.net"
 
   /// Rust API 기본 URL
+  #if DEBUG
   private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
+  #else
+  private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
+  #endif
 
   /// Widget Feature Flag: UserDefaults에서 직접 읽기 (Widget Extension은 DI 사용 불가)
   private static var useRustWidgetAPI: Bool {

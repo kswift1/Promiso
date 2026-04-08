@@ -99,9 +99,8 @@ pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
             tracing::warn!("[Gemini] Failed to build HTTP client: {e}");
         })?;
 
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-    );
+    let url =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
     let body = serde_json::json!({
         "contents": [
@@ -114,7 +113,8 @@ pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
     });
 
     let resp = client
-        .post(&url)
+        .post(url)
+        .header("x-goog-api-key", api_key)
         .json(&body)
         .send()
         .await

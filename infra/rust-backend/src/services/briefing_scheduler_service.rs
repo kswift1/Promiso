@@ -146,7 +146,7 @@ pub async fn dispatch_due_briefings(
             }
             Ok(briefing) => {
                 // SC-5/6: FCM 발송 — notification_endpoints에서 FCM 토큰 조회
-                let tokens: Vec<(String,)> = sqlx::query_as(
+                let tokens_result: Result<Vec<(String,)>, _> = sqlx::query_as(
                     "SELECT ne.token \
                      FROM notification_endpoints ne \
                      JOIN devices d ON d.id = ne.device_id \
@@ -154,16 +154,35 @@ pub async fn dispatch_due_briefings(
                 )
                 .bind(&row.user_id)
                 .fetch_all(pool)
-                .await
-                .unwrap_or_default();
+                .await;
 
-                if !tokens.is_empty() {
-                    let token_list: Vec<String> = tokens.into_iter().map(|(t,)| t).collect();
-                    // FCM 발송 실패해도 브리핑 자체는 성공으로 카운트
-                    let _fcm_result = send_briefing_push(&token_list, &briefing.summary).await;
+                match tokens_result {
+                    Err(e) => {
+                        tracing::warn!(
+                            "[dispatch] FCM token fetch failed for user {}: {e}",
+                            row.user_id
+                        );
+                        failed += 1;
+                        continue;
+                    }
+                    Ok(tokens) => {
+                        if !tokens.is_empty() {
+                            let token_list: Vec<String> =
+                                tokens.into_iter().map(|(t,)| t).collect();
+                            // TODO: FCM 발송 미구현 — PushSender 통합 후 실제 발송 예정
+                            // 현재는 stub으로 처리되므로 발송 시도를 기록만 한다.
+                            tracing::info!(
+                                "[dispatch] FCM push pending (stub) for user {}, {} token(s)",
+                                row.user_id,
+                                token_list.len()
+                            );
+                            let _fcm_result =
+                                send_briefing_push(&token_list, &briefing.summary).await;
+                        }
+
+                        succeeded += 1;
+                    }
                 }
-
-                succeeded += 1;
             }
         }
     }
@@ -188,13 +207,23 @@ async fn send_briefing_push(tokens: &[String], summary: &str) -> Result<(), AppE
     Ok(())
 }
 
-/// 스케줄러 전용 인증 검증
+/// 스케줄러 전용 인증 검증 (constant-time 비교로 타이밍 어택 방어)
 pub fn verify_scheduler_secret(provided: &str, expected: &str) -> bool {
-    if provided.is_empty() {
+    if provided.is_empty() || expected.is_empty() {
         return false;
     }
-    if expected.is_empty() {
-        return false;
+    let a = provided.as_bytes();
+    let b = expected.as_bytes();
+    // 길이가 다르면 false지만, 길이 정보를 타이밍으로 노출하지 않기 위해
+    // 짧은 쪽을 패딩해서 항상 동일한 길이를 비교한다.
+    let len = a.len().max(b.len());
+    let mut diff: u8 = 0;
+    for i in 0..len {
+        let ca = if i < a.len() { a[i] } else { 0 };
+        let cb = if i < b.len() { b[i] } else { 0 };
+        diff |= ca ^ cb;
     }
-    provided == expected
+    // 길이 차이도 반영
+    diff |= (a.len() != b.len()) as u8;
+    diff == 0
 }
