@@ -3,6 +3,9 @@ pub struct Config {
     pub database_pool_url: String,
     pub port: u16,
     pub firebase_project_id: String,
+    pub auth_jwt_secret: Option<String>,
+    pub auth_jwt_issuer: String,
+    pub auth_access_token_ttl_seconds: i64,
     pub app_store_apple_id: Option<i64>,
     pub google_application_credentials: Option<String>,
     pub firebase_service_account_json: Option<String>,
@@ -35,6 +38,13 @@ impl Config {
                 .expect("PORT must be a valid number"),
             firebase_project_id: std::env::var("FIREBASE_PROJECT_ID")
                 .expect("FIREBASE_PROJECT_ID must be set"),
+            auth_jwt_secret: std::env::var("AUTH_JWT_SECRET").ok(),
+            auth_jwt_issuer: std::env::var("AUTH_JWT_ISSUER")
+                .unwrap_or_else(|_| "promiso".to_string()),
+            auth_access_token_ttl_seconds: std::env::var("AUTH_ACCESS_TOKEN_TTL_SECONDS")
+                .unwrap_or_else(|_| "900".to_string())
+                .parse()
+                .expect("AUTH_ACCESS_TOKEN_TTL_SECONDS must be a valid number"),
             app_store_apple_id: std::env::var("APP_STORE_APPLE_ID")
                 .ok()
                 .and_then(|value| value.parse().ok())

@@ -19,12 +19,17 @@ use axum::Router;
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::middleware::auth::{require_auth, FirebaseAuth, WidgetAuth};
+use crate::middleware::auth::{require_auth, FirebaseAuth, ServerAuth, WidgetAuth};
 use crate::push::{build_live_activity_sender, build_push_sender};
 use crate::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
 
 pub fn create_router(pool: PgPool, config: &Config) -> Router {
     let firebase_auth = FirebaseAuth::new(config.firebase_project_id.clone());
+    let server_auth = ServerAuth::new(
+        config.auth_jwt_secret.clone(),
+        config.auth_jwt_issuer.clone(),
+        config.auth_access_token_ttl_seconds,
+    );
     let widget_auth = WidgetAuth::new(config.widget_jwt_secret.clone());
     let push_sender = build_push_sender(config);
     let live_activity_sender = build_live_activity_sender(config);
@@ -62,6 +67,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)
         .merge(public_routes)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
+        .layer(axum::Extension(server_auth))
         .layer(axum::Extension(widget_auth))
         .layer(axum::Extension(firebase_auth))
         .with_state(pool)
