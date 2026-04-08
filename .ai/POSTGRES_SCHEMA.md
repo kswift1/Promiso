@@ -14,6 +14,7 @@ CREATE TABLE users (
     email                TEXT NOT NULL,
     profile_url          TEXT,                    -- NULL = 프로필 이미지 없음
     notification_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    widget_token_version INTEGER NOT NULL DEFAULT 1,    -- migration 014: Widget JWT 무효화 버전
     created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -31,6 +32,7 @@ CREATE TABLE users (
 | provider_type, provider_uid, email | `auth/main` 서브컬렉션 | 단일 테이블로 합침 |
 | profile_url | `profile.url` 필드 | thumbUrl, updatedAt 제거 |
 | notification_enabled | `settings/main` 서브컬렉션 | 나머지 settings는 미마이그레이션 |
+| widget_token_version | 신규 컬럼 (migration 014) | Widget JWT 무효화용 버전 카운터. +1 시 기존 토큰 전체 만료 |
 
 ## groups
 

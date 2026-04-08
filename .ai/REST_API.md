@@ -16,6 +16,7 @@
 | GET | `/health` | 서버 + DB 상태 확인 |
 | POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id, X-Auth-Token optional) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id, X-Auth-Token required) |
+| GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
 
 ## Users (인증 필요)
 
@@ -1071,6 +1072,116 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   - `notification_hour`: user_settings.briefing_notification_hour (Pro 비활성이면 null)
 - 캐시: promptKey(SHA-256 16자) 일치 시 Gemini 스킵, `briefing_cache` 테이블에서 반환
 - 에러: 400 (허용값 외 style), 500 (Gemini 호출 실패)
+
+## Widget (인증 필요)
+
+### POST /api/v1/widget/token
+
+- 설명: Widget JWT 발급. `widget_token_version`을 DB에서 조회하고 HS256 JWT를 생성하여 반환
+- 인증: 필수 (Firebase Token)
+- 요청:
+  ```json
+  { "device_id": "device-uuid" }
+  ```
+  - `device_id`: 필수
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "widget_token": "eyJ...",
+      "expires_at": 1780000000
+    }
+  }
+  ```
+  - `expires_at`: Unix epoch seconds (now + 30일)
+  - JWT payload: `{ sub, scope: "widget:read", device_id, version, exp, iat }`
+
+### POST /api/v1/widget/revoke
+
+- 설명: 현재 유저의 Widget 토큰 전체 무효화. `widget_token_version`을 +1 증가시켜 기존 발급 토큰을 모두 만료
+- 인증: 필수 (Firebase Token)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  { "data": { "success": true } }
+  ```
+
+### GET /api/v1/widget/snapshot
+
+- 설명: 위젯 스냅샷 조회. 오늘 일정(최대 6개)과 예정 일정(최대 9개)을 KST 기준으로 반환
+- 인증: Widget Token 또는 Firebase Token (`Authorization: Bearer <token>`)
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "next": {
+        "id": "uuid",
+        "schedule_type": "group",
+        "title": "영화 관람",
+        "emoji": "🎬",
+        "start_at": "ISO8601",
+        "end_at": "ISO8601",
+        "location_name": "CGV 강남",
+        "group_name": "친구들",
+        "is_confirmed": true
+      },
+      "today": [...],
+      "upcoming": [...]
+    }
+  }
+  ```
+  - `next`: today[0] ?? upcoming[0]. 일정 없으면 null
+  - `today`: KST 기준 오늘 날짜의 일정 (start_at 오름차순, 최대 6개)
+  - `upcoming`: KST 기준 내일 이후 일정 (start_at 오름차순, 최대 9개)
+  - 그룹일정: `is_confirmed = true`인 것만 포함
+  - 개인일정: 소유자의 모든 미래 일정 포함
+- 에러: 401 (토큰 없음 또는 유효하지 않음)
+
+## Places (인증 불필요)
+
+### GET /api/v1/places/search
+
+- 설명: Kakao 장소 키워드 검색. `KAKAO_REST_API_KEY` 환경변수로 Kakao API 호출
+- 인증: 불필요
+- 쿼리 파라미터:
+  - `q`: 검색 키워드 (필수)
+  - `size`: 결과 개수 (선택, 기본 15, 최대 45)
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "12345678",
+        "name": "CGV 강남",
+        "latitude": 37.5012,
+        "longitude": 127.0261,
+        "address": "서울 강남구 ...",
+        "road_address": "서울 강남구 강남대로 ...",
+        "category": "문화시설",
+        "phone": "02-123-4567"
+      }
+    ]
+  }
+  ```
+  - `address`, `road_address`, `category`, `phone`: nullable
+- 에러: 500 (Kakao API 호출 실패)
+
+## Emoji (인증 필요)
+
+### POST /api/v1/emoji/generate
+
+- 설명: 일정 제목으로 Gemini 2.0 Flash를 호출하여 어울리는 이모지 1개 생성. 실패 시 "📅" 반환
+- 인증: 필수
+- 요청:
+  ```json
+  { "title": "영화 관람" }
+  ```
+- 응답 200:
+  ```json
+  { "data": { "emoji": "🎬" } }
+  ```
+  - Gemini 호출 실패 또는 이모지 미추출 시 `"📅"` 반환 (에러 없음)
+- 에러: 401 (인증 실패)
 
 ## Internal (스케줄러 전용)
 
