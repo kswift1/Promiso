@@ -1,4 +1,7 @@
 pub mod admin_subscription_service;
+pub mod emoji_service;
+pub mod places_service;
+pub mod widget_service;
 pub mod briefing_scheduler_service;
 pub mod gemini_client;
 pub mod transportation_client;

@@ -27,11 +27,15 @@ struct FirebaseClaims {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct WidgetClaims {
-    sub: String,
-    scope: String,
-    exp: usize,
-    iat: Option<usize>,
+pub struct WidgetClaims {
+    pub sub: String,
+    pub scope: String,
+    pub exp: usize,
+    pub iat: Option<usize>,
+    /// 발급 당시 widget_token_version (무효화 판단용)
+    pub version: Option<i32>,
+    /// 발급 요청 deviceId (WT-2)
+    pub device_id: Option<String>,
 }
 
 #[derive(Clone)]
@@ -156,6 +160,10 @@ impl WidgetAuth {
         Self { secret }
     }
 
+    pub fn secret(&self) -> Option<&str> {
+        self.secret.as_deref()
+    }
+
     pub fn verify_token(&self, token: &str) -> Result<Claims, AppError> {
         let secret = self.secret.as_ref().ok_or_else(|| {
             AppError::Unauthorized("Widget token verification is not configured".to_string())
@@ -243,6 +251,8 @@ mod tests {
                 scope: "widget:read".to_string(),
                 exp: now + 3600,
                 iat: Some(now),
+                version: None,
+                device_id: None,
             },
             &EncodingKey::from_secret("test-secret".as_bytes()),
         )
@@ -269,6 +279,8 @@ mod tests {
                 scope: "widget:write".to_string(),
                 exp: now + 3600,
                 iat: Some(now),
+                version: None,
+                device_id: None,
             },
             &EncodingKey::from_secret("test-secret".as_bytes()),
         )
