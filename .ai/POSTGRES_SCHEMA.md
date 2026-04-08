@@ -712,6 +712,36 @@ CREATE TABLE admin_audit_logs (
 | admin_users | 관리자 계정. role: owner/support/marketer |
 | admin_audit_logs | 관리자 작업 이력 |
 
+## briefing_cache
+
+AI 브리핑 생성 결과 캐시. promptKey 일치 시 Gemini 재호출 없이 반환.
+
+```sql
+CREATE TABLE briefing_cache (
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date_key    DATE NOT NULL,
+    prompt_key  CHAR(16) NOT NULL,
+    summary     TEXT NOT NULL,
+    detail      TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (user_id, date_key)
+);
+```
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| user_id | TEXT | PK, FK → users.id ON DELETE CASCADE | Firebase Auth UID |
+| date_key | DATE | PK | 브리핑 날짜 (유저 timezone 기준) |
+| prompt_key | CHAR(16) | NOT NULL | SHA-256 기반 16자 캐시 키. 일정·날씨·교통·스타일·언어·timezone 해시 |
+| summary | TEXT | NOT NULL | 브리핑 요약 (한 줄) |
+| detail | TEXT | NOT NULL | 브리핑 전문 (마크다운) |
+| created_at | TIMESTAMPTZ | NOT NULL, default NOW() | 최초 생성 시각 |
+| updated_at | TIMESTAMPTZ | NOT NULL, default NOW() | 마지막 갱신 시각 |
+
+> PK가 `(user_id, date_key)`이므로 하루 1건만 유지. promptKey 변경 시 upsert로 덮어씀.
+
 ## scheduleSlots 제거 근거
 
 Firestore에서는 `users/{uid}/scheduleSlots/{YYYY-MM-DD}` 비정규화 컬렉션으로 O(1) 충돌 체크를 구현하고, 7개 트리거로 동기화를 유지했다.

@@ -1030,4 +1030,74 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증: 필수
 - 응답 200: `{ "data": { "success": true } }`
 
+## Briefing (인증 필요)
+
+### POST /api/v1/briefing/generate
+
+- 설명: AI 브리핑 생성 (Gemini 2.0 Flash + KMA 단기예보 + ODsay 대중교통 + Kakao 자동차)
+- 인증: 필수 (Pro 여부는 교통 정보 포함 여부에만 영향)
+- 요청:
+  ```json
+  {
+    "timezone": "Asia/Seoul",
+    "language": "ko",
+    "location": {
+      "latitude": 37.123,
+      "longitude": 127.456,
+      "title": "집 (optional)"
+    },
+    "force_refresh": false,
+    "style": "friendly"
+  }
+  ```
+  - `location`: 선택. 없으면 교통 정보 생략
+  - `force_refresh`: true이면 promptKey 일치 여부 무시하고 Gemini 재호출
+  - `style` 허용값: `"friendly"` | `"humorous"` | `"concise"` | `"motivational"` | `"calm"`. 생략 시 user_settings 값 사용
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "summary": "오늘 일정 2건...",
+      "detail": "마크다운 전체 브리핑",
+      "is_updated": true,
+      "style": "friendly",
+      "available_transports": ["transit", "car"],
+      "notification_hour": 8
+    }
+  }
+  ```
+  - `is_updated`: true이면 Gemini 새로 호출, false이면 캐시 반환
+  - `available_transports`: user_settings 기반 (Pro만 교통 정보 포함)
+  - `notification_hour`: user_settings.briefing_notification_hour (Pro 비활성이면 null)
+- 캐시: promptKey(SHA-256 16자) 일치 시 Gemini 스킵, `briefing_cache` 테이블에서 반환
+- 에러: 400 (허용값 외 style), 500 (Gemini 호출 실패)
+
+## Internal (스케줄러 전용)
+
+### POST /api/v1/internal/briefing/dispatch
+
+- 설명: 브리핑 스케줄러 dispatch. `briefing_subscriptions`에서 due 항목을 최대 50개 처리하고 next_dispatch_at을 갱신
+- 인증: `X-Scheduler-Secret` 헤더 (SCHEDULER_SECRET 환경변수와 대조). 불일치 시 401
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "summary": {
+      "totalDue": 12,
+      "processed": 12,
+      "succeeded": 11,
+      "failed": 1,
+      "skipped": 0,
+      "deleted": 0
+    }
+  }
+  ```
+  - `totalDue`: 조회된 due 항목 수
+  - `processed`: 실제 처리 시도 수
+  - `succeeded`: 브리핑 생성 + FCM 발송 성공
+  - `failed`: 처리 중 오류 발생 (next_dispatch_at은 갱신)
+  - `skipped`: Pro 박탈 등으로 건너뜀
+  - `deleted`: briefing_subscriptions row 삭제 (notification_hour NULL 또는 Pro 상실)
+- 에러: 401 (X-Scheduler-Secret 불일치)
+
 *마지막 업데이트: 2026-04-08*
