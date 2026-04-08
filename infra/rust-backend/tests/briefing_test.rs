@@ -217,28 +217,28 @@ fn compute_prompt_key_ignores_slot_order() {
 
 #[test]
 fn match_weather_returns_closest_forecast() {
-    // 일정 시작: 2026-04-08 10:00 UTC
+    // 일정 시작: 2026-04-08 10:00 UTC (= KST 19:00)
     let schedule_start = Utc.with_ymd_and_hms(2026, 4, 8, 10, 0, 0).unwrap();
 
-    // 예보: 09:00, 12:00 UTC
+    // KMA 예보는 KST 기준: "202604081800" = KST 18:00 = UTC 09:00, "202604082100" = KST 21:00 = UTC 12:00
     let forecasts = vec![
-        make_weather_forecast("202604080900", 15.0),
-        make_weather_forecast("202604081200", 18.0),
+        make_weather_forecast("202604081800", 15.0),
+        make_weather_forecast("202604082100", 18.0),
     ];
 
     let result = briefing_service::match_weather_to_schedule(&forecasts, &schedule_start);
 
-    // 09:00이 1시간 차이 → 12:00은 2시간 차이 → 09:00이 더 가까움
+    // KST 18:00(UTC 09:00)이 1시간 차이 → KST 21:00(UTC 12:00)은 2시간 차이 → 18:00이 더 가까움
     assert!(result.is_some());
 }
 
 #[test]
 fn match_weather_returns_none_over_3_hours() {
-    // 일정 시작: 2026-04-08 10:00 UTC
+    // 일정 시작: 2026-04-08 10:00 UTC (= KST 19:00)
     let schedule_start = Utc.with_ymd_and_hms(2026, 4, 8, 10, 0, 0).unwrap();
 
-    // 예보: 06:00 UTC (4시간 차이 — 3시간 초과)
-    let forecasts = vec![make_weather_forecast("202604080600", 12.0)];
+    // KMA 예보 KST 기준: "202604081500" = KST 15:00 = UTC 06:00 (4시간 차이 — 3시간 초과)
+    let forecasts = vec![make_weather_forecast("202604081500", 12.0)];
 
     let result = briefing_service::match_weather_to_schedule(&forecasts, &schedule_start);
 
