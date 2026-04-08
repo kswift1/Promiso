@@ -7,6 +7,9 @@ public enum FeatureDomain: String, CaseIterable, Sendable {
   case promises
   case notifications
   case subscription
+  case settings
+  case briefing
+  case widget
 }
 
 @DependencyClient

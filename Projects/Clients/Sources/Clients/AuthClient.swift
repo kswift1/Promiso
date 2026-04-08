@@ -9,6 +9,17 @@ import GoogleSignInSwift
 import PromisoShared
 import UIKit
 
+// MARK: - Widget Token Rust Response DTO
+
+private struct RustWidgetTokenResponse: Decodable {
+  let widgetToken: String
+  let expiresAt: String  // ISO 8601
+}
+
+private struct RustWidgetRevokeResponse: Decodable {
+  let success: Bool
+}
+
 // MARK: - Error
 
 public enum AuthClientError: Error, Equatable {
@@ -453,26 +464,57 @@ extension AuthClient: DependencyKey {
           return
         }
 
-        do {
-          let functions = DefaultFunctionsProvider().functions
-          let deviceId = await MainActor.run {
-            UIDevice.current.identifierForVendor?.uuidString
-          } ?? UUID().uuidString
+        let featureFlags = FeatureFlagsClient.liveValue
+        let useRust = featureFlags.useRustAPI(.widget)
 
-          let result = try await functions
-            .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
-            .call(["deviceId": deviceId])
+        let deviceId = await MainActor.run {
+          UIDevice.current.identifierForVendor?.uuidString
+        } ?? UUID().uuidString
 
-          guard let data = result.data as? [String: Any],
-                let widgetToken = data["widgetToken"] as? String,
-                let expiresAt = data["expiresAt"] as? Int else {
-            return
+        if useRust {
+          // Rust API: POST /api/v1/widget/token
+          do {
+            guard let currentUser = Auth.auth().currentUser else { return }
+            let idToken = try await currentUser.getIDToken()
+            let rustClient = RustAPIClient(getAuthToken: { idToken })
+
+            struct WidgetTokenBody: Encodable { let deviceId: String }
+            let response: RustWidgetTokenResponse = try await rustClient.post(
+              "/api/v1/widget/token",
+              body: WidgetTokenBody(deviceId: deviceId)
+            )
+
+            // ISO 8601 → TimeInterval 변환
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let expiryDate = isoFormatter.date(from: response.expiresAt)
+              ?? isoFormatter.date(from: response.expiresAt.replacingOccurrences(of: "\\.\\d+", with: "", options: .regularExpression))
+              ?? Date().addingTimeInterval(30 * 24 * 60 * 60)  // fallback: 30일
+
+            WidgetTokenStore.save(token: response.widgetToken, expiresAt: expiryDate.timeIntervalSince1970)
+            AppLogger.auth.info("Widget token 발급 완료 (Rust)")
+          } catch {
+            AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")
           }
+        } else {
+          // Firebase Functions: generateWidgetToken
+          do {
+            let functions = DefaultFunctionsProvider().functions
+            let result = try await functions
+              .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
+              .call(["deviceId": deviceId])
 
-          // App Group에 저장
-          WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
-        } catch {
-          AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
+            guard let data = result.data as? [String: Any],
+                  let widgetToken = data["widgetToken"] as? String,
+                  let expiresAt = data["expiresAt"] as? Int else {
+              return
+            }
+
+            // App Group에 저장
+            WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
+          } catch {
+            AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
+          }
         }
       },
       deleteAccount: {

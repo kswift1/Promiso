@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import FirebaseAuth
 import FirebaseFunctions
 import Foundation
 import PromisoShared
@@ -133,10 +134,26 @@ extension DependencyValues {
 
 extension BriefingClient: DependencyKey {
   public static let liveValue: BriefingClient = {
+    let featureFlags = FeatureFlagsClient.liveValue
+    let rustDataSource = BriefingRustDataSource(
+      api: RustAPIClient(
+        getAuthToken: {
+          guard let firebaseUser = Auth.auth().currentUser else {
+            throw BriefingClientError.notAuthenticated
+          }
+          return try await firebaseUser.getIDToken()
+        }
+      )
+    )
     let functions = DefaultFunctionsProvider().functions
 
     return Self(
       generate: { input in
+        if featureFlags.useRustAPI(.briefing) {
+          return try await rustDataSource.generate(input: input)
+        }
+
+        // 기존 Firebase Functions 경로
         var data: [String: Any] = [
           "timezone": input.timezone,
           "language": input.language,
