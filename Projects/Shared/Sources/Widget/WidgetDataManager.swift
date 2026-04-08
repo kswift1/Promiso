@@ -43,11 +43,13 @@ private struct WidgetVotesDTO: Decodable {
 private struct WidgetScheduleDTO: Decodable {
   let id: String
   let title: String
-  let emoji: String
+  let emoji: String?
   let startAt: String  // ISO 8601
   let endAt: String?
   let location: String?
+  let locationName: String?
   let type: String?  // "schedule" | "personal" (nil이면 schedule)
+  let scheduleType: String?
 
   // 일정 전용 필드 (개인 일정은 nil)
   let groupId: String?
@@ -81,7 +83,7 @@ private struct WidgetScheduleDTO: Decodable {
       endDate = nil
     }
 
-    let scheduleType: ScheduleType = (type == "personal") ? .personal : .schedule
+    let resolvedType: ScheduleType = ((type ?? scheduleType) == "personal") ? .personal : .schedule
 
     // myVoteStatus 변환
     let voteStatus: MyVoteStatus
@@ -95,13 +97,13 @@ private struct WidgetScheduleDTO: Decodable {
     }
 
     return WidgetScheduleData(
-      type: scheduleType,
+      type: resolvedType,
       id: id,
       title: title,
-      emoji: emoji,
+      emoji: emoji ?? "📅",
       startAt: startDate,
       endAt: endDate,
-      location: location,
+      location: location ?? locationName,
       groupId: groupId ?? "",
       groupName: groupName,
       isConfirmed: isConfirmed ?? true,
@@ -402,6 +404,10 @@ public enum WidgetDataManager {
     defaults?.set(Date().timeIntervalSince1970, forKey: lastFetchAtKey)
   }
 
+  private static func loadWidgetDeviceId() -> String? {
+    defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
+  }
+
   /// Widget Token으로 API 호출
   ///
   /// Feature Flag에 따라 Rust(`GET /api/v1/widget/snapshot`) 또는
@@ -425,6 +431,9 @@ public enum WidgetDataManager {
     request.httpMethod = "GET"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
 
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
@@ -474,6 +483,9 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {
@@ -521,6 +533,9 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {

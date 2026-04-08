@@ -276,7 +276,14 @@ async fn widget_update_live_activity_eta(
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| AppError::Unauthorized("X-Auth-Token header is required".to_string()))?;
 
-    let claims = verify_widget_or_firebase_token(&firebase_auth, &widget_auth, auth_token).await?;
+    let device_id = headers
+        .get("x-device-id")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.trim().is_empty());
+
+    let claims =
+        verify_widget_or_firebase_token(&firebase_auth, &widget_auth, &pool, auth_token, device_id)
+            .await?;
     if claims.uid != user_id {
         return Err(AppError::Unauthorized("Token uid mismatch".to_string()));
     }
@@ -317,7 +324,14 @@ async fn widget_vote_live_activity(
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| AppError::Unauthorized("X-Auth-Token header is required".to_string()))?;
 
-    let claims = verify_widget_or_firebase_token(&firebase_auth, &widget_auth, auth_token).await?;
+    let device_id = headers
+        .get("x-device-id")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.trim().is_empty());
+
+    let claims =
+        verify_widget_or_firebase_token(&firebase_auth, &widget_auth, &pool, auth_token, device_id)
+            .await?;
     if claims.uid != user_id {
         return Err(AppError::Unauthorized("Token uid mismatch".to_string()));
     }

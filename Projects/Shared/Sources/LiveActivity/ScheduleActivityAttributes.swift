@@ -286,6 +286,9 @@ public enum LiveActivityIntentKey {
   /// Widget Token 만료 시간 저장 키
   public static let widgetTokenExpiryKey = "widget.auth.tokenExpiry"
 
+  /// Widget Token 발급에 사용한 디바이스 ID 저장 키
+  public static let widgetDeviceIdKey = "widget.auth.deviceId"
+
   /// Firebase Emulator Host 저장 키 (개발 환경용)
   public static let emulatorHostKey = "firebase.emulator.host"
 

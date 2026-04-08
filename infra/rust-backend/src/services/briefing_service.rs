@@ -1,4 +1,5 @@
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono_tz::Tz;
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 
@@ -209,7 +210,7 @@ pub fn build_prompt(
     weather: Option<&str>,
     schedules: &[BriefingScheduleItem],
     travel_info: Option<&str>,
-    _timezone: &str,
+    timezone: &str,
     style: &str,
     available_transports: &[String],
     upcoming: Option<&str>,
@@ -307,16 +308,9 @@ pub fn build_prompt(
     } else {
         lines.push("오늘 일정:".to_string());
         for (i, schedule) in schedules.iter().enumerate() {
-            let start_str = schedule
-                .start_at
-                .with_timezone(&chrono::FixedOffset::east_opt(9 * 3600).unwrap())
-                .format("%H:%M")
-                .to_string();
+            let start_str = format_time_in_timezone(schedule.start_at, timezone);
             let time_range = if let Some(end_at) = schedule.end_at {
-                let end_str = end_at
-                    .with_timezone(&chrono::FixedOffset::east_opt(9 * 3600).unwrap())
-                    .format("%H:%M")
-                    .to_string();
+                let end_str = format_time_in_timezone(end_at, timezone);
                 format!("{start_str}~{end_str}")
             } else {
                 start_str
@@ -424,6 +418,84 @@ struct BriefingCacheRow {
     detail: String,
 }
 
+fn parse_timezone(timezone: &str) -> Result<Tz, AppError> {
+    timezone
+        .parse::<Tz>()
+        .map_err(|_| AppError::BadRequest(format!("Invalid timezone: {timezone}")))
+}
+
+fn local_naive_datetime_to_utc(
+    local_datetime: NaiveDateTime,
+    timezone: &Tz,
+) -> Result<DateTime<Utc>, AppError> {
+    timezone
+        .from_local_datetime(&local_datetime)
+        .earliest()
+        .or_else(|| timezone.from_local_datetime(&local_datetime).latest())
+        .map(|datetime| datetime.with_timezone(&Utc))
+        .ok_or_else(|| {
+            AppError::BadRequest(format!(
+                "Invalid local datetime for timezone {}: {}",
+                timezone, local_datetime
+            ))
+        })
+}
+
+fn local_day_bounds_utc(
+    local_date: NaiveDate,
+    timezone: &str,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), AppError> {
+    let timezone = parse_timezone(timezone)?;
+    let day_start = local_date
+        .and_hms_opt(0, 0, 0)
+        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
+    let next_day_start = local_date
+        .succ_opt()
+        .and_then(|date| date.and_hms_opt(0, 0, 0))
+        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
+
+    Ok((
+        local_naive_datetime_to_utc(day_start, &timezone)?,
+        local_naive_datetime_to_utc(next_day_start, &timezone)?,
+    ))
+}
+
+fn format_time_in_timezone(datetime: DateTime<Utc>, timezone: &str) -> String {
+    if let Ok(timezone) = timezone.parse::<Tz>() {
+        datetime.with_timezone(&timezone).format("%H:%M").to_string()
+    } else {
+        datetime
+            .with_timezone(&chrono::FixedOffset::east_opt(9 * 3600).expect("valid offset"))
+            .format("%H:%M")
+            .to_string()
+    }
+}
+
+async fn fetch_upcoming_schedules_with_timezone(
+    pool: &PgPool,
+    user_id: &str,
+    today: NaiveDate,
+    timezone: &str,
+) -> Result<Option<(NaiveDate, Vec<BriefingScheduleItem>)>, AppError> {
+    let mut next_date = today
+        .succ_opt()
+        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
+
+    for _ in 0..30 {
+        let items = fetch_today_schedules(pool, user_id, next_date, timezone).await?;
+        if !items.is_empty() {
+            return Ok(Some((next_date, items)));
+        }
+
+        next_date = match next_date.succ_opt() {
+            Some(date) => date,
+            None => break,
+        };
+    }
+
+    Ok(None)
+}
+
 // ============================================================
 // 메인 생성 함수
 // ============================================================
@@ -435,7 +507,9 @@ pub async fn generate_briefing(
     req: GenerateBriefingRequest,
 ) -> Result<GenerateBriefingResponse, AppError> {
     let force_refresh = req.force_refresh.unwrap_or(false);
-    let today = Utc::now().date_naive();
+    let now = Utc::now();
+    let timezone = parse_timezone(&req.timezone)?;
+    let today = now.with_timezone(&timezone).date_naive();
 
     // 1. user_settings에서 style, transports, notification_hour 조회
     let settings = crate::services::user_settings_service::get_settings(pool, user_id).await?;
@@ -512,7 +586,8 @@ pub async fn generate_briefing(
 
     // 7. 오늘 일정 0개면 upcoming 조회
     let upcoming_str: Option<String> = if schedules.is_empty() {
-        let upcoming = fetch_upcoming_schedules(pool, user_id, today).await?;
+        let upcoming =
+            fetch_upcoming_schedules_with_timezone(pool, user_id, today, &req.timezone).await?;
         upcoming.map(|(date, items)| {
             let titles: Vec<String> = items.iter().map(|i| i.title.clone()).collect();
             format!("{date}: {}", titles.join(", "))
@@ -522,8 +597,7 @@ pub async fn generate_briefing(
     };
 
     // 8. 프롬프트 조립 (날씨/위치/날짜 포함)
-    let now_local = Utc::now();
-    let date_time_str = now_local.format("%Y-%m-%d %H:%M").to_string();
+    let date_time_str = now.with_timezone(&timezone).format("%Y-%m-%d %H:%M").to_string();
     let location_title = req.location.as_ref().and_then(|l| l.title.as_deref());
 
     // 날씨 요약 문자열 조합 (일정이 있으면 첫 번째 일정 날씨 사용)
@@ -665,17 +739,10 @@ pub async fn fetch_today_schedules(
     pool: &PgPool,
     user_id: &str,
     today: NaiveDate,
-    _timezone: &str,
+    timezone: &str,
 ) -> Result<Vec<BriefingScheduleItem>, AppError> {
-    let today_start = today
-        .and_hms_opt(0, 0, 0)
-        .map(|dt| Utc.from_utc_datetime(&dt))
-        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
-    let today_end = today
-        .succ_opt()
-        .and_then(|d| d.and_hms_opt(0, 0, 0))
-        .map(|dt| Utc.from_utc_datetime(&dt))
-        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
+    let (today_start, today_end) = local_day_bounds_utc(today, timezone)?;
+    let timezone = parse_timezone(timezone)?;
 
     let mut items: Vec<BriefingScheduleItem> = Vec::new();
 
@@ -819,16 +886,18 @@ pub async fn fetch_today_schedules(
                 NaiveTime::from_hms_opt(start_hour, start_minute, 0)
                     .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
             );
-            let start_at = Utc.from_utc_datetime(&start_naive);
+            let start_at = local_naive_datetime_to_utc(start_naive, &timezone)?;
 
-            let end_at = end_time.map(|(h, m)| {
-                let end_naive = NaiveDateTime::new(
-                    today,
-                    NaiveTime::from_hms_opt(h, m, 0)
-                        .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
-                );
-                Utc.from_utc_datetime(&end_naive)
-            });
+            let end_at = end_time
+                .map(|(h, m)| {
+                    let end_naive = NaiveDateTime::new(
+                        today,
+                        NaiveTime::from_hms_opt(h, m, 0)
+                            .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+                    );
+                    local_naive_datetime_to_utc(end_naive, &timezone)
+                })
+                .transpose()?;
 
             // 오버라이드 title
             let title = override_entry
@@ -906,34 +975,5 @@ pub async fn fetch_upcoming_schedules(
     user_id: &str,
     today: NaiveDate,
 ) -> Result<Option<(NaiveDate, Vec<BriefingScheduleItem>)>, AppError> {
-    let today_end = today
-        .succ_opt()
-        .and_then(|d| d.and_hms_opt(0, 0, 0))
-        .map(|dt| Utc.from_utc_datetime(&dt))
-        .ok_or_else(|| AppError::Internal("Invalid date".to_string()))?;
-
-    // 오늘 이후 가장 빠른 개인/그룹 일정 날짜 조회
-    let next_date_row: Option<(Option<NaiveDate>,)> = sqlx::query_as(
-        "SELECT MIN(start_at::date) \
-         FROM schedules \
-         WHERE user_id = $1 AND start_at >= $2",
-    )
-    .bind(user_id)
-    .bind(today_end)
-    .fetch_optional(pool)
-    .await?;
-
-    let next_date = next_date_row.and_then(|(d,)| d);
-    let Some(next_date) = next_date else {
-        return Ok(None);
-    };
-
-    // 해당 날짜의 일정 조회 (timezone을 UTC 기준으로 단순 처리)
-    let items = fetch_today_schedules(pool, user_id, next_date, "UTC").await?;
-
-    if items.is_empty() {
-        return Ok(None);
-    }
-
-    Ok(Some((next_date, items)))
+    fetch_upcoming_schedules_with_timezone(pool, user_id, today, "UTC").await
 }

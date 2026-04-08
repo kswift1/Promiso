@@ -26,6 +26,7 @@ const VALID_BRIEFING_STYLES: &[&str] =
 /// 설정 응답 DTO
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct UserSettingsResponse {
+    pub notification_enabled: bool,
     pub group_sort_type: String,
     pub group_sort_order: Option<Vec<String>>,
     pub conflict_threshold_min: i16,
@@ -101,7 +102,7 @@ struct UserSettingsRow {
 // 내부 헬퍼
 // ============================================================
 
-fn row_to_response(row: UserSettingsRow) -> UserSettingsResponse {
+fn row_to_response(row: UserSettingsRow, notification_enabled: bool) -> UserSettingsResponse {
     let default_location = row
         .briefing_default_location_title
         .map(|name| DefaultLocationResponse {
@@ -112,6 +113,7 @@ fn row_to_response(row: UserSettingsRow) -> UserSettingsResponse {
         });
 
     UserSettingsResponse {
+        notification_enabled,
         group_sort_type: row.group_sort_type,
         group_sort_order: row.group_sort_order,
         conflict_threshold_min: row.conflict_threshold_min,
@@ -126,8 +128,9 @@ fn row_to_response(row: UserSettingsRow) -> UserSettingsResponse {
     }
 }
 
-fn default_response() -> UserSettingsResponse {
+fn default_response(notification_enabled: bool) -> UserSettingsResponse {
     UserSettingsResponse {
+        notification_enabled,
         group_sort_type: "joinedRecent".to_string(),
         group_sort_order: None,
         conflict_threshold_min: 0,
@@ -148,6 +151,15 @@ fn default_response() -> UserSettingsResponse {
 
 /// 설정 전체 조회
 pub async fn get_settings(pool: &PgPool, user_id: &str) -> Result<UserSettingsResponse, AppError> {
+    let notification_enabled: bool = sqlx::query_as(
+        "SELECT notification_enabled FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?
+    .map(|(enabled,)| enabled)
+    .unwrap_or(true);
+
     let row = sqlx::query_as::<_, UserSettingsRow>(
         "SELECT group_sort_type, group_sort_order, conflict_threshold_min,
                 briefing_style, briefing_notification_hour,
@@ -165,8 +177,8 @@ pub async fn get_settings(pool: &PgPool, user_id: &str) -> Result<UserSettingsRe
     .await?;
 
     match row {
-        Some(r) => Ok(row_to_response(r)),
-        None => Ok(default_response()),
+        Some(r) => Ok(row_to_response(r, notification_enabled)),
+        None => Ok(default_response(notification_enabled)),
     }
 }
 
@@ -244,7 +256,18 @@ pub async fn update_settings(
     .await?;
 
     // 기존 값 or 기본값
-    let base = current.map(row_to_response).unwrap_or_else(default_response);
+    let notification_enabled: bool = sqlx::query_as(
+        "SELECT notification_enabled FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?
+    .map(|(enabled,)| enabled)
+    .unwrap_or(true);
+
+    let base = current
+        .map(|row| row_to_response(row, notification_enabled))
+        .unwrap_or_else(|| default_response(notification_enabled));
 
     // ---- 각 필드 결정 ----
     let new_group_sort_type = req

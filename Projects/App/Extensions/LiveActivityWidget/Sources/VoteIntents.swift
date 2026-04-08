@@ -136,6 +136,7 @@ private func callVoteResponseFunction(
   let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
   let authToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
     ?? defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
+  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
 
   let requestBody: [String: Any] = [
     "channelId": channelId,
@@ -156,6 +157,9 @@ private func callVoteResponseFunction(
 
   if let authToken {
     request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
+  }
+  if let deviceId {
+    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
   }
 
   do {

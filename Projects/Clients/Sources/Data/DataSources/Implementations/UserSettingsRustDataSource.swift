@@ -4,6 +4,7 @@ import PromisoShared
 // MARK: - Response DTOs
 
 private struct RustSettingsResponse: Decodable {
+  let notificationEnabled: Bool?
   let groupSortType: String
   let groupSortOrder: [String]?
   let conflictThresholdMin: Int
@@ -38,21 +39,21 @@ private struct PatchConflictThresholdBody: Encodable {
 }
 
 private struct PatchBriefingStyleBody: Encodable {
-  let style: String
+  let briefingStyle: String
 }
 
 private struct PatchBriefingNotificationHourBody: Encodable {
-  let notificationHour: Int?
-  let timezone: String?
-  let language: String?
+  let briefingNotificationHour: Int?
+  let briefingTimezone: String?
+  let briefingLanguage: String?
 }
 
 private struct PatchAvailableTransportsBody: Encodable {
-  let availableTransports: [String]
+  let briefingAvailableTransports: [String]
 }
 
 private struct PatchBriefingDefaultLocationBody: Encodable {
-  let defaultLocation: PatchLocationBody?
+  let briefingDefaultLocation: PatchLocationBody?
 }
 
 private struct PatchLocationBody: Encodable {
@@ -108,16 +109,16 @@ public actor UserSettingsRustDataSource {
 
   /// 브리핑 스타일 업데이트
   public func updateBriefingStyle(userId: String, style: BriefingStyle) async throws {
-    let body = PatchBriefingStyleBody(style: style.rawValue)
+    let body = PatchBriefingStyleBody(briefingStyle: style.rawValue)
     let _: RustSuccess = try await api.patch("/api/v1/users/me/settings", body: body)
   }
 
   /// 브리핑 알림 시간 업데이트
   public func updateBriefingNotificationHour(userId: String, hour: Int?) async throws {
     let body = PatchBriefingNotificationHourBody(
-      notificationHour: hour,
-      timezone: hour != nil ? TimeZone.current.identifier : nil,
-      language: hour != nil ? AppLanguage.resolved.rawValue : nil
+      briefingNotificationHour: hour,
+      briefingTimezone: hour != nil ? TimeZone.current.identifier : nil,
+      briefingLanguage: hour != nil ? AppLanguage.resolved.rawValue : nil
     )
     let _: RustSuccess = try await api.patch("/api/v1/users/me/settings", body: body)
   }
@@ -125,7 +126,7 @@ public actor UserSettingsRustDataSource {
   /// 이용 가능 교통수단 업데이트
   public func updateAvailableTransports(userId: String, transports: Set<AvailableTransport>) async throws {
     let body = PatchAvailableTransportsBody(
-      availableTransports: transports.map(\.rawValue).sorted()
+      briefingAvailableTransports: transports.map(\.rawValue).sorted()
     )
     let _: RustSuccess = try await api.patch("/api/v1/users/me/settings", body: body)
   }
@@ -140,17 +141,22 @@ public actor UserSettingsRustDataSource {
         longitude: $0.longitude
       )
     }
-    let body = PatchBriefingDefaultLocationBody(defaultLocation: locationBody)
+    let body = PatchBriefingDefaultLocationBody(briefingDefaultLocation: locationBody)
     let _: RustSuccess = try await api.patch("/api/v1/users/me/settings", body: body)
   }
 
   /// Pro 가입 시 기본 설정값 초기화
   public func initializeProDefaults(userId: String) async throws {
-    let _: RustSuccess = try await api.post("/api/v1/users/me/settings/initialize-pro", body: EmptyBody())
+    let _: RustSuccess = try await api.post(
+      "/api/v1/users/me/settings/initialize-pro",
+      body: InitializeProBody(timezone: TimeZone.current.identifier)
+    )
   }
 }
 
-private struct EmptyBody: Encodable {}
+private struct InitializeProBody: Encodable {
+  let timezone: String
+}
 
 // MARK: - DTO → Model 변환
 
@@ -158,10 +164,14 @@ extension RustSettingsResponse {
   func toModel() -> UserSettings {
     let groupSortOption: GroupSortOption = {
       switch groupSortType {
-      case "joined":
+      case "joinedRecent":
         return .joinedRecent
-      case "name":
+      case "joinedOldest":
+        return .joinedOldest
+      case "nameAscending":
         return .nameAscending
+      case "nameDescending":
+        return .nameDescending
       case "custom":
         return .custom(order: groupSortOrder ?? [])
       default:
@@ -184,10 +194,8 @@ extension RustSettingsResponse {
       )
     }
 
-    // TODO: Rust GET /users/me/settings 응답에 notification_enabled 필드 추가 필요
-    // 현재 서버 응답에 해당 필드가 없으므로 임시로 true 고정. 서버 응답 확장 후 제거할 것.
     return UserSettings(
-      notificationEnabled: true,
+      notificationEnabled: notificationEnabled ?? true,
       groupSortOption: groupSortOption,
       conflictDetectionThreshold: conflictThresholdMin,
       briefingStyle: briefingStyleValue,

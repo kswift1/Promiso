@@ -14,12 +14,14 @@ use sqlx::PgPool;
 // ============================================================
 
 async fn insert_test_user(pool: &PgPool, id: &str) {
+    let suffix = if id.len() > 8 { &id[id.len() - 8..] } else { id };
+
     sqlx::query(
         "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email) \
          VALUES ($1, $2, $2, 'google', 'test-uid', 'test@test.com')",
     )
     .bind(id)
-    .bind(id)
+    .bind(suffix)
     .execute(pool)
     .await
     .expect("Failed to insert test user");
@@ -372,7 +374,7 @@ async fn update_triggers_briefing_projection_reconcile(pool: PgPool) {
     sqlx::query(
         "INSERT INTO entitlements \
          (user_id, has_pro, source, subscription_status, override_active) \
-         VALUES ($1, true, 'app_store', 'active', false)",
+         VALUES ($1, true, 'subscription', 'subscribed', false)",
     )
     .bind("us_proj_reconcile")
     .execute(&pool)

@@ -461,15 +461,20 @@ extension AuthClient: DependencyKey {
       },
       requestWidgetToken: {
         // Widget 전용 Long-lived Token 발급 요청
-        guard Auth.auth().currentUser != nil, !WidgetTokenStore.isTokenValid() else {
+        guard Auth.auth().currentUser != nil else {
           return
         }
-
-        let useRust = featureFlags.useRustAPI(.widget)
 
         let deviceId = await MainActor.run {
           UIDevice.current.identifierForVendor?.uuidString
         } ?? UUID().uuidString
+        WidgetTokenStore.saveDeviceId(deviceId)
+
+        guard !WidgetTokenStore.isTokenValid() else {
+          return
+        }
+
+        let useRust = featureFlags.useRustAPI(.widget)
 
         if useRust {
           // Rust API: POST /api/v1/widget/token
@@ -485,7 +490,11 @@ extension AuthClient: DependencyKey {
             )
 
             // Rust API는 epoch seconds(Int64)를 반환
-            WidgetTokenStore.save(token: response.widgetToken, expiresAt: TimeInterval(response.expiresAt))
+            WidgetTokenStore.save(
+              token: response.widgetToken,
+              expiresAt: TimeInterval(response.expiresAt),
+              deviceId: deviceId
+            )
             AppLogger.auth.info("Widget token 발급 완료 (Rust)")
           } catch {
             AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")
@@ -505,7 +514,11 @@ extension AuthClient: DependencyKey {
             }
 
             // App Group에 저장
-            WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
+            WidgetTokenStore.save(
+              token: widgetToken,
+              expiresAt: TimeInterval(expiresAt),
+              deviceId: deviceId
+            )
           } catch {
             AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
           }
@@ -588,13 +601,19 @@ private enum WidgetTokenStore {
   private static let refreshThresholdDays: TimeInterval = 7 * 24 * 60 * 60
 
   /// Widget Token 저장
-  static func save(token: String, expiresAt: TimeInterval) {
+  static func save(token: String, expiresAt: TimeInterval, deviceId: String) {
     guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
 
     let expiryDate = Date(timeIntervalSince1970: expiresAt)
 
     defaults.set(token, forKey: LiveActivityIntentKey.widgetTokenKey)
     defaults.set(expiryDate, forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
+    defaults.set(deviceId, forKey: LiveActivityIntentKey.widgetDeviceIdKey)
+  }
+
+  static func saveDeviceId(_ deviceId: String) {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+    defaults.set(deviceId, forKey: LiveActivityIntentKey.widgetDeviceIdKey)
   }
 
   /// Widget Token이 유효한지 확인 (만료 7일 전까지 유효)

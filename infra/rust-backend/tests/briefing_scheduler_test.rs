@@ -30,13 +30,15 @@ fn verify_scheduler_secret_rejects_empty() {
 // ============================================================
 
 async fn insert_user(pool: &PgPool, id: &str) {
+    let suffix = if id.len() > 8 { &id[id.len() - 8..] } else { id };
+
     sqlx::query(
         "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email)
          VALUES ($1, $2, $3, 'google', $4, $5)",
     )
     .bind(id)
-    .bind(format!("유저-{id}"))
-    .bind(format!("닉-{id}"))
+    .bind(format!("유저{suffix}"))
+    .bind(format!("닉{suffix}"))
     .bind(format!("provider-{id}"))
     .bind(format!("{id}@promiso.test"))
     .execute(pool)

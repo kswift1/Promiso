@@ -63,7 +63,14 @@ async fn get_snapshot(
             AppError::Unauthorized("Missing or invalid Authorization header".to_string())
         })?;
 
-    let claims = verify_widget_or_firebase_token(&firebase_auth, &widget_auth, token).await?;
+    let device_id = headers
+        .get("x-device-id")
+        .and_then(|v| v.to_str().ok())
+        .filter(|value| !value.trim().is_empty());
+
+    let claims =
+        verify_widget_or_firebase_token(&firebase_auth, &widget_auth, &pool, token, device_id)
+            .await?;
     let result = widget_service::get_widget_snapshot(&pool, &claims.uid).await?;
     ApiResponse::ok(result)
 }

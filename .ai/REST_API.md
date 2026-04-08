@@ -14,8 +14,8 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
-| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id, X-Auth-Token optional) |
-| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id, X-Auth-Token required) |
+| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
+| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
 
 ## Users (인증 필요)
@@ -40,6 +40,7 @@
   ```json
   {
     "data": {
+      "notification_enabled": true,
       "group_sort_type": "joinedRecent",
       "group_sort_order": null,
       "conflict_threshold_min": 0,
@@ -54,6 +55,7 @@
     }
   }
   ```
+  - `notification_enabled`: 사용자 전체 알림 on/off 상태 (`users.notification_enabled`)
   - `group_sort_type`: `"joinedRecent"` | `"joinedOldest"` | `"nameAscending"` | `"nameDescending"` | `"custom"`
   - `group_sort_order`: `custom` 정렬 시 그룹 ID 배열, 나머지는 null
   - `conflict_threshold_min`: 충돌 감지 최소 간격(분). 0 = 겹칠 때만 감지
@@ -101,7 +103,7 @@
   ```json
   { "timezone": "Asia/Seoul" }
   ```
-  - `timezone` 미전송 시 기본값 `"Asia/Seoul"` 적용
+  - `timezone`: 필수. 브리핑 기본 timezone으로 저장
 - 세팅되는 기본값:
   - `briefing_notification_hour`: 8
   - `briefing_style`: `"friendly"`
@@ -936,6 +938,7 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증:
   - `X-User-Id` 헤더 필수
   - `X-Auth-Token` 헤더는 선택. 있으면 Firebase ID Token 또는 widget token 검증 후 uid 일치 확인
+  - `X-Device-Id` 헤더는 widget token 사용 시 필수. token의 `device_id`와 일치해야 함
 - 요청:
   ```json
   {
@@ -956,6 +959,7 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증:
   - `X-User-Id` 헤더 필수
   - `X-Auth-Token` 헤더 필수. Firebase ID Token 또는 widget token 허용
+  - `X-Device-Id` 헤더는 widget token 사용 시 필수. token의 `device_id`와 일치해야 함
 - 요청:
   ```json
   {
@@ -1109,7 +1113,10 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 ### GET /api/v1/widget/snapshot
 
 - 설명: 위젯 스냅샷 조회. 오늘 일정(최대 6개)과 예정 일정(최대 9개)을 KST 기준으로 반환
-- 인증: Widget Token 또는 Firebase Token (`Authorization: Bearer <token>`)
+- 인증:
+  - `Authorization: Bearer <token>` 필수
+  - Firebase Token 또는 Widget Token 허용
+  - `X-Device-Id` 헤더는 Widget Token 사용 시 필수. token의 `device_id`와 일치해야 함
 - 응답 200:
   ```json
   {
@@ -1133,9 +1140,10 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   - `next`: today[0] ?? upcoming[0]. 일정 없으면 null
   - `today`: KST 기준 오늘 날짜의 일정 (start_at 오름차순, 최대 6개)
   - `upcoming`: KST 기준 내일 이후 일정 (start_at 오름차순, 최대 9개)
+  - 최근 1시간 이내에 종료된 일정은 위젯 연속성 유지를 위해 포함될 수 있음
   - 그룹일정: `is_confirmed = true`인 것만 포함
   - 개인일정: 소유자의 모든 미래 일정 포함
-- 에러: 401 (토큰 없음 또는 유효하지 않음)
+- 에러: 401 (토큰 없음/무효, revoke된 widget token, `X-Device-Id` 불일치)
 
 ## Places (인증 불필요)
 

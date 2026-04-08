@@ -45,12 +45,14 @@ async fn create_test_group(pool: &PgPool, creator_id: &str, name: &str) -> uuid:
 }
 
 fn make_schedule_item(id: &str, start_offset_hours: i64) -> BriefingScheduleItem {
+    let base = Utc.with_ymd_and_hms(2026, 4, 8, 0, 0, 0).unwrap();
+
     BriefingScheduleItem {
         id: id.to_string(),
         schedule_type: "personal".to_string(),
         title: format!("일정 {id}"),
         emoji: None,
-        start_at: Utc::now() + chrono::Duration::hours(start_offset_hours),
+        start_at: base + chrono::Duration::hours(start_offset_hours),
         end_at: None,
         severity: "confirmed".to_string(),
         location_name: None,
@@ -404,15 +406,20 @@ async fn fetch_today_returns_group_and_personal(pool: PgPool) {
     insert_test_user(&pool, "user_fetch1", "유저1").await;
     let group_id = create_test_group(&pool, "user_fetch1", "테스트그룹").await;
 
-    let today = chrono::Utc::now().date_naive();
+    let today = NaiveDate::from_ymd_opt(2026, 4, 8).unwrap();
+    let group_start = Utc.with_ymd_and_hms(2026, 4, 8, 1, 0, 0).unwrap();
+    let personal_start = Utc.with_ymd_and_hms(2026, 4, 8, 2, 0, 0).unwrap();
 
     // 그룹 일정 (accepted)
     sqlx::query(
-        "INSERT INTO schedules (id, schedule_type, user_id, group_id, title, start_at, is_confirmed) \
-         VALUES (gen_random_uuid(), 'group', $1, $2, '그룹일정', NOW() + INTERVAL '2 hours', TRUE)",
+        "INSERT INTO schedules \
+            (id, schedule_type, user_id, group_id, title, start_at, is_confirmed, minimum_participants, vote_deadline) \
+         VALUES (gen_random_uuid(), 'group', $1, $2, '그룹일정', $3, TRUE, 2, $4)",
     )
     .bind("user_fetch1")
     .bind(group_id)
+    .bind(group_start)
+    .bind(group_start - chrono::Duration::hours(1))
     .execute(&pool)
     .await
     .expect("그룹 일정 삽입 실패");
@@ -438,9 +445,10 @@ async fn fetch_today_returns_group_and_personal(pool: PgPool) {
     // 개인 일정
     sqlx::query(
         "INSERT INTO schedules (id, schedule_type, user_id, title, start_at) \
-         VALUES (gen_random_uuid(), 'personal', $1, '개인일정', NOW() + INTERVAL '3 hours')",
+         VALUES (gen_random_uuid(), 'personal', $1, '개인일정', $2)",
     )
     .bind("user_fetch1")
+    .bind(personal_start)
     .execute(&pool)
     .await
     .expect("개인 일정 삽입 실패");
@@ -457,14 +465,18 @@ async fn fetch_today_returns_group_and_personal(pool: PgPool) {
 async fn fetch_today_excludes_declined_votes(pool: PgPool) {
     insert_test_user(&pool, "user_declined", "거절유저").await;
     let group_id = create_test_group(&pool, "user_declined", "거절그룹").await;
+    let start_at = Utc.with_ymd_and_hms(2026, 4, 8, 1, 0, 0).unwrap();
 
     // 생성자가 declined한 그룹 일정
     sqlx::query(
-        "INSERT INTO schedules (id, schedule_type, user_id, group_id, title, start_at, is_confirmed) \
-         VALUES (gen_random_uuid(), 'group', $1, $2, '거절일정', NOW() + INTERVAL '2 hours', TRUE)",
+        "INSERT INTO schedules \
+            (id, schedule_type, user_id, group_id, title, start_at, is_confirmed, minimum_participants, vote_deadline) \
+         VALUES (gen_random_uuid(), 'group', $1, $2, '거절일정', $3, TRUE, 2, $4)",
     )
     .bind("user_declined")
     .bind(group_id)
+    .bind(start_at)
+    .bind(start_at - chrono::Duration::hours(1))
     .execute(&pool)
     .await
     .expect("일정 삽입 실패");
@@ -486,7 +498,7 @@ async fn fetch_today_excludes_declined_votes(pool: PgPool) {
     .await
     .expect("투표 삽입 실패");
 
-    let today = chrono::Utc::now().date_naive();
+    let today = NaiveDate::from_ymd_opt(2026, 4, 8).unwrap();
     let result =
         briefing_service::fetch_today_schedules(&pool, "user_declined", today, "Asia/Seoul").await;
 
@@ -533,17 +545,17 @@ async fn fetch_today_includes_recurring(pool: PgPool) {
 async fn fetch_today_sorted_by_start_at(pool: PgPool) {
     insert_test_user(&pool, "user_sorted", "정렬유저").await;
 
-    let today = chrono::Utc::now().date_naive();
+    let today = NaiveDate::from_ymd_opt(2026, 4, 8).unwrap();
 
     // 3시간, 1시간, 2시간 순서로 삽입 (정렬되지 않은 순서)
-    for (title, hours) in [("세번째", 3i64), ("첫번째", 1), ("두번째", 2)] {
+    for (title, hour) in [("세번째", 3u32), ("첫번째", 1), ("두번째", 2)] {
         sqlx::query(
             "INSERT INTO schedules (id, schedule_type, user_id, title, start_at) \
-             VALUES (gen_random_uuid(), 'personal', $1, $2, NOW() + ($3 || ' hours')::INTERVAL)",
+             VALUES (gen_random_uuid(), 'personal', $1, $2, $3)",
         )
         .bind("user_sorted")
         .bind(title)
-        .bind(hours.to_string())
+        .bind(Utc.with_ymd_and_hms(2026, 4, 8, hour, 0, 0).unwrap())
         .execute(&pool)
         .await
         .expect("일정 삽입 실패");

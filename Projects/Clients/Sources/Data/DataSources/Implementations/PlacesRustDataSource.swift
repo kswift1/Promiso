@@ -2,11 +2,6 @@ import Foundation
 
 // MARK: - Rust API Response DTOs
 
-/// Rust API places/search 응답
-private struct RustPlacesResponse: Decodable {
-  let places: [RustPlaceItem]
-}
-
 /// Rust API 장소 아이템
 private struct RustPlaceItem: Decodable {
   let id: String
@@ -36,11 +31,11 @@ public actor PlacesRustDataSource {
     }
 
     let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-    let response: RustPlacesResponse = try await api.get(
+    let response: [RustPlaceItem] = try await api.get(
       "/api/v1/places/search?q=\(encoded)&size=\(size)"
     )
 
-    return response.places.map { item in
+    return response.map { item in
       Place(
         id: item.id,
         name: item.name,

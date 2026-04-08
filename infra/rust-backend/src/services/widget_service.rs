@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use chrono_tz::Asia::Seoul;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
@@ -129,6 +129,7 @@ pub async fn get_widget_snapshot(
     user_id: &str,
 ) -> Result<WidgetSnapshotResponse, AppError> {
     let now = Utc::now();
+    let recent_threshold = now - Duration::hours(1);
 
     // 개인일정 조회
     let personal_rows: Vec<RawScheduleRow> = sqlx::query_as(
@@ -145,11 +146,11 @@ pub async fn get_widget_snapshot(
          FROM schedules \
          WHERE schedule_type = 'personal' \
            AND user_id = $1 \
-           AND start_at >= $2 \
+           AND COALESCE(end_at, start_at) >= $2 \
          ORDER BY start_at ASC",
     )
     .bind(user_id)
-    .bind(now)
+    .bind(recent_threshold)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to fetch personal schedules: {e}")))?;
@@ -171,11 +172,11 @@ pub async fn get_widget_snapshot(
          JOIN group_members gm ON gm.group_id = s.group_id AND gm.user_id = $1 \
          WHERE s.schedule_type = 'group' \
            AND s.is_confirmed = TRUE \
-           AND s.start_at >= $2 \
+           AND COALESCE(s.end_at, s.start_at) >= $2 \
          ORDER BY s.start_at ASC",
     )
     .bind(user_id)
-    .bind(now)
+    .bind(recent_threshold)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(format!("Failed to fetch group schedules: {e}")))?;

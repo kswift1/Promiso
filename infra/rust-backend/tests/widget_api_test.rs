@@ -315,14 +315,16 @@ async fn insert_group_schedule_confirmed(
     start_at: chrono::DateTime<chrono::Utc>,
 ) {
     sqlx::query(
-        "INSERT INTO schedules (id, schedule_type, user_id, group_id, title, start_at, is_confirmed) \
-         VALUES ($1, 'group', $2, $3, $4, $5, true)",
+        "INSERT INTO schedules \
+            (id, schedule_type, user_id, group_id, title, start_at, is_confirmed, minimum_participants, vote_deadline) \
+         VALUES ($1, 'group', $2, $3, $4, $5, true, 2, $6)",
     )
     .bind(id)
     .bind(user_id)
     .bind(group_id)
     .bind(title)
     .bind(start_at)
+    .bind(start_at - chrono::Duration::hours(1))
     .execute(pool)
     .await
     .expect("insert group schedule");
