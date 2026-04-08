@@ -14,8 +14,9 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
-| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id, X-Auth-Token optional) |
-| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id, X-Auth-Token required) |
+| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
+| POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
+| GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
 
 ## Users (인증 필요)
 
@@ -28,6 +29,90 @@
 | GET | `/api/v1/users/nickname-check?q=` | 닉네임 중복 확인 | 본인 닉네임은 available=true |
 | POST | `/api/v1/users/batch` | 여러 유저 조회 (public) | body: {user_ids: [...]} |
 | GET | `/api/v1/users/{id}` | 타인 프로필 (public) | 공통 그룹 체크 (groups 마이그레이션 후) |
+
+## User Settings (인증 필요)
+
+### GET /api/v1/users/me/settings
+
+- 설명: 본인 설정 조회. row가 없으면 기본값 반환 (DB 삽입 없음)
+- 인증: 필수
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "notification_enabled": true,
+      "group_sort_type": "joinedRecent",
+      "group_sort_order": null,
+      "conflict_threshold_min": 0,
+      "briefing": {
+        "style": null,
+        "notification_hour": null,
+        "timezone": null,
+        "language": null,
+        "available_transports": ["transit", "car"],
+        "default_location": null
+      }
+    }
+  }
+  ```
+  - `notification_enabled`: 사용자 전체 알림 on/off 상태 (`users.notification_enabled`)
+  - `group_sort_type`: `"joinedRecent"` | `"joinedOldest"` | `"nameAscending"` | `"nameDescending"` | `"custom"`
+  - `group_sort_order`: `custom` 정렬 시 그룹 ID 배열, 나머지는 null
+  - `conflict_threshold_min`: 충돌 감지 최소 간격(분). 0 = 겹칠 때만 감지
+  - `briefing.available_transports`: 최소 1개 이상. 기본 `["transit", "car"]`
+  - `briefing.default_location`: `{ name, address?, latitude?, longitude? }` 또는 null
+
+### PATCH /api/v1/users/me/settings
+
+- 설명: 설정 부분 수정. 변경할 필드만 전송 (Option 패턴)
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "group_sort_type": "custom",
+    "group_sort_order": ["uuid-1", "uuid-2"],
+    "conflict_threshold_min": 10,
+    "briefing_style": "friendly",
+    "briefing_notification_hour": 8,
+    "briefing_timezone": "Asia/Seoul",
+    "briefing_language": "ko",
+    "briefing_available_transports": ["transit"],
+    "briefing_default_location": {
+      "name": "집",
+      "address": "서울 강남구...",
+      "latitude": 37.123,
+      "longitude": 127.456
+    }
+  }
+  ```
+  - 필드 생략 — 변경 없음
+  - `group_sort_order`: `null` 전송 시 NULL로 초기화
+  - `briefing_notification_hour`: `null` 전송 시 `briefing_timezone`, `briefing_language`도 함께 삭제 (US-7/8)
+  - `briefing_default_location`: `null` 전송 시 위치 전체 삭제
+  - `briefing_available_transports`: 빈 배열 불가 (400)
+  - `briefing_style` 허용값: `"friendly"` | `"humorous"` | `"concise"` | `"motivational"` | `"calm"`
+- 사이드이펙트: `briefing_subscriptions` projection 자동 재계산 (US-12)
+- 응답 200: UserSettingsResponse (GET과 동일 구조)
+- 에러: 400 (허용값 외 group_sort_type/briefing_style, 빈 available_transports, 빈 location.name)
+
+### POST /api/v1/users/me/settings/initialize-pro
+
+- 설명: Pro 전환 시 브리핑 기본값 일괄 세팅
+- 인증: 필수
+- 요청:
+  ```json
+  { "timezone": "Asia/Seoul" }
+  ```
+  - `timezone`: 필수. 브리핑 기본 timezone으로 저장
+- 세팅되는 기본값:
+  - `briefing_notification_hour`: 8
+  - `briefing_style`: `"friendly"`
+  - `briefing_timezone`: 요청 timezone
+  - `briefing_language`: `"ko"`
+  - `conflict_threshold_min`: 0
+  - `briefing_available_transports`: `["transit", "car"]`
+- 사이드이펙트: `briefing_subscriptions` projection 자동 재계산 (US-12)
+- 응답 200: UserSettingsResponse (GET과 동일 구조)
 
 ## Groups
 
@@ -853,6 +938,7 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증:
   - `X-User-Id` 헤더 필수
   - `X-Auth-Token` 헤더는 선택. 있으면 Firebase ID Token 또는 widget token 검증 후 uid 일치 확인
+  - `X-Device-Id` 헤더는 widget token 사용 시 필수. token의 `device_id`와 일치해야 함
 - 요청:
   ```json
   {
@@ -873,6 +959,7 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증:
   - `X-User-Id` 헤더 필수
   - `X-Auth-Token` 헤더 필수. Firebase ID Token 또는 widget token 허용
+  - `X-Device-Id` 헤더는 widget token 사용 시 필수. token의 `device_id`와 일치해야 함
 - 요청:
   ```json
   {
@@ -948,4 +1035,188 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 - 인증: 필수
 - 응답 200: `{ "data": { "success": true } }`
 
-*마지막 업데이트: 2026-04-07*
+## Briefing (인증 필요)
+
+### POST /api/v1/briefing/generate
+
+- 설명: AI 브리핑 생성 (Gemini 2.0 Flash + KMA 단기예보 + ODsay 대중교통 + Kakao 자동차)
+- 인증: 필수 (Pro 여부는 교통 정보 포함 여부에만 영향)
+- 요청:
+  ```json
+  {
+    "timezone": "Asia/Seoul",
+    "language": "ko",
+    "location": {
+      "latitude": 37.123,
+      "longitude": 127.456,
+      "title": "집 (optional)"
+    },
+    "force_refresh": false,
+    "style": "friendly"
+  }
+  ```
+  - `location`: 선택. 없으면 교통 정보 생략
+  - `force_refresh`: true이면 promptKey 일치 여부 무시하고 Gemini 재호출
+  - `style` 허용값: `"friendly"` | `"humorous"` | `"concise"` | `"motivational"` | `"calm"`. 생략 시 user_settings 값 사용
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "summary": "오늘 일정 2건...",
+      "detail": "마크다운 전체 브리핑",
+      "is_updated": true,
+      "style": "friendly",
+      "available_transports": ["transit", "car"],
+      "notification_hour": 8
+    }
+  }
+  ```
+  - `is_updated`: true이면 Gemini 새로 호출, false이면 캐시 반환
+  - `available_transports`: user_settings 기반 (Pro만 교통 정보 포함)
+  - `notification_hour`: user_settings.briefing_notification_hour (Pro 비활성이면 null)
+- 캐시: promptKey(SHA-256 16자) 일치 시 Gemini 스킵, `briefing_cache` 테이블에서 반환
+- 에러: 400 (허용값 외 style), 500 (Gemini 호출 실패)
+
+## Widget (인증 필요)
+
+### POST /api/v1/widget/token
+
+- 설명: Widget JWT 발급. `widget_token_version`을 DB에서 조회하고 HS256 JWT를 생성하여 반환
+- 인증: 필수 (Firebase Token)
+- 요청:
+  ```json
+  { "device_id": "device-uuid" }
+  ```
+  - `device_id`: 필수
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "widget_token": "eyJ...",
+      "expires_at": 1780000000
+    }
+  }
+  ```
+  - `expires_at`: Unix epoch seconds (now + 30일)
+  - JWT payload: `{ sub, scope: "widget:read", device_id, version, exp, iat }`
+
+### POST /api/v1/widget/revoke
+
+- 설명: 현재 유저의 Widget 토큰 전체 무효화. `widget_token_version`을 +1 증가시켜 기존 발급 토큰을 모두 만료
+- 인증: 필수 (Firebase Token)
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  { "data": { "success": true } }
+  ```
+
+### GET /api/v1/widget/snapshot
+
+- 설명: 위젯 스냅샷 조회. 오늘 일정(최대 6개)과 예정 일정(최대 9개)을 KST 기준으로 반환
+- 인증:
+  - `Authorization: Bearer <token>` 필수
+  - Firebase Token 또는 Widget Token 허용
+  - `X-Device-Id` 헤더는 Widget Token 사용 시 필수. token의 `device_id`와 일치해야 함
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "next": {
+        "id": "uuid",
+        "schedule_type": "group",
+        "title": "영화 관람",
+        "emoji": "🎬",
+        "start_at": "ISO8601",
+        "end_at": "ISO8601",
+        "location_name": "CGV 강남",
+        "group_name": "친구들",
+        "is_confirmed": true
+      },
+      "today": [...],
+      "upcoming": [...]
+    }
+  }
+  ```
+  - `next`: today[0] ?? upcoming[0]. 일정 없으면 null
+  - `today`: KST 기준 오늘 날짜의 일정 (start_at 오름차순, 최대 6개)
+  - `upcoming`: KST 기준 내일 이후 일정 (start_at 오름차순, 최대 9개)
+  - 최근 1시간 이내에 종료된 일정은 위젯 연속성 유지를 위해 포함될 수 있음
+  - 그룹일정: `is_confirmed = true`인 것만 포함
+  - 개인일정: 소유자의 모든 미래 일정 포함
+- 에러: 401 (토큰 없음/무효, revoke된 widget token, `X-Device-Id` 불일치)
+
+## Places (인증 불필요)
+
+### GET /api/v1/places/search
+
+- 설명: Kakao 장소 키워드 검색. `KAKAO_REST_API_KEY` 환경변수로 Kakao API 호출
+- 인증: 불필요
+- 쿼리 파라미터:
+  - `q`: 검색 키워드 (필수)
+  - `size`: 결과 개수 (선택, 기본 15, 최대 45)
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "12345678",
+        "name": "CGV 강남",
+        "latitude": 37.5012,
+        "longitude": 127.0261,
+        "address": "서울 강남구 ...",
+        "road_address": "서울 강남구 강남대로 ...",
+        "category": "문화시설",
+        "phone": "02-123-4567"
+      }
+    ]
+  }
+  ```
+  - `address`, `road_address`, `category`, `phone`: nullable
+- 에러: 500 (Kakao API 호출 실패)
+
+## Emoji (인증 필요)
+
+### POST /api/v1/emoji/generate
+
+- 설명: 일정 제목으로 Gemini 2.0 Flash를 호출하여 어울리는 이모지 1개 생성. 실패 시 "📅" 반환
+- 인증: 필수
+- 요청:
+  ```json
+  { "title": "영화 관람" }
+  ```
+- 응답 200:
+  ```json
+  { "data": { "emoji": "🎬" } }
+  ```
+  - Gemini 호출 실패 또는 이모지 미추출 시 `"📅"` 반환 (에러 없음)
+- 에러: 401 (인증 실패)
+
+## Internal (스케줄러 전용)
+
+### POST /api/v1/internal/briefing/dispatch
+
+- 설명: 브리핑 스케줄러 dispatch. `briefing_subscriptions`에서 due 항목을 최대 50개 처리하고 next_dispatch_at을 갱신
+- 인증: `X-Scheduler-Secret` 헤더 (SCHEDULER_SECRET 환경변수와 대조). 불일치 시 401
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "summary": {
+      "totalDue": 12,
+      "processed": 12,
+      "succeeded": 11,
+      "failed": 1,
+      "skipped": 0,
+      "deleted": 0
+    }
+  }
+  ```
+  - `totalDue`: 조회된 due 항목 수
+  - `processed`: 실제 처리 시도 수
+  - `succeeded`: 브리핑 생성 + FCM 발송 성공
+  - `failed`: 처리 중 오류 발생 (next_dispatch_at은 갱신)
+  - `skipped`: Pro 박탈 등으로 건너뜀
+  - `deleted`: briefing_subscriptions row 삭제 (notification_hour NULL 또는 Pro 상실)
+- 에러: 401 (X-Scheduler-Secret 불일치)
+
+*마지막 업데이트: 2026-04-08*

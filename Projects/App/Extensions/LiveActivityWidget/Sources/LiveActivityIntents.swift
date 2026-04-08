@@ -150,6 +150,7 @@ private func callUpdateETAFunction(
   let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
   let authToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
     ?? defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
+  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
 
   // participants를 서버 형식으로 변환
   let participantsData: [[String: Any]] = participants.map { p in
@@ -175,6 +176,9 @@ private func callUpdateETAFunction(
 
   if let authToken = authToken {
     request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
+  }
+  if let deviceId {
+    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
   }
 
   do {

@@ -1,10 +1,15 @@
 pub mod admin;
+mod briefing;
+mod emoji;
 mod groups;
 mod health;
+pub mod internal;
 mod notifications;
+mod places;
 mod schedules;
 mod subscriptions;
 mod users;
+mod widget;
 
 use std::sync::Arc;
 
@@ -33,6 +38,9 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(schedules::router())
         .merge(notifications::router())
         .merge(subscriptions::router())
+        .merge(briefing::router())
+        .merge(widget::router())
+        .merge(emoji::router())
         .layer(axum::Extension(app_store_verifier.clone()))
         .layer(axum::Extension(live_activity_sender.clone()))
         .layer(axum::Extension(push_sender))
@@ -40,6 +48,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
 
     let public_routes = schedules::public_router()
         .merge(subscriptions::public_router())
+        .merge(widget::widget_snapshot_router())
         .layer(axum::Extension(app_store_verifier))
         .layer(axum::Extension(public_live_activity_sender))
         .layer(axum::Extension(public_push_sender));
@@ -47,6 +56,8 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
+        .merge(places::router()) // /api/v1/places/* — 인증 불필요
+        .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)
         .merge(public_routes)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(widget_auth))

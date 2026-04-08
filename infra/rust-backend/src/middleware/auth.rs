@@ -7,6 +7,7 @@ use axum::middleware::Next;
 use axum::response::Response;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use tokio::sync::RwLock;
 
 use crate::errors::AppError;
@@ -26,12 +27,16 @@ struct FirebaseClaims {
     email: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct WidgetClaims {
-    sub: String,
-    scope: String,
-    exp: usize,
-    iat: Option<usize>,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WidgetClaims {
+    pub sub: String,
+    pub scope: String,
+    pub exp: usize,
+    pub iat: Option<usize>,
+    /// 발급 당시 widget_token_version (무효화 판단용)
+    pub version: Option<i32>,
+    /// 발급 요청 deviceId (WT-2)
+    pub device_id: Option<String>,
 }
 
 #[derive(Clone)]
@@ -156,7 +161,11 @@ impl WidgetAuth {
         Self { secret }
     }
 
-    pub fn verify_token(&self, token: &str) -> Result<Claims, AppError> {
+    pub fn secret(&self) -> Option<&str> {
+        self.secret.as_deref()
+    }
+
+    fn decode_claims(&self, token: &str) -> Result<WidgetClaims, AppError> {
         let secret = self.secret.as_ref().ok_or_else(|| {
             AppError::Unauthorized("Widget token verification is not configured".to_string())
         })?;
@@ -178,8 +187,14 @@ impl WidgetAuth {
             ));
         }
 
+        Ok(token_data.claims)
+    }
+
+    pub fn verify_token(&self, token: &str) -> Result<Claims, AppError> {
+        let claims = self.decode_claims(token)?;
+
         Ok(Claims {
-            uid: token_data.claims.sub,
+            uid: claims.sub,
             email: None,
         })
     }
@@ -188,13 +203,57 @@ impl WidgetAuth {
 pub async fn verify_widget_or_firebase_token(
     firebase_auth: &FirebaseAuth,
     widget_auth: &WidgetAuth,
+    pool: &PgPool,
     token: &str,
+    provided_device_id: Option<&str>,
 ) -> Result<Claims, AppError> {
     let header = decode_header(token)
         .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
 
     if header.alg == Algorithm::HS256 {
-        return widget_auth.verify_token(token);
+        let claims = widget_auth.decode_claims(token)?;
+        let token_version = claims.version.ok_or_else(|| {
+            AppError::Unauthorized("Widget token version is missing".to_string())
+        })?;
+        let token_device_id = claims
+            .device_id
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| {
+                AppError::Unauthorized("Widget token device_id is missing".to_string())
+            })?;
+        let request_device_id = provided_device_id
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| {
+                AppError::Unauthorized("X-Device-Id header is required".to_string())
+            })?;
+
+        if request_device_id != token_device_id {
+            return Err(AppError::Unauthorized(
+                "Widget token device mismatch".to_string(),
+            ));
+        }
+
+        let current_version: Option<(i32,)> =
+            sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
+                .bind(&claims.sub)
+                .fetch_optional(pool)
+                .await?;
+
+        let current_version = current_version.ok_or_else(|| {
+            AppError::Unauthorized("Widget token user does not exist".to_string())
+        })?;
+
+        if current_version.0 != token_version {
+            return Err(AppError::Unauthorized(
+                "Widget token has been revoked".to_string(),
+            ));
+        }
+
+        return Ok(Claims {
+            uid: claims.sub,
+            email: None,
+        });
     }
 
     firebase_auth.verify_token(token).await
@@ -243,6 +302,8 @@ mod tests {
                 scope: "widget:read".to_string(),
                 exp: now + 3600,
                 iat: Some(now),
+                version: None,
+                device_id: None,
             },
             &EncodingKey::from_secret("test-secret".as_bytes()),
         )
@@ -269,6 +330,8 @@ mod tests {
                 scope: "widget:write".to_string(),
                 exp: now + 3600,
                 iat: Some(now),
+                version: None,
+                device_id: None,
             },
             &EncodingKey::from_secret("test-secret".as_bytes()),
         )

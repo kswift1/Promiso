@@ -43,11 +43,13 @@ private struct WidgetVotesDTO: Decodable {
 private struct WidgetScheduleDTO: Decodable {
   let id: String
   let title: String
-  let emoji: String
+  let emoji: String?
   let startAt: String  // ISO 8601
   let endAt: String?
   let location: String?
+  let locationName: String?
   let type: String?  // "schedule" | "personal" (nil이면 schedule)
+  let scheduleType: String?
 
   // 일정 전용 필드 (개인 일정은 nil)
   let groupId: String?
@@ -81,7 +83,7 @@ private struct WidgetScheduleDTO: Decodable {
       endDate = nil
     }
 
-    let scheduleType: ScheduleType = (type == "personal") ? .personal : .schedule
+    let resolvedType: ScheduleType = ((type ?? scheduleType) == "personal") ? .personal : .schedule
 
     // myVoteStatus 변환
     let voteStatus: MyVoteStatus
@@ -95,13 +97,13 @@ private struct WidgetScheduleDTO: Decodable {
     }
 
     return WidgetScheduleData(
-      type: scheduleType,
+      type: resolvedType,
       id: id,
       title: title,
-      emoji: emoji,
+      emoji: emoji ?? "📅",
       startAt: startDate,
       endAt: endDate,
-      location: location,
+      location: location ?? locationName,
       groupId: groupId ?? "",
       groupName: groupName,
       isConfirmed: isConfirmed ?? true,
@@ -165,6 +167,22 @@ public enum WidgetDataManager {
 
   /// Firebase Functions 엔드포인트
   private static let functionsBaseURL = "https://asia-northeast3-\(LiveActivityIntentKey.firebaseProjectId).cloudfunctions.net"
+
+  /// Rust API 기본 URL
+  #if DEBUG
+  private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
+  #else
+  private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
+  #endif
+
+  /// Widget Feature Flag: UserDefaults에서 직접 읽기 (Widget Extension은 DI 사용 불가)
+  private static var useRustWidgetAPI: Bool {
+    #if DEBUG
+    return true
+    #else
+    return UserDefaults.standard.bool(forKey: "rust_api_widget")
+    #endif
+  }
 
   private static var defaults: UserDefaults? {
     UserDefaults(suiteName: suiteName)
@@ -386,8 +404,76 @@ public enum WidgetDataManager {
     defaults?.set(Date().timeIntervalSince1970, forKey: lastFetchAtKey)
   }
 
-  /// Widget Token으로 API 호출 (getWidgetSnapshotWithToken 엔드포인트)
+  private static func loadWidgetDeviceId() -> String? {
+    defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
+  }
+
+  /// Widget Token으로 API 호출
+  ///
+  /// Feature Flag에 따라 Rust(`GET /api/v1/widget/snapshot`) 또는
+  /// Firebase Functions(`getWidgetSnapshotWithToken`)을 호출합니다.
   private static func fetchWithWidgetToken(_ token: String) async -> FetchResult {
+    if useRustWidgetAPI {
+      return await fetchWithWidgetTokenFromRust(token)
+    } else {
+      return await fetchWithWidgetTokenFromFirebase(token)
+    }
+  }
+
+  /// Rust API로 위젯 스냅샷 호출 (GET /api/v1/widget/snapshot)
+  private static func fetchWithWidgetTokenFromRust(_ token: String) async -> FetchResult {
+    guard let url = URL(string: "\(rustBaseURL)/api/v1/widget/snapshot") else {
+      widgetLogger.error("❌ Rust URL 생성 실패")
+      return FetchResult(items: loadAllItems(), hadError: true)
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
+
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+
+      guard let httpResponse = response as? HTTPURLResponse else {
+        widgetLogger.error("❌ HTTP 응답 아님 (Rust)")
+        return FetchResult(items: loadAllItems(), hadError: true)
+      }
+
+      guard httpResponse.statusCode == 200 else {
+        widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public) (Rust)")
+        // 401: 토큰 만료/무효화 → Firebase ID Token fallback
+        if httpResponse.statusCode == 401, let idToken = loadIdToken() {
+          widgetLogger.info("🔄 Rust Widget Token 401 → ID Token fallback")
+          return await fetchWithIdToken(idToken)
+        }
+        return FetchResult(items: loadAllItems(), hadError: true)
+      }
+
+      // Rust API 응답 형식: { "data": { ... } }
+      let decoder = JSONDecoder()
+      decoder.keyDecodingStrategy = .convertFromSnakeCase
+      decoder.dateDecodingStrategy = .iso8601
+      let wrapper = try decoder.decode(RustSnapshotResponseWrapper.self, from: data)
+      let allItems = convertSnapshotToItems(wrapper.data)
+
+      // 캐시 업데이트 + TTL 기록
+      saveItemsByType(allItems)
+      markFetchedNow()
+
+      widgetLogger.info("✅ Rust API 성공 → \(allItems.count, privacy: .public)개 항목")
+      return FetchResult(items: allItems, hadError: false)
+    } catch {
+      widgetLogger.error("❌ 네트워크 (Rust): \(error.localizedDescription, privacy: .public)")
+      return FetchResult(items: loadAllItems(), hadError: true)
+    }
+  }
+
+  /// Firebase Functions으로 위젯 스냅샷 호출 (getWidgetSnapshotWithToken)
+  private static func fetchWithWidgetTokenFromFirebase(_ token: String) async -> FetchResult {
     guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshotWithToken") else {
       widgetLogger.error("❌ URL 생성 실패")
       return FetchResult(items: loadAllItems(), hadError: true)
@@ -397,6 +483,9 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {
@@ -444,6 +533,9 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let deviceId = loadWidgetDeviceId() {
+      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+    }
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {
@@ -525,4 +617,10 @@ public enum WidgetDataManager {
 
 private struct FunctionsResponseWrapper: Decodable {
   let result: WidgetSnapshotResponse
+}
+
+// MARK: - Rust API Response Wrapper
+
+private struct RustSnapshotResponseWrapper: Decodable {
+  let data: WidgetSnapshotResponse
 }

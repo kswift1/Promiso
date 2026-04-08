@@ -11,6 +11,10 @@ use crate::services::app_store_service::{
     AppStoreNotificationKind, AppStoreTransactionKind, AppStoreVerifier, VerifiedNotification,
     VerifiedRenewalInfo, VerifiedTransaction,
 };
+use crate::services::slack_service::{
+    build_slack_message, detect_subscription_transition, send_slack_notification,
+    SlackMessageContext, SubscriptionTransitionContext,
+};
 
 #[derive(Debug, Clone)]
 struct DerivedSubscriptionState {
@@ -134,6 +138,36 @@ pub async fn verify_purchase(
 
     tx.commit().await?;
 
+    // 트랜잭션 커밋 후 Slack 알림 (메인 흐름 비차단)
+    let before_status = current_record
+        .as_ref()
+        .map(|r| r.status.as_str().to_string());
+    let after_status = subscription_response.status.as_str().to_string();
+    let after_last_notification_type = subscription_response.last_notification_type.clone();
+    let before_last_notification_type = current_record
+        .as_ref()
+        .and_then(|r| r.last_notification_type.clone());
+    let slack_expiration = subscription_response
+        .expiration_date
+        .map(|d| d.to_rfc3339());
+    let webhook_url = std::env::var("SLACK_WEBHOOK_URL").unwrap_or_default();
+    let (nickname, total_pro_users, price) =
+        fetch_slack_context(pool, user_id, &payload.product_id).await;
+    notify_subscription_slack(
+        &webhook_url,
+        user_id,
+        before_status.as_deref(),
+        &after_status,
+        after_last_notification_type.as_deref(),
+        before_last_notification_type.as_deref(),
+        &payload.product_id,
+        slack_expiration.as_deref(),
+        nickname,
+        total_pro_users,
+        price,
+    )
+    .await;
+
     Ok(VerifyPurchaseResponse {
         success: true,
         subscription_status: subscription_response,
@@ -188,6 +222,10 @@ pub async fn handle_apple_notification(
         .as_ref()
         .and_then(|record| record.latest_app_store_signed_date);
 
+    // Slack 알림에 사용할 값을 미리 캡처 (derived_state가 이동되기 전에)
+    let slack_after_status = derived_state.status.as_str().to_string();
+    let slack_expiration_date = derived_state.expiration_date.map(|d| d.to_rfc3339());
+
     if !is_stale(signed_date, current_latest_signed_date) {
         let current_offer_type = current_record
             .as_ref()
@@ -229,6 +267,35 @@ pub async fn handle_apple_notification(
 
     reconcile_entitlement_in_tx(&mut tx, &owner_record.user_id).await?;
     tx.commit().await?;
+
+    // 트랜잭션 커밋 후 Slack 알림 (메인 흐름 비차단, stale 시에도 현재 상태 기준으로 호출)
+    let webhook_url = std::env::var("SLACK_WEBHOOK_URL").unwrap_or_default();
+    let before_status = current_record
+        .as_ref()
+        .map(|r| r.status.as_str().to_string());
+    let after_last_notification_type =
+        Some(notification.notification_type.as_str().to_string());
+    let before_last_notification_type = current_record
+        .as_ref()
+        .and_then(|r| r.last_notification_type.clone());
+    let (nickname, total_pro_users, price) =
+        fetch_slack_context(pool, &owner_record.user_id, &notification.transaction.product_id)
+            .await;
+    notify_subscription_slack(
+        &webhook_url,
+        &owner_record.user_id,
+        before_status.as_deref(),
+        &slack_after_status,
+        after_last_notification_type.as_deref(),
+        before_last_notification_type.as_deref(),
+        &notification.transaction.product_id,
+        slack_expiration_date.as_deref(),
+        nickname,
+        total_pro_users,
+        price,
+    )
+    .await;
+
     Ok(())
 }
 
@@ -240,6 +307,96 @@ pub async fn reconcile_entitlement(
     let entitlement = reconcile_entitlement_in_tx(&mut tx, user_id).await?;
     tx.commit().await?;
     Ok(entitlement)
+}
+
+/// 구독 상태 변경 후 Slack 알림을 발송한다.
+/// webhook_url이 비어있으면 스킵. 발송 실패 시 로그만 남기고 에러를 전파하지 않는다.
+///
+/// nickname, total_pro_users, price는 호출자가 미리 조회하여 전달한다 (레이어 경계 준수).
+pub async fn notify_subscription_slack(
+    webhook_url: &str,
+    user_id: &str,
+    before_status: Option<&str>,
+    after_status: &str,
+    after_last_notification_type: Option<&str>,
+    before_last_notification_type: Option<&str>,
+    product_id: &str,
+    expiration_date: Option<&str>,
+    nickname: Option<String>,
+    total_pro_users: Option<u32>,
+    price: Option<String>,
+) {
+    // SN-10: webhook URL 비어있으면 스킵
+    if webhook_url.is_empty() {
+        return;
+    }
+
+    let ctx = SubscriptionTransitionContext {
+        before_status: before_status.map(str::to_owned),
+        after_status: after_status.to_owned(),
+        before_last_notification_type: before_last_notification_type.map(str::to_owned),
+        after_last_notification_type: after_last_notification_type.map(str::to_owned),
+        product_id: product_id.to_owned(),
+        expiration_date: expiration_date.map(str::to_owned),
+    };
+
+    let Some(notification_type) = detect_subscription_transition(&ctx) else {
+        return;
+    };
+
+    let message_ctx = SlackMessageContext {
+        nickname,
+        product_id: product_id.to_string(),
+        price,
+        pro_user_count: total_pro_users,
+        expiration_date: expiration_date.map(str::to_string),
+        promo_code: None,
+    };
+    let message = build_slack_message(&notification_type, &message_ctx);
+
+    // SN-9: 발송 실패 시 로그만
+    if let Err(()) = send_slack_notification(webhook_url, &message).await {
+        tracing::warn!(
+            "Slack notification failed for user {user_id}, type {:?}",
+            notification_type
+        );
+    }
+}
+
+/// Slack 알림에 필요한 사용자 정보를 DB에서 조회한다.
+async fn fetch_slack_context(
+    pool: &PgPool,
+    user_id: &str,
+    product_id: &str,
+) -> (Option<String>, Option<u32>, Option<String>) {
+    let nickname = sqlx::query_scalar::<_, String>("SELECT nickname FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten();
+
+    let total_pro_users = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM entitlements WHERE has_pro = true",
+    )
+    .fetch_one(pool)
+    .await
+    .ok()
+    .and_then(|n| u32::try_from(n).ok());
+
+    // 가격 (하드코딩 — Firebase의 admin/proPlanPrices 대응)
+    let price = if product_id.contains("monthly") {
+        Some("3,900원".to_string())
+    } else if product_id.contains("yearly") {
+        Some("29,000원".to_string())
+    } else if product_id.contains("lifetime") {
+        Some("39,000원".to_string())
+    } else {
+        tracing::warn!("Unknown product_id pattern: {product_id}");
+        None
+    };
+
+    (nickname, total_pro_users, price)
 }
 
 fn derive_status_from_transaction(transaction: &VerifiedTransaction) -> DerivedSubscriptionState {

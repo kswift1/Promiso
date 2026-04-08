@@ -9,6 +9,9 @@ use crate::middleware::auth::Claims;
 use crate::models::user::*;
 use crate::response::ApiResponse;
 use crate::services::user_service;
+use crate::services::user_settings_service::{
+    self, UpdateSettingsRequest, UserSettingsResponse,
+};
 
 pub fn router() -> Router<PgPool> {
     Router::new()
@@ -21,6 +24,14 @@ pub fn router() -> Router<PgPool> {
         )
         .route("/api/v1/users/batch", post(batch_get_users))
         .route("/api/v1/users/{id}", get(get_user_public))
+        .route(
+            "/api/v1/users/me/settings",
+            get(get_settings_handler).patch(update_settings_handler),
+        )
+        .route(
+            "/api/v1/users/me/settings/initialize-pro",
+            post(initialize_pro_handler),
+        )
 }
 
 async fn create_user(
@@ -87,5 +98,41 @@ async fn batch_get_users(
     Json(req): Json<BatchGetUsersRequest>,
 ) -> Result<ApiResponse<Vec<UserPublicResponse>>, AppError> {
     let response = user_service::batch_get_users(&pool, &claims.uid, &req.user_ids).await?;
+    ApiResponse::ok(response)
+}
+
+// ============================================================
+// User Settings 핸들러 (stub)
+// ============================================================
+
+async fn get_settings_handler(
+    Extension(claims): Extension<Claims>,
+    State(pool): State<PgPool>,
+) -> Result<ApiResponse<UserSettingsResponse>, AppError> {
+    let response = user_settings_service::get_settings(&pool, &claims.uid).await?;
+    ApiResponse::ok(response)
+}
+
+async fn update_settings_handler(
+    Extension(claims): Extension<Claims>,
+    State(pool): State<PgPool>,
+    Json(req): Json<UpdateSettingsRequest>,
+) -> Result<ApiResponse<UserSettingsResponse>, AppError> {
+    let response = user_settings_service::update_settings(&pool, &claims.uid, req).await?;
+    ApiResponse::ok(response)
+}
+
+#[derive(Deserialize)]
+struct InitializeProBody {
+    timezone: String,
+}
+
+async fn initialize_pro_handler(
+    Extension(claims): Extension<Claims>,
+    State(pool): State<PgPool>,
+    Json(body): Json<InitializeProBody>,
+) -> Result<ApiResponse<UserSettingsResponse>, AppError> {
+    let response =
+        user_settings_service::initialize_pro_defaults(&pool, &claims.uid, &body.timezone).await?;
     ApiResponse::ok(response)
 }

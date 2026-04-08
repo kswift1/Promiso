@@ -10,12 +10,8 @@
 - [x] #4 일정 API 구현 — 개인일정/그룹일정 스키마 + 응답/확정 상태 머신
 - [x] #5 알림과 푸시 — FCM 직접 발송 + 배지 + 그룹별 설정
 - [x] #6 실시간과 LiveActivity — SSE + APNs 직접 발송 + ETA 공유
-- [ ] #7 구독과 Entitlements — StoreKit 검증, 쿠폰/오버라이드, Firestore read model 대체
-- [ ] #8 사용자 설정과 AI 브리핑 — settings/main, 브리핑 생성, 스케줄링, Pro 연동
-- [ ] #9 위젯과 기타 엔드포인트 — Widget 인증, 캐시, 남은 보조 API 정리
-- [ ] #10 점진적 전환 — Branch by Abstraction으로 Dev → Stage → Prod
-- [ ] #11 인증 자체 구현 — Firebase Auth → Apple/Google OAuth + JWT (선택적)
-- [ ] #12 회고 — Firebase vs 자체 서버, 실제로 뭐가 달라졌나
+- [ ] #7 인증 자체 구현과 점진적 전환 — Firebase Auth → 자체 OAuth + JWT, Feature Flag + Branch by Abstraction
+- [ ] #8 회고 — Firebase vs 자체 서버, 실제로 뭐가 달라졌나
 
 ## 메모
 

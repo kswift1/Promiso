@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import FirebaseAuth
 import Foundation
 import PromisoShared
 import SwiftUI
@@ -77,7 +78,16 @@ extension DependencyValues {
 
 extension MapClient: DependencyKey {
   public static let liveValue: MapClient = {
-    let dataSource = KakaoMapDataSource()
+    let kakaoDataSource = KakaoMapDataSource()
+    let featureFlags = FeatureFlagsClient.liveValue
+    let rustDataSource = PlacesRustDataSource(
+      api: RustAPIClient(getAuthToken: {
+        guard let user = Auth.auth().currentUser else {
+          throw MapDataSourceError.invalidResponse
+        }
+        return try await user.getIDToken()
+      })
+    )
 
     // MARK: Helpers
 
@@ -167,7 +177,13 @@ extension MapClient: DependencyKey {
 
     return Self(
       searchPlaces: { query in
-        try await dataSource.searchPlaces(query: query)
+        if featureFlags.useRustAPI(.places) {
+          // Rust API: GET /api/v1/places/search?q={query}&size={size}
+          return try await rustDataSource.searchPlaces(query: query)
+        } else {
+          // Firebase Functions: searchPlaces
+          return try await kakaoDataSource.searchPlaces(query: query)
+        }
       },
       openDirections: { from, to, name, transportMode in
         Task { @MainActor in

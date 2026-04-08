@@ -9,6 +9,17 @@ import GoogleSignInSwift
 import PromisoShared
 import UIKit
 
+// MARK: - Widget Token Rust Response DTO
+
+private struct RustWidgetTokenResponse: Decodable {
+  let widgetToken: String
+  let expiresAt: Int64  // epoch seconds
+}
+
+private struct RustWidgetRevokeResponse: Decodable {
+  let success: Bool
+}
+
 // MARK: - Error
 
 public enum AuthClientError: Error, Equatable {
@@ -334,6 +345,7 @@ extension AuthClient: DependencyKey {
   public static let liveValue: AuthClient = {
     let session = InMemoryAuthSession.shared
     let provider = PlatformAuthProvider()
+    let featureFlags = FeatureFlagsClient.liveValue
 
     return AuthClient(
       logout: {
@@ -449,30 +461,67 @@ extension AuthClient: DependencyKey {
       },
       requestWidgetToken: {
         // Widget 전용 Long-lived Token 발급 요청
-        guard Auth.auth().currentUser != nil, !WidgetTokenStore.isTokenValid() else {
+        guard Auth.auth().currentUser != nil else {
           return
         }
 
-        do {
-          let functions = DefaultFunctionsProvider().functions
-          let deviceId = await MainActor.run {
-            UIDevice.current.identifierForVendor?.uuidString
-          } ?? UUID().uuidString
+        let deviceId = await MainActor.run {
+          UIDevice.current.identifierForVendor?.uuidString
+        } ?? UUID().uuidString
+        WidgetTokenStore.saveDeviceId(deviceId)
 
-          let result = try await functions
-            .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
-            .call(["deviceId": deviceId])
+        guard !WidgetTokenStore.isTokenValid() else {
+          return
+        }
 
-          guard let data = result.data as? [String: Any],
-                let widgetToken = data["widgetToken"] as? String,
-                let expiresAt = data["expiresAt"] as? Int else {
-            return
+        let useRust = featureFlags.useRustAPI(.widget)
+
+        if useRust {
+          // Rust API: POST /api/v1/widget/token
+          do {
+            guard let currentUser = Auth.auth().currentUser else { return }
+            let idToken = try await currentUser.getIDToken()
+            let rustClient = RustAPIClient(getAuthToken: { idToken })
+
+            struct WidgetTokenBody: Encodable { let deviceId: String }
+            let response: RustWidgetTokenResponse = try await rustClient.post(
+              "/api/v1/widget/token",
+              body: WidgetTokenBody(deviceId: deviceId)
+            )
+
+            // Rust API는 epoch seconds(Int64)를 반환
+            WidgetTokenStore.save(
+              token: response.widgetToken,
+              expiresAt: TimeInterval(response.expiresAt),
+              deviceId: deviceId
+            )
+            AppLogger.auth.info("Widget token 발급 완료 (Rust)")
+          } catch {
+            AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")
           }
+        } else {
+          // Firebase Functions: generateWidgetToken
+          do {
+            let functions = DefaultFunctionsProvider().functions
+            let result = try await functions
+              .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
+              .call(["deviceId": deviceId])
 
-          // App Group에 저장
-          WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
-        } catch {
-          AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
+            guard let data = result.data as? [String: Any],
+                  let widgetToken = data["widgetToken"] as? String,
+                  let expiresAt = data["expiresAt"] as? Int else {
+              return
+            }
+
+            // App Group에 저장
+            WidgetTokenStore.save(
+              token: widgetToken,
+              expiresAt: TimeInterval(expiresAt),
+              deviceId: deviceId
+            )
+          } catch {
+            AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
+          }
         }
       },
       deleteAccount: {
@@ -552,13 +601,19 @@ private enum WidgetTokenStore {
   private static let refreshThresholdDays: TimeInterval = 7 * 24 * 60 * 60
 
   /// Widget Token 저장
-  static func save(token: String, expiresAt: TimeInterval) {
+  static func save(token: String, expiresAt: TimeInterval, deviceId: String) {
     guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
 
     let expiryDate = Date(timeIntervalSince1970: expiresAt)
 
     defaults.set(token, forKey: LiveActivityIntentKey.widgetTokenKey)
     defaults.set(expiryDate, forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
+    defaults.set(deviceId, forKey: LiveActivityIntentKey.widgetDeviceIdKey)
+  }
+
+  static func saveDeviceId(_ deviceId: String) {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+    defaults.set(deviceId, forKey: LiveActivityIntentKey.widgetDeviceIdKey)
   }
 
   /// Widget Token이 유효한지 확인 (만료 7일 전까지 유효)
