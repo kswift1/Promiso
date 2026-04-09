@@ -152,7 +152,6 @@ extension DependencyValues {
 extension PersonalEventClient: DependencyKey {
   public static let liveValue: PersonalEventClient = {
     @Dependency(\.featureFlags) var featureFlags
-    let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
     let rustDataSource = PersonalEventRustDataSource(
       api: RustAPIClient()
     )
@@ -165,6 +164,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.createEvent(event)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.createEvent(event)
           } catch {
@@ -176,6 +176,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.updateEvent(event)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             try await dataSource.updateEvent(event)
           } catch {
@@ -187,6 +188,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.deleteEvent(id: eventId)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             try await dataSource.deleteEvent(id: eventId)
           } catch {
@@ -198,6 +200,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getEvent(id: eventId)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.getEvent(id: eventId)
           } catch {
@@ -209,6 +212,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getActiveEvents(limit: limit)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.getActiveEvents(limit: limit)
           } catch {
@@ -220,6 +224,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getOngoingEvents(limit: limit)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.getOngoingEvents(limit: limit)
           } catch {
@@ -231,6 +236,7 @@ extension PersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
           } catch {
@@ -239,13 +245,31 @@ extension PersonalEventClient: DependencyKey {
         }
       },
       subscribeToActiveEvents: { limit in
-        // Real-time listener: Firebase only (no Rust equivalent)
-        await dataSource.subscribeToActiveEvents(limit: limit)
+        if featureFlags.useRustAPI(.promises) {
+          return AsyncStream { continuation in
+            let task = Task {
+              do {
+                let events = try await rustDataSource.getActiveEvents(limit: limit)
+                continuation.yield(events)
+              } catch {
+                continuation.yield([])
+              }
+              continuation.finish()
+            }
+            continuation.onTermination = { _ in
+              task.cancel()
+            }
+          }
+        } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
+          return await dataSource.subscribeToActiveEvents(limit: limit)
+        }
       },
       getEventsByDateRange: { startDate, endDate in
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
         } else {
+          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
           do {
             return try await dataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
           } catch {

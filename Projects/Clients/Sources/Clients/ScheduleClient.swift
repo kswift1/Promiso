@@ -261,7 +261,6 @@ extension DependencyValues {
 extension ScheduleClient: DependencyKey {
   public static let liveValue: ScheduleClient = {
     @Dependency(\.featureFlags) var featureFlags
-    let dataSource: ScheduleRemoteDataSourceProtocol = ScheduleRemoteDataSource()
     let rustDataSource = ScheduleRustDataSource(
       api: RustAPIClient()
     )
@@ -271,6 +270,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.createSchedule(schedule)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           guard !schedule.groupId.isEmpty else {
             throw ScheduleClientError.invalidData(nil)
           }
@@ -285,6 +285,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.updateSchedule(schedule)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           try await dataSource.updateSchedule(schedule)
         }
       },
@@ -292,6 +293,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.deleteSchedule(id: scheduleId)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           try await dataSource.deleteSchedule(id: scheduleId)
         }
       },
@@ -299,6 +301,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getSchedule(id: scheduleId)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getSchedule(id: scheduleId)
         }
       },
@@ -311,6 +314,7 @@ extension ScheduleClient: DependencyKey {
           guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
           return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getTodaySchedules(groupIds: groupIds)
         }
       },
@@ -320,6 +324,7 @@ extension ScheduleClient: DependencyKey {
           let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limit)
           return Array(schedules.prefix(limit))
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getUpcomingSchedules(groupIds: groupIds, limit: limit)
         }
       },
@@ -327,6 +332,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getActiveSchedules(groupId: groupId, limit: limit)
         }
       },
@@ -334,6 +340,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
         }
       },
@@ -341,6 +348,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getActiveScheduleCount(groupId: groupId)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getActiveScheduleCount(groupId: groupId)
         }
       },
@@ -352,6 +360,7 @@ extension ScheduleClient: DependencyKey {
             endDate: endDate
           )
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getSchedulesByDateRange(
             groupIds: groupIds,
             startDate: startDate,
@@ -363,12 +372,30 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
         }
       },
       subscribeToSchedules: { groupId, limit in
-        // Real-time listener: Firebase only (no Rust equivalent)
-        dataSource.subscribeToActiveSchedules(groupId: groupId, limit: limit)
+        if featureFlags.useRustAPI(.promises) {
+          return AsyncStream { continuation in
+            let task = Task {
+              do {
+                let schedules = try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
+                continuation.yield(schedules)
+              } catch {
+                continuation.yield([])
+              }
+              continuation.finish()
+            }
+            continuation.onTermination = { _ in
+              task.cancel()
+            }
+          }
+        } else {
+          let dataSource = ScheduleRemoteDataSource()
+          return dataSource.subscribeToActiveSchedules(groupId: groupId, limit: limit)
+        }
       },
       respondSchedule: { scheduleId, status in
         if featureFlags.useRustAPI(.promises) {
@@ -377,6 +404,7 @@ extension ScheduleClient: DependencyKey {
             status: status.rawValue
           )
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.respondToSchedule(
             scheduleId: scheduleId,
             status: status.rawValue
@@ -390,6 +418,7 @@ extension ScheduleClient: DependencyKey {
             endDate: endDate
           )
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           do {
             return try await dataSource.getAcceptedSchedulesByDateRange(
               startDate: startDate,
@@ -404,6 +433,7 @@ extension ScheduleClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getConfirmedSchedulesForCalendar()
         } else {
+          let dataSource = ScheduleRemoteDataSource()
           return try await dataSource.getConfirmedSchedulesForCalendar()
         }
       },

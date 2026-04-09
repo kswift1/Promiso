@@ -29,12 +29,27 @@ extension FeatureFlagsClient: TestDependencyKey {
 }
 
 extension FeatureFlagsClient: DependencyKey {
+  static func defaultUseRustAPI(
+    _ domain: FeatureDomain,
+    userDefaults: UserDefaults = .standard,
+    isDebug: Bool
+  ) -> Bool {
+    if isDebug {
+      return true  // Dev 빌드: 전체 도메인 Rust API 사용
+    }
+    if domain == .promises {
+      return true  // Big-bang cutover: schedules/personal/recurring는 release도 Rust 고정
+    }
+    return userDefaults.bool(forKey: "rust_api_\(domain.rawValue)")
+  }
+
   public static let liveValue = Self(
     useRustAPI: { domain in
       #if DEBUG
-      return true  // Dev 빌드: 전체 도메인 Rust API 사용
+      return Self.defaultUseRustAPI(domain, isDebug: true)
+      #else
+      return Self.defaultUseRustAPI(domain, isDebug: false)
       #endif
-      return UserDefaults.standard.bool(forKey: "rust_api_\(domain.rawValue)")
     }
   )
 }

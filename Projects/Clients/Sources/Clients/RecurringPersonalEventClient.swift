@@ -112,7 +112,6 @@ extension DependencyValues {
 extension RecurringPersonalEventClient: DependencyKey {
   public static let liveValue: RecurringPersonalEventClient = {
     @Dependency(\.featureFlags) var featureFlags
-    let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
     let rustDataSource = RecurringPersonalEventRustDataSource(
       api: RustAPIClient()
     )
@@ -125,6 +124,7 @@ extension RecurringPersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.createEvent(event)
         } else {
+          let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
           do {
             return try await dataSource.createEvent(event)
           } catch {
@@ -136,6 +136,7 @@ extension RecurringPersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.updateEvent(event)
         } else {
+          let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
           do {
             try await dataSource.updateEvent(event)
           } catch {
@@ -147,6 +148,7 @@ extension RecurringPersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           try await rustDataSource.deleteEvent(id: eventId)
         } else {
+          let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
           do {
             try await dataSource.deleteEvent(id: eventId)
           } catch {
@@ -158,6 +160,7 @@ extension RecurringPersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getEvent(id: eventId)
         } else {
+          let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
           do {
             return try await dataSource.getEvent(id: eventId)
           } catch {
@@ -169,6 +172,7 @@ extension RecurringPersonalEventClient: DependencyKey {
         if featureFlags.useRustAPI(.promises) {
           return try await rustDataSource.getAllEvents()
         } else {
+          let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
           do {
             return try await dataSource.getAllEvents()
           } catch {
