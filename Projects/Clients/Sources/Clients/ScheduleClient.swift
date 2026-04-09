@@ -260,182 +260,85 @@ extension DependencyValues {
 
 extension ScheduleClient: DependencyKey {
   public static let liveValue: ScheduleClient = {
-    @Dependency(\.featureFlags) var featureFlags
     let rustDataSource = ScheduleRustDataSource(
       api: RustAPIClient()
     )
 
     return ScheduleClient(
       createSchedule: { schedule in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.createSchedule(schedule)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          guard !schedule.groupId.isEmpty else {
-            throw ScheduleClientError.invalidData(nil)
-          }
-          do {
-            return try await dataSource.createSchedule(schedule)
-          } catch {
-            throw ScheduleClientError(from: error)
-          }
-        }
+        return try await rustDataSource.createSchedule(schedule)
       },
       updateSchedule: { schedule in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.updateSchedule(schedule)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          try await dataSource.updateSchedule(schedule)
-        }
+        try await rustDataSource.updateSchedule(schedule)
       },
       deleteSchedule: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.deleteSchedule(id: scheduleId)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          try await dataSource.deleteSchedule(id: scheduleId)
-        }
+        try await rustDataSource.deleteSchedule(id: scheduleId)
       },
       getSchedule: { scheduleId in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getSchedule(id: scheduleId)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getSchedule(id: scheduleId)
-        }
+        return try await rustDataSource.getSchedule(id: scheduleId)
       },
       getTodaySchedules: { groupIds in
-        if featureFlags.useRustAPI(.promises) {
-          // Rust API: /home 엔드포인트로 대체 후 클라이언트에서 today 필터링
-          let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: 20)
-          let calendar = Calendar.current
-          let startOfDay = calendar.startOfDay(for: Date())
-          guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
-          return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getTodaySchedules(groupIds: groupIds)
-        }
+        // Rust API: /home 엔드포인트로 대체 후 클라이언트에서 today 필터링
+        let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: 20)
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
+        return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
       },
       getUpcomingSchedules: { groupIds, limit in
-        if featureFlags.useRustAPI(.promises) {
-          // Rust API: /home 엔드포인트로 대체
-          let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limit)
-          return Array(schedules.prefix(limit))
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getUpcomingSchedules(groupIds: groupIds, limit: limit)
-        }
+        // Rust API: /home 엔드포인트로 대체
+        let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limit)
+        return Array(schedules.prefix(limit))
       },
       getActiveSchedules: { groupId, limit in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getActiveSchedules(groupId: groupId, limit: limit)
-        }
+        return try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
       },
       getPastSchedules: { groupId, limit, lastStartAt in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
-        }
+        return try await rustDataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
       },
       getActiveScheduleCount: { groupId in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getActiveScheduleCount(groupId: groupId)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getActiveScheduleCount(groupId: groupId)
-        }
+        return try await rustDataSource.getActiveScheduleCount(groupId: groupId)
       },
       getSchedulesByDateRange: { groupIds, startDate, endDate in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getSchedulesByDateRange(
-            groupIds: groupIds,
-            startDate: startDate,
-            endDate: endDate
-          )
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getSchedulesByDateRange(
-            groupIds: groupIds,
-            startDate: startDate,
-            endDate: endDate
-          )
-        }
+        return try await rustDataSource.getSchedulesByDateRange(
+          groupIds: groupIds,
+          startDate: startDate,
+          endDate: endDate
+        )
       },
       getHomeSchedules: { groupIds, limitPerChunk in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
-        }
+        return try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
       },
       subscribeToSchedules: { groupId, limit in
-        if featureFlags.useRustAPI(.promises) {
-          return AsyncStream { continuation in
-            let task = Task {
-              do {
-                let schedules = try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
-                continuation.yield(schedules)
-              } catch {
-                continuation.yield([])
-              }
-              continuation.finish()
+        return AsyncStream { continuation in
+          let task = Task {
+            do {
+              let schedules = try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
+              continuation.yield(schedules)
+            } catch {
+              continuation.yield([])
             }
-            continuation.onTermination = { _ in
-              task.cancel()
-            }
+            continuation.finish()
           }
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return dataSource.subscribeToActiveSchedules(groupId: groupId, limit: limit)
+          continuation.onTermination = { _ in
+            task.cancel()
+          }
         }
       },
       respondSchedule: { scheduleId, status in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.respondToSchedule(
-            scheduleId: scheduleId,
-            status: status.rawValue
-          )
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.respondToSchedule(
-            scheduleId: scheduleId,
-            status: status.rawValue
-          )
-        }
+        return try await rustDataSource.respondToSchedule(
+          scheduleId: scheduleId,
+          status: status.rawValue
+        )
       },
       getAcceptedSchedulesByDateRange: { startDate, endDate in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getAcceptedSchedulesByDateRange(
-            startDate: startDate,
-            endDate: endDate
-          )
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          do {
-            return try await dataSource.getAcceptedSchedulesByDateRange(
-              startDate: startDate,
-              endDate: endDate
-            )
-          } catch {
-            throw ScheduleClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getAcceptedSchedulesByDateRange(
+          startDate: startDate,
+          endDate: endDate
+        )
       },
       getConfirmedSchedulesForCalendar: {
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getConfirmedSchedulesForCalendar()
-        } else {
-          let dataSource = ScheduleRemoteDataSource()
-          return try await dataSource.getConfirmedSchedulesForCalendar()
-        }
+        return try await rustDataSource.getConfirmedSchedulesForCalendar()
       },
       // Live Activity는 Rust/APNs 경로만 유지한다.
       startLiveActivity: { scheduleId in

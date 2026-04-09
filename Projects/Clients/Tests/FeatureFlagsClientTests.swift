@@ -4,16 +4,18 @@ import Testing
 
 @Suite("FeatureFlagsClient 기본 라우팅 테스트")
 struct FeatureFlagsClientTests {
-  @Test("release에서도 promises는 Rust API를 강제 사용한다")
-  func promisesAlwaysUseRustInRelease() {
-    let userDefaults = UserDefaults(suiteName: "FeatureFlagsClientTests.promises")!
-    userDefaults.removePersistentDomain(forName: "FeatureFlagsClientTests.promises")
+  @Test("debug 빌드에서는 도메인과 무관하게 Rust API를 사용한다")
+  func debugAlwaysUseRustAPI() {
+    let suiteName = "FeatureFlagsClientTests.debug"
+    let userDefaults = UserDefaults(suiteName: suiteName)!
+    userDefaults.removePersistentDomain(forName: suiteName)
+    userDefaults.set(false, forKey: "rust_api_users")
 
     #expect(
       FeatureFlagsClient.defaultUseRustAPI(
-        .promises,
+        .users,
         userDefaults: userDefaults,
-        isDebug: false
+        isDebug: true
       )
     )
   }

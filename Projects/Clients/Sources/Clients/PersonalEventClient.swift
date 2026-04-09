@@ -151,7 +151,6 @@ extension DependencyValues {
 
 extension PersonalEventClient: DependencyKey {
   public static let liveValue: PersonalEventClient = {
-    @Dependency(\.featureFlags) var featureFlags
     let rustDataSource = PersonalEventRustDataSource(
       api: RustAPIClient()
     )
@@ -161,121 +160,44 @@ extension PersonalEventClient: DependencyKey {
         guard !event.title.isEmpty else {
           throw PersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.createEvent(event)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.createEvent(event)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.createEvent(event)
       },
       updateEvent: { event in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.updateEvent(event)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            try await dataSource.updateEvent(event)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        try await rustDataSource.updateEvent(event)
       },
       deleteEvent: { eventId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.deleteEvent(id: eventId)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            try await dataSource.deleteEvent(id: eventId)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        try await rustDataSource.deleteEvent(id: eventId)
       },
       getEvent: { eventId in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getEvent(id: eventId)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.getEvent(id: eventId)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getEvent(id: eventId)
       },
       getActiveEvents: { limit in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getActiveEvents(limit: limit)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.getActiveEvents(limit: limit)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getActiveEvents(limit: limit)
       },
       getOngoingEvents: { limit in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getOngoingEvents(limit: limit)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.getOngoingEvents(limit: limit)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getOngoingEvents(limit: limit)
       },
       getPastEvents: { limit, lastStartAt in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
       },
       subscribeToActiveEvents: { limit in
-        if featureFlags.useRustAPI(.promises) {
-          return AsyncStream { continuation in
-            let task = Task {
-              do {
-                let events = try await rustDataSource.getActiveEvents(limit: limit)
-                continuation.yield(events)
-              } catch {
-                continuation.yield([])
-              }
-              continuation.finish()
+        return AsyncStream { continuation in
+          let task = Task {
+            do {
+              let events = try await rustDataSource.getActiveEvents(limit: limit)
+              continuation.yield(events)
+            } catch {
+              continuation.yield([])
             }
-            continuation.onTermination = { _ in
-              task.cancel()
-            }
+            continuation.finish()
           }
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          return await dataSource.subscribeToActiveEvents(limit: limit)
+          continuation.onTermination = { _ in
+            task.cancel()
+          }
         }
       },
       getEventsByDateRange: { startDate, endDate in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
-        } else {
-          let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
-          do {
-            return try await dataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
       }
     )
   }()

@@ -22,22 +22,17 @@
 
 | 클라이언트 | 현재 경로 | 상태 |
 |---|---|---|
-| `ScheduleClient` | Rust schedules API | ✅ release도 Rust 고정 |
-| `PersonalEventClient` | Rust schedules API | ✅ release도 Rust 고정 |
-| `RecurringPersonalEventClient` | Rust recurring API | ✅ release도 Rust 고정 |
+| `ScheduleClient` | Rust schedules API | ✅ Rust 고정 |
+| `PersonalEventClient` | Rust schedules API | ✅ Rust 고정 |
+| `RecurringPersonalEventClient` | Rust recurring API | ✅ Rust 고정 |
 | `ImageUploadClient` | Rust media signed URL + GCS direct upload/delete | ✅ 완료 |
 
 메모:
 
-- `Projects/Clients/Sources/Clients/FeatureFlagsClient.swift`에서 `promises` 도메인은 release에서도 Rust를 강제한다.
 - `ScheduleClient` / `PersonalEventClient`의 subscribe API는 Firebase listener 대신 Rust one-shot stream을 사용한다.
 
 ## 남은 항목
 
-- 레거시 Firebase 구현 파일 정리:
-  - `ScheduleRemoteDataSource`
-  - `PersonalEventRemoteDataSource`
-  - `RecurringPersonalEventRemoteDataSource`
 - 필요 시 Rust polling / SSE 기반 실시간 갱신 전략 재설계
 
 ## 검증 현황
