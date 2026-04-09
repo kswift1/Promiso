@@ -6,7 +6,7 @@ private struct StoredServerSession: Codable, Equatable, Sendable {
   let refreshToken: String
   let expiresAt: Date
   let deviceId: String
-  let currentUser: FirebaseUserSnapshot
+  let currentUser: AuthUserSnapshot
 }
 
 public actor ServerAuthSessionManager {
@@ -19,7 +19,7 @@ public actor ServerAuthSessionManager {
 
   private var cachedSession: StoredServerSession?
 
-  public func currentUser() async -> FirebaseUserSnapshot? {
+  public func currentUser() async -> AuthUserSnapshot? {
     (try? loadSession())?.currentUser
   }
 
@@ -44,7 +44,7 @@ public actor ServerAuthSessionManager {
     refreshToken: String,
     expiresAt: Date,
     deviceId: String,
-    currentUser: FirebaseUserSnapshot
+    currentUser: AuthUserSnapshot
   ) async throws {
     let session = StoredServerSession(
       accessToken: accessToken,

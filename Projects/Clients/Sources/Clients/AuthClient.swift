@@ -66,7 +66,7 @@ public enum AuthClientError: Error, Equatable {
 // MARK: - Models
 
 /// 로그인 사용자를 모킹 가능하게 담는 스냅샷
-public struct FirebaseUserSnapshot: Codable, Equatable, Sendable {
+public struct AuthUserSnapshot: Codable, Equatable, Sendable {
   public let uid: String
   public let email: String?
   public let displayName: String?
@@ -102,23 +102,23 @@ public struct FirebaseUserSnapshot: Codable, Equatable, Sendable {
 
 public struct ServiceTokenBundle: Equatable, Sendable {
   /// 로그인 사용자 스냅샷
-  public let firebaseUser: FirebaseUserSnapshot?
+  public let authUser: AuthUserSnapshot?
   /// 제공 토큰 번들
   public let providerTokenBundle: ProviderTokenBundle
   /// 신규 사용자 여부 (회원가입 시 true)
   public let isNewUser: Bool
-  /// 프로필 이미지 URL (Provider에서 제공, Firebase에 없을 경우 사용)
+  /// 프로필 이미지 URL (Provider에서 제공, Auth User에 없을 경우 사용)
   public var profileImageURL: URL? {
-    // Firebase User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
-    firebaseUser?.photoURL ?? providerTokenBundle.profileImageURL
+    // Auth User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
+    authUser?.photoURL ?? providerTokenBundle.profileImageURL
   }
 
   public init(
-    firebaseUser: FirebaseUserSnapshot?,
+    authUser: AuthUserSnapshot?,
     providerTokenBundle: ProviderTokenBundle,
     isNewUser: Bool = false
   ) {
-    self.firebaseUser = firebaseUser
+    self.authUser = authUser
     self.providerTokenBundle = providerTokenBundle
     self.isNewUser = isNewUser
   }
@@ -256,7 +256,7 @@ public struct AuthClient: Sendable {
   private let provider = PlatformAuthProvider()
 
   public var logout: @Sendable () async throws -> Void
-  public var currentUser: @Sendable () async -> FirebaseUserSnapshot? = { nil }
+  public var currentUser: @Sendable () async -> AuthUserSnapshot? = { nil }
   public var isAuthenticated: @Sendable () async -> Bool = { false }
   public var signInWithApple: @Sendable (_ authorization: ASAuthorization, _ nonce: String) async throws -> ServiceTokenBundle
   public var signInWithGoogle: @Sendable () async throws -> ServiceTokenBundle
@@ -292,7 +292,7 @@ extension AuthClient: TestDependencyKey {
     isAuthenticated: { false },
     signInWithApple: {
       _, _ in .init(
-        firebaseUser: .init(uid: "preview", email: "preview@apple.com", displayName: "Preview", photoURL: nil),
+        authUser: .init(uid: "preview", email: "preview@apple.com", displayName: "Preview", photoURL: nil),
         providerTokenBundle: .init(
           provider: .apple,
           identityToken: nil,
@@ -306,7 +306,7 @@ extension AuthClient: TestDependencyKey {
     },
     signInWithGoogle: {
       .init(
-        firebaseUser: .init(uid: "preview-google", email: "preview@google.com", displayName: "Preview G", photoURL: nil),
+        authUser: .init(uid: "preview-google", email: "preview@google.com", displayName: "Preview G", photoURL: nil),
         providerTokenBundle: .init(
           provider: .google,
           identityToken: nil,
@@ -344,9 +344,9 @@ extension AuthClient: TestDependencyKey {
 actor InMemoryAuthSession {
   static let shared: InMemoryAuthSession = .init()
   private(set) var isAuthed: Bool = false
-  private(set) var currentUser: FirebaseUserSnapshot? = nil
+  private(set) var currentUser: AuthUserSnapshot? = nil
 
-  func login(with user: FirebaseUserSnapshot? = nil) {
+  func login(with user: AuthUserSnapshot? = nil) {
     isAuthed = true
     currentUser = user
   }
@@ -422,7 +422,7 @@ extension AuthClient: DependencyKey {
         await session.login(with: userSnapshot)
 
         return ServiceTokenBundle(
-          firebaseUser: userSnapshot,
+          authUser: userSnapshot,
           providerTokenBundle: providerTokenBundle,
           isNewUser: !response.hasProfile
         )
@@ -458,7 +458,7 @@ extension AuthClient: DependencyKey {
         await session.login(with: userSnapshot)
 
         return ServiceTokenBundle(
-          firebaseUser: userSnapshot,
+          authUser: userSnapshot,
           providerTokenBundle: providerTokenBundle,
           isNewUser: !response.hasProfile
         )
@@ -624,8 +624,8 @@ private func appVersion() -> String? {
 private func makeServerUserSnapshot(
   _ user: RustAuthUserResponse,
   providerTokenBundle: ProviderTokenBundle
-) -> FirebaseUserSnapshot {
-  FirebaseUserSnapshot(
+) -> AuthUserSnapshot {
+  AuthUserSnapshot(
     uid: user.userId,
     email: user.email,
     displayName: user.displayName,

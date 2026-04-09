@@ -117,7 +117,7 @@ extension AppEntry {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
+      case profileCheckResponse(user: AuthUserSnapshot, profile: UserPrivateModel?)
       case checkNotificationPermission(UserPrivateModel)
       case notificationPermissionChecked(isAuthorized: Bool, user: UserPrivateModel)
       case subscribeFCMToken
@@ -669,8 +669,8 @@ extension AppEntry.Feature.State {
 // MARK: - ProfileSetup State Extension
 
 extension AppEntry.ProfileSetup.State {
-  mutating func inject(user: FirebaseUserSnapshot, providerProfileImageURL: URL? = nil) {
-    // Firebase User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
+  mutating func inject(user: AuthUserSnapshot, providerProfileImageURL: URL? = nil) {
+    // Auth User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
     if let profileImageURL = user.photoURL ?? providerProfileImageURL {
       self.profileImage = .url(profileImageURL)
     } else {

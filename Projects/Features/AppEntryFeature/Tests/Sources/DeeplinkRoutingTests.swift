@@ -167,7 +167,7 @@ struct DeeplinkRoutingTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.profileCheckResponse(
-      user: makeFirebaseUser(uid: "firebase-main"),
+      user: makeAuthUser(uid: "firebase-main"),
       profile: makeUser(id: "user-main", nickname: "메인유저")
     )))
     await store.receive(\.internal.transitionToMain)
@@ -361,7 +361,7 @@ struct PushNotificationDeeplinkTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.profileCheckResponse(
-      user: makeFirebaseUser(uid: "firebase-push-main"),
+      user: makeAuthUser(uid: "firebase-push-main"),
       profile: makeUser(id: "user-push-main", nickname: "푸시메인")
     )))
     await store.receive(\.internal.transitionToMain)
@@ -410,11 +410,11 @@ private func makeUser(
   )
 }
 
-private func makeFirebaseUser(uid: String) -> FirebaseUserSnapshot {
-  FirebaseUserSnapshot(
+private func makeAuthUser(uid: String) -> AuthUserSnapshot {
+  AuthUserSnapshot(
     uid: uid,
     email: "\(uid)@example.com",
-    displayName: "Firebase User",
+    displayName: "Auth User",
     photoURL: nil,
     providerId: "google.com",
     providerUid: "provider-\(uid)",
