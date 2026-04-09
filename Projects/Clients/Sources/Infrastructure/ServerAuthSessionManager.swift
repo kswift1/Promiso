@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 import Security
 
 private struct StoredServerSession: Codable, Equatable, Sendable {

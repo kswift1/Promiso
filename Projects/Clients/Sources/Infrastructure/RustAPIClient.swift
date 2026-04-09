@@ -26,7 +26,7 @@ public actor RustAPIClient {
     #endif
   }()
 
-  private static func defaultAuthToken() async throws -> String {
+  public static func defaultAuthToken() async throws -> String {
     try await ServerAuthSessionManager.shared.currentAccessToken()
   }
 
