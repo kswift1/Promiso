@@ -33,7 +33,6 @@ extension AppEntry {
     @Dependency(\.crashlyticsClient) var crashlyticsClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
-    @Dependency(\.whatsNewClient) var whatsNewClient
 
     public init() {}
     
@@ -69,9 +68,6 @@ extension AppEntry {
       /// 업데이트 알림 타입
       @Presents var updateAlert: UpdateAlertState?
 
-      /// What's New 팝업 (업데이트 후 신규 기능 안내)
-      @Presents var whatsNew: WhatsNew.Feature.State?
-
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
@@ -93,7 +89,6 @@ extension AppEntry {
       case destination(PresentationAction<Destination.Action>)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
       case updateAlert(UpdateAlertAction)
-      case whatsNew(PresentationAction<WhatsNew.Feature.Action>)
     }
 
     public enum UpdateAlertAction: Equatable {
@@ -134,8 +129,6 @@ extension AppEntry {
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
       case fcmTokenFetched(String)
-      case checkWhatsNew
-      case whatsNewFetched(WhatsNewModel?)
     }
 
     // MARK: - Destination Reducer
@@ -401,11 +394,6 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
-            // 기존 사용자 로그인 시에만 What's New 체크 (신규 가입 시에는 불필요)
-            if !isSignup {
-              effects.append(.send(.internal(.checkWhatsNew)))
-            }
-
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
               effects.append(routeDeeplink(deeplink))
@@ -426,27 +414,6 @@ extension AppEntry {
           case .fcmTokenFetched(let token):
             return .send(.internal(.fcmTokenReceived(token)))
 
-          case .checkWhatsNew:
-            let currentVersion = AppConstants.App.version
-            let lastSeenVersion = userDefaultsClient.lastSeenWhatsNewVersion
-            guard lastSeenVersion != currentVersion else { return .none }
-            return .run { [whatsNewClient] send in
-              do {
-                let model = try await whatsNewClient.fetchWhatsNew(currentVersion)
-                await send(.internal(.whatsNewFetched(model)))
-              } catch {
-                // fetch 실패 시 팝업 표시 안 함 (깜빡임 방지)
-              }
-            }
-
-          case .whatsNewFetched(let model):
-            guard let model, !model.items.isEmpty else {
-              // 데이터 없음(비활성화/빈 목록): 현재 버전 마킹
-              userDefaultsClient.markWhatsNewSeen(version: AppConstants.App.version)
-              return .none
-            }
-            state.whatsNew = WhatsNew.Feature.State(model: model)
-            return .none
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
@@ -480,13 +447,6 @@ extension AppEntry {
           return .none
 
         case .notificationPermission:
-          return .none
-
-        case .whatsNew(.presented(.delegate(.dismissed))):
-          state.whatsNew = nil
-          return .none
-
-        case .whatsNew:
           return .none
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
@@ -551,9 +511,6 @@ extension AppEntry {
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
       }
-      .ifLet(\.$whatsNew, action: \.whatsNew) {
-        WhatsNew.Feature()
-      }
     }
   }
   
@@ -602,14 +559,6 @@ extension AppEntry {
         )
       ) { store in
         NotificationPermission.View(store: store)
-      }
-      .fullScreenCover(
-        item: $store.scope(
-          state: \.whatsNew,
-          action: \.whatsNew
-        )
-      ) { store in
-        WhatsNew.ContentView(store: store)
       }
       .alert(
         updateAlertTitle,

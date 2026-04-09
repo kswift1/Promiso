@@ -185,14 +185,3 @@ export {
   onSubscriptionWriteSyncEntitlement,
   onEntitlementOverrideWriteSyncEntitlement,
 } from "./functions/entitlements";
-
-// ============================================================================
-// WhatsNew Functions (신규 기능 안내)
-// ============================================================================
-export {
-  getWhatsNew,
-  adminListWhatsNew,
-  adminSaveWhatsNew,
-  adminDeleteWhatsNew,
-  adminUploadWhatsNewImage,
-} from "./functions/whatsNew";

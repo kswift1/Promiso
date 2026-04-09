@@ -161,7 +161,6 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -310,7 +309,6 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -342,7 +340,6 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 

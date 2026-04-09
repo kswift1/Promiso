@@ -69,18 +69,6 @@ public extension UserDefaultsClient {
     setBool(true, AppConstants.UserDefaults.hasSeenSettingsGuide)
   }
 
-  // MARK: - What's New
-
-  /// 마지막으로 본 What's New 버전
-  var lastSeenWhatsNewVersion: String? {
-    stringForKey(AppConstants.UserDefaults.lastSeenWhatsNewVersion)
-  }
-
-  /// What's New를 봤다고 표시
-  func markWhatsNewSeen(version: String) {
-    setString(version, AppConstants.UserDefaults.lastSeenWhatsNewVersion)
-  }
-
 }
 
 // MARK: - Test / Preview
