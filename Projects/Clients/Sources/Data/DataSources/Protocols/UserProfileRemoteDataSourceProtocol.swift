@@ -29,14 +29,6 @@ public protocol UserProfileRemoteDataSourceProtocol {
   /// 프로필 이미지 삭제
   func deleteProfileImage(uid: String) async throws
 
-  // MARK: - Settings Operations
-
-  /// 사용자 설정 조회
-  func getUserSettings() async throws -> Bool
-
-  /// 사용자 설정 업데이트
-  func updateUserSettings(notificationEnabled: Bool) async throws
-
   // MARK: - Utility Operations
 
   /// 닉네임 사용 가능 여부 확인

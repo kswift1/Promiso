@@ -221,6 +221,9 @@ extension UserProfileClient: DependencyKey {
     let rustDataSource = UserRustDataSource(
       api: RustAPIClient()
     )
+    let rustSettingsDataSource = UserSettingsRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       createUserWithProfile: { name, nickname, providerType, providerUid, email, profileImageData in
@@ -344,11 +347,10 @@ extension UserProfileClient: DependencyKey {
       },
 
       getUserSettings: {
-        // Settings는 아직 Rust 미마이그레이션 — Firebase 유지
         guard let currentUser = await authClient.currentUser() else {
           throw UserProfileError.authenticationRequired
         }
-        return try await UserSettingsRemoteDataSource().fetchSettings(userId: currentUser.uid)
+        return try await rustSettingsDataSource.fetchSettings(userId: currentUser.uid)
       }
     )
   }()

@@ -19,12 +19,11 @@
 |-----------|------|
 | `UserProfileClient` 주요 조회/수정 (`create/get/check/update`) | ✅ Feature Flag 연결 완료 |
 | `UserProfileClient.create/updateProfileImage` (Rust users 경로) | ✅ GCS direct upload 연결 완료 |
-| `UserSettingsClient.fetch/update/initializeProDefaults` | ✅ settings 도메인으로 Rust 이관 완료 |
-| `UserProfileClient.getUserSettings` 레거시 헬퍼 | ⚠️ 미사용 레거시 경로로 Firebase fallback 유지 |
+| `UserSettingsClient.fetch/update/initializeProDefaults` | ✅ settings 도메인으로 Rust 고정 |
+| `UserProfileClient.getUserSettings` 레거시 헬퍼 | ✅ Rust settings 경로로 정리 완료 |
 
 ## 보류 항목
 
-- **레거시 `UserProfileClient.getUserSettings` 정리**: 현재는 별도 `UserSettingsClient`가 Rust 경로 사용
 - **soft delete**: deleteUser 마이그레이션 시 ADR 결정
 
 ## 다른 도메인으로 이관된 Firestore 데이터

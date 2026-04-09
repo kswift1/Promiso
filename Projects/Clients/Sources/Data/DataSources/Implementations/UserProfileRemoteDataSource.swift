@@ -35,19 +35,6 @@ private struct UploadProfileImageRequest: Encodable {
   let imagePath: String
 }
 
-/// 사용자 설정 조회 요청
-private struct GetUserSettingsRequest: Encodable {
-  // 프로젝트 분리 후 env 파라미터 불필요
-  // 빈 struct이지만 일관성을 위해 유지
-}
-
-/// 사용자 설정 업데이트 요청
-private struct UpdateUserSettingsRequest: Encodable {
-  let notificationEnabled: Bool
-}
-
-
-
 // MARK: - Data Source
 
 /// Firebase Functions를 통한 사용자 프로필 데이터 관리
@@ -216,32 +203,6 @@ public actor UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol {
     let imagePath = "profile_images/\(uid)/main.jpg"
     let profileImageRef = storage.reference().child(imagePath)
     try await profileImageRef.delete()
-  }
-
-  // MARK: - Settings Operations
-
-  /// 사용자 설정 조회
-  /// - Returns: 알림 설정 활성화 여부
-  public func getUserSettings() async throws -> Bool {
-    let request = GetUserSettingsRequest()
-
-    let result = try await functions.httpsCallable("getUserSettings").call(request.asDictionary())
-    guard let response = result.data as? [String: Any],
-          let notificationEnabled = response["notificationEnabled"] as? Bool else {
-      throw UserProfileError.invalidData
-    }
-
-    return notificationEnabled
-  }
-
-  /// 사용자 설정 업데이트
-  /// - Parameter notificationEnabled: 알림 활성화 여부
-  public func updateUserSettings(notificationEnabled: Bool) async throws {
-    let request = UpdateUserSettingsRequest(
-      notificationEnabled: notificationEnabled
-    )
-
-    _ = try await functions.httpsCallable("updateUserSettings").call(request.asDictionary())
   }
 
   // MARK: - Utility Operations

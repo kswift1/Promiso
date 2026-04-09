@@ -102,73 +102,37 @@ extension DependencyValues {
 
 extension UserSettingsClient: DependencyKey {
   public static let liveValue: UserSettingsClient = {
-    let firebaseDataSource = UserSettingsRemoteDataSource()
     let rustDataSource = UserSettingsRustDataSource(
       api: RustAPIClient()
     )
-    let featureFlags = FeatureFlagsClient.liveValue
 
     return Self(
       fetchSettings: { userId in
-        if featureFlags.useRustAPI(.settings) {
-          return try await rustDataSource.fetchSettings(userId: userId)
-        }
-        return try await firebaseDataSource.fetchSettings(userId: userId)
+        return try await rustDataSource.fetchSettings(userId: userId)
       },
       hasProSettings: { userId in
-        if featureFlags.useRustAPI(.settings) {
-          return try await rustDataSource.hasProSettings(userId: userId)
-        }
-        return try await firebaseDataSource.hasProSettings(userId: userId)
+        return try await rustDataSource.hasProSettings(userId: userId)
       },
       updateGroupSortOption: { userId, option in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateGroupSortOption(userId: userId, option: option)
-        } else {
-          try await firebaseDataSource.updateGroupSortOption(userId: userId, option: option)
-        }
+        try await rustDataSource.updateGroupSortOption(userId: userId, option: option)
       },
       updateConflictDetectionThreshold: { userId, threshold in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
-        } else {
-          try await firebaseDataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
-        }
+        try await rustDataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
       },
       updateBriefingStyle: { userId, style in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateBriefingStyle(userId: userId, style: style)
-        } else {
-          try await firebaseDataSource.updateBriefingStyle(userId: userId, style: style)
-        }
+        try await rustDataSource.updateBriefingStyle(userId: userId, style: style)
       },
       updateBriefingNotificationHour: { userId, hour in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
-        } else {
-          try await firebaseDataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
-        }
+        try await rustDataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
       },
       updateAvailableTransports: { userId, transports in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateAvailableTransports(userId: userId, transports: transports)
-        } else {
-          try await firebaseDataSource.updateAvailableTransports(userId: userId, transports: transports)
-        }
+        try await rustDataSource.updateAvailableTransports(userId: userId, transports: transports)
       },
       updateBriefingDefaultLocation: { userId, location in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.updateBriefingDefaultLocation(userId: userId, location: location)
-        } else {
-          try await firebaseDataSource.updateBriefingDefaultLocation(userId: userId, location: location)
-        }
+        try await rustDataSource.updateBriefingDefaultLocation(userId: userId, location: location)
       },
       initializeProDefaults: { userId in
-        if featureFlags.useRustAPI(.settings) {
-          try await rustDataSource.initializeProDefaults(userId: userId)
-        } else {
-          try await firebaseDataSource.initializeProDefaults(userId: userId)
-        }
+        try await rustDataSource.initializeProDefaults(userId: userId)
       }
     )
   }()
