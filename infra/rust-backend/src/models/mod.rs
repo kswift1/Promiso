@@ -7,5 +7,6 @@ pub mod media;
 pub mod notification;
 pub mod schedule;
 pub mod subscription;
+pub mod transportation;
 pub mod user;
 pub mod weather;

@@ -12,6 +12,7 @@ mod notifications;
 mod places;
 mod schedules;
 mod subscriptions;
+mod transportation;
 mod users;
 mod weather;
 mod widget;
@@ -58,6 +59,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(groups::router())
         .merge(media::router())
         .merge(schedules::router())
+        .merge(transportation::router())
         .merge(weather::router())
         .merge(notifications::router())
         .merge(subscriptions::router())

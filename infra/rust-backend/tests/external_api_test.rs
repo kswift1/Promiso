@@ -127,8 +127,37 @@ fn parse_odsay_extracts_routes() {
                             "distance": 15000,
                             "startName": "서울역",
                             "endName": "강남역",
+                            "startX": 126.9707,
+                            "startY": 37.5547,
+                            "endX": 127.0276,
+                            "endY": 37.4979,
+                            "way": "내선순환",
+                            "endExitNo": "11",
                             "lane": [
                                 { "subwayCode": 2, "name": "2호선" }
+                            ],
+                            "passStopList": {
+                                "stations": [
+                                    { "x": "126.9707", "y": "37.5547" },
+                                    { "x": "126.9820", "y": "37.5650" },
+                                    { "x": "127.0276", "y": "37.4979" }
+                                ]
+                            }
+                        },
+                        {
+                            "trafficType": 2,
+                            "sectionTime": 7,
+                            "distance": 1100,
+                            "startName": "강남역",
+                            "endName": "역삼역",
+                            "stationCount": 2,
+                            "lane": [
+                                {
+                                    "busNo": "146",
+                                    "name": "146",
+                                    "type": 11,
+                                    "busColor": "#5BB025"
+                                }
                             ]
                         },
                         {
@@ -169,10 +198,21 @@ fn parse_odsay_extracts_routes() {
     assert_eq!(routes[0].total_time, 45, "첫 번째 경로 소요시간 45분");
     assert_eq!(routes[0].payment, 1500, "첫 번째 경로 요금 1500원");
     assert_eq!(
-        routes[0].transfer_count, 1,
+        routes[0].transfer_count(),
+        1,
         "첫 번째 경로 환승 1회 (subway)"
     );
     assert_eq!(routes[0].path_type, 1, "첫 번째 경로 지하철 타입");
+    assert_eq!(routes[0].description(), "2호선 → 버스 146");
+    assert_eq!(routes[0].sub_paths.len(), 3, "상세 subPath 파싱");
+    assert_eq!(routes[0].sub_paths[0].way.as_deref(), Some("내선순환"));
+    assert_eq!(routes[0].sub_paths[0].end_exit_no.as_deref(), Some("11"));
+    assert_eq!(routes[0].sub_paths[0].pass_stop_coords.len(), 3);
+    assert_eq!(
+        routes[0].sub_paths[1].lanes[0].bus_color.as_deref(),
+        Some("#5BB025")
+    );
+    assert_eq!(routes[0].sub_paths[1].lanes[0].lane_type, Some(11));
     assert_eq!(routes[1].path_type, 2, "두 번째 경로 버스 타입");
 }
 
@@ -231,7 +271,19 @@ fn parse_kakao_extracts_duration_and_distance() {
                         "taxi": 25000
                     }
                 },
-                "sections": []
+                "sections": [
+                    {
+                        "roads": [
+                            {
+                                "vertexes": [
+                                    126.9707, 37.5547,
+                                    126.9800, 37.5600,
+                                    127.0276, 37.4979
+                                ]
+                            }
+                        ]
+                    }
+                ]
             }
         ]
     });
@@ -240,9 +292,11 @@ fn parse_kakao_extracts_duration_and_distance() {
 
     assert!(driving.is_some(), "경로가 있으면 Some 반환");
     let d = driving.unwrap();
-    assert_eq!(d.duration_minutes, 45, "2700초 → 45분");
-    assert!((d.distance_km - 18.5).abs() < 0.01, "18500m → 18.5km");
+    assert_eq!(d.duration, 45, "2700초 → 45분");
+    assert_eq!(d.distance, 18500, "distance 원본 미터 유지");
     assert_eq!(d.toll, 900, "통행료 900원");
+    assert_eq!(d.route_points.len(), 3, "자동차 polyline 좌표 파싱");
+    assert_eq!(d.route_points[0], vec![126.9707, 37.5547]);
 }
 
 /// 빈 응답 시 None 반환

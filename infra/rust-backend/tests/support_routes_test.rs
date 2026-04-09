@@ -107,3 +107,54 @@ async fn weather_route_exists_and_reports_missing_secret(pool: PgPool) {
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["error"]["code"], "failed-precondition");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn transportation_route_exists_and_returns_walking_only_without_secrets(pool: PgPool) {
+    std::env::remove_var("ODSAY_API_KEY");
+    std::env::remove_var("KAKAO_REST_API_KEY");
+    insert_auth_account(&pool, "transportation_route_user").await;
+
+    let tokens = auth_service::create_session(
+        &pool,
+        &server_auth(),
+        CreateSessionInput {
+            user_id: "transportation_route_user".to_string(),
+            device_id: "device-transportation".to_string(),
+            platform: "ios".to_string(),
+            app_version: None,
+            user_agent: None,
+        },
+    )
+    .await
+    .expect("create session");
+
+    let response = routes::create_router(pool, &test_config())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/transportation")
+                .header("authorization", format!("Bearer {}", tokens.access_token))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "from_lat": 37.5665,
+                        "from_lng": 126.9780,
+                        "to_lat": 37.5680,
+                        "to_lng": 126.9820
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["data"]["transit_routes"], serde_json::json!([]));
+    assert!(json["data"]["driving"].is_null());
+    assert!(json["data"]["walking_minutes"].as_i64().unwrap_or(0) > 0);
+    assert!(json["data"]["walking_distance_km"].as_f64().unwrap_or(0.0) > 0.0);
+}

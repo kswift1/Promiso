@@ -1,7 +1,5 @@
 import AuthenticationServices
 import ComposableArchitecture
-import FirebaseCore
-import FirebaseAuth
 import Foundation
 import GoogleSignIn
 import PromisoShared
@@ -67,7 +65,7 @@ public enum AuthClientError: Error, Equatable {
 
 // MARK: - Models
 
-/// Firebase User를 모킹 가능하게 담는 스냅샷
+/// 로그인 사용자를 모킹 가능하게 담는 스냅샷
 public struct FirebaseUserSnapshot: Codable, Equatable, Sendable {
   public let uid: String
   public let email: String?
@@ -100,26 +98,10 @@ public struct FirebaseUserSnapshot: Codable, Equatable, Sendable {
     self.providerUid = providerUid
     self.providerType = providerType
   }
-  
-  public init?(user: FirebaseAuth.User?) {
-    guard let user else { return nil }
-    let providerInfo = user.providerData.first
-    self.init(
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      creationDate: user.metadata.creationDate,
-      lastSignInDate: user.metadata.lastSignInDate,
-      providerId: providerInfo?.providerID,
-      providerUid: providerInfo?.uid,
-      providerType: providerInfo?.providerID.providerTypeIdentifier
-    )
-  }
 }
 
 public struct ServiceTokenBundle: Equatable, Sendable {
-  /// Firebase User 스냅샷
+  /// 로그인 사용자 스냅샷
   public let firebaseUser: FirebaseUserSnapshot?
   /// 제공 토큰 번들
   public let providerTokenBundle: ProviderTokenBundle
@@ -486,14 +468,14 @@ extension AuthClient: DependencyKey {
         await ServerAuthSessionManager.shared.clear()
       },
       refreshWidgetAuthToken: {
-        guard let user = await ServerAuthSessionManager.shared.currentUser() else {
+        guard await ServerAuthSessionManager.shared.currentUser() != nil else {
           WidgetAuthTokenStore.clear()
           return
         }
 
         do {
           let token = try await ServerAuthSessionManager.shared.currentAccessToken()
-          WidgetAuthTokenStore.save(token: token, userId: user.uid)
+          WidgetAuthTokenStore.save(token: token)
         } catch {
           AppLogger.auth.error("Widget auth token 갱신 실패: \(error.localizedDescription)")
         }
@@ -545,14 +527,14 @@ extension AuthClient: DependencyKey {
   }()
 }
 
-// MARK: - Widget Auth Token Store (Firebase ID Token - Legacy)
+// MARK: - Widget Auth Token Store (Server Access Token Fallback)
 
 /// Widget/LiveActivity Extension과 공유하는 Auth Token 저장소
 private enum WidgetAuthTokenStore {
-  /// Token 유효 시간 (Firebase ID Token은 1시간)
+  /// Fallback 토큰 유효 시간
   private static let tokenValiditySeconds: TimeInterval = 3600
 
-  static func save(token: String, userId: String) {
+  static func save(token: String) {
     guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
 
     let expiry = Date().addingTimeInterval(tokenValiditySeconds)
@@ -564,11 +546,6 @@ private enum WidgetAuthTokenStore {
     let apnsEnvironment = APNsEnvironment.current.apiValue
     defaults.set(apnsEnvironment, forKey: LiveActivityIntentKey.apnsEnvironmentKey)
     defaults.set(RustAPIClient.defaultBaseURL.absoluteString, forKey: LiveActivityIntentKey.rustApiBaseUrlKey)
-
-    // Firebase Project ID 저장 (Widget에서 HTTP 호출용)
-    if let projectId = FirebaseApp.app()?.options.projectID {
-      defaults.set(projectId, forKey: LiveActivityIntentKey.firebaseProjectIdKey)
-    }
   }
 
   static func clear() {

@@ -1,5 +1,4 @@
 import Foundation
-import FirebaseFirestore
 import PromisoShared
 
 // MARK: - Personal Event DTO

@@ -902,6 +902,67 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
 
 ## Weather (인증 필요)
 
+### POST /api/v1/transportation
+
+- 설명: 두 좌표 간 교통 정보 조회
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "from_lat": 37.5665,
+    "from_lng": 126.9780,
+    "to_lat": 37.4979,
+    "to_lng": 127.0276
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "transit_routes": [
+        {
+          "total_time": 45,
+          "payment": 1500,
+          "bus_transit_count": 1,
+          "subway_transit_count": 0,
+          "path_type": 2,
+          "sub_paths": [
+            {
+              "traffic_type": 2,
+              "section_time": 35,
+              "distance": 12000,
+              "start_name": "서울역",
+              "end_name": "강남역",
+              "station_count": 12,
+              "lanes": [
+                {
+                  "name": "146",
+                  "bus_no": "146",
+                  "type": 11,
+                  "bus_color": "#5BB025"
+                }
+              ],
+              "pass_stop_coords": [[126.97, 37.55], [127.02, 37.49]]
+            }
+          ]
+        }
+      ],
+      "driving": {
+        "distance": 18500,
+        "duration": 45,
+        "toll": 900,
+        "route_points": [[126.97, 37.55], [127.02, 37.49]]
+      },
+      "walking_minutes": 22,
+      "walking_distance_km": 1.4
+    }
+  }
+  ```
+- 동작:
+  - 직선거리 1km 미만은 외부 API 호출 없이 도보 결과만 반환
+  - `ODSAY_API_KEY`, `KAKAO_REST_API_KEY`가 없으면 해당 transport만 비워서 반환
+- 에러: 400 (좌표 누락/NaN)
+
 ### POST /api/v1/weather
 
 - 설명: 특정 위치/시각 기준 날씨 조회

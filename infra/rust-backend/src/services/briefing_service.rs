@@ -708,14 +708,18 @@ async fn build_travel_info(
 
         if !routes.is_empty() {
             let best = &routes[0];
-            let desc = if best.description.is_empty() {
+            let description = best.description();
+            let desc = if description.is_empty() {
                 "대중교통".to_string()
             } else {
-                best.description.clone()
+                description
             };
             parts.push(format!(
                 "대중교통: {}분 ({}회 환승, {}원) [{}]",
-                best.total_time, best.transfer_count, best.payment, desc
+                best.total_time,
+                best.transfer_count(),
+                best.payment,
+                desc
             ));
         }
     }
@@ -732,7 +736,9 @@ async fn build_travel_info(
         {
             parts.push(format!(
                 "자동차: {}분 ({:.1}km, 통행료 {}원)",
-                driving.duration_minutes, driving.distance_km, driving.toll
+                driving.duration,
+                driving.distance_km(),
+                driving.toll
             ));
         }
     }

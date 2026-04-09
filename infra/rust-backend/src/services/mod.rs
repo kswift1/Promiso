@@ -20,6 +20,7 @@ pub mod storage_service;
 pub mod subscription_backfill_service;
 pub mod subscription_service;
 pub mod transportation_client;
+pub mod transportation_service;
 pub mod user_service;
 pub mod user_settings_service;
 pub mod vote_live_activity_service;
