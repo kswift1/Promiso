@@ -9,7 +9,7 @@ public actor RustAPIClient {
     #if DEBUG
     return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #else
-    // TODO: Prod Cloud Run URL (별도 프로젝트에 배포 후 변경)
+    #warning("Prod Cloud Run URL이 설정되지 않았습니다. 배포 전 반드시 Prod URL로 변경하세요.")
     return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #endif
   }()

@@ -252,9 +252,6 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
 
 // MARK: - Client
 public struct AuthClient: Sendable {
-  private let session = InMemoryAuthSession()
-  private let provider = PlatformAuthProvider()
-
   public var logout: @Sendable () async throws -> Void
   public var currentUser: @Sendable () async -> AuthUserSnapshot? = { nil }
   public var isAuthenticated: @Sendable () async -> Bool = { false }

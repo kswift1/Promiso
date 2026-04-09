@@ -163,12 +163,14 @@ public actor ServerAuthSessionManager {
     ]
     let attributes: [String: Any] = [
       kSecValueData as String: data,
+      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
     ]
 
     let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
     if updateStatus == errSecItemNotFound {
       var insertQuery = query
       insertQuery[kSecValueData as String] = data
+      insertQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
       let addStatus = SecItemAdd(insertQuery as CFDictionary, nil)
       guard addStatus == errSecSuccess else {
         throw AuthClientError.unknown
