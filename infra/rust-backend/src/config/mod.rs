@@ -18,6 +18,8 @@ pub struct Config {
     pub apns_bundle_id: Option<String>,
     pub apns_environment: String,
     pub widget_jwt_secret: Option<String>,
+    pub odsay_api_key: Option<String>,
+    pub kakao_rest_api_key: Option<String>,
 }
 
 impl Config {
@@ -73,6 +75,8 @@ impl Config {
             apns_bundle_id: std::env::var("APNS_BUNDLE_ID").ok(),
             apns_environment,
             widget_jwt_secret: std::env::var("WIDGET_JWT_SECRET").ok(),
+            odsay_api_key: std::env::var("ODSAY_API_KEY").ok(),
+            kakao_rest_api_key: std::env::var("KAKAO_REST_API_KEY").ok(),
         }
     }
 }

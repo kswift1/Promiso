@@ -26,6 +26,7 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::middleware::auth::{require_auth, FirebaseAuth, ServerAuth, WidgetAuth};
 use crate::push::{build_live_activity_sender, build_push_sender};
+use crate::routes::transportation::TransportationKeys;
 use crate::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
 use crate::services::provider_verifier::{RealProviderVerifier, SharedProviderVerifier};
 use crate::services::storage_service::GcsUploadSigner;
@@ -51,6 +52,10 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
             None
         }
     };
+    let transportation_keys = TransportationKeys {
+        odsay_api_key: config.odsay_api_key.clone(),
+        kakao_rest_api_key: config.kakao_rest_api_key.clone(),
+    };
 
     // 인증 필요한 라우트
     let authenticated_routes = users::router()
@@ -70,6 +75,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .layer(axum::Extension(live_activity_sender.clone()))
         .layer(axum::Extension(gcs_upload_signer.clone()))
         .layer(axum::Extension(push_sender))
+        .layer(axum::Extension(transportation_keys))
         .layer(middleware::from_fn(require_auth));
 
     let public_routes = schedules::public_router()

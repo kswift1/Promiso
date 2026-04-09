@@ -134,6 +134,17 @@ pub async fn refresh_session(
     .ok_or_else(|| AppError::Unauthorized("Invalid refresh token".to_string()))?;
 
     if session.device_id != input.device_id {
+        sqlx::query(
+            "UPDATE auth_sessions \
+             SET revoked_at = NOW(), updated_at = NOW() \
+             WHERE id = $1 AND revoked_at IS NULL",
+        )
+        .bind(session.id)
+        .execute(tx.as_mut())
+        .await?;
+
+        tx.commit().await?;
+
         return Err(AppError::Unauthorized(
             "Refresh token device mismatch".to_string(),
         ));

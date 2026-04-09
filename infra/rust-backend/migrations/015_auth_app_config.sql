@@ -87,7 +87,7 @@ VALUES (
     'https://apps.apple.com/kr/app/id6757733720',
     'https://www.notion.so/3029e497067580beb0aaf485a0dd4a02',
     'https://www.notion.so/3029e4970675802ab781e282bb92d63b',
-    'kswen0203@icloud.com',
+    'support@promiso.app',
     '3029e4970675812ca3d6c852867858a2'
 )
 ON CONFLICT (singleton) DO NOTHING;

@@ -1,4 +1,5 @@
 use std::fs;
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use rsa::pkcs1v15::SigningKey;
@@ -18,7 +19,7 @@ const GCS_ALGORITHM: &str = "GOOG4-RSA-SHA256";
 pub struct GcsUploadSigner {
     bucket: String,
     client_email: String,
-    private_key: RsaPrivateKey,
+    private_key: Arc<RsaPrivateKey>,
     signed_url_ttl_seconds: u32,
 }
 
@@ -97,7 +98,7 @@ impl GcsUploadSigner {
         Ok(Self {
             bucket,
             client_email: credentials.client_email,
-            private_key,
+            private_key: Arc::new(private_key),
             signed_url_ttl_seconds,
         })
     }
@@ -165,7 +166,7 @@ impl GcsUploadSigner {
         let string_to_sign =
             format!("{GCS_ALGORITHM}\n{timestamp}\n{credential_scope}\n{canonical_request_hash}");
 
-        let signing_key = SigningKey::<Sha256>::new(self.private_key.clone());
+        let signing_key = SigningKey::<Sha256>::new((*self.private_key).clone());
         let signature = signing_key.sign(string_to_sign.as_bytes());
         let signature_hex = hex::encode(signature.to_bytes());
         let upload_url = format!(
@@ -225,7 +226,7 @@ impl GcsUploadSigner {
         let string_to_sign =
             format!("{GCS_ALGORITHM}\n{timestamp}\n{credential_scope}\n{canonical_request_hash}");
 
-        let signing_key = SigningKey::<Sha256>::new(self.private_key.clone());
+        let signing_key = SigningKey::<Sha256>::new((*self.private_key).clone());
         let signature = signing_key.sign(string_to_sign.as_bytes());
         let signature_hex = hex::encode(signature.to_bytes());
         let delete_url = format!(
