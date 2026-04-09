@@ -18,6 +18,20 @@ struct FeatureFlagsClientTests {
     )
   }
 
+  @Test("release에서도 subscription은 Rust API를 강제 사용한다")
+  func subscriptionAlwaysUseRustInRelease() {
+    let userDefaults = UserDefaults(suiteName: "FeatureFlagsClientTests.subscription")!
+    userDefaults.removePersistentDomain(forName: "FeatureFlagsClientTests.subscription")
+
+    #expect(
+      FeatureFlagsClient.defaultUseRustAPI(
+        .subscription,
+        userDefaults: userDefaults,
+        isDebug: false
+      )
+    )
+  }
+
   @Test("release의 다른 도메인은 기존 UserDefaults 플래그를 따른다")
   func nonPromiseDomainsStillUseStoredFlagsInRelease() {
     let suiteName = "FeatureFlagsClientTests.users"

@@ -37,8 +37,8 @@ extension FeatureFlagsClient: DependencyKey {
     if isDebug {
       return true  // Dev 빌드: 전체 도메인 Rust API 사용
     }
-    if domain == .promises {
-      return true  // Big-bang cutover: schedules/personal/recurring는 release도 Rust 고정
+    if domain == .promises || domain == .subscription {
+      return true  // Big-bang cutover: release에서도 Rust authority 고정
     }
     return userDefaults.bool(forKey: "rust_api_\(domain.rawValue)")
   }
