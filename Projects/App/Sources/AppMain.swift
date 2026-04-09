@@ -5,6 +5,10 @@ import AppEntryFeature
 import ExternalDependency
 import PromisoShared
 
+#if DEBUG
+import PulseUI
+#endif
+
 @main
 struct PromisoApp: App {
 
@@ -38,7 +42,43 @@ struct PromisoApp: App {
         .onOpenURL { url in
           store.send(.view(.handleDeeplink(url)))
         }
+        #if DEBUG
+        .modifier(ShakeToPulseModifier())
+        #endif
     }
     // 배지 카운트는 HomeFeature에서 실제 unreadCount로 동기화
   }
 }
+
+// MARK: - Shake to Pulse Console (DEBUG only)
+
+#if DEBUG
+private extension NSNotification.Name {
+  static let deviceDidShake = NSNotification.Name("deviceDidShake")
+}
+
+extension UIWindow {
+  open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+    super.motionEnded(motion, with: event)
+    if motion == .motionShake {
+      NotificationCenter.default.post(name: .deviceDidShake, object: nil)
+    }
+  }
+}
+
+private struct ShakeToPulseModifier: ViewModifier {
+  @State private var isPresented = false
+
+  func body(content: Content) -> some View {
+    content
+      .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
+        isPresented = true
+      }
+      .sheet(isPresented: $isPresented) {
+        NavigationStack {
+          ConsoleView()
+        }
+      }
+  }
+}
+#endif

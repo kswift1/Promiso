@@ -15,17 +15,16 @@ public actor RustAPIClient {
     #endif
   }()
 
-  private static let session: URLSession = {
-    #if DEBUG
-    return URLSession(
-      configuration: .default,
-      delegate: URLSessionProxyDelegate(),
-      delegateQueue: nil
-    )
-    #else
-    return URLSession.shared
-    #endif
-  }()
+  #if DEBUG
+  private static let pulseDelegate = URLSessionProxyDelegate()
+  private static let session = URLSession(
+    configuration: .default,
+    delegate: pulseDelegate,
+    delegateQueue: nil
+  )
+  #else
+  private static let session = URLSession.shared
+  #endif
 
   public static func defaultAuthToken() async throws -> String {
     try await ServerAuthSessionManager.shared.currentAccessToken()
@@ -109,7 +108,11 @@ public actor RustAPIClient {
     }
     #endif
 
+    #if DEBUG
+    let (data, response) = try await Self.session.data(for: urlRequest, delegate: Self.pulseDelegate)
+    #else
     let (data, response) = try await Self.session.data(for: urlRequest)
+    #endif
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw RustAPIError.invalidResponse
