@@ -24,6 +24,7 @@ const GOOGLE_CERTS_URL: &str =
 pub struct Claims {
     pub uid: String,
     pub email: Option<String>,
+    pub session_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -175,6 +176,7 @@ impl FirebaseAuth {
         Ok(Claims {
             uid: token_data.claims.sub,
             email: token_data.claims.email,
+            session_id: None,
         })
     }
 }
@@ -219,6 +221,7 @@ impl WidgetAuth {
         Ok(Claims {
             uid: claims.sub,
             email: None,
+            session_id: None,
         })
     }
 }
@@ -299,6 +302,7 @@ impl ServerAuth {
         Ok(Claims {
             uid: token_data.claims.sub,
             email: token_data.claims.email,
+            session_id: token_data.claims.sid,
         })
     }
 }
@@ -356,6 +360,7 @@ pub async fn verify_widget_or_firebase_token(
         return Ok(Claims {
             uid: claims.sub,
             email: None,
+            session_id: None,
         });
     }
 

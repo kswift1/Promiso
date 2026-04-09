@@ -12,6 +12,7 @@ fn app_with_claims(pool: PgPool, user_id: &str) -> axum::Router {
         .layer(Extension(Claims {
             uid: user_id.to_string(),
             email: Some(format!("{user_id}@promiso.test")),
+            session_id: None,
         }))
         .with_state(pool)
 }

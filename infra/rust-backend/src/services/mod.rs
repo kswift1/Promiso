@@ -3,6 +3,7 @@ pub mod auth_service;
 pub mod app_config_service;
 pub mod emoji_service;
 pub mod places_service;
+pub mod provider_verifier;
 pub mod widget_service;
 pub mod briefing_scheduler_service;
 pub mod gemini_client;
