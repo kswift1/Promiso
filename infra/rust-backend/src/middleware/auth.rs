@@ -305,8 +305,7 @@ impl ServerAuth {
     }
 }
 
-pub async fn verify_widget_or_firebase_token(
-    firebase_auth: &FirebaseAuth,
+pub async fn verify_widget_or_server_token(
     server_auth: &ServerAuth,
     widget_auth: &WidgetAuth,
     pool: &PgPool,
@@ -316,56 +315,58 @@ pub async fn verify_widget_or_firebase_token(
     let header = decode_header(token)
         .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
 
-    if header.alg == Algorithm::HS256 {
-        if let Ok(claims) = server_auth.verify_access_token(token) {
-            return Ok(claims);
-        }
-
-        let claims = widget_auth.decode_claims(token)?;
-        let token_version = claims
-            .version
-            .ok_or_else(|| AppError::Unauthorized("Widget token version is missing".to_string()))?;
-        let token_device_id = claims
-            .device_id
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| {
-                AppError::Unauthorized("Widget token device_id is missing".to_string())
-            })?;
-        let request_device_id = provided_device_id
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| AppError::Unauthorized("X-Device-Id header is required".to_string()))?;
-
-        if request_device_id != token_device_id {
-            return Err(AppError::Unauthorized(
-                "Widget token device mismatch".to_string(),
-            ));
-        }
-
-        let current_version: Option<(i32,)> =
-            sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
-                .bind(&claims.sub)
-                .fetch_optional(pool)
-                .await?;
-
-        let current_version = current_version.ok_or_else(|| {
-            AppError::Unauthorized("Widget token user does not exist".to_string())
-        })?;
-
-        if current_version.0 != token_version {
-            return Err(AppError::Unauthorized(
-                "Widget token has been revoked".to_string(),
-            ));
-        }
-
-        return Ok(Claims {
-            uid: claims.sub,
-            email: None,
-            session_id: None,
-        });
+    if header.alg != Algorithm::HS256 {
+        return Err(AppError::Unauthorized(
+            "Unsupported token algorithm".to_string(),
+        ));
     }
 
-    firebase_auth.verify_token(token).await
+    if let Ok(claims) = server_auth.verify_access_token(token) {
+        return Ok(claims);
+    }
+
+    let claims = widget_auth.decode_claims(token)?;
+    let token_version = claims
+        .version
+        .ok_or_else(|| AppError::Unauthorized("Widget token version is missing".to_string()))?;
+    let token_device_id = claims
+        .device_id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| {
+            AppError::Unauthorized("Widget token device_id is missing".to_string())
+        })?;
+    let request_device_id = provided_device_id
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| AppError::Unauthorized("X-Device-Id header is required".to_string()))?;
+
+    if request_device_id != token_device_id {
+        return Err(AppError::Unauthorized(
+            "Widget token device mismatch".to_string(),
+        ));
+    }
+
+    let current_version: Option<(i32,)> =
+        sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
+            .bind(&claims.sub)
+            .fetch_optional(pool)
+            .await?;
+
+    let current_version = current_version.ok_or_else(|| {
+        AppError::Unauthorized("Widget token user does not exist".to_string())
+    })?;
+
+    if current_version.0 != token_version {
+        return Err(AppError::Unauthorized(
+            "Widget token has been revoked".to_string(),
+        ));
+    }
+
+    Ok(Claims {
+        uid: claims.sub,
+        email: None,
+        session_id: None,
+    })
 }
 
 pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, AppError> {
@@ -389,12 +390,9 @@ pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, 
             .ok_or_else(|| AppError::Internal("ServerAuth not configured".to_string()))?;
         server_auth.verify_access_token(token)?
     } else {
-        let firebase_auth = request
-            .extensions()
-            .get::<FirebaseAuth>()
-            .cloned()
-            .ok_or_else(|| AppError::Internal("FirebaseAuth not configured".to_string()))?;
-        firebase_auth.verify_token(token).await?
+        return Err(AppError::Unauthorized(
+            "Unsupported token algorithm".to_string(),
+        ));
     };
 
     request.extensions_mut().insert(claims);

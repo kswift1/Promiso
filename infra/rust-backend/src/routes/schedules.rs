@@ -8,9 +8,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::middleware::auth::{
-    verify_widget_or_firebase_token, Claims, FirebaseAuth, ServerAuth, WidgetAuth,
-};
+use crate::middleware::auth::{verify_widget_or_server_token, Claims, ServerAuth, WidgetAuth};
 use crate::models::live_activity::{
     LiveActivitySender, StartScheduleLiveActivityResponse, UpdateScheduleLiveActivityRequest,
     UpdateScheduleLiveActivityResponse, UpdateVoteLiveActivityResponse,
@@ -260,7 +258,6 @@ async fn update_live_activity_eta(
 
 async fn widget_update_live_activity_eta(
     State(pool): State<PgPool>,
-    Extension(firebase_auth): Extension<FirebaseAuth>,
     Extension(server_auth): Extension<ServerAuth>,
     Extension(widget_auth): Extension<WidgetAuth>,
     Extension(live_activity_sender): Extension<Arc<dyn LiveActivitySender>>,
@@ -284,8 +281,7 @@ async fn widget_update_live_activity_eta(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
 
-    let claims = verify_widget_or_firebase_token(
-        &firebase_auth,
+    let claims = verify_widget_or_server_token(
         &server_auth,
         &widget_auth,
         &pool,
@@ -314,7 +310,6 @@ async fn widget_update_live_activity_eta(
 
 async fn widget_vote_live_activity(
     State(pool): State<PgPool>,
-    Extension(firebase_auth): Extension<FirebaseAuth>,
     Extension(server_auth): Extension<ServerAuth>,
     Extension(widget_auth): Extension<WidgetAuth>,
     Extension(push_sender): Extension<Arc<dyn PushSender>>,
@@ -339,8 +334,7 @@ async fn widget_vote_live_activity(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
 
-    let claims = verify_widget_or_firebase_token(
-        &firebase_auth,
+    let claims = verify_widget_or_server_token(
         &server_auth,
         &widget_auth,
         &pool,

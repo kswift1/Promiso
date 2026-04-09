@@ -24,7 +24,7 @@ use axum::Router;
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::middleware::auth::{require_auth, FirebaseAuth, ServerAuth, WidgetAuth};
+use crate::middleware::auth::{require_auth, ServerAuth, WidgetAuth};
 use crate::push::{build_live_activity_sender, build_push_sender};
 use crate::routes::transportation::TransportationKeys;
 use crate::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
@@ -32,7 +32,6 @@ use crate::services::provider_verifier::{RealProviderVerifier, SharedProviderVer
 use crate::services::storage_service::GcsUploadSigner;
 
 pub fn create_router(pool: PgPool, config: &Config) -> Router {
-    let firebase_auth = FirebaseAuth::new(config.firebase_project_id.clone());
     let server_auth = ServerAuth::new(
         config.auth_jwt_secret.clone(),
         config.auth_jwt_issuer.clone(),
@@ -98,6 +97,5 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .layer(axum::Extension(provider_verifier))
         .layer(axum::Extension(server_auth))
         .layer(axum::Extension(widget_auth))
-        .layer(axum::Extension(firebase_auth))
         .with_state(pool)
 }

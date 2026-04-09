@@ -5,9 +5,7 @@ use axum::{Extension, Json, Router};
 use sqlx::PgPool;
 
 use crate::errors::AppError;
-use crate::middleware::auth::{
-    verify_widget_or_firebase_token, Claims, FirebaseAuth, ServerAuth, WidgetAuth,
-};
+use crate::middleware::auth::{verify_widget_or_server_token, Claims, ServerAuth, WidgetAuth};
 use crate::response::ApiResponse;
 use crate::services::widget_service::{self, WidgetSnapshotResponse, WidgetTokenResponse};
 
@@ -26,7 +24,7 @@ pub fn widget_snapshot_router() -> Router<PgPool> {
     Router::new().route("/api/v1/widget/snapshot", get(get_snapshot))
 }
 
-// POST /api/v1/widget/token — 인증 필수 (Firebase)
+// POST /api/v1/widget/token — 인증 필수
 async fn generate_token(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
@@ -41,7 +39,7 @@ async fn generate_token(
     ApiResponse::ok(result)
 }
 
-// POST /api/v1/widget/revoke — 인증 필수 (Firebase)
+// POST /api/v1/widget/revoke — 인증 필수
 async fn revoke_token(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
@@ -50,10 +48,9 @@ async fn revoke_token(
     ApiResponse::ok(serde_json::json!({"success": true}))
 }
 
-// GET /api/v1/widget/snapshot — Widget/Firebase 토큰
+// GET /api/v1/widget/snapshot — Widget/Server 토큰
 async fn get_snapshot(
     State(pool): State<PgPool>,
-    Extension(firebase_auth): Extension<FirebaseAuth>,
     Extension(server_auth): Extension<ServerAuth>,
     Extension(widget_auth): Extension<WidgetAuth>,
     headers: HeaderMap,
@@ -71,8 +68,7 @@ async fn get_snapshot(
         .and_then(|v| v.to_str().ok())
         .filter(|value| !value.trim().is_empty());
 
-    let claims = verify_widget_or_firebase_token(
-        &firebase_auth,
+    let claims = verify_widget_or_server_token(
         &server_auth,
         &widget_auth,
         &pool,
