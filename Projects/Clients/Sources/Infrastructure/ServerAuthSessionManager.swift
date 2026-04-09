@@ -19,6 +19,7 @@ public actor ServerAuthSessionManager {
   }
 
   private var cachedSession: StoredServerSession?
+  private var refreshTask: Task<String, Error>?
 
   public func currentUser() async -> AuthUserSnapshot? {
     (try? loadSession())?.currentUser
@@ -37,7 +38,17 @@ public actor ServerAuthSessionManager {
       return session.accessToken
     }
 
-    return try await refreshSession(using: session)
+    if let existingTask = refreshTask {
+      return try await existingTask.value
+    }
+
+    let task = Task<String, Error> { [weak self] in
+      guard let self else { throw AuthClientError.unknown }
+      return try await self.refreshSession(using: session)
+    }
+    refreshTask = task
+    defer { refreshTask = nil }
+    return try await task.value
   }
 
   public func saveSession(

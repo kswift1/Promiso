@@ -261,7 +261,7 @@ public struct AuthClient: Sendable {
 
   // MARK: - Widget Token Management
 
-  /// Widget/LiveActivity Extension용 Firebase ID Token을 App Group에 저장
+  /// Widget/LiveActivity Extension용 Server Access Token을 App Group에 저장
   /// - 로그인 후, 앱 활성화 시 호출 필요
   public var refreshWidgetAuthToken: @Sendable () async -> Void
 

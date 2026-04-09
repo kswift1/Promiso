@@ -311,7 +311,7 @@ extension AppEntry {
             }
 
           case .fcmTokenSaved:
-            AppLogger.notification.debug("FCM Token saved to Firestore")
+            AppLogger.notification.debug("FCM Token saved to server")
             return .none
 
           case .subscribePushNotificationTap:

@@ -56,9 +56,8 @@ public struct Timestamp: Codable, Hashable, Sendable {
   }
 
   public func encode(to encoder: Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(seconds, forKey: .legacySeconds)
-    try container.encode(nanoseconds, forKey: .legacyNanoseconds)
+    var container = encoder.singleValueContainer()
+    try container.encode(dateValue().timeIntervalSince1970)
   }
 
   private static func iso8601Date(from value: String) -> Date? {
