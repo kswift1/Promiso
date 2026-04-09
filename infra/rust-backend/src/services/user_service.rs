@@ -1,7 +1,9 @@
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::user::*;
+use crate::services::storage_service::GcsUploadSigner;
 
 /// 닉네임 유효성 검증 (U1, U2, U3, U4)
 pub fn validate_nickname(nickname: &str) -> Result<String, AppError> {
@@ -234,6 +236,7 @@ pub async fn upload_profile_image(
     pool: &PgPool,
     uid: &str,
     req: UploadProfileImageRequest,
+    gcs_upload_bucket: Option<&str>,
 ) -> Result<String, AppError> {
     let path = req.image_path.trim().to_string();
 
@@ -249,8 +252,10 @@ pub async fn upload_profile_image(
         ));
     }
 
-    // 실제 Storage URL 생성은 Firebase Storage에서 처리 (ADR-007)
-    let url = path;
+    let url = match gcs_upload_bucket {
+        Some(bucket) => format!("https://storage.googleapis.com/{bucket}/{path}"),
+        None => path,
+    };
 
     let result = sqlx::query("UPDATE users SET profile_url = $1, updated_at = NOW() WHERE id = $2")
         .bind(&url)
@@ -264,6 +269,36 @@ pub async fn upload_profile_image(
     }
 
     Ok(url)
+}
+
+pub fn issue_profile_image_upload_url(
+    uid: &str,
+    req: IssueProfileImageUploadUrlRequest,
+    signer: &GcsUploadSigner,
+) -> Result<IssueProfileImageUploadUrlResponse, AppError> {
+    let content_type = req
+        .content_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("image/jpeg");
+
+    if content_type != "image/jpeg" {
+        return Err(AppError::BadRequest(
+            "프로필 이미지는 image/jpeg만 지원합니다".to_string(),
+        ));
+    }
+
+    let object_path = format!("profile_images/{uid}/{}.jpg", Uuid::new_v4());
+    let target = signer.sign_put_object(&object_path, content_type)?;
+
+    Ok(IssueProfileImageUploadUrlResponse {
+        object_path: target.object_path,
+        upload_url: target.upload_url,
+        profile_url: target.public_url,
+        expires_at: target.expires_at,
+        content_type: target.content_type,
+    })
 }
 
 /// 닉네임 중복 확인 (U5: 본인 닉네임은 사용 가능)

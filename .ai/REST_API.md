@@ -26,7 +26,8 @@
 | GET | `/api/v1/users/me` | 본인 프로필 (private) | email, provider 포함 |
 | PATCH | `/api/v1/users/me` | 닉네임 수정 | body: {nickname?} |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 | 그룹 호스트면 412, subscription 이력 보존 |
-| POST | `/api/v1/users/me/profile-image` | 프로필 이미지 URL 저장 | body: {image_path} |
+| POST | `/api/v1/users/me/profile-image/upload-url` | 프로필 이미지 GCS 업로드 URL 발급 | body: {content_type?} |
+| POST | `/api/v1/users/me/profile-image` | 업로드 완료된 프로필 이미지 URL 저장 | body: {image_path} |
 | GET | `/api/v1/users/nickname-check?q=` | 닉네임 중복 확인 | 본인 닉네임은 available=true |
 | POST | `/api/v1/users/batch` | 여러 유저 조회 (public) | body: {user_ids: [...]} |
 | GET | `/api/v1/users/{id}` | 타인 프로필 (public) | 공통 그룹 체크 (groups 마이그레이션 후) |

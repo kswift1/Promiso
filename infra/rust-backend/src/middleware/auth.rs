@@ -309,6 +309,7 @@ impl ServerAuth {
 
 pub async fn verify_widget_or_firebase_token(
     firebase_auth: &FirebaseAuth,
+    server_auth: &ServerAuth,
     widget_auth: &WidgetAuth,
     pool: &PgPool,
     token: &str,
@@ -318,6 +319,10 @@ pub async fn verify_widget_or_firebase_token(
         .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
 
     if header.alg == Algorithm::HS256 {
+        if let Ok(claims) = server_auth.verify_access_token(token) {
+            return Ok(claims);
+        }
+
         let claims = widget_auth.decode_claims(token)?;
         let token_version = claims.version.ok_or_else(|| {
             AppError::Unauthorized("Widget token version is missing".to_string())

@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 
 // MARK: - Types
@@ -220,21 +219,14 @@ extension UserProfileClient: DependencyKey {
     @Dependency(\.featureFlags) var featureFlags
     let firebaseDataSource = UserProfileRemoteDataSource()
     let rustDataSource = UserRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw UserProfileError.authenticationRequired
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return Self(
       createUserWithProfile: { name, nickname, providerType, providerUid, email, profileImageData in
         if featureFlags.useRustAPI(.users) {
           // Rust API로 유저 생성
-          let userId = try await rustDataSource.createUser(
+          _ = try await rustDataSource.createUser(
             name: name,
             nickname: nickname,
             providerType: providerType,
@@ -242,10 +234,8 @@ extension UserProfileClient: DependencyKey {
             email: email
           )
 
-          // 프로필 이미지는 Firebase Storage 유지 (ADR-007)
           if let imageData = profileImageData {
-            _ = try await firebaseDataSource.uploadProfileImage(uid: userId, imageData: imageData)
-            // TODO: Storage 경로를 Rust API에 전달
+            _ = try await rustDataSource.uploadProfileImageData(imageData)
           }
 
           return try await rustDataSource.getMyProfile()
@@ -343,11 +333,14 @@ extension UserProfileClient: DependencyKey {
       },
 
       updateProfileImage: { imageData in
-        // 이미지 업로드는 Firebase Storage 유지 (ADR-007)
-        guard let currentUser = await authClient.currentUser() else {
-          throw UserProfileError.authenticationRequired
+        if featureFlags.useRustAPI(.users) {
+          return try await rustDataSource.uploadProfileImageData(imageData)
+        } else {
+          guard let currentUser = await authClient.currentUser() else {
+            throw UserProfileError.authenticationRequired
+          }
+          return try await firebaseDataSource.uploadProfileImage(uid: currentUser.uid, imageData: imageData)
         }
-        return try await firebaseDataSource.uploadProfileImage(uid: currentUser.uid, imageData: imageData)
       },
 
       getUserSettings: {

@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import PromisoShared
 
@@ -115,14 +114,7 @@ extension RecurringPersonalEventClient: DependencyKey {
     @Dependency(\.featureFlags) var featureFlags
     let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
     let rustDataSource = RecurringPersonalEventRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw RecurringPersonalEventClientError.unauthorized
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return RecurringPersonalEventClient(

@@ -7,7 +7,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import Combine
 import PromisoShared
@@ -264,14 +263,7 @@ extension ScheduleClient: DependencyKey {
     @Dependency(\.featureFlags) var featureFlags
     let dataSource: ScheduleRemoteDataSourceProtocol = ScheduleRemoteDataSource()
     let rustDataSource = ScheduleRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw ScheduleClientError.unauthorized
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return ScheduleClient(

@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import PromisoShared
 import SwiftUI
@@ -81,12 +80,7 @@ extension MapClient: DependencyKey {
     let kakaoDataSource = KakaoMapDataSource()
     let featureFlags = FeatureFlagsClient.liveValue
     let rustDataSource = PlacesRustDataSource(
-      api: RustAPIClient(getAuthToken: {
-        guard let user = Auth.auth().currentUser else {
-          throw MapDataSourceError.invalidResponse
-        }
-        return try await user.getIDToken()
-      })
+      api: RustAPIClient(getAuthToken: nil)
     )
 
     // MARK: Helpers

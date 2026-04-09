@@ -3,6 +3,8 @@ pub struct Config {
     pub database_pool_url: String,
     pub port: u16,
     pub firebase_project_id: String,
+    pub gcs_upload_bucket: Option<String>,
+    pub gcs_signed_url_ttl_seconds: u32,
     pub auth_jwt_secret: Option<String>,
     pub auth_jwt_issuer: String,
     pub auth_access_token_ttl_seconds: i64,
@@ -38,6 +40,11 @@ impl Config {
                 .expect("PORT must be a valid number"),
             firebase_project_id: std::env::var("FIREBASE_PROJECT_ID")
                 .expect("FIREBASE_PROJECT_ID must be set"),
+            gcs_upload_bucket: std::env::var("GCS_UPLOAD_BUCKET").ok(),
+            gcs_signed_url_ttl_seconds: std::env::var("GCS_SIGNED_URL_TTL_SECONDS")
+                .unwrap_or_else(|_| "900".to_string())
+                .parse()
+                .expect("GCS_SIGNED_URL_TTL_SECONDS must be a valid number"),
             auth_jwt_secret: std::env::var("AUTH_JWT_SECRET").ok(),
             auth_jwt_issuer: std::env::var("AUTH_JWT_ISSUER")
                 .unwrap_or_else(|_| "promiso".to_string()),

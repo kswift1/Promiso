@@ -9,6 +9,7 @@ use crate::middleware::auth::Claims;
 use crate::models::user::*;
 use crate::response::ApiResponse;
 use crate::services::user_service;
+use crate::services::storage_service::GcsUploadSigner;
 use crate::services::user_settings_service::{
     self, UpdateSettingsRequest, UserSettingsResponse,
 };
@@ -19,6 +20,10 @@ pub fn router() -> Router<PgPool> {
         .route(
             "/api/v1/users/me",
             get(get_my_profile).patch(update_user).delete(delete_my_account),
+        )
+        .route(
+            "/api/v1/users/me/profile-image/upload-url",
+            post(issue_profile_image_upload_url),
         )
         .route("/api/v1/users/me/profile-image", post(upload_profile_image))
         .route(
@@ -82,11 +87,30 @@ async fn delete_my_account(
 
 async fn upload_profile_image(
     Extension(claims): Extension<Claims>,
+    Extension(upload_signer): Extension<Option<GcsUploadSigner>>,
     State(pool): State<PgPool>,
     Json(req): Json<UploadProfileImageRequest>,
 ) -> Result<ApiResponse<serde_json::Value>, AppError> {
-    let url = user_service::upload_profile_image(&pool, &claims.uid, req).await?;
+    let url = user_service::upload_profile_image(
+        &pool,
+        &claims.uid,
+        req,
+        upload_signer.as_ref().map(GcsUploadSigner::bucket),
+    )
+    .await?;
     ApiResponse::ok(serde_json::json!({"profile_url": url}))
+}
+
+async fn issue_profile_image_upload_url(
+    Extension(claims): Extension<Claims>,
+    Extension(upload_signer): Extension<Option<GcsUploadSigner>>,
+    Json(req): Json<IssueProfileImageUploadUrlRequest>,
+) -> Result<ApiResponse<IssueProfileImageUploadUrlResponse>, AppError> {
+    let signer = upload_signer.ok_or_else(|| {
+        AppError::PreconditionFailed("GCS upload signing is not configured".to_string())
+    })?;
+    let response = user_service::issue_profile_image_upload_url(&claims.uid, req, &signer)?;
+    ApiResponse::ok(response)
 }
 
 #[derive(Deserialize)]

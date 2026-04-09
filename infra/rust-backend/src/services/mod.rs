@@ -16,6 +16,7 @@ pub mod group_service;
 pub mod live_activity_service;
 pub mod notification_service;
 pub mod schedule_service;
+pub mod storage_service;
 pub mod slack_service;
 pub mod subscription_backfill_service;
 pub mod subscription_service;

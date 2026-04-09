@@ -9,7 +9,7 @@
 | `getUser` (타인) | `GET /api/v1/users/{id}` | ✅ 완료 (공통 그룹이 있을 때만 조회 허용) |
 | `updateUser` | `PATCH /api/v1/users/me` | ✅ 완료 |
 | `deleteUser` | `DELETE /api/v1/users/me` | ✅ 완료 (그룹 호스트는 `failed-precondition`, subscription 이력 보존) |
-| `uploadProfileImage` | `POST /api/v1/users/me/profile-image` | ⚠️ 라우트 존재, Storage는 Firebase 유지 |
+| `uploadProfileImage` | `POST /api/v1/users/me/profile-image/upload-url` + `POST /api/v1/users/me/profile-image` | ✅ 완료 (GCS signed upload + finalize) |
 | `checkNicknameAvailable` | `GET /api/v1/users/nickname-check?q=` | ✅ 완료 |
 | (신규) batch 조회 | `POST /api/v1/users/batch` | ✅ 완료 |
 
@@ -18,12 +18,12 @@
 | iOS 메서드 | 상태 |
 |-----------|------|
 | `UserProfileClient` 주요 조회/수정 (`create/get/check/update`) | ✅ Feature Flag 연결 완료 |
+| `UserProfileClient.create/updateProfileImage` (Rust users 경로) | ✅ GCS direct upload 연결 완료 |
 | `UserSettingsClient.fetch/update/initializeProDefaults` | ✅ settings 도메인으로 Rust 이관 완료 |
 | `UserProfileClient.getUserSettings` 레거시 헬퍼 | ⚠️ 미사용 레거시 경로로 Firebase fallback 유지 |
 
 ## 보류 항목
 
-- **프로필 이미지**: Storage 마이그레이션 시 한번에 처리
 - **레거시 `UserProfileClient.getUserSettings` 정리**: 현재는 별도 `UserSettingsClient`가 Rust 경로 사용
 - **soft delete**: deleteUser 마이그레이션 시 ADR 결정
 
@@ -52,4 +52,5 @@
 - 배치 조회: ✅
 - 회원 탈퇴: ✅ (`DELETE /api/v1/users/me`)
 - 회원 탈퇴 host 차단: ✅ (`failed-precondition`)
-- 프로필 이미지: ⚠️ (Storage 마이그레이션 보류)
+- 프로필 이미지 upload-url 발급: ✅ (`POST /api/v1/users/me/profile-image/upload-url`)
+- 프로필 이미지 finalize: ✅ (`POST /api/v1/users/me/profile-image`)

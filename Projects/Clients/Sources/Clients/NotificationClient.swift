@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import PromisoShared
 import UIKit
@@ -125,14 +124,7 @@ extension NotificationClient: DependencyKey {
     @Dependency(\.featureFlags) var featureFlags
     let dataSource = NotificationRemoteDataSource()
     let rustDataSource = NotificationRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw NotificationClientError.authenticationRequired
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return Self(

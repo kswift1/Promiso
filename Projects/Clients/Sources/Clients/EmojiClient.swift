@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import FirebaseFunctions
 import Foundation
 import PromisoShared
@@ -130,11 +129,7 @@ extension EmojiClient: DependencyKey {
         if featureFlags.useRustAPI(.emoji) {
           // Rust API: POST /api/v1/emoji/generate
           do {
-            guard let user = Auth.auth().currentUser else {
-              throw EmojiClientError.notAuthenticated
-            }
-            let idToken = try await user.getIDToken()
-            let rustClient = RustAPIClient(getAuthToken: { idToken })
+            let rustClient = RustAPIClient()
 
             struct EmojiBody: Encodable { let title: String }
             let response: RustEmojiResponse = try await rustClient.post(

@@ -24,6 +24,7 @@ use crate::middleware::auth::{require_auth, FirebaseAuth, ServerAuth, WidgetAuth
 use crate::push::{build_live_activity_sender, build_push_sender};
 use crate::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
 use crate::services::provider_verifier::{RealProviderVerifier, SharedProviderVerifier};
+use crate::services::storage_service::GcsUploadSigner;
 
 pub fn create_router(pool: PgPool, config: &Config) -> Router {
     let firebase_auth = FirebaseAuth::new(config.firebase_project_id.clone());
@@ -39,6 +40,13 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     let public_live_activity_sender = live_activity_sender.clone();
     let app_store_verifier: SharedAppStoreVerifier = Arc::new(RealAppStoreVerifier::new(config));
     let provider_verifier: SharedProviderVerifier = Arc::new(RealProviderVerifier::new(config));
+    let gcs_upload_signer = match GcsUploadSigner::from_config(config) {
+        Ok(signer) => signer,
+        Err(error) => {
+            tracing::error!("GCS upload signer disabled: {}", error);
+            None
+        }
+    };
 
     // 인증 필요한 라우트
     let authenticated_routes = users::router()
@@ -53,6 +61,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(emoji::router())
         .layer(axum::Extension(app_store_verifier.clone()))
         .layer(axum::Extension(live_activity_sender.clone()))
+        .layer(axum::Extension(gcs_upload_signer.clone()))
         .layer(axum::Extension(push_sender))
         .layer(middleware::from_fn(require_auth));
 

@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import FirebaseFunctions
 @preconcurrency import FirebaseFirestore
 import Foundation
@@ -156,14 +155,7 @@ extension SubscriptionClient: DependencyKey {
     let dataSource = StoreKitDataSource()
     let remoteDataSource = SubscriptionRemoteDataSource()
     let rustDataSource = SubscriptionRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw SubscriptionError.verificationFailed
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return Self(

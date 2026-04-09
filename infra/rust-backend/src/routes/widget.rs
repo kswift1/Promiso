@@ -5,7 +5,9 @@ use axum::{Extension, Json, Router};
 use sqlx::PgPool;
 
 use crate::errors::AppError;
-use crate::middleware::auth::{verify_widget_or_firebase_token, Claims, FirebaseAuth, WidgetAuth};
+use crate::middleware::auth::{
+    verify_widget_or_firebase_token, Claims, FirebaseAuth, ServerAuth, WidgetAuth,
+};
 use crate::response::ApiResponse;
 use crate::services::widget_service::{self, WidgetSnapshotResponse, WidgetTokenResponse};
 
@@ -52,6 +54,7 @@ async fn revoke_token(
 async fn get_snapshot(
     State(pool): State<PgPool>,
     Extension(firebase_auth): Extension<FirebaseAuth>,
+    Extension(server_auth): Extension<ServerAuth>,
     Extension(widget_auth): Extension<WidgetAuth>,
     headers: HeaderMap,
 ) -> Result<ApiResponse<WidgetSnapshotResponse>, AppError> {
@@ -68,9 +71,15 @@ async fn get_snapshot(
         .and_then(|v| v.to_str().ok())
         .filter(|value| !value.trim().is_empty());
 
-    let claims =
-        verify_widget_or_firebase_token(&firebase_auth, &widget_auth, &pool, token, device_id)
-            .await?;
+    let claims = verify_widget_or_firebase_token(
+        &firebase_auth,
+        &server_auth,
+        &widget_auth,
+        &pool,
+        token,
+        device_id,
+    )
+    .await?;
     let result = widget_service::get_widget_snapshot(&pool, &claims.uid).await?;
     ApiResponse::ok(result)
 }

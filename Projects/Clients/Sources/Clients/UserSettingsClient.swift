@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import PromisoShared
 
@@ -105,14 +104,7 @@ extension UserSettingsClient: DependencyKey {
   public static let liveValue: UserSettingsClient = {
     let firebaseDataSource = UserSettingsRemoteDataSource()
     let rustDataSource = UserSettingsRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw UserProfileError.authenticationRequired
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
     let featureFlags = FeatureFlagsClient.liveValue
 

@@ -296,7 +296,7 @@ async fn upload_profile_image_success(pool: PgPool) {
     let upload_req = UploadProfileImageRequest {
         image_path: "profile_images/test_upload/image.jpg".to_string(),
     };
-    let result = user_service::upload_profile_image(&pool, "test_upload", upload_req).await;
+    let result = user_service::upload_profile_image(&pool, "test_upload", upload_req, None).await;
     assert!(result.is_ok());
 }
 
@@ -308,7 +308,8 @@ async fn upload_profile_image_empty_path_rejected(pool: PgPool) {
     let upload_req = UploadProfileImageRequest {
         image_path: "".to_string(),
     };
-    let result = user_service::upload_profile_image(&pool, "test_upload_empty", upload_req).await;
+    let result =
+        user_service::upload_profile_image(&pool, "test_upload_empty", upload_req, None).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 

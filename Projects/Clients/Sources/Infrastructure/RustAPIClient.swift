@@ -26,13 +26,17 @@ public actor RustAPIClient {
     #endif
   }()
 
+  private static func defaultAuthToken() async throws -> String {
+    try await ServerAuthSessionManager.shared.currentAccessToken()
+  }
+
   private let baseURL: URL
-  private let getAuthToken: () async throws -> String
+  private let getAuthToken: (() async throws -> String)?
   private let decoder: JSONDecoder
 
   public init(
     baseURL: URL = RustAPIClient.defaultBaseURL,
-    getAuthToken: @escaping () async throws -> String
+    getAuthToken: (() async throws -> String)? = RustAPIClient.defaultAuthToken
   ) {
     self.baseURL = baseURL
     self.getAuthToken = getAuthToken
@@ -86,9 +90,10 @@ public actor RustAPIClient {
     urlRequest.httpMethod = method
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    // Firebase ID 토큰 첨부
-    let token = try await getAuthToken()
-    urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let getAuthToken {
+      let token = try await getAuthToken()
+      urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
 
     if let body = body, !(body is Empty) {
       let encoder = JSONEncoder()

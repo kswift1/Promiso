@@ -13,6 +13,8 @@ fn test_config() -> Config {
         database_pool_url: "postgresql://localhost/promiso_test".to_string(),
         port: 8080,
         firebase_project_id: "promiso-dev".to_string(),
+        gcs_upload_bucket: None,
+        gcs_signed_url_ttl_seconds: 900,
         auth_jwt_secret: Some("test-auth-secret".to_string()),
         auth_jwt_issuer: "promiso-test".to_string(),
         auth_access_token_ttl_seconds: 900,

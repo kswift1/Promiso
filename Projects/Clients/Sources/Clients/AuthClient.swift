@@ -2,10 +2,8 @@ import AuthenticationServices
 import ComposableArchitecture
 import FirebaseCore
 import FirebaseAuth
-import FirebaseFunctions
 import Foundation
 import GoogleSignIn
-import GoogleSignInSwift
 import PromisoShared
 import UIKit
 
@@ -16,8 +14,42 @@ private struct RustWidgetTokenResponse: Decodable {
   let expiresAt: Int64  // epoch seconds
 }
 
-private struct RustWidgetRevokeResponse: Decodable {
-  let success: Bool
+private struct RustAuthUserResponse: Decodable {
+  let userId: String
+  let email: String?
+  let provider: String
+  let displayName: String?
+  let profileImageUrl: String?
+}
+
+private struct RustAuthLoginResponse: Decodable {
+  let accessToken: String
+  let refreshToken: String
+  let expiresAt: Date
+  let user: RustAuthUserResponse
+  let hasProfile: Bool
+}
+
+private struct AppleAuthRequest: Encodable {
+  let identityToken: String
+  let userIdentifier: String
+  let email: String?
+  let fullName: String?
+  let rawNonce: String
+  let authorizationCode: String?
+  let deviceId: String
+  let appVersion: String?
+}
+
+private struct GoogleAuthRequest: Encodable {
+  let idToken: String
+  let accessToken: String?
+  let userIdentifier: String
+  let email: String?
+  let fullName: String?
+  let profileImageUrl: String?
+  let deviceId: String
+  let appVersion: String?
 }
 
 // MARK: - Error
@@ -36,7 +68,7 @@ public enum AuthClientError: Error, Equatable {
 // MARK: - Models
 
 /// Firebase User를 모킹 가능하게 담는 스냅샷
-public struct FirebaseUserSnapshot: Equatable, Sendable {
+public struct FirebaseUserSnapshot: Codable, Equatable, Sendable {
   public let uid: String
   public let email: String?
   public let displayName: String?
@@ -125,6 +157,8 @@ public struct ProviderTokenBundle: Equatable, Sendable {
   public let fullName: String?
   /// 프로필 이미지 URL (Google 로그인 시 제공)
   public let profileImageURL: URL?
+  /// Apple authorization code (필요 시 서버 교차 검증에 사용)
+  public let authorizationCode: String?
 
   public init(
     provider: AuthProvider,
@@ -133,7 +167,8 @@ public struct ProviderTokenBundle: Equatable, Sendable {
     userIdentifier: String,
     email: String? = nil,
     fullName: String? = nil,
-    profileImageURL: URL? = nil
+    profileImageURL: URL? = nil,
+    authorizationCode: String? = nil
   ) {
     self.provider = provider
     self.identityToken = identityToken
@@ -142,6 +177,7 @@ public struct ProviderTokenBundle: Equatable, Sendable {
     self.email = email
     self.fullName = fullName
     self.profileImageURL = profileImageURL
+    self.authorizationCode = authorizationCode
   }
 }
 
@@ -153,6 +189,13 @@ public enum AuthProvider: Equatable, Sendable {
     switch self {
     case .apple: return "apple"
     case .google: return "google"
+    }
+  }
+
+  var providerId: String {
+    switch self {
+    case .apple: return "apple.com"
+    case .google: return "google.com"
     }
   }
 }
@@ -196,7 +239,8 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
       accessToken: nil,
       userIdentifier: appleIDCredential.user,
       email: appleIDCredential.email,
-      fullName: appleIDCredential.fullName?.formatted(.name(style: .medium))
+      fullName: appleIDCredential.fullName?.formatted(.name(style: .medium)),
+      authorizationCode: appleIDCredential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
     )
   }
   
@@ -318,9 +362,9 @@ extension AuthClient: TestDependencyKey {
 actor InMemoryAuthSession {
   static let shared: InMemoryAuthSession = .init()
   private(set) var isAuthed: Bool = false
-  private(set) var currentUser: User? = nil
+  private(set) var currentUser: FirebaseUserSnapshot? = nil
 
-  func login(with user: User? = nil) {
+  func login(with user: FirebaseUserSnapshot? = nil) {
     isAuthed = true
     currentUser = user
   }
@@ -331,125 +375,124 @@ actor InMemoryAuthSession {
   }
 }
 
-// MARK: - Firebase 상수
-
-private enum FirebaseConstants {
-  static let region = "asia-northeast3"
-  static let deleteUserFunction = "deleteUser"
-  static let checkAppleCredentialFunction = "checkAppleCredential"
-  static let generateWidgetTokenFunction = "generateWidgetToken"
-}
-
 extension AuthClient: DependencyKey {
 
   public static let liveValue: AuthClient = {
     let session = InMemoryAuthSession.shared
     let provider = PlatformAuthProvider()
-    let featureFlags = FeatureFlagsClient.liveValue
 
     return AuthClient(
       logout: {
+        await ServerAuthSessionManager.shared.logoutCurrentSession()
         await session.logout()
-        try? Auth.auth().signOut()
+        WidgetAuthTokenStore.clear()
+        WidgetTokenStore.clear()
+        GIDSignIn.sharedInstance.signOut()
       },
       currentUser: {
         if let user = await session.currentUser {
-          return FirebaseUserSnapshot(user: user)
-        } else {
-          return FirebaseUserSnapshot(user: Auth.auth().currentUser)
+          return user
         }
+        let restoredUser = await ServerAuthSessionManager.shared.currentUser()
+        if let restoredUser {
+          await session.login(with: restoredUser)
+        }
+        return restoredUser
       },
       isAuthenticated: {
-        if await session.isAuthed { return true }
-
-        guard let user = Auth.auth().currentUser else { return false }
-
-        do {
-          try await user.reload()
-          await session.login(with: user)
-          return true
-        } catch let error as NSError {
-          if error.domain == NSURLErrorDomain {
-            // 네트워크 에러 시 기존 세션 유지 (nil로 덮어쓰지 않음)
-            return true
-          }
-
-          if let authError = AuthErrorCode(rawValue: error.code) {
-            switch authError {
-            case .userTokenExpired, .userNotFound, .invalidUserToken:
-              try? Auth.auth().signOut()
-              return false
-            default:
-              break
-            }
-          }
-
-          await session.login()
-          return true
+        let isAuthenticated = await ServerAuthSessionManager.shared.isAuthenticated()
+        if isAuthenticated, let restoredUser = await ServerAuthSessionManager.shared.currentUser() {
+          await session.login(with: restoredUser)
+        } else if !isAuthenticated {
+          await session.logout()
         }
+        return isAuthenticated
       },
       signInWithApple: { authorization, nonce in
         let providerTokenBundle = try await provider.signInWithApple(authorization, nonce: nonce)
 
-        // Firebase 인증
-        guard let idTokenData = providerTokenBundle.identityToken else {
+        guard let identityToken = providerTokenBundle.identityToken else {
           throw AuthClientError.missingIdentityToken
         }
-        let credential = OAuthProvider.appleCredential(
-          withIDToken: idTokenData,
-          rawNonce: nonce,
-          fullName: nil
-        )
-        let authResult = try await Auth.auth().signIn(with: credential)
-        await session.login(with: authResult.user)
 
-        // 신규 사용자 여부 확인
-        let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+        let deviceId = await currentDeviceId()
+        let response: RustAuthLoginResponse = try await authClientRequest(
+          path: "/api/v1/auth/apple",
+          body: AppleAuthRequest(
+            identityToken: identityToken,
+            userIdentifier: providerTokenBundle.userIdentifier,
+            email: providerTokenBundle.email,
+            fullName: providerTokenBundle.fullName,
+            rawNonce: nonce,
+            authorizationCode: providerTokenBundle.authorizationCode,
+            deviceId: deviceId,
+            appVersion: appVersion()
+          )
+        )
+        let userSnapshot = makeServerUserSnapshot(response.user, providerTokenBundle: providerTokenBundle)
+        try await ServerAuthSessionManager.shared.saveSession(
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+          expiresAt: response.expiresAt,
+          deviceId: deviceId,
+          currentUser: userSnapshot
+        )
+        await session.login(with: userSnapshot)
 
         return ServiceTokenBundle(
-          firebaseUser: FirebaseUserSnapshot(user: authResult.user),
+          firebaseUser: userSnapshot,
           providerTokenBundle: providerTokenBundle,
-          isNewUser: isNewUser
+          isNewUser: !response.hasProfile
         )
       },
       signInWithGoogle: {
         let providerTokenBundle = try await provider.signInWithGoogle()
 
-        // Firebase 인증
-        guard let idToken = providerTokenBundle.identityToken,
-              let accessToken = providerTokenBundle.accessToken else {
+        guard let idToken = providerTokenBundle.identityToken else {
           throw AuthClientError.invalidCredentials
         }
-
-        let credential = GoogleAuthProvider.credential(
-          withIDToken: idToken,
-          accessToken: accessToken
+        let deviceId = await currentDeviceId()
+        let response: RustAuthLoginResponse = try await authClientRequest(
+          path: "/api/v1/auth/google",
+          body: GoogleAuthRequest(
+            idToken: idToken,
+            accessToken: providerTokenBundle.accessToken,
+            userIdentifier: providerTokenBundle.userIdentifier,
+            email: providerTokenBundle.email,
+            fullName: providerTokenBundle.fullName,
+            profileImageUrl: providerTokenBundle.profileImageURL?.absoluteString,
+            deviceId: deviceId,
+            appVersion: appVersion()
+          )
         )
-        let authResult = try await Auth.auth().signIn(with: credential)
-        await session.login(with: authResult.user)
-
-        // 신규 사용자 여부 확인
-        let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+        let userSnapshot = makeServerUserSnapshot(response.user, providerTokenBundle: providerTokenBundle)
+        try await ServerAuthSessionManager.shared.saveSession(
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+          expiresAt: response.expiresAt,
+          deviceId: deviceId,
+          currentUser: userSnapshot
+        )
+        await session.login(with: userSnapshot)
 
         return ServiceTokenBundle(
-          firebaseUser: FirebaseUserSnapshot(user: authResult.user),
+          firebaseUser: userSnapshot,
           providerTokenBundle: providerTokenBundle,
-          isNewUser: isNewUser
+          isNewUser: !response.hasProfile
         )
       },
       clearSession: {
         await session.logout()
+        await ServerAuthSessionManager.shared.clear()
       },
       refreshWidgetAuthToken: {
-        // Widget/LiveActivity Extension용 Firebase ID Token 갱신 및 저장
-        guard let user = Auth.auth().currentUser else {
-          // 로그인 안 됨 - 토큰 삭제
+        guard let user = await ServerAuthSessionManager.shared.currentUser() else {
           WidgetAuthTokenStore.clear()
           return
         }
 
         do {
-          let token = try await user.getIDToken()
+          let token = try await ServerAuthSessionManager.shared.currentAccessToken()
           WidgetAuthTokenStore.save(token: token, userId: user.uid)
         } catch {
           AppLogger.auth.error("Widget auth token 갱신 실패: \(error.localizedDescription)")
@@ -460,8 +503,7 @@ extension AuthClient: DependencyKey {
         WidgetTokenStore.clear()
       },
       requestWidgetToken: {
-        // Widget 전용 Long-lived Token 발급 요청
-        guard Auth.auth().currentUser != nil else {
+        guard await ServerAuthSessionManager.shared.isAuthenticated() else {
           return
         }
 
@@ -474,86 +516,30 @@ extension AuthClient: DependencyKey {
           return
         }
 
-        let useRust = featureFlags.useRustAPI(.widget)
+        do {
+          let rustClient = RustAPIClient()
 
-        if useRust {
-          // Rust API: POST /api/v1/widget/token
-          do {
-            guard let currentUser = Auth.auth().currentUser else { return }
-            let idToken = try await currentUser.getIDToken()
-            let rustClient = RustAPIClient(getAuthToken: { idToken })
+          struct WidgetTokenBody: Encodable { let deviceId: String }
+          let response: RustWidgetTokenResponse = try await rustClient.post(
+            "/api/v1/widget/token",
+            body: WidgetTokenBody(deviceId: deviceId)
+          )
 
-            struct WidgetTokenBody: Encodable { let deviceId: String }
-            let response: RustWidgetTokenResponse = try await rustClient.post(
-              "/api/v1/widget/token",
-              body: WidgetTokenBody(deviceId: deviceId)
-            )
-
-            // Rust API는 epoch seconds(Int64)를 반환
-            WidgetTokenStore.save(
-              token: response.widgetToken,
-              expiresAt: TimeInterval(response.expiresAt),
-              deviceId: deviceId
-            )
-            AppLogger.auth.info("Widget token 발급 완료 (Rust)")
-          } catch {
-            AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")
-          }
-        } else {
-          // Firebase Functions: generateWidgetToken
-          do {
-            let functions = DefaultFunctionsProvider().functions
-            let result = try await functions
-              .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
-              .call(["deviceId": deviceId])
-
-            guard let data = result.data as? [String: Any],
-                  let widgetToken = data["widgetToken"] as? String,
-                  let expiresAt = data["expiresAt"] as? Int else {
-              return
-            }
-
-            // App Group에 저장
-            WidgetTokenStore.save(
-              token: widgetToken,
-              expiresAt: TimeInterval(expiresAt),
-              deviceId: deviceId
-            )
-          } catch {
-            AppLogger.auth.error("Widget long-lived token 발급 실패: \(error.localizedDescription)")
-          }
+          WidgetTokenStore.save(
+            token: response.widgetToken,
+            expiresAt: TimeInterval(response.expiresAt),
+            deviceId: deviceId
+          )
+          AppLogger.auth.info("Widget token 발급 완료 (Rust)")
+        } catch {
+          AppLogger.auth.error("Widget long-lived token 발급 실패 (Rust): \(error.localizedDescription)")
         }
       },
       deleteAccount: {
-        // 회원 탈퇴 - Firebase Function 호출
-        guard let currentUser = Auth.auth().currentUser else {
-          throw AuthClientError.invalidCredentials
-        }
-
-        // 토큰 갱신 (만료된 토큰으로 인한 UNAUTHENTICATED 방지)
-        _ = try await currentUser.getIDToken(forcingRefresh: true)
-
-        let functions = DefaultFunctionsProvider().functions
-
-        do {
-          _ = try await functions
-            .httpsCallable(FirebaseConstants.deleteUserFunction)
-            .call([:])
-
-          // 로컬 세션 정리
-          await session.logout()
-          WidgetAuthTokenStore.clear()
-          WidgetTokenStore.clear()
-        } catch let error as NSError {
-          // Firebase Functions 에러 코드 확인
-          if error.domain == FunctionsErrorDomain {
-            // "failed-precondition" = 그룹 호스트인 경우
-            if error.code == FunctionsErrorCode.failedPrecondition.rawValue {
-              throw AuthClientError.isGroupHost
-            }
-          }
-          throw AuthClientError.unknown
-        }
+        try await ServerAuthSessionManager.shared.deleteCurrentAccount()
+        await session.logout()
+        WidgetAuthTokenStore.clear()
+        WidgetTokenStore.clear()
       }
     )
   }()
@@ -577,6 +563,7 @@ private enum WidgetAuthTokenStore {
     // APNs 환경도 함께 저장 (Widget에서 백엔드 호출 시 사용)
     let apnsEnvironment = APNsEnvironment.current.apiValue
     defaults.set(apnsEnvironment, forKey: LiveActivityIntentKey.apnsEnvironmentKey)
+    defaults.set(RustAPIClient.defaultBaseURL.absoluteString, forKey: LiveActivityIntentKey.rustApiBaseUrlKey)
 
     // Firebase Project ID 저장 (Widget에서 HTTP 호출용)
     if let projectId = FirebaseApp.app()?.options.projectID {
@@ -647,38 +634,60 @@ extension DependencyValues {
   }
 }
 
-private extension ProviderTokenBundle {
-  /// Firebase AuthCredential 생성
-  func createFirebaseCredential(rawNonce: String? = nil) throws -> AuthCredential {
-    switch provider {
-    case .apple:
-      guard let idToken = identityToken else {
-        throw AuthClientError.missingIdentityToken
-      }
-      guard let rawNonce else {
-        throw AuthClientError.invalidAppleCredential
-      }
-      
-      var personNameComponents: PersonNameComponents? {
-        guard let fullName else { return nil }
-        return try? PersonNameComponents(fullName)
-      }
-      
-      return OAuthProvider.appleCredential(
-        withIDToken: idToken,
-        rawNonce: rawNonce,
-        fullName: personNameComponents
-      )
-      
-    case .google:
-      guard let idToken = identityToken,
-            let accessToken = accessToken else {
-        throw AuthClientError.missingIdentityToken
-      }
-      return GoogleAuthProvider.credential(
-        withIDToken: idToken,
-        accessToken: accessToken
-      )
+private func currentDeviceId() async -> String {
+  await MainActor.run {
+    UIDevice.current.identifierForVendor?.uuidString
+  } ?? UUID().uuidString
+}
+
+private func appVersion() -> String? {
+  Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+}
+
+private func makeServerUserSnapshot(
+  _ user: RustAuthUserResponse,
+  providerTokenBundle: ProviderTokenBundle
+) -> FirebaseUserSnapshot {
+  FirebaseUserSnapshot(
+    uid: user.userId,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.profileImageUrl.flatMap(URL.init(string:)),
+    providerId: providerTokenBundle.provider.providerId,
+    providerUid: providerTokenBundle.userIdentifier,
+    providerType: providerTokenBundle.provider.identifier
+  )
+}
+
+private func authClientRequest<B: Encodable, T: Decodable>(
+  path: String,
+  body: B
+) async throws -> T {
+  do {
+    return try await RustAPIClient(getAuthToken: nil).post(path, body: body)
+  } catch {
+    throw mapAuthClientError(error)
+  }
+}
+
+private func mapAuthClientError(_ error: Error) -> AuthClientError {
+  guard let rustError = error as? RustAPIError else {
+    return .unknown
+  }
+
+  switch rustError {
+  case .invalidResponse, .httpError, .noData:
+    return .network
+  case let .serverError(code, _):
+    switch code {
+    case "unauthenticated":
+      return .invalidCredentials
+    case "already-exists":
+      return .alreadyExists
+    case "failed-precondition":
+      return .isGroupHost
+    default:
+      return .unknown
     }
   }
 }

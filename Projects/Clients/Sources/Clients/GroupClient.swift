@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import PromisoShared
 
@@ -259,14 +258,7 @@ extension GroupClient: DependencyKey {
     @Dependency(\.featureFlags) var featureFlags
     let dataSource = GroupRemoteDataSource()
     let rustDataSource = GroupRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw GroupClientError.unauthorized
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return Self(
