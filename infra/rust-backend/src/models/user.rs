@@ -18,18 +18,21 @@ pub struct User {
 
 // API 요청/응답 DTO
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateUserRequest {
     pub name: Option<String>,
     pub nickname: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateUserResponse {
     pub user_id: String,
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserPublicResponse {
     pub user_id: String,
     pub name: String,
@@ -40,6 +43,7 @@ pub struct UserPublicResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserPrivateResponse {
     pub user_id: String,
     pub name: String,
@@ -53,21 +57,25 @@ pub struct UserPrivateResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateUserRequest {
     pub nickname: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UploadProfileImageRequest {
     pub image_path: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueProfileImageUploadUrlRequest {
     pub content_type: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueProfileImageUploadUrlResponse {
     pub object_path: String,
     pub upload_url: String,
@@ -77,12 +85,14 @@ pub struct IssueProfileImageUploadUrlResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NicknameCheckResponse {
     pub available: bool,
     pub nickname: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchGetUsersRequest {
     pub user_ids: Vec<String>,
 }

@@ -10,6 +10,7 @@ use crate::response::ApiResponse;
 use crate::services::widget_service::{self, WidgetSnapshotResponse, WidgetTokenResponse};
 
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GenerateTokenRequest {
     device_id: String,
 }

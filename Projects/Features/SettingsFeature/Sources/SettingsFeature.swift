@@ -786,4 +786,4 @@ public enum SettingsError: Error, Equatable, LocalizedError {
   }
 }
 
-extension Settings.Feature.Path.State: Equatable {}
+//extension Settings.Feature.Path.State: Equatable {}

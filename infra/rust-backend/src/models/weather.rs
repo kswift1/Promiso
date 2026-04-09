@@ -2,6 +2,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetWeatherRequest {
     pub latitude: f64,
     pub longitude: f64,
@@ -9,6 +10,7 @@ pub struct GetWeatherRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WeatherResponse {
     pub forecasts: Vec<HourlyForecastResponse>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -16,6 +18,7 @@ pub struct WeatherResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HourlyForecastResponse {
     pub date_time: DateTime<Utc>,
     pub temperature: f64,
@@ -28,6 +31,7 @@ pub struct HourlyForecastResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyForecastResponse {
     pub date: NaiveDate,
     pub min_temperature: f64,

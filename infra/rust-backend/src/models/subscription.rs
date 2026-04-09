@@ -105,6 +105,7 @@ pub struct EntitlementRecord {
 // ============================================================
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VerifyPurchaseRequest {
     pub transaction_jws: String,
     pub product_id: String,
@@ -112,6 +113,7 @@ pub struct VerifyPurchaseRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppleNotificationRequest {
     pub signed_payload: String,
 }
@@ -121,6 +123,7 @@ pub struct AppleNotificationRequest {
 // ============================================================
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubscriptionStatusResponse {
     pub status: SubscriptionStatus,
     pub product_id: Option<String>,
@@ -136,6 +139,7 @@ pub struct SubscriptionStatusResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EntitlementResponse {
     pub has_pro: bool,
     pub source: EntitlementSource,
@@ -151,12 +155,14 @@ pub struct EntitlementResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VerifyPurchaseResponse {
     pub success: bool,
     pub subscription_status: SubscriptionStatusResponse,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SuccessResponse {
     pub success: bool,
 }

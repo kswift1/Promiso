@@ -8,12 +8,14 @@ use uuid::Uuid;
 use crate::errors::AppError;
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WidgetTokenResponse {
     pub widget_token: String,
     pub expires_at: i64, // epoch seconds
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WidgetSnapshotResponse {
     pub next: Option<WidgetScheduleItem>,
     pub today: Vec<WidgetScheduleItem>,
@@ -21,6 +23,7 @@ pub struct WidgetSnapshotResponse {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WidgetScheduleItem {
     pub id: String,
     pub schedule_type: String,

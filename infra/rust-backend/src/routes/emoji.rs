@@ -9,11 +9,13 @@ use crate::response::ApiResponse;
 use crate::services::emoji_service;
 
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GenerateEmojiRequest {
     title: String,
 }
 
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct GenerateEmojiResponse {
     emoji: String,
 }

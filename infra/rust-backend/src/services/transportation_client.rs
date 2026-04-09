@@ -4,6 +4,7 @@ use serde::Serialize;
 const MIN_DISTANCE_FOR_API_KM: f64 = 1.0;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransitLane {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -18,6 +19,7 @@ pub struct TransitLane {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransitSubPath {
     pub traffic_type: i32,
     pub section_time: i32,
@@ -47,6 +49,7 @@ pub struct TransitSubPath {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransitRoute {
     /// 총 소요시간 (분)
     pub total_time: i32,
@@ -97,6 +100,7 @@ impl TransitRoute {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DrivingRoute {
     /// 총 거리 (미터)
     pub distance: i32,
@@ -116,6 +120,7 @@ impl DrivingRoute {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransportationResult {
     pub transit_routes: Vec<TransitRoute>,
     pub driving: Option<DrivingRoute>,

@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueMediaUploadUrlsRequest {
     pub base_path: String,
     pub count: usize,
@@ -9,11 +10,13 @@ pub struct IssueMediaUploadUrlsRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueMediaDeleteUrlsRequest {
     pub targets: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaUploadTargetResponse {
     pub object_path: String,
     pub upload_url: String,
@@ -23,6 +26,7 @@ pub struct MediaUploadTargetResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaDeleteTargetResponse {
     pub object_path: String,
     pub delete_url: String,

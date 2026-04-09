@@ -119,9 +119,6 @@ extension EmojiClient: DependencyKey {
           throw EmojiClientError.invalidResponse
         }
 
-        let startTime = CFAbsoluteTimeGetCurrent()
-        AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(sanitizedTitle)")
-
         do {
           let rustClient = RustAPIClient()
 
@@ -131,15 +128,10 @@ extension EmojiClient: DependencyKey {
             body: EmojiBody(title: sanitizedTitle)
           )
 
-          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.emoji.info("🎉 [EmojiClient] 이모지 생성 완료 (Rust) - 결과: \(response.emoji), 총 소요시간: \(String(format: "%.2f", totalTime))초")
-
           return response.emoji
         } catch let error as EmojiClientError {
           throw error
         } catch {
-          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.emoji.error("❌ [EmojiClient] Rust API 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")
           throw EmojiClientError.networkError
         }
       }
