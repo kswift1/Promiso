@@ -170,6 +170,65 @@ pub async fn update_user(pool: &PgPool, uid: &str, req: UpdateUserRequest) -> Re
     Ok(())
 }
 
+/// 사용자 탈퇴 — U9: 그룹 호스트는 탈퇴 불가
+pub async fn delete_user(pool: &PgPool, uid: &str) -> Result<(), AppError> {
+    let mut tx = pool.begin().await?;
+
+    let is_group_host: (bool,) = sqlx::query_as(
+        "SELECT EXISTS( \
+           SELECT 1 FROM group_members \
+           WHERE user_id = $1 AND role = 'admin' \
+         )",
+    )
+    .bind(uid)
+    .fetch_one(tx.as_mut())
+    .await?;
+
+    if is_group_host.0 {
+        return Err(AppError::PreconditionFailed(
+            "그룹 호스트는 탈퇴할 수 없습니다".to_string(),
+        ));
+    }
+
+    sqlx::query("DELETE FROM user_settings WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM briefing_subscriptions WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM entitlements WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM entitlement_overrides WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM admin_users WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM auth_accounts WHERE user_id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(uid)
+        .execute(tx.as_mut())
+        .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
 /// 프로필 이미지 URL 저장
 pub async fn upload_profile_image(
     pool: &PgPool,

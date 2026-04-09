@@ -8,10 +8,10 @@
 | `getUser` (본인) | `GET /api/v1/users/me` | ✅ 완료 |
 | `getUser` (타인) | `GET /api/v1/users/{id}` | ✅ 완료 (공통 그룹이 있을 때만 조회 허용) |
 | `updateUser` | `PATCH /api/v1/users/me` | ✅ 완료 |
+| `deleteUser` | `DELETE /api/v1/users/me` | ✅ 완료 (그룹 호스트는 `failed-precondition`, subscription 이력 보존) |
 | `uploadProfileImage` | `POST /api/v1/users/me/profile-image` | ⚠️ 라우트 존재, Storage는 Firebase 유지 |
 | `checkNicknameAvailable` | `GET /api/v1/users/nickname-check?q=` | ✅ 완료 |
 | (신규) batch 조회 | `POST /api/v1/users/batch` | ✅ 완료 |
-| `deleteUser` | 미마이그레이션 | ❌ groups/promises 전환 후 |
 
 ## iOS 직접호출 → Rust
 
@@ -24,7 +24,6 @@
 ## 보류 항목
 
 - **프로필 이미지**: Storage 마이그레이션 시 한번에 처리
-- **deleteUser**: groups/promises 전환 후 (10단계 cascade)
 - **레거시 `UserProfileClient.getUserSettings` 정리**: 현재는 별도 `UserSettingsClient`가 Rust 경로 사용
 - **soft delete**: deleteUser 마이그레이션 시 ADR 결정
 
@@ -51,4 +50,6 @@
 - 본인 프로필 조회: ✅
 - 타인 프로필 조회: ✅ (공통 그룹 조건)
 - 배치 조회: ✅
+- 회원 탈퇴: ✅ (`DELETE /api/v1/users/me`)
+- 회원 탈퇴 host 차단: ✅ (`failed-precondition`)
 - 프로필 이미지: ⚠️ (Storage 마이그레이션 보류)

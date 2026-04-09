@@ -5,7 +5,7 @@
 ## 공통
 
 - Base URL: Cloud Run 배포 후 결정
-- 인증: `Authorization: Bearer <firebase_id_token>`
+- 인증: `Authorization: Bearer <firebase_id_token | server_access_token>`
 - 응답 포맷: `{"data": T}` (성공) / `{"error": {"code": "...", "message": "..."}}` (실패)
 - snake_case (JSON)
 
@@ -25,10 +25,24 @@
 | POST | `/api/v1/users` | 유저 생성 | body: {name?, nickname, provider} |
 | GET | `/api/v1/users/me` | 본인 프로필 (private) | email, provider 포함 |
 | PATCH | `/api/v1/users/me` | 닉네임 수정 | body: {nickname?} |
+| DELETE | `/api/v1/users/me` | 회원 탈퇴 | 그룹 호스트면 412, subscription 이력 보존 |
 | POST | `/api/v1/users/me/profile-image` | 프로필 이미지 URL 저장 | body: {image_path} |
 | GET | `/api/v1/users/nickname-check?q=` | 닉네임 중복 확인 | 본인 닉네임은 available=true |
 | POST | `/api/v1/users/batch` | 여러 유저 조회 (public) | body: {user_ids: [...]} |
 | GET | `/api/v1/users/{id}` | 타인 프로필 (public) | 공통 그룹 체크 (groups 마이그레이션 후) |
+
+### DELETE /api/v1/users/me
+
+- 설명: 현재 사용자 계정 삭제
+- 인증: 필수
+- 동작:
+  - `group_members.role = 'admin'` 그룹이 하나라도 있으면 거부
+  - `auth_accounts`, `auth_sessions`, `user_settings`, `briefing_subscriptions`, `entitlements`, `entitlement_overrides`, `admin_users` 정리
+  - `users` 삭제 시 `group_members`, `schedules`, `devices`, `notifications`, `briefing_cache`는 cascade 삭제
+  - `subscriptions`, `subscription_owners`는 결제 이력 보존을 위해 유지
+- 응답 200: `{ "data": { "success": true } }`
+- 에러:
+  - `412 failed-precondition`: 그룹 호스트 상태
 
 ## User Settings (인증 필요)
 

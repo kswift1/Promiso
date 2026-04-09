@@ -16,7 +16,10 @@ use crate::services::user_settings_service::{
 pub fn router() -> Router<PgPool> {
     Router::new()
         .route("/api/v1/users", post(create_user))
-        .route("/api/v1/users/me", get(get_my_profile).patch(update_user))
+        .route(
+            "/api/v1/users/me",
+            get(get_my_profile).patch(update_user).delete(delete_my_account),
+        )
         .route("/api/v1/users/me/profile-image", post(upload_profile_image))
         .route(
             "/api/v1/users/nickname-check",
@@ -66,6 +69,14 @@ async fn update_user(
     Json(req): Json<UpdateUserRequest>,
 ) -> Result<ApiResponse<serde_json::Value>, AppError> {
     user_service::update_user(&pool, &claims.uid, req).await?;
+    ApiResponse::ok(serde_json::json!({"success": true}))
+}
+
+async fn delete_my_account(
+    Extension(claims): Extension<Claims>,
+    State(pool): State<PgPool>,
+) -> Result<ApiResponse<serde_json::Value>, AppError> {
+    user_service::delete_user(&pool, &claims.uid).await?;
     ApiResponse::ok(serde_json::json!({"success": true}))
 }
 
