@@ -842,10 +842,11 @@ pub async fn import_user_settings(
         let briefing_timezone = briefing.and_then(|b| b.timezone.clone());
         let briefing_language = briefing.and_then(|b| b.language.clone());
         let briefing_style = briefing.and_then(|b| b.style.clone());
-        let conflict_threshold = row
+        let conflict_threshold: i16 = row
             .pro_settings
             .as_ref()
-            .and_then(|ps| ps.conflict_detection_threshold_minute);
+            .and_then(|ps| ps.conflict_detection_threshold_minute)
+            .unwrap_or(0);
 
         let sort_type = row
             .group_sort_option
@@ -1300,23 +1301,55 @@ pub async fn import_notifications(
     let ns_grp = ns_groups();
 
     for row in rows {
+        // Skip notifications for non-existent users (deleted accounts)
+        let user_exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+                .bind(&row.user_id)
+                .fetch_one(pool)
+                .await?;
+        if !user_exists {
+            continue;
+        }
+
         let pg_id = to_uuid(&ns_notif, &row.id);
         let mapped_type = map_notification_type(&row.notification_type);
         let created_at = parse_optional_rfc3339(&row.created_at)?.unwrap_or_else(Utc::now);
         let read_at = parse_optional_rfc3339(&row.read_at)?;
         let delivered_at = parse_optional_rfc3339(&row.delivered_at)?;
 
-        let schedule_id = row
+        let schedule_id_candidate = row
             .promise_id
             .as_deref()
             .filter(|s| !s.is_empty())
             .map(|s| to_uuid(&ns_sched, s));
 
-        let group_id = row
+        // FK check: only set schedule_id if the schedule actually exists in PG
+        let schedule_id = if let Some(sid) = schedule_id_candidate {
+            let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM schedules WHERE id = $1)")
+                .bind(sid)
+                .fetch_one(pool)
+                .await?;
+            if exists { Some(sid) } else { None }
+        } else {
+            None
+        };
+
+        let group_id_candidate = row
             .group_id
             .as_deref()
             .filter(|s| !s.is_empty())
             .map(|s| to_uuid(&ns_grp, s));
+
+        // FK check: only set group_id if the group actually exists in PG
+        let group_id = if let Some(gid) = group_id_candidate {
+            let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM groups WHERE id = $1)")
+                .bind(gid)
+                .fetch_one(pool)
+                .await?;
+            if exists { Some(gid) } else { None }
+        } else {
+            None
+        };
 
         let data_json = row
             .data
@@ -1376,15 +1409,65 @@ async fn import_subscriptions_phase(
     owners_jsonl: &str,
     overrides_jsonl: &str,
 ) -> Result<SubscriptionMigrationSummary, AppError> {
-    // Re-use the existing backfill row types but parse with local parser
+    // Pre-process: export uses _id for doc ID, backfill types expect userId field.
+    // Inject userId from _id for subscriptions and entitlementOverrides (keyed by userId).
+    fn inject_user_id_from_doc_id(jsonl: &str) -> String {
+        jsonl
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let Some(id) = obj.get("_id").cloned() {
+                        obj.as_object_mut()
+                            .unwrap()
+                            .entry("userId")
+                            .or_insert(id);
+                    }
+                    serde_json::to_string(&obj).unwrap_or_else(|_| line.to_string())
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    let patched_subs = inject_user_id_from_doc_id(subscriptions_jsonl);
+    let patched_overrides = inject_user_id_from_doc_id(overrides_jsonl);
+
+    // subscriptionOwners: _id is originalTransactionId, needs userId from the doc
+    // The export already includes userId field in the doc data, so just use _id → originalTransactionId
+    fn inject_owner_id(jsonl: &str) -> String {
+        jsonl
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let Some(id) = obj.get("_id").cloned() {
+                        obj.as_object_mut()
+                            .unwrap()
+                            .entry("originalTransactionId")
+                            .or_insert(id);
+                    }
+                    serde_json::to_string(&obj).unwrap_or_else(|_| line.to_string())
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    let patched_owners = inject_owner_id(owners_jsonl);
+
     let subscription_rows =
-        parse_jsonl_rows::<FirestoreSubscriptionRow>(subscriptions_jsonl, "subscriptions")?;
+        parse_jsonl_rows::<FirestoreSubscriptionRow>(&patched_subs, "subscriptions")?;
     let owner_rows = parse_jsonl_rows::<FirestoreSubscriptionOwnerRow>(
-        owners_jsonl,
+        &patched_owners,
         "subscriptionOwners",
     )?;
     let override_rows = parse_jsonl_rows::<FirestoreEntitlementOverrideRow>(
-        overrides_jsonl,
+        &patched_overrides,
         "entitlementOverrides",
     )?;
 
