@@ -14,7 +14,11 @@ use sqlx::PgPool;
 // ============================================================
 
 async fn insert_test_user(pool: &PgPool, id: &str) {
-    let suffix = if id.len() > 8 { &id[id.len() - 8..] } else { id };
+    let suffix = if id.len() > 8 {
+        &id[id.len() - 8..]
+    } else {
+        id
+    };
 
     sqlx::query(
         "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email) \
@@ -187,8 +191,7 @@ async fn update_conflict_threshold_rejects_negative(pool: PgPool) {
         conflict_threshold_min: Some(-1),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_threshold_neg", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_threshold_neg", req).await;
 
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
@@ -207,8 +210,7 @@ async fn update_briefing_style_validates_enum(pool: PgPool) {
         briefing_style: Some("invalid_style".to_string()),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_style_enum", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_style_enum", req).await;
 
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
@@ -229,8 +231,7 @@ async fn update_notification_hour_sets_timezone_language(pool: PgPool) {
         briefing_language: Some("en".to_string()),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_hour_tz_lang", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_hour_tz_lang", req).await;
 
     assert!(result.is_ok());
     let settings = result.unwrap();
@@ -260,8 +261,7 @@ async fn update_notification_hour_null_clears_all_three(pool: PgPool) {
         briefing_notification_hour: Some(None), // null → 삭제
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_hour_null", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_hour_null", req).await;
 
     assert!(result.is_ok());
     let settings = result.unwrap();
@@ -284,8 +284,7 @@ async fn update_transports_rejects_empty_array(pool: PgPool) {
         briefing_available_transports: Some(vec![]),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_transport_empty", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_transport_empty", req).await;
 
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
@@ -313,8 +312,7 @@ async fn update_default_location_null_clears(pool: PgPool) {
         briefing_default_location: Some(None), // null → 삭제
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_loc_null", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_loc_null", req).await;
 
     assert!(result.is_ok());
     let settings = result.unwrap();
@@ -336,8 +334,7 @@ async fn update_default_location_requires_name(pool: PgPool) {
         })),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_loc_noname", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_loc_noname", req).await;
 
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
@@ -388,19 +385,17 @@ async fn update_triggers_briefing_projection_reconcile(pool: PgPool) {
         briefing_style: Some("friendly".to_string()),
         ..empty_update()
     };
-    let result =
-        user_settings_service::update_settings(&pool, "us_proj_reconcile", req).await;
+    let result = user_settings_service::update_settings(&pool, "us_proj_reconcile", req).await;
 
     assert!(result.is_ok());
 
     // briefing_subscriptions에 row가 생성(또는 갱신)되었는지 확인
-    let row: Option<(i16,)> = sqlx::query_as(
-        "SELECT notification_hour FROM briefing_subscriptions WHERE user_id = $1",
-    )
-    .bind("us_proj_reconcile")
-    .fetch_optional(&pool)
-    .await
-    .unwrap();
+    let row: Option<(i16,)> =
+        sqlx::query_as("SELECT notification_hour FROM briefing_subscriptions WHERE user_id = $1")
+            .bind("us_proj_reconcile")
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
 
     assert!(row.is_some());
     assert_eq!(row.unwrap().0, 7);

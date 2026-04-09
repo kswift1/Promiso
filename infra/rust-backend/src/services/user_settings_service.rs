@@ -16,8 +16,7 @@ const VALID_GROUP_SORT_TYPES: &[&str] = &[
     "custom",
 ];
 
-const VALID_BRIEFING_STYLES: &[&str] =
-    &["friendly", "humorous", "concise", "motivational", "calm"];
+const VALID_BRIEFING_STYLES: &[&str] = &["friendly", "humorous", "concise", "motivational", "calm"];
 
 // ============================================================
 // 응답 DTO
@@ -103,14 +102,14 @@ struct UserSettingsRow {
 // ============================================================
 
 fn row_to_response(row: UserSettingsRow, notification_enabled: bool) -> UserSettingsResponse {
-    let default_location = row
-        .briefing_default_location_title
-        .map(|name| DefaultLocationResponse {
-            name,
-            address: row.briefing_location_address,
-            latitude: row.briefing_default_location_latitude,
-            longitude: row.briefing_default_location_longitude,
-        });
+    let default_location =
+        row.briefing_default_location_title
+            .map(|name| DefaultLocationResponse {
+                name,
+                address: row.briefing_location_address,
+                latitude: row.briefing_default_location_latitude,
+                longitude: row.briefing_default_location_longitude,
+            });
 
     UserSettingsResponse {
         notification_enabled,
@@ -151,14 +150,13 @@ fn default_response(notification_enabled: bool) -> UserSettingsResponse {
 
 /// 설정 전체 조회
 pub async fn get_settings(pool: &PgPool, user_id: &str) -> Result<UserSettingsResponse, AppError> {
-    let notification_enabled: bool = sqlx::query_as(
-        "SELECT notification_enabled FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    .map(|(enabled,)| enabled)
-    .unwrap_or(true);
+    let notification_enabled: bool =
+        sqlx::query_as("SELECT notification_enabled FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?
+            .map(|(enabled,)| enabled)
+            .unwrap_or(true);
 
     let row = sqlx::query_as::<_, UserSettingsRow>(
         "SELECT group_sort_type, group_sort_order, conflict_threshold_min,
@@ -256,23 +254,20 @@ pub async fn update_settings(
     .await?;
 
     // 기존 값 or 기본값
-    let notification_enabled: bool = sqlx::query_as(
-        "SELECT notification_enabled FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    .map(|(enabled,)| enabled)
-    .unwrap_or(true);
+    let notification_enabled: bool =
+        sqlx::query_as("SELECT notification_enabled FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?
+            .map(|(enabled,)| enabled)
+            .unwrap_or(true);
 
     let base = current
         .map(|row| row_to_response(row, notification_enabled))
         .unwrap_or_else(|| default_response(notification_enabled));
 
     // ---- 각 필드 결정 ----
-    let new_group_sort_type = req
-        .group_sort_type
-        .unwrap_or(base.group_sort_type.clone());
+    let new_group_sort_type = req.group_sort_type.unwrap_or(base.group_sort_type.clone());
 
     // group_sort_order: Option<Option<Vec<String>>>
     // None = 변경 안함, Some(None) = NULL로, Some(Some(v)) = 값으로

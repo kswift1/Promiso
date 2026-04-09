@@ -306,13 +306,26 @@ extension GroupClient: DependencyKey {
       },
       createGroup: { request in
         if featureFlags.useRustAPI(.groups) {
-          // Rust API: 이미지 업로드는 Firebase Storage 유지 (ADR-007)
-          // 이미지 업로드 후 imageUrl을 updateGroup으로 전달하는 방식은 추후 구현
-          return try await rustDataSource.createGroup(
+          let result = try await rustDataSource.createGroup(
             name: request.name,
             maxMembers: request.maxMembers,
             description: request.description
           )
+
+          if let photoData = request.photoData {
+            let imageURL = try await rustDataSource.uploadGroupImageData(
+              groupId: result.id,
+              imageData: photoData
+            )
+            _ = try await rustDataSource.updateGroup(
+              groupId: result.id,
+              description: nil,
+              maxMembers: nil,
+              imageUrl: .some(imageURL.absoluteString)
+            )
+          }
+
+          return result
         } else {
           return try await dataSource.createGroup(
             name: request.name,
@@ -356,14 +369,22 @@ extension GroupClient: DependencyKey {
       },
       updateGroup: { groupId, description, maxMembers, photoData in
         if featureFlags.useRustAPI(.groups) {
-          // Rust API: photoData는 Firebase Storage로 업로드 후 imageUrl 전달
-          // 현재는 photoData를 무시하고 description/maxMembers만 업데이트
-          // TODO: Firebase Storage 업로드 후 imageUrl을 Rust API에 전달
+          let imageUrl: String?? =
+            if let photoData {
+              .some(
+                try await rustDataSource.uploadGroupImageData(
+                  groupId: groupId,
+                  imageData: photoData
+                ).absoluteString
+              )
+            } else {
+              nil
+            }
           return try await rustDataSource.updateGroup(
             groupId: groupId,
             description: description,
             maxMembers: maxMembers,
-            imageUrl: nil
+            imageUrl: imageUrl
           )
         } else {
           return try await dataSource.updateGroup(

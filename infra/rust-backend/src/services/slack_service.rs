@@ -145,15 +145,11 @@ pub fn build_slack_message(
     match notification_type {
         SlackNotificationType::NewSubscription => {
             let header = "🎉 신규 구독".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n가격: {price}\n{pro_count}"
-            );
+            let section =
+                format!("닉네임: {nickname}\n플랜: {product_id}\n가격: {price}\n{pro_count}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
@@ -165,81 +161,53 @@ pub fn build_slack_message(
             );
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
         SlackNotificationType::Cancelled => {
             let header = "❌ 구독 취소/환불".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n{pro_count}"
-            );
+            let section = format!("닉네임: {nickname}\n플랜: {product_id}\n{pro_count}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
         SlackNotificationType::Expired => {
             let header = "⏰ 구독 만료".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n{pro_count}"
-            );
+            let section = format!("닉네임: {nickname}\n플랜: {product_id}\n{pro_count}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
         SlackNotificationType::GracePeriod => {
             let exp = ctx.expiration_date.as_deref().unwrap_or("");
             let header = "⚠️ 갱신 실패 (유예 기간)".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n만료예정일: {exp}"
-            );
+            let section = format!("닉네임: {nickname}\n플랜: {product_id}\n만료예정일: {exp}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
         SlackNotificationType::Recovered => {
             let header = "✅ 구독 갱신 복구".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n{pro_count}"
-            );
+            let section = format!("닉네임: {nickname}\n플랜: {product_id}\n{pro_count}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
 
         SlackNotificationType::AutoRenewDisabled => {
             let header = "🔕 자동갱신 해제".to_string();
-            let section = format!(
-                "닉네임: {nickname}\n플랜: {product_id}\n{pro_count}"
-            );
+            let section = format!("닉네임: {nickname}\n플랜: {product_id}\n{pro_count}");
             SlackMessage {
                 text: header.clone(),
-                blocks: vec![
-                    SlackBlock::Header(header),
-                    SlackBlock::Section(section),
-                ],
+                blocks: vec![SlackBlock::Header(header), SlackBlock::Section(section)],
             }
         }
     }
@@ -256,10 +224,7 @@ fn slack_http_client() -> &'static reqwest::Client {
 ///
 /// SN-9: 실패 시 경고 로그만 남기고 에러를 반환한다 (메인 흐름 비차단은 호출자 책임).
 /// SN-10: webhook_url이 비어있으면 조기 반환한다.
-pub async fn send_slack_notification(
-    webhook_url: &str,
-    message: &SlackMessage,
-) -> Result<(), ()> {
+pub async fn send_slack_notification(webhook_url: &str, message: &SlackMessage) -> Result<(), ()> {
     if webhook_url.is_empty() {
         return Ok(());
     }

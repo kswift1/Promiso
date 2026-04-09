@@ -92,13 +92,11 @@ pub async fn generate_widget_token(
 ///
 /// widget_token_version을 +1 증가시켜 기존 토큰을 모두 무효화한다.
 pub async fn revoke_widget_tokens(pool: &PgPool, user_id: &str) -> Result<(), AppError> {
-    sqlx::query(
-        "UPDATE users SET widget_token_version = widget_token_version + 1 WHERE id = $1",
-    )
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Failed to revoke widget tokens: {e}")))?;
+    sqlx::query("UPDATE users SET widget_token_version = widget_token_version + 1 WHERE id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to revoke widget tokens: {e}")))?;
 
     Ok(())
 }
@@ -231,10 +229,7 @@ pub async fn get_widget_snapshot(
     upcoming.truncate(9);
 
     // next = today[0] ?? upcoming[0]
-    let next = today
-        .first()
-        .or_else(|| upcoming.first())
-        .cloned();
+    let next = today.first().or_else(|| upcoming.first()).cloned();
 
     Ok(WidgetSnapshotResponse {
         next,

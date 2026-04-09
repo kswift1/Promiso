@@ -294,9 +294,7 @@ impl ServerAuth {
         }
 
         if token_data.claims.token_type != "access" {
-            return Err(AppError::Forbidden(
-                "Invalid server token type".to_string(),
-            ));
+            return Err(AppError::Forbidden("Invalid server token type".to_string()));
         }
 
         Ok(Claims {
@@ -324,9 +322,9 @@ pub async fn verify_widget_or_firebase_token(
         }
 
         let claims = widget_auth.decode_claims(token)?;
-        let token_version = claims.version.ok_or_else(|| {
-            AppError::Unauthorized("Widget token version is missing".to_string())
-        })?;
+        let token_version = claims
+            .version
+            .ok_or_else(|| AppError::Unauthorized("Widget token version is missing".to_string()))?;
         let token_device_id = claims
             .device_id
             .as_deref()
@@ -336,9 +334,7 @@ pub async fn verify_widget_or_firebase_token(
             })?;
         let request_device_id = provided_device_id
             .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| {
-                AppError::Unauthorized("X-Device-Id header is required".to_string())
-            })?;
+            .ok_or_else(|| AppError::Unauthorized("X-Device-Id header is required".to_string()))?;
 
         if request_device_id != token_device_id {
             return Err(AppError::Unauthorized(

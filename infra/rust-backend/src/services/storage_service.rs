@@ -31,6 +31,13 @@ pub struct SignedUploadTarget {
     pub content_type: String,
 }
 
+#[derive(Clone, Debug)]
+pub struct SignedDeleteTarget {
+    pub object_path: String,
+    pub delete_url: String,
+    pub expires_at: DateTime<Utc>,
+}
+
 #[derive(Deserialize)]
 struct ServiceAccountCredentials {
     client_email: String,
@@ -82,9 +89,10 @@ impl GcsUploadSigner {
                 ))
             })?;
 
-        let private_key = RsaPrivateKey::from_pkcs8_pem(&credentials.private_key).map_err(
-            |error| AppError::Internal(format!("Invalid service account private key: {error}")),
-        )?;
+        let private_key =
+            RsaPrivateKey::from_pkcs8_pem(&credentials.private_key).map_err(|error| {
+                AppError::Internal(format!("Invalid service account private key: {error}"))
+            })?;
 
         Ok(Self {
             bucket,
@@ -123,10 +131,7 @@ impl GcsUploadSigner {
         );
 
         let mut query_params = vec![
-            (
-                "X-Goog-Algorithm".to_string(),
-                GCS_ALGORITHM.to_string(),
-            ),
+            ("X-Goog-Algorithm".to_string(), GCS_ALGORITHM.to_string()),
             ("X-Goog-Credential".to_string(), credential),
             ("X-Goog-Date".to_string(), timestamp.clone()),
             (
@@ -142,7 +147,13 @@ impl GcsUploadSigner {
 
         let canonical_query_string = query_params
             .iter()
-            .map(|(key, value)| format!("{}={}", percent_encode(key, true), percent_encode(value, true)))
+            .map(|(key, value)| {
+                format!(
+                    "{}={}",
+                    percent_encode(key, true),
+                    percent_encode(value, true)
+                )
+            })
             .collect::<Vec<_>>()
             .join("&");
 
@@ -151,9 +162,8 @@ impl GcsUploadSigner {
             "PUT\n{canonical_uri}\n{canonical_query_string}\n{canonical_headers}\ncontent-type;host\nUNSIGNED-PAYLOAD"
         );
         let canonical_request_hash = hex::encode(Sha256::digest(canonical_request.as_bytes()));
-        let string_to_sign = format!(
-            "{GCS_ALGORITHM}\n{timestamp}\n{credential_scope}\n{canonical_request_hash}"
-        );
+        let string_to_sign =
+            format!("{GCS_ALGORITHM}\n{timestamp}\n{credential_scope}\n{canonical_request_hash}");
 
         let signing_key = SigningKey::<Sha256>::new(self.private_key.clone());
         let signature = signing_key.sign(string_to_sign.as_bytes());
@@ -168,6 +178,64 @@ impl GcsUploadSigner {
             upload_url,
             expires_at: now + chrono::Duration::seconds(self.signed_url_ttl_seconds as i64),
             content_type: content_type.to_string(),
+        })
+    }
+
+    pub fn sign_delete_object(&self, object_path: &str) -> Result<SignedDeleteTarget, AppError> {
+        let now = Utc::now();
+        let timestamp = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let datestamp = now.format("%Y%m%d").to_string();
+        let credential_scope = format!("{datestamp}/auto/storage/goog4_request");
+        let credential = format!("{}/{}", self.client_email, credential_scope);
+        let canonical_uri = format!(
+            "/{}/{}",
+            percent_encode(&self.bucket, false),
+            percent_encode(object_path, false)
+        );
+
+        let mut query_params = vec![
+            ("X-Goog-Algorithm".to_string(), GCS_ALGORITHM.to_string()),
+            ("X-Goog-Credential".to_string(), credential),
+            ("X-Goog-Date".to_string(), timestamp.clone()),
+            (
+                "X-Goog-Expires".to_string(),
+                self.signed_url_ttl_seconds.to_string(),
+            ),
+            ("X-Goog-SignedHeaders".to_string(), "host".to_string()),
+        ];
+        query_params.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+
+        let canonical_query_string = query_params
+            .iter()
+            .map(|(key, value)| {
+                format!(
+                    "{}={}",
+                    percent_encode(key, true),
+                    percent_encode(value, true)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("&");
+
+        let canonical_headers = format!("host:{GCS_HOST}\n");
+        let canonical_request = format!(
+            "DELETE\n{canonical_uri}\n{canonical_query_string}\n{canonical_headers}\nhost\nUNSIGNED-PAYLOAD"
+        );
+        let canonical_request_hash = hex::encode(Sha256::digest(canonical_request.as_bytes()));
+        let string_to_sign =
+            format!("{GCS_ALGORITHM}\n{timestamp}\n{credential_scope}\n{canonical_request_hash}");
+
+        let signing_key = SigningKey::<Sha256>::new(self.private_key.clone());
+        let signature = signing_key.sign(string_to_sign.as_bytes());
+        let signature_hex = hex::encode(signature.to_bytes());
+        let delete_url = format!(
+            "https://{GCS_HOST}{canonical_uri}?{canonical_query_string}&X-Goog-Signature={signature_hex}"
+        );
+
+        Ok(SignedDeleteTarget {
+            object_path: object_path.to_string(),
+            delete_url,
+            expires_at: now + chrono::Duration::seconds(self.signed_url_ttl_seconds as i64),
         })
     }
 }

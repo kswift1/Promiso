@@ -8,18 +8,18 @@ use crate::errors::AppError;
 use crate::middleware::auth::Claims;
 use crate::models::user::*;
 use crate::response::ApiResponse;
-use crate::services::user_service;
 use crate::services::storage_service::GcsUploadSigner;
-use crate::services::user_settings_service::{
-    self, UpdateSettingsRequest, UserSettingsResponse,
-};
+use crate::services::user_service;
+use crate::services::user_settings_service::{self, UpdateSettingsRequest, UserSettingsResponse};
 
 pub fn router() -> Router<PgPool> {
     Router::new()
         .route("/api/v1/users", post(create_user))
         .route(
             "/api/v1/users/me",
-            get(get_my_profile).patch(update_user).delete(delete_my_account),
+            get(get_my_profile)
+                .patch(update_user)
+                .delete(delete_my_account),
         )
         .route(
             "/api/v1/users/me/profile-image/upload-url",

@@ -19,14 +19,9 @@ async fn run_jsonl_backfill_imports_firestore_rows_and_recomputes_entitlements(p
     let overrides_jsonl = r#"{"userId":"backfill_cli_override","isActive":true,"overrideType":"manual_pro_grant","reason":"support grant","createdBy":"admin_cli"}
 "#;
 
-    let summary = run_jsonl_backfill(
-        &pool,
-        subscriptions_jsonl,
-        owners_jsonl,
-        overrides_jsonl,
-    )
-    .await
-    .expect("jsonl backfill should succeed");
+    let summary = run_jsonl_backfill(&pool, subscriptions_jsonl, owners_jsonl, overrides_jsonl)
+        .await
+        .expect("jsonl backfill should succeed");
 
     assert_eq!(summary.subscriptions, 1);
     assert_eq!(summary.subscription_owners, 1);
@@ -53,20 +48,18 @@ async fn run_jsonl_backfill_imports_firestore_rows_and_recomputes_entitlements(p
     .await
     .expect("override-backed entitlement should exist");
 
-    assert_eq!(subscription_entitlement, (true, EntitlementSource::Subscription));
+    assert_eq!(
+        subscription_entitlement,
+        (true, EntitlementSource::Subscription)
+    );
     assert_eq!(override_entitlement, (true, EntitlementSource::Override));
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn run_jsonl_backfill_rejects_invalid_json(pool: PgPool) {
-    let error = run_jsonl_backfill(
-        &pool,
-        "{\"userId\":\"broken\"",
-        "",
-        "",
-    )
-    .await
-    .expect_err("invalid json should fail");
+    let error = run_jsonl_backfill(&pool, "{\"userId\":\"broken\"", "", "")
+        .await
+        .expect_err("invalid json should fail");
 
     assert!(matches!(error, AppError::BadRequest(_)));
 }

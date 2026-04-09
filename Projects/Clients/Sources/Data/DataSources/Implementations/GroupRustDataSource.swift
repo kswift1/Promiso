@@ -88,6 +88,14 @@ private struct RustSuccessResponse: Decodable {
   let success: Bool?
 }
 
+private struct RustGroupImageUploadTarget: Decodable {
+  let objectPath: String
+  let uploadUrl: String
+  let imageUrl: String
+  let expiresAt: Date
+  let contentType: String
+}
+
 // MARK: - Request Bodies
 
 private struct CreateGroupBody: Encodable {
@@ -169,6 +177,10 @@ private struct UpdateGroupColorBody: Encodable {
 
 private struct BatchGroupsBody: Encodable {
   let ids: [String]
+}
+
+private struct IssueGroupImageUploadUrlBody: Encodable {
+  let contentType: String
 }
 
 // MARK: - GroupRustDataSource
@@ -263,6 +275,34 @@ public actor GroupRustDataSource {
     return try await fetchGroup(groupId: groupId)
   }
 
+  public func uploadGroupImageData(groupId: String, imageData: Data) async throws -> URL {
+    let uploadData = compressImageDataForUpload(imageData) ?? imageData
+    let target = try await issueGroupImageUploadTarget(groupId: groupId)
+
+    guard let uploadURL = URL(string: target.uploadUrl) else {
+      throw RustAPIError.invalidResponse
+    }
+
+    var request = URLRequest(url: uploadURL)
+    request.httpMethod = "PUT"
+    request.setValue(target.contentType, forHTTPHeaderField: "Content-Type")
+    request.httpBody = uploadData
+
+    let (_, response) = try await URLSession.shared.data(for: request)
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw RustAPIError.invalidResponse
+    }
+    guard (200..<300).contains(httpResponse.statusCode) else {
+      throw RustAPIError.httpError(statusCode: httpResponse.statusCode)
+    }
+
+    guard let imageURL = URL(string: target.imageUrl) else {
+      throw RustAPIError.invalidResponse
+    }
+
+    return imageURL
+  }
+
   public func deleteGroup(groupId: String) async throws {
     let _: RustSuccessResponse = try await api.delete("/api/v1/groups/\(groupId)")
   }
@@ -296,6 +336,11 @@ public actor GroupRustDataSource {
     let colorValue = color?.rawValue ?? ""
     let body = UpdateGroupColorBody(color: colorValue)
     let _: RustSuccessResponse = try await api.patch("/api/v1/groups/\(groupId)/color", body: body)
+  }
+
+  private func issueGroupImageUploadTarget(groupId: String) async throws -> RustGroupImageUploadTarget {
+    let body = IssueGroupImageUploadUrlBody(contentType: "image/jpeg")
+    return try await api.post("/api/v1/groups/\(groupId)/image-upload-url", body: body)
   }
 }
 

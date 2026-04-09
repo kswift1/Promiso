@@ -134,4 +134,3 @@ async fn refresh_session_rejects_device_mismatch(pool: PgPool) {
 
     assert!(refreshed.is_err());
 }
-

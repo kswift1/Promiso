@@ -1,6 +1,6 @@
 use promiso_backend::services::slack_service::{
-    SlackBlock, SlackMessageContext, SlackNotificationType, SubscriptionTransitionContext,
-    build_slack_message, detect_subscription_transition,
+    build_slack_message, detect_subscription_transition, SlackBlock, SlackMessageContext,
+    SlackNotificationType, SubscriptionTransitionContext,
 };
 
 // ============================================================
@@ -53,23 +53,13 @@ fn msg_ctx() -> SlackMessageContext {
 
 #[test]
 fn sn1_none_to_subscribed_returns_new_subscription() {
-    let result = detect_subscription_transition(&ctx(
-        Some("none"),
-        "subscribed",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("none"), "subscribed", None, None));
     assert_eq!(result, Some(SlackNotificationType::NewSubscription));
 }
 
 #[test]
 fn sn1_none_to_lifetime_returns_new_subscription() {
-    let result = detect_subscription_transition(&ctx(
-        Some("none"),
-        "lifetime",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("none"), "lifetime", None, None));
     assert_eq!(result, Some(SlackNotificationType::NewSubscription));
 }
 
@@ -96,12 +86,8 @@ fn sn2_none_to_subscribed_with_offer_redeemed_returns_promo_code() {
 
 #[test]
 fn sn2_null_before_to_subscribed_with_offer_redeemed_returns_promo_code() {
-    let result = detect_subscription_transition(&ctx(
-        None,
-        "subscribed",
-        None,
-        Some("OFFER_REDEEMED"),
-    ));
+    let result =
+        detect_subscription_transition(&ctx(None, "subscribed", None, Some("OFFER_REDEEMED")));
     assert_eq!(result, Some(SlackNotificationType::PromoCode));
 }
 
@@ -111,23 +97,13 @@ fn sn2_null_before_to_subscribed_with_offer_redeemed_returns_promo_code() {
 
 #[test]
 fn sn3_subscribed_to_revoked_returns_cancelled() {
-    let result = detect_subscription_transition(&ctx(
-        Some("subscribed"),
-        "revoked",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("subscribed"), "revoked", None, None));
     assert_eq!(result, Some(SlackNotificationType::Cancelled));
 }
 
 #[test]
 fn sn3_lifetime_to_revoked_returns_cancelled() {
-    let result = detect_subscription_transition(&ctx(
-        Some("lifetime"),
-        "revoked",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("lifetime"), "revoked", None, None));
     assert_eq!(result, Some(SlackNotificationType::Cancelled));
 }
 
@@ -137,23 +113,13 @@ fn sn3_lifetime_to_revoked_returns_cancelled() {
 
 #[test]
 fn sn4_subscribed_to_expired_returns_expired() {
-    let result = detect_subscription_transition(&ctx(
-        Some("subscribed"),
-        "expired",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("subscribed"), "expired", None, None));
     assert_eq!(result, Some(SlackNotificationType::Expired));
 }
 
 #[test]
 fn sn4_grace_period_to_expired_returns_expired() {
-    let result = detect_subscription_transition(&ctx(
-        Some("grace_period"),
-        "expired",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("grace_period"), "expired", None, None));
     assert_eq!(result, Some(SlackNotificationType::Expired));
 }
 
@@ -179,23 +145,14 @@ fn sn5_subscribed_to_grace_period_returns_grace_period() {
 
 #[test]
 fn sn6_grace_period_to_subscribed_returns_recovered() {
-    let result = detect_subscription_transition(&ctx(
-        Some("grace_period"),
-        "subscribed",
-        None,
-        None,
-    ));
+    let result =
+        detect_subscription_transition(&ctx(Some("grace_period"), "subscribed", None, None));
     assert_eq!(result, Some(SlackNotificationType::Recovered));
 }
 
 #[test]
 fn sn6_grace_period_to_lifetime_returns_recovered() {
-    let result = detect_subscription_transition(&ctx(
-        Some("grace_period"),
-        "lifetime",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("grace_period"), "lifetime", None, None));
     assert_eq!(result, Some(SlackNotificationType::Recovered));
 }
 
@@ -234,34 +191,19 @@ fn sn7_did_change_renewal_status_checked_before_state_transition() {
 
 #[test]
 fn sn8_subscribed_to_subscribed_returns_none() {
-    let result = detect_subscription_transition(&ctx(
-        Some("subscribed"),
-        "subscribed",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("subscribed"), "subscribed", None, None));
     assert_eq!(result, None);
 }
 
 #[test]
 fn sn8_expired_to_expired_returns_none() {
-    let result = detect_subscription_transition(&ctx(
-        Some("expired"),
-        "expired",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("expired"), "expired", None, None));
     assert_eq!(result, None);
 }
 
 #[test]
 fn sn8_lifetime_to_lifetime_returns_none() {
-    let result = detect_subscription_transition(&ctx(
-        Some("lifetime"),
-        "lifetime",
-        None,
-        None,
-    ));
+    let result = detect_subscription_transition(&ctx(Some("lifetime"), "lifetime", None, None));
     assert_eq!(result, None);
 }
 
@@ -275,11 +217,23 @@ fn build_slack_message_new_subscription_has_header_and_section() {
 
     assert!(!msg.text.is_empty(), "fallback text는 비어있으면 안 됩니다");
 
-    let has_header = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Header(_)));
-    let has_section = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Section(_)));
+    let has_header = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Header(_)));
+    let has_section = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Section(_)));
 
-    assert!(has_header, "NewSubscription 메시지에는 Header 블록이 있어야 합니다");
-    assert!(has_section, "NewSubscription 메시지에는 Section 블록이 있어야 합니다");
+    assert!(
+        has_header,
+        "NewSubscription 메시지에는 Header 블록이 있어야 합니다"
+    );
+    assert!(
+        has_section,
+        "NewSubscription 메시지에는 Section 블록이 있어야 합니다"
+    );
 }
 
 #[test]
@@ -315,8 +269,14 @@ fn build_slack_message_promo_code_has_header_and_section() {
     let msg = build_slack_message(&SlackNotificationType::PromoCode, &ctx);
 
     assert!(!msg.text.is_empty());
-    let has_header = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Header(_)));
-    assert!(has_header, "PromoCode 메시지에는 Header 블록이 있어야 합니다");
+    let has_header = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Header(_)));
+    assert!(
+        has_header,
+        "PromoCode 메시지에는 Header 블록이 있어야 합니다"
+    );
 }
 
 #[test]
@@ -324,8 +284,14 @@ fn build_slack_message_cancelled_has_header_and_section() {
     let msg = build_slack_message(&SlackNotificationType::Cancelled, &msg_ctx());
 
     assert!(!msg.text.is_empty());
-    let has_header = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Header(_)));
-    assert!(has_header, "Cancelled 메시지에는 Header 블록이 있어야 합니다");
+    let has_header = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Header(_)));
+    assert!(
+        has_header,
+        "Cancelled 메시지에는 Header 블록이 있어야 합니다"
+    );
 }
 
 #[test]
@@ -357,8 +323,14 @@ fn build_slack_message_auto_renew_disabled_has_header_and_section() {
     let msg = build_slack_message(&SlackNotificationType::AutoRenewDisabled, &msg_ctx());
 
     assert!(!msg.text.is_empty());
-    let has_header = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Header(_)));
-    assert!(has_header, "AutoRenewDisabled 메시지에는 Header 블록이 있어야 합니다");
+    let has_header = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Header(_)));
+    assert!(
+        has_header,
+        "AutoRenewDisabled 메시지에는 Header 블록이 있어야 합니다"
+    );
 }
 
 #[test]
@@ -366,6 +338,12 @@ fn build_slack_message_recovered_has_header_and_section() {
     let msg = build_slack_message(&SlackNotificationType::Recovered, &msg_ctx());
 
     assert!(!msg.text.is_empty());
-    let has_header = msg.blocks.iter().any(|b| matches!(b, SlackBlock::Header(_)));
-    assert!(has_header, "Recovered 메시지에는 Header 블록이 있어야 합니다");
+    let has_header = msg
+        .blocks
+        .iter()
+        .any(|b| matches!(b, SlackBlock::Header(_)));
+    assert!(
+        has_header,
+        "Recovered 메시지에는 Header 블록이 있어야 합니다"
+    );
 }

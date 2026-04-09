@@ -39,7 +39,7 @@ async fn auth_sessions_requires_existing_auth_account(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn app_config_seed_row_exists(pool: PgPool) {
-    let row: (String, String,) = sqlx::query_as(
+    let row: (String, String) = sqlx::query_as(
         "SELECT force_update_version, recommended_version FROM app_config WHERE singleton = TRUE",
     )
     .fetch_one(&pool)

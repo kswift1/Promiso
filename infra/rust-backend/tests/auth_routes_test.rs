@@ -40,7 +40,10 @@ async fn insert_user(pool: &PgPool, user_id: &str) {
     )
     .bind(user_id)
     .bind(format!("name-{user_id}"))
-    .bind(format!("nick{}", &user_id[user_id.len().saturating_sub(4)..]))
+    .bind(format!(
+        "nick{}",
+        &user_id[user_id.len().saturating_sub(4)..]
+    ))
     .bind(format!("provider-{user_id}"))
     .bind(format!("{user_id}@test.com"))
     .bind(format!("https://cdn.example.com/{user_id}.jpg"))
@@ -228,7 +231,10 @@ async fn auth_logout_all_revokes_all_user_sessions(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri("/api/v1/auth/logout-all")
-                .header("authorization", format!("Bearer {}", session_a.access_token))
+                .header(
+                    "authorization",
+                    format!("Bearer {}", session_a.access_token),
+                )
                 .body(Body::empty())
                 .unwrap(),
         )

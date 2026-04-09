@@ -1,11 +1,12 @@
 pub mod admin;
-pub mod auth;
 mod app_config;
+pub mod auth;
 mod briefing;
 mod emoji;
 mod groups;
 mod health;
 pub mod internal;
+mod media;
 mod notifications;
 mod places;
 mod schedules;
@@ -53,6 +54,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(auth::router())
         .merge(admin::router())
         .merge(groups::router())
+        .merge(media::router())
         .merge(schedules::router())
         .merge(notifications::router())
         .merge(subscriptions::router())

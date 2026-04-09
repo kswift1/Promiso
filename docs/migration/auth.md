@@ -159,22 +159,25 @@ CREATE TABLE app_config (
 
 - 현재 도메인 모델이 `profile_url`, `image_url`, `image_urls` 문자열을 직접 사용한다.
 - 이번 tranche 목표는 Firebase backend 제거이지 media domain 재설계가 아니다.
-- object key prefix를 `user_id` 중심으로 통제하면 별도 upload table 없이도 소유권 검증이 가능하다.
+- object key prefix를 entity/owner 기준으로 통제하면 별도 upload table 없이도 소유권 검증이 가능하다.
 
 ## 3. GCS Object Key 규칙
 
-생성 전 entity id가 없을 수 있으므로 owner user id 기준 prefix를 사용한다.
+도메인별 소유 주체가 다르므로 prefix를 entity/owner 기준으로 고정한다.
 
 | 용도 | Prefix |
 |------|--------|
 | 프로필 이미지 | `profile_images/{user_id}/{upload_id}.jpg` |
-| 그룹 이미지 | `group_images/{user_id}/{upload_id}.jpg` |
-| 일정 이미지 | `schedule_images/{user_id}/{upload_id}.jpg` |
+| 그룹 이미지 | `group_images/{group_id}/{upload_id}.jpg` |
+| 그룹 일정 이미지 | `schedule_images/{group_id}/{schedule_id}/{upload_id}.jpg` |
+| 개인 일정 이미지 | `personal_event_images/{user_id}/{event_id}/{upload_id}.jpg` |
 
 검증 규칙:
 
 - 프로필 이미지 URL은 `profile_images/{claims.uid}/` prefix만 허용
-- 그룹/일정 이미지 URL도 업로드 owner prefix가 현재 사용자와 일치해야 함
+- 그룹 이미지는 `group_id` admin만 발급/삭제 가능
+- 그룹 일정 이미지는 해당 `group_id` 멤버만 발급/삭제 가능
+- 개인 일정 이미지는 `user_id == claims.uid`만 발급/삭제 가능
 - schedule image는 최대 3개 유지
 
 ## 4. API 설계
@@ -269,18 +272,21 @@ CREATE TABLE app_config (
 | `GET` | `/api/v1/auth/me` | 현재 인증 주체 조회 |
 | `POST` | `/api/v1/auth/logout` | 현재 세션 폐기 |
 | `POST` | `/api/v1/auth/logout-all` | 해당 유저의 모든 세션 폐기 |
-| `POST` | `/api/v1/uploads/presign` | presigned upload URL 발급 |
+| `POST` | `/api/v1/users/me/profile-image/upload-url` | 프로필 이미지 upload URL 발급 |
+| `POST` | `/api/v1/groups/{id}/image-upload-url` | 그룹 이미지 upload URL 발급 |
+| `POST` | `/api/v1/media/upload-urls` | 일정/개인 일정 이미지 upload URL 발급 |
+| `POST` | `/api/v1/media/delete-urls` | 기존 이미지 cleanup용 delete URL 발급 |
 | `DELETE` | `/api/v1/users/me` | 회원 탈퇴 |
 
-#### `POST /api/v1/uploads/presign`
+#### `POST /api/v1/media/upload-urls`
 
 요청:
 
 ```json
 {
-  "purpose": "profile_image",
+  "basePath": "schedule_images/{group_id}/{schedule_id}",
+  "count": 2,
   "contentType": "image/jpeg",
-  "fileExtension": "jpg"
 }
 ```
 
@@ -288,14 +294,42 @@ CREATE TABLE app_config (
 
 ```json
 {
-  "uploadUrl": "https://storage.googleapis.com/...",
-  "publicUrl": "https://storage.googleapis.com/bucket/profile_images/user_x/upload.jpg",
-  "objectKey": "profile_images/user_x/upload.jpg",
-  "expiresAt": "2026-04-09T12:00:00Z",
-  "method": "PUT",
-  "headers": {
-    "Content-Type": "image/jpeg"
-  }
+  "data": [
+    {
+      "uploadUrl": "https://storage.googleapis.com/...",
+      "publicUrl": "https://storage.googleapis.com/bucket/schedule_images/{group_id}/{schedule_id}/upload.jpg",
+      "objectPath": "schedule_images/{group_id}/{schedule_id}/upload.jpg",
+      "expiresAt": "2026-04-09T12:00:00Z",
+      "contentType": "image/jpeg"
+    }
+  ]
+}
+```
+
+#### `POST /api/v1/media/delete-urls`
+
+요청:
+
+```json
+{
+  "targets": [
+    "schedule_images/{group_id}/{schedule_id}/upload.jpg",
+    "https://firebasestorage.googleapis.com/v0/b/{bucket}/o/schedule_images%2F{group_id}%2F{schedule_id}%2Fupload.jpg?alt=media&token=..."
+  ]
+}
+```
+
+응답:
+
+```json
+{
+  "data": [
+    {
+      "deleteUrl": "https://storage.googleapis.com/...",
+      "objectPath": "schedule_images/{group_id}/{schedule_id}/upload.jpg",
+      "expiresAt": "2026-04-09T12:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -307,14 +341,14 @@ CREATE TABLE app_config (
   - 더 이상 provider 정보를 body에서 받지 않는다.
   - claims.uid 기준으로 `users` row를 생성한다.
 - `POST /api/v1/users/me/profile-image`
-  - `image_path` 대신 `image_url` 또는 `object_key`를 받아 검증 후 저장한다.
+  - 업로드 완료 후 `image_path`를 받아 검증 후 저장한다.
 - `DELETE /api/v1/users/me`
   - 기존 Firebase Function `deleteUser` 대체
 
 #### Groups / Schedules
 
 - 기존 `imageUrl`, `imageUrls` 필드는 유지한다.
-- 단, 서버가 GCS bucket host + owner prefix를 검증한다.
+- 단, 서버가 GCS bucket host + entity prefix를 검증한다.
 
 ## 5. iOS 흐름 변경
 
@@ -334,9 +368,21 @@ CREATE TABLE app_config (
 
 ### 프로필 이미지 업로드
 
-1. `/api/v1/uploads/presign` 요청
+1. `POST /api/v1/users/me/profile-image/upload-url` 요청
 2. 앱이 GCS로 직접 PUT
-3. `POST /api/v1/users/me/profile-image`로 `publicUrl` 반영
+3. `POST /api/v1/users/me/profile-image`로 `image_path` 반영
+
+### 일정/개인 일정 이미지 업로드
+
+1. `POST /api/v1/media/upload-urls`
+2. 앱이 GCS로 직접 PUT
+3. schedule/personal event 수정 API에 `image_urls` 반영
+
+### 일정/개인 일정 이미지 삭제
+
+1. 제거 대상 기존 URL/path를 수집
+2. `POST /api/v1/media/delete-urls`
+3. 앱이 signed DELETE URL로 best-effort cleanup
 
 ## 6. 구현 순서
 
@@ -347,7 +393,7 @@ CREATE TABLE app_config (
    - existing users backfill
 2. auth routes/service
 3. app-config public route
-4. upload presign route
+4. upload/delete URL routes
 5. `users/groups/schedules` image URL validation
 6. iOS token store + RustAPIClient 교체
 7. Firebase Auth/Functions/Storage/RemoteConfig 제거

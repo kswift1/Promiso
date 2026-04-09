@@ -5,6 +5,7 @@
 | Firebase Function | Rust 엔드포인트 | 상태 |
 |---|---|---|
 | `createGroup` | `POST /api/v1/groups` | ✅ 구현 |
+| (신규) 그룹 이미지 업로드 URL 발급 | `POST /api/v1/groups/{id}/image-upload-url` | ✅ 구현 |
 | `previewGroup` | `GET /api/v1/groups/preview?code=XXX` | ✅ 구현 |
 | `joinGroup` | `POST /api/v1/groups/join` | ✅ 구현 |
 | `leaveGroup` | `POST /api/v1/groups/{id}/leave` | ✅ 구현 |
@@ -26,7 +27,7 @@
 | Firestore 트리거 | Firebase 처리 방식 | Rust 처리 방식 | 상태 |
 |---|---|---|---|
 | `onGroupImageUpdated` | 그룹 이미지 변경 시 전체 멤버의 `users/{uid}.groups` Map에 `imageUrl` 동기화 | 비정규화 제거 — `group_members` JOIN으로 항상 최신 이미지 조회 | ✅ 불필요 |
-| 그룹 삭제 시 Storage 이미지 삭제 | Functions에서 Storage 파일 제거 | ⚠️ Storage 마이그레이션 시 처리 (현재 Firebase Storage 유지) | ❌ 보류 |
+| 그룹 삭제 시 Storage 이미지 삭제 | Functions에서 Storage 파일 제거 | ⚠️ GCS direct upload 자산 정리 경로는 후속 처리 | ❌ 보류 |
 | 그룹 삭제 시 약속 cascade | Functions에서 promises 컬렉션 삭제 | `schedules.group_id REFERENCES groups(id) ON DELETE CASCADE` 로 DB가 보장 | ✅ 완료 |
 
 ## Firestore 스키마 → PostgreSQL 매핑
@@ -56,12 +57,12 @@
 | `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ✅ Feature Flag 연결 완료 |
 | `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
 | `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ✅ Feature Flag 연결 완료 |
-| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ⚠️ Feature Flag 연결 완료, 그룹 이미지 업로드는 Firebase Storage 유지 |
+| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ✅ Feature Flag 연결 완료, 생성 후 `image-upload-url -> PATCH`로 그룹 이미지 반영 |
 | `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ✅ Feature Flag 연결 완료 |
 | `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ✅ Feature Flag 연결 완료 |
 | `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ✅ Feature Flag 연결 완료 |
 | `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
-| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ⚠️ Feature Flag 연결 완료, 그룹 이미지 업로드는 Firebase Storage 유지 |
+| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료, `image-upload-url` 기반 direct upload 사용 |
 | `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ✅ Feature Flag 연결 완료 |
 | `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ✅ Feature Flag 연결 완료 |
 | `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ✅ Feature Flag 연결 완료 |
@@ -70,10 +71,10 @@
 
 ## 보류 항목
 
-- **Storage 이미지**: Firebase Storage 유지. Storage 마이그레이션 시 image_url 경로 전환
-- **그룹 생성/수정 이미지 업로드**: `photoData`는 아직 Firebase Storage 경유 후 별도 URL 전달 방식이 필요
+- **그룹 삭제 시 이미지 정리**: GCS object cleanup는 후속 처리
 
 ## 검증 현황
 
 - Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (67개 테스트)
+- Rust 백엔드 테스트: `infra/rust-backend/tests/group_image_upload_url_test.rs`
 - iOS 클라이언트: `GroupClient` Feature Flag 경로 연결 완료

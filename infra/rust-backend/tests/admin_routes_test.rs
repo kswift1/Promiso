@@ -81,7 +81,10 @@ async fn dashboard_summary_route_returns_counts(pool: PgPool) {
     assert_eq!(json["data"]["summary"]["proUsers"], 1);
     assert_eq!(json["data"]["summary"]["freeUsers"], 1);
     assert_eq!(json["data"]["summary"]["pushJobCount"], 0);
-    assert_eq!(json["data"]["summary"]["remoteConfigVersion"], serde_json::Value::Null);
+    assert_eq!(
+        json["data"]["summary"]["remoteConfigVersion"],
+        serde_json::Value::Null
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -151,7 +154,10 @@ async fn user_timeline_route_returns_summary_and_audit_logs(pool: PgPool) {
     assert_eq!(json["data"]["summary"]["userId"], "timeline_route_user_1");
     assert_eq!(json["data"]["subscription"]["status"], "subscribed");
     assert_eq!(json["data"]["auditLogs"][0]["action"], "touch_user");
-    assert_eq!(json["data"]["auditLogs"][0]["actorId"], "admin_support_route_2");
+    assert_eq!(
+        json["data"]["auditLogs"][0]["actorId"],
+        "admin_support_route_2"
+    );
     assert_eq!(json["data"]["auditLogs"][0]["targetType"], "user");
     assert!(json["data"]["auditLogs"][0]["id"].is_string());
 }
@@ -275,10 +281,16 @@ async fn pro_plan_dashboard_route_returns_breakdown(pool: PgPool) {
 
     assert_eq!(json["data"]["dashboard"]["overview"]["totalUsers"], 1);
     assert_eq!(json["data"]["dashboard"]["overview"]["proUsers"], 0);
-    assert_eq!(json["data"]["dashboard"]["breakdown"]["monthly"]["count"], 1);
+    assert_eq!(
+        json["data"]["dashboard"]["breakdown"]["monthly"]["count"],
+        1
+    );
     assert_eq!(json["data"]["dashboard"]["revenue"]["estimatedMRR"], 3900);
     assert_eq!(json["data"]["dashboard"]["coupons"]["total"], 0);
-    assert_eq!(json["data"]["dashboard"]["offerCodes"]["totalRedemptions"], 1);
+    assert_eq!(
+        json["data"]["dashboard"]["offerCodes"]["totalRedemptions"],
+        1
+    );
     assert_eq!(
         json["data"]["dashboard"]["offerCodes"]["recentRedemptions"][0]["offerIdentifier"],
         "SPRING2026"

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use axum::body::Body;
-use axum::Extension;
 use axum::http::{Request, StatusCode};
+use axum::Extension;
 use http_body_util::BodyExt;
 use promiso_backend::middleware::auth::ServerAuth;
 use promiso_backend::routes::auth;
@@ -33,7 +33,9 @@ impl ProviderVerifier for FakeProviderVerifier {
         _req: &promiso_backend::models::auth::GoogleSignInRequest,
     ) -> Result<VerifiedProviderProfile, promiso_backend::errors::AppError> {
         self.google_profile.clone().ok_or_else(|| {
-            promiso_backend::errors::AppError::Unauthorized("google verification failed".to_string())
+            promiso_backend::errors::AppError::Unauthorized(
+                "google verification failed".to_string(),
+            )
         })
     }
 }

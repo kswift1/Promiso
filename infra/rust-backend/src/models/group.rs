@@ -126,6 +126,11 @@ pub struct BatchGroupsRequest {
     pub ids: Vec<Uuid>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct IssueGroupImageUploadUrlRequest {
+    pub content_type: Option<String>,
+}
+
 // ============================================================
 // 응답 DTO
 // ============================================================
@@ -218,4 +223,13 @@ pub struct GroupMemberResponse {
     pub role: String,
     pub group_color: String,
     pub joined_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct IssueGroupImageUploadUrlResponse {
+    pub object_path: String,
+    pub upload_url: String,
+    pub image_url: String,
+    pub expires_at: DateTime<Utc>,
+    pub content_type: String,
 }

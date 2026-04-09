@@ -12,6 +12,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use std::sync::OnceLock;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 fn test_config() -> Config {
     std::env::set_var("DATABASE_URL", "postgresql://localhost/promiso_test");
@@ -48,6 +49,14 @@ fn service_account_json() -> String {
         .clone()
 }
 
+fn server_auth() -> promiso_backend::middleware::auth::ServerAuth {
+    promiso_backend::middleware::auth::ServerAuth::new(
+        Some("test-server-secret".to_string()),
+        "promiso-test".to_string(),
+        900,
+    )
+}
+
 async fn insert_auth_account(pool: &PgPool, user_id: &str) {
     sqlx::query(
         "INSERT INTO auth_accounts \
@@ -81,21 +90,38 @@ async fn insert_user(pool: &PgPool, user_id: &str) {
     .expect("insert user");
 }
 
+async fn create_group(pool: &PgPool, user_id: &str) -> Uuid {
+    let group_id: (Uuid,) = sqlx::query_as(
+        "INSERT INTO groups (name, invite_code, max_members, last_activity_at) \
+         VALUES ('이미지그룹', 'IMG123', 10, NOW()) \
+         RETURNING id",
+    )
+    .fetch_one(pool)
+    .await
+    .expect("insert group");
+
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')")
+        .bind(group_id.0)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .expect("insert group host");
+
+    group_id.0
+}
+
 #[sqlx::test(migrations = "./migrations")]
-async fn issue_profile_image_upload_url(pool: PgPool) {
-    insert_auth_account(&pool, "upload_url_user").await;
-    insert_user(&pool, "upload_url_user").await;
+async fn issue_group_image_upload_url(pool: PgPool) {
+    insert_auth_account(&pool, "group_image_user").await;
+    insert_user(&pool, "group_image_user").await;
+    let group_id = create_group(&pool, "group_image_user").await;
 
     let tokens = auth_service::create_session(
         &pool,
-        &promiso_backend::middleware::auth::ServerAuth::new(
-            Some("test-server-secret".to_string()),
-            "promiso-test".to_string(),
-            900,
-        ),
+        &server_auth(),
         CreateSessionInput {
-            user_id: "upload_url_user".to_string(),
-            device_id: "device-upload-url".to_string(),
+            user_id: "group_image_user".to_string(),
+            device_id: "device-group-upload-url".to_string(),
             platform: "ios".to_string(),
             app_version: Some("1.0.0".to_string()),
             user_agent: None,
@@ -108,7 +134,7 @@ async fn issue_profile_image_upload_url(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/users/me/profile-image/upload-url")
+                .uri(format!("/api/v1/groups/{group_id}/image-upload-url"))
                 .header("authorization", format!("Bearer {}", tokens.access_token))
                 .header("content-type", "application/json")
                 .body(Body::from(r#"{"content_type":"image/jpeg"}"#))
@@ -124,11 +150,11 @@ async fn issue_profile_image_upload_url(pool: PgPool) {
 
     let object_path = json["data"]["object_path"].as_str().expect("object_path");
     let upload_url = json["data"]["upload_url"].as_str().expect("upload_url");
-    let profile_url = json["data"]["profile_url"].as_str().expect("profile_url");
+    let image_url = json["data"]["image_url"].as_str().expect("image_url");
 
-    assert!(object_path.starts_with("profile_images/upload_url_user/"));
+    assert!(object_path.starts_with(&format!("group_images/{group_id}/")));
     assert!(upload_url.contains("X-Goog-Algorithm=GOOG4-RSA-SHA256"));
-    assert!(profile_url.starts_with(
-        "https://storage.googleapis.com/promiso-test-media/profile_images/upload_url_user/"
-    ));
+    assert!(image_url.starts_with(&format!(
+        "https://storage.googleapis.com/promiso-test-media/group_images/{group_id}/"
+    )));
 }

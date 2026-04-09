@@ -2,9 +2,7 @@
 //!
 //! 실제 HTTP 호출 없이 알려진 JSON 응답을 파싱하는 순수 함수를 테스트한다.
 
-use promiso_backend::services::{
-    gemini_client, transportation_client, weather_client,
-};
+use promiso_backend::services::{gemini_client, transportation_client, weather_client};
 use serde_json::json;
 
 // ============================================================
@@ -170,7 +168,10 @@ fn parse_odsay_extracts_routes() {
     assert_eq!(routes.len(), 2, "2개 경로 파싱");
     assert_eq!(routes[0].total_time, 45, "첫 번째 경로 소요시간 45분");
     assert_eq!(routes[0].payment, 1500, "첫 번째 경로 요금 1500원");
-    assert_eq!(routes[0].transfer_count, 1, "첫 번째 경로 환승 1회 (subway)");
+    assert_eq!(
+        routes[0].transfer_count, 1,
+        "첫 번째 경로 환승 1회 (subway)"
+    );
     assert_eq!(routes[0].path_type, 1, "첫 번째 경로 지하철 타입");
     assert_eq!(routes[1].path_type, 2, "두 번째 경로 버스 타입");
 }
@@ -283,8 +284,7 @@ fn parse_gemini_extracts_json_from_fence() {
 /// fence 없이 순수 JSON 파싱
 #[test]
 fn parse_gemini_extracts_json_without_fence() {
-    let text =
-        r#"{"summary": "일정 없는 여유로운 하루입니다.", "detail": "오늘은 특별한 일정이 없습니다. 여유롭게 하루를 보내세요."}"#;
+    let text = r#"{"summary": "일정 없는 여유로운 하루입니다.", "detail": "오늘은 특별한 일정이 없습니다. 여유롭게 하루를 보내세요."}"#;
 
     let (summary, detail): (String, String) = gemini_client::parse_gemini_response(text);
 

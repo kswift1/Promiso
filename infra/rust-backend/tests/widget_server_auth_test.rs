@@ -46,7 +46,10 @@ async fn insert_user(pool: &PgPool, user_id: &str) {
     )
     .bind(user_id)
     .bind(format!("name-{user_id}"))
-    .bind(format!("nick{}", &user_id[user_id.len().saturating_sub(4)..]))
+    .bind(format!(
+        "nick{}",
+        &user_id[user_id.len().saturating_sub(4)..]
+    ))
     .bind(format!("provider-{user_id}"))
     .bind(format!("{user_id}@test.com"))
     .execute(pool)

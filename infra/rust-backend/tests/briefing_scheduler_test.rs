@@ -30,7 +30,11 @@ fn verify_scheduler_secret_rejects_empty() {
 // ============================================================
 
 async fn insert_user(pool: &PgPool, id: &str) {
-    let suffix = if id.len() > 8 { &id[id.len() - 8..] } else { id };
+    let suffix = if id.len() > 8 {
+        &id[id.len() - 8..]
+    } else {
+        id
+    };
 
     sqlx::query(
         "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email)
@@ -161,24 +165,22 @@ async fn dispatch_advances_next_dispatch_at(pool: PgPool) {
     insert_subscription(&pool, "sched_advance_1", -60).await;
 
     let now = chrono::Utc::now();
-    let before_dispatch: (chrono::DateTime<chrono::Utc>,) = sqlx::query_as(
-        "SELECT next_dispatch_at FROM briefing_subscriptions WHERE user_id = $1",
-    )
-    .bind("sched_advance_1")
-    .fetch_one(&pool)
-    .await
-    .expect("row should exist before dispatch");
+    let before_dispatch: (chrono::DateTime<chrono::Utc>,) =
+        sqlx::query_as("SELECT next_dispatch_at FROM briefing_subscriptions WHERE user_id = $1")
+            .bind("sched_advance_1")
+            .fetch_one(&pool)
+            .await
+            .expect("row should exist before dispatch");
 
     dispatch_due_briefings(&pool, now, 10).await.unwrap();
 
     // 처리 후 next_dispatch_at이 갱신되었거나 행이 삭제되어야 한다
-    let after_row: Option<(chrono::DateTime<chrono::Utc>,)> = sqlx::query_as(
-        "SELECT next_dispatch_at FROM briefing_subscriptions WHERE user_id = $1",
-    )
-    .bind("sched_advance_1")
-    .fetch_optional(&pool)
-    .await
-    .expect("query should succeed");
+    let after_row: Option<(chrono::DateTime<chrono::Utc>,)> =
+        sqlx::query_as("SELECT next_dispatch_at FROM briefing_subscriptions WHERE user_id = $1")
+            .bind("sched_advance_1")
+            .fetch_optional(&pool)
+            .await
+            .expect("query should succeed");
 
     if let Some(after_dispatch) = after_row {
         // 갱신된 경우: next_dispatch_at이 이전보다 미래여야 한다
@@ -224,7 +226,10 @@ async fn dispatch_deletes_when_no_next(pool: PgPool) {
             .await
             .expect("count query should succeed");
 
-    assert_eq!(row_count.0, 0, "row should be deleted when no next dispatch time");
+    assert_eq!(
+        row_count.0, 0,
+        "row should be deleted when no next dispatch time"
+    );
     assert_eq!(summary.deleted, 1);
 }
 

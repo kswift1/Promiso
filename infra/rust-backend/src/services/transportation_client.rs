@@ -106,11 +106,7 @@ fn build_odsay_description(sub_path: &serde_json::Value) -> String {
                 let bus_no = sp["lane"]
                     .as_array()
                     .and_then(|lanes| lanes.first())
-                    .and_then(|lane| {
-                        lane["busNo"]
-                            .as_str()
-                            .or_else(|| lane["name"].as_str())
-                    })
+                    .and_then(|lane| lane["busNo"].as_str().or_else(|| lane["name"].as_str()))
                     .unwrap_or("버스")
                     .to_string();
                 parts.push(format!("버스 {bus_no}"));

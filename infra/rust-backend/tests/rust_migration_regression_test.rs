@@ -71,15 +71,11 @@ async fn create_test_group(pool: &PgPool, creator_id: &str, name: &str) -> uuid:
 async fn widget_snapshot_rejects_revoked_widget_token(pool: PgPool) {
     insert_test_user(&pool, "widget_revoked", "위젯리보크").await;
 
-    let token = widget_service::generate_widget_token(
-        &pool,
-        "widget_revoked",
-        "device-a",
-        "test-secret",
-    )
-    .await
-    .expect("issue widget token")
-    .widget_token;
+    let token =
+        widget_service::generate_widget_token(&pool, "widget_revoked", "device-a", "test-secret")
+            .await
+            .expect("issue widget token")
+            .widget_token;
 
     widget_service::revoke_widget_tokens(&pool, "widget_revoked")
         .await
@@ -104,15 +100,11 @@ async fn widget_snapshot_rejects_revoked_widget_token(pool: PgPool) {
 async fn widget_snapshot_rejects_mismatched_device_id(pool: PgPool) {
     insert_test_user(&pool, "widget_device", "위젯디바이스").await;
 
-    let token = widget_service::generate_widget_token(
-        &pool,
-        "widget_device",
-        "device-a",
-        "test-secret",
-    )
-    .await
-    .expect("issue widget token")
-    .widget_token;
+    let token =
+        widget_service::generate_widget_token(&pool, "widget_device", "device-a", "test-secret")
+            .await
+            .expect("issue widget token")
+            .widget_token;
 
     let response = routes::create_router(pool, &test_config())
         .oneshot(
@@ -150,7 +142,10 @@ async fn widget_snapshot_includes_recently_ended_schedule(pool: PgPool) {
         .expect("fetch snapshot");
 
     assert!(
-        snapshot.today.iter().any(|item| item.title == "방금 끝난 일정"),
+        snapshot
+            .today
+            .iter()
+            .any(|item| item.title == "방금 끝난 일정"),
         "종료 후 1시간 이내 일정이 today에 포함되어야 함"
     );
 }

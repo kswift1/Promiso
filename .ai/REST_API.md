@@ -156,7 +156,7 @@
   ```
 - 에러: 404 (코드가 유효하지 않음)
 
-### 인증 필요 (Authorization: Bearer \<firebase_id_token\>)
+### 인증 필요
 
 #### POST /api/v1/groups
 
@@ -226,6 +226,28 @@
     "image_url": "https://..."
   }
   ```
+
+#### POST /api/v1/groups/{id}/image-upload-url
+
+- 설명: 그룹 이미지 GCS direct upload용 signed URL 발급 (admin만)
+- 인증: 필수 (admin)
+- 요청:
+  ```json
+  { "content_type": "image/jpeg" }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "object_path": "group_images/{group_id}/{uuid}.jpg",
+      "upload_url": "https://storage.googleapis.com/...",
+      "image_url": "https://storage.googleapis.com/{bucket}/group_images/{group_id}/{uuid}.jpg",
+      "expires_at": "ISO8601",
+      "content_type": "image/jpeg"
+    }
+  }
+  ```
+- 에러: 403 (admin 아님), 404 (그룹 없음), 400 (지원하지 않는 content_type)
   - `description`, `image_url`: `Option<Option<String>>` 패턴
     - 필드 생략 — 변경 없음
     - `null` — 삭제 (필드를 NULL로)
@@ -371,6 +393,78 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   "updated_at": "ISO8601"
 }
 ```
+
+## Media (인증 필요)
+
+### POST /api/v1/media/upload-urls
+
+- 설명: 일정/개인 일정 이미지용 GCS direct upload signed URL 발급
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "base_path": "schedule_images/{group_id}/{schedule_id}",
+    "count": 2,
+    "content_type": "image/jpeg"
+  }
+  ```
+  - `base_path` 허용값:
+    - `schedule_images/{group_id}/{schedule_id}`: 해당 그룹 멤버만 발급 가능
+    - `personal_event_images/{user_id}/{event_id}`: `user_id == claims.uid`만 발급 가능
+  - `count`: 1~3
+  - `content_type`: 현재 `image/jpeg`만 지원. 생략 시 기본값 `image/jpeg`
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "object_path": "schedule_images/{group_id}/{schedule_id}/{uuid}.jpg",
+        "upload_url": "https://storage.googleapis.com/...",
+        "public_url": "https://storage.googleapis.com/{bucket}/schedule_images/{group_id}/{schedule_id}/{uuid}.jpg",
+        "expires_at": "ISO8601",
+        "content_type": "image/jpeg"
+      }
+    ]
+  }
+  ```
+- 에러: 400 (허용되지 않은 base_path/count/content_type), 403 (권한 없음)
+
+### POST /api/v1/media/delete-urls
+
+- 설명: 기존 이미지 cleanup용 GCS signed DELETE URL 발급
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "targets": [
+      "schedule_images/{group_id}/{schedule_id}/image.jpg",
+      "https://firebasestorage.googleapis.com/v0/b/{bucket}/o/schedule_images%2F{group_id}%2F{schedule_id}%2Fimage.jpg?alt=media&token=..."
+    ]
+  }
+  ```
+  - 지원 입력 형식:
+    - raw object path
+    - `gs://{bucket}/{object_path}`
+    - `https://storage.googleapis.com/{bucket}/{object_path}`
+    - Firebase download URL (`firebasestorage.googleapis.com`)
+  - 권한 규칙:
+    - `schedule_images/{group_id}/{schedule_id}/{file}`: 그룹 멤버
+    - `personal_event_images/{user_id}/{event_id}/{file}`: 본인
+    - `profile_images/{user_id}/{file}`: 본인
+    - `group_images/{group_id}/{file}`: 그룹 admin
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "object_path": "schedule_images/{group_id}/{schedule_id}/image.jpg",
+        "delete_url": "https://storage.googleapis.com/...",
+        "expires_at": "ISO8601"
+      }
+    ]
+  }
+  ```
+- 에러: 400 (지원되지 않는 URL/path, 다른 bucket, 개수 초과), 403 (권한 없음)
 
 ## Schedules (인증 필요)
 

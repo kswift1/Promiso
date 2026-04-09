@@ -208,7 +208,10 @@ pub async fn revoke_session_by_id(pool: &PgPool, session_id: Uuid) -> Result<(),
     Ok(())
 }
 
-pub async fn get_auth_subject(pool: &PgPool, user_id: &str) -> Result<AuthSubjectResponse, AppError> {
+pub async fn get_auth_subject(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<AuthSubjectResponse, AppError> {
     let row = sqlx::query_as::<_, AuthSubjectRow>(
         "SELECT \
             a.user_id, \

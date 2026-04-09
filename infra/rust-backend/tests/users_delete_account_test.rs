@@ -89,14 +89,12 @@ async fn delete_my_account_rejects_group_host(pool: PgPool) {
     .await
     .expect("insert group");
 
-    sqlx::query(
-        "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')",
-    )
-    .bind(group_id)
-    .bind("delete_host_user")
-    .execute(&pool)
-    .await
-    .expect("insert host membership");
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')")
+        .bind(group_id)
+        .bind("delete_host_user")
+        .execute(&pool)
+        .await
+        .expect("insert host membership");
 
     let access_token = create_session(&pool, "delete_host_user", "device-host").await;
 
@@ -353,11 +351,12 @@ async fn delete_my_account_cleans_auth_and_user_state_but_preserves_subscription
             .expect("count group members");
     assert_eq!(group_members_count, 0);
 
-    let schedules_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM schedules WHERE user_id = $1")
-        .bind("delete_regular_user")
-        .fetch_one(&pool)
-        .await
-        .expect("count schedules");
+    let schedules_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM schedules WHERE user_id = $1")
+            .bind("delete_regular_user")
+            .fetch_one(&pool)
+            .await
+            .expect("count schedules");
     assert_eq!(schedules_count, 0);
 
     let devices_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE user_id = $1")

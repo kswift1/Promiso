@@ -1,9 +1,7 @@
 //! generateBriefing 도메인 비즈니스 규칙 테스트 (Red Phase)
 
 use chrono::{Datelike, NaiveDate, TimeZone, Utc};
-use promiso_backend::services::briefing_service::{
-    self, BriefingScheduleItem, WeatherForecast,
-};
+use promiso_backend::services::briefing_service::{self, BriefingScheduleItem, WeatherForecast};
 use sqlx::PgPool;
 
 // ============================================================
@@ -425,13 +423,12 @@ async fn fetch_today_returns_group_and_personal(pool: PgPool) {
     .expect("그룹 일정 삽입 실패");
 
     // schedule_votes: accepted
-    let sched_id: (uuid::Uuid,) = sqlx::query_as(
-        "SELECT id FROM schedules WHERE user_id = $1 AND title = '그룹일정'",
-    )
-    .bind("user_fetch1")
-    .fetch_one(&pool)
-    .await
-    .expect("일정 조회 실패");
+    let sched_id: (uuid::Uuid,) =
+        sqlx::query_as("SELECT id FROM schedules WHERE user_id = $1 AND title = '그룹일정'")
+            .bind("user_fetch1")
+            .fetch_one(&pool)
+            .await
+            .expect("일정 조회 실패");
 
     sqlx::query(
         "INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'accepted')",
@@ -458,7 +455,11 @@ async fn fetch_today_returns_group_and_personal(pool: PgPool) {
 
     assert!(result.is_ok(), "fetch_today_schedules 실패: {:?}", result);
     let items = result.unwrap();
-    assert!(items.len() >= 2, "그룹+개인 일정이 최소 2개여야 함: {}", items.len());
+    assert!(
+        items.len() >= 2,
+        "그룹+개인 일정이 최소 2개여야 함: {}",
+        items.len()
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -481,13 +482,12 @@ async fn fetch_today_excludes_declined_votes(pool: PgPool) {
     .await
     .expect("일정 삽입 실패");
 
-    let sched_id: (uuid::Uuid,) = sqlx::query_as(
-        "SELECT id FROM schedules WHERE user_id = $1 AND title = '거절일정'",
-    )
-    .bind("user_declined")
-    .fetch_one(&pool)
-    .await
-    .expect("일정 조회 실패");
+    let sched_id: (uuid::Uuid,) =
+        sqlx::query_as("SELECT id FROM schedules WHERE user_id = $1 AND title = '거절일정'")
+            .bind("user_declined")
+            .fetch_one(&pool)
+            .await
+            .expect("일정 조회 실패");
 
     sqlx::query(
         "INSERT INTO schedule_votes (schedule_id, user_id, status) VALUES ($1, $2, 'declined')",
@@ -599,8 +599,7 @@ async fn fetch_upcoming_returns_next_day(pool: PgPool) {
     .await
     .expect("내일 일정 삽입 실패");
 
-    let result =
-        briefing_service::fetch_upcoming_schedules(&pool, "user_upcoming", today).await;
+    let result = briefing_service::fetch_upcoming_schedules(&pool, "user_upcoming", today).await;
 
     assert!(result.is_ok());
     let upcoming = result.unwrap();
@@ -667,14 +666,13 @@ async fn cache_miss_on_different_prompt_key(pool: PgPool) {
     .expect("캐시 삽입 실패");
 
     // 캐시 row 존재 확인
-    let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM briefing_cache WHERE user_id = $1 AND date_key = $2",
-    )
-    .bind("user_cache2")
-    .bind(today)
-    .fetch_one(&pool)
-    .await
-    .expect("카운트 조회 실패");
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM briefing_cache WHERE user_id = $1 AND date_key = $2")
+            .bind("user_cache2")
+            .bind(today)
+            .fetch_one(&pool)
+            .await
+            .expect("카운트 조회 실패");
 
     assert_eq!(count.0, 1, "캐시 row가 없음");
 }

@@ -265,17 +265,7 @@ pub async fn get_user_summary(
     query: &str,
     field: &str,
 ) -> Result<UserSummaryResult, AppError> {
-    get_user_summary_with_filters(
-        pool,
-        actor_id,
-        Some(query),
-        field,
-        "all",
-        "all",
-        25,
-        None,
-    )
-    .await
+    get_user_summary_with_filters(pool, actor_id, Some(query), field, "all", "all", 25, None).await
 }
 
 pub async fn get_user_summary_with_filters(
@@ -643,12 +633,15 @@ pub async fn build_pro_plan_dashboard(
         if row.last_offer_type == Some(3) {
             dashboard.offer_codes.total_redemptions += 1;
             if let Some(offer_identifier) = row.last_offer_identifier.clone() {
-                dashboard.offer_codes.recent_redemptions.push(OfferCodeRedemption {
-                    user_id: row.user_id,
-                    offer_identifier,
-                    redeemed_at: row.updated_at,
-                    product_id: row.product_id.clone(),
-                });
+                dashboard
+                    .offer_codes
+                    .recent_redemptions
+                    .push(OfferCodeRedemption {
+                        user_id: row.user_id,
+                        offer_identifier,
+                        redeemed_at: row.updated_at,
+                        product_id: row.product_id.clone(),
+                    });
             }
         }
     }
@@ -662,8 +655,7 @@ pub async fn build_pro_plan_dashboard(
     dashboard.breakdown.r#override.count = override_count.0;
     dashboard.breakdown.monthly.revenue =
         dashboard.breakdown.monthly.count * dashboard.prices.monthly;
-    dashboard.breakdown.yearly.revenue =
-        dashboard.breakdown.yearly.count * dashboard.prices.yearly;
+    dashboard.breakdown.yearly.revenue = dashboard.breakdown.yearly.count * dashboard.prices.yearly;
     dashboard.breakdown.lifetime.total_revenue =
         dashboard.breakdown.lifetime.count * dashboard.prices.lifetime;
 

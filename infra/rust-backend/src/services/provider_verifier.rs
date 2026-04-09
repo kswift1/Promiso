@@ -190,7 +190,12 @@ impl ProviderVerifier for RealProviderVerifier {
         validation.set_audience(&audiences);
 
         let claims: AppleIdentityClaims = self
-            .verify_token(&req.identity_token, APPLE_JWKS_URL, &self.apple_jwks, validation)
+            .verify_token(
+                &req.identity_token,
+                APPLE_JWKS_URL,
+                &self.apple_jwks,
+                validation,
+            )
             .await?;
 
         if claims.sub != req.user_identifier {
@@ -216,7 +221,10 @@ impl ProviderVerifier for RealProviderVerifier {
             provider_type: "apple".to_string(),
             provider_uid: claims.sub,
             email: claims.email.or_else(|| req.email.clone()),
-            display_name: req.full_name.clone().filter(|value| !value.trim().is_empty()),
+            display_name: req
+                .full_name
+                .clone()
+                .filter(|value| !value.trim().is_empty()),
             profile_image_url: None,
         })
     }
@@ -237,7 +245,12 @@ impl ProviderVerifier for RealProviderVerifier {
         validation.set_audience(&audiences);
 
         let claims: GoogleIdentityClaims = self
-            .verify_token(&req.id_token, GOOGLE_JWKS_URL, &self.google_jwks, validation)
+            .verify_token(
+                &req.id_token,
+                GOOGLE_JWKS_URL,
+                &self.google_jwks,
+                validation,
+            )
             .await?;
 
         if claims.sub != req.user_identifier {
