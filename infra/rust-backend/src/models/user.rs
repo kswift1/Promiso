@@ -21,14 +21,6 @@ pub struct User {
 pub struct CreateUserRequest {
     pub name: Option<String>,
     pub nickname: String,
-    pub provider: ProviderInfo,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ProviderInfo {
-    pub provider_type: String,
-    pub provider_uid: String,
-    pub email: String,
 }
 
 #[derive(Debug, Serialize)]

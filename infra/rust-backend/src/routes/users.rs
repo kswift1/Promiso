@@ -79,9 +79,10 @@ async fn update_user(
 
 async fn delete_my_account(
     Extension(claims): Extension<Claims>,
+    Extension(upload_signer): Extension<Option<GcsUploadSigner>>,
     State(pool): State<PgPool>,
 ) -> Result<ApiResponse<serde_json::Value>, AppError> {
-    user_service::delete_user(&pool, &claims.uid).await?;
+    user_service::delete_user(&pool, &claims.uid, upload_signer.as_ref()).await?;
     ApiResponse::ok(serde_json::json!({"success": true}))
 }
 

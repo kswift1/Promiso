@@ -30,7 +30,7 @@ pub fn validate_nickname(nickname: &str) -> Result<String, AppError> {
     Ok(trimmed.to_string())
 }
 
-/// 사용자 생성 (U5, U10, U13, provider 검증)
+/// 사용자 생성 (U5, U10, U13, auth_accounts에서 provider 정보 조회)
 pub async fn create_user(
     pool: &PgPool,
     uid: &str,
@@ -39,20 +39,18 @@ pub async fn create_user(
     // 닉네임 검증
     let nickname = validate_nickname(&req.nickname)?;
 
-    // provider 필수 필드 검증
-    if req.provider.email.trim().is_empty() {
-        return Err(AppError::BadRequest("이메일은 필수입니다".to_string()));
-    }
-    if req.provider.provider_type.trim().is_empty() {
-        return Err(AppError::BadRequest(
-            "인증 제공자 타입은 필수입니다".to_string(),
-        ));
-    }
-    if req.provider.provider_uid.trim().is_empty() {
-        return Err(AppError::BadRequest(
-            "인증 제공자 UID는 필수입니다".to_string(),
-        ));
-    }
+    // auth_accounts에서 서버가 검증한 provider 정보 조회
+    let auth = sqlx::query_as::<_, (String, String, Option<String>)>(
+        "SELECT provider_type, provider_uid, email FROM auth_accounts WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?
+    .ok_or_else(|| AppError::BadRequest("인증 정보를 찾을 수 없습니다".to_string()))?;
+
+    let (provider_type, provider_uid, email_opt) = auth;
+    let email = email_opt.unwrap_or_default();
 
     // U10: name 미제공 시 nickname으로 대체
     let name = req
@@ -72,9 +70,9 @@ pub async fn create_user(
     .bind(uid)
     .bind(&name)
     .bind(&nickname)
-    .bind(req.provider.provider_type.trim())
-    .bind(req.provider.provider_uid.trim())
-    .bind(req.provider.email.trim())
+    .bind(&provider_type)
+    .bind(&provider_uid)
+    .bind(&email)
     .fetch_one(pool)
     .await
     .map_err(|e| map_unique_violation(e, "이미 존재하는 사용자입니다"))?;
@@ -172,8 +170,21 @@ pub async fn update_user(pool: &PgPool, uid: &str, req: UpdateUserRequest) -> Re
     Ok(())
 }
 
-/// 사용자 탈퇴 — U9: 그룹 호스트는 탈퇴 불가
-pub async fn delete_user(pool: &PgPool, uid: &str) -> Result<(), AppError> {
+/// 사용자 탈퇴 — U9: 그룹 호스트는 탈퇴 불가, Storage 프로필 이미지 삭제 (실패 무시)
+pub async fn delete_user(
+    pool: &PgPool,
+    uid: &str,
+    gcs_signer: Option<&GcsUploadSigner>,
+) -> Result<(), AppError> {
+    // 트랜잭션 전에 profile_url 조회 (GCS cleanup에 사용)
+    let profile_url: Option<String> =
+        sqlx::query_scalar("SELECT profile_url FROM users WHERE id = $1")
+            .bind(uid)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .flatten();
+
     let mut tx = pool.begin().await?;
 
     let is_group_host: (bool,) = sqlx::query_as(
@@ -228,7 +239,32 @@ pub async fn delete_user(pool: &PgPool, uid: &str) -> Result<(), AppError> {
         .await?;
 
     tx.commit().await?;
+
+    // 단계 5: Storage 프로필 이미지 삭제 (실패 무시, best-effort)
+    let expected_prefix = format!("profile_images/{uid}/");
+    if let (Some(signer), Some(url)) = (gcs_signer, profile_url) {
+        // GCS public URL에서 object path 추출
+        let object_path_opt = extract_gcs_object_path(signer.bucket(), &url)
+            .filter(|p| p.starts_with(&expected_prefix));
+
+        if let Some(object_path) = object_path_opt {
+            if let Ok(target) = signer.sign_delete_object(&object_path) {
+                let _ = reqwest::Client::new()
+                    .delete(&target.delete_url)
+                    .send()
+                    .await;
+            }
+        }
+    }
+
     Ok(())
+}
+
+/// GCS public URL에서 object path를 추출하는 헬퍼
+/// "https://storage.googleapis.com/{bucket}/{object_path}" 형식을 파싱
+fn extract_gcs_object_path(bucket: &str, url: &str) -> Option<String> {
+    let prefix = format!("https://storage.googleapis.com/{bucket}/");
+    url.strip_prefix(&prefix).map(|s| s.to_string())
 }
 
 /// 프로필 이미지 URL 저장
