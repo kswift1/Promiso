@@ -13,6 +13,8 @@
 | 홈 일정 조회 | `GET /api/v1/schedules/home` | ✅ 완료 |
 | 캘린더 조회 | `GET /api/v1/schedules/calendar` | ✅ 완료 |
 | 캘린더 동기화용 확정 일정 조회 | `GET /api/v1/schedules/calendar-sync` | ✅ 완료 |
+| 일정 충돌 감지 | `POST /api/v1/schedules/check-conflicts` | ✅ 완료 |
+| 텍스트/이미지 일정 추출 | `POST /api/v1/schedules/extract` | ✅ 완료 |
 | 개인 일정 생성/수정/삭제/조회 | `POST/PATCH/DELETE/GET /api/v1/schedules` | ✅ 완료 |
 | 반복 개인 일정 CRUD | `POST/PATCH/DELETE/GET /api/v1/recurring-schedules` | ✅ 완료 |
 | 일정 이미지 direct upload | `POST /api/v1/media/upload-urls` | ✅ 완료 |
@@ -25,6 +27,8 @@
 | `ScheduleClient` | Rust schedules API | ✅ Rust 고정 |
 | `PersonalEventClient` | Rust schedules API | ✅ Rust 고정 |
 | `RecurringPersonalEventClient` | Rust recurring API | ✅ Rust 고정 |
+| `ScheduleConflictClient` | Rust schedules conflict API | ✅ Rust 고정 |
+| `ScheduleExtractionClient` | Rust schedules extract API | ✅ Rust 고정 |
 | `ImageUploadClient` | Rust media signed URL + GCS direct upload/delete | ✅ 완료 |
 
 메모:

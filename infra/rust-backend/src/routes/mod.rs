@@ -3,6 +3,7 @@ mod app_config;
 pub mod auth;
 mod briefing;
 mod emoji;
+mod faq;
 mod groups;
 mod health;
 pub mod internal;
@@ -12,6 +13,7 @@ mod places;
 mod schedules;
 mod subscriptions;
 mod users;
+mod weather;
 mod widget;
 
 use std::sync::Arc;
@@ -56,6 +58,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(groups::router())
         .merge(media::router())
         .merge(schedules::router())
+        .merge(weather::router())
         .merge(notifications::router())
         .merge(subscriptions::router())
         .merge(briefing::router())
@@ -78,6 +81,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
         .merge(app_config::router()) // /api/v1/app-config — 인증 불필요
+        .merge(faq::router()) // /api/v1/faq — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
         .merge(places::router()) // /api/v1/places/* — 인증 불필요
         .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)

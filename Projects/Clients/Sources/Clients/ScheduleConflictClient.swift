@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -55,7 +54,7 @@ extension DependencyValues {
   }
 }
 
-// MARK: - Cloud Function Response
+// MARK: - Rust API DTOs
 
 private let conflictCheckISO8601Formatter: ISO8601DateFormatter = {
   let formatter = ISO8601DateFormatter()
@@ -63,8 +62,12 @@ private let conflictCheckISO8601Formatter: ISO8601DateFormatter = {
   return formatter
 }()
 
-private struct CheckConflictsResponse: Decodable {
-  let conflicts: [ConflictItem]
+private struct CheckConflictsBody: Encodable {
+  let startAt: Date
+  let endAt: Date?
+  let excludeIds: [String]?
+  let minGapMinutes: Int
+  let timezone: String
 }
 
 private struct ConflictItem: Decodable {
@@ -84,37 +87,47 @@ private struct ConflictItem: Decodable {
 extension ScheduleConflictClient: DependencyKey {
   public static let liveValue = ScheduleConflictClient(
     checkConflicts: { _, startAt, endAt, excludeIds, minGapMinutes in
-      let functions = DefaultFunctionsProvider().functions
-      let iso8601Formatter = conflictCheckISO8601Formatter
+      let rustClient = RustAPIClient()
 
-      AppLogger.general.info("[ConflictCheck] Cloud Function 충돌 체크 시작")
+      AppLogger.general.info("[ConflictCheck] Rust 충돌 체크 시작")
 
-      var params: [String: Any] = [
-        "startAt": iso8601Formatter.string(from: startAt),
-      ]
-      if let endAt {
-        params["endAt"] = iso8601Formatter.string(from: endAt)
-      }
-      params["timeZone"] = TimeZone.current.identifier
-      if !excludeIds.isEmpty {
-        params["excludeIds"] = Array(excludeIds)
-      }
-      params["minGapMinutes"] = minGapMinutes
-
-      let result = try await functions.httpsCallable("checkScheduleConflicts").call(params)
+      let response: [ConflictItem] = try await rustClient.post(
+        "/api/v1/schedules/check-conflicts",
+        body: CheckConflictsBody(
+          startAt: startAt,
+          endAt: endAt,
+          excludeIds: excludeIds.isEmpty ? nil : Array(excludeIds),
+          minGapMinutes: minGapMinutes,
+          timezone: TimeZone.current.identifier
+        )
+      )
 
       do {
-        let data = try JSONSerialization.data(withJSONObject: result.data)
-        let response = try JSONDecoder().decode(CheckConflictsResponse.self, from: data)
-
-        let conflicts = response.conflicts.compactMap { item -> ScheduleConflict? in
-          let source: ScheduleConflict.Source = item.source == "schedule" ? .schedule : .personalEvent
-          let severity: ScheduleConflict.Severity = item.severity == "confirmed" ? .confirmed : .pending
-          guard let itemStartAt = iso8601Formatter.date(from: item.startAt) else {
-            AppLogger.general.error("[ConflictCheck] 서버 응답 파싱 실패 - startAt: \(item.startAt)")
-            return nil
+        let conflicts = try response.map { item -> ScheduleConflict in
+          let source: ScheduleConflict.Source
+          switch item.source {
+          case "schedule":
+            source = .schedule
+          case "personalEvent":
+            source = .personalEvent
+          default:
+            throw RustAPIError.invalidResponse
           }
-          let itemEndAt = item.endAt.flatMap { iso8601Formatter.date(from: $0) }
+
+          let severity: ScheduleConflict.Severity
+          switch item.severity {
+          case "confirmed":
+            severity = .confirmed
+          case "pending":
+            severity = .pending
+          default:
+            throw RustAPIError.invalidResponse
+          }
+
+          guard let itemStartAt = parseConflictDate(item.startAt) else {
+            throw RustAPIError.invalidResponse
+          }
+          let itemEndAt = item.endAt.flatMap(parseConflictDate)
 
           return ScheduleConflict(
             id: item.id,
@@ -138,4 +151,14 @@ extension ScheduleConflictClient: DependencyKey {
       }
     }
   )
+}
+
+private func parseConflictDate(_ string: String) -> Date? {
+  if let date = conflictCheckISO8601Formatter.date(from: string) {
+    return date
+  }
+
+  let standardFormatter = ISO8601DateFormatter()
+  standardFormatter.formatOptions = [.withInternetDateTime]
+  return standardFormatter.date(from: string)
 }

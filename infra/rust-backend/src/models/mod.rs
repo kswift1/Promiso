@@ -1,5 +1,6 @@
 pub mod app_config;
 pub mod auth;
+pub mod faq;
 pub mod group;
 pub mod live_activity;
 pub mod media;
@@ -7,3 +8,4 @@ pub mod notification;
 pub mod schedule;
 pub mod subscription;
 pub mod user;
+pub mod weather;

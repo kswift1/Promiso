@@ -14,9 +14,32 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
+| GET | `/api/v1/faq` | FAQ 목록 조회 (Notion 프록시) |
 | POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
+
+### GET /api/v1/faq
+
+- 설명: FAQ 목록 조회 (Notion 프록시)
+- 인증: 불필요
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "notion-page-id",
+        "question": "질문",
+        "answer": "답변",
+        "category": "그룹",
+        "order": 1,
+        "created_at": "ISO8601",
+        "updated_at": "ISO8601"
+      }
+    ]
+  }
+  ```
+- 에러: 412 (`NOTION_FAQ_API_KEY` 미설정)
 
 ## Users (인증 필요)
 
@@ -828,18 +851,21 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
     "data": [
       {
         "id": "uuid",
-        "type": "group | personal | recurring",
+        "source": "schedule | personalEvent",
+        "severity": "confirmed | pending",
         "title": "기존 일정",
         "emoji": "📅",
         "start_at": "ISO8601",
         "end_at": "ISO8601",
         "overlap_minutes": 30,
-        "gap_minutes": -30
+        "gap_minutes": 0
       }
     ]
   }
   ```
-  - overlap > 0: 겹침, gap < 0: 겹침, gap >= 0 && gap < minGap: 간격 부족
+  - `source = schedule`: 그룹 일정, `source = personalEvent`: 개인/반복 일정
+  - `severity = pending`: 미확정 그룹 일정, `severity = confirmed`: 확정 그룹 일정 또는 개인/반복 일정
+  - overlap > 0: 겹침, gap = 0: 겹침, gap > 0 && gap < minGap: 간격 부족
   - 정렬: overlap 내림차순 → gap 오름차순
 - 에러: 400, 403 (Pro 아님)
 
@@ -873,6 +899,54 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   }
   ```
 - 에러: 400 (입력 누락/초과), 500 (추출 실패)
+
+## Weather (인증 필요)
+
+### POST /api/v1/weather
+
+- 설명: 특정 위치/시각 기준 날씨 조회
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "latitude": 37.5665,
+    "longitude": 126.9780,
+    "target_date": "2026-04-09T09:00:00Z"
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "forecasts": [
+        {
+          "date_time": "ISO8601",
+          "temperature": 18.2,
+          "feels_like_temperature": 17.6,
+          "condition": "clear",
+          "precipitation_probability": 10,
+          "humidity": 55,
+          "wind_speed": 2.1,
+          "precipitation_amount": ""
+        }
+      ],
+      "daily_forecasts": [
+        {
+          "date": "2026-04-12",
+          "min_temperature": 8,
+          "max_temperature": 16,
+          "am_condition": "cloudy",
+          "pm_condition": "rain",
+          "am_precipitation_probability": 30,
+          "pm_precipitation_probability": 70
+        }
+      ]
+    }
+  }
+  ```
+  - `daily_forecasts`: 5일 초과 targetDate일 때만 포함될 수 있음
+  - targetDate가 현재보다 3시간 이상 과거이거나 10일 초과 미래면 빈 배열 반환
+- 에러: 412 (`KMA_API_KEY` 미설정)
 
 ## Recurring Schedules (인증 필요)
 

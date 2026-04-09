@@ -309,8 +309,8 @@ pub struct CalendarSyncSchedule {
 #[derive(Debug, Serialize)]
 pub struct ScheduleConflict {
     pub id: String,
-    #[serde(rename = "type")]
-    pub conflict_type: String,
+    pub source: String,
+    pub severity: String,
     pub title: String,
     pub emoji: Option<String>,
     pub start_at: DateTime<Utc>,
