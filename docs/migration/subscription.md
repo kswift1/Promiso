@@ -13,15 +13,14 @@
 
 | 클라이언트 | 현재 경로 | 상태 |
 |---|---|---|
-| `SubscriptionClient.fetchStatus` | Rust subscriptions status API | ✅ release도 Rust 고정 |
-| `SubscriptionClient.verifyPurchase` | Rust verify-purchase API | ✅ release도 Rust 고정 |
-| `SubscriptionClient.fetchEntitlementInfo` | Rust entitlement API | ✅ release도 Rust 고정 |
-| `SubscriptionClient.unifiedStatusStream` | Rust entitlement polling + StoreKit updates | ✅ release도 Rust 고정 |
+| `SubscriptionClient.fetchStatus` | Rust subscriptions status API | ✅ Rust 고정 |
+| `SubscriptionClient.verifyPurchase` | Rust verify-purchase API | ✅ Rust 고정 |
+| `SubscriptionClient.fetchEntitlementInfo` | Rust entitlement API | ✅ Rust 고정 |
+| `SubscriptionClient.unifiedStatusStream` | Rust entitlement polling + StoreKit updates | ✅ Rust 고정 |
 | `StoreKitDataSource` | 로컬 StoreKit purchase/restore/status | ✅ 유지 |
 
 메모:
 
-- `Projects/Clients/Sources/Clients/FeatureFlagsClient.swift`에서 `subscription` 도메인은 release에서도 Rust를 강제한다.
 - `SubscriptionClient`의 서버 authority는 Firestore listener가 아니라 Rust entitlement 응답이다.
 - `SubscriptionRemoteDataSource`와 Firebase `verifyPurchase` helper는 제거됐다.
 
@@ -34,5 +33,4 @@
 ## 검증 현황
 
 - iOS:
-  - `FeatureFlagsClientTests.swift`에 release subscription routing 테스트 추가
   - 현재 이 머신의 Xcode에는 iOS 26.4 simulator platform이 없어 `Clients` scheme unit test는 실행 불가

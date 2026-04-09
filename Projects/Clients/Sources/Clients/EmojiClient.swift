@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -31,7 +30,7 @@ public enum EmojiClientError: Error, Equatable {
 /// TCA용 이모지 생성 클라이언트
 @DependencyClient
 public struct EmojiClient: Sendable {
-  /// 제목에 어울리는 이모지 생성 (Firebase Functions 사용)
+  /// 제목에 어울리는 이모지 생성
   public var generate: @Sendable (_ title: String) async throws -> String
 }
 
@@ -113,9 +112,6 @@ private struct RustEmojiResponse: Decodable {
 
 extension EmojiClient: DependencyKey {
   public static let liveValue: EmojiClient = {
-    let functions = DefaultFunctionsProvider().functions
-    let featureFlags = FeatureFlagsClient.liveValue
-
     return Self(
       generate: { title in
         let sanitizedTitle = EmojiClient.sanitizeTitle(title)
@@ -126,63 +122,25 @@ extension EmojiClient: DependencyKey {
         let startTime = CFAbsoluteTimeGetCurrent()
         AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(sanitizedTitle)")
 
-        if featureFlags.useRustAPI(.emoji) {
-          // Rust API: POST /api/v1/emoji/generate
-          do {
-            let rustClient = RustAPIClient()
+        do {
+          let rustClient = RustAPIClient()
 
-            struct EmojiBody: Encodable { let title: String }
-            let response: RustEmojiResponse = try await rustClient.post(
-              "/api/v1/emoji/generate",
-              body: EmojiBody(title: sanitizedTitle)
-            )
+          struct EmojiBody: Encodable { let title: String }
+          let response: RustEmojiResponse = try await rustClient.post(
+            "/api/v1/emoji/generate",
+            body: EmojiBody(title: sanitizedTitle)
+          )
 
-            let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-            AppLogger.emoji.info("🎉 [EmojiClient] 이모지 생성 완료 (Rust) - 결과: \(response.emoji), 총 소요시간: \(String(format: "%.2f", totalTime))초")
+          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
+          AppLogger.emoji.info("🎉 [EmojiClient] 이모지 생성 완료 (Rust) - 결과: \(response.emoji), 총 소요시간: \(String(format: "%.2f", totalTime))초")
 
-            return response.emoji
-          } catch let error as EmojiClientError {
-            throw error
-          } catch {
-            let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-            AppLogger.emoji.error("❌ [EmojiClient] Rust API 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")
-            throw EmojiClientError.networkError
-          }
-        } else {
-          // Firebase Functions: generateEmoji
-          do {
-            let result = try await functions.httpsCallable("generateEmoji").call(["title": sanitizedTitle])
-
-            guard let data = result.data as? [String: Any],
-                  let emoji = data["emoji"] as? String
-            else {
-              AppLogger.emoji.error("❌ [EmojiClient] 응답 파싱 실패")
-              throw EmojiClientError.invalidResponse
-            }
-
-            let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-            AppLogger.emoji.info("🎉 [EmojiClient] 이모지 생성 완료 - 결과: \(emoji), 총 소요시간: \(String(format: "%.2f", totalTime))초")
-
-            return emoji
-          } catch let error as NSError {
-            let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-            AppLogger.emoji.error("❌ [EmojiClient] Firebase Functions 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")
-
-            // Firebase Functions 에러 코드 처리
-            if error.domain == FunctionsErrorDomain {
-              let code = FunctionsErrorCode(rawValue: error.code)
-              switch code {
-              case .unauthenticated:
-                throw EmojiClientError.notAuthenticated
-              case .invalidArgument:
-                throw EmojiClientError.invalidResponse
-              default:
-                throw EmojiClientError.serverError(error.localizedDescription)
-              }
-            }
-
-            throw EmojiClientError.networkError
-          }
+          return response.emoji
+        } catch let error as EmojiClientError {
+          throw error
+        } catch {
+          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
+          AppLogger.emoji.error("❌ [EmojiClient] Rust API 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")
+          throw EmojiClientError.networkError
         }
       }
     )
