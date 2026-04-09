@@ -120,34 +120,17 @@ extension NotificationClient: TestDependencyKey {
 
 extension NotificationClient: DependencyKey {
   public static let liveValue: NotificationClient = {
-    @Dependency(\.authClient) var authClient
-    @Dependency(\.featureFlags) var featureFlags
-    let dataSource = NotificationRemoteDataSource()
     let rustDataSource = NotificationRustDataSource(
       api: RustAPIClient()
     )
 
     return Self(
       saveNotificationToken: { token in
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.saveNotificationToken(token)
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.saveNotificationToken(userId: currentUser.uid, token: token)
-        }
+        try await rustDataSource.saveNotificationToken(token)
       },
 
       deleteCurrentDeviceRegistration: {
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.deleteCurrentDevice()
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.deleteCurrentDeviceRegistration(userId: currentUser.uid)
-        }
+        try await rustDataSource.deleteCurrentDevice()
       },
 
       saveLiveActivityPushToStartToken: { token in
@@ -181,80 +164,36 @@ extension NotificationClient: DependencyKey {
       },
 
       getNotifications: { filter, limit, lastCreatedAt in
-        if featureFlags.useRustAPI(.notifications) {
-          // Rust API는 서버에서 인증된 사용자 기준으로 조회
-          // filter는 현재 Rust API에서 서버측 필터링 미지원이므로 전체 조회 후 클라이언트 필터링
-          var notifications = try await rustDataSource.getNotifications(
-            limit: limit,
-            lastCreatedAt: lastCreatedAt
-          )
-          if filter == .unread {
-            notifications = notifications.filter { !$0.isRead }
-          }
-          return notifications
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          return try await dataSource.getNotifications(
-            userId: currentUser.uid,
-            filter: filter,
-            limit: limit,
-            lastCreatedAt: lastCreatedAt
-          )
+        // Rust API는 서버에서 인증된 사용자 기준으로 조회한다.
+        // filter는 현재 서버측 필터링 미지원이므로 전체 조회 후 클라이언트 필터링한다.
+        var notifications = try await rustDataSource.getNotifications(
+          limit: limit,
+          lastCreatedAt: lastCreatedAt
+        )
+        if filter == .unread {
+          notifications = notifications.filter { !$0.isRead }
         }
+        return notifications
       },
 
-      getUnreadCount: { userId in
-        if featureFlags.useRustAPI(.notifications) {
-          return try await rustDataSource.getUnreadCount()
-        } else {
-          return try await dataSource.getUnreadCount(userId: userId)
-        }
+      getUnreadCount: { _ in
+        return try await rustDataSource.getUnreadCount()
       },
 
       markAsRead: { notificationId in
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.markAsRead(notificationId: notificationId)
-        } else {
-          guard await authClient.currentUser() != nil else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.markAsRead(notificationId: notificationId)
-        }
+        try await rustDataSource.markAsRead(notificationId: notificationId)
       },
 
       markAllAsRead: {
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.markAllAsRead()
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.markAllAsRead(userId: currentUser.uid)
-        }
+        try await rustDataSource.markAllAsRead()
       },
 
       deleteNotifications: { notificationIds in
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.deleteNotifications(notificationIds: notificationIds)
-        } else {
-          guard await authClient.currentUser() != nil else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.deleteNotifications(notificationIds: notificationIds)
-        }
+        try await rustDataSource.deleteNotifications(notificationIds: notificationIds)
       },
 
       deleteAllNotifications: {
-        if featureFlags.useRustAPI(.notifications) {
-          try await rustDataSource.deleteAllNotifications()
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw NotificationClientError.authenticationRequired
-          }
-          try await dataSource.deleteAllNotifications(userId: currentUser.uid)
-        }
+        try await rustDataSource.deleteAllNotifications()
       },
 
       setBadgeCount: { count in
