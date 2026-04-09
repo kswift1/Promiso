@@ -92,13 +92,11 @@ pub async fn generate_widget_token(
 ///
 /// widget_token_version을 +1 증가시켜 기존 토큰을 모두 무효화한다.
 pub async fn revoke_widget_tokens(pool: &PgPool, user_id: &str) -> Result<(), AppError> {
-    sqlx::query(
-        "UPDATE users SET widget_token_version = widget_token_version + 1 WHERE id = $1",
-    )
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Failed to revoke widget tokens: {e}")))?;
+    sqlx::query("UPDATE users SET widget_token_version = widget_token_version + 1 WHERE id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to revoke widget tokens: {e}")))?;
 
     Ok(())
 }
@@ -119,9 +117,10 @@ struct RawScheduleRow {
 
 /// Widget 스냅샷 조회
 ///
-/// - 그룹일정: user가 member인 그룹의 확정(is_confirmed=true) 일정 (start_at >= now)
-/// - 개인일정: user_id 소유, start_at >= now
-/// - KST 기준으로 today/upcoming 분류
+/// - 그룹일정: user가 member인 그룹의 확정(is_confirmed=true) 일정
+/// - 개인일정: user_id 소유 일정
+/// - 진행 중이거나 종료 후 1시간 이내 일정은 KST 기준 today로 유지
+/// - 그 외 일정은 KST 기준으로 today/upcoming 분류
 /// - today 최대 6개, upcoming 최대 9개 (start_at 오름차순)
 /// - next = today[0] ?? upcoming[0]
 pub async fn get_widget_snapshot(
@@ -209,7 +208,13 @@ pub async fn get_widget_snapshot(
     let mut upcoming: Vec<WidgetScheduleItem> = Vec::new();
 
     for item in all_items {
-        let item_kst = Seoul.from_utc_datetime(&item.start_at.naive_utc());
+        let effective_end = item.end_at.unwrap_or(item.start_at);
+        let classification_at = if item.start_at <= now && effective_end >= recent_threshold {
+            now
+        } else {
+            item.start_at
+        };
+        let item_kst = Seoul.from_utc_datetime(&classification_at.naive_utc());
         let item_date_kst = item_kst.date_naive();
 
         if item_date_kst == today_kst {
@@ -224,10 +229,7 @@ pub async fn get_widget_snapshot(
     upcoming.truncate(9);
 
     // next = today[0] ?? upcoming[0]
-    let next = today
-        .first()
-        .or_else(|| upcoming.first())
-        .cloned();
+    let next = today.first().or_else(|| upcoming.first()).cloned();
 
     Ok(WidgetSnapshotResponse {
         next,

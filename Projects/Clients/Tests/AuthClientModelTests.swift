@@ -2,13 +2,13 @@
 //  AuthClientModelTests.swift
 //  Clients
 //
-//  Auth 관련 모델 테스트 (FirebaseUserSnapshot, ServiceTokenBundle, ProviderTokenBundle 등)
+//  Auth 관련 모델 테스트 (AuthUserSnapshot, ServiceTokenBundle, ProviderTokenBundle 등)
 //
 //  ## 테스트 대상
 //  - `Clients/Sources/Clients/AuthClient.swift`
 //
 //  ## 테스트 목적
-//  - FirebaseUserSnapshot 초기화 및 프로퍼티 검증
+//  - AuthUserSnapshot 초기화 및 프로퍼티 검증
 //  - ServiceTokenBundle 초기화 및 profileImageURL 우선순위 검증
 //  - ProviderTokenBundle 초기화 검증
 //  - AuthProvider identifier 검증
@@ -20,10 +20,10 @@ import Foundation
 import Testing
 @testable import Clients
 
-// MARK: - FirebaseUserSnapshot 테스트
+// MARK: - AuthUserSnapshot 테스트
 
-@Suite("FirebaseUserSnapshot 모델 테스트")
-struct FirebaseUserSnapshotTests {
+@Suite("AuthUserSnapshot 모델 테스트")
+struct AuthUserSnapshotTests {
 
   @Test("모든 필드를 포함한 초기화 검증")
   func fullInitialization_setsAllProperties() {
@@ -31,7 +31,7 @@ struct FirebaseUserSnapshotTests {
     let creationDate = Date(timeIntervalSince1970: 1_700_000_000)
     let lastSignInDate = Date(timeIntervalSince1970: 1_700_100_000)
 
-    let snapshot = FirebaseUserSnapshot(
+    let snapshot = AuthUserSnapshot(
       uid: "uid-123",
       email: "test@example.com",
       displayName: "Test User",
@@ -56,7 +56,7 @@ struct FirebaseUserSnapshotTests {
 
   @Test("선택적 필드 nil로 초기화 검증")
   func minimalInitialization_setsOptionalFieldsToNil() {
-    let snapshot = FirebaseUserSnapshot(
+    let snapshot = AuthUserSnapshot(
       uid: "uid-456",
       email: nil,
       displayName: nil,
@@ -76,13 +76,13 @@ struct FirebaseUserSnapshotTests {
 
   @Test("Equatable 동작 검증 - 동일한 스냅샷")
   func equatable_sameValues_areEqual() {
-    let snapshot1 = FirebaseUserSnapshot(
+    let snapshot1 = AuthUserSnapshot(
       uid: "uid-1",
       email: "a@b.com",
       displayName: "User",
       photoURL: nil
     )
-    let snapshot2 = FirebaseUserSnapshot(
+    let snapshot2 = AuthUserSnapshot(
       uid: "uid-1",
       email: "a@b.com",
       displayName: "User",
@@ -93,13 +93,13 @@ struct FirebaseUserSnapshotTests {
 
   @Test("Equatable 동작 검증 - 다른 스냅샷")
   func equatable_differentValues_areNotEqual() {
-    let snapshot1 = FirebaseUserSnapshot(
+    let snapshot1 = AuthUserSnapshot(
       uid: "uid-1",
       email: "a@b.com",
       displayName: "User",
       photoURL: nil
     )
-    let snapshot2 = FirebaseUserSnapshot(
+    let snapshot2 = AuthUserSnapshot(
       uid: "uid-2",
       email: "a@b.com",
       displayName: "User",
@@ -114,16 +114,16 @@ struct FirebaseUserSnapshotTests {
 @Suite("ServiceTokenBundle 모델 테스트")
 struct ServiceTokenBundleTests {
 
-  @Test("Firebase photoURL이 있으면 profileImageURL이 Firebase URL 반환")
-  func profileImageURL_firebasePhotoExists_returnsFirebaseURL() {
-    let firebasePhotoURL = URL(string: "https://firebase.com/photo.jpg")!
+  @Test("Auth User photoURL이 있으면 profileImageURL이 Auth URL 반환")
+  func profileImageURL_authPhotoExists_returnsAuthURL() {
+    let authPhotoURL = URL(string: "https://auth.example.com/photo.jpg")!
     let providerPhotoURL = URL(string: "https://google.com/photo.jpg")!
 
-    let firebaseUser = FirebaseUserSnapshot(
+    let authUser = AuthUserSnapshot(
       uid: "uid-1",
       email: nil,
       displayName: nil,
-      photoURL: firebasePhotoURL
+      photoURL: authPhotoURL
     )
 
     let providerBundle = ProviderTokenBundle(
@@ -135,19 +135,19 @@ struct ServiceTokenBundleTests {
     )
 
     let bundle = ServiceTokenBundle(
-      firebaseUser: firebaseUser,
+      authUser: authUser,
       providerTokenBundle: providerBundle,
       isNewUser: false
     )
 
-    #expect(bundle.profileImageURL == firebasePhotoURL)
+    #expect(bundle.profileImageURL == authPhotoURL)
   }
 
-  @Test("Firebase photoURL이 nil이면 Provider profileImageURL 반환")
-  func profileImageURL_firebasePhotoNil_returnsProviderURL() {
+  @Test("Auth User photoURL이 nil이면 Provider profileImageURL 반환")
+  func profileImageURL_authPhotoNil_returnsProviderURL() {
     let providerPhotoURL = URL(string: "https://google.com/photo.jpg")!
 
-    let firebaseUser = FirebaseUserSnapshot(
+    let authUser = AuthUserSnapshot(
       uid: "uid-1",
       email: nil,
       displayName: nil,
@@ -163,7 +163,7 @@ struct ServiceTokenBundleTests {
     )
 
     let bundle = ServiceTokenBundle(
-      firebaseUser: firebaseUser,
+      authUser: authUser,
       providerTokenBundle: providerBundle,
       isNewUser: false
     )
@@ -171,8 +171,8 @@ struct ServiceTokenBundleTests {
     #expect(bundle.profileImageURL == providerPhotoURL)
   }
 
-  @Test("firebaseUser가 nil이면 Provider profileImageURL 반환")
-  func profileImageURL_firebaseUserNil_returnsProviderURL() {
+  @Test("authUser가 nil이면 Provider profileImageURL 반환")
+  func profileImageURL_authUserNil_returnsProviderURL() {
     let providerPhotoURL = URL(string: "https://google.com/photo.jpg")!
 
     let providerBundle = ProviderTokenBundle(
@@ -184,7 +184,7 @@ struct ServiceTokenBundleTests {
     )
 
     let bundle = ServiceTokenBundle(
-      firebaseUser: nil,
+      authUser: nil,
       providerTokenBundle: providerBundle,
       isNewUser: true
     )
@@ -203,7 +203,7 @@ struct ServiceTokenBundleTests {
     )
 
     let bundle = ServiceTokenBundle(
-      firebaseUser: nil,
+      authUser: nil,
       providerTokenBundle: providerBundle
     )
 

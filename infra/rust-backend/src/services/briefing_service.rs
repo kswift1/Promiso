@@ -230,7 +230,9 @@ pub fn build_prompt(
     lines.push(format!(
         "당신은 사용자의 오늘 하루를 {tone} 브리핑해주는 개인 비서입니다."
     ));
-    lines.push("아래 데이터는 모두 '오늘' 일정입니다. 절대 '내일'이라고 표현하지 마세요.".to_string());
+    lines.push(
+        "아래 데이터는 모두 '오늘' 일정입니다. 절대 '내일'이라고 표현하지 마세요.".to_string(),
+    );
     lines.push(String::new());
 
     // 출력 규칙
@@ -262,14 +264,20 @@ pub fn build_prompt(
     lines.push("- 대중교통 소요시간은 환승 대기·도보 이동 등을 감안해 실제보다 5~10분 여유를 두고 안내하세요".to_string());
     lines.push("- 대중교통 경로가 여러 개 주어지면, 시간·환승·요금을 비교하여 최적 경로 1개를 추천하고 이유를 간단히 설명".to_string());
     lines.push("- 짧은 거리(도보 15분 이내)는 선호 교통수단과 관계없이 도보 추천".to_string());
-    lines.push("- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장".to_string());
+    lines.push(
+        "- 장거리 이동(80km+)은 KTX, 고속버스 등 장거리 교통수단을 안내하고, 사전 예매 확인을 권장"
+            .to_string(),
+    );
 
     let has_transit = available_transports.contains(&"transit".to_string());
     let has_car = available_transports.contains(&"car".to_string());
     if has_transit && has_car {
         lines.push("- 사용자는 대중교통과 자차 모두 이용 가능합니다. 아래 기준으로 최적 교통수단을 판단해 추천하세요:".to_string());
         lines.push("  · 도심(서울, 부산 등 대도시 중심부): 주차 난이도·교통 체증 고려하여 대중교통 우선 추천".to_string());
-        lines.push("  · 외곽/교외/경기 지역: 대중교통 접근성·배차 간격 고려하여 자차 우선 추천".to_string());
+        lines.push(
+            "  · 외곽/교외/경기 지역: 대중교통 접근성·배차 간격 고려하여 자차 우선 추천"
+                .to_string(),
+        );
         lines.push("  · 출퇴근 시간대(7~9시, 17~19시): 교통 체증 반영".to_string());
         lines.push("  · 여러 약속 연속 이동: 이동 효율성 고려".to_string());
     } else if has_transit {
@@ -303,7 +311,10 @@ pub fn build_prompt(
         if let Some(upcoming_str) = upcoming {
             lines.push(String::new());
             lines.push(format!("가장 가까운 일정: {upcoming_str}"));
-            lines.push("→ 오늘 일정이 없으므로 마무리에 가까운 미래 일정을 1~2줄로 은은하게 언급해주세요.".to_string());
+            lines.push(
+                "→ 오늘 일정이 없으므로 마무리에 가까운 미래 일정을 1~2줄로 은은하게 언급해주세요."
+                    .to_string(),
+            );
         }
     } else {
         lines.push("오늘 일정:".to_string());
@@ -462,7 +473,10 @@ fn local_day_bounds_utc(
 
 fn format_time_in_timezone(datetime: DateTime<Utc>, timezone: &str) -> String {
     if let Ok(timezone) = timezone.parse::<Tz>() {
-        datetime.with_timezone(&timezone).format("%H:%M").to_string()
+        datetime
+            .with_timezone(&timezone)
+            .format("%H:%M")
+            .to_string()
     } else {
         datetime
             .with_timezone(&chrono::FixedOffset::east_opt(9 * 3600).expect("valid offset"))
@@ -525,20 +539,13 @@ pub async fn generate_briefing(
     let schedules = fetch_today_schedules(pool, user_id, today, &req.timezone).await?;
 
     // 3. 날씨 조회 (환경변수 없으면 스킵)
-    let weather_forecasts: Vec<WeatherForecast> =
-        if let (Some(kma_key), Some(loc)) = (
-            std::env::var("KMA_API_KEY").ok(),
-            req.location.as_ref(),
-        ) {
-            crate::services::weather_client::fetch_weather(
-                loc.latitude,
-                loc.longitude,
-                &kma_key,
-            )
-            .await
-        } else {
-            vec![]
-        };
+    let weather_forecasts: Vec<WeatherForecast> = if let (Some(kma_key), Some(loc)) =
+        (std::env::var("KMA_API_KEY").ok(), req.location.as_ref())
+    {
+        crate::services::weather_client::fetch_weather(loc.latitude, loc.longitude, &kma_key).await
+    } else {
+        vec![]
+    };
 
     // weather_matches: 각 일정에 대한 날씨 정보
     let weather_matches: Vec<Option<String>> = schedules
@@ -597,7 +604,10 @@ pub async fn generate_briefing(
     };
 
     // 8. 프롬프트 조립 (날씨/위치/날짜 포함)
-    let date_time_str = now.with_timezone(&timezone).format("%Y-%m-%d %H:%M").to_string();
+    let date_time_str = now
+        .with_timezone(&timezone)
+        .format("%Y-%m-%d %H:%M")
+        .to_string();
     let location_title = req.location.as_ref().and_then(|l| l.title.as_deref());
 
     // 날씨 요약 문자열 조합 (일정이 있으면 첫 번째 일정 날씨 사용)
@@ -698,14 +708,18 @@ async fn build_travel_info(
 
         if !routes.is_empty() {
             let best = &routes[0];
-            let desc = if best.description.is_empty() {
+            let description = best.description();
+            let desc = if description.is_empty() {
                 "대중교통".to_string()
             } else {
-                best.description.clone()
+                description
             };
             parts.push(format!(
                 "대중교통: {}분 ({}회 환승, {}원) [{}]",
-                best.total_time, best.transfer_count, best.payment, desc
+                best.total_time,
+                best.transfer_count(),
+                best.payment,
+                desc
             ));
         }
     }
@@ -722,7 +736,9 @@ async fn build_travel_info(
         {
             parts.push(format!(
                 "자동차: {}분 ({:.1}km, 통행료 {}원)",
-                driving.duration_minutes, driving.distance_km, driving.toll
+                driving.duration,
+                driving.distance_km(),
+                driving.toll
             ));
         }
     }

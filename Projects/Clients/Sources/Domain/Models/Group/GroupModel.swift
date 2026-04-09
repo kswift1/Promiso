@@ -47,19 +47,4 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
   }
-
-  /// DTO에서 Model 생성
-  init(dto: GroupDTO, id: String) {
-    self.id = id
-    self.name = dto.name
-    self.description = dto.description
-    self.imageUrl = dto.imageUrl
-    self.memberIds = dto.memberIds
-    self.memberCount = dto.memberIds.count
-    self.maxMembers = dto.maxMembers
-    self.inviteCode = dto.inviteCode
-    self.createdBy = dto.createdBy
-    self.createdAt = dto.createdAt.dateValue()
-    self.updatedAt = dto.updatedAt.dateValue()
-  }
 }

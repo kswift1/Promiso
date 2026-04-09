@@ -16,11 +16,6 @@ fn make_create_request(nickname: &str) -> CreateUserRequest {
     CreateUserRequest {
         name: None,
         nickname: nickname.to_string(),
-        provider: ProviderInfo {
-            provider_type: "google".to_string(),
-            provider_uid: "test-provider-uid".to_string(),
-            email: "test@example.com".to_string(),
-        },
     }
 }
 
@@ -28,12 +23,21 @@ fn make_create_request_with_name(name: &str, nickname: &str) -> CreateUserReques
     CreateUserRequest {
         name: Some(name.to_string()),
         nickname: nickname.to_string(),
-        provider: ProviderInfo {
-            provider_type: "google".to_string(),
-            provider_uid: "test-provider-uid".to_string(),
-            email: "test@example.com".to_string(),
-        },
     }
+}
+
+/// auth_accounts에 레코드 삽입 (create_user 호출 전 필수)
+async fn insert_auth_account(pool: &PgPool, user_id: &str) {
+    sqlx::query(
+        "INSERT INTO auth_accounts (user_id, provider_type, provider_uid, email, display_name) \
+         VALUES ($1, 'google', $2, 'test@example.com', $3)",
+    )
+    .bind(user_id)
+    .bind(format!("test-provider-{user_id}"))
+    .bind(format!("test-user-{user_id}"))
+    .execute(pool)
+    .await
+    .expect("Failed to insert auth account");
 }
 
 async fn insert_test_user(pool: &PgPool, id: &str, nickname: &str) {
@@ -126,6 +130,7 @@ fn nickname_valid_mixed() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn create_user_success(pool: PgPool) {
+    insert_auth_account(&pool, "test_create_1").await;
     let req = make_create_request("테스트유저");
     let result = user_service::create_user(&pool, "test_create_1", req).await;
 
@@ -137,6 +142,7 @@ async fn create_user_success(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn u10_create_user_name_fallback_to_nickname(pool: PgPool) {
     // name 미제공 → nickname으로 대체되어야 함
+    insert_auth_account(&pool, "test_u10").await;
     let req = make_create_request("폴백닉넴");
     let _ = user_service::create_user(&pool, "test_u10", req).await;
 
@@ -147,6 +153,7 @@ async fn u10_create_user_name_fallback_to_nickname(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn u10_create_user_name_provided(pool: PgPool) {
+    insert_auth_account(&pool, "test_u10_name").await;
     let req = make_create_request_with_name("김성원", "성원닉넴");
     let _ = user_service::create_user(&pool, "test_u10_name", req).await;
 
@@ -157,6 +164,7 @@ async fn u10_create_user_name_provided(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn u13_create_user_duplicate_rejected(pool: PgPool) {
+    insert_auth_account(&pool, "test_dup").await;
     // 첫 번째 생성
     let req1 = make_create_request("중복테스트");
     let _ = user_service::create_user(&pool, "test_dup", req1).await;
@@ -174,6 +182,8 @@ async fn u13_create_user_duplicate_rejected(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn u5_nickname_unique_rejected(pool: PgPool) {
+    insert_auth_account(&pool, "test_uniq1").await;
+    insert_auth_account(&pool, "test_uniq2").await;
     // 유저1 생성
     let req1 = make_create_request("유니크닉");
     let _ = user_service::create_user(&pool, "test_uniq1", req1).await;
@@ -187,6 +197,7 @@ async fn u5_nickname_unique_rejected(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn u5_nickname_check_self_allowed(pool: PgPool) {
+    insert_auth_account(&pool, "test_self_nick").await;
     // 유저 생성
     let req = make_create_request("셀프닉넴");
     let _ = user_service::create_user(&pool, "test_self_nick", req).await;
@@ -199,6 +210,7 @@ async fn u5_nickname_check_self_allowed(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn u5_nickname_check_taken_by_other(pool: PgPool) {
+    insert_auth_account(&pool, "test_taken1").await;
     // 유저1 생성
     let req = make_create_request("선점닉넴");
     let _ = user_service::create_user(&pool, "test_taken1", req).await;
@@ -215,6 +227,7 @@ async fn u5_nickname_check_taken_by_other(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_my_profile_success(pool: PgPool) {
+    insert_auth_account(&pool, "test_profile").await;
     let req = make_create_request("프로필조회");
     let _ = user_service::create_user(&pool, "test_profile", req).await;
 
@@ -256,6 +269,7 @@ async fn u8_get_other_user_no_common_group_rejected(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn update_nickname_success(pool: PgPool) {
+    insert_auth_account(&pool, "test_update").await;
     let req = make_create_request("수정전닉");
     let _ = user_service::create_user(&pool, "test_update", req).await;
 
@@ -290,25 +304,28 @@ fn u6_name_email_immutable() {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_profile_image_success(pool: PgPool) {
+    insert_auth_account(&pool, "test_upload").await;
     let req = make_create_request("업로드테스트");
     let _ = user_service::create_user(&pool, "test_upload", req).await;
 
     let upload_req = UploadProfileImageRequest {
         image_path: "profile_images/test_upload/image.jpg".to_string(),
     };
-    let result = user_service::upload_profile_image(&pool, "test_upload", upload_req).await;
+    let result = user_service::upload_profile_image(&pool, "test_upload", upload_req, None).await;
     assert!(result.is_ok());
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upload_profile_image_empty_path_rejected(pool: PgPool) {
+    insert_auth_account(&pool, "test_upload_empty").await;
     let req = make_create_request("빈경로");
     let _ = user_service::create_user(&pool, "test_upload_empty", req).await;
 
     let upload_req = UploadProfileImageRequest {
         image_path: "".to_string(),
     };
-    let result = user_service::upload_profile_image(&pool, "test_upload_empty", upload_req).await;
+    let result =
+        user_service::upload_profile_image(&pool, "test_upload_empty", upload_req, None).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
@@ -384,21 +401,17 @@ async fn u8_get_other_user_with_common_group_success(pool: PgPool) {
 }
 
 // ============================================================
-// 단위 테스트: provider 빈 이메일 거부
+// 통합 테스트: auth_accounts 없으면 BadRequest
 // ============================================================
 
 #[sqlx::test(migrations = "./migrations")]
-async fn provider_empty_email_rejected(pool: PgPool) {
+async fn create_user_without_auth_account_rejected(pool: PgPool) {
+    // auth_accounts 삽입 없이 바로 create_user → BadRequest
     let req = CreateUserRequest {
         name: None,
         nickname: "프로바이더".to_string(),
-        provider: ProviderInfo {
-            provider_type: "google".to_string(),
-            provider_uid: "uid-123".to_string(),
-            email: "".to_string(), // 빈 이메일
-        },
     };
-    let result = user_service::create_user(&pool, "test_prov_empty", req).await;
+    let result = user_service::create_user(&pool, "test_no_auth", req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
 
@@ -408,6 +421,7 @@ async fn provider_empty_email_rejected(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn notification_enabled_default_true(pool: PgPool) {
+    insert_auth_account(&pool, "test_notif").await;
     let req = make_create_request("알림기본값");
     let _ = user_service::create_user(&pool, "test_notif", req).await;
 

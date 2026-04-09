@@ -64,7 +64,7 @@ struct AuthFeatureTests {
   @Test("Google 로그인 탭 시 로딩 상태 설정")
   func googleLoginTapped_setsLoading() async {
     let mockBundle = ServiceTokenBundle(
-      firebaseUser: nil,
+      authUser: nil,
       providerTokenBundle: ProviderTokenBundle(
         provider: .google,
         identityToken: "test-id-token",
@@ -131,7 +131,7 @@ struct AuthFeatureTests {
     }
 
     let mockBundle = ServiceTokenBundle(
-      firebaseUser: nil,
+      authUser: nil,
       providerTokenBundle: ProviderTokenBundle(
         provider: .apple,
         identityToken: "token",

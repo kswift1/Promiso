@@ -95,8 +95,7 @@ async fn generate_token_returns_valid_jwt(pool: PgPool) {
     .expect("insert user");
 
     let result =
-        widget_service::generate_widget_token(&pool, "wt_user1", "device-abc", "test-secret")
-            .await;
+        widget_service::generate_widget_token(&pool, "wt_user1", "device-abc", "test-secret").await;
 
     assert!(result.is_ok(), "토큰 발급 실패: {:?}", result.err());
     let response = result.unwrap();
@@ -135,10 +134,10 @@ async fn generate_token_includes_device_id(pool: PgPool) {
     assert_eq!(parts.len(), 3, "JWT는 3개 파트");
 
     let payload_b64 = parts[1];
-    let payload_bytes =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload_b64).expect("base64 decode");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&payload_bytes).expect("JSON parse");
+    let payload_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload_b64)
+        .expect("base64 decode");
+    let payload: serde_json::Value = serde_json::from_slice(&payload_bytes).expect("JSON parse");
 
     assert_eq!(
         payload["device_id"].as_str(),
@@ -163,10 +162,10 @@ async fn generate_token_includes_version(pool: PgPool) {
             .expect("토큰 발급");
 
     let parts: Vec<&str> = response.widget_token.split('.').collect();
-    let payload_bytes =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(parts[1]).expect("base64 decode");
-    let payload: serde_json::Value =
-        serde_json::from_slice(&payload_bytes).expect("JSON parse");
+    let payload_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(parts[1])
+        .expect("base64 decode");
+    let payload: serde_json::Value = serde_json::from_slice(&payload_bytes).expect("JSON parse");
 
     assert!(
         payload["version"].as_i64().is_some(),
@@ -189,31 +188,29 @@ async fn revoke_increments_version(pool: PgPool) {
     .expect("insert user");
 
     // 초기 version = 1
-    let initial: (i32,) =
-        sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
-            .bind("wt_revoke1")
-            .fetch_one(&pool)
-            .await
-            .expect("fetch version");
+    let initial: (i32,) = sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
+        .bind("wt_revoke1")
+        .fetch_one(&pool)
+        .await
+        .expect("fetch version");
     assert_eq!(initial.0, 1);
 
     widget_service::revoke_widget_tokens(&pool, "wt_revoke1")
         .await
         .expect("revoke");
 
-    let after: (i32,) =
-        sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
-            .bind("wt_revoke1")
-            .fetch_one(&pool)
-            .await
-            .expect("fetch version after revoke");
+    let after: (i32,) = sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
+        .bind("wt_revoke1")
+        .fetch_one(&pool)
+        .await
+        .expect("fetch version after revoke");
     assert_eq!(after.0, 2, "revoke 후 version은 2여야 함");
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn revoke_invalidates_old_tokens(pool: PgPool) {
-    use promiso_backend::middleware::auth::{WidgetAuth, WidgetClaims};
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use promiso_backend::middleware::auth::{WidgetAuth, WidgetClaims};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     sqlx::query(
@@ -339,14 +336,12 @@ async fn insert_test_group(pool: &PgPool, user_id: &str) -> uuid::Uuid {
     .await
     .expect("insert group");
 
-    sqlx::query(
-        "INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')",
-    )
-    .bind(group.0)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .expect("insert group member");
+    sqlx::query("INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin')")
+        .bind(group.0)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .expect("insert group member");
 
     group.0
 }
@@ -503,6 +498,9 @@ async fn snapshot_excludes_past_schedules(pool: PgPool) {
         .expect("스냅샷 조회");
 
     assert!(result.today.is_empty(), "과거 일정은 today에 포함 안 됨");
-    assert!(result.upcoming.is_empty(), "과거 일정은 upcoming에 포함 안 됨");
+    assert!(
+        result.upcoming.is_empty(),
+        "과거 일정은 upcoming에 포함 안 됨"
+    );
     assert!(result.next.is_none(), "과거 일정만 있으면 next = None");
 }

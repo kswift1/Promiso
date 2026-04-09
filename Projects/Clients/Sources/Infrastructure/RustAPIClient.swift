@@ -9,7 +9,7 @@ public actor RustAPIClient {
     #if DEBUG
     return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #else
-    // TODO: Prod Cloud Run URL (별도 프로젝트에 배포 후 변경)
+    #warning("Prod Cloud Run URL이 설정되지 않았습니다. 배포 전 반드시 Prod URL로 변경하세요.")
     return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
     #endif
   }()
@@ -26,13 +26,17 @@ public actor RustAPIClient {
     #endif
   }()
 
+  public static func defaultAuthToken() async throws -> String {
+    try await ServerAuthSessionManager.shared.currentAccessToken()
+  }
+
   private let baseURL: URL
-  private let getAuthToken: () async throws -> String
+  private let getAuthToken: (() async throws -> String)?
   private let decoder: JSONDecoder
 
   public init(
     baseURL: URL = RustAPIClient.defaultBaseURL,
-    getAuthToken: @escaping () async throws -> String
+    getAuthToken: (() async throws -> String)? = RustAPIClient.defaultAuthToken
   ) {
     self.baseURL = baseURL
     self.getAuthToken = getAuthToken
@@ -86,9 +90,10 @@ public actor RustAPIClient {
     urlRequest.httpMethod = method
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    // Firebase ID 토큰 첨부
-    let token = try await getAuthToken()
-    urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    if let getAuthToken {
+      let token = try await getAuthToken()
+      urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
 
     if let body = body, !(body is Empty) {
       let encoder = JSONEncoder()

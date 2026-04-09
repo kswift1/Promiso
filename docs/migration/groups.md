@@ -5,6 +5,7 @@
 | Firebase Function | Rust 엔드포인트 | 상태 |
 |---|---|---|
 | `createGroup` | `POST /api/v1/groups` | ✅ 구현 |
+| (신규) 그룹 이미지 업로드 URL 발급 | `POST /api/v1/groups/{id}/image-upload-url` | ✅ 구현 |
 | `previewGroup` | `GET /api/v1/groups/preview?code=XXX` | ✅ 구현 |
 | `joinGroup` | `POST /api/v1/groups/join` | ✅ 구현 |
 | `leaveGroup` | `POST /api/v1/groups/{id}/leave` | ✅ 구현 |
@@ -26,8 +27,8 @@
 | Firestore 트리거 | Firebase 처리 방식 | Rust 처리 방식 | 상태 |
 |---|---|---|---|
 | `onGroupImageUpdated` | 그룹 이미지 변경 시 전체 멤버의 `users/{uid}.groups` Map에 `imageUrl` 동기화 | 비정규화 제거 — `group_members` JOIN으로 항상 최신 이미지 조회 | ✅ 불필요 |
-| 그룹 삭제 시 Storage 이미지 삭제 | Functions에서 Storage 파일 제거 | ⚠️ Storage 마이그레이션 시 처리 (현재 Firebase Storage 유지) | ❌ 보류 |
-| 그룹 삭제 시 약속 cascade | Functions에서 promises 컬렉션 삭제 | DB FK CASCADE로 처리 예정 (schedules 도메인 마이그레이션 후) | ❌ 보류 |
+| 그룹 삭제 시 Storage 이미지 삭제 | Functions에서 Storage 파일 제거 | ⚠️ GCS direct upload 자산 정리 경로는 후속 처리 | ❌ 보류 |
+| 그룹 삭제 시 약속 cascade | Functions에서 promises 컬렉션 삭제 | `schedules.group_id REFERENCES groups(id) ON DELETE CASCADE` 로 DB가 보장 | ✅ 완료 |
 
 ## Firestore 스키마 → PostgreSQL 매핑
 
@@ -51,30 +52,29 @@
 
 | GroupClient 메서드 | 현재 (Firebase) | 전환 후 (Rust REST) | 상태 |
 |---|---|---|---|
-| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ❌ 미전환 |
-| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ❌ 미전환 |
-| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ❌ 미전환 |
-| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ❌ 미전환 |
-| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ❌ 미전환 |
-| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ❌ 미전환 |
-| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ❌ 미전환 |
-| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ❌ 미전환 |
-| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ❌ 미전환 |
-| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ❌ 미전환 |
-| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ❌ 미전환 |
-| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ❌ 미전환 |
-| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ❌ 미전환 |
-| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ❌ 미전환 |
-| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ❌ 미전환 |
-| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ❌ 미전환 |
+| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Rust 고정 |
+| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Rust 고정 |
+| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ✅ Rust 고정 |
+| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ✅ Rust 고정 |
+| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ✅ Rust 고정 |
+| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ✅ Rust 고정, 생성 후 `image-upload-url -> PATCH`로 그룹 이미지 반영 |
+| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ✅ Rust 고정 |
+| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ✅ Rust 고정 |
+| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ✅ Rust 고정 |
+| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ✅ Rust 고정 |
+| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ✅ Rust 고정, `image-upload-url` 기반 direct upload 사용 |
+| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ✅ Rust 고정 |
+| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ✅ Rust 고정 |
+| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ✅ Rust 고정 |
+| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ✅ Rust 고정 |
+| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ✅ Rust 고정 |
 
 ## 보류 항목
 
-- **Storage 이미지**: Firebase Storage 유지. Storage 마이그레이션 시 image_url 경로 전환
-- **그룹 삭제 cascade (약속)**: schedules 도메인 마이그레이션 후 DB FK CASCADE 추가
-- **타인 프로필 공통 그룹 체크**: `GET /api/v1/users/{id}` 핸들러에서 `group_members` 테이블 조인으로 구현 가능. groups 마이그레이션 완료 후 활성화
+- **그룹 삭제 시 이미지 정리**: GCS object cleanup는 후속 처리
 
 ## 검증 현황
 
-- Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (57개 테스트)
-- iOS 클라이언트: 미전환 (Firebase 직접 호출 유지)
+- Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (67개 테스트)
+- Rust 백엔드 테스트: `infra/rust-backend/tests/group_image_upload_url_test.rs`
+- iOS 클라이언트: `GroupClient` Rust 고정

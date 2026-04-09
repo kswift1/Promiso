@@ -37,6 +37,14 @@ private struct RustSuccess: Decodable {
   let profileUrl: String?
 }
 
+private struct RustProfileImageUploadTarget: Decodable {
+  let objectPath: String
+  let uploadUrl: String
+  let profileUrl: String
+  let expiresAt: Date
+  let contentType: String
+}
+
 /// Rust API 요청 DTO
 private struct CreateUserBody: Encodable {
   let name: String?
@@ -56,6 +64,10 @@ private struct UpdateUserBody: Encodable {
 
 private struct UploadProfileImageBody: Encodable {
   let imagePath: String
+}
+
+private struct IssueProfileImageUploadUrlBody: Encodable {
+  let contentType: String
 }
 
 private struct BatchGetUsersBody: Encodable {
@@ -113,6 +125,30 @@ public actor UserRustDataSource {
     return url
   }
 
+  public func uploadProfileImageData(_ imageData: Data) async throws -> URL {
+    let uploadData = compressImageDataForUpload(imageData) ?? imageData
+    let target = try await issueProfileImageUploadTarget()
+
+    guard let uploadURL = URL(string: target.uploadUrl) else {
+      throw RustAPIError.invalidResponse
+    }
+
+    var request = URLRequest(url: uploadURL)
+    request.httpMethod = "PUT"
+    request.setValue(target.contentType, forHTTPHeaderField: "Content-Type")
+    request.httpBody = uploadData
+
+    let (_, response) = try await URLSession.shared.data(for: request)
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw RustAPIError.invalidResponse
+    }
+    guard (200..<300).contains(httpResponse.statusCode) else {
+      throw RustAPIError.httpError(statusCode: httpResponse.statusCode)
+    }
+
+    return try await uploadProfileImage(imagePath: target.objectPath)
+  }
+
   public func checkNicknameAvailable(_ nickname: String) async throws -> Bool {
     let encoded = nickname.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? nickname
     let response: RustNicknameCheck = try await api.get("/api/v1/users/nickname-check?q=\(encoded)")
@@ -123,6 +159,11 @@ public actor UserRustDataSource {
     let body = BatchGetUsersBody(userIds: userIds)
     let response: [RustUserPublic] = try await api.post("/api/v1/users/batch", body: body)
     return response.map { $0.toModel() }
+  }
+
+  private func issueProfileImageUploadTarget() async throws -> RustProfileImageUploadTarget {
+    let body = IssueProfileImageUploadUrlBody(contentType: "image/jpeg")
+    return try await api.post("/api/v1/users/me/profile-image/upload-url", body: body)
   }
 }
 

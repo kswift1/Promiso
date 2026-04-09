@@ -1,14 +1,19 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::extract::Request;
 use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
 use axum::response::Response;
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{
+    decode, decode_header, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 use crate::errors::AppError;
 
@@ -19,6 +24,7 @@ const GOOGLE_CERTS_URL: &str =
 pub struct Claims {
     pub uid: String,
     pub email: Option<String>,
+    pub session_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,9 +57,27 @@ pub struct WidgetAuth {
     secret: Option<String>,
 }
 
+#[derive(Clone)]
+pub struct ServerAuth {
+    secret: Option<String>,
+    issuer: String,
+    access_token_ttl_seconds: i64,
+}
+
 struct CachedKeys {
     keys: HashMap<String, DecodingKey>,
     expires_at: std::time::Instant,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ServerAccessClaims {
+    sub: String,
+    email: Option<String>,
+    token_type: String,
+    sid: Option<Uuid>,
+    iss: String,
+    exp: usize,
+    iat: usize,
 }
 
 impl FirebaseAuth {
@@ -152,6 +176,7 @@ impl FirebaseAuth {
         Ok(Claims {
             uid: token_data.claims.sub,
             email: token_data.claims.email,
+            session_id: None,
         })
     }
 }
@@ -196,12 +221,92 @@ impl WidgetAuth {
         Ok(Claims {
             uid: claims.sub,
             email: None,
+            session_id: None,
         })
     }
 }
 
-pub async fn verify_widget_or_firebase_token(
-    firebase_auth: &FirebaseAuth,
+impl ServerAuth {
+    pub fn new(secret: Option<String>, issuer: String, access_token_ttl_seconds: i64) -> Self {
+        Self {
+            secret,
+            issuer,
+            access_token_ttl_seconds,
+        }
+    }
+
+    pub fn issue_access_token(
+        &self,
+        uid: &str,
+        email: Option<&str>,
+        session_id: Option<Uuid>,
+    ) -> Result<String, AppError> {
+        let secret = self
+            .secret
+            .as_ref()
+            .ok_or_else(|| AppError::Internal("AUTH_JWT_SECRET is not configured".to_string()))?;
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| AppError::Internal(format!("Failed to get current time: {e}")))?
+            .as_secs() as usize;
+
+        let exp = now.saturating_add(self.access_token_ttl_seconds.max(0) as usize);
+        let claims = ServerAccessClaims {
+            sub: uid.to_string(),
+            email: email.map(ToOwned::to_owned),
+            token_type: "access".to_string(),
+            sid: session_id,
+            iss: self.issuer.clone(),
+            exp,
+            iat: now,
+        };
+
+        encode(
+            &Header::new(Algorithm::HS256),
+            &claims,
+            &EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .map_err(|e| AppError::Internal(format!("Failed to encode access JWT: {e}")))
+    }
+
+    pub fn access_token_expires_at(&self) -> DateTime<Utc> {
+        Utc::now() + Duration::seconds(self.access_token_ttl_seconds.max(0))
+    }
+
+    pub fn verify_access_token(&self, token: &str) -> Result<Claims, AppError> {
+        let secret = self.secret.as_ref().ok_or_else(|| {
+            AppError::Unauthorized("Server token verification is not configured".to_string())
+        })?;
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_issuer(&[self.issuer.as_str()]);
+
+        let token_data = decode::<ServerAccessClaims>(
+            token,
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &validation,
+        )
+        .map_err(|e| AppError::Unauthorized(format!("Server token validation failed: {e}")))?;
+
+        if token_data.claims.sub.is_empty() {
+            return Err(AppError::Unauthorized("Empty sub claim".to_string()));
+        }
+
+        if token_data.claims.token_type != "access" {
+            return Err(AppError::Forbidden("Invalid server token type".to_string()));
+        }
+
+        Ok(Claims {
+            uid: token_data.claims.sub,
+            email: token_data.claims.email,
+            session_id: token_data.claims.sid,
+        })
+    }
+}
+
+pub async fn verify_widget_or_server_token(
+    server_auth: &ServerAuth,
     widget_auth: &WidgetAuth,
     pool: &PgPool,
     token: &str,
@@ -210,62 +315,61 @@ pub async fn verify_widget_or_firebase_token(
     let header = decode_header(token)
         .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
 
-    if header.alg == Algorithm::HS256 {
-        let claims = widget_auth.decode_claims(token)?;
-        let token_version = claims.version.ok_or_else(|| {
-            AppError::Unauthorized("Widget token version is missing".to_string())
-        })?;
-        let token_device_id = claims
-            .device_id
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| {
-                AppError::Unauthorized("Widget token device_id is missing".to_string())
-            })?;
-        let request_device_id = provided_device_id
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| {
-                AppError::Unauthorized("X-Device-Id header is required".to_string())
-            })?;
-
-        if request_device_id != token_device_id {
-            return Err(AppError::Unauthorized(
-                "Widget token device mismatch".to_string(),
-            ));
-        }
-
-        let current_version: Option<(i32,)> =
-            sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
-                .bind(&claims.sub)
-                .fetch_optional(pool)
-                .await?;
-
-        let current_version = current_version.ok_or_else(|| {
-            AppError::Unauthorized("Widget token user does not exist".to_string())
-        })?;
-
-        if current_version.0 != token_version {
-            return Err(AppError::Unauthorized(
-                "Widget token has been revoked".to_string(),
-            ));
-        }
-
-        return Ok(Claims {
-            uid: claims.sub,
-            email: None,
-        });
+    if header.alg != Algorithm::HS256 {
+        return Err(AppError::Unauthorized(
+            "Unsupported token algorithm".to_string(),
+        ));
     }
 
-    firebase_auth.verify_token(token).await
+    if let Ok(claims) = server_auth.verify_access_token(token) {
+        return Ok(claims);
+    }
+
+    let claims = widget_auth.decode_claims(token)?;
+    let token_version = claims
+        .version
+        .ok_or_else(|| AppError::Unauthorized("Widget token version is missing".to_string()))?;
+    let token_device_id = claims
+        .device_id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| {
+            AppError::Unauthorized("Widget token device_id is missing".to_string())
+        })?;
+    let request_device_id = provided_device_id
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| AppError::Unauthorized("X-Device-Id header is required".to_string()))?;
+
+    if request_device_id != token_device_id {
+        return Err(AppError::Unauthorized(
+            "Widget token device mismatch".to_string(),
+        ));
+    }
+
+    let current_version: Option<(i32,)> =
+        sqlx::query_as("SELECT widget_token_version FROM users WHERE id = $1")
+            .bind(&claims.sub)
+            .fetch_optional(pool)
+            .await?;
+
+    let current_version = current_version.ok_or_else(|| {
+        AppError::Unauthorized("Widget token user does not exist".to_string())
+    })?;
+
+    if current_version.0 != token_version {
+        return Err(AppError::Unauthorized(
+            "Widget token has been revoked".to_string(),
+        ));
+    }
+
+    Ok(Claims {
+        uid: claims.sub,
+        email: None,
+        session_id: None,
+    })
 }
 
 pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, AppError> {
-    let firebase_auth = request
-        .extensions()
-        .get::<FirebaseAuth>()
-        .cloned()
-        .ok_or_else(|| AppError::Internal("FirebaseAuth not configured".to_string()))?;
-
     let token = request
         .headers()
         .get(AUTHORIZATION)
@@ -275,7 +379,21 @@ pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, 
             AppError::Unauthorized("Missing or invalid Authorization header".to_string())
         })?;
 
-    let claims = firebase_auth.verify_token(token).await?;
+    let header = decode_header(token)
+        .map_err(|e| AppError::Unauthorized(format!("Invalid token header: {e}")))?;
+
+    let claims = if header.alg == Algorithm::HS256 {
+        let server_auth = request
+            .extensions()
+            .get::<ServerAuth>()
+            .cloned()
+            .ok_or_else(|| AppError::Internal("ServerAuth not configured".to_string()))?;
+        server_auth.verify_access_token(token)?
+    } else {
+        return Err(AppError::Unauthorized(
+            "Unsupported token algorithm".to_string(),
+        ));
+    };
 
     request.extensions_mut().insert(claims);
     Ok(next.run(request).await)
@@ -283,10 +401,25 @@ pub async fn require_auth(mut request: Request, next: Next) -> Result<Response, 
 
 #[cfg(test)]
 mod tests {
-    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{AppError, WidgetAuth, WidgetClaims};
+    use axum::body::Body;
+    use axum::extract::Extension;
+    use axum::http::header::AUTHORIZATION;
+    use axum::http::{Request, StatusCode};
+    use axum::middleware;
+    use axum::routing::get;
+    use axum::Router;
+    use http_body_util::BodyExt;
+    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use tower::ServiceExt;
+    use uuid::Uuid;
+
+    use super::{require_auth, AppError, ServerAccessClaims, ServerAuth, WidgetAuth, WidgetClaims};
+
+    async fn protected(Extension(claims): Extension<super::Claims>) -> String {
+        claims.uid
+    }
 
     #[test]
     fn widget_auth_verifies_valid_token() {
@@ -342,5 +475,90 @@ mod tests {
             .expect_err("invalid scope should fail");
 
         assert!(matches!(error, AppError::Forbidden(_)));
+    }
+
+    #[test]
+    fn server_auth_issues_and_verifies_access_token() {
+        let server_auth = ServerAuth::new(
+            Some("test-server-secret".to_string()),
+            "promiso-test".to_string(),
+            900,
+        );
+
+        let token = server_auth
+            .issue_access_token("user_123", Some("user@test.com"), Some(Uuid::nil()))
+            .expect("token should encode");
+
+        let claims = server_auth
+            .verify_access_token(&token)
+            .expect("token should verify");
+
+        assert_eq!(claims.uid, "user_123");
+        assert_eq!(claims.email.as_deref(), Some("user@test.com"));
+    }
+
+    #[test]
+    fn server_auth_rejects_non_access_token_type() {
+        let server_auth = ServerAuth::new(
+            Some("test-server-secret".to_string()),
+            "promiso-test".to_string(),
+            900,
+        );
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should work")
+            .as_secs() as usize;
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &ServerAccessClaims {
+                sub: "user_123".to_string(),
+                email: Some("user@test.com".to_string()),
+                token_type: "refresh".to_string(),
+                sid: Some(Uuid::nil()),
+                iss: "promiso-test".to_string(),
+                exp: now + 3600,
+                iat: now,
+            },
+            &EncodingKey::from_secret("test-server-secret".as_bytes()),
+        )
+        .expect("token should encode");
+
+        let error = server_auth
+            .verify_access_token(&token)
+            .expect_err("refresh token should be rejected");
+
+        assert!(matches!(error, AppError::Forbidden(_)));
+    }
+
+    #[tokio::test]
+    async fn require_auth_accepts_server_access_token() {
+        let server_auth = ServerAuth::new(
+            Some("test-server-secret".to_string()),
+            "promiso-test".to_string(),
+            900,
+        );
+        let token = server_auth
+            .issue_access_token("user_123", Some("user@test.com"), Some(Uuid::nil()))
+            .expect("token should encode");
+
+        let app = Router::new()
+            .route("/protected", get(protected))
+            .layer(middleware::from_fn(require_auth))
+            .layer(Extension(server_auth));
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/protected")
+                    .header(AUTHORIZATION, format!("Bearer {token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(std::str::from_utf8(&body).unwrap(), "user_123");
     }
 }

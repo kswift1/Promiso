@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseStorage
 import Foundation
 import PromisoShared
 
@@ -9,6 +8,7 @@ public enum ImageUploadError: Error, Equatable, Sendable {
   case compressionFailed
   case uploadFailed(String)
   case allFailed
+  case invalidTarget
 
   public var localizedDescription: String {
     switch self {
@@ -18,6 +18,8 @@ public enum ImageUploadError: Error, Equatable, Sendable {
       return LocalizedStrings.Error.imageUploadFailed(message)
     case .allFailed:
       return LocalizedStrings.Error.imageUploadAllFailed
+    case .invalidTarget:
+      return LocalizedStrings.Error.imageUploadFailed("Invalid upload target")
     }
   }
 }
@@ -68,29 +70,73 @@ extension DependencyValues {
 
 extension ImageUploadClient: DependencyKey {
   public static let liveValue: ImageUploadClient = {
-    let storage = Storage.storage()
+    struct UploadTarget: Decodable {
+      let objectPath: String
+      let uploadUrl: String
+      let publicUrl: String
+      let expiresAt: Date
+      let contentType: String
+    }
+
+    struct DeleteTarget: Decodable {
+      let objectPath: String
+      let deleteUrl: String
+      let expiresAt: Date
+    }
+
+    struct IssueUploadTargetsBody: Encodable {
+      let basePath: String
+      let count: Int
+      let contentType: String
+    }
+
+    struct IssueDeleteTargetsBody: Encodable {
+      let targets: [String]
+    }
 
     return ImageUploadClient(
       uploadImages: { images, basePath in
         guard !images.isEmpty else { return [] }
+        let api = RustAPIClient()
+        let targets: [UploadTarget] = try await api.post(
+          "/api/v1/media/upload-urls",
+          body: IssueUploadTargetsBody(
+            basePath: basePath,
+            count: images.count,
+            contentType: "image/jpeg"
+          )
+        )
+
+        guard targets.count == images.count else {
+          throw ImageUploadError.invalidTarget
+        }
 
         // 병렬 업로드, UUID 파일명 사용 (수정 시 기존 파일 덮어쓰기 방지)
         let results: [(Int, String)] = try await withThrowingTaskGroup(
           of: (Int, String).self
         ) { group in
           for (index, imageData) in images.enumerated() {
+            let target = targets[index]
             group.addTask {
               let compressed = compressImageDataForUpload(imageData) ?? imageData
-              let fileName = UUID().uuidString.lowercased()
-              let path = "\(basePath)/\(fileName).jpg"
-              let ref = storage.reference().child(path)
+              guard let uploadURL = URL(string: target.uploadUrl) else {
+                throw ImageUploadError.invalidTarget
+              }
 
-              let metadata = StorageMetadata()
-              metadata.contentType = "image/jpeg"
+              var request = URLRequest(url: uploadURL)
+              request.httpMethod = "PUT"
+              request.setValue(target.contentType, forHTTPHeaderField: "Content-Type")
+              request.httpBody = compressed
 
-              _ = try await ref.putDataAsync(compressed, metadata: metadata)
-              let downloadURL = try await ref.downloadURL()
-              return (index, downloadURL.absoluteString)
+              let (_, response) = try await URLSession.shared.data(for: request)
+              guard let httpResponse = response as? HTTPURLResponse else {
+                throw ImageUploadError.invalidTarget
+              }
+              guard (200..<300).contains(httpResponse.statusCode) else {
+                throw ImageUploadError.uploadFailed("HTTP \(httpResponse.statusCode)")
+              }
+
+              return (index, target.publicUrl)
             }
           }
 
@@ -109,25 +155,43 @@ extension ImageUploadClient: DependencyKey {
         return results.sorted { $0.0 < $1.0 }.map(\.1)
       },
       deleteImages: { urls in
+        let targets = urls
+          .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+          .filter { !$0.isEmpty && isManagedImageTarget($0) }
+
+        guard !targets.isEmpty else { return }
+
+        let api = RustAPIClient()
+        guard let deleteTargets: [DeleteTarget] = try? await api.post(
+          "/api/v1/media/delete-urls",
+          body: IssueDeleteTargetsBody(targets: targets)
+        ) else {
+          return
+        }
+
         await withTaskGroup(of: Void.self) { group in
-          for urlString in urls {
-            guard !urlString.isEmpty else { continue }
+          for target in deleteTargets {
             group.addTask {
-              do {
-                let ref: StorageReference
-                if urlString.hasPrefix("https://") || urlString.hasPrefix("gs://") {
-                  ref = storage.reference(forURL: urlString)
-                } else {
-                  ref = storage.reference().child(urlString)
-                }
-                try await ref.delete()
-              } catch {
-                // best-effort: 삭제 실패 무시
-              }
+              guard let deleteURL = URL(string: target.deleteUrl) else { return }
+
+              var request = URLRequest(url: deleteURL)
+              request.httpMethod = "DELETE"
+
+              _ = try? await URLSession.shared.data(for: request)
             }
           }
         }
       }
     )
   }()
+}
+
+private func isManagedImageTarget(_ target: String) -> Bool {
+  target.hasPrefix("profile_images/")
+    || target.hasPrefix("group_images/")
+    || target.hasPrefix("schedule_images/")
+    || target.hasPrefix("personal_event_images/")
+    || target.hasPrefix("gs://")
+    || target.contains("storage.googleapis.com/")
+    || target.contains("firebasestorage.googleapis.com/")
 }

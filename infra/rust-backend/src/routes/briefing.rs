@@ -9,10 +9,7 @@ use crate::response::ApiResponse;
 use crate::services::briefing_service::{self, GenerateBriefingRequest, GenerateBriefingResponse};
 
 pub fn router() -> Router<PgPool> {
-    Router::new().route(
-        "/api/v1/briefing/generate",
-        post(generate_briefing_handler),
-    )
+    Router::new().route("/api/v1/briefing/generate", post(generate_briefing_handler))
 }
 
 // POST /api/v1/briefing/generate

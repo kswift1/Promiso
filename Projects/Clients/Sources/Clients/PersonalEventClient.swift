@@ -7,7 +7,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseAuth
 import Foundation
 import Combine
 import PromisoShared
@@ -152,17 +151,8 @@ extension DependencyValues {
 
 extension PersonalEventClient: DependencyKey {
   public static let liveValue: PersonalEventClient = {
-    @Dependency(\.featureFlags) var featureFlags
-    let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
     let rustDataSource = PersonalEventRustDataSource(
-      api: RustAPIClient(
-        getAuthToken: {
-          guard let firebaseUser = Auth.auth().currentUser else {
-            throw PersonalEventClientError.unauthorized
-          }
-          return try await firebaseUser.getIDToken()
-        }
-      )
+      api: RustAPIClient()
     )
 
     return PersonalEventClient(
@@ -170,96 +160,44 @@ extension PersonalEventClient: DependencyKey {
         guard !event.title.isEmpty else {
           throw PersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.createEvent(event)
-        } else {
-          do {
-            return try await dataSource.createEvent(event)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.createEvent(event)
       },
       updateEvent: { event in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.updateEvent(event)
-        } else {
-          do {
-            try await dataSource.updateEvent(event)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        try await rustDataSource.updateEvent(event)
       },
       deleteEvent: { eventId in
-        if featureFlags.useRustAPI(.promises) {
-          try await rustDataSource.deleteEvent(id: eventId)
-        } else {
-          do {
-            try await dataSource.deleteEvent(id: eventId)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        try await rustDataSource.deleteEvent(id: eventId)
       },
       getEvent: { eventId in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getEvent(id: eventId)
-        } else {
-          do {
-            return try await dataSource.getEvent(id: eventId)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getEvent(id: eventId)
       },
       getActiveEvents: { limit in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getActiveEvents(limit: limit)
-        } else {
-          do {
-            return try await dataSource.getActiveEvents(limit: limit)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getActiveEvents(limit: limit)
       },
       getOngoingEvents: { limit in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getOngoingEvents(limit: limit)
-        } else {
-          do {
-            return try await dataSource.getOngoingEvents(limit: limit)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getOngoingEvents(limit: limit)
       },
       getPastEvents: { limit, lastStartAt in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
-        } else {
-          do {
-            return try await dataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
-          } catch {
-            throw PersonalEventClientError(from: error)
-          }
-        }
+        return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
       },
       subscribeToActiveEvents: { limit in
-        // Real-time listener: Firebase only (no Rust equivalent)
-        await dataSource.subscribeToActiveEvents(limit: limit)
-      },
-      getEventsByDateRange: { startDate, endDate in
-        if featureFlags.useRustAPI(.promises) {
-          return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
-        } else {
-          do {
-            return try await dataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
-          } catch {
-            throw PersonalEventClientError(from: error)
+        return AsyncStream { continuation in
+          let task = Task {
+            do {
+              let events = try await rustDataSource.getActiveEvents(limit: limit)
+              continuation.yield(events)
+            } catch {
+              continuation.yield([])
+            }
+            continuation.finish()
+          }
+          continuation.onTermination = { _ in
+            task.cancel()
           }
         }
+      },
+      getEventsByDateRange: { startDate, endDate in
+        return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
       }
     )
   }()

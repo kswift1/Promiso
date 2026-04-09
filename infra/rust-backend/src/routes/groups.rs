@@ -13,6 +13,7 @@ use crate::models::group::*;
 use crate::models::notification::PushSender;
 use crate::response::ApiResponse;
 use crate::services::group_service;
+use crate::services::storage_service::GcsUploadSigner;
 
 /// 인증 불필요 라우트 (그룹 미리보기)
 pub fn public_router() -> Router<PgPool> {
@@ -29,6 +30,10 @@ pub fn router() -> Router<PgPool> {
         .route(
             "/api/v1/groups/{id}",
             get(fetch_group).patch(update_group).delete(delete_group),
+        )
+        .route(
+            "/api/v1/groups/{id}/image-upload-url",
+            post(issue_group_image_upload_url),
         )
         .route("/api/v1/groups/{id}/members", get(fetch_group_members))
         .route("/api/v1/groups/{id}/transfer-host", post(transfer_host))
@@ -114,6 +119,22 @@ async fn update_group(
 ) -> Result<ApiResponse<serde_json::Value>, AppError> {
     group_service::update_group(&pool, &claims.uid, group_id, req).await?;
     ApiResponse::ok(serde_json::json!({"success": true}))
+}
+
+async fn issue_group_image_upload_url(
+    Extension(claims): Extension<Claims>,
+    Extension(upload_signer): Extension<Option<GcsUploadSigner>>,
+    State(pool): State<PgPool>,
+    Path(group_id): Path<Uuid>,
+    Json(req): Json<IssueGroupImageUploadUrlRequest>,
+) -> Result<ApiResponse<IssueGroupImageUploadUrlResponse>, AppError> {
+    let signer = upload_signer.ok_or_else(|| {
+        AppError::PreconditionFailed("GCS upload signing is not configured".to_string())
+    })?;
+    let response =
+        group_service::issue_group_image_upload_url(&pool, &claims.uid, group_id, req, &signer)
+            .await?;
+    ApiResponse::ok(response)
 }
 
 async fn delete_group(

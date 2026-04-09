@@ -414,24 +414,24 @@ struct WeatherInfoFallbackTests {
   }
 }
 
-// MARK: - WeatherDataSource Cache Key Tests
+// MARK: - WeatherRustDataSource Cache Key Tests
 
-@Suite("WeatherDataSource Cache Key")
-struct WeatherDataSourceCacheKeyTests {
+@Suite("WeatherRustDataSource Cache Key")
+struct WeatherRustDataSourceCacheKeyTests {
 
   @Test("같은 좌표 그룹(소수점 2자리)은 같은 캐시 키 생성")
   func sameGridSameKey() {
     let date = Date()
-    let key1 = WeatherDataSource.cacheKey(lat: 37.4981, lng: 127.0276, date: date)
-    let key2 = WeatherDataSource.cacheKey(lat: 37.4989, lng: 127.0274, date: date)
+    let key1 = WeatherRustDataSource.cacheKey(lat: 37.4981, lng: 127.0276, date: date)
+    let key2 = WeatherRustDataSource.cacheKey(lat: 37.4989, lng: 127.0274, date: date)
     #expect(key1 == key2)
   }
 
   @Test("다른 좌표 그룹은 다른 캐시 키 생성")
   func differentGridDifferentKey() {
     let date = Date()
-    let key1 = WeatherDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date)
-    let key2 = WeatherDataSource.cacheKey(lat: 37.51, lng: 127.04, date: date)
+    let key1 = WeatherRustDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date)
+    let key2 = WeatherRustDataSource.cacheKey(lat: 37.51, lng: 127.04, date: date)
     #expect(key1 != key2)
   }
 
@@ -439,8 +439,8 @@ struct WeatherDataSourceCacheKeyTests {
   func differentHourDifferentKey() {
     let date1 = Date()
     let date2 = date1.addingTimeInterval(3600)
-    let key1 = WeatherDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date1)
-    let key2 = WeatherDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date2)
+    let key1 = WeatherRustDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date1)
+    let key2 = WeatherRustDataSource.cacheKey(lat: 37.49, lng: 127.02, date: date2)
     // 시간이 같으면 같은 키, 다르면 다른 키
     let hour1 = Calendar.current.component(.hour, from: date1)
     let hour2 = Calendar.current.component(.hour, from: date2)
@@ -482,7 +482,7 @@ struct WeatherDataSourceCacheKeyTests {
       ),
     ]
 
-    let selected = WeatherDataSource.selectCurrentForecast(
+    let selected = WeatherRustDataSource.selectCurrentForecast(
       from: forecasts,
       targetDate: base
     )
@@ -514,7 +514,7 @@ struct WeatherDataSourceCacheKeyTests {
       ),
     ]
 
-    let selected = WeatherDataSource.selectCurrentForecast(
+    let selected = WeatherRustDataSource.selectCurrentForecast(
       from: forecasts,
       targetDate: base
     )
@@ -546,7 +546,7 @@ struct WeatherDataSourceCacheKeyTests {
       ),
     ]
 
-    let selected = WeatherDataSource.selectCurrentForecast(
+    let selected = WeatherRustDataSource.selectCurrentForecast(
       from: forecasts,
       targetDate: base
     )
@@ -578,7 +578,7 @@ struct WeatherDataSourceCacheKeyTests {
       ),
     ]
 
-    let selected = WeatherDataSource.selectCurrentForecast(
+    let selected = WeatherRustDataSource.selectCurrentForecast(
       from: forecasts,
       targetDate: base
     )

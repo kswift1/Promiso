@@ -86,7 +86,9 @@ pub fn parse_kma_response(json: &serde_json::Value) -> Vec<WeatherForecast> {
             WeatherForecast {
                 fcst_time: slot.fcst_time.clone(),
                 temperature: slot.tmp,
-                sky: slot.sky.map(|s| map_sky_to_condition(s, slot.pty.unwrap_or(0))),
+                sky: slot
+                    .sky
+                    .map(|s| map_sky_to_condition(s, slot.pty.unwrap_or(0))),
                 precipitation_type: slot.pty.map(|p| map_pty(p)),
                 precipitation_probability: slot.pop,
                 humidity: slot.reh,
@@ -193,7 +195,9 @@ fn get_base_date_time() -> (String, String) {
     let kst_offset = FixedOffset::east_opt(9 * 3600).expect("valid offset");
     let now_kst = Utc::now().with_timezone(&kst_offset);
 
-    let base_times = ["0200", "0500", "0800", "1100", "1400", "1700", "2000", "2300"];
+    let base_times = [
+        "0200", "0500", "0800", "1100", "1400", "1700", "2000", "2300",
+    ];
 
     let current_hhmm = format!("{:02}{:02}", now_kst.hour(), now_kst.minute());
 

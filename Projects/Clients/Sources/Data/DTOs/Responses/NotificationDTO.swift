@@ -1,5 +1,4 @@
 import Foundation
-import FirebaseFirestore
 
 /// Firestore Notifications 컬렉션 문서 모델
 public struct NotificationDTO: Codable {

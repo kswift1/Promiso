@@ -1,10 +1,10 @@
 import Foundation
 
-/// 원격 이미지 정보 (Storage 경로 또는 외부 URL)
+/// 원격 이미지 정보
 public struct RemoteImage: Codable, Equatable, Sendable {
   /// 이미지 소스 유형
   public enum SourceType: String, Codable, Sendable {
-    /// Firebase Storage 경로
+    /// 레거시 storage 경로
     case storagePath
     /// 외부 URL
     case externalURL

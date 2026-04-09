@@ -2051,7 +2051,7 @@ async fn check_conflicts_includes_recurring_instances(pool: PgPool) {
 
     assert!(conflicts
         .iter()
-        .any(|conflict| conflict.conflict_type == "recurring"));
+        .any(|conflict| conflict.source == "personalEvent" && conflict.severity == "confirmed"));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -2082,6 +2082,97 @@ async fn check_conflicts_zero_duration_same_time_conflicts(pool: PgPool) {
     .expect("conflict check should succeed");
 
     assert!(conflicts.iter().any(|conflict| {
-        conflict.conflict_type == "personal" && conflict.id == created.schedule_id.to_string()
+        conflict.source == "personalEvent"
+            && conflict.severity == "confirmed"
+            && conflict.id == created.schedule_id.to_string()
     }));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn check_conflicts_returns_client_friendly_source_and_severity(pool: PgPool) {
+    insert_test_user(&pool, "host_cc_shape", "호스트형상").await;
+    insert_test_user(&pool, "member_cc_shape", "멤버형상").await;
+    let group_id = create_test_group(&pool, "host_cc_shape", "충돌형상그룹").await;
+    add_member_to_group(&pool, group_id, "member_cc_shape").await;
+
+    let pending_start = Utc.with_ymd_and_hms(2026, 12, 4, 10, 0, 0).unwrap();
+    let pending = schedule_service::create_schedule(
+        &pool,
+        "host_cc_shape",
+        CreateScheduleRequest {
+            minimum_participants: Some(2),
+            ..make_group_schedule_request(group_id, "미확정 그룹 일정", pending_start)
+        },
+    )
+    .await
+    .expect("pending schedule create should succeed");
+
+    let confirmed_start = Utc.with_ymd_and_hms(2026, 12, 4, 11, 0, 0).unwrap();
+    let confirmed = schedule_service::create_schedule(
+        &pool,
+        "host_cc_shape",
+        CreateScheduleRequest {
+            minimum_participants: Some(2),
+            ..make_group_schedule_request(group_id, "확정 그룹 일정", confirmed_start)
+        },
+    )
+    .await
+    .expect("confirmed schedule create should succeed");
+
+    schedule_service::respond_schedule(
+        &pool,
+        "member_cc_shape",
+        confirmed.schedule_id,
+        RespondScheduleRequest {
+            status: "accepted".to_string(),
+        },
+    )
+    .await
+    .expect("member response should confirm schedule");
+
+    let personal_start = Utc.with_ymd_and_hms(2026, 12, 4, 12, 0, 0).unwrap();
+    schedule_service::create_schedule(
+        &pool,
+        "host_cc_shape",
+        make_personal_schedule_request("개인 일정", personal_start),
+    )
+    .await
+    .expect("personal schedule create should succeed");
+
+    let conflicts = schedule_service::check_conflicts(
+        &pool,
+        "host_cc_shape",
+        CheckConflictsRequest {
+            start_at: Utc.with_ymd_and_hms(2026, 12, 4, 9, 30, 0).unwrap(),
+            end_at: Some(Utc.with_ymd_and_hms(2026, 12, 4, 12, 30, 0).unwrap()),
+            min_gap_minutes: Some(0),
+            exclude_ids: None,
+            timezone: Some("UTC".to_string()),
+        },
+    )
+    .await
+    .expect("conflict check should succeed");
+
+    let pending_conflict = conflicts
+        .iter()
+        .find(|conflict| conflict.title == "미확정 그룹 일정")
+        .expect("pending conflict should exist");
+    assert_eq!(pending_conflict.source, "schedule");
+    assert_eq!(pending_conflict.severity, "pending");
+    assert_eq!(pending_conflict.id, pending.schedule_id.to_string());
+
+    let confirmed_conflict = conflicts
+        .iter()
+        .find(|conflict| conflict.title == "확정 그룹 일정")
+        .expect("confirmed conflict should exist");
+    assert_eq!(confirmed_conflict.source, "schedule");
+    assert_eq!(confirmed_conflict.severity, "confirmed");
+    assert_eq!(confirmed_conflict.id, confirmed.schedule_id.to_string());
+
+    let personal_conflict = conflicts
+        .iter()
+        .find(|conflict| conflict.title == "개인 일정")
+        .expect("personal conflict should exist");
+    assert_eq!(personal_conflict.source, "personalEvent");
+    assert_eq!(personal_conflict.severity, "confirmed");
 }

@@ -5,7 +5,7 @@
 ## 공통
 
 - Base URL: Cloud Run 배포 후 결정
-- 인증: `Authorization: Bearer <firebase_id_token>`
+- 인증: `Authorization: Bearer <firebase_id_token | server_access_token>`
 - 응답 포맷: `{"data": T}` (성공) / `{"error": {"code": "...", "message": "..."}}` (실패)
 - snake_case (JSON)
 
@@ -14,9 +14,32 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
+| GET | `/api/v1/faq` | FAQ 목록 조회 (Notion 프록시) |
 | POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
+
+### GET /api/v1/faq
+
+- 설명: FAQ 목록 조회 (Notion 프록시)
+- 인증: 불필요
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "id": "notion-page-id",
+        "question": "질문",
+        "answer": "답변",
+        "category": "그룹",
+        "order": 1,
+        "created_at": "ISO8601",
+        "updated_at": "ISO8601"
+      }
+    ]
+  }
+  ```
+- 에러: 412 (`NOTION_FAQ_API_KEY` 미설정)
 
 ## Users (인증 필요)
 
@@ -25,10 +48,25 @@
 | POST | `/api/v1/users` | 유저 생성 | body: {name?, nickname, provider} |
 | GET | `/api/v1/users/me` | 본인 프로필 (private) | email, provider 포함 |
 | PATCH | `/api/v1/users/me` | 닉네임 수정 | body: {nickname?} |
-| POST | `/api/v1/users/me/profile-image` | 프로필 이미지 URL 저장 | body: {image_path} |
+| DELETE | `/api/v1/users/me` | 회원 탈퇴 | 그룹 호스트면 412, subscription 이력 보존 |
+| POST | `/api/v1/users/me/profile-image/upload-url` | 프로필 이미지 GCS 업로드 URL 발급 | body: {content_type?} |
+| POST | `/api/v1/users/me/profile-image` | 업로드 완료된 프로필 이미지 URL 저장 | body: {image_path} |
 | GET | `/api/v1/users/nickname-check?q=` | 닉네임 중복 확인 | 본인 닉네임은 available=true |
 | POST | `/api/v1/users/batch` | 여러 유저 조회 (public) | body: {user_ids: [...]} |
 | GET | `/api/v1/users/{id}` | 타인 프로필 (public) | 공통 그룹 체크 (groups 마이그레이션 후) |
+
+### DELETE /api/v1/users/me
+
+- 설명: 현재 사용자 계정 삭제
+- 인증: 필수
+- 동작:
+  - `group_members.role = 'admin'` 그룹이 하나라도 있으면 거부
+  - `auth_accounts`, `auth_sessions`, `user_settings`, `briefing_subscriptions`, `entitlements`, `entitlement_overrides`, `admin_users` 정리
+  - `users` 삭제 시 `group_members`, `schedules`, `devices`, `notifications`, `briefing_cache`는 cascade 삭제
+  - `subscriptions`, `subscription_owners`는 결제 이력 보존을 위해 유지
+- 응답 200: `{ "data": { "success": true } }`
+- 에러:
+  - `412 failed-precondition`: 그룹 호스트 상태
 
 ## User Settings (인증 필요)
 
@@ -141,7 +179,7 @@
   ```
 - 에러: 404 (코드가 유효하지 않음)
 
-### 인증 필요 (Authorization: Bearer \<firebase_id_token\>)
+### 인증 필요
 
 #### POST /api/v1/groups
 
@@ -211,6 +249,28 @@
     "image_url": "https://..."
   }
   ```
+
+#### POST /api/v1/groups/{id}/image-upload-url
+
+- 설명: 그룹 이미지 GCS direct upload용 signed URL 발급 (admin만)
+- 인증: 필수 (admin)
+- 요청:
+  ```json
+  { "content_type": "image/jpeg" }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "object_path": "group_images/{group_id}/{uuid}.jpg",
+      "upload_url": "https://storage.googleapis.com/...",
+      "image_url": "https://storage.googleapis.com/{bucket}/group_images/{group_id}/{uuid}.jpg",
+      "expires_at": "ISO8601",
+      "content_type": "image/jpeg"
+    }
+  }
+  ```
+- 에러: 403 (admin 아님), 404 (그룹 없음), 400 (지원하지 않는 content_type)
   - `description`, `image_url`: `Option<Option<String>>` 패턴
     - 필드 생략 — 변경 없음
     - `null` — 삭제 (필드를 NULL로)
@@ -356,6 +416,78 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   "updated_at": "ISO8601"
 }
 ```
+
+## Media (인증 필요)
+
+### POST /api/v1/media/upload-urls
+
+- 설명: 일정/개인 일정 이미지용 GCS direct upload signed URL 발급
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "base_path": "schedule_images/{group_id}/{schedule_id}",
+    "count": 2,
+    "content_type": "image/jpeg"
+  }
+  ```
+  - `base_path` 허용값:
+    - `schedule_images/{group_id}/{schedule_id}`: 해당 그룹 멤버만 발급 가능
+    - `personal_event_images/{user_id}/{event_id}`: `user_id == claims.uid`만 발급 가능
+  - `count`: 1~3
+  - `content_type`: 현재 `image/jpeg`만 지원. 생략 시 기본값 `image/jpeg`
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "object_path": "schedule_images/{group_id}/{schedule_id}/{uuid}.jpg",
+        "upload_url": "https://storage.googleapis.com/...",
+        "public_url": "https://storage.googleapis.com/{bucket}/schedule_images/{group_id}/{schedule_id}/{uuid}.jpg",
+        "expires_at": "ISO8601",
+        "content_type": "image/jpeg"
+      }
+    ]
+  }
+  ```
+- 에러: 400 (허용되지 않은 base_path/count/content_type), 403 (권한 없음)
+
+### POST /api/v1/media/delete-urls
+
+- 설명: 기존 이미지 cleanup용 GCS signed DELETE URL 발급
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "targets": [
+      "schedule_images/{group_id}/{schedule_id}/image.jpg",
+      "https://firebasestorage.googleapis.com/v0/b/{bucket}/o/schedule_images%2F{group_id}%2F{schedule_id}%2Fimage.jpg?alt=media&token=..."
+    ]
+  }
+  ```
+  - 지원 입력 형식:
+    - raw object path
+    - `gs://{bucket}/{object_path}`
+    - `https://storage.googleapis.com/{bucket}/{object_path}`
+    - Firebase download URL (`firebasestorage.googleapis.com`)
+  - 권한 규칙:
+    - `schedule_images/{group_id}/{schedule_id}/{file}`: 그룹 멤버
+    - `personal_event_images/{user_id}/{event_id}/{file}`: 본인
+    - `profile_images/{user_id}/{file}`: 본인
+    - `group_images/{group_id}/{file}`: 그룹 admin
+- 응답 200:
+  ```json
+  {
+    "data": [
+      {
+        "object_path": "schedule_images/{group_id}/{schedule_id}/image.jpg",
+        "delete_url": "https://storage.googleapis.com/...",
+        "expires_at": "ISO8601"
+      }
+    ]
+  }
+  ```
+- 에러: 400 (지원되지 않는 URL/path, 다른 bucket, 개수 초과), 403 (권한 없음)
 
 ## Schedules (인증 필요)
 
@@ -719,18 +851,21 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
     "data": [
       {
         "id": "uuid",
-        "type": "group | personal | recurring",
+        "source": "schedule | personalEvent",
+        "severity": "confirmed | pending",
         "title": "기존 일정",
         "emoji": "📅",
         "start_at": "ISO8601",
         "end_at": "ISO8601",
         "overlap_minutes": 30,
-        "gap_minutes": -30
+        "gap_minutes": 0
       }
     ]
   }
   ```
-  - overlap > 0: 겹침, gap < 0: 겹침, gap >= 0 && gap < minGap: 간격 부족
+  - `source = schedule`: 그룹 일정, `source = personalEvent`: 개인/반복 일정
+  - `severity = pending`: 미확정 그룹 일정, `severity = confirmed`: 확정 그룹 일정 또는 개인/반복 일정
+  - overlap > 0: 겹침, gap = 0: 겹침, gap > 0 && gap < minGap: 간격 부족
   - 정렬: overlap 내림차순 → gap 오름차순
 - 에러: 400, 403 (Pro 아님)
 
@@ -764,6 +899,115 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   }
   ```
 - 에러: 400 (입력 누락/초과), 500 (추출 실패)
+
+## Weather (인증 필요)
+
+### POST /api/v1/transportation
+
+- 설명: 두 좌표 간 교통 정보 조회
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "from_lat": 37.5665,
+    "from_lng": 126.9780,
+    "to_lat": 37.4979,
+    "to_lng": 127.0276
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "transit_routes": [
+        {
+          "total_time": 45,
+          "payment": 1500,
+          "bus_transit_count": 1,
+          "subway_transit_count": 0,
+          "path_type": 2,
+          "sub_paths": [
+            {
+              "traffic_type": 2,
+              "section_time": 35,
+              "distance": 12000,
+              "start_name": "서울역",
+              "end_name": "강남역",
+              "station_count": 12,
+              "lanes": [
+                {
+                  "name": "146",
+                  "bus_no": "146",
+                  "type": 11,
+                  "bus_color": "#5BB025"
+                }
+              ],
+              "pass_stop_coords": [[126.97, 37.55], [127.02, 37.49]]
+            }
+          ]
+        }
+      ],
+      "driving": {
+        "distance": 18500,
+        "duration": 45,
+        "toll": 900,
+        "route_points": [[126.97, 37.55], [127.02, 37.49]]
+      },
+      "walking_minutes": 22,
+      "walking_distance_km": 1.4
+    }
+  }
+  ```
+- 동작:
+  - 직선거리 1km 미만은 외부 API 호출 없이 도보 결과만 반환
+  - `ODSAY_API_KEY`, `KAKAO_REST_API_KEY`가 없으면 해당 transport만 비워서 반환
+- 에러: 400 (좌표 누락/NaN)
+
+### POST /api/v1/weather
+
+- 설명: 특정 위치/시각 기준 날씨 조회
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "latitude": 37.5665,
+    "longitude": 126.9780,
+    "target_date": "2026-04-09T09:00:00Z"
+  }
+  ```
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "forecasts": [
+        {
+          "date_time": "ISO8601",
+          "temperature": 18.2,
+          "feels_like_temperature": 17.6,
+          "condition": "clear",
+          "precipitation_probability": 10,
+          "humidity": 55,
+          "wind_speed": 2.1,
+          "precipitation_amount": ""
+        }
+      ],
+      "daily_forecasts": [
+        {
+          "date": "2026-04-12",
+          "min_temperature": 8,
+          "max_temperature": 16,
+          "am_condition": "cloudy",
+          "pm_condition": "rain",
+          "am_precipitation_probability": 30,
+          "pm_precipitation_probability": 70
+        }
+      ]
+    }
+  }
+  ```
+  - `daily_forecasts`: 5일 초과 targetDate일 때만 포함될 수 있음
+  - targetDate가 현재보다 3시간 이상 과거이거나 10일 초과 미래면 빈 배열 반환
+- 에러: 412 (`KMA_API_KEY` 미설정)
 
 ## Recurring Schedules (인증 필요)
 

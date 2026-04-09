@@ -14,10 +14,19 @@ use crate::services::admin_subscription_service::{
 
 pub fn router() -> Router<PgPool> {
     Router::new()
-        .route("/api/v1/admin/dashboard/summary", get(get_dashboard_summary))
-        .route("/api/v1/admin/pro-plan/dashboard", get(get_pro_plan_dashboard))
+        .route(
+            "/api/v1/admin/dashboard/summary",
+            get(get_dashboard_summary),
+        )
+        .route(
+            "/api/v1/admin/pro-plan/dashboard",
+            get(get_pro_plan_dashboard),
+        )
         .route("/api/v1/admin/users", get(get_user_summary))
-        .route("/api/v1/admin/users/{user_id}/timeline", get(get_user_timeline))
+        .route(
+            "/api/v1/admin/users/{user_id}/timeline",
+            get(get_user_timeline),
+        )
         .route(
             "/api/v1/admin/entitlements/grant",
             post(grant_entitlement_override),
@@ -74,7 +83,8 @@ async fn get_pro_plan_dashboard(
     Extension(claims): Extension<Claims>,
     State(pool): State<PgPool>,
 ) -> Result<ApiResponse<ProPlanDashboardPayload>, AppError> {
-    let dashboard = admin_subscription_service::build_pro_plan_dashboard(&pool, &claims.uid).await?;
+    let dashboard =
+        admin_subscription_service::build_pro_plan_dashboard(&pool, &claims.uid).await?;
     ApiResponse::ok(ProPlanDashboardPayload { dashboard })
 }
 

@@ -7,6 +7,7 @@ use crate::errors::AppError;
 use crate::models::group::*;
 use crate::models::notification::PushSender;
 use crate::services::notification_service;
+use crate::services::storage_service::GcsUploadSigner;
 
 /// [H5] build_group_response 단일 쿼리 결과를 매핑하기 위한 내부 구조체
 #[derive(sqlx::FromRow)]
@@ -622,6 +623,40 @@ pub async fn update_group(
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(())
+}
+
+pub async fn issue_group_image_upload_url(
+    pool: &PgPool,
+    user_uid: &str,
+    group_id: Uuid,
+    req: IssueGroupImageUploadUrlRequest,
+    signer: &GcsUploadSigner,
+) -> Result<IssueGroupImageUploadUrlResponse, AppError> {
+    check_admin(pool, user_uid, group_id).await?;
+
+    let content_type = req
+        .content_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("image/jpeg");
+
+    if content_type != "image/jpeg" {
+        return Err(AppError::BadRequest(
+            "그룹 이미지는 image/jpeg만 지원합니다".to_string(),
+        ));
+    }
+
+    let object_path = format!("group_images/{group_id}/{}.jpg", Uuid::new_v4());
+    let target = signer.sign_put_object(&object_path, content_type)?;
+
+    Ok(IssueGroupImageUploadUrlResponse {
+        object_path: target.object_path,
+        upload_url: target.upload_url,
+        image_url: target.public_url,
+        expires_at: target.expires_at,
+        content_type: target.content_type,
+    })
 }
 
 /// 그룹 삭제 -- 호스트만 가능, cascade 처리

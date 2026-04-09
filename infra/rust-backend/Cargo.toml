@@ -40,6 +40,7 @@ dotenvy = "0.15"
 rand = "0.10"
 sha2 = "0.10"
 hex = "0.4"
+rsa = { version = "0.9", features = ["sha2", "pem"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }

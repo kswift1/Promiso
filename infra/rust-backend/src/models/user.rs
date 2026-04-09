@@ -21,14 +21,6 @@ pub struct User {
 pub struct CreateUserRequest {
     pub name: Option<String>,
     pub nickname: String,
-    pub provider: ProviderInfo,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ProviderInfo {
-    pub provider_type: String,
-    pub provider_uid: String,
-    pub email: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,6 +60,20 @@ pub struct UpdateUserRequest {
 #[derive(Debug, Deserialize)]
 pub struct UploadProfileImageRequest {
     pub image_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueProfileImageUploadUrlRequest {
+    pub content_type: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct IssueProfileImageUploadUrlResponse {
+    pub object_path: String,
+    pub upload_url: String,
+    pub profile_url: String,
+    pub expires_at: DateTime<Utc>,
+    pub content_type: String,
 }
 
 #[derive(Debug, Serialize)]

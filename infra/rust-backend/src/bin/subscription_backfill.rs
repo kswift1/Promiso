@@ -63,10 +63,8 @@ async fn run() -> Result<(), String> {
         .map_err(|error| format!("failed to connect database: {error}"))?;
 
     let subscriptions = read_optional_file(args.subscriptions.as_deref(), "subscriptions")?;
-    let subscription_owners = read_optional_file(
-        args.subscription_owners.as_deref(),
-        "subscription owners",
-    )?;
+    let subscription_owners =
+        read_optional_file(args.subscription_owners.as_deref(), "subscription owners")?;
     let entitlement_overrides = read_optional_file(
         args.entitlement_overrides.as_deref(),
         "entitlement overrides",

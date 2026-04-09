@@ -273,14 +273,16 @@ pub async fn handle_apple_notification(
     let before_status = current_record
         .as_ref()
         .map(|r| r.status.as_str().to_string());
-    let after_last_notification_type =
-        Some(notification.notification_type.as_str().to_string());
+    let after_last_notification_type = Some(notification.notification_type.as_str().to_string());
     let before_last_notification_type = current_record
         .as_ref()
         .and_then(|r| r.last_notification_type.clone());
-    let (nickname, total_pro_users, price) =
-        fetch_slack_context(pool, &owner_record.user_id, &notification.transaction.product_id)
-            .await;
+    let (nickname, total_pro_users, price) = fetch_slack_context(
+        pool,
+        &owner_record.user_id,
+        &notification.transaction.product_id,
+    )
+    .await;
     notify_subscription_slack(
         &webhook_url,
         &owner_record.user_id,
@@ -376,13 +378,12 @@ async fn fetch_slack_context(
         .ok()
         .flatten();
 
-    let total_pro_users = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM entitlements WHERE has_pro = true",
-    )
-    .fetch_one(pool)
-    .await
-    .ok()
-    .and_then(|n| u32::try_from(n).ok());
+    let total_pro_users =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entitlements WHERE has_pro = true")
+            .fetch_one(pool)
+            .await
+            .ok()
+            .and_then(|n| u32::try_from(n).ok());
 
     // 가격 (하드코딩 — Firebase의 admin/proPlanPrices 대응)
     let price = if product_id.contains("monthly") {

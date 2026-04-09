@@ -1772,14 +1772,25 @@ pub async fn check_conflicts(
 
         // 겹치거나, gap이 min_gap 미만이면 충돌
         if is_overlapping || gap_minutes < min_gap_minutes_val {
-            let conflict_type = match existing.schedule_type {
-                ScheduleType::Group => "group",
-                ScheduleType::Personal => "personal",
+            let source = match existing.schedule_type {
+                ScheduleType::Group => "schedule",
+                ScheduleType::Personal => "personalEvent",
+            };
+            let severity = match existing.schedule_type {
+                ScheduleType::Group => {
+                    if existing.is_confirmed.unwrap_or(false) {
+                        "confirmed"
+                    } else {
+                        "pending"
+                    }
+                }
+                ScheduleType::Personal => "confirmed",
             };
 
             conflicts.push(ScheduleConflict {
                 id: existing.id.to_string(),
-                conflict_type: conflict_type.to_string(),
+                source: source.to_string(),
+                severity: severity.to_string(),
                 title: existing.title.clone(),
                 emoji: existing.emoji.clone(),
                 start_at: existing.start_at,
@@ -1855,7 +1866,8 @@ pub async fn check_conflicts(
             if is_overlapping || gap_minutes < min_gap_minutes_val {
                 conflicts.push(ScheduleConflict {
                     id: format!("{}:{}", instance.recurring_schedule_id, instance.date),
-                    conflict_type: "recurring".to_string(),
+                    source: "personalEvent".to_string(),
+                    severity: "confirmed".to_string(),
                     title: instance.title,
                     emoji: instance.emoji,
                     start_at: instance_start,

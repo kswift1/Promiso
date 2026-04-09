@@ -3,7 +3,9 @@ use sqlx::PgPool;
 
 use crate::errors::AppError;
 use crate::services::briefing_projection_service::compute_next_dispatch_at;
-use crate::services::briefing_service::{generate_briefing, BriefingLocation, GenerateBriefingRequest};
+use crate::services::briefing_service::{
+    generate_briefing, BriefingLocation, GenerateBriefingRequest,
+};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DispatchSummary {
@@ -123,13 +125,14 @@ pub async fn dispatch_due_briefings(
         }
 
         // SC-4: generate_briefing 호출
-        let location = row.default_location_latitude.zip(row.default_location_longitude).map(
-            |(lat, lon)| BriefingLocation {
+        let location = row
+            .default_location_latitude
+            .zip(row.default_location_longitude)
+            .map(|(lat, lon)| BriefingLocation {
                 latitude: lat,
                 longitude: lon,
                 title: row.default_location_title.clone(),
-            },
-        );
+            });
 
         let briefing_req = GenerateBriefingRequest {
             timezone: row.timezone.clone(),

@@ -7,9 +7,9 @@
 use chrono::{Duration, Utc};
 use promiso_backend::errors::AppError;
 use promiso_backend::services::admin_subscription_service::{
-    build_dashboard_summary, build_pro_plan_dashboard, get_user_summary, get_user_summary_with_filters,
-    get_user_timeline, grant_entitlement_override, revoke_entitlement_override,
-    GrantEntitlementOverrideRequest, RevokeEntitlementOverrideRequest,
+    build_dashboard_summary, build_pro_plan_dashboard, get_user_summary,
+    get_user_summary_with_filters, get_user_timeline, grant_entitlement_override,
+    revoke_entitlement_override, GrantEntitlementOverrideRequest, RevokeEntitlementOverrideRequest,
 };
 use sqlx::PgPool;
 
@@ -240,8 +240,14 @@ async fn user_timeline_returns_summary_subscription_override_and_audit_logs(pool
     assert_eq!(timeline.subscription.status.as_deref(), Some("subscribed"));
     assert!(timeline.r#override.is_some());
     assert_eq!(timeline.audit_logs.len(), 2);
-    assert_eq!(timeline.audit_logs[0].action.as_deref(), Some("grant_entitlement_override"));
-    assert_eq!(timeline.audit_logs[0].actor_id.as_deref(), Some("admin_support_2"));
+    assert_eq!(
+        timeline.audit_logs[0].action.as_deref(),
+        Some("grant_entitlement_override")
+    );
+    assert_eq!(
+        timeline.audit_logs[0].actor_id.as_deref(),
+        Some("admin_support_2")
+    );
     assert_eq!(timeline.audit_logs[0].target_type.as_deref(), Some("user"));
     assert!(timeline.audit_logs[0].id.len() > 0);
     assert!(timeline.audit_logs[0].before.is_some());
