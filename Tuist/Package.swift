@@ -13,6 +13,9 @@ let packageSettings = PackageSettings(
     "IssueReporting": .framework,
     "CombineSchedulers": .framework,
     "ConcurrencyExtras": .framework,
+  ],
+  targetSettings: [
+    "ComposableArchitecture": ["SWIFT_STRICT_CONCURRENCY": "targeted"],
   ]
 )
 #endif

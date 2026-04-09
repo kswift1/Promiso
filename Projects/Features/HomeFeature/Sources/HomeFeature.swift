@@ -218,7 +218,7 @@ extension Home {
 
     // MARK: - Path (Navigation)
 
-    @Reducer(state: .equatable)
+    @Reducer
     public enum Path {
       case scheduleDetail(ScheduleDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
@@ -2483,3 +2483,5 @@ extension Home {
     }
   }
 }
+
+extension Home.Feature.Path.State: Equatable {}

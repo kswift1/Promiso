@@ -757,7 +757,7 @@ extension CalendarFeature {
 
     // MARK: - Path (Navigation)
 
-    @Reducer(state: .equatable)
+    @Reducer
     public enum Path {
       case scheduleDetail(ScheduleDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
@@ -2095,3 +2095,5 @@ extension CalendarFeature {
     }
   }
 }
+
+extension CalendarFeature.Feature.Path.State: Equatable {}

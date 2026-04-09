@@ -152,7 +152,7 @@ extension GroupMain {
       }
     }
 
-    @Reducer(state: .equatable)
+    @Reducer
     public enum Path {
       case groupSettings(GroupSettings.Feature)
       case groupScheduleList(GroupScheduleList.Feature)
@@ -1561,3 +1561,5 @@ extension GroupMain {
     }
   }
 }
+
+extension GroupMain.Feature.Path.State: Equatable {}
