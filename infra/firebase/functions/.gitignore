@@ -15,3 +15,7 @@ node_modules/
 
 # Test coverage reports
 coverage/
+
+# Firestore export data (재생성 가능, 민감 데이터 포함)
+export/
+export-*/
