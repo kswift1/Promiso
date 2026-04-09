@@ -1,4 +1,5 @@
 pub mod admin_subscription_service;
+pub mod data_migration_service;
 pub mod app_config_service;
 pub mod app_store_service;
 pub mod auth_service;
