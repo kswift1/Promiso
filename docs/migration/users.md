@@ -17,8 +17,8 @@
 
 | iOS 메서드 | 상태 |
 |-----------|------|
-| `UserProfileClient` 주요 조회/수정 (`create/get/check/update`) | ✅ Feature Flag 연결 완료 |
-| `UserProfileClient.create/updateProfileImage` (Rust users 경로) | ✅ GCS direct upload 연결 완료 |
+| `UserProfileClient` 주요 조회/수정 (`create/get/check/update`) | ✅ Rust 고정 |
+| `UserProfileClient.create/updateProfileImage` (Rust users 경로) | ✅ Rust 고정 (GCS direct upload 포함) |
 | `UserSettingsClient.fetch/update/initializeProDefaults` | ✅ settings 도메인으로 Rust 고정 |
 | `UserProfileClient.getUserSettings` 레거시 헬퍼 | ✅ Rust settings 경로로 정리 완료 |
 

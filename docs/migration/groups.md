@@ -52,22 +52,22 @@
 
 | GroupClient 메서드 | 현재 (Firebase) | 전환 후 (Rust REST) | 상태 |
 |---|---|---|---|
-| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Feature Flag 연결 완료 |
-| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Feature Flag 연결 완료 |
-| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ✅ Feature Flag 연결 완료 |
-| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
-| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ✅ Feature Flag 연결 완료 |
-| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ✅ Feature Flag 연결 완료, 생성 후 `image-upload-url -> PATCH`로 그룹 이미지 반영 |
-| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ✅ Feature Flag 연결 완료 |
-| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ✅ Feature Flag 연결 완료 |
-| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ✅ Feature Flag 연결 완료 |
-| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료 |
-| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ✅ Feature Flag 연결 완료, `image-upload-url` 기반 direct upload 사용 |
-| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ✅ Feature Flag 연결 완료 |
-| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ✅ Feature Flag 연결 완료 |
-| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ✅ Feature Flag 연결 완료 |
-| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ✅ Feature Flag 연결 완료 |
-| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ✅ Feature Flag 연결 완료 |
+| `fetchGroups` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Rust 고정 |
+| `fetchGroupSummaries` | Firestore 직접 읽기 | `GET /api/v1/groups/me` | ✅ Rust 고정 |
+| `fetchGroupsByIds` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` 반복 또는 batch | ✅ Rust 고정 |
+| `fetchGroup` | Firestore 직접 읽기 | `GET /api/v1/groups/{id}` | ✅ Rust 고정 |
+| `fetchGroupMembers` | users 컬렉션 batch 조회 | `GET /api/v1/groups/{id}/members` | ✅ Rust 고정 |
+| `createGroup` | `createGroup` Callable | `POST /api/v1/groups` | ✅ Rust 고정, 생성 후 `image-upload-url -> PATCH`로 그룹 이미지 반영 |
+| `previewGroup` | `previewGroup` Callable | `GET /api/v1/groups/preview?code=` | ✅ Rust 고정 |
+| `joinGroup` | `joinGroup` Callable | `POST /api/v1/groups/join` | ✅ Rust 고정 |
+| `leaveGroup` | `leaveGroup` Callable | `POST /api/v1/groups/{id}/leave` | ✅ Rust 고정 |
+| `deleteGroup` | `deleteGroup` Callable | `DELETE /api/v1/groups/{id}` | ✅ Rust 고정 |
+| `updateGroup` | `updateGroup` Callable | `PATCH /api/v1/groups/{id}` | ✅ Rust 고정, `image-upload-url` 기반 direct upload 사용 |
+| `updateGroupNotificationSettings` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/notification-settings` | ✅ Rust 고정 |
+| `updateGroupColor` | Firestore 직접 쓰기 | `PATCH /api/v1/groups/{id}/color` | ✅ Rust 고정 |
+| `clearGroupBadge` | Firestore 직접 쓰기 | `POST /api/v1/groups/{id}/mark-read` | ✅ Rust 고정 |
+| `transferHost` | `transferGroupHost` Callable | `POST /api/v1/groups/{id}/transfer-host` | ✅ Rust 고정 |
+| `expelMember` | `expelMember` Callable | `POST /api/v1/groups/{id}/expel` | ✅ Rust 고정 |
 
 ## 보류 항목
 
@@ -77,4 +77,4 @@
 
 - Rust 백엔드 테스트: `infra/rust-backend/tests/groups_test.rs` (67개 테스트)
 - Rust 백엔드 테스트: `infra/rust-backend/tests/group_image_upload_url_test.rs`
-- iOS 클라이언트: `GroupClient` Feature Flag 경로 연결 완료
+- iOS 클라이언트: `GroupClient` Rust 고정

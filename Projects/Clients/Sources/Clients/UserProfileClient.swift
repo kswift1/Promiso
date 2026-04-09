@@ -216,8 +216,6 @@ extension UserProfileClient: TestDependencyKey {
 extension UserProfileClient: DependencyKey {
   public static let liveValue: UserProfileClient = {
     @Dependency(\.authClient) var authClient
-    @Dependency(\.featureFlags) var featureFlags
-    let firebaseDataSource = UserProfileRemoteDataSource()
     let rustDataSource = UserRustDataSource(
       api: RustAPIClient()
     )
@@ -227,123 +225,54 @@ extension UserProfileClient: DependencyKey {
 
     return Self(
       createUserWithProfile: { name, nickname, providerType, providerUid, email, profileImageData in
-        if featureFlags.useRustAPI(.users) {
-          // Rust API로 유저 생성
-          _ = try await rustDataSource.createUser(
-            name: name,
-            nickname: nickname,
-            providerType: providerType,
-            providerUid: providerUid,
-            email: email
-          )
+        _ = try await rustDataSource.createUser(
+          name: name,
+          nickname: nickname,
+          providerType: providerType,
+          providerUid: providerUid,
+          email: email
+        )
 
-          if let imageData = profileImageData {
-            _ = try await rustDataSource.uploadProfileImageData(imageData)
-          }
-
-          return try await rustDataSource.getMyProfile()
-        } else {
-          // 기존 Firebase 경로
-          let userId = try await firebaseDataSource.createUser(
-            name: name,
-            nickname: nickname,
-            provider: ProviderInfo(type: providerType, uid: providerUid, email: email)
-          )
-          if let imageData = profileImageData {
-            _ = try await firebaseDataSource.uploadProfileImage(uid: userId, imageData: imageData)
-          }
-          let profile = try await firebaseDataSource.getProfileModel(uid: nil, isPublic: false)
-          guard case .private(let user) = profile else {
-            throw UserProfileError.invalidData
-          }
-          return user
+        if let imageData = profileImageData {
+          _ = try await rustDataSource.uploadProfileImageData(imageData)
         }
+
+        return try await rustDataSource.getMyProfile()
       },
 
       getPrivateProfile: { target in
-        if featureFlags.useRustAPI(.users) {
-          switch target {
-          case .me:
-            return try await rustDataSource.getMyProfile()
-          case .user(let userId):
-            // 타인 private 조회는 현재 Rust에서 미지원 (me만 가능) — Firebase로 폴백
-            let profile = try await firebaseDataSource.getProfileModel(uid: userId, isPublic: false)
-            guard case .private(let user) = profile else {
-              throw UserProfileError.invalidData
-            }
-            return user
-          }
-        } else {
-          let uid: String? = switch target {
-          case .me: nil
-          case .user(let userId): userId
-          }
-          let profile = try await firebaseDataSource.getProfileModel(uid: uid, isPublic: false)
-          guard case .private(let user) = profile else {
-            throw UserProfileError.invalidData
-          }
-          return user
+        switch target {
+        case .me:
+          return try await rustDataSource.getMyProfile()
+        case .user:
+          throw UserProfileError.permissionDenied
         }
       },
 
       getPublicProfile: { target in
-        if featureFlags.useRustAPI(.users) {
-          switch target {
-          case .me:
-            let private_ = try await rustDataSource.getMyProfile()
-            return private_.toPublic()
-          case .user(let userId):
-            return try await rustDataSource.getUserPublic(userId: userId)
-          }
-        } else {
-          let uid: String? = switch target {
-          case .me: nil
-          case .user(let userId): userId
-          }
-          let profile = try await firebaseDataSource.getProfileModel(uid: uid, isPublic: true)
-          guard case .public(let user) = profile else {
-            throw UserProfileError.invalidData
-          }
-          return user
+        switch target {
+        case .me:
+          let private_ = try await rustDataSource.getMyProfile()
+          return private_.toPublic()
+        case .user(let userId):
+          return try await rustDataSource.getUserPublic(userId: userId)
         }
       },
 
       getUsersByIds: { userIds in
-        if featureFlags.useRustAPI(.users) {
-          return try await rustDataSource.getUsersByIds(userIds)
-        } else {
-          return try await firebaseDataSource.getUsersByIds(userIds: userIds)
-        }
+        return try await rustDataSource.getUsersByIds(userIds)
       },
 
       isNicknameAvailable: { nickname in
-        if featureFlags.useRustAPI(.users) {
-          return try await rustDataSource.checkNicknameAvailable(nickname)
-        } else {
-          return try await firebaseDataSource.isNicknameAvailable(nickname)
-        }
+        return try await rustDataSource.checkNicknameAvailable(nickname)
       },
 
       updateProfile: { nickname in
-        if featureFlags.useRustAPI(.users) {
-          try await rustDataSource.updateNickname(nickname)
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw UserProfileError.authenticationRequired
-          }
-          try await firebaseDataSource.updateProfile(uid: currentUser.uid, nickname: nickname)
-        }
+        try await rustDataSource.updateNickname(nickname)
       },
 
       updateProfileImage: { imageData in
-        if featureFlags.useRustAPI(.users) {
-          return try await rustDataSource.uploadProfileImageData(imageData)
-        } else {
-          guard let currentUser = await authClient.currentUser() else {
-            throw UserProfileError.authenticationRequired
-          }
-          return try await firebaseDataSource.uploadProfileImage(uid: currentUser.uid, imageData: imageData)
-        }
+        return try await rustDataSource.uploadProfileImageData(imageData)
       },
 
       getUserSettings: {
