@@ -1,7 +1,6 @@
 import Foundation
 import os.log
 import WidgetKit
-import ExternalDependency
 
 let widgetLogger = Logger(subsystem: "com.promiso.widget", category: "DataManager")
 
@@ -15,7 +14,7 @@ private struct WidgetSnapshotMeta: Decodable {
   let version: Int
 }
 
-/// Firebase Functions getWidgetSnapshot 응답 모델
+/// 위젯 스냅샷 응답 모델
 ///
 /// 서버에서 그룹 일정과 개인 일정을 통합하여 today/upcoming에 반환.
 /// 각 항목의 `type` 필드로 일정/개인 일정을 구분.
@@ -165,24 +164,12 @@ public enum WidgetDataManager {
   /// Manual refresh TTL: 서버 호출 최소 간격 (15초)
   private static let manualRefreshTTL: TimeInterval = 15.0
 
-  /// Firebase Functions 엔드포인트
-  private static let functionsBaseURL = "https://asia-northeast3-\(LiveActivityIntentKey.firebaseProjectId).cloudfunctions.net"
-
   /// Rust API 기본 URL
   #if DEBUG
   private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
   #else
   private static let rustBaseURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
   #endif
-
-  /// Widget Feature Flag: UserDefaults에서 직접 읽기 (Widget Extension은 DI 사용 불가)
-  private static var useRustWidgetAPI: Bool {
-    #if DEBUG
-    return true
-    #else
-    return UserDefaults.standard.bool(forKey: "rust_api_widget")
-    #endif
-  }
 
   private static var defaults: UserDefaults? {
     UserDefaults(suiteName: suiteName)
@@ -231,8 +218,8 @@ public enum WidgetDataManager {
     return token
   }
 
-  /// Firebase ID Token 로드 (Legacy - Widget Token 없을 때 fallback)
-  public static func loadIdToken() -> String? {
+  /// 서버 access token fallback 로드 (Widget Token 없을 때 사용)
+  public static func loadAuthToken() -> String? {
     guard let token = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) else {
       return nil
     }
@@ -309,37 +296,24 @@ public enum WidgetDataManager {
     }
   }
 
-  // MARK: - Server Refresh (Silent Push용 - Fallback)
+  // MARK: - Server Refresh
 
   /// 서버에서 위젯 스냅샷을 받아와 캐시 업데이트 (앱에서 호출)
   /// - Returns: 성공 여부
   @discardableResult
   public static func refreshFromServer() async -> Bool {
-    let functions = Functions.functions(region: "asia-northeast3")
-
-    do {
-      let result = try await functions.httpsCallable("getWidgetSnapshot").call([:])
-
-      guard let data = result.data as? [String: Any] else {
-        AppLogger.notification.error("❌ [WidgetDataManager] Invalid response format")
-        return false
-      }
-
-      // JSON으로 변환 후 디코딩
-      let jsonData = try JSONSerialization.data(withJSONObject: data)
-      let snapshot = try JSONDecoder().decode(WidgetSnapshotResponse.self, from: jsonData)
-
-      // 캐시 저장 및 위젯 갱신
-      let allItems = convertSnapshotToItems(snapshot)
-      saveItemsByType(allItems)
-      reloadWidgets()
-
-      AppLogger.notification.info("✅ [WidgetDataManager] 서버에서 위젯 데이터 갱신 완료 - \(allItems.count)개 항목")
-      return true
-    } catch {
-      AppLogger.notification.error("❌ [WidgetDataManager] 서버 호출 실패: \(error.localizedDescription)")
-      return false
+    if let widgetToken = loadWidgetToken() {
+      let result = await fetchSnapshotFromRust(token: widgetToken, allowAuthFallback: true)
+      return !result.hadError
     }
+
+    if let authToken = loadAuthToken() {
+      let result = await fetchSnapshotFromRust(token: authToken, allowAuthFallback: false)
+      return !result.hadError
+    }
+
+    widgetLogger.warning("❌ refreshFromServer: 토큰 없음")
+    return false
   }
 
   // MARK: - Widget Direct Fetch (iOS 17+)
@@ -374,10 +348,10 @@ public enum WidgetDataManager {
       return await fetchWithWidgetToken(widgetToken)
     }
 
-    // 2. Fallback: Firebase ID Token (1시간 유효)
-    if let idToken = loadIdToken() {
-      widgetLogger.info("🔑 ID Token fallback")
-      return await fetchWithIdToken(idToken)
+    // 2. Fallback: 서버 access token
+    if let authToken = loadAuthToken() {
+      widgetLogger.info("🔑 access token fallback")
+      return await fetchSnapshotFromRust(token: authToken, allowAuthFallback: false)
     }
 
     // 3. 토큰 없음 → 캐시 반환 (에러 아님, 단순히 토큰 만료)
@@ -408,20 +382,16 @@ public enum WidgetDataManager {
     defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
   }
 
-  /// Widget Token으로 API 호출
-  ///
-  /// Feature Flag에 따라 Rust(`GET /api/v1/widget/snapshot`) 또는
-  /// Firebase Functions(`getWidgetSnapshotWithToken`)을 호출합니다.
+  /// Widget Token으로 Rust API 호출
   private static func fetchWithWidgetToken(_ token: String) async -> FetchResult {
-    if useRustWidgetAPI {
-      return await fetchWithWidgetTokenFromRust(token)
-    } else {
-      return await fetchWithWidgetTokenFromFirebase(token)
-    }
+    await fetchSnapshotFromRust(token: token, allowAuthFallback: true)
   }
 
   /// Rust API로 위젯 스냅샷 호출 (GET /api/v1/widget/snapshot)
-  private static func fetchWithWidgetTokenFromRust(_ token: String) async -> FetchResult {
+  private static func fetchSnapshotFromRust(
+    token: String,
+    allowAuthFallback: Bool
+  ) async -> FetchResult {
     guard let url = URL(string: "\(rustBaseURL)/api/v1/widget/snapshot") else {
       widgetLogger.error("❌ Rust URL 생성 실패")
       return FetchResult(items: loadAllItems(), hadError: true)
@@ -445,10 +415,10 @@ public enum WidgetDataManager {
 
       guard httpResponse.statusCode == 200 else {
         widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public) (Rust)")
-        // 401: 토큰 만료/무효화 → Firebase ID Token fallback
-        if httpResponse.statusCode == 401, let idToken = loadIdToken() {
-          widgetLogger.info("🔄 Rust Widget Token 401 → ID Token fallback")
-          return await fetchWithIdToken(idToken)
+        // 401: widget token 만료/무효화 → server access token fallback
+        if allowAuthFallback, httpResponse.statusCode == 401, let authToken = loadAuthToken() {
+          widgetLogger.info("🔄 Widget token 401 → access token fallback")
+          return await fetchSnapshotFromRust(token: authToken, allowAuthFallback: false)
         }
         return FetchResult(items: loadAllItems(), hadError: true)
       }
@@ -468,101 +438,6 @@ public enum WidgetDataManager {
       return FetchResult(items: allItems, hadError: false)
     } catch {
       widgetLogger.error("❌ 네트워크 (Rust): \(error.localizedDescription, privacy: .public)")
-      return FetchResult(items: loadAllItems(), hadError: true)
-    }
-  }
-
-  /// Firebase Functions으로 위젯 스냅샷 호출 (getWidgetSnapshotWithToken)
-  private static func fetchWithWidgetTokenFromFirebase(_ token: String) async -> FetchResult {
-    guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshotWithToken") else {
-      widgetLogger.error("❌ URL 생성 실패")
-      return FetchResult(items: loadAllItems(), hadError: true)
-    }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    if let deviceId = loadWidgetDeviceId() {
-      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-    }
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
-
-    do {
-      let (data, response) = try await URLSession.shared.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        widgetLogger.error("❌ HTTP 응답 아님")
-        return FetchResult(items: loadAllItems(), hadError: true)
-      }
-
-      guard httpResponse.statusCode == 200 else {
-        widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public)")
-        // 401 에러면 토큰 만료/무효화 → ID Token으로 fallback 시도
-        if httpResponse.statusCode == 401, let idToken = loadIdToken() {
-          widgetLogger.info("🔄 Widget Token 401 → ID Token fallback")
-          return await fetchWithIdToken(idToken)
-        }
-        return FetchResult(items: loadAllItems(), hadError: true)
-      }
-
-      // Firebase Functions 응답 형식: { "result": { ... } }
-      let wrapper = try JSONDecoder().decode(FunctionsResponseWrapper.self, from: data)
-      let allItems = convertSnapshotToItems(wrapper.result)
-
-      // 캐시 업데이트 + TTL 기록
-      saveItemsByType(allItems)
-      markFetchedNow()
-
-      widgetLogger.info("✅ API 성공 → \(allItems.count, privacy: .public)개 항목")
-      return FetchResult(items: allItems, hadError: false)
-    } catch {
-      widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
-      return FetchResult(items: loadAllItems(), hadError: true)
-    }
-  }
-
-  /// Firebase ID Token으로 API 호출 (기존 getWidgetSnapshot 엔드포인트)
-  private static func fetchWithIdToken(_ token: String) async -> FetchResult {
-    guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
-      widgetLogger.error("❌ URL 생성 실패")
-      return FetchResult(items: loadAllItems(), hadError: true)
-    }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    if let deviceId = loadWidgetDeviceId() {
-      request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-    }
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
-
-    do {
-      let (data, response) = try await URLSession.shared.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        widgetLogger.error("❌ HTTP 응답 아님")
-        return FetchResult(items: loadAllItems(), hadError: true)
-      }
-
-      guard httpResponse.statusCode == 200 else {
-        widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public)")
-        return FetchResult(items: loadAllItems(), hadError: true)
-      }
-
-      // Firebase Functions 응답 형식: { "result": { ... } }
-      let wrapper = try JSONDecoder().decode(FunctionsResponseWrapper.self, from: data)
-      let allItems = convertSnapshotToItems(wrapper.result)
-
-      // 캐시 업데이트 + TTL 기록
-      saveItemsByType(allItems)
-      markFetchedNow()
-
-      widgetLogger.info("✅ API 성공 (ID Token) → \(allItems.count, privacy: .public)개 항목")
-      return FetchResult(items: allItems, hadError: false)
-    } catch {
-      widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
       return FetchResult(items: loadAllItems(), hadError: true)
     }
   }
@@ -611,12 +486,6 @@ public enum WidgetDataManager {
     saveSchedules(schedules)
     savePersonalEvents(personalEvents)
   }
-}
-
-// MARK: - Firebase Functions Response Wrapper
-
-private struct FunctionsResponseWrapper: Decodable {
-  let result: WidgetSnapshotResponse
 }
 
 // MARK: - Rust API Response Wrapper

@@ -25,23 +25,23 @@ public enum ImagePipelineConfigurator {
 
     ImagePipeline.shared = ImagePipeline(
       configuration: config,
-      delegate: FirebaseImageCacheDelegate.shared
+      delegate: StorageImageCacheDelegate.shared
     )
   }
 }
 
 // MARK: - ImagePipelineDelegate
 
-/// Firebase Storage URL의 캐시 키를 정규화하는 Delegate
+/// Storage URL의 캐시 키를 정규화하는 Delegate
 ///
-/// Firebase download URL은 `?alt=media&token=xxx` 쿼리가 포함되는데,
+/// Storage download URL은 `?alt=media&token=xxx` 쿼리가 포함되는데,
 /// 토큰이 갱신되면 같은 이미지인데도 캐시 미스가 발생한다.
 /// 쿼리 파라미터를 제거하여 경로 기반으로 캐시 키를 생성한다.
-private final class FirebaseImageCacheDelegate: ImagePipelineDelegate {
-  static let shared = FirebaseImageCacheDelegate()
+private final class StorageImageCacheDelegate: ImagePipelineDelegate {
+  static let shared = StorageImageCacheDelegate()
 
   func cacheKey(for request: ImageRequest, pipeline: ImagePipeline) -> String? {
-    guard let url = request.url, isFirebaseStorageURL(url) else {
+    guard let url = request.url, isStorageImageURL(url) else {
       return nil
     }
     return normalizedCacheKey(for: url)
@@ -49,7 +49,7 @@ private final class FirebaseImageCacheDelegate: ImagePipelineDelegate {
 
   // MARK: - Private
 
-  private func isFirebaseStorageURL(_ url: URL) -> Bool {
+  private func isStorageImageURL(_ url: URL) -> Bool {
     let host = url.host ?? ""
     return host.contains("firebasestorage.googleapis.com")
       || host.contains("storage.googleapis.com")
