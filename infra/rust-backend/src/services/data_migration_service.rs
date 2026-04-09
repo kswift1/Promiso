@@ -1433,7 +1433,32 @@ async fn import_subscriptions_phase(
     }
 
     let patched_subs = inject_user_id_from_doc_id(subscriptions_jsonl);
-    let patched_overrides = inject_user_id_from_doc_id(overrides_jsonl);
+
+    // entitlementOverrides: Firestore uses "type" but backfill expects "overrideType"
+    fn inject_override_fields(jsonl: &str) -> String {
+        jsonl
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(line) {
+                    let map = obj.as_object_mut().unwrap();
+                    if let Some(id) = map.get("_id").cloned() {
+                        map.entry("userId").or_insert(id);
+                    }
+                    // "type" → "overrideType"
+                    if let Some(t) = map.remove("type") {
+                        map.entry("overrideType").or_insert(t);
+                    }
+                    serde_json::to_string(&obj).unwrap_or_else(|_| line.to_string())
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    let patched_overrides = inject_override_fields(overrides_jsonl);
 
     // subscriptionOwners: _id is originalTransactionId, needs userId from the doc
     // The export already includes userId field in the doc data, so just use _id → originalTransactionId
