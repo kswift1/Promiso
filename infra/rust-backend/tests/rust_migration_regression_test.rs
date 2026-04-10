@@ -28,6 +28,8 @@ fn test_config() -> Config {
         apns_bundle_id: None,
         apns_environment: "development".to_string(),
         widget_jwt_secret: Some("test-secret".to_string()),
+        odsay_api_key: None,
+        kakao_rest_api_key: None,
     }
 }
 
