@@ -1439,43 +1439,35 @@ pub async fn get_home_schedules(
             .map(|(id,)| id)
             .collect();
 
-    // 그룹일정 조회 (그룹이 없으면 빈 Vec)
-    let mut group_schedules = if group_ids.is_empty() {
-        Vec::new()
-    } else {
+    let schedules = if group_ids.is_empty() {
         sqlx::query_as::<_, Schedule>(
             "SELECT * FROM schedules \
-             WHERE schedule_type = 'group' \
-               AND group_id = ANY($1) \
-               AND start_at >= $2 \
-             ORDER BY start_at ASC",
+             WHERE schedule_type = 'personal' AND user_id = $1 AND start_at >= $2 \
+             ORDER BY start_at ASC LIMIT $3",
+        )
+        .bind(user_id)
+        .bind(now)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+    } else {
+        sqlx::query_as::<_, Schedule>(
+            "(SELECT * FROM schedules \
+              WHERE schedule_type = 'group' AND group_id = ANY($1) AND start_at >= $3) \
+             UNION ALL \
+             (SELECT * FROM schedules \
+              WHERE schedule_type = 'personal' AND user_id = $2 AND start_at >= $3) \
+             ORDER BY start_at ASC LIMIT $4",
         )
         .bind(&group_ids)
+        .bind(user_id)
         .bind(now)
+        .bind(limit)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
     };
-
-    // 개인일정 조회
-    let mut personal_schedules = sqlx::query_as::<_, Schedule>(
-        "SELECT * FROM schedules \
-         WHERE schedule_type = 'personal' \
-           AND user_id = $1 \
-           AND start_at >= $2 \
-         ORDER BY start_at ASC",
-    )
-    .bind(user_id)
-    .bind(now)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-
-    // 두 결과 합산 후 start_at 오름차순 정렬, limit 적용
-    group_schedules.append(&mut personal_schedules);
-    group_schedules.sort_by_key(|s| s.start_at);
-    group_schedules.truncate(limit as usize);
-    let schedules = group_schedules;
 
     let schedule_ids: Vec<Uuid> = schedules.iter().map(|s| s.id).collect();
     let mut votes_map = fetch_votes_batched(pool, &schedule_ids).await?;

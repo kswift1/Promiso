@@ -106,7 +106,12 @@ pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
         ]
     });
 
-    let client = Client::new();
+    let client = Client::builder()
+        .build()
+        .map_err(|e| {
+            tracing::warn!("[Gemini] Failed to build HTTP client: {e}");
+            ()
+        })?;
     let resp = client
         .post(&url)
         .timeout(std::time::Duration::from_secs(30))

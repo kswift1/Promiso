@@ -37,9 +37,7 @@ extension GroupMain {
     @ViewBuilder
     private var rootContent: some View {
       Group {
-        if store.isGroupsLoading {
-          groupDetailView
-        } else if store.shouldShowEmptyGroupView {
+        if !store.isGroupsLoading && store.shouldShowEmptyGroupView {
           groupDetailEmptyView
         } else {
           groupDetailView
