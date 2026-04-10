@@ -292,9 +292,28 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
+
+            // 캐시된 정렬 옵션으로 즉시 그룹 표시
+            if let cachedString = userDefaultsClient.stringForKey(AppConstants.UserDefaults.cachedGroupSortOption),
+               let cachedData = cachedString.data(using: .utf8),
+               let cached = try? JSONDecoder().decode(GroupSortOption.self, from: cachedData) {
+              state.groupSortOption = cached
+            }
+            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+            state.allGroupSummaries = summaries
+
+            // 그룹 캘린더 동기화 설정 캐시 업데이트
+            state.$groupCalendarSyncCache.withLock { cache in
+              for group in summaries {
+                cache[group.id] = group.notifications?.calendarSync ?? true
+              }
+            }
+
             // 최초 진입 시 가이드 표시 (1초 딜레이)
             let shouldShowGuide = !userDefaultsClient.hasSeenScheduleGuide
             return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList)),
               .send(.internal(.fetchSettings)),
               shouldShowGuide
                 ? .run { send in
@@ -1167,18 +1186,22 @@ extension GroupMain {
             )
 
           case .settingsResponse(.success(let settings)):
-            state.groupSortOption = settings.groupSortOption
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
-            // 설정 로드 후 그룹 리스트 표시
-            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
-            state.allGroupSummaries = summaries
 
-            // 그룹 캘린더 동기화 설정 캐시 업데이트
-            state.$groupCalendarSyncCache.withLock { cache in
-              for group in summaries {
-                cache[group.id] = group.notifications?.calendarSync ?? true
-              }
+            // 정렬 옵션 캐시 저장
+            if let encoded = try? JSONEncoder().encode(settings.groupSortOption) {
+              userDefaultsClient.setString(String(data: encoded, encoding: .utf8), AppConstants.UserDefaults.cachedGroupSortOption)
             }
+
+            // 정렬 옵션이 변경된 경우에만 그룹 리스트 재정렬
+            let sortChanged = state.groupSortOption != settings.groupSortOption
+            if sortChanged {
+              state.groupSortOption = settings.groupSortOption
+              let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+              state.allGroupSummaries = summaries
+            }
+
+            let summaries = state.allGroupSummaries ?? state.sortedGroupsForSelection(state.currentUser.groups)
             analyticsClient.setGroupMembershipProperties(summaries)
             analyticsClient.setCalendarSyncEnabled(
               personalEnabled: userDefaultsClient.boolForKey(
@@ -1187,10 +1210,7 @@ extension GroupMain {
               groups: summaries
             )
 
-            return .merge(
-              .send(.internal(.setDefaultGroup(groups: summaries))),
-              .send(.internal(.fetchGroupList))
-            )
+            return sortChanged ? .send(.internal(.setDefaultGroup(groups: summaries))) : .none
 
           case .settingsResponse(.failure):
             // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
@@ -1399,11 +1419,14 @@ extension GroupMain {
         case .sortOptionChanged(let option):
           state.sortSettings = nil
           state.groupSortOption = option
+          // 로컬 캐시 저장 (다음 진입 시 즉시 적용)
+          if let encoded = try? JSONEncoder().encode(option) {
+            userDefaultsClient.setString(String(data: encoded, encoding: .utf8), AppConstants.UserDefaults.cachedGroupSortOption)
+          }
           return .run { [userSettingsClient, currentUser = state.currentUser] _ in
             do {
               try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
             } catch {
-              // 저장 실패해도 로컬 상태는 유지 (다음 앱 실행 시 서버에서 다시 로드)
               AppLogger.general.error("Failed to save sort option: \(error.localizedDescription)")
             }
           }
