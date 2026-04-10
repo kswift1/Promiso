@@ -41,7 +41,17 @@ public actor RustAPIClient {
     self.baseURL = baseURL
     self.getAuthToken = getAuthToken
     self.decoder = JSONDecoder()
-    self.decoder.dateDecodingStrategy = .iso8601
+    let isoWithFractional = ISO8601DateFormatter()
+    isoWithFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let isoWithout = ISO8601DateFormatter()
+    isoWithout.formatOptions = [.withInternetDateTime]
+    self.decoder.dateDecodingStrategy = .custom { decoder in
+      let container = try decoder.singleValueContainer()
+      let string = try container.decode(String.self)
+      if let date = isoWithFractional.date(from: string) { return date }
+      if let date = isoWithout.date(from: string) { return date }
+      throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot parse date: \(string)")
+    }
   }
 
   /// API 응답 wrapper ({"data": T} 또는 {"error": {...}})

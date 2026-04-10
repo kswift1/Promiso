@@ -462,7 +462,7 @@ public actor ScheduleRustDataSource {
     let endString = formatter.string(from: endDate)
       .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     let response: RustCalendarResponse = try await api.get(
-      "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)&accepted_only=true"
+      "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)&acceptedOnly=true"
     )
     return response.schedules.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }

@@ -10,6 +10,7 @@ use sqlx::types::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum NotificationType {
     ScheduleInvitation,
     ScheduleReminder,
