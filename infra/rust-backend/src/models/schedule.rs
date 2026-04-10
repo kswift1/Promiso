@@ -246,6 +246,12 @@ pub struct PersonalPastQuery {
     pub cursor: Option<DateTime<Utc>>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonalActiveQuery {
+    pub limit: Option<i64>,
+}
+
 // ============================================================
 // 응답 DTO
 // ============================================================

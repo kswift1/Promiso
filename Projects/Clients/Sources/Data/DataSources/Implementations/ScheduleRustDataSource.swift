@@ -428,7 +428,7 @@ public actor ScheduleRustDataSource {
     let response: [RustScheduleResponse] = try await api.get(
       "/api/v1/schedules/home?limit=\(limit)"
     )
-    return response.map { $0.toScheduleModel() }
+    return response.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   // MARK: - Calendar

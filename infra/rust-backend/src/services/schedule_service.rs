@@ -1439,25 +1439,43 @@ pub async fn get_home_schedules(
             .map(|(id,)| id)
             .collect();
 
-    if group_ids.is_empty() {
-        return Ok(Vec::new());
-    }
+    // 그룹일정 조회 (그룹이 없으면 빈 Vec)
+    let mut group_schedules = if group_ids.is_empty() {
+        Vec::new()
+    } else {
+        sqlx::query_as::<_, Schedule>(
+            "SELECT * FROM schedules \
+             WHERE schedule_type = 'group' \
+               AND group_id = ANY($1) \
+               AND start_at >= $2 \
+             ORDER BY start_at ASC",
+        )
+        .bind(&group_ids)
+        .bind(now)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+    };
 
-    // 그룹일정 중 미래 일정 조회
-    let schedules = sqlx::query_as::<_, Schedule>(
+    // 개인일정 조회
+    let mut personal_schedules = sqlx::query_as::<_, Schedule>(
         "SELECT * FROM schedules \
-         WHERE schedule_type = 'group' \
-           AND group_id = ANY($1) \
+         WHERE schedule_type = 'personal' \
+           AND user_id = $1 \
            AND start_at >= $2 \
-         ORDER BY start_at ASC \
-         LIMIT $3",
+         ORDER BY start_at ASC",
     )
-    .bind(&group_ids)
+    .bind(user_id)
     .bind(now)
-    .bind(limit)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // 두 결과 합산 후 start_at 오름차순 정렬, limit 적용
+    group_schedules.append(&mut personal_schedules);
+    group_schedules.sort_by_key(|s| s.start_at);
+    group_schedules.truncate(limit as usize);
+    let schedules = group_schedules;
 
     let schedule_ids: Vec<Uuid> = schedules.iter().map(|s| s.id).collect();
     let mut votes_map = fetch_votes_batched(pool, &schedule_ids).await?;
@@ -1507,6 +1525,35 @@ pub async fn get_personal_past_schedules(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
     };
+
+    Ok(schedules
+        .iter()
+        .map(|s| build_schedule_response(s, Vec::new()))
+        .collect())
+}
+
+pub async fn get_personal_active_schedules(
+    pool: &PgPool,
+    user_id: &str,
+    limit: i64,
+) -> Result<Vec<ScheduleResponse>, AppError> {
+    let limit = limit.min(50);
+    let now = Utc::now();
+
+    let schedules = sqlx::query_as::<_, Schedule>(
+        "SELECT * FROM schedules \
+         WHERE schedule_type = 'personal' \
+           AND user_id = $1 \
+           AND start_at >= $2 \
+         ORDER BY start_at ASC \
+         LIMIT $3",
+    )
+    .bind(user_id)
+    .bind(now)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(schedules
         .iter()

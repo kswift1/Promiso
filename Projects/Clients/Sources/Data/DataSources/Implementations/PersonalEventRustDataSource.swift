@@ -277,24 +277,18 @@ public actor PersonalEventRustDataSource {
 
   public func getActiveEvents(limit: Int) async throws -> [PersonalEventModel] {
     let response: [RustPersonalScheduleResponse] = try await api.get(
-      "/api/v1/schedules/home?limit=\(limit * 3)"
+      "/api/v1/schedules/personal/active?limit=\(limit)"
     )
-    return response
-      .filter { $0.scheduleType == "personal" }
-      .map { $0.toPersonalEventModel() }
-      .sorted { $0.startAt < $1.startAt }
-      .prefix(limit)
-      .map { $0 }
+    return response.map { $0.toPersonalEventModel() }
   }
 
   // MARK: - Ongoing Events
 
   public func getOngoingEvents(limit: Int) async throws -> [PersonalEventModel] {
     let response: [RustPersonalScheduleResponse] = try await api.get(
-      "/api/v1/schedules/home?limit=100"
+      "/api/v1/schedules/personal/active?limit=100"
     )
     return response
-      .filter { $0.scheduleType == "personal" }
       .map { $0.toPersonalEventModel() }
       .filter { $0.isOngoing }
       .prefix(limit)
