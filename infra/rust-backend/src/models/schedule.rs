@@ -23,6 +23,7 @@ pub enum VoteStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "recurrence_frequency", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum RecurrenceFrequency {
     Daily,
     Weekly,
