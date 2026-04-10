@@ -37,7 +37,9 @@ extension GroupMain {
     @ViewBuilder
     private var rootContent: some View {
       Group {
-        if store.shouldShowEmptyGroupView {
+        if store.isGroupsLoading {
+          groupLoadingView
+        } else if store.shouldShowEmptyGroupView {
           groupDetailEmptyView
         } else {
           groupDetailView
@@ -297,6 +299,34 @@ extension GroupMain {
       }
       .padding(.trailing, 16)
       .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private var groupLoadingView: some View {
+      VStack(spacing: 16) {
+        // 그룹 바 스켈레톤
+        HStack(spacing: 12) {
+          ForEach(0..<3, id: \.self) { _ in
+            RoundedRectangle(cornerRadius: 12)
+              .fill(Color(.systemGray6))
+              .frame(width: 72, height: 72)
+          }
+          Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+
+        // 일정 스켈레톤
+        LazyVStack(spacing: 12) {
+          ForEach(0..<3, id: \.self) { _ in
+            ScheduleCardSkeleton()
+          }
+        }
+        .padding(.horizontal, 16)
+
+        Spacer()
+      }
+      .shimmer()
     }
 
     @ViewBuilder
