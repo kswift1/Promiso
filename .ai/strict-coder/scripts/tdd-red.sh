@@ -26,6 +26,11 @@ if [ -f "$STATE_FILE" ]; then
     fi
 fi
 
+# DATABASE_URL이 없으면 .env에서 로드 (sqlx::test 연동 테스트용)
+if [ -z "${DATABASE_URL:-}" ] && [ -f "$RUST_DIR/.env" ]; then
+    export DATABASE_URL=$(grep '^DATABASE_URL=' "$RUST_DIR/.env" | head -1 | cut -d'=' -f2-)
+fi
+
 echo "🔴 Red Phase: 테스트 실행 중..."
 echo "  명령: cargo test --manifest-path $RUST_DIR/Cargo.toml $*"
 echo ""
