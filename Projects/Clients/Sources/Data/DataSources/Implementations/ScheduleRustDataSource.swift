@@ -448,7 +448,7 @@ public actor ScheduleRustDataSource {
     let response: RustCalendarResponse = try await api.get(
       "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)"
     )
-    return response.schedules.map { $0.toScheduleModel() }
+    return response.schedules.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   public func getAcceptedSchedulesByDateRange(
@@ -464,7 +464,7 @@ public actor ScheduleRustDataSource {
     let response: RustCalendarResponse = try await api.get(
       "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)&accepted_only=true"
     )
-    return response.schedules.map { $0.toScheduleModel() }
+    return response.schedules.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   // MARK: - Calendar Sync
