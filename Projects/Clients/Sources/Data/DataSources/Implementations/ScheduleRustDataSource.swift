@@ -113,7 +113,7 @@ private struct RustPaginatedScheduleResponse: Decodable {
 /// 캘린더 응답
 private struct RustCalendarResponse: Decodable {
   let schedules: [RustScheduleResponse]
-  let recurringInstances: [RustRecurringInstance]?
+  let recurringInstances: [RustRecurringInstance]
 }
 
 private struct RustRecurringInstance: Decodable {

@@ -139,8 +139,9 @@ public actor NotificationRustDataSource {
       let encoded = dateString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? dateString
       path += "&before=\(encoded)"
     }
+    let currentUserId = await ServerAuthSessionManager.shared.currentUser()?.uid ?? ""
     let response: [RustNotificationResponse] = try await api.get(path)
-    return response.map { $0.toModel() }
+    return response.map { $0.toModel(currentUserId: currentUserId) }
   }
 
   /// 안 읽은 알림 개수 조회
@@ -190,7 +191,7 @@ public actor NotificationRustDataSource {
 // MARK: - DTO -> Model 변환
 
 extension RustNotificationResponse {
-  fileprivate func toModel() -> NotificationModel {
+  fileprivate func toModel(currentUserId: String) -> NotificationModel {
     // notificationType 문자열 -> NotificationCategory 변환
     // Rust 서버는 snake_case로 전달하므로 rawValue로 직접 매핑
     let category: NotificationCategory = {
@@ -232,7 +233,7 @@ extension RustNotificationResponse {
 
     return NotificationModel(
       notificationId: id,
-      userId: "", // Rust API는 인증된 사용자 기준이므로 서버에서 userId를 별도 반환하지 않을 수 있음
+      userId: currentUserId, // Rust NotificationResponse에는 userId 필드 없음 (인증된 사용자 기준 API)
       type: category,
       title: title,
       body: body,

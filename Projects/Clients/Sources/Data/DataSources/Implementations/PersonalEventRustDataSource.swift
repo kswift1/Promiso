@@ -77,7 +77,7 @@ private struct RustSuccessResponse: Decodable {
 /// 캘린더 응답
 private struct RustCalendarResponse: Decodable {
   let schedules: [RustPersonalScheduleResponse]
-  let recurringInstances: [RustRecurringInstance]?
+  let recurringInstances: [RustRecurringInstance]
 }
 
 private struct RustRecurringInstance: Decodable {
@@ -85,7 +85,7 @@ private struct RustRecurringInstance: Decodable {
   let title: String
   let emoji: String?
   let date: String
-  let startTime: RustTimeComponents?
+  let startTime: RustTimeComponents
   let endTime: RustTimeComponents?
   let location: RustLocationResponse?
 }
