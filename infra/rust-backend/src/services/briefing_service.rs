@@ -11,6 +11,7 @@ use crate::models::schedule::RecurrenceFrequency;
 // ============================================================
 
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerateBriefingRequest {
     pub timezone: String,
     pub language: String,
@@ -20,6 +21,7 @@ pub struct GenerateBriefingRequest {
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BriefingLocation {
     pub latitude: f64,
     pub longitude: f64,
@@ -27,6 +29,7 @@ pub struct BriefingLocation {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerateBriefingResponse {
     pub summary: String,
     pub detail: String,

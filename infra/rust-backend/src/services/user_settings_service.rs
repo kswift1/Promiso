@@ -24,6 +24,7 @@ const VALID_BRIEFING_STYLES: &[&str] = &["friendly", "humorous", "concise", "mot
 
 /// 설정 응답 DTO
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserSettingsResponse {
     pub notification_enabled: bool,
     pub group_sort_type: String,
@@ -33,6 +34,7 @@ pub struct UserSettingsResponse {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BriefingSettingsResponse {
     pub style: Option<String>,
     pub notification_hour: Option<i16>,
@@ -43,6 +45,7 @@ pub struct BriefingSettingsResponse {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DefaultLocationResponse {
     pub name: String,
     pub address: Option<String>,
@@ -56,6 +59,7 @@ pub struct DefaultLocationResponse {
 
 /// 설정 수정 요청 DTO
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSettingsRequest {
     pub group_sort_type: Option<String>,
     pub group_sort_order: Option<Option<Vec<String>>>,
@@ -69,6 +73,7 @@ pub struct UpdateSettingsRequest {
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateLocationRequest {
     pub name: String,
     pub address: Option<String>,

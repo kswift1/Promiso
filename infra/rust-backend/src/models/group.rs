@@ -55,6 +55,7 @@ pub struct GroupMember {
 // ============================================================
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateGroupRequest {
     pub name: String,
     pub description: Option<String>,
@@ -62,7 +63,7 @@ pub struct CreateGroupRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct UpdateGroupRequest {
     // 이름은 변경 불가 — 필드 자체를 제외하여 컴파일타임 강제
     // deny_unknown_fields로 클라이언트가 name을 보내면 400 반환
@@ -79,21 +80,25 @@ pub struct UpdateGroupRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JoinGroupRequest {
     pub invite_code: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferHostRequest {
     pub new_host_uid: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExpelMemberRequest {
     pub target_uid: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScheduleNotificationSettings {
     pub invitation: bool,
     pub reminder: bool,
@@ -104,11 +109,13 @@ pub struct ScheduleNotificationSettings {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupNotificationSettings {
     pub update: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NotificationSettingsRequest {
     pub enabled: bool,
     pub schedule: ScheduleNotificationSettings,
@@ -117,16 +124,19 @@ pub struct NotificationSettingsRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateGroupColorRequest {
     pub color: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchGroupsRequest {
     pub ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueGroupImageUploadUrlRequest {
     pub content_type: Option<String>,
 }
@@ -136,6 +146,7 @@ pub struct IssueGroupImageUploadUrlRequest {
 // ============================================================
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateGroupResponse {
     pub group_id: String,
     pub invite_code: String,
@@ -143,6 +154,7 @@ pub struct CreateGroupResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScheduleNotificationSettingsResponse {
     pub invitation: bool,
     pub reminder: bool,
@@ -153,11 +165,13 @@ pub struct ScheduleNotificationSettingsResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupNotificationSettingsResponse {
     pub update: bool,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NotificationSettingsResponse {
     pub enabled: bool,
     pub schedule: ScheduleNotificationSettingsResponse,
@@ -166,6 +180,7 @@ pub struct NotificationSettingsResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupResponse {
     pub group_id: String,
     pub name: String,
@@ -184,6 +199,7 @@ pub struct GroupResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupSummaryResponse {
     pub group_id: String,
     pub name: String,
@@ -198,6 +214,7 @@ pub struct GroupSummaryResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupPreviewResponse {
     pub group_id: String,
     pub name: String,
@@ -209,6 +226,7 @@ pub struct GroupPreviewResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupMemberPreview {
     pub user_id: String,
     pub nickname: String,
@@ -216,6 +234,7 @@ pub struct GroupMemberPreview {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupMemberResponse {
     pub user_id: String,
     pub nickname: String,
@@ -226,6 +245,7 @@ pub struct GroupMemberResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueGroupImageUploadUrlResponse {
     pub object_path: String,
     pub upload_url: String,

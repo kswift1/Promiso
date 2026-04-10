@@ -78,6 +78,7 @@ pub struct ScheduleVote {
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct RecurringSchedule {
     pub id: Uuid,
     pub user_id: String,
@@ -109,6 +110,7 @@ pub struct RecurringSchedule {
 // ============================================================
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateScheduleRequest {
     pub schedule_type: ScheduleType,
     pub group_id: Option<Uuid>,
@@ -126,6 +128,7 @@ pub struct CreateScheduleRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocationRequest {
     pub name: String,
     pub address: Option<String>,
@@ -134,6 +137,7 @@ pub struct LocationRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateScheduleRequest {
     // Option<Option<T>> 패턴:
     //   None          -> 변경 없음 (JSON에서 필드 생략)
@@ -153,11 +157,13 @@ pub struct UpdateScheduleRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RespondScheduleRequest {
     pub status: String, // "accepted" | "declined" | "pending"
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CheckConflictsRequest {
     pub start_at: DateTime<Utc>,
     pub end_at: Option<DateTime<Utc>>,
@@ -167,6 +173,7 @@ pub struct CheckConflictsRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRecurringScheduleRequest {
     pub title: String,
     pub emoji: Option<String>,
@@ -183,12 +190,14 @@ pub struct CreateRecurringScheduleRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TimeComponents {
     pub hour: i16,
     pub minute: i16,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateRecurringScheduleRequest {
     pub title: Option<String>,
     pub emoji: Option<Option<String>>,
@@ -208,6 +217,7 @@ pub struct UpdateRecurringScheduleRequest {
 
 // 쿼리 파라미터
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GroupScheduleQuery {
     pub status: Option<String>, // "active" | "past"
     pub limit: Option<i64>,
@@ -215,6 +225,7 @@ pub struct GroupScheduleQuery {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CalendarQuery {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
@@ -223,11 +234,13 @@ pub struct CalendarQuery {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HomeQuery {
     pub limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PersonalPastQuery {
     pub limit: Option<i64>,
     pub cursor: Option<DateTime<Utc>>,
@@ -238,6 +251,7 @@ pub struct PersonalPastQuery {
 // ============================================================
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateScheduleResponse {
     pub schedule_id: Uuid,
     pub title: String,
@@ -247,6 +261,7 @@ pub struct CreateScheduleResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScheduleResponse {
     pub id: Uuid,
     pub schedule_type: ScheduleType,
@@ -274,6 +289,7 @@ pub struct ScheduleResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocationResponse {
     pub name: String,
     pub address: Option<String>,
@@ -282,12 +298,14 @@ pub struct LocationResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VotesResponse {
     pub accepted: Vec<String>,
     pub declined: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RespondScheduleResponse {
     pub schedule_id: Uuid,
     pub status: String,
@@ -296,6 +314,7 @@ pub struct RespondScheduleResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CalendarSyncSchedule {
     pub id: Uuid,
     pub title: String,
@@ -307,6 +326,7 @@ pub struct CalendarSyncSchedule {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScheduleConflict {
     pub id: String,
     pub source: String,
@@ -320,18 +340,21 @@ pub struct ScheduleConflict {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PaginatedScheduleResponse {
     pub data: Vec<ScheduleResponse>,
     pub cursor: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CalendarResponse {
     pub schedules: Vec<ScheduleResponse>,
     pub recurring_instances: Vec<RecurringInstance>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecurringInstance {
     pub recurring_schedule_id: Uuid,
     pub title: String,
@@ -343,12 +366,14 @@ pub struct RecurringInstance {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRecurringScheduleResponse {
     pub id: Uuid,
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExtractScheduleRequest {
     pub text: Option<String>,
     pub image_base64: Option<String>,
@@ -356,6 +381,7 @@ pub struct ExtractScheduleRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExtractScheduleResponse {
     pub title: Option<String>,
     pub emoji: Option<String>,

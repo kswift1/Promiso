@@ -25,6 +25,7 @@ pub enum NotificationType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "notification_provider", rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum NotificationProvider {
     Fcm,
 }
@@ -87,34 +88,40 @@ pub struct Notification {
 // ============================================================
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpsertDeviceRequest {
     pub device_id: String,
     pub platform: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpsertNotificationEndpointRequest {
     pub token: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpsertLiveActivityEndpointRequest {
     pub push_to_start_token: Option<String>,
     pub live_activity_push_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetNotificationsQuery {
     pub limit: Option<i64>,
     pub before: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteNotificationsRequest {
     pub notification_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendPushRequest {
     pub user_ids: Vec<String>,
     pub notification_type: NotificationType,
@@ -131,6 +138,7 @@ pub struct SendPushRequest {
 // ============================================================
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceResponse {
     pub device_id: String,
     pub platform: String,
@@ -139,6 +147,7 @@ pub struct DeviceResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NotificationEndpointResponse {
     pub device_id: String,
     pub provider: NotificationProvider,
@@ -147,6 +156,7 @@ pub struct NotificationEndpointResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LiveActivityEndpointResponse {
     pub device_id: String,
     pub push_to_start_token: Option<String>,
@@ -155,6 +165,7 @@ pub struct LiveActivityEndpointResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NotificationResponse {
     pub id: Uuid,
     pub notification_type: NotificationType,
@@ -170,6 +181,7 @@ pub struct NotificationResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UnreadCountResponse {
     pub count: i64,
 }

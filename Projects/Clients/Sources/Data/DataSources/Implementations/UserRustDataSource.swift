@@ -97,8 +97,17 @@ public actor UserRustDataSource {
         email: email
       )
     )
-    let response: RustCreateUserResponse = try await api.post("/api/v1/users", body: body)
-    return response.userId
+    do {
+      let response: RustCreateUserResponse = try await api.post("/api/v1/users", body: body)
+      return response.userId
+    } catch let error as RustAPIError {
+      switch error {
+      case .serverError(let code, _) where code == "already-exists":
+        throw UserProfileError.alreadyExists
+      default:
+        throw error
+      }
+    }
   }
 
   public func getMyProfile() async throws -> UserPrivateModel {

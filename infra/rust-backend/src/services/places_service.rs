@@ -3,6 +3,7 @@ use reqwest::Client;
 use crate::errors::AppError;
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlaceResult {
     pub id: String,
     pub name: String,

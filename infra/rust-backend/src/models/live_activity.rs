@@ -39,6 +39,7 @@ pub struct LiveActivityJob {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LiveActivityParticipant {
     pub id: String,
     pub name: String,
@@ -46,12 +47,14 @@ pub struct LiveActivityParticipant {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct VoteLiveActivityMember {
     pub id: String,
     pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct VoteLiveActivityContentState {
     pub accepted_members: Vec<VoteLiveActivityMember>,
     pub declined_members: Vec<VoteLiveActivityMember>,
@@ -60,6 +63,7 @@ pub struct VoteLiveActivityContentState {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateScheduleLiveActivityRequest {
     pub channel_id: String,
     pub participants: Vec<LiveActivityParticipant>,
@@ -67,6 +71,7 @@ pub struct UpdateScheduleLiveActivityRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WidgetUpdateScheduleLiveActivityRequest {
     pub schedule_id: Uuid,
     pub channel_id: String,
@@ -75,6 +80,7 @@ pub struct WidgetUpdateScheduleLiveActivityRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WidgetVoteLiveActivityRequest {
     pub schedule_id: Uuid,
     pub channel_id: Option<String>,
@@ -83,6 +89,7 @@ pub struct WidgetVoteLiveActivityRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StartScheduleLiveActivityResponse {
     pub success: bool,
     pub success_count: i32,
@@ -91,6 +98,7 @@ pub struct StartScheduleLiveActivityResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateScheduleLiveActivityResponse {
     pub success: bool,
     pub success_count: i32,
@@ -98,12 +106,14 @@ pub struct UpdateScheduleLiveActivityResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateVoteLiveActivityResponse {
     pub success: bool,
     pub content_state: VoteLiveActivityContentState,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LiveActivityJobPayload {
     pub channel_id: Option<String>,
 }

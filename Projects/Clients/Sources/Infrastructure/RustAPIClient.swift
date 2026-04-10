@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 /// Rust 백엔드 API 호출 클라이언트
 public actor RustAPIClient {
@@ -14,17 +15,16 @@ public actor RustAPIClient {
     #endif
   }()
 
-  private static let session: URLSession = {
-    #if DEBUG
-    return URLSession(
-      configuration: .default,
-      delegate: URLSessionProxyDelegate(),
-      delegateQueue: nil
-    )
-    #else
-    return URLSession.shared
-    #endif
-  }()
+  #if DEBUG
+  private static let pulseDelegate = URLSessionProxyDelegate()
+  private static let session = URLSession(
+    configuration: .default,
+    delegate: pulseDelegate,
+    delegateQueue: nil
+  )
+  #else
+  private static let session = URLSession.shared
+  #endif
 
   public static func defaultAuthToken() async throws -> String {
     try await ServerAuthSessionManager.shared.currentAccessToken()
@@ -41,7 +41,6 @@ public actor RustAPIClient {
     self.baseURL = baseURL
     self.getAuthToken = getAuthToken
     self.decoder = JSONDecoder()
-    self.decoder.keyDecodingStrategy = .convertFromSnakeCase
     self.decoder.dateDecodingStrategy = .iso8601
   }
 
@@ -97,22 +96,39 @@ public actor RustAPIClient {
 
     if let body = body, !(body is Empty) {
       let encoder = JSONEncoder()
-      encoder.keyEncodingStrategy = .convertToSnakeCase
       encoder.dateEncodingStrategy = .iso8601
       urlRequest.httpBody = try encoder.encode(body)
     }
 
+    #if DEBUG
+    if let httpBody = urlRequest.httpBody {
+      AppLogger.network.info("➡️ \(method) \(path)\n\(prettyJSON(httpBody))")
+    } else {
+      AppLogger.network.info("➡️ \(method) \(path)")
+    }
+    #endif
+
+    #if DEBUG
+    let (data, response) = try await Self.session.data(for: urlRequest, delegate: Self.pulseDelegate)
+    #else
     let (data, response) = try await Self.session.data(for: urlRequest)
+    #endif
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw RustAPIError.invalidResponse
     }
 
+    #if DEBUG
+    AppLogger.network.info("⬅️ \(httpResponse.statusCode) \(method) \(path)\n\(prettyJSON(data))")
+    #endif
+
     if httpResponse.statusCode >= 400 {
       if let apiResponse = try? decoder.decode(ApiResponse<T>.self, from: data),
          let error = apiResponse.error {
+        AppLogger.network.error("❌ \(method) \(path) - \(error.code): \(error.message)")
         throw RustAPIError.serverError(code: error.code, message: error.message)
       }
+      AppLogger.network.error("❌ \(method) \(path) - HTTP \(httpResponse.statusCode)")
       throw RustAPIError.httpError(statusCode: httpResponse.statusCode)
     }
 
@@ -123,6 +139,19 @@ public actor RustAPIClient {
     return result
   }
 }
+
+  #if DEBUG
+private func prettyJSON(_ data: Data) -> String {
+    guard
+      let json = try? JSONSerialization.jsonObject(with: data),
+      let pretty = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),
+      let string = String(data: pretty, encoding: .utf8)
+    else {
+      return String(data: data, encoding: .utf8) ?? "(\(data.count) bytes)"
+    }
+    return string
+  }
+  #endif
 
 public enum RustAPIError: Error, LocalizedError {
   case invalidResponse

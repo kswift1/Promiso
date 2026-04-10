@@ -8,6 +8,7 @@ use crate::services::briefing_service::{
 };
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DispatchSummary {
     pub total_due: i64,
     pub processed: i64,
