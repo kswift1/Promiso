@@ -24,7 +24,7 @@ impl SubscriptionStatus {
             Self::Subscribed => "subscribed",
             Self::Lifetime => "lifetime",
             Self::Expired => "expired",
-            Self::GracePeriod => "grace_period",
+            Self::GracePeriod => "gracePeriod",
             Self::Revoked => "revoked",
         }
     }
