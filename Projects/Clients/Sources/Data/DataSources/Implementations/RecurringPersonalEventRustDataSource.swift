@@ -403,7 +403,7 @@ extension RustRecurringScheduleResponse {
     guard let string = string else { return nil }
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
-    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
     return formatter.date(from: string)
   }
 }
