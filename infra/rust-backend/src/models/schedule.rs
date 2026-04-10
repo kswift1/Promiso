@@ -23,6 +23,7 @@ pub enum VoteStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "recurrence_frequency", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum RecurrenceFrequency {
     Daily,
     Weekly,
@@ -244,6 +245,12 @@ pub struct HomeQuery {
 pub struct PersonalPastQuery {
     pub limit: Option<i64>,
     pub cursor: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonalActiveQuery {
+    pub limit: Option<i64>,
 }
 
 // ============================================================

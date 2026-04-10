@@ -91,15 +91,10 @@ fn truncate_to_bytes(s: &str, max_bytes: usize) -> String {
 /// `gemini-2.0-flash` 모델을 사용한다.
 /// 응답 텍스트만 반환하며, 에러 시 `Err(())`를 반환한다.
 pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| {
-            tracing::warn!("[Gemini] Failed to build HTTP client: {e}");
-        })?;
-
-    let url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
+        api_key
+    );
 
     let body = serde_json::json!({
         "contents": [
@@ -111,9 +106,15 @@ pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
         ]
     });
 
+    let client = Client::builder()
+        .build()
+        .map_err(|e| {
+            tracing::warn!("[Gemini] Failed to build HTTP client: {e}");
+            ()
+        })?;
     let resp = client
-        .post(url)
-        .header("x-goog-api-key", api_key)
+        .post(&url)
+        .timeout(std::time::Duration::from_secs(30))
         .json(&body)
         .send()
         .await

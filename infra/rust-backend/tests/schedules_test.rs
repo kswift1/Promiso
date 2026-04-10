@@ -2176,3 +2176,172 @@ async fn check_conflicts_returns_client_friendly_source_and_severity(pool: PgPoo
     assert_eq!(personal_conflict.source, "personalEvent");
     assert_eq!(personal_conflict.severity, "confirmed");
 }
+
+// ============================================================
+// get_home_schedules: group + personal 합산 테스트
+// ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_home_schedules_includes_personal_schedules(pool: PgPool) {
+    // group 일정 1개 + personal 일정 1개 → 두 결과 모두 반환
+    insert_test_user(&pool, "user_ghips", "유저GHIPS").await;
+    let group_id = create_test_group(&pool, "user_ghips", "홈테스트그룹").await;
+
+    let group_req = make_group_schedule_request(group_id, "그룹 일정", future_time(48));
+    schedule_service::create_schedule(&pool, "user_ghips", group_req)
+        .await
+        .expect("group schedule create should succeed");
+
+    let personal_req = make_personal_schedule_request("개인 일정", future_time(24));
+    schedule_service::create_schedule(&pool, "user_ghips", personal_req)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let query = HomeQuery { limit: None };
+    let result = schedule_service::get_home_schedules(&pool, "user_ghips", query)
+        .await
+        .expect("get_home_schedules should succeed");
+
+    assert_eq!(result.len(), 2);
+    // start_at 오름차순 정렬: 개인 일정(24h 후)이 그룹 일정(48h 후)보다 먼저
+    assert_eq!(result[0].title, "개인 일정");
+    assert_eq!(result[1].title, "그룹 일정");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_home_schedules_no_group_returns_personal(pool: PgPool) {
+    // 그룹이 없어도 personal 일정 반환
+    insert_test_user(&pool, "user_ghngrp", "유저GHNGRP").await;
+
+    let personal_req = make_personal_schedule_request("개인 일정만", future_time(12));
+    schedule_service::create_schedule(&pool, "user_ghngrp", personal_req)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let query = HomeQuery { limit: None };
+    let result = schedule_service::get_home_schedules(&pool, "user_ghngrp", query)
+        .await
+        .expect("get_home_schedules should succeed");
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].title, "개인 일정만");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_home_schedules_limit_applies_to_combined(pool: PgPool) {
+    // group 3개 + personal 2개 → limit 3이면 start_at 기준 상위 3개만 반환
+    insert_test_user(&pool, "user_ghlac", "유저GHLAC").await;
+    let group_id = create_test_group(&pool, "user_ghlac", "리밋테스트그룹").await;
+
+    for i in 1..=3i64 {
+        let req = make_group_schedule_request(group_id, &format!("그룹{}", i), future_time(i * 48));
+        schedule_service::create_schedule(&pool, "user_ghlac", req)
+            .await
+            .expect("group schedule create should succeed");
+    }
+
+    for i in 1..=2i64 {
+        let req = make_personal_schedule_request(&format!("개인{}", i), future_time(i * 24));
+        schedule_service::create_schedule(&pool, "user_ghlac", req)
+            .await
+            .expect("personal schedule create should succeed");
+    }
+
+    let query = HomeQuery { limit: Some(3) };
+    let result = schedule_service::get_home_schedules(&pool, "user_ghlac", query)
+        .await
+        .expect("get_home_schedules should succeed");
+
+    assert_eq!(result.len(), 3);
+    // 정렬 확인
+    assert!(result[0].start_at <= result[1].start_at);
+    assert!(result[1].start_at <= result[2].start_at);
+}
+
+// ============================================================
+// get_personal_active_schedules 테스트
+// ============================================================
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_personal_active_schedules_returns_future_only(pool: PgPool) {
+    // 미래 2개 + 과거 1개 → 미래 2개만 반환
+    insert_test_user(&pool, "user_gpas", "유저GPAS").await;
+
+    let req1 = make_personal_schedule_request("미래1", future_time(24));
+    schedule_service::create_schedule(&pool, "user_gpas", req1)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let req2 = make_personal_schedule_request("미래2", future_time(48));
+    schedule_service::create_schedule(&pool, "user_gpas", req2)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let result = schedule_service::get_personal_active_schedules(&pool, "user_gpas", 20)
+        .await
+        .expect("get_personal_active_schedules should succeed");
+
+    assert_eq!(result.len(), 2);
+    assert!(result[0].start_at <= result[1].start_at);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_personal_active_schedules_excludes_group_schedules(pool: PgPool) {
+    // personal 1개 + group 1개 → personal만 반환
+    insert_test_user(&pool, "user_gpaegs", "유저GPAEGS").await;
+    let group_id = create_test_group(&pool, "user_gpaegs", "그룹제외테스트").await;
+
+    let group_req = make_group_schedule_request(group_id, "그룹 일정", future_time(24));
+    schedule_service::create_schedule(&pool, "user_gpaegs", group_req)
+        .await
+        .expect("group schedule create should succeed");
+
+    let personal_req = make_personal_schedule_request("개인 일정", future_time(48));
+    schedule_service::create_schedule(&pool, "user_gpaegs", personal_req)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let result = schedule_service::get_personal_active_schedules(&pool, "user_gpaegs", 20)
+        .await
+        .expect("get_personal_active_schedules should succeed");
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].title, "개인 일정");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_personal_active_schedules_limit_applied(pool: PgPool) {
+    // 5개 생성 후 limit 2 → 2개 반환
+    insert_test_user(&pool, "user_gpasla", "유저GPASLA").await;
+
+    for i in 1..=5i64 {
+        let req = make_personal_schedule_request(&format!("개인{}", i), future_time(i * 12));
+        schedule_service::create_schedule(&pool, "user_gpasla", req)
+            .await
+            .expect("personal schedule create should succeed");
+    }
+
+    let result = schedule_service::get_personal_active_schedules(&pool, "user_gpasla", 2)
+        .await
+        .expect("get_personal_active_schedules should succeed");
+
+    assert_eq!(result.len(), 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn get_personal_active_schedules_other_user_isolated(pool: PgPool) {
+    // user_a의 개인 일정이 user_b 조회에 포함되지 않아야 함
+    insert_test_user(&pool, "user_gpaoua", "유저GPAOUA").await;
+    insert_test_user(&pool, "user_gpaouб", "유저GPAОUB").await;
+
+    let req = make_personal_schedule_request("유저A 개인 일정", future_time(24));
+    schedule_service::create_schedule(&pool, "user_gpaoua", req)
+        .await
+        .expect("personal schedule create should succeed");
+
+    let result = schedule_service::get_personal_active_schedules(&pool, "user_gpaouб", 20)
+        .await
+        .expect("get_personal_active_schedules should succeed");
+
+    assert_eq!(result.len(), 0);
+}

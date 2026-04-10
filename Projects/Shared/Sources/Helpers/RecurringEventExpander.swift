@@ -64,7 +64,7 @@ public enum RecurringEventExpander {
     from rangeStart: Date,
     to rangeEnd: Date
   ) -> [ExpandedEventInstance] {
-    let calendar = Calendar.current
+    let calendar = Calendar.scheduleDisplay
     let recurrence = event.recurrence
 
     // 실제 시작일: seriesStartDate와 rangeStart 중 늦은 쪽

@@ -48,7 +48,7 @@ extension Home.Feature.State {
 
     // 반복 일정 expand 범위: 오늘 ~ 30일 후
     let calendar = Calendar.scheduleDisplay
-    let rangeEnd = calendar.date(byAdding: .day, value: 30, to: startOfDay) ?? startOfDay
+    let rangeEnd = calendar.date(byAdding: .day, value: 60, to: startOfDay) ?? startOfDay
     let expandedRecurringItems: [HomeModels.ScheduleItem] = allRecurringEvents.flatMap { event in
       RecurringEventExpander.expand(event: event, from: startOfDay, to: rangeEnd)
         .map { HomeModels.ScheduleItem.recurringPersonalEvent($0) }

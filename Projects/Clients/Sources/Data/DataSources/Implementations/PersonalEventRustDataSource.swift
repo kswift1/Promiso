@@ -77,7 +77,7 @@ private struct RustSuccessResponse: Decodable {
 /// 캘린더 응답
 private struct RustCalendarResponse: Decodable {
   let schedules: [RustPersonalScheduleResponse]
-  let recurringInstances: [RustRecurringInstance]?
+  let recurringInstances: [RustRecurringInstance]
 }
 
 private struct RustRecurringInstance: Decodable {
@@ -85,7 +85,7 @@ private struct RustRecurringInstance: Decodable {
   let title: String
   let emoji: String?
   let date: String
-  let startTime: RustTimeComponents?
+  let startTime: RustTimeComponents
   let endTime: RustTimeComponents?
   let location: RustLocationResponse?
 }
@@ -277,24 +277,18 @@ public actor PersonalEventRustDataSource {
 
   public func getActiveEvents(limit: Int) async throws -> [PersonalEventModel] {
     let response: [RustPersonalScheduleResponse] = try await api.get(
-      "/api/v1/schedules/home?limit=\(limit * 3)"
+      "/api/v1/schedules/personal/active?limit=\(limit)"
     )
-    return response
-      .filter { $0.scheduleType == "personal" }
-      .map { $0.toPersonalEventModel() }
-      .sorted { $0.startAt < $1.startAt }
-      .prefix(limit)
-      .map { $0 }
+    return response.map { $0.toPersonalEventModel() }
   }
 
   // MARK: - Ongoing Events
 
   public func getOngoingEvents(limit: Int) async throws -> [PersonalEventModel] {
     let response: [RustPersonalScheduleResponse] = try await api.get(
-      "/api/v1/schedules/home?limit=100"
+      "/api/v1/schedules/personal/active?limit=100"
     )
     return response
-      .filter { $0.scheduleType == "personal" }
       .map { $0.toPersonalEventModel() }
       .filter { $0.isOngoing }
       .prefix(limit)

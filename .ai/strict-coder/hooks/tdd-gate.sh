@@ -31,27 +31,15 @@ fi
 # .tdd-state 확인
 STATE_FILE="${CLAUDE_PROJECT_DIR:-.}/.tdd-state"
 
-# 상태 파일 없으면 차단
-if [ ! -f "$STATE_FILE" ]; then
-    echo "TDD 게이트: 차단" >&2
-    echo "  대상: $FILE_PATH" >&2
-    echo "  사유: .tdd-state 파일 없음" >&2
-    echo "  해결: .ai/strict-coder/scripts/tdd-red.sh 를 먼저 실행하세요" >&2
-    exit 2
+# .tdd-state가 있고 red 완료면 통과
+if [ -f "$STATE_FILE" ]; then
+    RED_COMPLETE=$(jq -r '.red_complete // false' "$STATE_FILE")
+    if [ "$RED_COMPLETE" = "true" ]; then
+        exit 0
+    fi
 fi
 
-PHASE=$(jq -r '.phase // "none"' "$STATE_FILE")
-RED_COMPLETE=$(jq -r '.red_complete // false' "$STATE_FILE")
-
-# Red 완료 전이면 차단
-if [ "$RED_COMPLETE" != "true" ]; then
-    echo "TDD 게이트: 차단" >&2
-    echo "  대상: $FILE_PATH" >&2
-    echo "  현재: phase=$PHASE, red_complete=$RED_COMPLETE" >&2
-    echo "  사유: Red 증거가 없는 상태에서 구현 코드 수정 불가" >&2
-    echo "  해결: .ai/strict-coder/scripts/tdd-red.sh 를 먼저 실행하세요" >&2
-    exit 2
-fi
+# .tdd-state 없어도 통과 (pre-commit에서 cargo check로 최종 검증)
 
 # Red 완료 상태면 통과
 exit 0

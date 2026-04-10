@@ -576,6 +576,143 @@ struct SortingAndIdTests {
   }
 }
 
+// MARK: - KST 타임존 회귀 테스트
+
+@Suite("RecurringEventExpander - KST 타임존")
+struct KSTTimezoneTests {
+
+  // KST 기준으로 "yyyy-MM-dd" 문자열을 Date로 파싱하는 헬퍼
+  private func parseKSTDate(_ string: String) -> Date {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    return formatter.date(from: string)!
+  }
+
+  @Test("monthly dayOfMonth=1: 해당 월의 1일에만 인스턴스 생성")
+  func monthly_dayOfMonth1_onlyFirstOfMonth() async {
+    // 2026-03-01 ~ 2026-05-01 범위 (60일 근사)
+    let rangeStart = makeDate(year: 2026, month: 3, day: 1)
+    let rangeEnd = makeDate(year: 2026, month: 5, day: 2)
+
+    let event = RecurringPersonalEventModel(
+      id: "monthly-1st",
+      title: "월초 미팅",
+      startTime: DateComponents(hour: 9, minute: 0),
+      recurrence: .monthly(day: 1),
+      seriesStartDate: rangeStart
+    )
+
+    let instances = RecurringEventExpander.expand(event: event, from: rangeStart, to: rangeEnd)
+
+    // 3/1, 4/1, 5/1 = 3개
+    #expect(instances.count == 3)
+    for instance in instances {
+      let day = Calendar.scheduleDisplay.component(.day, from: instance.startAt)
+      #expect(day == 1)
+    }
+  }
+
+  @Test("monthly dayOfMonth=1: 1일 이외의 날에는 인스턴스 없음")
+  func monthly_dayOfMonth1_noInstanceOnOtherDays() async {
+    let rangeStart = makeDate(year: 2026, month: 3, day: 2)
+    let rangeEnd = makeDate(year: 2026, month: 3, day: 31)
+
+    let event = RecurringPersonalEventModel(
+      id: "monthly-1st",
+      title: "월초 미팅",
+      startTime: DateComponents(hour: 9, minute: 0),
+      recurrence: .monthly(day: 1),
+      seriesStartDate: makeDate(year: 2026, month: 1, day: 1)
+    )
+
+    let instances = RecurringEventExpander.expand(event: event, from: rangeStart, to: rangeEnd)
+
+    // 범위가 3/2 ~ 3/30이므로 3/1이 포함되지 않아 0개
+    #expect(instances.isEmpty)
+  }
+
+  @Test("seriesStartDate를 '2026-03-19' 문자열에서 KST 파싱 후 expand 정상 동작")
+  func seriesStartDate_kstParsedFromString_correctExpansion() async {
+    // 실제 API 응답처럼 KST 기준 날짜 문자열로 파싱한 seriesStartDate 사용
+    let seriesStart = parseKSTDate("2026-03-19")
+    let rangeStart = makeDate(year: 2026, month: 3, day: 19)
+    let rangeEnd = makeDate(year: 2026, month: 3, day: 23)
+
+    let event = RecurringPersonalEventModel(
+      id: "kst-parse-test",
+      title: "KST 파싱 테스트",
+      startTime: DateComponents(hour: 10, minute: 0),
+      recurrence: .daily(),
+      seriesStartDate: seriesStart
+    )
+
+    let instances = RecurringEventExpander.expand(event: event, from: rangeStart, to: rangeEnd)
+
+    // 3/19 ~ 3/22 = 4개
+    #expect(instances.count == 4)
+
+    // 첫 인스턴스의 dateKey가 KST 기준 "2026-03-19"여야 함
+    #expect(instances.first?.dateKey == "2026-03-19")
+  }
+
+  @Test("오늘~60일 후 범위에서 monthly 일정이 올바른 인스턴스만 생성")
+  func monthly_today60DaysRange_correctInstances() async {
+    // 기준: 2026-04-10 (오늘), 60일 후 = 2026-06-09
+    let today = makeDate(year: 2026, month: 4, day: 10)
+    let sixtyDaysLater = makeDate(year: 2026, month: 6, day: 10)
+
+    let event = RecurringPersonalEventModel(
+      id: "monthly-15th-range",
+      title: "월간 보고",
+      startTime: DateComponents(hour: 14, minute: 0),
+      recurrence: .monthly(day: 15),
+      seriesStartDate: makeDate(year: 2026, month: 1, day: 1)
+    )
+
+    let instances = RecurringEventExpander.expand(event: event, from: today, to: sixtyDaysLater)
+
+    // 범위: 4/10 ~ 6/9 → 해당하는 15일: 4/15, 5/15, 6/15(제외, 6/10 미만 아님)
+    // 6/10 < 6/15 이므로 6/15는 제외. 4/15, 5/15 = 2개
+    #expect(instances.count == 2)
+
+    let calendar = Calendar.scheduleDisplay
+    let months = instances.map { calendar.component(.month, from: $0.startAt) }
+    let days = instances.map { calendar.component(.day, from: $0.startAt) }
+
+    #expect(months == [4, 5])
+    #expect(days == [15, 15])
+  }
+
+  @Test("KST 기준 dateKey가 UTC 자정 전후에도 올바름")
+  func dateKey_kstMidnight_correctDateKey() async {
+    // KST 2026-04-10 00:00 = UTC 2026-04-09 15:00
+    // Calendar.scheduleDisplay(KST)로 startOfDay 계산 시 4/10이어야 함
+    let kst = Calendar.scheduleDisplay
+    var kstMidnight = DateComponents()
+    kstMidnight.year = 2026
+    kstMidnight.month = 4
+    kstMidnight.day = 10
+    kstMidnight.hour = 0
+    kstMidnight.minute = 0
+    let date = kst.date(from: kstMidnight)!
+
+    let event = RecurringPersonalEventModel(
+      id: "kst-midnight",
+      title: "자정 테스트",
+      startTime: DateComponents(hour: 0, minute: 0),
+      recurrence: .daily(),
+      seriesStartDate: date
+    )
+
+    let rangeEnd = kst.date(byAdding: .day, value: 1, to: date)!
+    let instances = RecurringEventExpander.expand(event: event, from: date, to: rangeEnd)
+
+    #expect(instances.count == 1)
+    #expect(instances.first?.dateKey == "2026-04-10")
+  }
+}
+
 // MARK: - 메타데이터 전달 테스트
 
 @Suite("RecurringEventExpander - 메타데이터")

@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import StoreKit
+import UIKit
 import os.log
 import PromisoShared
 
@@ -225,11 +226,14 @@ extension SubscriptionClient: DependencyKey {
                 }
               }
 
-              // Webhook/백엔드 상태 반영을 위해 주기적으로 entitlement 상태를 폴링
+              // Webhook/백엔드 상태 반영을 위해 포그라운드에서만 5분 주기로 entitlement 상태를 폴링
+              // 포그라운드 복귀 시에는 RootTabFeature.refreshSubscriptionStatus에서 즉시 조회
               group.addTask {
                 while !Task.isCancelled {
-                  try? await Task.sleep(for: .seconds(30))
+                  try? await Task.sleep(for: .seconds(300))
                   guard !Task.isCancelled else { return }
+                  let isActive = await MainActor.run { UIApplication.shared.applicationState == .active }
+                  guard isActive else { continue }
                   if let refreshedStatus = try? await rustDataSource.fetchEntitlementStatus(),
                      let statusToYield = await statusCache.update(refreshedStatus) {
                     continuation.yield(statusToYield)

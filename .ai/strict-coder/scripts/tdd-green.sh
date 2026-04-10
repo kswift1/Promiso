@@ -32,6 +32,12 @@ if [ "$RED_COMPLETE" != "true" ]; then
     exit 1
 fi
 
+# DATABASE_URL이 없으면 .env에서 로드 (sqlx::test 연동 테스트용)
+RUST_DIR="$(dirname "$MANIFEST_PATH")"
+if [ -z "${DATABASE_URL:-}" ] && [ -f "$RUST_DIR/.env" ]; then
+    export DATABASE_URL=$(grep '^DATABASE_URL=' "$RUST_DIR/.env" | head -1 | cut -d'=' -f2-)
+fi
+
 echo "🟢 Green Phase: 테스트 실행 중..."
 echo "  명령: cargo test --manifest-path $MANIFEST_PATH $TEST_ARGS"
 echo ""

@@ -8,6 +8,7 @@
 # ============================================================================
 
 .PHONY: setup ensure-config feature remove-feature color \
+        rust-run rust-test rust-build \
         emulator-start functions-build functions-api-preview \
         secrets-pull secrets-push secrets-list secrets-add \
         test test-module build-module test-changed \
@@ -256,6 +257,25 @@ color:
 	@echo "✅ 완료!"
 
 # ============================================================================
+# 🦀 Rust Backend
+# ============================================================================
+
+# Rust 백엔드 로컬 실행 (.env 자동 로드)
+rust-run:
+	@echo "🦀 Rust 백엔드 실행 중..."
+	@cd infra/rust-backend && cargo run
+
+# Rust 백엔드 테스트
+rust-test:
+	@echo "🧪 Rust 백엔드 테스트 실행 중..."
+	@cd infra/rust-backend && cargo test
+
+# Rust 백엔드 빌드
+rust-build:
+	@echo "🔧 Rust 백엔드 빌드 중..."
+	@cd infra/rust-backend && cargo build
+
+# ============================================================================
 # 🔥 Firebase
 # ============================================================================
 
@@ -336,6 +356,12 @@ help:
 	@echo "  🎨 리소스 관리"
 	@echo "  ─────────────────────────────────────────────────────────────────"
 	@echo "  make color                              컬러 에셋 재생성"
+	@echo ""
+	@echo "  🦀 Rust Backend"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make rust-run                           백엔드 로컬 실행"
+	@echo "  make rust-test                          백엔드 테스트"
+	@echo "  make rust-build                         백엔드 빌드"
 	@echo ""
 	@echo "  🔥 Firebase"
 	@echo "  ─────────────────────────────────────────────────────────────────"

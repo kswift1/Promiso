@@ -113,7 +113,7 @@ private struct RustPaginatedScheduleResponse: Decodable {
 /// 캘린더 응답
 private struct RustCalendarResponse: Decodable {
   let schedules: [RustScheduleResponse]
-  let recurringInstances: [RustRecurringInstance]?
+  let recurringInstances: [RustRecurringInstance]
 }
 
 private struct RustRecurringInstance: Decodable {
@@ -428,7 +428,7 @@ public actor ScheduleRustDataSource {
     let response: [RustScheduleResponse] = try await api.get(
       "/api/v1/schedules/home?limit=\(limit)"
     )
-    return response.map { $0.toScheduleModel() }
+    return response.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   // MARK: - Calendar
@@ -448,7 +448,7 @@ public actor ScheduleRustDataSource {
     let response: RustCalendarResponse = try await api.get(
       "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)"
     )
-    return response.schedules.map { $0.toScheduleModel() }
+    return response.schedules.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   public func getAcceptedSchedulesByDateRange(
@@ -462,9 +462,9 @@ public actor ScheduleRustDataSource {
     let endString = formatter.string(from: endDate)
       .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     let response: RustCalendarResponse = try await api.get(
-      "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)&accepted_only=true"
+      "/api/v1/schedules/calendar?start=\(startString)&end=\(endString)&acceptedOnly=true"
     )
-    return response.schedules.map { $0.toScheduleModel() }
+    return response.schedules.filter { $0.scheduleType == "group" }.map { $0.toScheduleModel() }
   }
 
   // MARK: - Calendar Sync

@@ -228,7 +228,7 @@ extension CalendarFeature {
 
       /// 현재 주의 날짜들 (일~토)
       var weekDates: [Date] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         return (0..<7).compactMap { dayOffset in
           calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart)
         }
@@ -236,7 +236,7 @@ extension CalendarFeature {
 
       /// 날짜별로 그룹화된 일정 (현재 월 캐시에서 조회)
       var schedulesByDate: [Date: [ScheduleModel]] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         var grouped: [Date: [ScheduleModel]] = [:]
 
         // 월간 모드: currentMonth 기준 / 주간 모드: selectedDate 기준
@@ -269,7 +269,7 @@ extension CalendarFeature {
       /// 날짜별로 그룹화된 캘린더 이벤트
       var calendarEventsByDate: [Date: [CalendarEvent]] {
         guard showCalendarEvents else { return [:] }
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let monthEvents = uniqueItemsAcrossMonths(from: cachedCalendarEventsByMonth)
         var grouped: [Date: [CalendarEvent]] = [:]
 
@@ -297,7 +297,7 @@ extension CalendarFeature {
       /// 날짜별로 그룹화된 개인 일정
       var personalEventsByDate: [Date: [PersonalEventModel]] {
         guard showPersonalEvents else { return [:] }
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let currentMonthKey = currentMonth.startOfMonth
         let monthEvents = cachedPersonalEventsByMonth[currentMonthKey] ?? []
         var grouped: [Date: [PersonalEventModel]] = [:]
@@ -326,7 +326,7 @@ extension CalendarFeature {
       /// 날짜별로 그룹화된 반복 일정 인스턴스
       var recurringEventsByDate: [Date: [ExpandedEventInstance]] {
         guard showPersonalEvents else { return [:] }
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let monthStart = currentMonth.startOfMonth
         guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { return [:] }
 
@@ -347,7 +347,7 @@ extension CalendarFeature {
         if displayMode == .week {
           return weekDates.sorted()
         } else {
-          let calendar = Calendar.current
+          let calendar = Calendar.scheduleDisplay
           let monthStart = currentMonth.startOfMonth
           guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
             return []
@@ -369,13 +369,14 @@ extension CalendarFeature {
 
       /// 이벤트가 있는 날 수 (월간 헤더 표시용)
       var datesWithEvents: Int {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let monthStart = currentMonth.startOfMonth
         guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { return 0 }
 
         var allDates = Set(schedulesByDate.keys)
         allDates.formUnion(calendarEventsByDate.keys)
         allDates.formUnion(personalEventsByDate.keys)
+        allDates.formUnion(recurringEventsByDate.keys)
 
         return allDates.filter { $0 >= monthStart && $0 < monthEnd }.count
       }
@@ -391,7 +392,7 @@ extension CalendarFeature {
 
       /// 선택된 날짜가 오늘인지
       var isSelectedDateToday: Bool {
-        Calendar.current.isDateInToday(selectedDate)
+        Calendar.scheduleDisplay.isDateInToday(selectedDate)
       }
 
       /// 초기 로딩 중 (데이터가 없고 로딩 중일 때)
@@ -421,7 +422,7 @@ extension CalendarFeature {
       private func uniqueItemsAcrossMonths<T: Identifiable>(
         from cache: [Date: [T]]
       ) -> [T] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let monthKey = currentMonth.startOfMonth
         let prevKey = calendar.date(byAdding: .month, value: -1, to: monthKey)?.startOfMonth
         let nextKey = calendar.date(byAdding: .month, value: 1, to: monthKey)?.startOfMonth
@@ -433,7 +434,7 @@ extension CalendarFeature {
 
       /// 날짜별 일정 인디케이터 (월간 그리드 셀용)
       var scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let colorMap = groupColorMap
         let groupsMap = userGroupsMap
         var indicators: [Date: [CalendarFeature.ScheduleIndicator]] = [:]
@@ -557,7 +558,7 @@ extension CalendarFeature {
 
       /// 선택된 날짜의 타임라인 아이템
       var selectedDateScheduleItems: [CalendarFeature.ScheduleItem] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let selectedDay = calendar.startOfDay(for: selectedDate)
         guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
         return buildScheduleItems(from: selectedDay, to: nextDay)
@@ -565,7 +566,7 @@ extension CalendarFeature {
 
       /// 전일 타임라인 아이템
       var prevDayScheduleItems: [CalendarFeature.ScheduleItem] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let selectedDay = calendar.startOfDay(for: selectedDate)
         guard let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay) else { return [] }
         return buildScheduleItems(from: prevDay, to: selectedDay)
@@ -573,7 +574,7 @@ extension CalendarFeature {
 
       /// 다음일 타임라인 아이템
       var nextDayScheduleItems: [CalendarFeature.ScheduleItem] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let selectedDay = calendar.startOfDay(for: selectedDate)
         guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay),
               let dayAfter = calendar.date(byAdding: .day, value: 2, to: selectedDay) else { return [] }
@@ -662,7 +663,7 @@ extension CalendarFeature {
 
       /// Preview용 필터 미적용 인디케이터 (특정 날짜 하나만 계산)
       func unfilteredIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let dayStart = calendar.startOfDay(for: date)
         guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
 
@@ -736,7 +737,7 @@ extension CalendarFeature {
         into indicators: inout [Date: [CalendarFeature.ScheduleIndicator]],
         makeIndicator: (Date, CalendarFeature.SpanPosition) -> CalendarFeature.ScheduleIndicator
       ) {
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let startDay = calendar.startOfDay(for: startAt)
         let endDay = calendar.startOfDay(for: endAt)
         let isMultiDay = startDay != endDay
@@ -951,14 +952,22 @@ extension CalendarFeature {
             }
           }
           return .none
-        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
+        case .path(.element(id: let pathId, action: .personalEventDetail(.delegate(.eventDeleted(let eventId))))):
+          // 삭제된 이벤트의 실제 월 기준으로 캐시 무효화
+          _ = pathId
+          let eventMonth: Date
+          if let cachedEvent = state.cachedPersonalEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) {
+            eventMonth = cachedEvent.startAt.startOfMonth
+          } else {
+            eventMonth = state.selectedDate.startOfMonth
+          }
           _ = state.path.popLast()
-          let eventMonth = state.selectedDate.startOfMonth
           state.loadedPersonalEventMonths.remove(eventMonth)
           state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
           return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
-        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
-          let eventMonth = state.selectedDate.startOfMonth
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated(let updatedEvent))))):
+          // 업데이트된 이벤트의 실제 월 기준으로 캐시 무효화
+          let eventMonth = updatedEvent.startAt.startOfMonth
           state.loadedPersonalEventMonths.remove(eventMonth)
           state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
           return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
@@ -1062,8 +1071,21 @@ extension CalendarFeature {
             }
           case .calendarEvent:
             return .none
-          case .recurringPersonalEvent:
-            return .none
+          case .recurringPersonalEvent(let instance):
+            // 반복 일정 개별 인스턴스를 excludedDates에 추가하여 취소
+            guard let recurringIndex = state.recurringEvents.firstIndex(where: { $0.id == instance.recurringEventId }) else {
+              return .none
+            }
+            var updated = state.recurringEvents[recurringIndex]
+            updated.excludedDates.insert(instance.dateKey)
+            state.recurringEvents[recurringIndex] = updated
+            return .run { [recurringPersonalEventClient] send in
+              do {
+                try await recurringPersonalEventClient.updateEvent(updated)
+              } catch {
+                // 실패 시 로컬 상태는 이미 갱신됨 — 다음 fetchRecurringEvents에서 서버 상태로 복원됨
+              }
+            }
           }
 
         case .deleteAlert:
@@ -1404,9 +1426,13 @@ extension CalendarFeature {
         if state.selectedGroupIds.isEmpty {
           state.selectedGroupIds = currentGroupIds
         }
+        // 최초 진입 시 onAppear가 loadInitialData를 담당하므로 스킵
+        guard state.hasAppeared else { return .none }
+        state.isRecurringEventsLoaded = false
         return .merge(
           .send(.internal(.checkCalendarPermission)),
-          .send(.internal(.loadInitialData))
+          .send(.internal(.loadInitialData)),
+          .send(.internal(.fetchRecurringEvents))
         )
 
       case .pastTimeBlocked:

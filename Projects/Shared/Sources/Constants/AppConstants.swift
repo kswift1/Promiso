@@ -300,6 +300,8 @@ public enum AppConstants {
     public static let briefingStyle = "promisoBriefingStyle"
     /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
     public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
+    /// 그룹 정렬 옵션 캐시 (JSON)
+    public static let cachedGroupSortOption = "promisoCachedGroupSortOption"
 
     // MARK: - App Review
 
