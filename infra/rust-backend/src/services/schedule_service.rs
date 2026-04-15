@@ -603,7 +603,6 @@ async fn create_schedule_impl(
 
             if req.minimum_participants.is_some()
                 || req.tracking_start_minutes_before.is_some()
-                || req.image_urls.is_some()
             {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
@@ -822,7 +821,6 @@ async fn update_schedule_impl(
         ScheduleType::Personal => {
             if req.minimum_participants.is_some()
                 || req.tracking_start_minutes_before.is_some()
-                || req.image_urls.is_some()
             {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
