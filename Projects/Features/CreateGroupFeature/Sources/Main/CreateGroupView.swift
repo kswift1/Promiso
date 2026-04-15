@@ -103,6 +103,25 @@ extension CreateGroup {
           Text(store.creationError ?? LocalizedStrings.CreateGroup.creationFailedDefault)
         }
       )
+      .alert(
+        LocalizedStrings.Common.info,
+        isPresented: Binding(
+          get: { store.imageUploadWarning != nil },
+          set: { isPresented in
+            if !isPresented {
+              store.send(.view(.imageUploadWarningDismissed))
+            }
+          }
+        ),
+        actions: {
+          Button(LocalizedStrings.Common.ok, role: .cancel) {
+            store.send(.view(.imageUploadWarningDismissed))
+          }
+        },
+        message: {
+          Text(store.imageUploadWarning ?? "")
+        }
+      )
       .auroraBackground()
     }
 

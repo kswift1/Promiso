@@ -117,6 +117,7 @@ extension RootTab {
 
     private enum CancelID: Hashable {
       case subscriptionStatus
+      case sessionExpired
     }
 
     public init() {}
@@ -278,11 +279,14 @@ extension RootTab {
       case refreshSubscriptionStatus
       /// 캘린더 동기화 완료 처리
       case syncCalendarFinished(success: Bool)
+      /// 서버 세션 만료 감지 (refresh token 실패)
+      case sessionExpired
     }
 
     @CasePathable
     public enum Delegate: Equatable, Sendable {
       case logoutRequested
+      case sessionExpired
       case openJoinGroup(inviteCode: String)
     }
 
@@ -317,7 +321,13 @@ extension RootTab {
             .send(.internal(.observeActivityUpdates)),
             .send(.internal(.observeVoteActivityUpdates)),
             .send(.internal(.syncCalendar)),
-            .send(.internal(.observeSubscriptionStatus))
+            .send(.internal(.observeSubscriptionStatus)),
+            .run { send in
+              for await _ in NotificationCenter.default.notifications(named: .serverSessionExpired).map({ _ in }) {
+                await send(.internal(.sessionExpired))
+              }
+            }
+            .cancellable(id: CancelID.sessionExpired, cancelInFlight: true)
           ]
 
           effects.append(
@@ -719,6 +729,9 @@ extension RootTab {
               state.hasInitialCalendarSyncBeenScheduled = true
             }
             return .none
+
+          case .sessionExpired:
+            return .send(.delegate(.sessionExpired))
 
           case .observeSubscriptionStatus:
             return .run { [subscriptionClient] send in

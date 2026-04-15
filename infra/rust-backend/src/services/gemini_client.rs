@@ -42,6 +42,7 @@ pub fn parse_gemini_response(text: &str) -> (String, String) {
 
     // 2. 블록 순서대로 JSON 파싱 시도
     for block in &blocks {
+        let block = block.trim();
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(block) {
             if let (Some(summary), Some(detail)) =
                 (parsed["summary"].as_str(), parsed["detail"].as_str())

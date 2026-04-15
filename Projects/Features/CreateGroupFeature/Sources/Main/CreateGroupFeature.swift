@@ -66,6 +66,7 @@ extension CreateGroup {
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
+      var imageUploadWarning: String?
       var isKakaoSharing: Bool = false
 
       // Settings (그룹 생성 후 초기 설정)
@@ -131,6 +132,7 @@ extension CreateGroup {
         case createGroupTapped
         case cancelTapped
         case errorAlertDismissed
+        case imageUploadWarningDismissed
         // Success
         case successAcknowledged
         case kakaoInviteShareTapped
@@ -212,6 +214,10 @@ extension CreateGroup {
 
           case .errorAlertDismissed:
             state.creationError = nil
+            return .none
+
+          case .imageUploadWarningDismissed:
+            state.imageUploadWarning = nil
             return .none
 
           case .kakaoInviteShareTapped:
@@ -369,6 +375,9 @@ extension CreateGroup {
 
           case .createGroupResponse(.success(let result)):
             state.isCreating = false
+            if result.imageUploadFailed {
+              state.imageUploadWarning = LocalizedStrings.Error.groupImageUploadFailed
+            }
             state.step = .settings(result)
             analyticsClient.log(.groupCreateSucceeded(groupID: result.id, groupName: result.name))
             // 알림 및 캘린더 권한 상태 확인
