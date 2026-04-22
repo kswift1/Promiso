@@ -401,11 +401,7 @@ fn build_schedule_response(schedule: &Schedule, votes: Vec<ScheduleVote>) -> Sch
         } else {
             None
         },
-        image_urls: if is_group {
-            schedule.image_urls.clone()
-        } else {
-            None
-        },
+        image_urls: schedule.image_urls.clone(),
         votes: votes_response,
         // 개인일정 전용
         reminder_minutes_before: if !is_group {
