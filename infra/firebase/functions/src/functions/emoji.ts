@@ -123,7 +123,7 @@ export const generateEmoji = onCall<GenerateEmojiRequest>(
     try {
       // 4. Gemini API 호출
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({model: "gemini-2.0-flash"});
+      const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"});
 
       const prompt = EMOJI_GENERATION_PROMPT + title.trim();
       const result = await model.generateContent(prompt);

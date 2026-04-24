@@ -3,17 +3,10 @@ import PromisoShared
 
 /// Rust 백엔드 API 호출 클라이언트
 public actor RustAPIClient {
-  /// 환경별 기본 URL
-  /// - Dev: 시뮬레이터에서 로컬 서버 접근 불가하므로 LAN IP 사용
-  /// - Prod: Cloud Run 배포 후 URL 변경
-  public static let defaultBaseURL: URL = {
-    #if DEBUG
-    return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
-    #else
-    #warning("Prod Cloud Run URL이 설정되지 않았습니다. 배포 전 반드시 Prod URL로 변경하세요.")
-    return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
-    #endif
-  }()
+  /// 환경별 기본 URL — Info.plist의 `RUST_API_URL` 키에서 읽음.
+  /// Tuist의 `AppConfig.swift`가 각 Target(PromisoDev/Stage/Prod) Info.plist에 주입하며,
+  /// fallback은 `AppConstants.Network`에서 관리한다.
+  public static let defaultBaseURL = AppConstants.Network.rustAPIURL
 
   #if DEBUG
   private static let pulseDelegate = URLSessionProxyDelegate()

@@ -280,20 +280,31 @@ extension GroupClient: DependencyKey {
           description: request.description
         )
 
+        var imageUploadFailed = false
         if let photoData = request.photoData {
-          let imageURL = try await rustDataSource.uploadGroupImageData(
-            groupId: result.id,
-            imageData: photoData
-          )
-          _ = try await rustDataSource.updateGroup(
-            groupId: result.id,
-            description: nil,
-            maxMembers: nil,
-            imageUrl: .some(imageURL.absoluteString)
-          )
+          do {
+            let imageURL = try await rustDataSource.uploadGroupImageData(
+              groupId: result.id,
+              imageData: photoData
+            )
+            _ = try await rustDataSource.updateGroup(
+              groupId: result.id,
+              description: nil,
+              maxMembers: nil,
+              imageUrl: .some(imageURL.absoluteString)
+            )
+          } catch {
+            imageUploadFailed = true
+            AppLogger.network.error("그룹 이미지 업로드 실패 (그룹 생성은 완료): \(error.localizedDescription)")
+          }
         }
 
-        return result
+        return GroupCreationResultModel(
+          id: result.id,
+          name: result.name,
+          inviteCode: result.inviteCode,
+          imageUploadFailed: imageUploadFailed
+        )
       },
       previewGroup: { inviteCode in
         return try await rustDataSource.previewGroup(inviteCode: inviteCode)

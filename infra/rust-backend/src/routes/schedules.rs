@@ -475,9 +475,10 @@ async fn create_recurring_schedule(
 async fn get_recurring_schedules(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
-) -> Result<ApiResponse<Vec<RecurringSchedule>>, AppError> {
+) -> Result<ApiResponse<Vec<RecurringScheduleResponse>>, AppError> {
     let result = schedule_service::get_recurring_schedules(&pool, &claims.uid).await?;
-    ApiResponse::ok(result)
+    let response: Vec<RecurringScheduleResponse> = result.into_iter().map(Into::into).collect();
+    ApiResponse::ok(response)
 }
 
 async fn update_recurring_schedule(

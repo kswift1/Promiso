@@ -10,6 +10,8 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/target/release/promiso-backend .
+# App Store 루트 인증서 (app_store_service.rs 참조)
+COPY --from=builder /app/certs /app/certs
 
 ENV PORT=8080
 EXPOSE 8080

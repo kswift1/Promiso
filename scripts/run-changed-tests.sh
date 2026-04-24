@@ -42,7 +42,8 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # 시뮬레이터 destination
-DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=18.3.1"
+DESTINATION="${DESTINATION:-$("$PROJECT_ROOT/scripts/resolve-ios-simulator-destination.sh")}"
+echo "📱 destination: $DESTINATION"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 모듈 매핑 함수

@@ -148,9 +148,9 @@ async fn issue_group_image_upload_url(pool: PgPool) {
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let json: Value = serde_json::from_slice(&body).expect("parse body");
 
-    let object_path = json["data"]["object_path"].as_str().expect("object_path");
-    let upload_url = json["data"]["upload_url"].as_str().expect("upload_url");
-    let image_url = json["data"]["image_url"].as_str().expect("image_url");
+    let object_path = json["data"]["objectPath"].as_str().expect("objectPath");
+    let upload_url = json["data"]["uploadUrl"].as_str().expect("uploadUrl");
+    let image_url = json["data"]["imageUrl"].as_str().expect("imageUrl");
 
     assert!(object_path.starts_with(&format!("group_images/{group_id}/")));
     assert!(upload_url.contains("X-Goog-Algorithm=GOOG4-RSA-SHA256"));

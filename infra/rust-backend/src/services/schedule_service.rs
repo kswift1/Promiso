@@ -401,11 +401,7 @@ fn build_schedule_response(schedule: &Schedule, votes: Vec<ScheduleVote>) -> Sch
         } else {
             None
         },
-        image_urls: if is_group {
-            schedule.image_urls.clone()
-        } else {
-            None
-        },
+        image_urls: schedule.image_urls.clone(),
         votes: votes_response,
         // 개인일정 전용
         reminder_minutes_before: if !is_group {
@@ -603,7 +599,6 @@ async fn create_schedule_impl(
 
             if req.minimum_participants.is_some()
                 || req.tracking_start_minutes_before.is_some()
-                || req.image_urls.is_some()
             {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
@@ -822,7 +817,6 @@ async fn update_schedule_impl(
         ScheduleType::Personal => {
             if req.minimum_participants.is_some()
                 || req.tracking_start_minutes_before.is_some()
-                || req.image_urls.is_some()
             {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
@@ -2937,7 +2931,7 @@ pub async fn extract_schedule(
 
     // 6. Gemini API 호출
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
         api_key
     );
 

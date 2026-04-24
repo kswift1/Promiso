@@ -5,6 +5,7 @@ pub mod auth_service;
 pub mod briefing_projection_service;
 pub mod briefing_scheduler_service;
 pub mod briefing_service;
+pub mod data_migration_service;
 pub mod emoji_service;
 pub mod faq_service;
 pub mod gemini_client;

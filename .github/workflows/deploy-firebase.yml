@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - dev
           - stage
           - prod
 
@@ -21,7 +22,6 @@ jobs:
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       project_id: ${{ steps.env.outputs.project_id }}
-      service_account: ${{ steps.env.outputs.service_account }}
       emoji: ${{ steps.env.outputs.emoji }}
       env_label: ${{ steps.env.outputs.env_label }}
 
@@ -31,17 +31,19 @@ jobs:
         run: |
           ENV="${{ github.event.inputs.environment }}"
 
-          # 환경별 변수 설정
           case "$ENV" in
+            dev)
+              PROJECT_ID="promiso-dev"
+              EMOJI="🟢"
+              ENV_LABEL="Dev"
+              ;;
             stage)
               PROJECT_ID="promiso-stage"
-              SERVICE_ACCOUNT="FIREBASE_SERVICE_ACCOUNT_STAGE"
               EMOJI="🟡"
               ENV_LABEL="Stage"
               ;;
             prod)
               PROJECT_ID="promiso-prod"
-              SERVICE_ACCOUNT="FIREBASE_SERVICE_ACCOUNT_PROD"
               EMOJI="🚀"
               ENV_LABEL="Production"
               ;;
@@ -51,14 +53,13 @@ jobs:
               ;;
           esac
 
-          # Output 설정
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
-          echo "service_account=$SERVICE_ACCOUNT" >> $GITHUB_OUTPUT
-          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
-          echo "env_label=$ENV_LABEL" >> $GITHUB_OUTPUT
+          {
+            echo "environment=$ENV"
+            echo "project_id=$PROJECT_ID"
+            echo "emoji=$EMOJI"
+            echo "env_label=$ENV_LABEL"
+          } >> "$GITHUB_OUTPUT"
 
-          # 로그 출력
           echo "🎯 Environment: $ENV_LABEL ($ENV)"
           echo "📦 Project ID: $PROJECT_ID"
 
@@ -71,10 +72,6 @@ jobs:
       url: ${{ needs.setup.outputs.environment == 'prod' && 'https://promiso.app' || '' }}
 
     steps:
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 1. 체크아웃 및 환경 설정
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -85,17 +82,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/firebase/functions/package-lock.json
 
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 2. Functions 의존성 설치
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
       - name: Install Functions Dependencies
         working-directory: infra/firebase/functions
         run: npm ci
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 3. Lint 및 빌드
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Lint Functions
         working-directory: infra/firebase/functions
@@ -105,48 +94,29 @@ jobs:
         working-directory: infra/firebase/functions
         run: npm run build
 
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 4. Firebase 배포
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-      - name: Write Functions Env
+      - name: Write Functions Env (Analytics 값)
         working-directory: infra/firebase/functions
         run: |
-          cat <<EOF > .env.${{ needs.setup.outputs.environment }}
+          cat <<EOF > .env.${{ needs.setup.outputs.project_id }}
           GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
           ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
           ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}
           ANALYTICS_BIGQUERY_LOCATION=${{ vars.ANALYTICS_BIGQUERY_LOCATION }}
           EOF
 
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Deploy Functions
         working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npm install -g firebase-tools
-          firebase use ${{ needs.setup.outputs.environment }}
-          firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
-
-      - name: Deploy Firestore Rules
-        working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          firebase use ${{ needs.setup.outputs.environment }}
-          firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
-
-      - name: Deploy Storage Rules
-        working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          firebase use ${{ needs.setup.outputs.environment }}
-          firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 5. Slack 알림
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          npx --yes firebase-tools@latest use ${{ needs.setup.outputs.environment }}
+          npx --yes firebase-tools@latest deploy \
+            --only functions,firestore:rules,storage \
+            --project ${{ needs.setup.outputs.project_id }} \
+            --non-interactive
 
       - name: Slack Notification
         if: always()
@@ -155,9 +125,7 @@ jobs:
           status: ${{ job.status }}
           text: |
             ${{ needs.setup.outputs.emoji }} Firebase ${{ needs.setup.outputs.env_label }} 배포 ${{ job.status == 'success' && '성공' || '실패' }}
-            - Functions: ✅
-            - Firestore Rules: ✅
-            - Storage Rules: ✅
+            - Functions / Firestore Rules / Storage Rules
             ${{ needs.setup.outputs.environment == 'stage' && '(QA 환경 준비 완료)' || '' }}
           username: 'Firebase CI'
           icon_emoji: ':fire:'

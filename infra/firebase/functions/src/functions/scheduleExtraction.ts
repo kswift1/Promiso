@@ -193,7 +193,7 @@ export const extractSchedule = onCall<ExtractScheduleRequest>(
     try {
       // 5. Gemini API 호출
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({model: "gemini-2.0-flash"});
+      const model = genAI.getGenerativeModel({model: "gemini-2.5-flash"});
 
       const promptWithTime = SCHEDULE_EXTRACTION_PROMPT
         .replace("{currentTime}", currentTime);

@@ -148,6 +148,29 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - Network
+
+  public enum Network {
+    private static let fallbackRustAPIURLString = "https://promiso-api-809932911903.asia-northeast3.run.app"
+
+    public static var rustAPIURL: URL {
+      if let urlString = Bundle.main.object(forInfoDictionaryKey: "RUST_API_URL") as? String,
+         !urlString.isEmpty,
+         let url = URL(string: urlString) {
+        return url
+      }
+
+      AppLogger.general.warning("RUST_API_URL not found or invalid, using fallback")
+
+      if let fallbackURL = URL(string: fallbackRustAPIURLString) {
+        return fallbackURL
+      }
+
+      AppLogger.general.error("Invalid fallback Rust API URL: \(fallbackRustAPIURLString)")
+      return URL(fileURLWithPath: "/")
+    }
+  }
+
   // MARK: - App Group
 
   /// App Group 공유 데이터 (Extension ↔ 메인 앱)

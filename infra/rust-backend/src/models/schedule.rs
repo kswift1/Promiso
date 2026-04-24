@@ -107,6 +107,77 @@ pub struct RecurringSchedule {
 }
 
 // ============================================================
+// 응답 DTO
+// ============================================================
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringScheduleResponse {
+    pub id: Uuid,
+    pub user_id: String,
+    pub title: String,
+    pub emoji: Option<String>,
+    pub description: Option<String>,
+    pub start_time_hour: i16,
+    pub start_time_minute: i16,
+    pub end_time_hour: Option<i16>,
+    pub end_time_minute: Option<i16>,
+    pub location: Option<RecurringLocationResponse>,
+    pub reminder_minutes_before: Option<i16>,
+    pub frequency: RecurrenceFrequency,
+    pub days_of_week: Option<Vec<i16>>,
+    pub day_of_month: Option<i16>,
+    pub series_start_date: NaiveDate,
+    pub series_end_date: Option<NaiveDate>,
+    pub excluded_dates: Option<Vec<NaiveDate>>,
+    pub overrides: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringLocationResponse {
+    pub name: String,
+    pub address: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+}
+
+impl From<RecurringSchedule> for RecurringScheduleResponse {
+    fn from(s: RecurringSchedule) -> Self {
+        let location = s.location_name.map(|name| RecurringLocationResponse {
+            name,
+            address: s.location_address,
+            latitude: s.location_latitude,
+            longitude: s.location_longitude,
+        });
+        Self {
+            id: s.id,
+            user_id: s.user_id,
+            title: s.title,
+            emoji: s.emoji,
+            description: s.description,
+            start_time_hour: s.start_time_hour,
+            start_time_minute: s.start_time_minute,
+            end_time_hour: s.end_time_hour,
+            end_time_minute: s.end_time_minute,
+            location,
+            reminder_minutes_before: s.reminder_minutes_before,
+            frequency: s.frequency,
+            days_of_week: s.days_of_week,
+            day_of_month: s.day_of_month,
+            series_start_date: s.series_start_date,
+            series_end_date: s.series_end_date,
+            excluded_dates: s.excluded_dates,
+            overrides: s.overrides,
+            created_at: s.created_at,
+            updated_at: s.updated_at,
+        }
+    }
+}
+
+// ============================================================
 // 요청 DTO
 // ============================================================
 

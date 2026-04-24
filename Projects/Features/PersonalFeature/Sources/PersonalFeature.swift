@@ -497,7 +497,7 @@ extension PersonalMode {
             return .none
 
           case .eventDeleted:
-            return .none
+            return .send(.internal(.subscribeToEvents))
 
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
@@ -690,7 +690,7 @@ extension PersonalMode {
         case .createEvent(.presented(.delegate(.eventCreated))),
              .createEvent(.presented(.delegate(.eventUpdated))):
           state.createEvent = nil
-          return .none
+          return .send(.internal(.subscribeToEvents))
 
         case .createEvent(.presented(.delegate(.dismiss))):
           state.createEvent = nil
@@ -721,10 +721,10 @@ extension PersonalMode {
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
           state.eventDetail = nil
-          return .none
+          return .send(.internal(.subscribeToEvents))
 
-        case .eventDetail(.presented(.delegate(.eventUpdated))):
-          return .none
+        case .eventDetail(.presented(.delegate(.eventUpdated(let _)))):
+          return .send(.internal(.subscribeToEvents))
 
         case .eventDetail:
           return .none

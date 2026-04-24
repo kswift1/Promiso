@@ -566,7 +566,7 @@ pub async fn generate_briefing(
         &req.timezone,
     );
 
-    // 5. briefing_cache 조회 (force_refresh 아닐 때)
+    // 5. briefing_cache 조회 (force_refresh 아닐 때) — 락 없이 빠른 경로
     if !force_refresh {
         let cached = sqlx::query_as::<_, BriefingCacheRow>(
             "SELECT prompt_key, summary, detail \
@@ -580,6 +580,50 @@ pub async fn generate_briefing(
         .await?;
 
         if let Some(cache) = cached {
+            return Ok(GenerateBriefingResponse {
+                summary: cache.summary,
+                detail: cache.detail,
+                is_updated: false,
+                style: Some(style),
+                available_transports: Some(available_transports),
+                notification_hour,
+            });
+        }
+    }
+
+    // 5-1. 동시 호출 직렬화용 advisory lock 키 (user_id + date)
+    let lock_key: i64 = {
+        let mut hasher = Sha256::new();
+        hasher.update(user_id.as_bytes());
+        hasher.update(b":");
+        hasher.update(today.to_string().as_bytes());
+        let digest = hasher.finalize();
+        i64::from_be_bytes([
+            digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+        ])
+    };
+
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(lock_key)
+        .execute(&mut *tx)
+        .await?;
+
+    // 5-2. 락 안에서 다시 캐시 확인 (double-check — 다른 호출이 이미 생성했을 수 있음)
+    if !force_refresh {
+        let cached = sqlx::query_as::<_, BriefingCacheRow>(
+            "SELECT prompt_key, summary, detail \
+             FROM briefing_cache \
+             WHERE user_id = $1 AND date_key = $2 AND prompt_key = $3",
+        )
+        .bind(user_id)
+        .bind(today)
+        .bind(&prompt_key)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if let Some(cache) = cached {
+            tx.commit().await?;
             return Ok(GenerateBriefingResponse {
                 summary: cache.summary,
                 detail: cache.detail,
@@ -629,33 +673,46 @@ pub async fn generate_briefing(
         upcoming_str.as_deref(),
     );
 
-    // 9. Gemini 호출 (환경변수 없으면 stub fallback)
-    let (summary, detail) = if let Some(gemini_key) = std::env::var("GEMINI_API_KEY").ok() {
+    // 9. Gemini 호출 (성공 시에만 캐시 저장, 실패 시 stub은 반환만 하고 캐시 skip)
+    let (summary, detail, gemini_success) = if let Some(gemini_key) =
+        std::env::var("GEMINI_API_KEY").ok()
+    {
         match crate::services::gemini_client::call_gemini(&prompt, &gemini_key).await {
-            Ok(text) => crate::services::gemini_client::parse_gemini_response(&text),
-            Err(()) => call_gemini_stub(&prompt),
+            Ok(text) => {
+                let (s, d) = crate::services::gemini_client::parse_gemini_response(&text);
+                (s, d, true)
+            }
+            Err(()) => {
+                let (s, d) = call_gemini_stub(&prompt);
+                (s, d, false)
+            }
         }
     } else {
-        call_gemini_stub(&prompt)
+        let (s, d) = call_gemini_stub(&prompt);
+        (s, d, false)
     };
 
-    // 10. briefing_cache에 저장 (UPSERT)
-    sqlx::query(
-        "INSERT INTO briefing_cache (user_id, date_key, prompt_key, summary, detail, updated_at) \
-         VALUES ($1, $2, $3, $4, $5, NOW()) \
-         ON CONFLICT (user_id, date_key) DO UPDATE SET \
-             prompt_key = EXCLUDED.prompt_key, \
-             summary    = EXCLUDED.summary, \
-             detail     = EXCLUDED.detail, \
-             updated_at = EXCLUDED.updated_at",
-    )
-    .bind(user_id)
-    .bind(today)
-    .bind(&prompt_key)
-    .bind(&summary)
-    .bind(&detail)
-    .execute(pool)
-    .await?;
+    // 10. briefing_cache에 저장 (UPSERT) — Gemini 성공일 때만
+    if gemini_success {
+        sqlx::query(
+            "INSERT INTO briefing_cache (user_id, date_key, prompt_key, summary, detail, updated_at) \
+             VALUES ($1, $2, $3, $4, $5, NOW()) \
+             ON CONFLICT (user_id, date_key) DO UPDATE SET \
+                 prompt_key = EXCLUDED.prompt_key, \
+                 summary    = EXCLUDED.summary, \
+                 detail     = EXCLUDED.detail, \
+                 updated_at = EXCLUDED.updated_at",
+        )
+        .bind(user_id)
+        .bind(today)
+        .bind(&prompt_key)
+        .bind(&summary)
+        .bind(&detail)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
 
     Ok(GenerateBriefingResponse {
         summary,

@@ -7,7 +7,8 @@
  */
 import * as admin from "firebase-admin";
 import {closeRustEntitlementPool} from "../utils/rustEntitlements";
-import {reconcileAllBriefingSubscriptions} from "../functions/briefingSubscriptionProjection";
+import {reconcileAllBriefingSubscriptions}
+  from "../functions/briefingSubscriptionProjection";
 
 if (!admin.apps.length) {
   admin.initializeApp();

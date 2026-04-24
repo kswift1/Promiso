@@ -4914,19 +4914,19 @@
       }
     },
     "error.group.imageUploadFailed" : {
-      "comment" : "그룹 사진 업로드에 실패했어요",
+      "comment" : "그룹은 생성되었으나 사진 업로드 실패",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to upload group photo. Please try again later."
+            "value" : "Group created, but the photo failed to upload. You can add a photo in group settings."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
+            "value" : "그룹이 생성되었지만 사진 업로드에 실패했어요. 그룹 설정에서 사진을 추가할 수 있어요."
           }
         }
       }

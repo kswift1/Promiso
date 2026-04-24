@@ -147,6 +147,11 @@ extension PersonalMode {
       return store.eventsState.error
     }
 
+    private var hasRecurringEvents: Bool {
+      store.selectedFilter == .all
+        && (store.recurringEventsState.value?.isEmpty == false)
+    }
+
     @ViewBuilder
     private var contentView: some View {
       Group {
@@ -154,7 +159,7 @@ extension PersonalMode {
           loadingView
         } else if let error = currentError {
           errorView(error: error)
-        } else if store.filteredEvents.isEmpty {
+        } else if store.filteredEvents.isEmpty && !hasRecurringEvents {
           emptyView
         } else {
           eventListView

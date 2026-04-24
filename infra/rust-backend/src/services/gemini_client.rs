@@ -42,6 +42,7 @@ pub fn parse_gemini_response(text: &str) -> (String, String) {
 
     // 2. 블록 순서대로 JSON 파싱 시도
     for block in &blocks {
+        let block = block.trim();
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(block) {
             if let (Some(summary), Some(detail)) =
                 (parsed["summary"].as_str(), parsed["detail"].as_str())
@@ -88,11 +89,11 @@ fn truncate_to_bytes(s: &str, max_bytes: usize) -> String {
 
 /// Gemini API 호출
 ///
-/// `gemini-2.0-flash` 모델을 사용한다.
+/// `gemini-2.5-flash` 모델을 사용한다.
 /// 응답 텍스트만 반환하며, 에러 시 `Err(())`를 반환한다.
 pub async fn call_gemini(prompt: &str, api_key: &str) -> Result<String, ()> {
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
         api_key
     );
 
