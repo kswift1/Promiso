@@ -22200,6 +22200,42 @@
         }
       }
     },
+    "scheduleImport.extraction.step.analyzing" : {
+      "comment" : "일정 추출 단계 - AI 분석 중",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI is analyzing the schedule..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI가 일정을 분석하고 있어요..."
+          }
+        }
+      }
+    },
+    "scheduleImport.extraction.step.preparing" : {
+      "comment" : "일정 추출 단계 - 준비 중",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing data..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력 데이터를 준비하고 있어요..."
+          }
+        }
+      }
+    },
     "scheduleImport.image.changePhoto" : {
       "comment" : "다른 사진 선택 버튼",
       "extractionState" : "manual",
