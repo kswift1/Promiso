@@ -68,7 +68,7 @@ jobs:
       - name: Write Functions Env (Stage)
         working-directory: infra/firebase/functions
         run: |
-          cat <<EOF > .env.stage
+          cat <<EOF > .env.promiso-stage
           GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
           ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
           ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}

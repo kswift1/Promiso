@@ -112,7 +112,7 @@ jobs:
       - name: Write Functions Env
         working-directory: infra/firebase/functions
         run: |
-          cat <<EOF > .env.${{ needs.setup.outputs.environment }}
+          cat <<EOF > .env.${{ needs.setup.outputs.project_id }}
           GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
           ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
           ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}
