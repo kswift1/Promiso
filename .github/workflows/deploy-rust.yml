@@ -1,0 +1,183 @@
+name: Deploy Rust Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+concurrency:
+  group: rust-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      project_id: ${{ steps.env.outputs.project_id }}
+      apns_environment: ${{ steps.env.outputs.apns_environment }}
+      apns_bundle_id: ${{ steps.env.outputs.apns_bundle_id }}
+      gcs_bucket: ${{ steps.env.outputs.gcs_bucket }}
+      env_label: ${{ steps.env.outputs.env_label }}
+      emoji: ${{ steps.env.outputs.emoji }}
+
+    steps:
+      - name: Determine Environment
+        id: env
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+
+          case "$ENV" in
+            dev)
+              PROJECT_ID="promiso-dev"
+              APNS_ENV="development"
+              APNS_BUNDLE="com.promiso.dev"
+              GCS_BUCKET="promiso-dev-media"
+              EMOJI="🟢"
+              LABEL="Dev"
+              ;;
+            stage)
+              PROJECT_ID="promiso-stage"
+              APNS_ENV="development"
+              APNS_BUNDLE="com.promiso.stage"
+              GCS_BUCKET="promiso-stage-media"
+              EMOJI="🟡"
+              LABEL="Stage"
+              ;;
+            prod)
+              PROJECT_ID="promiso-prod"
+              APNS_ENV="production"
+              APNS_BUNDLE="com.promiso"
+              GCS_BUCKET="promiso-prod-media"
+              EMOJI="🚀"
+              LABEL="Production"
+              ;;
+            *)
+              echo "::error::Invalid environment: $ENV"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "environment=$ENV"
+            echo "project_id=$PROJECT_ID"
+            echo "apns_environment=$APNS_ENV"
+            echo "apns_bundle_id=$APNS_BUNDLE"
+            echo "gcs_bucket=$GCS_BUCKET"
+            echo "env_label=$LABEL"
+            echo "emoji=$EMOJI"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "🎯 Environment: $LABEL ($ENV)"
+          echo "📦 Project ID: $PROJECT_ID"
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: promiso_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            infra/rust-backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('infra/rust-backend/Cargo.lock') }}
+
+      - name: Run cargo check
+        working-directory: infra/rust-backend
+        run: cargo check --all-targets
+
+      - name: Run cargo test (non-DB)
+        working-directory: infra/rust-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost/promiso_test
+          FIREBASE_PROJECT_ID: promiso-dev
+        run: cargo test --lib
+
+  deploy:
+    needs: [setup, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ needs.setup.outputs.environment == 'prod' && 'production' || (needs.setup.outputs.environment == 'stage' && 'staging' || 'development') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ needs.setup.outputs.project_id }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy promiso-api \
+            --source ./infra/rust-backend \
+            --project ${{ needs.setup.outputs.project_id }} \
+            --region asia-northeast3 \
+            --allow-unauthenticated \
+            --set-env-vars "FIREBASE_PROJECT_ID=${{ needs.setup.outputs.project_id }},RUST_LOG=info,APNS_KEY_ID=4CHBHPYY75,APNS_TEAM_ID=BAC795627G,APNS_BUNDLE_ID=${{ needs.setup.outputs.apns_bundle_id }},APNS_ENVIRONMENT=${{ needs.setup.outputs.apns_environment }},GCS_UPLOAD_BUCKET=${{ needs.setup.outputs.gcs_bucket }}" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,DATABASE_POOL_URL=DATABASE_POOL_URL:latest,AUTH_JWT_SECRET=AUTH_JWT_SECRET:latest,FIREBASE_SERVICE_ACCOUNT_JSON=FIREBASE_SERVICE_ACCOUNT_JSON:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,WIDGET_JWT_SECRET=WIDGET_JWT_SECRET:latest,APNS_AUTH_KEY=APNS_AUTH_KEY:latest,KAKAO_REST_API_KEY=KAKAO_REST_API_KEY:latest,ODSAY_API_KEY=ODSAY_API_KEY:latest" \
+            --quiet
+
+      - name: Verify deployment
+        run: |
+          URL=$(gcloud run services describe promiso-api \
+            --project ${{ needs.setup.outputs.project_id }} \
+            --region asia-northeast3 \
+            --format='value(status.url)')
+          echo "Service URL: $URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/health")
+          echo "Health: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Health check failed ($STATUS)"
+            exit 1
+          fi
+
+      - name: Slack Notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            ${{ needs.setup.outputs.emoji }} Rust Backend ${{ needs.setup.outputs.env_label }} 배포 ${{ job.status == 'success' && '성공' || '실패' }}
+            - Project: ${{ needs.setup.outputs.project_id }}
+            - Revision: 최신 latest
+          username: 'Rust CI'
+          icon_emoji: ':gear:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
