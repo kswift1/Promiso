@@ -7,7 +7,7 @@ use crate::models::faq::FAQItemResponse;
 pub async fn fetch_faqs(pool: &PgPool) -> Result<Vec<FAQItemResponse>, AppError> {
     let rows = sqlx::query_as::<_, FaqRow>(
         "SELECT id, question, answer, category, sort_order, created_at, updated_at \
-         FROM faqs WHERE is_active = TRUE ORDER BY sort_order ASC, created_at ASC",
+         FROM faqs WHERE is_active = TRUE ORDER BY sort_order ASC, created_at ASC, id ASC",
     )
     .fetch_all(pool)
     .await?;
