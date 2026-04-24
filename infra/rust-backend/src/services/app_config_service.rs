@@ -7,7 +7,7 @@ pub async fn get_app_config(pool: &PgPool) -> Result<AppConfigResponse, AppError
     let config = sqlx::query_as::<_, AppConfigResponse>(
         "SELECT force_update_version, recommended_version, app_store_url, \
                 privacy_policy_url, terms_of_service_url, support_email, \
-                notion_faq_database_id, updated_at \
+                updated_at \
          FROM app_config \
          WHERE singleton = TRUE",
     )

@@ -42,9 +42,7 @@ async fn insert_auth_account(pool: &PgPool, user_id: &str) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn faq_public_route_exists_and_reports_missing_secret(pool: PgPool) {
-    std::env::remove_var("NOTION_FAQ_API_KEY");
-
+async fn faq_public_route_returns_seeded_faqs(pool: PgPool) {
     let response = routes::create_router(pool, &test_config())
         .oneshot(
             Request::builder()
@@ -55,11 +53,23 @@ async fn faq_public_route_exists_and_reports_missing_secret(pool: PgPool) {
         .await
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::PRECONDITION_FAILED);
+    assert_eq!(response.status(), StatusCode::OK);
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(json["error"]["code"], "failed-precondition");
+
+    let data = &json["data"];
+    assert!(data.is_array(), "data should be an array");
+
+    let items = data.as_array().unwrap();
+    assert!(items.len() >= 1, "data should have at least one FAQ");
+
+    let first = &items[0];
+    assert!(first["id"].is_string(), "FAQ item should have id field");
+    assert!(first["question"].is_string(), "FAQ item should have question field");
+    assert!(first["answer"].is_string(), "FAQ item should have answer field");
+    assert!(first["category"].is_string(), "FAQ item should have category field");
+    assert!(first["order"].is_number(), "FAQ item should have order field");
 }
 
 #[sqlx::test(migrations = "./migrations")]
