@@ -8,88 +8,6 @@ import PromisoShared
 
 private let logger = Logger(subsystem: "com.promiso.widget", category: "LiveActivity")
 
-private func performAuthenticatedWidgetPost(
-  to url: URL,
-  userId: String,
-  body: Data
-) async -> Bool {
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let widgetToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
-  let accessToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
-  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
-
-  guard let primaryToken = widgetToken ?? accessToken else {
-    logger.error("WidgetETA: missing auth token")
-    return false
-  }
-
-  let primaryStatus = await sendWidgetRequest(
-    to: url,
-    userId: userId,
-    authToken: primaryToken,
-    deviceId: deviceId,
-    body: body
-  )
-  if primaryStatus == 200 {
-    return true
-  }
-
-  if primaryStatus == 401,
-     let widgetToken,
-     primaryToken == widgetToken,
-     let accessToken,
-     accessToken != widgetToken {
-    logger.info("WidgetETA: widget token 401 -> access token fallback")
-    let fallbackStatus = await sendWidgetRequest(
-      to: url,
-      userId: userId,
-      authToken: accessToken,
-      deviceId: deviceId,
-      body: body
-    )
-    return fallbackStatus == 200
-  }
-
-  return false
-}
-
-private func sendWidgetRequest(
-  to url: URL,
-  userId: String,
-  authToken: String,
-  deviceId: String?,
-  body: Data
-) async -> Int? {
-  var request = URLRequest(url: url)
-  request.httpMethod = "POST"
-  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
-  request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
-  request.httpBody = body
-
-  if let deviceId {
-    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-  }
-
-  do {
-    let (data, response) = try await URLSession.shared.data(for: request)
-    guard let httpResponse = response as? HTTPURLResponse else {
-      logger.error("WidgetETA: non-http response")
-      return nil
-    }
-
-    if httpResponse.statusCode != 200 {
-      let bodyText = String(data: data, encoding: .utf8) ?? ""
-      logger.error("WidgetETA failed(\(httpResponse.statusCode)): \(bodyText.prefix(200))")
-    }
-
-    return httpResponse.statusCode
-  } catch {
-    logger.error("WidgetETA error: \(error.localizedDescription)")
-    return nil
-  }
-}
-
 // MARK: - Update ETA Intent
 
 /// 도착 예상 시간 업데이트 Intent
@@ -244,5 +162,10 @@ private func callUpdateETAFunction(
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  _ = await performAuthenticatedWidgetPost(to: url, userId: userId, body: httpBody)
+  _ = await performAuthenticatedWidgetPost(
+    to: url,
+    userId: userId,
+    body: httpBody,
+    logContext: "WidgetETA"
+  )
 }

@@ -210,6 +210,17 @@ pub struct FcmMessage {
     pub related_user_id: Option<String>,
 }
 
+/// FCM 푸시 전송 추상화.
+///
+/// # 구현 계약
+/// - `success_count + failure_count == tokens.len()` 를 만족해야 한다.
+/// - 부분 성공(`success_count > 0` && `failure_count > 0`) 시
+///   `delivered_tokens`에 **전달에 성공한 토큰을 반드시 포함**해야 한다.
+///   비워두면 `notification_service`가 `is_delivered=true`를 어떤 알림에도
+///   찍지 못해 부분 성공이 조용히 누락된다.
+/// - 전체 성공이면 `delivered_tokens`가 비어 있어도 호출 측이 `tokens` 전체를
+///   전달된 것으로 간주하는 폴백 경로가 존재하지만, 신규 구현체는
+///   명시성을 위해 성공 토큰을 항상 채울 것을 권장한다.
 #[async_trait::async_trait]
 pub trait PushSender: Send + Sync {
     async fn send_multicast(&self, tokens: &[String], message: &FcmMessage) -> PushResult;

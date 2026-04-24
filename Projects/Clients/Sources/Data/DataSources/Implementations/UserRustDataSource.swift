@@ -76,11 +76,9 @@ public actor UserRustDataSource {
 
   public func createUser(
     name: String?,
-    nickname: String,
-    providerType: String,
-    providerUid: String,
-    email: String
+    nickname: String
   ) async throws -> String {
+    // provider/email은 서버가 auth_accounts에서 조회하므로 body에 포함하지 않음
     let body = CreateUserBody(name: name, nickname: nickname)
     do {
       let response: RustCreateUserResponse = try await api.post("/api/v1/users", body: body)
