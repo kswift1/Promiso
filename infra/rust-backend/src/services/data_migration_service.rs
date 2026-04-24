@@ -27,11 +27,17 @@ fn ns_schedules() -> Uuid {
 }
 
 fn ns_personal_events() -> Uuid {
-    Uuid::new_v5(&Uuid::NAMESPACE_DNS, b"promiso.app/migration/personal_events")
+    Uuid::new_v5(
+        &Uuid::NAMESPACE_DNS,
+        b"promiso.app/migration/personal_events",
+    )
 }
 
 fn ns_recurring_events() -> Uuid {
-    Uuid::new_v5(&Uuid::NAMESPACE_DNS, b"promiso.app/migration/recurring_events")
+    Uuid::new_v5(
+        &Uuid::NAMESPACE_DNS,
+        b"promiso.app/migration/recurring_events",
+    )
 }
 
 fn ns_notifications() -> Uuid {
@@ -113,25 +119,63 @@ pub struct FullMigrationSummary {
 
 impl FullMigrationSummary {
     // Convenience accessors so the binary doesn't need to dig into sub-structs.
-    pub fn users(&self) -> usize { self.core.users }
-    pub fn auth_accounts(&self) -> usize { self.core.auth_accounts }
-    pub fn user_settings(&self) -> usize { self.core.user_settings }
-    pub fn devices(&self) -> usize { self.core.devices }
-    pub fn notification_endpoints(&self) -> usize { self.core.notification_endpoints }
-    pub fn live_activity_endpoints(&self) -> usize { self.core.live_activity_endpoints }
-    pub fn groups(&self) -> usize { self.core.groups }
-    pub fn group_members(&self) -> usize { self.core.group_members }
-    pub fn schedules(&self) -> usize { self.core.schedules }
-    pub fn schedule_votes(&self) -> usize { self.core.schedule_votes }
-    pub fn recurring_schedules(&self) -> usize { self.core.recurring_schedules }
-    pub fn notifications(&self) -> usize { self.core.notifications }
-    pub fn subscriptions(&self) -> usize { self.subscription.subscriptions }
-    pub fn subscription_owners(&self) -> usize { self.subscription.subscription_owners }
-    pub fn entitlement_overrides(&self) -> usize { self.subscription.entitlement_overrides }
-    pub fn entitlements_recomputed(&self) -> usize { self.subscription.entitlements_recomputed }
-    pub fn briefing_subscriptions(&self) -> usize { self.core.briefing_subscriptions }
-    pub fn admin_users(&self) -> usize { self.core.admin_users }
-    pub fn admin_audit_logs(&self) -> usize { self.core.admin_audit_logs }
+    pub fn users(&self) -> usize {
+        self.core.users
+    }
+    pub fn auth_accounts(&self) -> usize {
+        self.core.auth_accounts
+    }
+    pub fn user_settings(&self) -> usize {
+        self.core.user_settings
+    }
+    pub fn devices(&self) -> usize {
+        self.core.devices
+    }
+    pub fn notification_endpoints(&self) -> usize {
+        self.core.notification_endpoints
+    }
+    pub fn live_activity_endpoints(&self) -> usize {
+        self.core.live_activity_endpoints
+    }
+    pub fn groups(&self) -> usize {
+        self.core.groups
+    }
+    pub fn group_members(&self) -> usize {
+        self.core.group_members
+    }
+    pub fn schedules(&self) -> usize {
+        self.core.schedules
+    }
+    pub fn schedule_votes(&self) -> usize {
+        self.core.schedule_votes
+    }
+    pub fn recurring_schedules(&self) -> usize {
+        self.core.recurring_schedules
+    }
+    pub fn notifications(&self) -> usize {
+        self.core.notifications
+    }
+    pub fn subscriptions(&self) -> usize {
+        self.subscription.subscriptions
+    }
+    pub fn subscription_owners(&self) -> usize {
+        self.subscription.subscription_owners
+    }
+    pub fn entitlement_overrides(&self) -> usize {
+        self.subscription.entitlement_overrides
+    }
+    pub fn entitlements_recomputed(&self) -> usize {
+        self.subscription.entitlements_recomputed
+    }
+    pub fn briefing_subscriptions(&self) -> usize {
+        self.core.briefing_subscriptions
+    }
+    pub fn admin_users(&self) -> usize {
+        self.core.admin_users
+    }
+    pub fn admin_audit_logs(&self) -> usize {
+        self.core.admin_audit_logs
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +278,7 @@ struct FirestoreProvider {
 struct FirestoreUserSettingsRow {
     #[serde(rename = "_userId")]
     user_id: String,
+    notification_enabled: Option<bool>,
     #[serde(default)]
     group_sort_option: Option<FirestoreGroupSortOption>,
     #[serde(default)]
@@ -332,6 +377,7 @@ struct FirestorePersonalEventRow {
     start_at: String,
     end_at: Option<String>,
     location: Option<FirestoreLocation>,
+    image_urls: Option<Vec<String>>,
     reminder_minutes_before: Option<i16>,
     created_at: Option<String>,
     updated_at: Option<String>,
@@ -480,9 +526,7 @@ fn parse_optional_rfc3339(value: &Option<String>) -> Result<Option<DateTime<Utc>
     match value.as_deref() {
         Some(s) => DateTime::parse_from_rfc3339(s)
             .map(|dt| Some(dt.with_timezone(&Utc)))
-            .map_err(|_| {
-                AppError::BadRequest(format!("invalid timestamp: {s}"))
-            }),
+            .map_err(|_| AppError::BadRequest(format!("invalid timestamp: {s}"))),
         None => Ok(None),
     }
 }
@@ -504,8 +548,7 @@ fn parse_date_field(value: &str) -> Result<NaiveDate, AppError> {
         return Ok(d);
     }
     // KST(+09:00) 기준으로 날짜 추출
-    let kst: FixedOffset = FixedOffset::east_opt(9 * 3600)
-        .expect("KST offset is always valid");
+    let kst: FixedOffset = FixedOffset::east_opt(9 * 3600).expect("KST offset is always valid");
     DateTime::parse_from_rfc3339(value)
         .map(|dt| dt.with_timezone(&kst).date_naive())
         .map_err(|_| AppError::BadRequest(format!("invalid date: {value}")))
@@ -538,10 +581,10 @@ pub async fn import_users(pool: &PgPool, jsonl: &str) -> Result<MigrationSummary
     let mut summary = MigrationSummary::default();
 
     for row in rows {
-        let created_at = parse_optional_rfc3339(&row.meta_data.created_at)?
-            .unwrap_or_else(Utc::now);
-        let updated_at = parse_optional_rfc3339(&row.meta_data.updated_at)?
-            .unwrap_or_else(Utc::now);
+        let created_at =
+            parse_optional_rfc3339(&row.meta_data.created_at)?.unwrap_or_else(Utc::now);
+        let updated_at =
+            parse_optional_rfc3339(&row.meta_data.updated_at)?.unwrap_or_else(Utc::now);
         let profile_url = row.profile.as_ref().and_then(|p| p.url.clone());
 
         sqlx::query(
@@ -602,10 +645,7 @@ async fn upsert_device(
     device_id: &str,
     device: &FirestoreDeviceInfo,
 ) -> Result<MigrationSummary, AppError> {
-    let platform = device
-        .platform
-        .as_deref()
-        .unwrap_or("ios");
+    let platform = device.platform.as_deref().unwrap_or("ios");
     let last_active_at = parse_optional_rfc3339(&device.last_active_at)?.unwrap_or_else(Utc::now);
     let created_at = parse_optional_rfc3339(&device.created_at)?.unwrap_or_else(Utc::now);
 
@@ -663,7 +703,10 @@ async fn upsert_device(
         .is_some();
 
     if has_pts || has_lap {
-        let pts = device.push_to_start_token.as_deref().filter(|t| !t.is_empty());
+        let pts = device
+            .push_to_start_token
+            .as_deref()
+            .filter(|t| !t.is_empty());
         let lap = device
             .live_activity_push_token
             .as_deref()
@@ -699,16 +742,16 @@ async fn upsert_group_member(
     let joined_at = parse_optional_rfc3339(&info.joined_at)?.unwrap_or_else(Utc::now);
 
     let notifs = info.notifications.as_ref();
-    let notifications_enabled = notifs
-        .and_then(|n| n.enabled)
-        .unwrap_or(true);
+    let notifications_enabled = notifs.and_then(|n| n.enabled).unwrap_or(true);
     let promise_notifs = notifs.and_then(|n| n.promise.as_ref());
     let schedule_invitation = promise_notifs.and_then(|p| p.invitation).unwrap_or(true);
     let schedule_reminder = promise_notifs.and_then(|p| p.reminder).unwrap_or(true);
     let schedule_confirmed = promise_notifs.and_then(|p| p.confirmed).unwrap_or(true);
     let schedule_cancelled = promise_notifs.and_then(|p| p.cancelled).unwrap_or(true);
     let schedule_updated = promise_notifs.and_then(|p| p.updated).unwrap_or(true);
-    let attendance_response = promise_notifs.and_then(|p| p.attendance_response).unwrap_or(true);
+    let attendance_response = promise_notifs
+        .and_then(|p| p.attendance_response)
+        .unwrap_or(true);
     let group_update = notifs
         .and_then(|n| n.group.as_ref())
         .and_then(|g| g.update)
@@ -798,10 +841,7 @@ pub async fn import_auth_accounts(
     Ok(summary)
 }
 
-pub async fn import_admin_users(
-    pool: &PgPool,
-    jsonl: &str,
-) -> Result<MigrationSummary, AppError> {
+pub async fn import_admin_users(pool: &PgPool, jsonl: &str) -> Result<MigrationSummary, AppError> {
     let rows = parse_jsonl_rows::<FirestoreAdminUserRow>(jsonl, "admin_users")?;
     let mut summary = MigrationSummary::default();
 
@@ -860,10 +900,8 @@ pub async fn import_user_settings(
             .and_then(|g| g.sort_type.clone())
             .unwrap_or_else(|| "joinedRecent".to_string());
 
-        let sort_order: Option<Vec<String>> = row
-            .group_sort_option
-            .as_ref()
-            .and_then(|g| g.order.clone());
+        let sort_order: Option<Vec<String>> =
+            row.group_sort_option.as_ref().and_then(|g| g.order.clone());
 
         sqlx::query(
             "INSERT INTO user_settings
@@ -889,6 +927,16 @@ pub async fn import_user_settings(
         .bind(&sort_type)
         .bind(&sort_order)
         .bind(conflict_threshold)
+        .execute(pool)
+        .await?;
+
+        sqlx::query(
+            "UPDATE users
+             SET notification_enabled = COALESCE($1, notification_enabled)
+             WHERE id = $2",
+        )
+        .bind(row.notification_enabled)
+        .bind(&row.user_id)
         .execute(pool)
         .await?;
 
@@ -976,11 +1024,8 @@ pub async fn import_promises(pool: &PgPool, jsonl: &str) -> Result<MigrationSumm
         let location_latitude = location.and_then(|l| l.latitude);
         let location_longitude = location.and_then(|l| l.longitude);
 
-        let image_urls: Option<Vec<String>> = row
-            .image_urls
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .cloned();
+        let image_urls: Option<Vec<String>> =
+            row.image_urls.as_ref().filter(|v| !v.is_empty()).cloned();
 
         let description_blocks = row.description_blocks.as_ref().and_then(|v| {
             if v.is_null() {
@@ -1121,17 +1166,19 @@ pub async fn import_personal_events(
                 Some(v.clone())
             }
         });
+        let image_urls: Option<Vec<String>> =
+            row.image_urls.as_ref().filter(|v| !v.is_empty()).cloned();
 
         sqlx::query(
             "INSERT INTO schedules
                 (id, schedule_type, user_id, title, emoji, description, description_blocks,
                  start_at, end_at, location_name, location_address,
-                 location_latitude, location_longitude, reminder_minutes_before,
-                 created_at, updated_at)
+                 location_latitude, location_longitude, image_urls,
+                 reminder_minutes_before, created_at, updated_at)
              VALUES
                 ($1, 'personal', $2, $3, $4, $5, $6,
-                 $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15)
+                 $7, $8, $9, $10, $11, $12, $13, $14,
+                 $15, $16)
              ON CONFLICT (id) DO UPDATE
              SET title = EXCLUDED.title,
                  emoji = EXCLUDED.emoji,
@@ -1143,6 +1190,7 @@ pub async fn import_personal_events(
                  location_address = EXCLUDED.location_address,
                  location_latitude = EXCLUDED.location_latitude,
                  location_longitude = EXCLUDED.location_longitude,
+                 image_urls = EXCLUDED.image_urls,
                  reminder_minutes_before = EXCLUDED.reminder_minutes_before,
                  updated_at = EXCLUDED.updated_at",
         )
@@ -1158,6 +1206,7 @@ pub async fn import_personal_events(
         .bind(&location_address)
         .bind(location_latitude)
         .bind(location_longitude)
+        .bind(&image_urls)
         .bind(row.reminder_minutes_before)
         .bind(created_at)
         .bind(updated_at)
@@ -1331,11 +1380,16 @@ pub async fn import_notifications(
 
         // FK check: only set schedule_id if the schedule actually exists in PG
         let schedule_id = if let Some(sid) = schedule_id_candidate {
-            let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM schedules WHERE id = $1)")
-                .bind(sid)
-                .fetch_one(pool)
-                .await?;
-            if exists { Some(sid) } else { None }
+            let exists: bool =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM schedules WHERE id = $1)")
+                    .bind(sid)
+                    .fetch_one(pool)
+                    .await?;
+            if exists {
+                Some(sid)
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -1348,11 +1402,16 @@ pub async fn import_notifications(
 
         // FK check: only set group_id if the group actually exists in PG
         let group_id = if let Some(gid) = group_id_candidate {
-            let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM groups WHERE id = $1)")
-                .bind(gid)
-                .fetch_one(pool)
-                .await?;
-            if exists { Some(gid) } else { None }
+            let exists: bool =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM groups WHERE id = $1)")
+                    .bind(gid)
+                    .fetch_one(pool)
+                    .await?;
+            if exists {
+                Some(gid)
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -1424,10 +1483,7 @@ async fn import_subscriptions_phase(
             .map(|line| {
                 if let Ok(mut obj) = serde_json::from_str::<serde_json::Value>(line) {
                     if let Some(id) = obj.get("_id").cloned() {
-                        obj.as_object_mut()
-                            .unwrap()
-                            .entry("userId")
-                            .or_insert(id);
+                        obj.as_object_mut().unwrap().entry("userId").or_insert(id);
                     }
                     serde_json::to_string(&obj).unwrap_or_else(|_| line.to_string())
                 } else {
@@ -1493,10 +1549,8 @@ async fn import_subscriptions_phase(
 
     let subscription_rows =
         parse_jsonl_rows::<FirestoreSubscriptionRow>(&patched_subs, "subscriptions")?;
-    let owner_rows = parse_jsonl_rows::<FirestoreSubscriptionOwnerRow>(
-        &patched_owners,
-        "subscriptionOwners",
-    )?;
+    let owner_rows =
+        parse_jsonl_rows::<FirestoreSubscriptionOwnerRow>(&patched_owners, "subscriptionOwners")?;
     let override_rows = parse_jsonl_rows::<FirestoreEntitlementOverrideRow>(
         &patched_overrides,
         "entitlementOverrides",

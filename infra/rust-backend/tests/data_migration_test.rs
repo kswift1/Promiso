@@ -4,9 +4,9 @@
 //! Each test validates one phase of the import in isolation using sqlx::test.
 
 use promiso_backend::services::data_migration_service::{
-    import_admin_audit_logs, import_admin_users, import_auth_accounts, import_briefing_subscriptions,
-    import_groups, import_notifications, import_personal_events, import_promises,
-    import_recurring_events, import_user_settings, import_users, MigrationSummary,
+    import_admin_audit_logs, import_admin_users, import_auth_accounts,
+    import_briefing_subscriptions, import_groups, import_notifications, import_personal_events,
+    import_promises, import_recurring_events, import_user_settings, import_users, MigrationSummary,
 };
 use sqlx::PgPool;
 
@@ -67,12 +67,11 @@ async fn import_users_inserts_devices_from_devices_map(pool: PgPool) {
     assert_eq!(summary.devices, 1);
     assert_eq!(summary.notification_endpoints, 1);
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM devices WHERE user_id = $1")
-            .bind("user_dev1")
-            .fetch_one(&pool)
-            .await
-            .expect("count query should succeed");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE user_id = $1")
+        .bind("user_dev1")
+        .fetch_one(&pool)
+        .await
+        .expect("count query should succeed");
 
     assert_eq!(count.0, 1);
 }
@@ -91,10 +90,9 @@ async fn import_users_inserts_live_activity_endpoints(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn import_users_inserts_group_members_from_groups_map(pool: PgPool) {
     // Insert a group first so FK is satisfied
-    let group_id =
-        uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, b"promiso.app/migration/groups")
-            .hyphenated()
-            .to_string();
+    let group_id = uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, b"promiso.app/migration/groups")
+        .hyphenated()
+        .to_string();
     let ns_groups = uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, b"promiso.app/migration/groups");
     let firestore_group_id = "grp-fk-001";
     let pg_group_id = uuid::Uuid::new_v5(&ns_groups, firestore_group_id.as_bytes());
@@ -196,6 +194,36 @@ async fn import_user_settings_inserts_row(pool: PgPool) {
             .expect("user_settings row should exist");
 
     assert_eq!(row.0, 8);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn import_user_settings_preserves_notification_enabled(pool: PgPool) {
+    sqlx::query(
+        "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email) VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind("user_settings_notif1")
+    .bind("Hana")
+    .bind("hana11")
+    .bind("apple")
+    .bind("apple.uid.settings-notif1")
+    .bind("hana@example.com")
+    .execute(&pool)
+    .await
+    .expect("user insert should succeed");
+
+    let jsonl = r#"{"_id":"main","_userId":"user_settings_notif1","notificationEnabled":false,"groupSortOption":{"type":"joinedRecent","order":[]},"proSettings":null}"#;
+
+    import_user_settings(&pool, jsonl)
+        .await
+        .expect("import_user_settings should succeed");
+
+    let row: (bool,) = sqlx::query_as("SELECT notification_enabled FROM users WHERE id = $1")
+        .bind("user_settings_notif1")
+        .fetch_one(&pool)
+        .await
+        .expect("users row should exist");
+
+    assert!(!row.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +334,44 @@ async fn import_personal_events_inserts_personal_schedule(pool: PgPool) {
         .expect("import_personal_events should succeed");
 
     assert_eq!(summary.schedules, 1);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn import_personal_events_preserves_image_urls(pool: PgPool) {
+    sqlx::query(
+        "INSERT INTO users (id, name, nickname, provider_type, provider_uid, email) VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind("user_pe_img1")
+    .bind("Image")
+    .bind("image11")
+    .bind("apple")
+    .bind("apple.pe.img1")
+    .bind("pe-img@example.com")
+    .execute(&pool)
+    .await
+    .expect("user insert should succeed");
+
+    let jsonl = r#"{"_id":"pe-img-001","_userId":"user_pe_img1","title":"Photo Event","emoji":"📷","description":"images","descriptionBlocks":null,"startAt":"2025-02-01T09:00:00Z","endAt":"2025-02-01T10:00:00Z","location":null,"imageUrls":["https://example.com/1.jpg","https://example.com/2.jpg"],"reminderMinutesBefore":30,"createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-01T00:00:00Z"}"#;
+
+    import_personal_events(&pool, jsonl)
+        .await
+        .expect("import_personal_events should succeed");
+
+    let row: (Option<Vec<String>>,) =
+        sqlx::query_as("SELECT image_urls FROM schedules WHERE user_id = $1 AND title = $2")
+            .bind("user_pe_img1")
+            .bind("Photo Event")
+            .fetch_one(&pool)
+            .await
+            .expect("schedule row should exist");
+
+    assert_eq!(
+        row.0,
+        Some(vec![
+            "https://example.com/1.jpg".to_string(),
+            "https://example.com/2.jpg".to_string()
+        ])
+    );
 }
 
 // ---------------------------------------------------------------------------

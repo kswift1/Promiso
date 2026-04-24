@@ -268,7 +268,12 @@ rust-run:
 # Rust 백엔드 테스트
 rust-test:
 	@echo "🧪 Rust 백엔드 테스트 실행 중..."
-	@cd infra/rust-backend && cargo test
+	@cd infra/rust-backend && set -a && . ./.env.test && set +a && cargo test
+
+# Rust 백엔드 data_migration 통합 테스트 (로컬 test DB 고정)
+rust-test-data-migration:
+	@echo "🧪 data_migration 테스트 실행 중..."
+	@cd infra/rust-backend && set -a && . ./.env.test && set +a && cargo test --test data_migration_test -- --test-threads=1
 
 # Rust 백엔드 빌드
 rust-build:
@@ -381,7 +386,8 @@ help:
 	@echo "  🦀 Rust Backend"
 	@echo "  ─────────────────────────────────────────────────────────────────"
 	@echo "  make rust-run                           백엔드 로컬 실행"
-	@echo "  make rust-test                          백엔드 테스트"
+	@echo "  make rust-test                          백엔드 테스트 (.env.test 로컬 DB 고정)"
+	@echo "  make rust-test-data-migration           data_migration 통합 테스트"
 	@echo "  make rust-build                         백엔드 빌드"
 	@echo "  make rust-env [ENV=dev|stage|prod]      GCP Secret → .env 생성"
 	@echo "  make rust-env-clean                     .env 파일 제거"

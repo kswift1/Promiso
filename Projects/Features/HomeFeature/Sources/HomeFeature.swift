@@ -1673,13 +1673,6 @@ extension Home {
             return .none
 
           case .fetchBriefing(let forceRefresh):
-            // 오늘 이미 성공적으로 생성됐으면 재호출 skip (QA 3.2 규칙)
-            if !forceRefresh,
-               state.briefingState.isLoaded,
-               let generatedDate = state.briefingGeneratedDate,
-               Calendar.scheduleDisplay.isDateInToday(generatedDate) {
-              return .none
-            }
             // 기존 브리핑이 없거나 강제 새로고침일 때만 로딩 표시 (탭 전환 시 깜빡임 방지)
             if !state.briefingState.isLoaded || forceRefresh {
               state.briefingState = .loading

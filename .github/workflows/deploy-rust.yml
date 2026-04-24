@@ -115,12 +115,21 @@ jobs:
         working-directory: infra/rust-backend
         run: cargo check --all-targets
 
-      - name: Run cargo test (non-DB)
+      - name: Run cargo test (lib)
         working-directory: infra/rust-backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost/promiso_test
+          DATABASE_POOL_URL: postgresql://postgres:postgres@localhost/promiso_test
           FIREBASE_PROJECT_ID: promiso-dev
         run: cargo test --lib
+
+      - name: Run data migration integration test
+        working-directory: infra/rust-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost/promiso_test
+          DATABASE_POOL_URL: postgresql://postgres:postgres@localhost/promiso_test
+          FIREBASE_PROJECT_ID: promiso-dev
+        run: cargo test --test data_migration_test -- --test-threads=1
 
   deploy:
     needs: [setup, test]

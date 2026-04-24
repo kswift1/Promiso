@@ -121,9 +121,11 @@ public actor ServerAuthSessionManager {
     do {
       refreshed = try await api.post("/api/v1/auth/refresh", body: request)
     } catch {
-      await clear()
-      await MainActor.run {
-        NotificationCenter.default.post(name: .serverSessionExpired, object: nil)
+      if shouldExpireSession(for: error) {
+        await clear()
+        await MainActor.run {
+          NotificationCenter.default.post(name: .serverSessionExpired, object: nil)
+        }
       }
       throw mapRustError(error)
     }
@@ -212,6 +214,21 @@ private struct EmptyBody: Encodable {}
 
 public extension Notification.Name {
   static let serverSessionExpired = Notification.Name("serverSessionExpired")
+}
+
+private func shouldExpireSession(for error: Error) -> Bool {
+  guard let rustError = error as? RustAPIError else {
+    return false
+  }
+
+  switch rustError {
+  case .serverError(let code, _):
+    return code == "unauthenticated"
+  case .httpError(let statusCode):
+    return statusCode == 401
+  case .invalidResponse, .noData:
+    return false
+  }
 }
 
 private func mapRustError(_ error: Error) -> AuthClientError {

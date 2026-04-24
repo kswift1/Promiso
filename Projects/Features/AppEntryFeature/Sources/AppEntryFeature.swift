@@ -453,8 +453,10 @@ extension AppEntry {
           state.destination = .auth(Auth.Feature.State())
           return .run { [authClient] _ in
             await authClient.clearSession()
+            authClient.clearWidgetAuthToken()
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
+            WidgetDataManager.reloadWidgets()
           }
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
