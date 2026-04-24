@@ -250,10 +250,30 @@ impl AppStoreVerifier for RealAppStoreVerifier {
 }
 
 fn load_root_certificates() -> Result<Vec<Vec<u8>>, std::io::Error> {
-    let cert_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firebase/functions/certs");
-    let g2 = fs::read(cert_dir.join("AppleRootCA-G2.der"))?;
-    let g3 = fs::read(cert_dir.join("AppleRootCA-G3.der"))?;
-    Ok(vec![g2, g3])
+    // 우선순위: 1) APP_STORE_CERTS_DIR 환경변수, 2) 로컬 개발 (CARGO_MANIFEST_DIR/certs),
+    //          3) 컨테이너 배포 경로 (/app/certs)
+    let candidates: Vec<PathBuf> = [
+        std::env::var("APP_STORE_CERTS_DIR").ok().map(PathBuf::from),
+        Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("certs")),
+        Some(PathBuf::from("/app/certs")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+
+    let mut last_err: Option<std::io::Error> = None;
+    for dir in &candidates {
+        match (
+            fs::read(dir.join("AppleRootCA-G2.der")),
+            fs::read(dir.join("AppleRootCA-G3.der")),
+        ) {
+            (Ok(g2), Ok(g3)) => return Ok(vec![g2, g3]),
+            (Err(e), _) | (_, Err(e)) => last_err = Some(e),
+        }
+    }
+    Err(last_err.unwrap_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "App Store root certs not found")
+    }))
 }
 
 fn decode_jws_payload<T: DeserializeOwned>(signed_value: &str) -> Result<T, AppError> {
