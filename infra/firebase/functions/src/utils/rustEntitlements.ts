@@ -66,6 +66,10 @@ export async function closeRustEntitlementPool(): Promise<void> {
   rustPool = null;
 }
 
+/**
+ * Rust PostgreSQL connection pool (lazy init singleton).
+ * @return {Pool} 공유 연결 풀.
+ */
 function getRustPool(): Pool {
   if (!rustPool) {
     rustPool = new Pool({
@@ -76,6 +80,10 @@ function getRustPool(): Pool {
   return rustPool;
 }
 
+/**
+ * Rust PostgreSQL 연결 URL 조회 (env → secret 순).
+ * @return {string} 연결 문자열.
+ */
 function getRustDatabaseUrl(): string {
   const envValue = process.env.RUST_DATABASE_URL?.trim();
   if (envValue) {
