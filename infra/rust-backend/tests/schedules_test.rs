@@ -108,6 +108,7 @@ impl PushSender for MockPushSender {
             success: true,
             success_count: tokens.len() as i32,
             failure_count: 0,
+            delivered_tokens: tokens.to_vec(),
         }
     }
 }

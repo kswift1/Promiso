@@ -8,6 +8,88 @@ import PromisoShared
 
 private let logger = Logger(subsystem: "com.promiso.widget", category: "VoteIntent")
 
+private func performAuthenticatedWidgetPost(
+  to url: URL,
+  userId: String,
+  body: Data
+) async -> Bool {
+  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
+  let widgetToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
+  let accessToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
+  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
+
+  guard let primaryToken = widgetToken ?? accessToken else {
+    logger.error("VoteResponse: missing auth token")
+    return false
+  }
+
+  let primaryStatus = await sendWidgetRequest(
+    to: url,
+    userId: userId,
+    authToken: primaryToken,
+    deviceId: deviceId,
+    body: body
+  )
+  if primaryStatus == 200 {
+    return true
+  }
+
+  if primaryStatus == 401,
+     let widgetToken,
+     primaryToken == widgetToken,
+     let accessToken,
+     accessToken != widgetToken {
+    logger.info("VoteResponse: widget token 401 -> access token fallback")
+    let fallbackStatus = await sendWidgetRequest(
+      to: url,
+      userId: userId,
+      authToken: accessToken,
+      deviceId: deviceId,
+      body: body
+    )
+    return fallbackStatus == 200
+  }
+
+  return false
+}
+
+private func sendWidgetRequest(
+  to url: URL,
+  userId: String,
+  authToken: String,
+  deviceId: String?,
+  body: Data
+) async -> Int? {
+  var request = URLRequest(url: url)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
+  request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
+  request.httpBody = body
+
+  if let deviceId {
+    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+  }
+
+  do {
+    let (data, response) = try await URLSession.shared.data(for: request)
+    guard let httpResponse = response as? HTTPURLResponse else {
+      logger.error("VoteResponse: non-http response")
+      return nil
+    }
+
+    if httpResponse.statusCode != 200 {
+      let bodyText = String(data: data, encoding: .utf8) ?? ""
+      logger.error("VoteResponse failed(\(httpResponse.statusCode)): \(bodyText.prefix(200))")
+    }
+
+    return httpResponse.statusCode
+  } catch {
+    logger.error("VoteResponse error: \(error.localizedDescription)")
+    return nil
+  }
+}
+
 // MARK: - Vote Response Intent
 
 /// 참여 확인 투표 응답 Intent (잠금화면 버튼용)
@@ -132,12 +214,6 @@ private func callVoteResponseFunction(
 
   guard let url = URL(string: baseURL) else { return }
 
-  // App Group에서 인증 토큰 읽기 (Widget 전용 토큰 우선, 없으면 ID Token 사용)
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let authToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
-    ?? defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
-  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
-
   let requestBody: [String: Any] = [
     "channelId": channelId,
     "scheduleId": scheduleId,
@@ -149,28 +225,7 @@ private func callVoteResponseFunction(
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  var request = URLRequest(url: url)
-  request.httpMethod = "POST"
-  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
-  request.httpBody = httpBody
-
-  if let authToken {
-    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
-  }
-  if let deviceId {
-    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-  }
-
-  do {
-    let (data, httpResponse) = try await URLSession.shared.data(for: request)
-    if let httpResponse = httpResponse as? HTTPURLResponse, httpResponse.statusCode != 200 {
-      let body = String(data: data, encoding: .utf8) ?? ""
-      logger.error("VoteResponse failed(\(httpResponse.statusCode)): \(body.prefix(200))")
-    } else {
-      logger.info("VoteResponse success: \(response) for \(scheduleId)")
-    }
-  } catch {
-    logger.error("VoteResponse error: \(error.localizedDescription)")
+  if await performAuthenticatedWidgetPost(to: url, userId: userId, body: httpBody) {
+    logger.info("VoteResponse success: \(response) for \(scheduleId)")
   }
 }

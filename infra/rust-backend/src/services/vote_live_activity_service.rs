@@ -8,7 +8,9 @@ use crate::models::live_activity::{
     LiveActivitySender, StartScheduleLiveActivityResponse, UpdateVoteLiveActivityResponse,
     VoteLiveActivityContentState, VoteLiveActivityMember,
 };
+use crate::models::notification::{PushSender, VoteInfo};
 use crate::models::schedule::{Schedule, ScheduleType};
+use crate::services::{live_activity_service, notification_service};
 
 const DEFAULT_VOTE_DEADLINE_MINUTES_BEFORE: i16 = 30;
 const MAX_VOTE_WINDOW_HOURS: i64 = 8;
@@ -40,6 +42,7 @@ struct GroupSummary {
 pub async fn start_vote_live_activity(
     pool: &PgPool,
     sender: &dyn LiveActivitySender,
+    push_sender: Option<&dyn PushSender>,
     schedule_id: Uuid,
     user_id: &str,
 ) -> Result<StartScheduleLiveActivityResponse, AppError> {
@@ -64,7 +67,7 @@ pub async fn start_vote_live_activity(
         return Err(AppError::Conflict("이미 투표가 진행 중입니다".to_string()));
     }
 
-    ensure_host_vote_accepted(pool, &schedule).await?;
+    let old_votes = load_vote_infos(pool, schedule.id).await?;
 
     let vote_deadline = compute_vote_deadline(&schedule)?;
     let group_id = schedule
@@ -72,8 +75,13 @@ pub async fn start_vote_live_activity(
         .ok_or_else(|| AppError::Internal("그룹 일정에 group_id가 없습니다".to_string()))?;
     let group_members = load_group_members(pool, group_id).await?;
     let total_member_count = group_members.len() as i32;
+    let host_name = group_members
+        .iter()
+        .find(|member| member.id == schedule.user_id)
+        .map(|member| member.nickname.clone())
+        .unwrap_or_else(|| "호스트".to_string());
 
-    let content_state = load_vote_content_state(pool, &schedule, false).await?;
+    let content_state = load_vote_start_content_state(pool, &schedule, host_name.as_str()).await?;
     let member_ids = group_members
         .iter()
         .map(|member| member.id.clone())
@@ -97,11 +105,6 @@ pub async fn start_vote_live_activity(
         .unwrap_or(GroupSummary {
             name: String::new(),
         });
-    let host_name = group_members
-        .iter()
-        .find(|member| member.id == schedule.user_id)
-        .map(|member| member.nickname.clone())
-        .unwrap_or_else(|| "호스트".to_string());
 
     let emoji = schedule.emoji.clone().unwrap_or_else(|| "📅".to_string());
     let mut success_count = 0;
@@ -143,15 +146,34 @@ pub async fn start_vote_live_activity(
         ));
     }
 
-    sqlx::query(
-        "UPDATE schedules SET vote_live_activity_channel_id = $1, vote_live_activity_started_at = NOW(), \
-         vote_live_activity_finalized_at = NULL, vote_live_activity_ended_at = NULL, updated_at = NOW() \
-         WHERE id = $2",
-    )
-    .bind(&channel_id)
-    .bind(schedule.id)
-    .execute(pool)
-    .await?;
+    persist_vote_live_activity_start(pool, &schedule, &channel_id).await?;
+
+    let new_votes = load_vote_infos(pool, schedule.id).await?;
+    if let Some(push_sender) = push_sender {
+        if let Err(error) = notification_service::notify_schedule_votes_updated(
+            pool,
+            push_sender,
+            schedule.id,
+            &old_votes,
+            &new_votes,
+        )
+        .await
+        {
+            tracing::error!(
+                "Failed to notify schedule vote update after vote live activity start {}: {}",
+                schedule.id,
+                error
+            );
+        }
+    }
+
+    if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule.id).await {
+        tracing::error!(
+            "Failed to sync live activity jobs after vote live activity start {}: {}",
+            schedule.id,
+            error
+        );
+    }
 
     Ok(StartScheduleLiveActivityResponse {
         success: failure_count == 0,
@@ -315,7 +337,13 @@ fn compute_vote_deadline(schedule: &Schedule) -> Result<chrono::DateTime<Utc>, A
     Ok(vote_deadline)
 }
 
-async fn ensure_host_vote_accepted(pool: &PgPool, schedule: &Schedule) -> Result<(), AppError> {
+async fn persist_vote_live_activity_start(
+    pool: &PgPool,
+    schedule: &Schedule,
+    channel_id: &str,
+) -> Result<(), AppError> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query(
         "INSERT INTO schedule_votes (schedule_id, user_id, status, responded_at) \
          VALUES ($1, $2, 'accepted'::vote_status, NOW()) \
@@ -324,7 +352,7 @@ async fn ensure_host_vote_accepted(pool: &PgPool, schedule: &Schedule) -> Result
     )
     .bind(schedule.id)
     .bind(&schedule.user_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     let minimum_participants = schedule.minimum_participants.unwrap_or(2) as i64;
@@ -333,14 +361,21 @@ async fn ensure_host_vote_accepted(pool: &PgPool, schedule: &Schedule) -> Result
          WHERE schedule_id = $1 AND status = 'accepted'::vote_status",
     )
     .bind(schedule.id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query("UPDATE schedules SET is_confirmed = $1, updated_at = NOW() WHERE id = $2")
-        .bind(accepted_count.0 >= minimum_participants)
-        .bind(schedule.id)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "UPDATE schedules SET is_confirmed = $1, vote_live_activity_channel_id = $2, \
+         vote_live_activity_started_at = NOW(), vote_live_activity_finalized_at = NULL, \
+         vote_live_activity_ended_at = NULL, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(accepted_count.0 >= minimum_participants)
+    .bind(channel_id)
+    .bind(schedule.id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -411,6 +446,58 @@ async fn load_vote_content_state(
         pending_count,
         is_finalized,
     })
+}
+
+async fn load_vote_start_content_state(
+    pool: &PgPool,
+    schedule: &Schedule,
+    host_name: &str,
+) -> Result<VoteLiveActivityContentState, AppError> {
+    let mut content_state = load_vote_content_state(pool, schedule, false).await?;
+    let total_member_count = content_state.accepted_members.len()
+        + content_state.declined_members.len()
+        + content_state.pending_count.max(0) as usize;
+    let host_already_accepted = content_state
+        .accepted_members
+        .iter()
+        .any(|member| member.id == schedule.user_id);
+
+    content_state
+        .declined_members
+        .retain(|member| member.id != schedule.user_id);
+
+    if !host_already_accepted {
+        content_state.accepted_members.insert(
+            0,
+            VoteLiveActivityMember {
+                id: schedule.user_id.clone(),
+                name: host_name.to_string(),
+            },
+        );
+    }
+
+    let responded_count = content_state.accepted_members.len() + content_state.declined_members.len();
+    content_state.pending_count = total_member_count.saturating_sub(responded_count) as i32;
+    content_state.is_finalized = responded_count >= total_member_count;
+
+    Ok(content_state)
+}
+
+async fn load_vote_infos(pool: &PgPool, schedule_id: Uuid) -> Result<Vec<VoteInfo>, AppError> {
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT user_id, status::TEXT \
+         FROM schedule_votes \
+         WHERE schedule_id = $1 \
+         ORDER BY responded_at, user_id",
+    )
+    .bind(schedule_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(user_id, status)| VoteInfo { user_id, status })
+        .collect())
 }
 
 async fn load_push_to_start_targets(

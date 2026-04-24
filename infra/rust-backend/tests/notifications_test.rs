@@ -54,6 +54,22 @@ impl PushSender for MockPushSender {
             success: true,
             success_count: tokens.len() as i32,
             failure_count: 0,
+            delivered_tokens: tokens.to_vec(),
+        }
+    }
+}
+
+struct PartialSuccessPushSender;
+
+#[async_trait::async_trait]
+impl PushSender for PartialSuccessPushSender {
+    async fn send_multicast(&self, tokens: &[String], _message: &FcmMessage) -> PushResult {
+        let success_count = if tokens.is_empty() { 0 } else { 1 };
+        PushResult {
+            success: false,
+            success_count,
+            failure_count: tokens.len().saturating_sub(success_count as usize) as i32,
+            delivered_tokens: tokens.first().cloned().into_iter().collect(),
         }
     }
 }
@@ -174,6 +190,17 @@ async fn create_test_schedule(
     .await
     .expect("Failed to create test schedule");
 
+    row.0
+}
+
+async fn delivered_notification_count(pool: &PgPool, user_ids: &[&str]) -> i64 {
+    let user_ids = user_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
+    let row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = ANY($1) AND is_delivered = TRUE")
+            .bind(&user_ids)
+            .fetch_one(pool)
+            .await
+            .expect("Failed to count delivered notifications");
     row.0
 }
 
@@ -995,6 +1022,37 @@ async fn n_fcm8_send_missing_required_fields(pool: PgPool) {
     };
     let result = notification_service::send_push_internal(&pool, &mock, req).await;
     assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn regression_n_fcm9_partial_delivery_updates_only_successful_notifications(pool: PgPool) {
+    insert_test_user(&pool, "user_fcm9a", "FCM유저9A").await;
+    insert_test_user(&pool, "user_fcm9b", "FCM유저9B").await;
+    register_test_device(&pool, "user_fcm9a", "dev-fcm9a", "fcm-fcm9a").await;
+    register_test_device(&pool, "user_fcm9b", "dev-fcm9b", "fcm-fcm9b").await;
+
+    let mock = PartialSuccessPushSender;
+    let req = SendPushRequest {
+        user_ids: vec!["user_fcm9a".to_string(), "user_fcm9b".to_string()],
+        notification_type: NotificationType::System,
+        title: "partial".to_string(),
+        body: "body".to_string(),
+        schedule_id: None,
+        group_id: None,
+        related_user_id: None,
+        data: None,
+    };
+
+    let result = notification_service::send_push_internal(&pool, &mock, req)
+        .await
+        .expect("partial delivery should still return result");
+    assert_eq!(result.success_count, 1);
+    assert_eq!(result.failure_count, 1);
+    assert_eq!(
+        delivered_notification_count(&pool, &["user_fcm9a", "user_fcm9b"]).await,
+        1,
+        "partial delivery must only mark one notification as delivered"
+    );
 }
 
 // ============================================================

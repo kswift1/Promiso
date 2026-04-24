@@ -220,6 +220,17 @@ struct MockLiveActivityStateSnapshot {
     broadcast_calls: Vec<(String, serde_json::Value)>,
 }
 
+#[derive(Default)]
+struct FailingPushToStartLiveActivitySender {
+    state: Arc<Mutex<MockLiveActivityState>>,
+}
+
+impl FailingPushToStartLiveActivitySender {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait::async_trait]
 impl LiveActivitySender for MockLiveActivitySender {
     async fn create_channel(&self) -> Result<String, promiso_backend::errors::AppError> {
@@ -238,6 +249,41 @@ impl LiveActivitySender for MockLiveActivitySender {
             .push_to_start_calls
             .push((push_to_start_token.to_string(), payload.clone()));
         Ok(())
+    }
+
+    async fn send_broadcast(
+        &self,
+        channel_id: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), promiso_backend::errors::AppError> {
+        let mut state = self.state.lock().unwrap();
+        state
+            .broadcast_calls
+            .push((channel_id.to_string(), payload.clone()));
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl LiveActivitySender for FailingPushToStartLiveActivitySender {
+    async fn create_channel(&self) -> Result<String, promiso_backend::errors::AppError> {
+        let mut state = self.state.lock().unwrap();
+        state.created_channels += 1;
+        Ok("channel-test-fail".to_string())
+    }
+
+    async fn send_push_to_start(
+        &self,
+        push_to_start_token: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), promiso_backend::errors::AppError> {
+        let mut state = self.state.lock().unwrap();
+        state
+            .push_to_start_calls
+            .push((push_to_start_token.to_string(), payload.clone()));
+        Err(promiso_backend::errors::AppError::Internal(
+            "push to start failed".to_string(),
+        ))
     }
 
     async fn send_broadcast(
@@ -280,6 +326,7 @@ impl PushSender for MockPushSender {
             success: true,
             success_count: tokens.len() as i32,
             failure_count: 0,
+            delivered_tokens: tokens.to_vec(),
         }
     }
 }
@@ -448,6 +495,103 @@ async fn update_schedule_live_activity_all_arrived_schedules_end_job(pool: PgPoo
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn regression_update_schedule_live_activity_reverts_end_job_when_all_arrived_state_clears(
+    pool: PgPool,
+) {
+    insert_test_user(&pool, "host_eta_revert", "호스트").await;
+    insert_test_user(&pool, "member_eta_revert", "멤버").await;
+    let group_id = create_test_group(&pool, "host_eta_revert", "ETA 되돌림 그룹").await;
+    add_member_to_group(&pool, group_id, "member_eta_revert").await;
+
+    let start_at = Utc::now() + Duration::minutes(40);
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_eta_revert",
+        group_id,
+        "ETA 되돌림 일정",
+        start_at,
+        Some(30),
+        2,
+    )
+    .await;
+    accept_schedule(&pool, schedule_id, "host_eta_revert").await;
+    accept_schedule(&pool, schedule_id, "member_eta_revert").await;
+
+    sqlx::query(
+        "UPDATE schedules SET live_activity_channel_id = $1, live_activity_started_at = NOW() WHERE id = $2",
+    )
+    .bind("channel-test-eta-revert")
+    .bind(schedule_id)
+    .execute(&pool)
+    .await
+    .expect("Failed to update schedule live activity state");
+
+    let live_sender = MockLiveActivitySender::new();
+    live_activity_service::update_schedule_live_activity(
+        &pool,
+        &live_sender,
+        schedule_id,
+        "host_eta_revert",
+        UpdateScheduleLiveActivityRequest {
+            channel_id: "channel-test-eta-revert".to_string(),
+            participants: vec![
+                LiveActivityParticipant {
+                    id: "host_eta_revert".to_string(),
+                    name: "호스트".to_string(),
+                    estimated_arrival_minutes: Some(0),
+                },
+                LiveActivityParticipant {
+                    id: "member_eta_revert".to_string(),
+                    name: "멤버".to_string(),
+                    estimated_arrival_minutes: Some(0),
+                },
+            ],
+            tracking_duration_minutes: Some(30),
+        },
+    )
+    .await
+    .expect("all arrived update should succeed");
+
+    live_activity_service::update_schedule_live_activity(
+        &pool,
+        &live_sender,
+        schedule_id,
+        "host_eta_revert",
+        UpdateScheduleLiveActivityRequest {
+            channel_id: "channel-test-eta-revert".to_string(),
+            participants: vec![
+                LiveActivityParticipant {
+                    id: "host_eta_revert".to_string(),
+                    name: "호스트".to_string(),
+                    estimated_arrival_minutes: Some(0),
+                },
+                LiveActivityParticipant {
+                    id: "member_eta_revert".to_string(),
+                    name: "멤버".to_string(),
+                    estimated_arrival_minutes: Some(5),
+                },
+            ],
+            tracking_duration_minutes: Some(30),
+        },
+    )
+    .await
+    .expect("reverted eta update should succeed");
+
+    let pending_end_jobs: Vec<LiveActivityJob> = load_jobs(&pool, schedule_id)
+        .await
+        .into_iter()
+        .filter(|job| {
+            job.job_type == LiveActivityJobType::End && job.status == LiveActivityJobStatus::Pending
+        })
+        .collect();
+    assert_eq!(pending_end_jobs.len(), 1, "pending end job should be restored");
+    assert!(
+        pending_end_jobs[0].scheduled_at >= start_at + Duration::minutes(30) - Duration::minutes(1),
+        "all-arrived override should be reverted to the default end time"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn process_due_nudge_job_sends_location_sharing_push(pool: PgPool) {
     insert_test_user(&pool, "host_nudge", "호스트").await;
     insert_test_user(&pool, "member_nudge", "멤버").await;
@@ -549,6 +693,7 @@ async fn start_vote_live_activity_stores_channel_and_sends_push_to_start(pool: P
     let response = vote_live_activity_service::start_vote_live_activity(
         &pool,
         &live_sender,
+        None,
         schedule_id,
         "host_vote_start",
     )
@@ -573,12 +718,202 @@ async fn start_vote_live_activity_stores_channel_and_sends_push_to_start(pool: P
         serde_json::json!("VoteActivityAttributes")
     );
     assert_eq!(
-        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["pending_count"],
+        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["pendingCount"],
         serde_json::json!(1)
     );
     assert_eq!(
-        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["accepted_members"][0]["id"],
+        sender_state.push_to_start_calls[0].1["aps"]["content-state"]["acceptedMembers"][0]["id"],
         serde_json::json!("host_vote_start")
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn regression_start_vote_live_activity_without_targets_does_not_mutate_host_vote(
+    pool: PgPool,
+) {
+    insert_test_user(&pool, "host_vote_no_targets", "호스트").await;
+    insert_test_user(&pool, "member_vote_no_targets", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_no_targets", "투표 토큰 없음 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_no_targets").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_no_targets",
+        group_id,
+        "투표 토큰 없음 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    sqlx::query("UPDATE schedules SET is_confirmed = FALSE WHERE id = $1")
+        .bind(schedule_id)
+        .execute(&pool)
+        .await
+        .expect("Failed to reset confirmed flag");
+
+    let live_sender = MockLiveActivitySender::new();
+    let response = vote_live_activity_service::start_vote_live_activity(
+        &pool,
+        &live_sender,
+        None,
+        schedule_id,
+        "host_vote_no_targets",
+    )
+    .await
+    .expect("vote live activity should return without targets");
+
+    assert_eq!(response.success_count, 0);
+    assert!(response.channel_id.is_none());
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert_eq!(schedule.is_confirmed, Some(false));
+    let host_vote_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM schedule_votes WHERE schedule_id = $1 AND user_id = $2",
+    )
+    .bind(schedule_id)
+    .bind("host_vote_no_targets")
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to count host votes");
+    assert_eq!(host_vote_count.0, 0, "host vote must not be persisted on no-target return");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn regression_start_vote_live_activity_syncs_schedule_jobs_after_host_vote_confirms(
+    pool: PgPool,
+) {
+    insert_test_user(&pool, "host_vote_sync", "호스트").await;
+    insert_test_user(&pool, "member_vote_sync", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_sync", "투표 동기화 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_sync").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_sync",
+        group_id,
+        "투표 동기화 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    sqlx::query("UPDATE schedules SET is_confirmed = FALSE WHERE id = $1")
+        .bind(schedule_id)
+        .execute(&pool)
+        .await
+        .expect("Failed to reset confirmed flag");
+    vote_schedule(&pool, schedule_id, "member_vote_sync", "accepted").await;
+
+    register_push_to_start_token(
+        &pool,
+        "host_vote_sync",
+        "host-vote-sync-device",
+        "vote-sync-token-host",
+    )
+    .await;
+    register_push_to_start_token(
+        &pool,
+        "member_vote_sync",
+        "member-vote-sync-device",
+        "vote-sync-token-member",
+    )
+    .await;
+
+    let live_sender = MockLiveActivitySender::new();
+    let push_sender = MockPushSender::new();
+    vote_live_activity_service::start_vote_live_activity(
+        &pool,
+        &live_sender,
+        Some(&push_sender),
+        schedule_id,
+        "host_vote_sync",
+    )
+    .await
+    .expect("vote live activity should start");
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert_eq!(schedule.is_confirmed, Some(true));
+
+    let pending_start_jobs: Vec<LiveActivityJob> = load_jobs(&pool, schedule_id)
+        .await
+        .into_iter()
+        .filter(|job| {
+            job.job_type == LiveActivityJobType::Start
+                && job.status == LiveActivityJobStatus::Pending
+        })
+        .collect();
+    assert_eq!(
+        pending_start_jobs.len(),
+        1,
+        "confirming through vote live activity should resync schedule live activity jobs"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn regression_start_vote_live_activity_failure_does_not_persist_host_vote(pool: PgPool) {
+    insert_test_user(&pool, "host_vote_fail", "호스트").await;
+    insert_test_user(&pool, "member_vote_fail", "멤버").await;
+    let group_id = create_test_group(&pool, "host_vote_fail", "투표 실패 그룹").await;
+    add_member_to_group(&pool, group_id, "member_vote_fail").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_vote_fail",
+        group_id,
+        "투표 실패 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    sqlx::query("UPDATE schedules SET is_confirmed = FALSE WHERE id = $1")
+        .bind(schedule_id)
+        .execute(&pool)
+        .await
+        .expect("Failed to reset confirmed flag");
+
+    register_push_to_start_token(
+        &pool,
+        "host_vote_fail",
+        "host-vote-fail-device",
+        "vote-fail-token-host",
+    )
+    .await;
+    register_push_to_start_token(
+        &pool,
+        "member_vote_fail",
+        "member-vote-fail-device",
+        "vote-fail-token-member",
+    )
+    .await;
+
+    let live_sender = FailingPushToStartLiveActivitySender::new();
+    let error = vote_live_activity_service::start_vote_live_activity(
+        &pool,
+        &live_sender,
+        None,
+        schedule_id,
+        "host_vote_fail",
+    )
+    .await
+    .expect_err("vote live activity should fail when every push-to-start send fails");
+    assert!(matches!(error, promiso_backend::errors::AppError::Internal(_)));
+
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert_eq!(schedule.is_confirmed, Some(false));
+    let host_vote_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM schedule_votes WHERE schedule_id = $1 AND user_id = $2",
+    )
+    .bind(schedule_id)
+    .bind("host_vote_fail")
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to count host votes");
+    assert_eq!(
+        host_vote_count.0,
+        0,
+        "host vote must not be persisted when all push-to-start sends fail"
     );
 }
 
@@ -718,14 +1053,14 @@ async fn widget_eta_requires_auth_token_header(pool: PgPool) {
                 .header("x-user-id", "user_123")
                 .body(Body::from(
                     serde_json::json!({
-                        "schedule_id": Uuid::new_v4(),
-                        "channel_id": "channel-test",
+                        "scheduleId": Uuid::new_v4(),
+                        "channelId": "channel-test",
                         "participants": [{
                             "id": "user_123",
                             "name": "테스터",
-                            "estimated_arrival_minutes": 5
+                            "estimatedArrivalMinutes": 5
                         }],
-                        "tracking_duration_minutes": 30
+                        "trackingDurationMinutes": 30
                     })
                     .to_string(),
                 ))

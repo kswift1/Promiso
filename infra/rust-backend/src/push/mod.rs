@@ -44,6 +44,7 @@ impl PushSender for NoopPushSender {
             success: true,
             success_count: 0,
             failure_count: 0,
+            delivered_tokens: Vec::new(),
         }
     }
 }
@@ -303,6 +304,7 @@ impl PushSender for FcmPushSender {
                 success: true,
                 success_count: 0,
                 failure_count: 0,
+                delivered_tokens: Vec::new(),
             };
         }
 
@@ -314,16 +316,21 @@ impl PushSender for FcmPushSender {
                     success: false,
                     success_count: 0,
                     failure_count: tokens.len() as i32,
+                    delivered_tokens: Vec::new(),
                 };
             }
         };
 
         let mut success_count = 0;
         let mut failure_count = 0;
+        let mut delivered_tokens = Vec::new();
 
         for token in tokens {
             match self.send_message(token, message, &access_token).await {
-                Ok(()) => success_count += 1,
+                Ok(()) => {
+                    success_count += 1;
+                    delivered_tokens.push(token.clone());
+                }
                 Err(error) => {
                     failure_count += 1;
                     tracing::error!("FCM send failed for token {}: {}", token, error);
@@ -335,6 +342,7 @@ impl PushSender for FcmPushSender {
             success: failure_count == 0,
             success_count,
             failure_count,
+            delivered_tokens,
         }
     }
 }

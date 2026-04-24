@@ -15,7 +15,7 @@
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
 | GET | `/api/v1/faq` | FAQ 목록 조회 (Notion 프록시) |
-| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
+| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
 

@@ -192,6 +192,7 @@ pub struct PushResult {
     pub success: bool,
     pub success_count: i32,
     pub failure_count: i32,
+    pub delivered_tokens: Vec<String>,
 }
 
 // ============================================================

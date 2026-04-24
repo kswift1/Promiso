@@ -210,12 +210,14 @@ async fn start_live_activity(
 async fn start_vote_live_activity(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     Extension(live_activity_sender): Extension<Arc<dyn LiveActivitySender>>,
     Path(id): Path<Uuid>,
 ) -> Result<ApiResponse<StartScheduleLiveActivityResponse>, AppError> {
     let result = vote_live_activity_service::start_vote_live_activity(
         &pool,
         live_activity_sender.as_ref(),
+        Some(push_sender.as_ref()),
         id,
         &claims.uid,
     )
