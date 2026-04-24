@@ -4,16 +4,9 @@ import PromisoShared
 /// Rust 백엔드 API 호출 클라이언트
 public actor RustAPIClient {
   /// 환경별 기본 URL — Info.plist의 `RUST_API_URL` 키에서 읽음.
-  /// Tuist의 `AppConfig.swift`가 각 Target(PromisoDev/Stage/Prod) Info.plist에 주입.
-  public static let defaultBaseURL: URL = {
-    if let urlString = Bundle.main.object(forInfoDictionaryKey: "RUST_API_URL") as? String,
-       !urlString.isEmpty,
-       let url = URL(string: urlString) {
-      return url
-    }
-    // Fallback (테스트/Widget Extension 등 Info.plist 없는 번들)
-    return URL(string: "https://promiso-api-809932911903.asia-northeast3.run.app")!
-  }()
+  /// Tuist의 `AppConfig.swift`가 각 Target(PromisoDev/Stage/Prod) Info.plist에 주입하며,
+  /// fallback은 `AppConstants.Network`에서 관리한다.
+  public static let defaultBaseURL = AppConstants.Network.rustAPIURL
 
   #if DEBUG
   private static let pulseDelegate = URLSessionProxyDelegate()

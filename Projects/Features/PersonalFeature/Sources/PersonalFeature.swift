@@ -723,13 +723,8 @@ extension PersonalMode {
           state.eventDetail = nil
           return .send(.internal(.subscribeToEvents))
 
-        case .eventDetail(.presented(.delegate(.eventUpdated(let updated)))):
-          if var events = state.eventsState.value,
-             let index = events.firstIndex(where: { $0.id == updated.id }) {
-            events[index] = updated
-            state.eventsState = .loaded(events)
-          }
-          return .none
+        case .eventDetail(.presented(.delegate(.eventUpdated(let _)))):
+          return .send(.internal(.subscribeToEvents))
 
         case .eventDetail:
           return .none
