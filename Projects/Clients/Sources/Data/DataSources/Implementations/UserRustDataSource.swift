@@ -49,13 +49,6 @@ private struct RustProfileImageUploadTarget: Decodable {
 private struct CreateUserBody: Encodable {
   let name: String?
   let nickname: String
-  let provider: ProviderBody
-}
-
-private struct ProviderBody: Encodable {
-  let providerType: String
-  let providerUid: String
-  let email: String
 }
 
 private struct UpdateUserBody: Encodable {
@@ -88,15 +81,7 @@ public actor UserRustDataSource {
     providerUid: String,
     email: String
   ) async throws -> String {
-    let body = CreateUserBody(
-      name: name,
-      nickname: nickname,
-      provider: ProviderBody(
-        providerType: providerType,
-        providerUid: providerUid,
-        email: email
-      )
-    )
+    let body = CreateUserBody(name: name, nickname: nickname)
     do {
       let response: RustCreateUserResponse = try await api.post("/api/v1/users", body: body)
       return response.userId
