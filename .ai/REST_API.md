@@ -14,21 +14,21 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
-| GET | `/api/v1/faq` | FAQ 목록 조회 (Notion 프록시) |
-| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id 필수, widget token이면 X-Device-Id 필요) |
+| GET | `/api/v1/faq` | FAQ 목록 조회 (Postgres `faqs` 테이블) |
+| POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
 
 ### GET /api/v1/faq
 
-- 설명: FAQ 목록 조회 (Notion 프록시)
+- 설명: FAQ 목록 조회 (Postgres `faqs` 테이블, `is_active = TRUE`만 반환, `sort_order ASC, created_at ASC` 정렬)
 - 인증: 불필요
 - 응답 200:
   ```json
   {
     "data": [
       {
-        "id": "notion-page-id",
+        "id": "9f1c2b0e-1e9a-4e7c-9a9e-8a2d7b3c4d5e",
         "question": "질문",
         "answer": "답변",
         "category": "그룹",
@@ -39,13 +39,13 @@
     ]
   }
   ```
-- 에러: 412 (`NOTION_FAQ_API_KEY` 미설정)
+- 에러: 5xx (DB 장애 시)
 
 ## Users (인증 필요)
 
 | Method | Path | 설명 | 비고 |
 |--------|------|------|------|
-| POST | `/api/v1/users` | 유저 생성 | body: {name?, nickname, provider} |
+| POST | `/api/v1/users` | 유저 생성 | body: {name?, nickname} (provider는 서버가 `auth_accounts`에서 조회) |
 | GET | `/api/v1/users/me` | 본인 프로필 (private) | email, provider 포함 |
 | PATCH | `/api/v1/users/me` | 닉네임 수정 | body: {nickname?} |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 | 그룹 호스트면 412, subscription 이력 보존 |

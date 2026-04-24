@@ -32,7 +32,6 @@ public struct AppConfigModel: Decodable, Equatable, Sendable {
   public let privacyPolicyURL: String
   public let termsOfServiceURL: String
   public let supportEmail: String
-  public let notionFAQDatabaseId: String
 
   public init(
     forceUpdateVersion: String,
@@ -40,8 +39,7 @@ public struct AppConfigModel: Decodable, Equatable, Sendable {
     appStoreURL: String,
     privacyPolicyURL: String,
     termsOfServiceURL: String,
-    supportEmail: String,
-    notionFAQDatabaseId: String
+    supportEmail: String
   ) {
     self.forceUpdateVersion = forceUpdateVersion
     self.recommendedVersion = recommendedVersion
@@ -49,7 +47,6 @@ public struct AppConfigModel: Decodable, Equatable, Sendable {
     self.privacyPolicyURL = privacyPolicyURL
     self.termsOfServiceURL = termsOfServiceURL
     self.supportEmail = supportEmail
-    self.notionFAQDatabaseId = notionFAQDatabaseId
   }
 
   public static let defaultConfig = AppConfigModel(
@@ -58,8 +55,7 @@ public struct AppConfigModel: Decodable, Equatable, Sendable {
     appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
     privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02",
     termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b",
-    supportEmail: "kswen0203@icloud.com",
-    notionFAQDatabaseId: "3029e4970675812ca3d6c852867858a2"
+    supportEmail: "kswen0203@icloud.com"
   )
 }
 
@@ -109,11 +105,6 @@ public enum AppConstants {
     /// 지원 이메일 (동적 - App Config)
     public static var supportEmail: String {
       AppConfigManager.shared.cachedConfig.supportEmail
-    }
-
-    /// Notion FAQ 데이터베이스 ID (동적 - App Config)
-    public static var notionFAQDatabaseId: String {
-      AppConfigManager.shared.cachedConfig.notionFAQDatabaseId
     }
 
     // MARK: - Testing

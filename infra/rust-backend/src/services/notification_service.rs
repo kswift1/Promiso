@@ -626,11 +626,12 @@ pub async fn send_push_internal(
             success: true,
             success_count: 0,
             failure_count: 0,
+            delivered_tokens: Vec::new(),
         });
     }
 
-    let tokens: Vec<(String,)> = sqlx::query_as(
-        "SELECT ne.token \
+    let token_rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT d.user_id, ne.token \
          FROM notification_endpoints ne \
          JOIN devices d ON d.id = ne.device_id \
          WHERE d.user_id = ANY($1) AND ne.provider = 'fcm'",
@@ -640,13 +641,19 @@ pub async fn send_push_internal(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let token_list: Vec<String> = tokens.into_iter().map(|(t,)| t).collect();
+    let mut token_list = Vec::new();
+    let mut tokens_by_user: HashMap<String, Vec<String>> = HashMap::new();
+    for (user_id, token) in token_rows {
+        token_list.push(token.clone());
+        tokens_by_user.entry(user_id).or_default().push(token);
+    }
 
     if token_list.is_empty() {
         return Ok(PushResult {
             success: true,
             success_count: 0,
             failure_count: 0,
+            delivered_tokens: Vec::new(),
         });
     }
 
@@ -665,12 +672,29 @@ pub async fn send_push_internal(
 
     // 7. delivered 업데이트: 전송 성공한 알림의 is_delivered=true
     if push_result.success_count > 0 {
-        // fcm_eligible 유저들의 notification_id를 갱신
-        let eligible_set: HashSet<&str> =
-            fcm_eligible_user_ids.iter().map(|s| s.as_str()).collect();
+        let delivered_token_set: HashSet<&str> = if push_result.delivered_tokens.is_empty()
+            && push_result.success_count as usize == token_list.len()
+        {
+            token_list.iter().map(|token| token.as_str()).collect()
+        } else {
+            push_result
+                .delivered_tokens
+                .iter()
+                .map(|token| token.as_str())
+                .collect()
+        };
+        let delivered_user_set: HashSet<&str> = tokens_by_user
+            .iter()
+            .filter(|(_, tokens)| {
+                tokens
+                    .iter()
+                    .any(|token| delivered_token_set.contains(token.as_str()))
+            })
+            .map(|(user_id, _)| user_id.as_str())
+            .collect();
         let delivered_ids: Vec<Uuid> = notification_ids
             .iter()
-            .filter(|(_, uid)| eligible_set.contains(uid.as_str()))
+            .filter(|(_, uid)| delivered_user_set.contains(uid.as_str()))
             .map(|(id, _)| *id)
             .collect();
 

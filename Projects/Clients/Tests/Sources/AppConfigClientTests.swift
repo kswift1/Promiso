@@ -14,8 +14,7 @@ struct AppConfigClientTests {
           "appStoreURL": "https://example.com/app",
           "privacyPolicyURL": "https://example.com/privacy",
           "termsOfServiceURL": "https://example.com/terms",
-          "supportEmail": "help@example.com",
-          "notionFAQDatabaseId": "faq-123"
+          "supportEmail": "help@example.com"
         }
       }
       """.data(using: .utf8)!

@@ -13,8 +13,6 @@ pub struct AppConfigResponse {
     #[serde(rename = "termsOfServiceURL")]
     pub terms_of_service_url: String,
     pub support_email: String,
-    #[serde(rename = "notionFAQDatabaseId")]
-    pub notion_faq_database_id: String,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -29,7 +27,6 @@ impl AppConfigResponse {
             terms_of_service_url: "https://www.notion.so/3029e4970675802ab781e282bb92d63b"
                 .to_string(),
             support_email: "kswen0203@icloud.com".to_string(),
-            notion_faq_database_id: "3029e4970675812ca3d6c852867858a2".to_string(),
             updated_at: Utc::now(),
         }
     }

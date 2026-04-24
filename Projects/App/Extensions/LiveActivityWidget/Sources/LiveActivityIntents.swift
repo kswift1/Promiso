@@ -146,12 +146,6 @@ private func callUpdateETAFunction(
 
   guard let url = URL(string: baseURL) else { return }
 
-  // App Group에서 인증 정보 읽기
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let authToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
-    ?? defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
-  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
-
   // participants를 서버 형식으로 변환
   let participantsData: [[String: Any]] = participants.map { p in
     var dict: [String: Any] = ["id": p.id, "name": p.name]
@@ -168,26 +162,10 @@ private func callUpdateETAFunction(
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  var request = URLRequest(url: url)
-  request.httpMethod = "POST"
-  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
-  request.httpBody = httpBody
-
-  if let authToken = authToken {
-    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
-  }
-  if let deviceId {
-    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-  }
-
-  do {
-    let (data, response) = try await URLSession.shared.data(for: request)
-    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-      let body = String(data: data, encoding: .utf8) ?? ""
-      logger.error("WidgetETA failed(\(httpResponse.statusCode)): \(body)")
-    }
-  } catch {
-    logger.error("WidgetETA error: \(error.localizedDescription)")
-  }
+  _ = await performAuthenticatedWidgetPost(
+    to: url,
+    userId: userId,
+    body: httpBody,
+    logContext: "WidgetETA"
+  )
 }

@@ -132,12 +132,6 @@ private func callVoteResponseFunction(
 
   guard let url = URL(string: baseURL) else { return }
 
-  // App Group에서 인증 토큰 읽기 (Widget 전용 토큰 우선, 없으면 ID Token 사용)
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let authToken = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey)
-    ?? defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
-  let deviceId = defaults?.string(forKey: LiveActivityIntentKey.widgetDeviceIdKey)
-
   let requestBody: [String: Any] = [
     "channelId": channelId,
     "scheduleId": scheduleId,
@@ -149,28 +143,12 @@ private func callVoteResponseFunction(
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  var request = URLRequest(url: url)
-  request.httpMethod = "POST"
-  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
-  request.httpBody = httpBody
-
-  if let authToken {
-    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
-  }
-  if let deviceId {
-    request.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
-  }
-
-  do {
-    let (data, httpResponse) = try await URLSession.shared.data(for: request)
-    if let httpResponse = httpResponse as? HTTPURLResponse, httpResponse.statusCode != 200 {
-      let body = String(data: data, encoding: .utf8) ?? ""
-      logger.error("VoteResponse failed(\(httpResponse.statusCode)): \(body.prefix(200))")
-    } else {
-      logger.info("VoteResponse success: \(response) for \(scheduleId)")
-    }
-  } catch {
-    logger.error("VoteResponse error: \(error.localizedDescription)")
+  if await performAuthenticatedWidgetPost(
+    to: url,
+    userId: userId,
+    body: httpBody,
+    logContext: "VoteResponse"
+  ) {
+    logger.info("VoteResponse success: \(response) for \(scheduleId)")
   }
 }

@@ -224,13 +224,10 @@ extension UserProfileClient: DependencyKey {
     )
 
     return Self(
-      createUserWithProfile: { name, nickname, providerType, providerUid, email, profileImageData in
+      createUserWithProfile: { name, nickname, _, _, _, profileImageData in
         _ = try await rustDataSource.createUser(
           name: name,
-          nickname: nickname,
-          providerType: providerType,
-          providerUid: providerUid,
-          email: email
+          nickname: nickname
         )
 
         if let imageData = profileImageData {

@@ -298,6 +298,8 @@ async fn update_schedule_live_activity_internal(
             }),
         )
         .await?;
+    } else {
+        schedule_default_end_job(pool, schedule_id, schedule.start_at, &req.channel_id).await?;
     }
 
     Ok(UpdateScheduleLiveActivityResponse {
@@ -537,17 +539,7 @@ async fn execute_start_job(
 
     cancel_pending_jobs(pool, schedule.id, &[LiveActivityJobType::Start]).await?;
 
-    let end_at = schedule.start_at + Duration::minutes(DEFAULT_END_MINUTES_AFTER_START);
-    replace_pending_job(
-        pool,
-        schedule.id,
-        LiveActivityJobType::End,
-        end_at,
-        Some(LiveActivityJobPayload {
-            channel_id: Some(channel_id.clone()),
-        }),
-    )
-    .await?;
+    schedule_default_end_job(pool, schedule.id, schedule.start_at, &channel_id).await?;
 
     replace_pending_job(
         pool,
@@ -591,6 +583,24 @@ async fn claim_due_jobs(pool: &PgPool) -> Result<Vec<LiveActivityJob>, AppError>
     .fetch_all(pool)
     .await
     .map_err(Into::into)
+}
+
+async fn schedule_default_end_job(
+    pool: &PgPool,
+    schedule_id: Uuid,
+    start_at: chrono::DateTime<Utc>,
+    channel_id: &str,
+) -> Result<(), AppError> {
+    replace_pending_job(
+        pool,
+        schedule_id,
+        LiveActivityJobType::End,
+        start_at + Duration::minutes(DEFAULT_END_MINUTES_AFTER_START),
+        Some(LiveActivityJobPayload {
+            channel_id: Some(channel_id.to_string()),
+        }),
+    )
+    .await
 }
 
 async fn mark_job_succeeded(pool: &PgPool, job_id: Uuid) -> Result<(), AppError> {
