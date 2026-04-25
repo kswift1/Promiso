@@ -394,8 +394,8 @@ struct GroupFeatureTests {
 
   // MARK: - proposalRespondFailed 테스트
 
-  @Test("일정 응답 실패 시 responding 초기화 및 에러 설정")
-  func proposalRespondFailed_clearsRespondingAndSetsError() async {
+  @Test("일정 응답 실패 시 responding 초기화 (에러 상태 전환 없음)")
+  func proposalRespondFailed_clearsRespondingWithoutErrorState() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-respond-failed")) var currentUser = user
 
@@ -407,16 +407,16 @@ struct GroupFeatureTests {
     }
 
     let error = AppError(message: "응답 실패")
-    await store.send(.internal(.proposalRespondFailed(scheduleId: "schedule-1", error: error))) {
+    await store.send(.internal(.proposalRespondFailed(scheduleId: "schedule-1", error: error, previousVotes: nil))) {
       $0.proposalResponding["schedule-1"] = nil
-      $0.schedulesState = .failed(error)
+      // schedulesState는 .failed로 전환되지 않음 (낙관적 업데이트 UX 유지)
     }
   }
 
   // MARK: - deleteScheduleFailed 테스트
 
-  @Test("일정 삭제 실패 시 에러 상태 설정")
-  func deleteScheduleFailed_setsErrorState() async {
+  @Test("일정 삭제 실패 시 에러 상태 전환 없음")
+  func deleteScheduleFailed_doesNotSetErrorState() async {
     let user = makeCurrentUser()
     @Shared(.inMemory("test-delete-failed")) var currentUser = user
 
@@ -428,8 +428,155 @@ struct GroupFeatureTests {
     }
 
     let error = AppError(message: "삭제 실패")
-    await store.send(.internal(.deleteScheduleFailed(scheduleId: "schedule-1", error: error))) {
-      $0.schedulesState = .failed(error)
+    await store.send(.internal(.deleteScheduleFailed(scheduleId: "schedule-1", error: error, rollbackSchedule: nil)))
+    // schedulesState는 .failed로 전환되지 않음 (낙관적 업데이트 UX 유지)
+  }
+
+  // MARK: - 낙관적 업데이트 테스트
+
+  @Test("수락 시 votes 즉시 변경된다")
+  func proposalAccepted_optimisticallyUpdatesVotes() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-optimistic-accept")) var currentUser = user
+
+    let schedule = makeSchedule(id: "schedule-1", accepted: [], declined: [])
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.schedulesState = .loaded([schedule])
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    } withDependencies: {
+      $0.scheduleClient.respondSchedule = { _, _ in
+        RespondScheduleResult(scheduleId: "schedule-1", status: "accepted", isConfirmed: false, confirmedSchedule: nil)
+      }
+      $0.groupClient.clearGroupBadge = { _ in }
+      $0.userDefaultsClient.boolForKey = { _ in false }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.proposalAccepted("schedule-1"))) {
+      $0.proposalResponding["schedule-1"] = .accepting
+      // 낙관적 업데이트: votes.accepted에 currentUser("current-user") 추가
+      var updatedSchedule = schedule
+      updatedSchedule.votes = ScheduleVotesModel(
+        accepted: ["current-user"],
+        declined: [],
+        until: schedule.votes.until
+      )
+      $0.schedulesState = .loaded([updatedSchedule])
+    }
+  }
+
+  @Test("수락 실패 시 votes 롤백된다")
+  func proposalRespondFailed_rollsBackVotes() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-rollback")) var currentUser = user
+
+    let originalVotes = ScheduleVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(1800)
+    )
+    let schedule = makeSchedule(id: "schedule-1")
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.proposalResponding["schedule-1"] = .accepting
+    // 낙관적 업데이트가 이미 적용된 상태 시뮬레이션
+    var updatedSchedule = schedule
+    updatedSchedule.votes = ScheduleVotesModel(
+      accepted: ["current-user"],
+      declined: [],
+      until: originalVotes.until
+    )
+    state.schedulesState = .loaded([updatedSchedule])
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+
+    let error = AppError(message: "응답 실패")
+    await store.send(.internal(.proposalRespondFailed(scheduleId: "schedule-1", error: error, previousVotes: originalVotes))) {
+      $0.proposalResponding["schedule-1"] = nil
+      // 롤백: schedulesState가 .loaded로 유지되고 votes가 originalVotes로 복원됨
+      var rolledBackSchedule = updatedSchedule
+      rolledBackSchedule.votes = originalVotes
+      $0.schedulesState = .loaded([rolledBackSchedule])
+    }
+  }
+
+  @Test("삭제 시 schedules에서 즉시 제거된다")
+  func deleteSchedule_optimisticallyRemovesFromList() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-optimistic-delete")) var currentUser = user
+
+    let schedule = makeSchedule(id: "schedule-1")
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.schedulesState = .loaded([schedule])
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    } withDependencies: {
+      $0.scheduleClient.deleteSchedule = { _ in }
+    }
+
+    await store.send(.internal(.deleteSchedule(scheduleId: "schedule-1", rollbackSchedule: nil))) {
+      // 낙관적 제거: schedules에서 즉시 삭제
+      $0.schedulesState = .loaded([])
+    }
+
+    await store.receive(\.internal.deleteScheduleDone)
+  }
+
+  @Test("일정 삭제 실패 시 schedules에 복원된다 (startAt 정렬 유지)")
+  func deleteScheduleFailed_restoresScheduleWithSortOrder() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-delete-restore")) var currentUser = user
+
+    let now = Date()
+    let schedule1 = makeSchedule(id: "schedule-1", startAt: now.addingTimeInterval(3600))
+    let schedule2 = makeSchedule(id: "schedule-2", startAt: now.addingTimeInterval(7200))
+    // schedule1이 삭제되어 남은 상태에서 rollback 시뮬레이션
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.schedulesState = .loaded([schedule2])
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+
+    let error = AppError(message: "삭제 실패")
+    await store.send(.internal(.deleteScheduleFailed(scheduleId: "schedule-1", error: error, rollbackSchedule: schedule1))) {
+      // schedule1이 복원되고 startAt 기준으로 정렬됨
+      $0.schedulesState = .loaded([schedule1, schedule2])
+    }
+    // schedulesState가 .failed로 전환되지 않음을 암묵적으로 검증
+  }
+
+  @Test("수정 후 delegate payload로 schedules 부분 갱신된다")
+  func scheduleDetailScheduleUpdated_partiallyUpdatesSchedules() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-partial-update")) var currentUser = user
+
+    let schedule = makeSchedule(id: "schedule-1")
+    var updatedSchedule = schedule
+    updatedSchedule.title = "수정된 제목"
+
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.schedulesState = .loaded([schedule])
+
+    // editSchedule delegate를 통한 부분 갱신 경로 검증
+    state.editSchedule = EditSchedule.Feature.State(
+      schedule: schedule,
+      maxMembers: 10,
+      currentUserId: "current-user"
+    )
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+    store.exhaustivity = .off
+
+    await store.send(.editSchedule(.presented(.delegate(.scheduleUpdated(updatedSchedule))))) {
+      $0.editSchedule = nil
+      $0.schedulesState = .loaded([updatedSchedule])
     }
   }
 }

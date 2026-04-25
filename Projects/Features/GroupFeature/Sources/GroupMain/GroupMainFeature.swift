@@ -250,12 +250,12 @@ extension GroupMain {
         case subscribeToSchedules(groupId: String)
         case cancelSubscription
         case schedulesUpdated([ScheduleModel])
-        case proposalRespondDone(scheduleId: String, status: ScheduleAttendanceStatus)
-        case proposalRespondFailed(scheduleId: String, error: AppError)
-        case respondSchedule(scheduleId: String, status: ScheduleAttendanceStatus)
-        case deleteSchedule(scheduleId: String)
+        case proposalRespondDone(scheduleId: String, status: ScheduleAttendanceStatus, result: RespondScheduleResult)
+        case proposalRespondFailed(scheduleId: String, error: AppError, previousVotes: ScheduleVotesModel?)
+        case respondSchedule(scheduleId: String, status: ScheduleAttendanceStatus, previousVotes: ScheduleVotesModel?)
+        case deleteSchedule(scheduleId: String, rollbackSchedule: ScheduleModel?)
         case deleteScheduleDone(scheduleId: String)
-        case deleteScheduleFailed(scheduleId: String, error: AppError)
+        case deleteScheduleFailed(scheduleId: String, error: AppError, rollbackSchedule: ScheduleModel?)
         case toggleGroupNotifications
         case clearBadge(groupId: String)
         case liveActivityChanged(scheduleId: String?)
@@ -356,13 +356,47 @@ extension GroupMain {
           case .proposalAccepted(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .accepting
-            return .send(.internal(.respondSchedule(scheduleId: id, status: .accepted)))
+            // 낙관적 업데이트: votes에 현재 사용자를 accepted로 즉시 반영
+            let userId = state.currentUser.userId
+            var capturedOldVotesAccepted: ScheduleVotesModel? = nil
+            if case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == id }) {
+              let oldVotes = schedules[idx].votes
+              capturedOldVotesAccepted = oldVotes
+              var newAccepted = oldVotes.accepted.filter { $0 != userId }
+              let newDeclined = oldVotes.declined.filter { $0 != userId }
+              newAccepted.append(userId)
+              schedules[idx].votes = ScheduleVotesModel(
+                accepted: newAccepted,
+                declined: newDeclined,
+                until: oldVotes.until
+              )
+              state.schedulesState = .loaded(schedules)
+            }
+            return .send(.internal(.respondSchedule(scheduleId: id, status: .accepted, previousVotes: capturedOldVotesAccepted)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
           case .proposalRejected(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .rejecting
-            return .send(.internal(.respondSchedule(scheduleId: id, status: .declined)))
+            // 낙관적 업데이트: votes에 현재 사용자를 declined로 즉시 반영
+            let userId = state.currentUser.userId
+            var capturedOldVotesRejected: ScheduleVotesModel? = nil
+            if case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == id }) {
+              let oldVotes = schedules[idx].votes
+              capturedOldVotesRejected = oldVotes
+              let newAccepted = oldVotes.accepted.filter { $0 != userId }
+              var newDeclined = oldVotes.declined.filter { $0 != userId }
+              newDeclined.append(userId)
+              schedules[idx].votes = ScheduleVotesModel(
+                accepted: newAccepted,
+                declined: newDeclined,
+                until: oldVotes.until
+              )
+              state.schedulesState = .loaded(schedules)
+            }
+            return .send(.internal(.respondSchedule(scheduleId: id, status: .declined, previousVotes: capturedOldVotesRejected)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
           case .scheduleDeleteRequested(let id):
@@ -403,7 +437,28 @@ extension GroupMain {
             case .pending:
               state.proposalResponding[id] = .resetting
             }
-            return .send(.internal(.respondSchedule(scheduleId: id, status: status)))
+            // 낙관적 업데이트: votes에 현재 사용자 상태 즉시 반영
+            let userId = state.currentUser.userId
+            var capturedOldVotesChanged: ScheduleVotesModel? = nil
+            if case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == id }) {
+              let oldVotes = schedules[idx].votes
+              capturedOldVotesChanged = oldVotes
+              var newAccepted = oldVotes.accepted.filter { $0 != userId }
+              var newDeclined = oldVotes.declined.filter { $0 != userId }
+              switch status {
+              case .accepted: newAccepted.append(userId)
+              case .declined: newDeclined.append(userId)
+              case .pending: break
+              }
+              schedules[idx].votes = ScheduleVotesModel(
+                accepted: newAccepted,
+                declined: newDeclined,
+                until: oldVotes.until
+              )
+              state.schedulesState = .loaded(schedules)
+            }
+            return .send(.internal(.respondSchedule(scheduleId: id, status: status, previousVotes: capturedOldVotesChanged)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
           case .scheduleTapped(let schedule):
@@ -1036,17 +1091,50 @@ extension GroupMain {
             }
             return .send(.internal(.refreshProFeatures(schedules)))
 
-          case .proposalRespondDone(let id, _):
+          case .proposalRespondDone(let id, let status, let result):
             state.proposalResponding[id] = nil
-            // 응답 후 그룹 배지(hasNewActivity) 갱신
-            return .send(.internal(.fetchGroupList))
-
-          case .proposalRespondFailed(let id, let error):
-            state.proposalResponding[id] = nil
-            state.schedulesState = .failed(error)
+            // 서버 응답 기반으로 votes 정합화 (낙관적 업데이트가 동시 응답을 반영 못할 수 있음)
+            // isConfirmed는 computed property(votes.accepted.count >= minimumParticipants)이므로
+            // result.isConfirmed와 votes가 불일치할 경우 후속 PR에서 minimumParticipants 갱신으로 해결
+            _ = result // 향후 result.votes 필드 추가 시 여기서 votes 교체 예정
+            if case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == id }) {
+              let oldVotes = schedules[idx].votes
+              let userId = state.currentUser.userId
+              var newAccepted = oldVotes.accepted.filter { $0 != userId }
+              var newDeclined = oldVotes.declined.filter { $0 != userId }
+              switch status {
+              case .accepted: newAccepted.append(userId)
+              case .declined: newDeclined.append(userId)
+              case .pending: break
+              }
+              schedules[idx].votes = ScheduleVotesModel(
+                accepted: newAccepted,
+                declined: newDeclined,
+                until: oldVotes.until
+              )
+              state.schedulesState = .loaded(schedules)
+            }
+            // 배지 갱신만 부분 처리 (그룹 목록 전체 재fetch 금지)
+            if let groupId = state.currentGroup?.id {
+              return .send(.internal(.clearBadge(groupId: groupId)))
+            }
             return .none
 
-          case .respondSchedule(let scheduleId, let status):
+          case .proposalRespondFailed(let id, let error, let previousVotes):
+            state.proposalResponding[id] = nil
+            // 낙관적 업데이트 롤백: 이전 votes 복원
+            if let previousVotes,
+               case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == id }) {
+              schedules[idx].votes = previousVotes
+              state.schedulesState = .loaded(schedules)
+            }
+            // .failed 전환은 낙관적 업데이트 UX와 충돌 — 로깅만 남기고 사용자 노출은 후속 PR로
+            AppLogger.calendar.error("📱 [GroupMain] proposalRespondFailed - id: \(id), error: \(error.localizedDescription)")
+            return .none
+
+          case .respondSchedule(let scheduleId, let status, let previousVotes):
             // 캘린더 동기화 설정 캐시에서 조회
             let calendarSyncCache = state.groupCalendarSyncCache
             AppLogger.calendar.debug("📱 [GroupMain] respondSchedule 시작 - scheduleId: \(scheduleId), status: \(String(describing: status))")
@@ -1055,7 +1143,7 @@ extension GroupMain {
               do {
                 let result = try await scheduleClient.respondSchedule(scheduleId, status)
                 AppLogger.calendar.debug("📱 [GroupMain] respondSchedule 결과 - isConfirmed: \(result.isConfirmed)")
-                await send(.internal(.proposalRespondDone(scheduleId: scheduleId, status: status)))
+                await send(.internal(.proposalRespondDone(scheduleId: scheduleId, status: status, result: result)))
 
                 // 캘린더 동기화: 수락 + 확정 시 추가
                 if status == .accepted,
@@ -1075,25 +1163,41 @@ extension GroupMain {
                 }
               } catch {
                 AppLogger.calendar.error("📱 [GroupMain] respondSchedule 에러: \(error.localizedDescription)")
-                await send(.internal(.proposalRespondFailed(scheduleId: scheduleId, error: AppError(error))))
+                await send(.internal(.proposalRespondFailed(scheduleId: scheduleId, error: AppError(error), previousVotes: previousVotes)))
               }
             }
 
-          case .deleteSchedule(let scheduleId):
+          case .deleteSchedule(let scheduleId, let passedRollback):
+            // 낙관적 제거: schedules에서 즉시 삭제
+            let rollbackSchedule = passedRollback ?? state.schedulesState.value?.first(where: { $0.id == scheduleId })
+            if case .loaded(var schedules) = state.schedulesState,
+               let idx = schedules.firstIndex(where: { $0.id == scheduleId }) {
+              schedules.remove(at: idx)
+              state.schedulesState = .loaded(schedules)
+            }
             return .run { [scheduleClient] send in
               do {
                 try await scheduleClient.deleteSchedule(scheduleId)
                 await send(.internal(.deleteScheduleDone(scheduleId: scheduleId)))
               } catch {
-                await send(.internal(.deleteScheduleFailed(scheduleId: scheduleId, error: AppError(error))))
+                await send(.internal(.deleteScheduleFailed(scheduleId: scheduleId, error: AppError(error), rollbackSchedule: rollbackSchedule)))
               }
             }
 
           case .deleteScheduleDone:
             return .none
 
-          case .deleteScheduleFailed(_, let error):
-            state.schedulesState = .failed(error)
+          case .deleteScheduleFailed(let scheduleId, let error, let rollbackSchedule):
+            // 낙관적 삭제 롤백: 제거했던 schedule 복원
+            if let rollbackSchedule {
+              if var schedules = state.schedulesState.value {
+                schedules.append(rollbackSchedule)
+                schedules.sort { $0.startAt < $1.startAt }
+                state.schedulesState = .loaded(schedules)
+              }
+            }
+            // .failed 전환은 낙관적 업데이트 UX와 충돌 — 로깅만 남기고 사용자 노출은 후속 PR로
+            AppLogger.general.error("📱 [GroupMain] deleteScheduleFailed - scheduleId: \(scheduleId), error: \(error.localizedDescription)")
             return .none
 
           case .toggleGroupNotifications:
@@ -1405,8 +1509,14 @@ extension GroupMain {
           state.editSchedule = nil
           return .none
 
-        case .editSchedule(.presented(.delegate(.scheduleUpdated))):
+        case .editSchedule(.presented(.delegate(.scheduleUpdated(let updatedSchedule)))):
           state.editSchedule = nil
+          // 부분 갱신: schedules 안의 해당 항목만 교체
+          if case .loaded(var schedules) = state.schedulesState,
+             let idx = schedules.firstIndex(where: { $0.id == updatedSchedule.id }) {
+            schedules[idx] = updatedSchedule
+            state.schedulesState = .loaded(schedules)
+          }
           return .none
 
         case .editSchedule:
@@ -1433,8 +1543,9 @@ extension GroupMain {
 
         case .deleteAlert(.presented(.confirmDelete)):
           guard let scheduleId = state.scheduleToDelete else { return .none }
+          let rollbackSchedule = state.schedulesState.value?.first(where: { $0.id == scheduleId })
           state.scheduleToDelete = nil
-          return .send(.internal(.deleteSchedule(scheduleId: scheduleId)))
+          return .send(.internal(.deleteSchedule(scheduleId: scheduleId, rollbackSchedule: rollbackSchedule)))
 
         case .deleteAlert:
           state.scheduleToDelete = nil
@@ -1539,11 +1650,23 @@ extension GroupMain {
           _ = state.path.popLast()
           return .none
 
-        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleDeleted)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleDeleted(let scheduleId))))):
           _ = state.path.popLast()
+          // 부분 갱신: schedules에서 해당 id 즉시 제거
+          if case .loaded(var schedules) = state.schedulesState,
+             let idx = schedules.firstIndex(where: { $0.id == scheduleId }) {
+            schedules.remove(at: idx)
+            state.schedulesState = .loaded(schedules)
+          }
           return .none
 
-        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated)))):
+        case .path(.element(id: _, action: .scheduleDetail(.delegate(.scheduleUpdated(let updatedSchedule))))):
+          // 부분 갱신: schedules 안의 해당 항목만 교체
+          if case .loaded(var schedules) = state.schedulesState,
+             let idx = schedules.firstIndex(where: { $0.id == updatedSchedule.id }) {
+            schedules[idx] = updatedSchedule
+            state.schedulesState = .loaded(schedules)
+          }
           return .none
 
         // GroupOverview delegate actions
