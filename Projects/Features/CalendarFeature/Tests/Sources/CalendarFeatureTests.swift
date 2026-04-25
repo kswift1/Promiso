@@ -38,12 +38,26 @@ struct CalendarFeatureTests {
 
   @Test("refresh 시 권한 확인과 초기 데이터 로드 시작")
   func refresh_startsPermissionCheckAndInitialLoad() async {
-    let store = makeStore(state: makeState(key: "refresh"))
+    // Production reducer는 hasAppeared=false면 onAppear가 loadInitialData를 담당하므로
+    // refresh를 스킵한다 (CalendarFeature.swift:1430 가드). 따라서 hasAppeared=true 선세팅.
+    var state = makeState(key: "refresh")
+    state.hasAppeared = true
+
+    let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.refresh))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.finish()
+  }
+
+  @Test("fresh state(hasAppeared=false)에서 refresh는 no-op (onAppear가 초기 로드 담당)")
+  func refresh_whenNotAppeared_isNoOp() async {
+    // 회귀 방지: hasAppeared 가드가 유지되어야 onAppear와의 중복 로드를 방지한다.
+    let store = makeStore(state: makeState(key: "refresh-noop"))
+
+    await store.send(.view(.refresh))
     await store.finish()
   }
 

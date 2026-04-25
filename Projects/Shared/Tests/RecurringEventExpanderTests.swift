@@ -33,7 +33,7 @@ private func makeDate(year: Int, month: Int, day: Int) -> Date {
   components.hour = 0
   components.minute = 0
   components.second = 0
-  return Calendar.current.date(from: components)!
+  return Calendar.scheduleDisplay.date(from: components)!
 }
 
 private func makeDateWithTime(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
@@ -44,7 +44,7 @@ private func makeDateWithTime(year: Int, month: Int, day: Int, hour: Int, minute
   components.hour = hour
   components.minute = minute
   components.second = 0
-  return Calendar.current.date(from: components)!
+  return Calendar.scheduleDisplay.date(from: components)!
 }
 
 // MARK: - Daily 테스트
