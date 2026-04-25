@@ -77,7 +77,9 @@ extension DependencyValues {
 
 extension MapClient: DependencyKey {
   public static let liveValue: MapClient = {
-    let dataSource = KakaoMapDataSource()
+    let rustDataSource = PlacesRustDataSource(
+      api: RustAPIClient(getAuthToken: nil)
+    )
 
     // MARK: Helpers
 
@@ -167,7 +169,8 @@ extension MapClient: DependencyKey {
 
     return Self(
       searchPlaces: { query in
-        try await dataSource.searchPlaces(query: query)
+        // Rust API: GET /api/v1/places/search?q={query}&size={size}
+        return try await rustDataSource.searchPlaces(query: query)
       },
       openDirections: { from, to, name, transportMode in
         Task { @MainActor in

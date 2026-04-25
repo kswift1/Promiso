@@ -52,7 +52,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -94,7 +94,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -144,13 +144,13 @@ struct AppEntryFeatureTests {
 
   @Test("startProfileCheck currentUser 존재 시 profileCheckResponse 처리")
   func startProfileCheck_withUser_processesProfileResponse() async {
-    let firebaseUser = makeFirebaseUser(uid: "firebase-existing")
+    let authUser = makeAuthUser(uid: "firebase-existing")
     let user = makeUser(id: "existing-user", nickname: "기존프로필")
 
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.authClient.currentUser = { firebaseUser }
+      $0.authClient.currentUser = { authUser }
       $0.userProfileClient.getPrivateProfile = { _ in user }
       $0.clarityClient.setUser = { _ in }
       $0.crashlyticsClient.setUser = { _ in }
@@ -161,7 +161,6 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -205,7 +204,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -228,7 +227,7 @@ struct AppEntryFeatureTests {
       $0.authClient.isAuthenticated = { false }
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
       $0.userDefaultsClient.boolForKey = { _ in true }
       $0.analyticsClient.logEvent = { _, _ in }
     }
@@ -296,7 +295,7 @@ struct AppEntryFeatureTests {
     state.splash = .visible
 
     let user = makeUser(id: "user-no-pending", nickname: "기존유저")
-    let firebaseUser = makeFirebaseUser(uid: "firebase-no-pending")
+    let authUser = makeAuthUser(uid: "firebase-no-pending")
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -310,11 +309,10 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
+    await store.send(.internal(.profileCheckResponse(user: authUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
@@ -328,7 +326,7 @@ struct AppEntryFeatureTests {
     state.splash = .visible
 
     let user = makeUser(id: "user-main", nickname: "기존유저")
-    let firebaseUser = makeFirebaseUser(uid: "firebase-main")
+    let authUser = makeAuthUser(uid: "firebase-main")
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -342,11 +340,10 @@ struct AppEntryFeatureTests {
       $0.userDefaultsClient.boolForKey = { _ in false }
       $0.userDefaultsClient.stringForKey = { _ in nil }
       $0.userDefaultsClient.setString = { _, _ in }
-      $0.whatsNewClient.fetchWhatsNew = { _ in nil }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
+    await store.send(.internal(.profileCheckResponse(user: authUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
@@ -360,7 +357,7 @@ struct AppEntryFeatureTests {
     state.splash = .visible
     state.providerProfileImageURL = URL(string: "https://example.com/provider-profile.png")
 
-    let firebaseUser = makeFirebaseUser(
+    let authUser = makeAuthUser(
       uid: "firebase-new",
       displayName: "신규 사용자",
       photoURL: nil
@@ -370,9 +367,9 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     }
 
-    await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: nil))) {
+    await store.send(.internal(.profileCheckResponse(user: authUser, profile: nil))) {
       var expectedProfile = AppEntry.ProfileSetup.State()
-      expectedProfile.inject(user: firebaseUser, providerProfileImageURL: URL(string: "https://example.com/provider-profile.png"))
+      expectedProfile.inject(user: authUser, providerProfileImageURL: URL(string: "https://example.com/provider-profile.png"))
       $0.destination = .profile(expectedProfile)
       $0.splash = .animatingOut
     }
@@ -600,7 +597,7 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.notificationClient.deleteFCMToken = { }
+      $0.notificationClient.deleteCurrentDeviceRegistration = { }
       $0.authClient.logout = { }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
@@ -622,7 +619,7 @@ struct AppEntryFeatureTests {
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
     } withDependencies: {
-      $0.notificationClient.deleteFCMToken = { throw LogoutError.failed }
+      $0.notificationClient.deleteCurrentDeviceRegistration = { throw LogoutError.failed }
       $0.authClient.logout = { throw LogoutError.failed }
       $0.authClient.clearWidgetAuthToken = { }
       $0.clarityClient.clearUser = { }
@@ -654,7 +651,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { true }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-1")))
@@ -667,7 +664,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { false }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-2")))
@@ -681,7 +678,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { true }
-      $0.notificationClient.saveFCMToken = { _ in throw SaveError.failed }
+      $0.notificationClient.saveNotificationToken = { _ in throw SaveError.failed }
     }
 
     await store.send(.internal(.fcmTokenReceived("token-3")))
@@ -712,7 +709,7 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.authClient.isAuthenticated = { false }
-      $0.notificationClient.saveFCMToken = { _ in }
+      $0.notificationClient.saveNotificationToken = { _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -802,7 +799,7 @@ struct AppEntryFeatureTests {
   @Test("ProfileSetup inject 시 displayName=nil 이면 빈 문자열로 설정")
   func profileSetupInject_withoutDisplayName_usesEmptyString() {
     var profileState = AppEntry.ProfileSetup.State()
-    profileState.inject(user: makeFirebaseUser(displayName: nil), providerProfileImageURL: nil)
+    profileState.inject(user: makeAuthUser(displayName: nil), providerProfileImageURL: nil)
 
     #expect(profileState.fullName == "")
     #expect(profileState.nickname == "")
@@ -815,7 +812,7 @@ struct AppEntryFeatureTests {
     let providerPhotoURL = URL(string: "https://example.com/provider-photo.png")!
 
     profileState.inject(
-      user: makeFirebaseUser(photoURL: userPhotoURL),
+      user: makeAuthUser(photoURL: userPhotoURL),
       providerProfileImageURL: providerPhotoURL
     )
 
@@ -828,7 +825,7 @@ struct AppEntryFeatureTests {
     let providerPhotoURL = URL(string: "https://example.com/provider-photo.png")!
 
     profileState.inject(
-      user: makeFirebaseUser(photoURL: nil),
+      user: makeAuthUser(photoURL: nil),
       providerProfileImageURL: providerPhotoURL
     )
 
@@ -881,12 +878,12 @@ private extension AppEntryFeatureTests {
     )
   }
   
-  func makeFirebaseUser(
-    uid: String = "firebase-1",
-    displayName: String? = "Firebase User",
+  func makeAuthUser(
+    uid: String = "auth-1",
+    displayName: String? = "Auth User",
     photoURL: URL? = nil
-  ) -> FirebaseUserSnapshot {
-    FirebaseUserSnapshot(
+  ) -> AuthUserSnapshot {
+    AuthUserSnapshot(
       uid: uid,
       email: "\(uid)@example.com",
       displayName: displayName,

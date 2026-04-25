@@ -253,97 +253,107 @@ extension DependencyValues {
 
 extension GroupClient: DependencyKey {
   public static let liveValue: GroupClient = {
-    @Dependency(\.authClient) var authClient
-    @Dependency(\.userProfileClient) var userProfileClient
-    let dataSource = GroupRemoteDataSource()
+    let rustDataSource = GroupRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       fetchGroups: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
-        }
-
-        return try await dataSource.fetchGroups(userId: currentUser.uid)
+        return try await rustDataSource.fetchMyGroups()
       },
       fetchGroupSummaries: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
-        }
-
-        return try await dataSource.fetchGroupSummaries(userId: currentUser.uid)
+        return try await rustDataSource.fetchGroupSummaries()
       },
       fetchGroupsByIds: { ids in
-        return try await dataSource.fetchGroupsByIds(ids: ids)
+        return try await rustDataSource.fetchGroupsByIds(ids)
       },
       fetchGroup: { groupId in
-        return try await dataSource.fetchGroup(groupId: groupId)
+        return try await rustDataSource.fetchGroup(groupId: groupId)
       },
       fetchGroupMembers: { groupId in
-        let group = try await dataSource.fetchGroup(groupId: groupId)
-        return try await userProfileClient.getUsersByIds(group.memberIds)
+        return try await rustDataSource.fetchGroupMembers(groupId: groupId)
       },
       createGroup: { request in
-        return try await dataSource.createGroup(
+        let result = try await rustDataSource.createGroup(
           name: request.name,
           maxMembers: request.maxMembers,
-          description: request.description,
-          creatorId: request.creatorId,
-          photoData: request.photoData
+          description: request.description
+        )
+
+        var imageUploadFailed = false
+        if let photoData = request.photoData {
+          do {
+            let imageURL = try await rustDataSource.uploadGroupImageData(
+              groupId: result.id,
+              imageData: photoData
+            )
+            _ = try await rustDataSource.updateGroup(
+              groupId: result.id,
+              description: nil,
+              maxMembers: nil,
+              imageUrl: .some(imageURL.absoluteString)
+            )
+          } catch {
+            imageUploadFailed = true
+            AppLogger.network.error("그룹 이미지 업로드 실패 (그룹 생성은 완료): \(error.localizedDescription)")
+          }
+        }
+
+        return GroupCreationResultModel(
+          id: result.id,
+          name: result.name,
+          inviteCode: result.inviteCode,
+          imageUploadFailed: imageUploadFailed
         )
       },
       previewGroup: { inviteCode in
-        return try await dataSource.previewGroup(inviteCode: inviteCode)
+        return try await rustDataSource.previewGroup(inviteCode: inviteCode)
       },
       joinGroup: { inviteCode in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
-        }
-
-        return try await dataSource.joinGroup(inviteCode: inviteCode, userId: currentUser.uid)
+        return try await rustDataSource.joinGroup(inviteCode: inviteCode)
       },
       leaveGroup: { groupId in
-        try await dataSource.leaveGroup(groupId: groupId)
+        try await rustDataSource.leaveGroup(groupId: groupId)
       },
       deleteGroup: { groupId in
-        try await dataSource.deleteGroup(groupId: groupId)
+        try await rustDataSource.deleteGroup(groupId: groupId)
       },
       updateGroup: { groupId, description, maxMembers, photoData in
-        return try await dataSource.updateGroup(
+        let imageUrl: String?? =
+          if let photoData {
+            .some(
+              try await rustDataSource.uploadGroupImageData(
+                groupId: groupId,
+                imageData: photoData
+              ).absoluteString
+            )
+          } else {
+            nil
+          }
+        return try await rustDataSource.updateGroup(
           groupId: groupId,
           description: description,
           maxMembers: maxMembers,
-          photoData: photoData
+          imageUrl: imageUrl
         )
       },
       updateGroupNotificationSettings: { groupId, settings in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
-        }
-
-        try await dataSource.updateGroupNotificationSettings(
+        try await rustDataSource.updateNotificationSettings(
           groupId: groupId,
-          userId: currentUser.uid,
           settings: settings
         )
       },
       updateGroupColor: { groupId, color in
-        guard let currentUser = await authClient.currentUser() else {
-          throw GroupClientError.unauthorized
-        }
-        try await dataSource.updateGroupColor(
-          groupId: groupId,
-          userId: currentUser.uid,
-          color: color
-        )
+        try await rustDataSource.updateGroupColor(groupId: groupId, color: color)
       },
       clearGroupBadge: { groupId in
-        await dataSource.clearGroupBadge(groupId: groupId)
+        try? await rustDataSource.markGroupRead(groupId: groupId)
       },
       transferHost: { groupId, newHostId in
-        try await dataSource.transferHost(groupId: groupId, newHostId: newHostId)
+        try await rustDataSource.transferHost(groupId: groupId, newHostUid: newHostId)
       },
       expelMember: { groupId, memberId in
-        try await dataSource.expelMember(groupId: groupId, memberId: memberId)
+        try await rustDataSource.expelMember(groupId: groupId, targetUid: memberId)
       }
     )
   }()

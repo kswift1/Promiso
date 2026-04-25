@@ -88,9 +88,6 @@ private enum KakaoDeeplinkConfig {
     Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_WEB_HOST") as? String ?? "promiso.app"
   }
 
-  static let fallbackImageURL = URL(
-    string: "https://firebasestorage.googleapis.com/v0/b/promiso-prod.firebasestorage.app/o/app_config%2Finvite_image.png?alt=media&token=428a4a85-4060-48aa-a175-96440bf4d6fa"
-  )
 }
 
 // MARK: - Live Implementation
@@ -110,7 +107,6 @@ extension KakaoShareClient: DependencyKey {
       )
 
       let mainImageURL = groupImageUrl.flatMap { URL(string: $0) }
-        ?? KakaoDeeplinkConfig.fallbackImageURL
 
       let templatable: Templatable
 
@@ -164,7 +160,6 @@ extension KakaoShareClient: DependencyKey {
       )
 
       let imageURL = imageUrl.flatMap { URL(string: $0) }
-        ?? KakaoDeeplinkConfig.fallbackImageURL
 
       // Line 1: 일정 + 장소
       var line1 = "\(dateText) \(timeText)"

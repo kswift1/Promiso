@@ -18,7 +18,6 @@ infra/firebase/functions/
 │   │   ├── groups.ts         # 그룹 관련 (5개)
 │   │   ├── promises.ts       # 약속 관련 (3개)
 │   │   ├── notifications.ts  # FCM 푸시 (4개)
-│   │   ├── liveActivity.ts   # LiveActivity (7개)
 │   │   └── emoji.ts          # 이모지 생성 (1개)
 │   ├── utils/
 │   │   ├── helpers.ts        # 검증, 초대코드 생성 등
@@ -45,8 +44,9 @@ infra/firebase/functions/
 | `GroupSettingsView` | `leaveGroup`, `deleteGroup` | 그룹 관리 |
 | `CreatePromiseView` | `createPromise`, `generateEmoji` | 약속 생성 |
 | `PromiseDetailView` | `respondPromise`, `updatePromise` | 약속 응답/수정 |
-| `LiveActivityManager` | `registerPushToStartToken`, `startLiveActivity`, `updateETA` | 실시간 공유 |
-| `PromiseWidgetExtension` | `widgetUpdateETA` | 위젯 ETA 업데이트 |
+| `PromiseWidgetExtension` | `getWidgetSnapshot`, `getWidgetSnapshotWithToken`, `generateWidgetToken` | 위젯 데이터/인증 |
+
+> Live Activity 시작/ETA 업데이트/Push to Start 토큰 저장은 Rust 백엔드로 이관되었습니다.
 
 ---
 
@@ -109,18 +109,22 @@ const collection = getEnvironmentCollection("groups", db, request.data.env);
 ### ADR-002: Widget Extension - HTTP 엔드포인트 분리
 
 **날짜**: 2026-01-15
-**상태**: 적용됨
+**상태**: 대체됨 (현재는 Rust endpoint 사용)
 
 **컨텍스트**:
 - Widget Extension은 별도 프로세스로 실행
 - Firebase SDK 초기화/인증 불가능
 - `onCall` 함수 호출 불가
 
-**결정**:
-- `widgetUpdateETA`를 `onRequest` (HTTP)로 구현
+**초기 결정**:
+- Widget ETA 업데이트를 별도 `onRequest` (HTTP) endpoint로 구현
 - 인증은 헤더로 처리: `X-User-Id`, `X-Auth-Token`
 
-**Endpoint**:
+**현재 상태**:
+- Widget ETA/Vote 액션은 Rust backend endpoint로 이관됨
+- Firebase Functions에는 Widget snapshot/token 경로만 유지
+
+**이전 Endpoint**:
 ```
 POST https://widgetupdateeta-dfaqqrbqgq-du.a.run.app
 Headers:
@@ -173,7 +177,6 @@ Body:
    src/functions/groups.ts     (그룹 관련)
    src/functions/promises.ts   (약속 관련)
    src/functions/notifications.ts (알림 관련)
-   src/functions/liveActivity.ts  (LiveActivity 관련)
    src/functions/emoji.ts      (이모지 관련)
 
 2️⃣ src/index.ts에 export 추가
@@ -264,14 +267,14 @@ Body:
 3. 인증 토큰이 유효한지 확인
 
 ### Q: LiveActivity가 시작되지 않음
-1. Push to Start 토큰이 등록되었는지 확인 (`registerPushToStartToken`)
+1. Rust `/api/v1/devices/{device_id}/live-activity-endpoint`에 Push to Start 토큰이 저장되었는지 확인
 2. APNs 인증서/키가 유효한지 확인
 3. Bundle ID가 `com.promiso`인지 확인
 
 ### Q: Widget에서 ETA 업데이트 안됨
-1. `X-User-Id` 헤더가 포함되었는지 확인
+1. Widget 액션이 Rust endpoint를 호출하는지 확인
 2. `channelId`가 유효한지 확인
-3. CloudFlare/방화벽에서 차단되지 않았는지 확인
+3. `X-Auth-Token` 또는 widget token이 유효한지 확인
 
 ---
 

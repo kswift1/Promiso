@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseRemoteConfig
 import Foundation
 import PromisoShared
 
@@ -21,7 +20,7 @@ public enum VersionCheckResult: Equatable, Sendable {
 
 // MARK: - Client
 
-/// Firebase Remote Config에서 앱 설정 정보를 가져오는 클라이언트
+/// Rust app-config API에서 앱 설정 정보를 가져오는 클라이언트
 @DependencyClient
 public struct AppConfigClient: Sendable {
   /// 앱 설정 조회
@@ -39,16 +38,10 @@ public enum AppConfigClientError: Error {
   case invalidVersion(String)
 }
 
-// MARK: - Remote Config Keys
+// MARK: - API Models
 
-private enum RemoteConfigKeys {
-  static let forceUpdateVersion = "forceUpdateVersion"
-  static let recommendedVersion = "recommendedVersion"
-  static let appStoreURL = "appStoreURL"
-  static let privacyPolicyURL = "privacyPolicyURL"
-  static let termsOfServiceURL = "termsOfServiceURL"
-  static let supportEmail = "supportEmail"
-  static let notionFAQDatabaseId = "notionFAQDatabaseId"
+private struct AppConfigAPIResponse: Decodable {
+  let data: AppConfigModel?
 }
 
 // MARK: - Version Validation & Comparison
@@ -104,29 +97,6 @@ extension AppConfigClient: TestDependencyKey {
 
 extension AppConfigClient: DependencyKey {
   public static let liveValue: AppConfigClient = {
-    let remoteConfig = RemoteConfig.remoteConfig()
-
-    // Remote Config 설정
-    let settings = RemoteConfigSettings()
-    #if DEBUG
-    settings.minimumFetchInterval = 0  // 개발용: 즉시 fetch
-    #else
-    settings.minimumFetchInterval = 3600  // 프로덕션: 1시간
-    #endif
-    remoteConfig.configSettings = settings
-
-    // 기본값 설정
-    let defaults: [String: NSObject] = [
-      RemoteConfigKeys.forceUpdateVersion: "0.0.0" as NSString,
-      RemoteConfigKeys.recommendedVersion: "0.0.0" as NSString,
-      RemoteConfigKeys.appStoreURL: AppConfigModel.defaultConfig.appStoreURL as NSString,
-      RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02" as NSString,
-      RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b" as NSString,
-      RemoteConfigKeys.supportEmail: "kswen0203@icloud.com" as NSString,
-      RemoteConfigKeys.notionFAQDatabaseId: "3029e4970675812ca3d6c852867858a2" as NSString
-    ]
-    remoteConfig.setDefaults(defaults)
-
     // 캐시된 설정 (한 세션에 한 번만 조회)
     actor ConfigCache {
       var cachedConfig: AppConfigModel?
@@ -138,31 +108,34 @@ extension AppConfigClient: DependencyKey {
     let cache = ConfigCache()
 
     @Sendable
-    func fetchConfigFromRemoteConfig() async throws -> AppConfigModel {
-      // 캐시 확인
+    func fetchConfigFromAPI() async throws -> AppConfigModel {
       if let cached = await cache.get() {
         return cached
       }
 
-      // Remote Config fetch
-      do {
-        let status = try await remoteConfig.fetchAndActivate()
+      guard let url = URL(
+        string: "/api/v1/app-config",
+        relativeTo: RustAPIClient.defaultBaseURL
+      )?.absoluteURL else {
+        return .defaultConfig
+      }
 
-        // 값 가져오기 (setDefaults에서 기본값 설정됨)
-        let config = AppConfigModel(
-          forceUpdateVersion: remoteConfig.configValue(forKey: RemoteConfigKeys.forceUpdateVersion).stringValue,
-          recommendedVersion: remoteConfig.configValue(forKey: RemoteConfigKeys.recommendedVersion).stringValue,
-          appStoreURL: remoteConfig.configValue(forKey: RemoteConfigKeys.appStoreURL).stringValue,
-          privacyPolicyURL: remoteConfig.configValue(forKey: RemoteConfigKeys.privacyPolicyURL).stringValue,
-          termsOfServiceURL: remoteConfig.configValue(forKey: RemoteConfigKeys.termsOfServiceURL).stringValue,
-          supportEmail: remoteConfig.configValue(forKey: RemoteConfigKeys.supportEmail).stringValue,
-          notionFAQDatabaseId: remoteConfig.configValue(forKey: RemoteConfigKeys.notionFAQDatabaseId).stringValue
-        )
+      do {
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+          return .defaultConfig
+        }
+
+        let decoder = JSONDecoder()
+        let apiResponse = try decoder.decode(AppConfigAPIResponse.self, from: data)
+        let config = apiResponse.data ?? .defaultConfig
 
         await cache.set(config)
+        await AppConstants.App.updateConfig(config)
         return config
       } catch {
-        // Fetch 실패 시 기본값 반환
         return .defaultConfig
       }
     }
@@ -174,7 +147,7 @@ extension AppConfigClient: DependencyKey {
       }
 
       do {
-        let config = try await fetchConfigFromRemoteConfig()
+        let config = try await fetchConfigFromAPI()
         let currentVersion = AppConstants.App.version
 
         // 버전 검증
@@ -208,7 +181,7 @@ extension AppConfigClient: DependencyKey {
     }
 
     return Self(
-      fetchConfig: fetchConfigFromRemoteConfig,
+      fetchConfig: fetchConfigFromAPI,
       checkVersion: {
         await performVersionCheck(forcingFetch: false)
       },

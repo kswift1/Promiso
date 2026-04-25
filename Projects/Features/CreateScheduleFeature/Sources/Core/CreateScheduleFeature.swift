@@ -326,10 +326,10 @@ public enum CreateSchedule {
 
           case .groupSelected(let group):
             state.schedule.group = group
-            if group.maxMembers <= 1 {
+            if group.memberCount <= 1 {
               state.schedule.minimumParticipants = 1
             } else {
-              let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+              let defaultMinimum = max(2, Int(ceil(Double(group.memberCount) / 2.0)))
               state.schedule.minimumParticipants = defaultMinimum
             }
             return .none
@@ -356,7 +356,7 @@ public enum CreateSchedule {
             return .send(.internal(.refreshProFeatures(debounce: true)))
 
           case .incrementParticipants:
-            guard let max = state.schedule.group?.maxMembers else { return .none }
+            guard let max = state.schedule.group?.memberCount else { return .none }
             let current = state.schedule.minimumParticipants
             if current < max { state.schedule.minimumParticipants = current + 1 }
             return .none
@@ -507,10 +507,10 @@ public enum CreateSchedule {
                let group = groups.first(where: { $0.id == pendingId }) {
               state.pendingAutoSelectGroupId = nil
               state.schedule.group = group
-              if group.maxMembers <= 1 {
+              if group.memberCount <= 1 {
                 state.schedule.minimumParticipants = 1
               } else {
-                let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+                let defaultMinimum = max(2, Int(ceil(Double(group.memberCount) / 2.0)))
                 state.schedule.minimumParticipants = defaultMinimum
               }
             }

@@ -116,7 +116,7 @@ struct ScheduleDetailFeatureTests {
     schedule.group = GroupModel(
       id: "group-1",
       name: "그룹",
-      memberIds: ["user-1", "other-host"],
+      memberCount: 2,
       maxMembers: 10,
       inviteCode: "ABC123",
       createdBy: "user-1"
@@ -136,7 +136,7 @@ struct ScheduleDetailFeatureTests {
     schedule.group = GroupModel(
       id: "group-1",
       name: "그룹",
-      memberIds: ["host-user", "regular-user"],
+      memberCount: 2,
       maxMembers: 10,
       inviteCode: "ABC123",
       createdBy: "host-user"

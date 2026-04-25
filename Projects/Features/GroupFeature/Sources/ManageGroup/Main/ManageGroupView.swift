@@ -46,7 +46,7 @@ extension ManageGroup {
               statItem(
                 icon: "person.2.fill",
                 label: LocalizedStrings.ManageGroup.currentMembers,
-                value: "\(store.group.memberIds.count)"
+                value: "\(store.group.memberCount)"
               )
 
               Divider()

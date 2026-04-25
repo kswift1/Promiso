@@ -146,6 +146,7 @@ public struct ScheduleClient: Sendable {
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
   /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
   public var updateETA: @Sendable (
+    _ scheduleId: String,
     _ channelId: String,
     _ participants: [ParticipantState],
     _ trackingDurationMinutes: Int
@@ -239,7 +240,7 @@ extension ScheduleClient: TestDependencyKey {
     finalizeVote: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
-    updateETA: { _, _, _  in
+    updateETA: { _, _, _, _  in
       try await Task.sleep(for: .seconds(0.3))
     }
     // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
@@ -259,80 +260,99 @@ extension DependencyValues {
 
 extension ScheduleClient: DependencyKey {
   public static let liveValue: ScheduleClient = {
-    let dataSource: ScheduleRemoteDataSourceProtocol = ScheduleRemoteDataSource()
+    let rustDataSource = ScheduleRustDataSource(
+      api: RustAPIClient()
+    )
 
     return ScheduleClient(
       createSchedule: { schedule in
-        guard !schedule.groupId.isEmpty else {
-          throw ScheduleClientError.invalidData(nil)
-        }
-
-        do {
-          return try await dataSource.createSchedule(schedule)
-        } catch {
-          throw ScheduleClientError(from: error)
-        }
+        return try await rustDataSource.createSchedule(schedule)
       },
       updateSchedule: { schedule in
-        try await dataSource.updateSchedule(schedule)
+        try await rustDataSource.updateSchedule(schedule)
       },
       deleteSchedule: { scheduleId in
-        try await dataSource.deleteSchedule(id: scheduleId)
+        try await rustDataSource.deleteSchedule(id: scheduleId)
       },
       getSchedule: { scheduleId in
-        try await dataSource.getSchedule(id: scheduleId)
+        return try await rustDataSource.getSchedule(id: scheduleId)
       },
       getTodaySchedules: { groupIds in
-        try await dataSource.getTodaySchedules(groupIds: groupIds)
+        // Rust API: /home 엔드포인트로 대체 후 클라이언트에서 today 필터링
+        let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: 20)
+        let calendar = Calendar.scheduleDisplay
+        let startOfDay = calendar.startOfDay(for: Date())
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
+        return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
       },
       getUpcomingSchedules: { groupIds, limit in
-        try await dataSource.getUpcomingSchedules(groupIds: groupIds, limit: limit)
+        // Rust API: /home 엔드포인트로 대체
+        let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limit)
+        return Array(schedules.prefix(limit))
       },
       getActiveSchedules: { groupId, limit in
-        try await dataSource.getActiveSchedules(groupId: groupId, limit: limit)
+        return try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
       },
       getPastSchedules: { groupId, limit, lastStartAt in
-        try await dataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
+        return try await rustDataSource.getPastSchedules(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
       },
       getActiveScheduleCount: { groupId in
-        try await dataSource.getActiveScheduleCount(groupId: groupId)
+        return try await rustDataSource.getActiveScheduleCount(groupId: groupId)
       },
       getSchedulesByDateRange: { groupIds, startDate, endDate in
-        try await dataSource.getSchedulesByDateRange(groupIds: groupIds, startDate: startDate, endDate: endDate)
+        return try await rustDataSource.getSchedulesByDateRange(
+          groupIds: groupIds,
+          startDate: startDate,
+          endDate: endDate
+        )
       },
       getHomeSchedules: { groupIds, limitPerChunk in
-        try await dataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
+        return try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: limitPerChunk)
       },
       subscribeToSchedules: { groupId, limit in
-        dataSource.subscribeToActiveSchedules(groupId: groupId, limit: limit)
+        return AsyncStream { continuation in
+          let task = Task {
+            do {
+              let schedules = try await rustDataSource.getActiveSchedules(groupId: groupId, limit: limit)
+              continuation.yield(schedules)
+            } catch {
+              continuation.yield([])
+            }
+            continuation.finish()
+          }
+          continuation.onTermination = { _ in
+            task.cancel()
+          }
+        }
       },
       respondSchedule: { scheduleId, status in
-        return try await dataSource.respondToSchedule(
+        return try await rustDataSource.respondToSchedule(
           scheduleId: scheduleId,
           status: status.rawValue
         )
       },
       getAcceptedSchedulesByDateRange: { startDate, endDate in
-        do {
-          return try await dataSource.getAcceptedSchedulesByDateRange(startDate: startDate, endDate: endDate)
-        } catch {
-          throw ScheduleClientError(from: error)
-        }
+        return try await rustDataSource.getAcceptedSchedulesByDateRange(
+          startDate: startDate,
+          endDate: endDate
+        )
       },
       getConfirmedSchedulesForCalendar: {
-        try await dataSource.getConfirmedSchedulesForCalendar()
+        return try await rustDataSource.getConfirmedSchedulesForCalendar()
       },
+      // Live Activity는 Rust/APNs 경로만 유지한다.
       startLiveActivity: { scheduleId in
-        try await dataSource.startLiveActivity(scheduleId: scheduleId)
+        try await rustDataSource.startLiveActivity(scheduleId: scheduleId)
       },
       startVoteLiveActivity: { scheduleId in
-        try await dataSource.startVoteLiveActivity(scheduleId: scheduleId)
+        try await rustDataSource.startVoteLiveActivity(scheduleId: scheduleId)
       },
       finalizeVote: { scheduleId in
-        try await dataSource.finalizeVote(scheduleId: scheduleId)
+        try await rustDataSource.finalizeVote(scheduleId: scheduleId)
       },
-      updateETA: { channelId, participants, trackingDurationMinutes in
-        try await dataSource.updateETA(
+      updateETA: { scheduleId, channelId, participants, trackingDurationMinutes in
+        try await rustDataSource.updateETA(
+          scheduleId: scheduleId,
           channelId: channelId,
           participants: participants,
           trackingDurationMinutes: trackingDurationMinutes

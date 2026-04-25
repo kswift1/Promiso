@@ -128,7 +128,7 @@ extension GroupSettings {
       }
 
       var minMaxMembers: Int {
-        max(2, group.memberIds.count)
+        max(2, group.memberCount)
       }
 
       var maxMembersUpperLimit: Int {
@@ -600,7 +600,7 @@ extension GroupSettings {
             let groupID = state.group.id
             let groupName = state.group.name
             let inviteCode = state.group.inviteCode
-            let memberCount = state.group.memberIds.count
+            let memberCount = state.group.memberCount
             let maxMembers = state.group.maxMembers
             let groupImageUrl = state.group.imageUrl
             let inviterName = state.members
@@ -798,7 +798,7 @@ extension GroupSettings {
             let expelledMember = state.memberToExpel
             state.isExpellingMember = false
             state.memberToExpel = nil
-            // 로컬 멤버 목록에서도 제거
+            // 로컬 멤버 목록에서도 제거 + memberCount 감소 반영
             if let expelledMember {
               state.members.removeAll { $0.userId == expelledMember.userId }
               state.group = GroupModel(
@@ -806,7 +806,7 @@ extension GroupSettings {
                 name: state.group.name,
                 description: state.group.description,
                 imageUrl: state.group.imageUrl,
-                memberIds: state.group.memberIds.filter { $0 != expelledMember.userId },
+                memberCount: max(0, state.group.memberCount - 1),
                 maxMembers: state.group.maxMembers,
                 inviteCode: state.group.inviteCode,
                 createdBy: state.group.createdBy,

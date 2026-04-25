@@ -111,46 +111,28 @@ extension DependencyValues {
 
 extension RecurringPersonalEventClient: DependencyKey {
   public static let liveValue: RecurringPersonalEventClient = {
-    let dataSource: RecurringPersonalEventRemoteDataSourceProtocol = RecurringPersonalEventRemoteDataSource()
+    let rustDataSource = RecurringPersonalEventRustDataSource(
+      api: RustAPIClient()
+    )
 
     return RecurringPersonalEventClient(
       createEvent: { event in
         guard !event.title.isEmpty else {
           throw RecurringPersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
-        do {
-          return try await dataSource.createEvent(event)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.createEvent(event)
       },
       updateEvent: { event in
-        do {
-          try await dataSource.updateEvent(event)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
-        }
+        try await rustDataSource.updateEvent(event)
       },
       deleteEvent: { eventId in
-        do {
-          try await dataSource.deleteEvent(id: eventId)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
-        }
+        try await rustDataSource.deleteEvent(id: eventId)
       },
       getEvent: { eventId in
-        do {
-          return try await dataSource.getEvent(id: eventId)
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getEvent(id: eventId)
       },
       getAllEvents: {
-        do {
-          return try await dataSource.getAllEvents()
-        } catch {
-          throw RecurringPersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getAllEvents()
       }
     )
   }()

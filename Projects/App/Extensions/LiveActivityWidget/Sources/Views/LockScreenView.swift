@@ -155,6 +155,7 @@ struct ETASegmentedControl: View {
         let isSelected = selectedMinutes == option.minutes
 
         Button(intent: UpdateETAIntent(
+          scheduleId: attrs.scheduleId,
           channelId: attrs.channelId,
           userId: attrs.currentUserId,
           estimatedMinutes: option.minutes,

@@ -1,32 +1,17 @@
 import Foundation
-import FirebaseStorage
 
 extension RemoteImage {
   /// RemoteImage를 다운로드 가능한 URL로 변환
   ///
-  /// - Returns: URL (externalURL인 경우 바로 반환, storagePath인 경우 Firebase Storage 다운로드 URL 생성)
+  /// - Returns: URL (externalURL인 경우 바로 반환, legacy storagePath는 지원하지 않음)
   public func toURL() async throws -> URL? {
     switch type {
     case .externalURL:
       return URL(string: url)
 
     case .storagePath:
-      if let cachedURL = await RemoteImageURLCache.shared.url(for: url) {
-        return cachedURL
-      }
-
-      // Firebase Storage에서 다운로드 URL 가져오기
-      let storage = Storage.storage()
-      let storageRef = storage.reference().child(url)
-
-      do {
-        let downloadURL = try await storageRef.downloadURL()
-        await RemoteImageURLCache.shared.set(downloadURL, for: url)
-        return downloadURL
-      } catch {
-        // Firebase Storage 다운로드 URL 변환 실패
-        return nil
-      }
+      // Firebase Storage 의존 제거 후에는 legacy storagePath를 더 이상 해석하지 않는다.
+      return nil
     }
   }
 

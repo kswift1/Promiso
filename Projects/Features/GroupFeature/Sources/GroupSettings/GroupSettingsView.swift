@@ -1021,7 +1021,7 @@ private struct EditGroupSheet: View {
         .tint(.blue)
       }
 
-      Text(LocalizedStrings.GroupSettingsView.currentMembersMax(store.group.memberIds.count))
+      Text(LocalizedStrings.GroupSettingsView.currentMembersMax(store.group.memberCount))
         .font(.system(size: 12))
         .foregroundColor(.secondary)
     }

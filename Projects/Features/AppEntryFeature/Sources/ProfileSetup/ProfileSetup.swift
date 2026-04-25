@@ -649,6 +649,7 @@ extension UserProfileError {
     case .networkError: return LocalizedStrings.Error.userNetworkError
     case .authenticationRequired: return LocalizedStrings.Error.userAuthRequired
     case .permissionDenied: return LocalizedStrings.Error.userPermissionDenied
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
     }
   }
 }

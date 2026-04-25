@@ -694,7 +694,7 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.checkTrialStatus = { false }
       $0.analyticsClient.logEvent = { _, _ in }
       $0.authClient.currentUser = {
-        FirebaseUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
+        AuthUserSnapshot(uid: "test-user", email: "test@example.com", displayName: "Test User", photoURL: nil)
       }
       $0.userSettingsClient.fetchSettings = { _ in .default }
       $0.userSettingsClient.hasProSettings = { _ in false }

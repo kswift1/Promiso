@@ -102,35 +102,37 @@ extension DependencyValues {
 
 extension UserSettingsClient: DependencyKey {
   public static let liveValue: UserSettingsClient = {
-    let dataSource = UserSettingsRemoteDataSource()
+    let rustDataSource = UserSettingsRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       fetchSettings: { userId in
-        try await dataSource.fetchSettings(userId: userId)
+        return try await rustDataSource.fetchSettings(userId: userId)
       },
       hasProSettings: { userId in
-        try await dataSource.hasProSettings(userId: userId)
+        return try await rustDataSource.hasProSettings(userId: userId)
       },
       updateGroupSortOption: { userId, option in
-        try await dataSource.updateGroupSortOption(userId: userId, option: option)
+        try await rustDataSource.updateGroupSortOption(userId: userId, option: option)
       },
       updateConflictDetectionThreshold: { userId, threshold in
-        try await dataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
+        try await rustDataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
       },
       updateBriefingStyle: { userId, style in
-        try await dataSource.updateBriefingStyle(userId: userId, style: style)
+        try await rustDataSource.updateBriefingStyle(userId: userId, style: style)
       },
       updateBriefingNotificationHour: { userId, hour in
-        try await dataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
+        try await rustDataSource.updateBriefingNotificationHour(userId: userId, hour: hour)
       },
       updateAvailableTransports: { userId, transports in
-        try await dataSource.updateAvailableTransports(userId: userId, transports: transports)
+        try await rustDataSource.updateAvailableTransports(userId: userId, transports: transports)
       },
       updateBriefingDefaultLocation: { userId, location in
-        try await dataSource.updateBriefingDefaultLocation(userId: userId, location: location)
+        try await rustDataSource.updateBriefingDefaultLocation(userId: userId, location: location)
       },
       initializeProDefaults: { userId in
-        try await dataSource.initializeProDefaults(userId: userId)
+        try await rustDataSource.initializeProDefaults(userId: userId)
       }
     )
   }()

@@ -33,7 +33,7 @@ struct GroupModelTests {
       name: "테스트 그룹",
       description: "그룹 설명",
       imageUrl: "https://example.com/img.jpg",
-      memberIds: ["u1", "u2", "u3"],
+      memberCount: 3,
       maxMembers: 20,
       inviteCode: "XYZ789",
       createdBy: "u1",
@@ -44,7 +44,7 @@ struct GroupModelTests {
     #expect(group.name == "테스트 그룹")
     #expect(group.description == "그룹 설명")
     #expect(group.imageUrl == "https://example.com/img.jpg")
-    #expect(group.memberIds == ["u1", "u2", "u3"])
+    #expect(group.memberCount == 3)
     #expect(group.maxMembers == 20)
     #expect(group.inviteCode == "XYZ789")
     #expect(group.createdBy == "u1")
@@ -54,12 +54,12 @@ struct GroupModelTests {
   func equatable_sameValues_areEqual() {
     let now = Date()
     let g1 = GroupModel(
-      id: "g1", name: "그룹", memberIds: ["u1"],
+      id: "g1", name: "그룹", memberCount: 1,
       maxMembers: 10, inviteCode: "ABC",
       createdBy: "u1", createdAt: now, updatedAt: now
     )
     let g2 = GroupModel(
-      id: "g1", name: "그룹", memberIds: ["u1"],
+      id: "g1", name: "그룹", memberCount: 1,
       maxMembers: 10, inviteCode: "ABC",
       createdBy: "u1", createdAt: now, updatedAt: now
     )
@@ -219,13 +219,13 @@ struct GroupConstraintTests {
 
   @Test("[G16] 멤버 수 < maxMembers이면 가입 가능")
   func g16_belowCapacity_canJoin() {
-    let group = TestFactories.makeGroup(memberIds: ["a", "b"], maxMembers: 5)
-    #expect(group.memberIds.count < group.maxMembers)
+    let group = TestFactories.makeGroup(memberCount: 2, maxMembers: 5)
+    #expect(group.memberCount < group.maxMembers)
   }
 
   @Test("[G16] 멤버 수 == maxMembers이면 가입 불가")
   func g16_atCapacity_cannotJoin() {
-    let group = TestFactories.makeGroup(memberIds: ["a", "b", "c"], maxMembers: 3)
-    #expect(group.memberIds.count >= group.maxMembers)
+    let group = TestFactories.makeGroup(memberCount: 3, maxMembers: 3)
+    #expect(group.memberCount >= group.maxMembers)
   }
 }

@@ -13,6 +13,9 @@ let packageSettings = PackageSettings(
     "IssueReporting": .framework,
     "CombineSchedulers": .framework,
     "ConcurrencyExtras": .framework,
+  ],
+  targetSettings: [
+    "ComposableArchitecture": ["SWIFT_STRICT_CONCURRENCY": "targeted"],
   ]
 )
 #endif
@@ -70,6 +73,13 @@ enum Dependencies {
     )
   }
 
+  static func pulse() -> Package.Dependency {
+    .package(
+      url: "https://github.com/kean/Pulse.git",
+      .upToNextMajor(from: "5.0.0")
+    )
+  }
+
   // MARK: - Maps
   static func kakaoMaps() -> Package.Dependency {
     .package(
@@ -97,6 +107,7 @@ enum Dependencies {
     lottie(),
     kakaoMaps(),
     kakaoSDK(),
+    pulse(),
   ]}
 }
 

@@ -1,6 +1,5 @@
 import ComposableArchitecture
 import CoreLocation
-import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -41,9 +40,9 @@ public enum ScheduleExtractionError: Error, Equatable {
 /// 텍스트/이미지에서 일정 정보를 추출하는 Client (LLM 기반)
 @DependencyClient
 public struct ScheduleExtractionClient: Sendable {
-  /// 텍스트에서 일정 정보 추출 (Firebase Function 호출)
+  /// 텍스트에서 일정 정보 추출 (Rust API 호출)
   public var extractFromText: @Sendable (_ text: String) async throws -> PersonalEventModel
-  /// 이미지에서 일정 정보 추출 (Firebase Function 호출, base64 인코딩)
+  /// 이미지에서 일정 정보 추출 (Rust API 호출, base64 인코딩)
   public var extractFromImage: @Sendable (_ imageData: Data) async throws -> PersonalEventModel
 }
 
@@ -128,11 +127,34 @@ private func parseISO8601Date(_ string: String) -> Date? {
   return formatter.date(from: string)
 }
 
+private struct RustExtractScheduleBody: Encodable {
+  let text: String?
+  let imageBase64: String?
+  let timezone: String
+}
+
+private struct RustExtractScheduleResponse: Decodable {
+  let title: String?
+  let emoji: String?
+  let startDate: String?
+  let endDate: String?
+  let location: String?
+  let address: String?
+  let description: String?
+  let descriptionBlocks: [RustDescriptionBlock]?
+}
+
+private struct RustDescriptionBlock: Decodable {
+  let type: String
+  let content: String?
+  let items: [String]?
+}
+
 // MARK: - Live Implementation
 
 extension ScheduleExtractionClient: DependencyKey {
   public static let liveValue: ScheduleExtractionClient = {
-    let functions = DefaultFunctionsProvider().functions
+    let rustClient = RustAPIClient()
 
     return Self(
       extractFromText: { text in
@@ -148,38 +170,40 @@ extension ScheduleExtractionClient: DependencyKey {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         do {
-          let result = try await functions.httpsCallable("extractSchedule").call([
-            "text": trimmedText,
-            "timezone": TimeZone.current.identifier,
-          ])
-
-          guard let data = result.data as? [String: Any] else {
-            AppLogger.general.error("❌ [ScheduleExtraction] 응답 파싱 실패")
-            throw ScheduleExtractionError.invalidResponse
-          }
+          let response: RustExtractScheduleResponse = try await rustClient.post(
+            "/api/v1/schedules/extract",
+            body: RustExtractScheduleBody(
+              text: trimmedText,
+              imageBase64: nil,
+              timezone: TimeZone.current.identifier
+            )
+          )
 
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.general.info("✅ [ScheduleExtraction] 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
+          AppLogger.general.info("✅ [ScheduleExtraction] Rust 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
 
-          let event = try parseEventModel(from: data)
+          let event = try parseEventModel(from: response)
           return await geocodeIfNeeded(event)
         } catch let error as ScheduleExtractionError {
           throw error
-        } catch let error as NSError {
+        } catch let error as RustAPIError {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.general.error("❌ [ScheduleExtraction] 에러: \(error.localizedDescription) (소요: \(String(format: "%.2f", totalTime))초)")
 
-          if error.domain == FunctionsErrorDomain {
-            let code = FunctionsErrorCode(rawValue: error.code)
+          switch error {
+          case .serverError(let code, let message):
             switch code {
-            case .unauthenticated:
+            case "unauthenticated":
               throw ScheduleExtractionError.notAuthenticated
-            case .invalidArgument:
+            case "invalid-argument":
               throw ScheduleExtractionError.invalidResponse
             default:
-              throw ScheduleExtractionError.serverError(error.localizedDescription)
+              throw ScheduleExtractionError.serverError(message)
             }
+          default:
+            throw ScheduleExtractionError.networkError
           }
+        } catch {
           throw ScheduleExtractionError.networkError
         }
       },
@@ -194,38 +218,40 @@ extension ScheduleExtractionClient: DependencyKey {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         do {
-          let result = try await functions.httpsCallable("extractSchedule").call([
-            "imageBase64": base64String,
-            "timezone": TimeZone.current.identifier,
-          ])
-
-          guard let data = result.data as? [String: Any] else {
-            AppLogger.general.error("❌ [ScheduleExtraction] 이미지 응답 파싱 실패")
-            throw ScheduleExtractionError.invalidResponse
-          }
+          let response: RustExtractScheduleResponse = try await rustClient.post(
+            "/api/v1/schedules/extract",
+            body: RustExtractScheduleBody(
+              text: nil,
+              imageBase64: base64String,
+              timezone: TimeZone.current.identifier
+            )
+          )
 
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.general.info("✅ [ScheduleExtraction] 이미지 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
+          AppLogger.general.info("✅ [ScheduleExtraction] Rust 이미지 추출 완료 (소요: \(String(format: "%.2f", totalTime))초)")
 
-          let event = try parseEventModel(from: data)
+          let event = try parseEventModel(from: response)
           return await geocodeIfNeeded(event)
         } catch let error as ScheduleExtractionError {
           throw error
-        } catch let error as NSError {
+        } catch let error as RustAPIError {
           let totalTime = CFAbsoluteTimeGetCurrent() - startTime
           AppLogger.general.error("❌ [ScheduleExtraction] 이미지 에러: \(error.localizedDescription) (소요: \(String(format: "%.2f", totalTime))초)")
 
-          if error.domain == FunctionsErrorDomain {
-            let code = FunctionsErrorCode(rawValue: error.code)
+          switch error {
+          case .serverError(let code, let message):
             switch code {
-            case .unauthenticated:
+            case "unauthenticated":
               throw ScheduleExtractionError.notAuthenticated
-            case .invalidArgument:
+            case "invalid-argument":
               throw ScheduleExtractionError.invalidResponse
             default:
-              throw ScheduleExtractionError.serverError(error.localizedDescription)
+              throw ScheduleExtractionError.serverError(message)
             }
+          default:
+            throw ScheduleExtractionError.networkError
           }
+        } catch {
           throw ScheduleExtractionError.networkError
         }
       }
@@ -235,48 +261,46 @@ extension ScheduleExtractionClient: DependencyKey {
 
 // MARK: - Response Parsing
 
-private func parseEventModel(from data: [String: Any]) throws -> PersonalEventModel {
+private func parseEventModel(from response: RustExtractScheduleResponse) throws -> PersonalEventModel {
   var event = PersonalEventModel()
 
-  if let title = data["title"] as? String, !title.isEmpty {
+  if let title = response.title, !title.isEmpty {
     event.title = String(title.prefix(30))
   }
 
-  if let emoji = data["emoji"] as? String, !emoji.isEmpty {
+  if let emoji = response.emoji, !emoji.isEmpty {
     event.emoji = String(emoji.prefix(1))
   }
 
-  if let startDateStr = data["startDate"] as? String,
+  if let startDateStr = response.startDate,
      let startDate = parseISO8601Date(startDateStr) {
     event.startAt = startDate
   }
 
-  if let endDateStr = data["endDate"] as? String,
+  if let endDateStr = response.endDate,
      let endDate = parseISO8601Date(endDateStr) {
     event.endAt = endDate
   }
 
-  if let locationName = data["location"] as? String, !locationName.isEmpty {
-    let address = data["address"] as? String
+  if let locationName = response.location, !locationName.isEmpty {
     event.location = LocationInfoModel(
       name: locationName,
-      address: address
+      address: response.address
     )
   }
 
   // First try structured blocks
-  if let blocksData = data["descriptionBlocks"] as? [[String: Any]] {
+  if let blocksData = response.descriptionBlocks {
     let blocks = blocksData.compactMap { blockData -> DescriptionBlock? in
-      guard let type = blockData["type"] as? String else { return nil }
-      switch type {
+      switch blockData.type {
       case "text":
-        guard let content = blockData["content"] as? String, !content.isEmpty else { return nil }
+        guard let content = blockData.content, !content.isEmpty else { return nil }
         return DescriptionBlock(content: .text(content))
       case "checklist":
-        guard let items = blockData["items"] as? [String], !items.isEmpty else { return nil }
+        guard let items = blockData.items, !items.isEmpty else { return nil }
         return DescriptionBlock(content: .checklist(items.map { ChecklistItem(text: $0) }))
       case "bulletList":
-        guard let items = blockData["items"] as? [String], !items.isEmpty else { return nil }
+        guard let items = blockData.items, !items.isEmpty else { return nil }
         return DescriptionBlock(content: .bulletList(items))
       default:
         return nil
@@ -290,7 +314,7 @@ private func parseEventModel(from data: [String: Any]) throws -> PersonalEventMo
 
   // Fallback: plain description → wrap in text block
   if event.descriptionBlocks.isEmpty,
-     let description = data["description"] as? String,
+     let description = response.description,
      !description.isEmpty {
     let trimmed = String(description.prefix(500))
     event.description = trimmed

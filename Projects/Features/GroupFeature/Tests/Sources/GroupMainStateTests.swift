@@ -46,12 +46,12 @@ struct GroupMainStateTests {
   private func makeGroup(
     id: String = "group-1",
     name: String = "테스트 그룹",
-    memberIds: [String] = ["current-user", "user2", "user3"]
+    memberCount: Int = 3
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
-      memberIds: memberIds,
+      memberCount: memberCount,
       maxMembers: 10,
       inviteCode: "ABC123",
       createdBy: "current-user"

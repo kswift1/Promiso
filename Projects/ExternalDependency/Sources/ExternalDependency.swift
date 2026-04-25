@@ -6,12 +6,8 @@
 @_exported import Dependencies
 @_exported import XCTestDynamicOverlay
 @_exported import FirebaseCore
-@_exported import FirebaseAuth
-@_exported import FirebaseFirestore
 @_exported import FirebaseAnalytics
 @_exported import FirebaseCrashlytics
-@_exported import FirebaseStorage
-@_exported import FirebaseFunctions
 @_exported import FirebaseMessaging
 @_exported import RenderMeThis
 @_exported import GoogleSignIn
@@ -22,4 +18,7 @@
 @_exported import KakaoSDKShare
 // KakaoSDKTemplate은 Content 타입이 ViewModifier.Content와 충돌하므로
 // @_exported하지 않고 KakaoShareClient.swift에서만 직접 import
-
+@_exported import Pulse
+// PulseUI는 UserSettings 타입이 프로젝트의 UserSettings와 충돌하므로
+// @_exported하지 않고 DeveloperSettingsFeature.swift에서만 직접 import
+// @_exported import PulseUI

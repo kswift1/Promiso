@@ -11,6 +11,7 @@ public enum UserProfileError: Error, Equatable {
   case networkError
   case authenticationRequired
   case permissionDenied
+  case alreadyExists
 }
 
 // MARK: - Provider Info

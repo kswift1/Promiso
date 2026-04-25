@@ -13,7 +13,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 import {
   admin, REGION, GEMINI_API_KEY, KMA_API_KEY,
-  ODSAY_API_KEY, KAKAO_REST_API_KEY,
+  ODSAY_API_KEY, KAKAO_REST_API_KEY, RUST_DATABASE_URL,
 } from "../config";
 import {
   GenerateBriefingRequest,
@@ -25,7 +25,7 @@ import {fetchWeatherInternal, GetWeatherResponse} from "./weather";
 import {expandRecurringEvent} from "./scheduleConflicts";
 import {fetchTransportation, TransportationResult} from "./transportation";
 import {hasEffectiveProAccess} from "../utils/briefingScheduler";
-import {isEntitlementOverrideActive} from "../utils/helpers";
+import {loadRustEntitlementState} from "../utils/rustEntitlements";
 
 // MARK: - Types
 
@@ -922,7 +922,7 @@ export async function generateBriefingInternal(params: {
   try {
     // 2. 데이터 수집 (병렬) + 선호 교통수단 조회
     const [
-      slots, userGroups, settingsDoc, subscriptionDoc, overrideDoc,
+      slots, userGroups, settingsDoc, entitlement,
     ] = await Promise.all([
       fetchTodaySlots(uid, todayKey),
       fetchUserGroups(uid),
@@ -930,8 +930,7 @@ export async function generateBriefingInternal(params: {
         .collection("users").doc(uid)
         .collection("settings").doc("main")
         .get(),
-      admin.firestore().collection("subscriptions").doc(uid).get(),
-      admin.firestore().collection("entitlementOverrides").doc(uid).get(),
+      loadRustEntitlementState(uid),
     ]);
     const settingsData = settingsDoc.data() as
       UserSettingsDocument | undefined;
@@ -945,8 +944,8 @@ export async function generateBriefingInternal(params: {
     const notificationHour = briefingSettings?.notificationHour ?? null;
     const effectiveStyle = briefingSettings?.style || style || "friendly";
     const isPro = hasEffectiveProAccess({
-      subscriptionStatus: subscriptionDoc.data()?.status,
-      overrideActive: isEntitlementOverrideActive(overrideDoc.data()),
+      subscriptionStatus: entitlement.subscriptionStatus,
+      overrideActive: entitlement.overrideActive,
     });
 
     console.log(
@@ -1156,7 +1155,7 @@ export async function generateBriefingInternal(params: {
 
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
     });
 
     const result = await model.generateContent(prompt);
@@ -1279,7 +1278,13 @@ export async function generateBriefingInternal(params: {
 export const generateBriefing = onCall<GenerateBriefingRequest>(
   {
     region: REGION,
-    secrets: [GEMINI_API_KEY, KMA_API_KEY, ODSAY_API_KEY, KAKAO_REST_API_KEY],
+    secrets: [
+      GEMINI_API_KEY,
+      KMA_API_KEY,
+      ODSAY_API_KEY,
+      KAKAO_REST_API_KEY,
+      RUST_DATABASE_URL,
+    ],
   },
   async (request): Promise<GenerateBriefingResponse> => {
     if (!request.auth) {

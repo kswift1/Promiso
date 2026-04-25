@@ -27,6 +27,9 @@ public enum ExternalDeps: CaseIterable {
   /// Kakao SDK (Share)
   case kakaoShare
 
+  /// Network Debugging - Pulse
+  case pulse
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
@@ -39,14 +42,9 @@ public enum ExternalDeps: CaseIterable {
     case .firebaseSDK:
       return [
         "FirebaseCore",
-        "FirebaseAuth",
-        "FirebaseFirestore",
         "FirebaseAnalytics",
         "FirebaseCrashlytics",
-        "FirebaseStorage",
-        "FirebaseFunctions",
-        "FirebaseMessaging",
-        "FirebaseRemoteConfig"
+        "FirebaseMessaging"
       ].map { .external(name: $0) }
 
     case .googleSDK:
@@ -74,6 +72,12 @@ public enum ExternalDeps: CaseIterable {
         .external(name: "KakaoSDKCommon"),
         .external(name: "KakaoSDKShare"),
         .external(name: "KakaoSDKTemplate"),
+      ]
+
+    case .pulse:
+      return [
+        .external(name: "Pulse"),
+        .external(name: "PulseUI"),
       ]
     }
   }
