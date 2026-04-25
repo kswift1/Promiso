@@ -22,6 +22,7 @@ public struct FAQClient: Sendable {
 public enum FAQClientError: Error {
   case fetchFailed(statusCode: Int, message: String)
   case decodingFailed(String)
+  case invalidConfiguration
 }
 
 // MARK: - Test / Preview

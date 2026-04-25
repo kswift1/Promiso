@@ -363,6 +363,7 @@ extension FAQClientError {
     switch self {
     case .fetchFailed(_, _): return LocalizedStrings.Error.faqFetchFailed
     case .decodingFailed(_): return LocalizedStrings.Error.faqDecodingFailed
+    case .invalidConfiguration: return LocalizedStrings.Error.faqInvalidConfiguration
     }
   }
 }
