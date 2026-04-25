@@ -285,25 +285,22 @@ public actor RecurringPersonalEventRustDataSource {
       return .some(Self.rustDaysOfWeek(from: days))
     }()
 
-    // overrides → EventOverrideBody (비어있으면 생략, 있으면 전송)
-    let overrideBodies: [String: EventOverrideBody]?? = {
-      if event.overrides.isEmpty {
-        return .none
-      } else {
-        let mapped = event.overrides.mapValues { override in
-          EventOverrideBody(
-            title: override.title,
-            startTime: override.startTime.map { RecurringTimeBody(hour: $0.hour ?? 0, minute: $0.minute ?? 0) },
-            endTime: override.endTime.map { RecurringTimeBody(hour: $0.hour ?? 0, minute: $0.minute ?? 0) },
-            location: override.location.map {
-              RecurringLocationBody(name: $0.name, address: $0.address, latitude: $0.latitude, longitude: $0.longitude)
-            },
-            isCancelled: override.isCancelled
-          )
-        }
-        return .some(mapped)
+    // overrides → EventOverrideBody
+    // 빈 맵도 명시적으로 전송해야 서버가 기존 overrides를 클리어함
+    // (Rust `Option<serde_json::Value>`: None=미변경, Some({})=클리어)
+    let overrideBodies: [String: EventOverrideBody]?? = .some(
+      event.overrides.mapValues { override in
+        EventOverrideBody(
+          title: override.title,
+          startTime: override.startTime.map { RecurringTimeBody(hour: $0.hour ?? 0, minute: $0.minute ?? 0) },
+          endTime: override.endTime.map { RecurringTimeBody(hour: $0.hour ?? 0, minute: $0.minute ?? 0) },
+          location: override.location.map {
+            RecurringLocationBody(name: $0.name, address: $0.address, latitude: $0.latitude, longitude: $0.longitude)
+          },
+          isCancelled: override.isCancelled
+        )
       }
-    }()
+    )
 
     let body = UpdateRecurringScheduleBody(
       title: event.title,
@@ -318,7 +315,8 @@ public actor RecurringPersonalEventRustDataSource {
       dayOfMonth: .some(event.recurrence.dayOfMonth),
       seriesStartDate: RecurringPersonalEventModel.dateKey(from: event.seriesStartDate),
       seriesEndDate: .some(event.recurrence.seriesEndDate.map { RecurringPersonalEventModel.dateKey(from: $0) }),
-      excludedDates: event.excludedDates.isEmpty ? nil : Array(event.excludedDates),
+      // 빈 배열도 명시적으로 전송해야 서버가 기존 excludedDates를 클리어함
+      excludedDates: Array(event.excludedDates),
       overrides: overrideBodies
     )
 

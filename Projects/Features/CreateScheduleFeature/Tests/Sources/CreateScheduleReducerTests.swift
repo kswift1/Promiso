@@ -23,13 +23,13 @@ struct CreateScheduleReducerTests {
   private func makeGroup(
     id: String = "group-1",
     name: String = "테스트 그룹",
-    memberIds: [String] = ["user-1", "user-2", "user-3"],
+    memberCount: Int = 3,
     maxMembers: Int = 10
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
-      memberIds: memberIds,
+      memberCount: memberCount,
       maxMembers: maxMembers,
       inviteCode: "ABC123",
       createdBy: "user-1"
@@ -82,7 +82,7 @@ struct CreateScheduleReducerTests {
 
   @Test("groupSelected 시 그룹 설정 및 최소 참가인원 자동 계산 (memberCount 기준)")
   func groupSelected_setsMinParticipantsBasedOnMemberCount() async {
-    let group = makeGroup(memberIds: ["user-1", "user-2"])
+    let group = makeGroup(memberCount: 2)
 
     let store = TestStore(
       initialState: CreateSchedule.Feature.State()
@@ -98,7 +98,7 @@ struct CreateScheduleReducerTests {
 
   @Test("groupSelected 시 memberCount 기준으로 최소 참가인원 설정")
   func groupSelected_differentMemberCount_setsMinParticipantsBasedOnMemberCount() async {
-    let group = makeGroup(memberIds: ["user-1", "user-2", "user-3", "user-4"])
+    let group = makeGroup(memberCount: 4)
 
     let store = TestStore(
       initialState: CreateSchedule.Feature.State()
@@ -114,7 +114,7 @@ struct CreateScheduleReducerTests {
 
   @Test("1인 그룹(memberCount == 1) 선택 시 최소 참가인원 1명 고정")
   func groupSelected_singleMemberGroup_setsMinParticipantsToOne() async {
-    let group = makeGroup(memberIds: ["user-1"], maxMembers: 1)
+    let group = makeGroup(memberCount: 1, maxMembers: 1)
 
     let store = TestStore(
       initialState: CreateSchedule.Feature.State()
@@ -132,7 +132,7 @@ struct CreateScheduleReducerTests {
 
   @Test("incrementParticipants 시 최소 참가인원 증가")
   func incrementParticipants_incrementsCount() async {
-    let group = makeGroup(memberIds: ["user-1", "user-2", "user-3"])
+    let group = makeGroup(memberCount: 3)
     var state = CreateSchedule.Feature.State()
     state.schedule.group = group
     state.schedule.minimumParticipants = 2
@@ -148,7 +148,7 @@ struct CreateScheduleReducerTests {
 
   @Test("decrementParticipants 시 최소 참가인원 감소 (최소 2)")
   func decrementParticipants_decrementsCountMinTwo() async {
-    let group = makeGroup(memberIds: ["user-1", "user-2", "user-3"])
+    let group = makeGroup(memberCount: 3)
     var state = CreateSchedule.Feature.State()
     state.schedule.group = group
     state.schedule.minimumParticipants = 2

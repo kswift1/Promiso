@@ -7,7 +7,7 @@
 - Base URL: Cloud Run 배포 후 결정
 - 인증: `Authorization: Bearer <firebase_id_token | server_access_token>`
 - 응답 포맷: `{"data": T}` (성공) / `{"error": {"code": "...", "message": "..."}}` (실패)
-- snake_case (JSON)
+- camelCase (JSON) — Rust DTO는 `#[serde(rename_all = "camelCase")]`, Swift DTO도 camelCase 매칭
 
 ## 인증 불필요
 

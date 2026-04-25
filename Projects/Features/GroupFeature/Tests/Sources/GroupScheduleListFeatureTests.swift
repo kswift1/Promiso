@@ -11,7 +11,7 @@ struct GroupScheduleListFeatureTests {
     GroupModel(
       id: id,
       name: "테스트 그룹",
-      memberIds: ["current-user", "member-1", "member-2"],
+      memberCount: 3,
       maxMembers: 10,
       inviteCode: "TEST01",
       createdBy: "host-user"

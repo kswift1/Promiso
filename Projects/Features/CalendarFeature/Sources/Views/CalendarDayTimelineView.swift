@@ -1089,7 +1089,7 @@ struct CalendarDayTimelineView: View {
   }
 
   private func scheduleResponseStatus(_ schedule: ScheduleModel) -> ScheduleResponseStatus {
-    let memberCount = schedule.group?.memberIds.count
+    let memberCount = schedule.group?.memberCount
     let totalMembers = (memberCount ?? 0) > 0 ? memberCount : nil
     return schedule.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
   }

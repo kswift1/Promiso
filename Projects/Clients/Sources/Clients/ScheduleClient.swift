@@ -280,7 +280,7 @@ extension ScheduleClient: DependencyKey {
       getTodaySchedules: { groupIds in
         // Rust API: /home 엔드포인트로 대체 후 클라이언트에서 today 필터링
         let schedules = try await rustDataSource.getHomeSchedules(groupIds: groupIds, limitPerChunk: 20)
-        let calendar = Calendar.current
+        let calendar = Calendar.scheduleDisplay
         let startOfDay = calendar.startOfDay(for: Date())
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
         return schedules.filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }

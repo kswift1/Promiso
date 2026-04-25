@@ -836,7 +836,7 @@ struct EmptyDayPlaceholder: View {
   let sampleGroup = GroupModel(
     id: "group1",
     name: "가족 모임",
-    memberIds: ["user1", "user2"],
+    memberCount: 2,
     maxMembers: 10,
     inviteCode: "ABC123",
     createdBy: "user1",
@@ -875,7 +875,7 @@ struct EmptyDayPlaceholder: View {
   let sampleGroup = GroupModel(
     id: "group1",
     name: "친구들",
-    memberIds: ["user1", "user2"],
+    memberCount: 2,
     maxMembers: 10,
     inviteCode: "XYZ789",
     createdBy: "user2",

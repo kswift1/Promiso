@@ -28,7 +28,7 @@ struct GroupSettingsReducerTests {
     GroupModel(
       id: id,
       name: name,
-      memberIds: ["host-user", "member-1"],
+      memberCount: 2,
       maxMembers: 10,
       inviteCode: "TEST01",
       createdBy: createdBy

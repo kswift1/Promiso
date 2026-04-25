@@ -333,8 +333,10 @@ public actor GroupRustDataSource {
   }
 
   public func updateGroupColor(groupId: String, color: GroupColor?) async throws {
-    let colorValue = color?.rawValue ?? ""
-    let body = UpdateGroupColorBody(color: colorValue)
+    // 서버 팔레트 검증 상 빈 문자열은 거부되고, 현재 호출처가 모두 non-nil로 호출하므로
+    // nil은 no-op 처리 (잘못된 요청 방지)
+    guard let color else { return }
+    let body = UpdateGroupColorBody(color: color.rawValue)
     let _: RustSuccessResponse = try await api.patch("/api/v1/groups/\(groupId)/color", body: body)
   }
 
@@ -357,7 +359,6 @@ extension RustGroupResponse {
       name: name,
       description: description,
       imageUrl: imageUrl,
-      memberIds: [],
       memberCount: memberCount,
       maxMembers: maxMembers,
       inviteCode: inviteCode,
@@ -375,7 +376,6 @@ extension RustGroupSummaryResponse {
       name: name,
       description: description,
       imageUrl: imageUrl,
-      memberIds: [],
       memberCount: memberCount,
       maxMembers: maxMembers,
       inviteCode: "",
@@ -406,7 +406,6 @@ extension RustGroupPreviewResponse {
       name: name,
       description: description,
       imageUrl: imageUrl,
-      memberIds: [],
       memberCount: memberCount,
       maxMembers: maxMembers,
       inviteCode: "",

@@ -700,7 +700,7 @@ extension GroupMain {
             let groupID = group.id
             let groupName = group.name
             let inviteCode = group.inviteCode
-            let memberCount = group.memberIds.count
+            let memberCount = group.memberCount
             let maxMembers = group.maxMembers
             let groupImageUrl = group.imageUrl
             let inviterName = state.currentGroupMembers?

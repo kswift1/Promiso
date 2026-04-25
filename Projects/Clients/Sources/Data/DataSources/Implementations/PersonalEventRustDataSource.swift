@@ -231,8 +231,14 @@ public actor PersonalEventRustDataSource {
   // MARK: - Read
 
   public func getEvent(id: String) async throws -> PersonalEventModel? {
-    let response: RustPersonalScheduleResponse = try await api.get("/api/v1/schedules/\(id)")
-    return response.toPersonalEventModel()
+    do {
+      let response: RustPersonalScheduleResponse = try await api.get("/api/v1/schedules/\(id)")
+      return response.toPersonalEventModel()
+    } catch RustAPIError.httpError(let statusCode) where statusCode == 404 {
+      return nil
+    } catch RustAPIError.serverError(let code, _) where code == "not-found" {
+      return nil
+    }
   }
 
   // MARK: - Update

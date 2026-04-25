@@ -13,7 +13,7 @@
 //  ## 사용법
 //  ```swift
 //  let schedule = TestFactories.makeSchedule(title: "점심 일정")
-//  let group = TestFactories.makeGroup(memberIds: ["user1", "user2"])
+//  let group = TestFactories.makeGroup(memberCount: 2)
 //  ```
 //
 
@@ -93,7 +93,7 @@ enum TestFactories {
   ///   - name: 그룹 이름 (기본: "테스트 그룹")
   ///   - description: 설명 (기본: nil)
   ///   - imageUrl: 이미지 URL (기본: nil)
-  ///   - memberIds: 멤버 ID 목록 (기본: ["user1", "user2"])
+  ///   - memberCount: 멤버 수 (기본: 2)
   ///   - maxMembers: 최대 인원 (기본: 10)
   ///   - inviteCode: 초대 코드 (기본: "ABC123")
   ///   - createdBy: 생성자 ID (기본: "host-id")
@@ -104,7 +104,7 @@ enum TestFactories {
     name: String = "테스트 그룹",
     description: String? = nil,
     imageUrl: String? = nil,
-    memberIds: [String] = ["user1", "user2"],
+    memberCount: Int = 2,
     maxMembers: Int = 10,
     inviteCode: String = "ABC123",
     createdBy: String = "host-id",
@@ -116,7 +116,7 @@ enum TestFactories {
       name: name,
       description: description,
       imageUrl: imageUrl,
-      memberIds: memberIds,
+      memberCount: memberCount,
       maxMembers: maxMembers,
       inviteCode: inviteCode,
       createdBy: createdBy,

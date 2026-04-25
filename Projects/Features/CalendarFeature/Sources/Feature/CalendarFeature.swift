@@ -1859,13 +1859,13 @@ extension CalendarFeature {
           let schedulesWithGroup = schedules.map { schedule in
             var mutableSchedule = schedule
             if let groupInfo = groupsDict[schedule.groupId] {
-              let memberIds = membersCache[schedule.groupId]?.map(\.id) ?? []
+              let memberCount = membersCache[schedule.groupId]?.count ?? 0
               mutableSchedule.group = GroupModel(
                 id: groupInfo.id,
                 name: groupInfo.name,
                 imageUrl: groupInfo.imageUrl,
-                memberIds: memberIds,
-                maxMembers: memberIds.count,
+                memberCount: memberCount,
+                maxMembers: memberCount,
                 inviteCode: "",
                 createdBy: ""
               )

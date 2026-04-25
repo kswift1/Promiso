@@ -14,7 +14,6 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
   public let name: String
   public let description: String?
   public let imageUrl: String?
-  public let memberIds: [String]
   public let memberCount: Int
   public let maxMembers: Int
   public let inviteCode: String
@@ -27,8 +26,7 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     name: String,
     description: String? = nil,
     imageUrl: String? = nil,
-    memberIds: [String] = [],
-    memberCount: Int? = nil,
+    memberCount: Int = 0,
     maxMembers: Int,
     inviteCode: String,
     createdBy: String,
@@ -39,8 +37,7 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     self.name = name
     self.description = description
     self.imageUrl = imageUrl
-    self.memberIds = memberIds
-    self.memberCount = memberCount ?? memberIds.count
+    self.memberCount = memberCount
     self.maxMembers = maxMembers
     self.inviteCode = inviteCode
     self.createdBy = createdBy

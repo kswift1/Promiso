@@ -318,8 +318,14 @@ public actor ScheduleRustDataSource {
   // MARK: - Read
 
   public func getSchedule(id: String) async throws -> ScheduleModel? {
-    let response: RustScheduleResponse = try await api.get("/api/v1/schedules/\(id)")
-    return response.toScheduleModel()
+    do {
+      let response: RustScheduleResponse = try await api.get("/api/v1/schedules/\(id)")
+      return response.toScheduleModel()
+    } catch RustAPIError.httpError(let statusCode) where statusCode == 404 {
+      return nil
+    } catch RustAPIError.serverError(let code, _) where code == "not-found" {
+      return nil
+    }
   }
 
   // MARK: - Update
