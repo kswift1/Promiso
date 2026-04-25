@@ -140,7 +140,7 @@ struct WeeklyRecurrenceTests {
     // 3/1(토), 3/2(일), 3/8(토), 3/9(일) = 4개
     #expect(instances.count == 4)
     for instance in instances {
-      let weekday = Calendar.current.component(.weekday, from: instance.startAt)
+      let weekday = Calendar.scheduleDisplay.component(.weekday, from: instance.startAt)
       #expect(weekday == 7 || weekday == 1)
     }
   }
@@ -419,7 +419,7 @@ struct TimeCalculationTests {
 
     #expect(instances.count == 1)
     let instance = instances.first!
-    let components = Calendar.current.dateComponents([.hour, .minute], from: instance.startAt)
+    let components = Calendar.scheduleDisplay.dateComponents([.hour, .minute], from: instance.startAt)
     #expect(components.hour == 14)
     #expect(components.minute == 30)
   }
@@ -520,8 +520,8 @@ struct TimeCalculationTests {
     let march1End = march1.endAt!
     let march2End = march2.endAt!
 
-    let march1EndComponents = Calendar.current.dateComponents([.hour, .minute], from: march1End)
-    let march2EndComponents = Calendar.current.dateComponents([.hour, .minute], from: march2End)
+    let march1EndComponents = Calendar.scheduleDisplay.dateComponents([.hour, .minute], from: march1End)
+    let march2EndComponents = Calendar.scheduleDisplay.dateComponents([.hour, .minute], from: march2End)
 
     #expect(march1EndComponents.hour == 11)
     #expect(march1EndComponents.minute == 0)
