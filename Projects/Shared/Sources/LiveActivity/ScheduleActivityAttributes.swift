@@ -297,13 +297,13 @@ public enum LiveActivityIntentKey {
     }
 
     let bundleId = Bundle.main.bundleIdentifier ?? ""
-    if bundleId.contains(".stage") {
-      return "https://promiso-api-511041416523.asia-northeast3.run.app"
-    }
     if bundleId.contains(".dev") {
-      return "https://promiso-api-809932911903.asia-northeast3.run.app"
+      return AppConstants.Network.devRustAPIURLString
     }
-    return "https://promiso-api-367716701610.asia-northeast3.run.app"
+    if bundleId.contains(".stage") {
+      return AppConstants.Network.stageRustAPIURLString
+    }
+    return AppConstants.Network.prodRustAPIURLString
   }
 }
 
