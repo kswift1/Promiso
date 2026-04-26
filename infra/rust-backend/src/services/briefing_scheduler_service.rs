@@ -179,10 +179,11 @@ pub async fn dispatch_due_briefings(
                                 "[dispatch] no FCM tokens for user {}, skipping push",
                                 row.user_id
                             );
-                            succeeded += 1;
+                            skipped += 1;
                         } else {
                             let token_list: Vec<String> =
                                 tokens.into_iter().map(|(t,)| t).collect();
+                            let total = token_list.len();
                             let mut data = HashMap::new();
                             data.insert("type".to_string(), "daily_briefing".to_string());
                             let message = FcmMessage {
@@ -197,15 +198,26 @@ pub async fn dispatch_due_briefings(
                             let result =
                                 push_sender.send_multicast(&token_list, &message).await;
                             tracing::info!(
-                                "[dispatch] FCM push for user {}: success={}, failed={}",
+                                "[dispatch] FCM push for user {}: success={}, failed={}, total={}",
                                 row.user_id,
                                 result.success_count,
-                                result.failure_count
+                                result.failure_count,
+                                total
                             );
-                            if result.success_count > 0 {
-                                succeeded += 1;
-                            } else {
+                            // 전부 실패한 경우만 failed. 부분 실패는 succeeded + warn.
+                            // NoopPushSender(success=0, failure=0)는 succeeded로 처리.
+                            if result.failure_count > 0 && result.success_count == 0 {
                                 failed += 1;
+                            } else {
+                                if result.failure_count > 0 {
+                                    tracing::warn!(
+                                        "[dispatch] partial FCM failure for user {}: {}/{} failed",
+                                        row.user_id,
+                                        result.failure_count,
+                                        total
+                                    );
+                                }
+                                succeeded += 1;
                             }
                         }
                     }

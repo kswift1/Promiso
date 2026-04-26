@@ -411,7 +411,7 @@ pub async fn initialize_pro_defaults(
              briefing_style                = COALESCE(user_settings.briefing_style, 'friendly'),
              briefing_timezone             = COALESCE(user_settings.briefing_timezone, EXCLUDED.briefing_timezone),
              briefing_language             = COALESCE(user_settings.briefing_language, 'ko'),
-             briefing_available_transports = COALESCE(user_settings.briefing_available_transports, '{transit,car}'),
+             briefing_available_transports = user_settings.briefing_available_transports,
              updated_at                    = NOW()",
     )
     .bind(user_id)
