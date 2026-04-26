@@ -14,10 +14,31 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/health` | 서버 + DB 상태 확인 |
+| GET | `/api/v1/app-config` | 앱 강제 업데이트/법적 링크 등 운영 설정 조회 |
 | GET | `/api/v1/faq` | FAQ 목록 조회 (Postgres `faqs` 테이블) |
 | POST | `/api/v1/live-activity/widget/eta` | Widget ETA broadcast (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
 | POST | `/api/v1/live-activity/widget/vote` | Widget vote 응답 (X-User-Id/X-Auth-Token 필수, widget token이면 X-Device-Id 필요) |
+| POST | `/api/v1/subscriptions/apple-notifications` | Apple Server Notifications V2 webhook |
 | GET | `/api/v1/places/search?q=&size=` | Kakao 장소 검색 |
+
+### GET /api/v1/app-config
+
+- 설명: 앱 시작 시 운영 설정 조회. PostgreSQL `app_config` singleton row 기준.
+- 인증: 불필요
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "forceUpdateVersion": "0.0.0",
+      "recommendedVersion": "0.0.0",
+      "appStoreURL": "https://apps.apple.com/kr/app/id6757733720",
+      "privacyPolicyURL": "https://www.notion.so/...",
+      "termsOfServiceURL": "https://www.notion.so/...",
+      "supportEmail": "support@promiso.app",
+      "updatedAt": "ISO8601"
+    }
+  }
+  ```
 
 ### GET /api/v1/faq
 
@@ -151,6 +172,93 @@
   - `briefing_available_transports`: `["transit", "car"]`
 - 사이드이펙트: `briefing_subscriptions` projection 자동 재계산 (US-12)
 - 응답 200: UserSettingsResponse (GET과 동일 구조)
+
+## Subscriptions (인증 필요)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/v1/subscriptions/verify-purchase` | StoreKit transaction JWS 서버 검증 |
+| GET | `/api/v1/subscriptions/status` | 현재 사용자의 App Store 구독 원본 상태 조회 |
+| GET | `/api/v1/subscriptions/entitlement` | 구독 + override 합산 Pro 권한 조회 |
+
+### POST /api/v1/subscriptions/verify-purchase
+
+- 설명: 앱에서 StoreKit 구매/복원 후 받은 transaction JWS를 App Store 서버 검증하고 `subscriptions`, `subscription_owners`, `entitlements`를 갱신
+- 인증: 필수
+- 요청:
+  ```json
+  {
+    "transactionJWS": "signed-jws",
+    "productId": "com.promiso.pro.monthly",
+    "forceTransfer": false
+  }
+  ```
+  - `forceTransfer`: 다른 계정에 묶인 originalTransactionId를 현재 계정으로 이전할 때만 true
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "success": true,
+      "subscriptionStatus": {
+        "status": "subscribed",
+        "productId": "com.promiso.pro.monthly",
+        "originalTransactionId": "1000000000000000",
+        "expirationDate": "ISO8601",
+        "purchaseDate": "ISO8601",
+        "latestAppStoreSignedDate": 1710000000000,
+        "latestTransactionId": "1000000000000001",
+        "lastNotificationType": null,
+        "lastOfferType": null,
+        "lastOfferIdentifier": null,
+        "updatedAt": "ISO8601"
+      }
+    }
+  }
+  ```
+- 에러: 400 (필수값 누락/상품 불일치), 409 (다른 계정 소유), 412 (App Store 검증 실패)
+
+### GET /api/v1/subscriptions/status
+
+- 설명: 현재 사용자의 App Store 구독 원본 상태 조회. override는 합산하지 않음.
+- 인증: 필수
+- 응답 200: `SubscriptionStatusResponse`
+  - `status`: `"none"` | `"subscribed"` | `"lifetime"` | `"gracePeriod"` | `"expired"` | `"revoked"`
+
+### GET /api/v1/subscriptions/entitlement
+
+- 설명: 앱이 실제 Pro 여부를 판단할 때 사용하는 통합 read model 조회
+- 인증: 필수
+- 응답 200:
+  ```json
+  {
+    "data": {
+      "hasPro": true,
+      "source": "subscription",
+      "subscriptionStatus": "subscribed",
+      "productId": "com.promiso.pro.monthly",
+      "expirationDate": "ISO8601",
+      "overrideActive": false,
+      "overrideExpiresAt": null,
+      "overrideType": null,
+      "lastOfferType": null,
+      "lastOfferIdentifier": null,
+      "updatedAt": "ISO8601"
+    }
+  }
+  ```
+  - `source`: `"subscription"` | `"override"` | `"none"`
+  - 활성 Pro 상태: `subscribed`, `lifetime`, `gracePeriod`, 또는 활성 override
+
+### POST /api/v1/subscriptions/apple-notifications
+
+- 설명: Apple Server Notifications V2 webhook. `signedPayload`를 검증하고 owner index 기준으로 구독 상태를 갱신.
+- 인증: 불필요 (Apple JWS 검증으로 신뢰)
+- 요청:
+  ```json
+  { "signedPayload": "signed-jws" }
+  ```
+- 응답 200: `{ "data": { "success": true } }`
+- 운영: App Store Connect Server Notification URL은 이 endpoint로 설정
 
 ## Groups
 

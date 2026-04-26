@@ -109,7 +109,7 @@ export const APP_STORE_BUNDLE_ID = getAPNsBundleId();
  */
 export const APP_STORE_APPLE_ID = getCurrentEnvironment() ===
   FirestoreEnvironment.Release ?
-  1625074042 :
+  6757733720 :
   undefined;
 
 export const APNS_BUNDLE_ID = APP_STORE_BUNDLE_ID;

@@ -59,7 +59,7 @@ impl Config {
                 .and_then(|value| value.parse().ok())
                 .or_else(|| {
                     if apns_environment == "production" {
-                        Some(1625074042)
+                        Some(6757733720)
                     } else {
                         None
                     }

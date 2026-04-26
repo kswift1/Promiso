@@ -26,6 +26,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 | **QA Nightly** | 평일 18:00 KST + 수동 실행 | release 기준 curated QA | Stage / Web / Functions |
 | **QA Weekly** | 매주 월요일 10:00 KST + 수동 실행 | release 기준 넓은 회귀 QA | Stage / Web / Functions |
 | **Deploy iOS** | 수동 (workflow_dispatch) | TestFlight 배포 | Stage / Prod |
+| **Deploy Rust Backend** | 수동 (workflow_dispatch) | Cloud Run Rust API 배포 | Dev / Stage / Prod |
 | **Deploy Firebase** | 수동 (workflow_dispatch) | Firebase 배포 (Functions/Rules) | Stage / Prod |
 | **Deploy Firebase Stage (Auto)** | `push` to `release/**` + Firebase 경로 변경 | Stage 자동 배포 | Stage |
 | **Gemini Review Slack** | `pull_request_review` submitted | Gemini 리뷰 Slack 알림 | N/A |
