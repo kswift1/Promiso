@@ -142,7 +142,11 @@ public enum AppConstants {
   // MARK: - Network
 
   public enum Network {
-    private static let fallbackRustAPIURLString = "https://promiso-api-809932911903.asia-northeast3.run.app"
+    public static let devRustAPIURLString = "https://promiso-api-809932911903.asia-northeast3.run.app"
+    public static let stageRustAPIURLString = "https://promiso-api-511041416523.asia-northeast3.run.app"
+    public static let prodRustAPIURLString = "https://promiso-api-367716701610.asia-northeast3.run.app"
+
+    private static let fallbackRustAPIURLString = devRustAPIURLString
 
     public static var rustAPIURL: URL {
       if let urlString = Bundle.main.object(forInfoDictionaryKey: "RUST_API_URL") as? String,

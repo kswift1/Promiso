@@ -291,8 +291,19 @@ public enum LiveActivityIntentKey {
 
   /// Rust API Base URL
   public static var rustAPIBaseURL: String {
-    UserDefaults(suiteName: suiteName)?.string(forKey: rustApiBaseUrlKey)
-      ?? "https://promiso-api-809932911903.asia-northeast3.run.app"
+    if let savedURL = UserDefaults(suiteName: suiteName)?.string(forKey: rustApiBaseUrlKey),
+       !savedURL.isEmpty {
+      return savedURL
+    }
+
+    let bundleId = Bundle.main.bundleIdentifier ?? ""
+    if bundleId.contains(".dev") {
+      return AppConstants.Network.devRustAPIURLString
+    }
+    if bundleId.contains(".stage") {
+      return AppConstants.Network.stageRustAPIURLString
+    }
+    return AppConstants.Network.prodRustAPIURLString
   }
 }
 

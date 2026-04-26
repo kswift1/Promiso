@@ -123,6 +123,18 @@ jobs:
           FIREBASE_PROJECT_ID: promiso-dev
         run: cargo test --lib
 
+      - name: Run config regression test
+        working-directory: infra/rust-backend
+        run: cargo test --test config_test
+
+      - name: Run subscription integration test
+        working-directory: infra/rust-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost/promiso_test
+          DATABASE_POOL_URL: postgresql://postgres:postgres@localhost/promiso_test
+          FIREBASE_PROJECT_ID: promiso-dev
+        run: cargo test --test subscriptions_test -- --test-threads=1
+
       - name: Run data migration integration test
         working-directory: infra/rust-backend
         env:
