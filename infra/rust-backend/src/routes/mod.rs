@@ -83,7 +83,9 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(widget::widget_snapshot_router())
         .layer(axum::Extension(app_store_verifier))
         .layer(axum::Extension(public_live_activity_sender))
-        .layer(axum::Extension(public_push_sender));
+        .layer(axum::Extension(public_push_sender.clone()));
+
+    let internal_routes = internal::router().layer(axum::Extension(public_push_sender));
 
     Router::new()
         .merge(health::router()) // /health — 인증 불필요
@@ -91,7 +93,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(faq::router()) // /api/v1/faq — 인증 불필요
         .merge(groups::public_router()) // /api/v1/groups/preview — 인증 불필요
         .merge(places::router()) // /api/v1/places/* — 인증 불필요
-        .merge(internal::router()) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)
+        .merge(internal_routes) // /api/v1/internal/* — 스케줄러 전용 (X-Scheduler-Secret 인증)
         .merge(public_routes)
         .merge(authenticated_routes) // /api/v1/users/*, /api/v1/groups/* — 인증 필요
         .layer(axum::Extension(provider_verifier))

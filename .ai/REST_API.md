@@ -1457,10 +1457,10 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   ```
   - `totalDue`: 조회된 due 항목 수
   - `processed`: 실제 처리 시도 수
-  - `succeeded`: 브리핑 생성 + FCM 발송 성공
-  - `failed`: 처리 중 오류 발생 (next_dispatch_at은 갱신)
-  - `skipped`: Pro 박탈 등으로 건너뜀
+  - `succeeded`: 브리핑 생성 + FCM 발송 성공 (전체 성공 또는 부분 실패 포함; 부분 실패는 warn 로그)
+  - `failed`: 처리 중 오류 발생 또는 모든 토큰에 대한 FCM 발송 실패 (next_dispatch_at은 갱신)
+  - `skipped`: Pro 박탈, user_settings.briefing_notification_hour 불일치, FCM 토큰 미등록 등으로 건너뜀
   - `deleted`: briefing_subscriptions row 삭제 (notification_hour NULL 또는 Pro 상실)
 - 에러: 401 (X-Scheduler-Secret 불일치)
 
-*마지막 업데이트: 2026-04-08*
+*마지막 업데이트: 2026-04-26*
