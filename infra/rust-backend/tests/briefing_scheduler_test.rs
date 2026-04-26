@@ -1,5 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use promiso_backend::push::NoopPushSender;
 use promiso_backend::services::briefing_scheduler_service::{
     dispatch_due_briefings, verify_scheduler_secret,
 };
@@ -116,7 +117,7 @@ async fn dispatch_processes_due_items(pool: PgPool) {
     insert_subscription(&pool, "sched_due_1", -60).await;
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     // due 항목이 1개이므로 total_due >= 1
     assert!(summary.total_due >= 1);
@@ -133,7 +134,7 @@ async fn dispatch_skips_future_items(pool: PgPool) {
     insert_subscription(&pool, "sched_future_1", 3600).await;
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     assert_eq!(summary.total_due, 0);
     assert_eq!(summary.processed, 0);
@@ -150,7 +151,7 @@ async fn dispatch_respects_limit(pool: PgPool) {
     }
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 1).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 1).await.unwrap();
 
     // limit=1이면 최대 1개만 처리
     assert!(summary.processed <= 1);
@@ -172,7 +173,7 @@ async fn dispatch_advances_next_dispatch_at(pool: PgPool) {
             .await
             .expect("row should exist before dispatch");
 
-    dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     // 처리 후 next_dispatch_at이 갱신되었거나 행이 삭제되어야 한다
     let after_row: Option<(chrono::DateTime<chrono::Utc>,)> =
@@ -216,7 +217,7 @@ async fn dispatch_deletes_when_no_next(pool: PgPool) {
     .expect("Failed to insert subscription");
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     // 행이 삭제되어야 한다
     let row_count: (i64,) =
@@ -241,7 +242,7 @@ async fn dispatch_skips_non_pro_users(pool: PgPool) {
     insert_subscription(&pool, "sched_nonpro_1", -60).await;
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     // Pro 아닌 유저는 skipped 카운트에 반영 (SC-2, SC-3)
     assert!(summary.skipped >= 1);
@@ -269,7 +270,7 @@ async fn dispatch_returns_correct_summary(pool: PgPool) {
     insert_subscription(&pool, "sched_summary_future_1", 3600).await;
 
     let now = chrono::Utc::now();
-    let summary = dispatch_due_briefings(&pool, now, 10).await.unwrap();
+    let summary = dispatch_due_briefings(&pool, &NoopPushSender, now, 10).await.unwrap();
 
     // due 항목: 2개 (pro 1 + free 1)
     assert_eq!(summary.total_due, 2);

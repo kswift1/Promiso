@@ -407,12 +407,11 @@ pub async fn initialize_pro_defaults(
               updated_at)
          VALUES ($1, 8, 'friendly', $2, 'ko', 0, '{transit,car}', NOW())
          ON CONFLICT (user_id) DO UPDATE SET
-             briefing_notification_hour    = 8,
-             briefing_style                = 'friendly',
-             briefing_timezone             = EXCLUDED.briefing_timezone,
-             briefing_language             = 'ko',
-             conflict_threshold_min        = 0,
-             briefing_available_transports = '{transit,car}',
+             briefing_notification_hour    = COALESCE(user_settings.briefing_notification_hour, 8),
+             briefing_style                = COALESCE(user_settings.briefing_style, 'friendly'),
+             briefing_timezone             = COALESCE(user_settings.briefing_timezone, EXCLUDED.briefing_timezone),
+             briefing_language             = COALESCE(user_settings.briefing_language, 'ko'),
+             briefing_available_transports = COALESCE(user_settings.briefing_available_transports, '{transit,car}'),
              updated_at                    = NOW()",
     )
     .bind(user_id)

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Duration, Utc};
 use sqlx::PgPool;
 
 use crate::errors::AppError;
+use crate::models::notification::{FcmMessage, NotificationType, PushSender};
 use crate::services::briefing_projection_service::compute_next_dispatch_at;
 use crate::services::briefing_service::{
     generate_briefing, BriefingLocation, GenerateBriefingRequest,
@@ -46,6 +49,7 @@ struct UserSettingsRow {
 /// due 항목 조회 + 브리핑 생성 + FCM 발송 + next_dispatch_at 갱신
 pub async fn dispatch_due_briefings(
     pool: &PgPool,
+    push_sender: &dyn PushSender,
     now: DateTime<Utc>,
     limit: i64,
 ) -> Result<DispatchSummary, AppError> {
@@ -170,21 +174,40 @@ pub async fn dispatch_due_briefings(
                         continue;
                     }
                     Ok(tokens) => {
-                        if !tokens.is_empty() {
+                        if tokens.is_empty() {
+                            tracing::info!(
+                                "[dispatch] no FCM tokens for user {}, skipping push",
+                                row.user_id
+                            );
+                            succeeded += 1;
+                        } else {
                             let token_list: Vec<String> =
                                 tokens.into_iter().map(|(t,)| t).collect();
-                            // TODO: FCM 발송 미구현 — PushSender 통합 후 실제 발송 예정
-                            // 현재는 stub으로 처리되므로 발송 시도를 기록만 한다.
+                            let mut data = HashMap::new();
+                            data.insert("type".to_string(), "daily_briefing".to_string());
+                            let message = FcmMessage {
+                                title: briefing.summary.clone(),
+                                body: briefing.detail.clone(),
+                                notification_type: NotificationType::System,
+                                data: Some(data),
+                                schedule_id: None,
+                                group_id: None,
+                                related_user_id: None,
+                            };
+                            let result =
+                                push_sender.send_multicast(&token_list, &message).await;
                             tracing::info!(
-                                "[dispatch] FCM push pending (stub) for user {}, {} token(s)",
+                                "[dispatch] FCM push for user {}: success={}, failed={}",
                                 row.user_id,
-                                token_list.len()
+                                result.success_count,
+                                result.failure_count
                             );
-                            let _fcm_result =
-                                send_briefing_push(&token_list, &briefing.summary).await;
+                            if result.success_count > 0 {
+                                succeeded += 1;
+                            } else {
+                                failed += 1;
+                            }
                         }
-
-                        succeeded += 1;
                     }
                 }
             }
@@ -199,16 +222,6 @@ pub async fn dispatch_due_briefings(
         skipped,
         deleted,
     })
-}
-
-/// 브리핑 FCM 발송 (실패해도 무시)
-async fn send_briefing_push(tokens: &[String], summary: &str) -> Result<(), AppError> {
-    // FCM sender가 없는 환경(테스트)에서는 그냥 Ok 반환
-    // 실제 환경에서는 Extension으로 주입된 PushSender를 사용하지만,
-    // scheduler는 내부 호출이므로 환경변수 기반 NoopPushSender로 폴백
-    let _ = tokens;
-    let _ = summary;
-    Ok(())
 }
 
 /// 스케줄러 전용 인증 검증 (constant-time 비교로 타이밍 어택 방어)

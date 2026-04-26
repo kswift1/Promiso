@@ -1,12 +1,15 @@
+use std::sync::Arc;
+
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::routing::post;
-use axum::{Json, Router};
+use axum::{Extension, Json, Router};
 use chrono::Utc;
 use serde::Serialize;
 use sqlx::PgPool;
 
 use crate::errors::AppError;
+use crate::models::notification::PushSender;
 use crate::services::briefing_scheduler_service::{
     self, dispatch_due_briefings, verify_scheduler_secret,
 };
@@ -29,6 +32,7 @@ struct DispatchResponse {
 /// 인증: X-Scheduler-Secret 헤더 vs SCHEDULER_SECRET 환경변수
 async fn dispatch_briefings_handler(
     State(pool): State<PgPool>,
+    Extension(push_sender): Extension<Arc<dyn PushSender>>,
     headers: HeaderMap,
 ) -> Result<Json<DispatchResponse>, AppError> {
     // 1. X-Scheduler-Secret 헤더 추출
@@ -53,7 +57,7 @@ async fn dispatch_briefings_handler(
     }
 
     // 4. dispatch
-    let summary = dispatch_due_briefings(&pool, Utc::now(), 50).await?;
+    let summary = dispatch_due_briefings(&pool, push_sender.as_ref(), Utc::now(), 50).await?;
 
     // 5. 응답
     Ok(Json(DispatchResponse { summary }))
