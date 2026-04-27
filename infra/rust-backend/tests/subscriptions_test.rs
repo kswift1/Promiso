@@ -641,3 +641,176 @@ async fn test_lifetime_status_remains_active_regardless_of_expiration(pool: PgPo
         Some(SubscriptionStatus::Lifetime)
     );
 }
+
+// === GET /status override fallback regression tests ===
+//
+// `get_status`는 subscriptions 테이블만 보고 entitlement_overrides를 무시했다.
+// override만 활성인 유저는 status=Subscribed 로 응답해야 한다.
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_returns_subscribed_when_only_override_active(pool: PgPool) {
+    let future = Utc::now() + Duration::days(30);
+    insert_override(
+        &pool,
+        "status_override_only_user",
+        true,
+        "manual_pro_grant",
+        Some(future),
+    )
+    .await;
+
+    let status = subscription_service::get_status(&pool, "status_override_only_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Subscribed,
+        "active override만 있어도 status=Subscribed 여야 한다"
+    );
+    let returned_expiration = status
+        .expiration_date
+        .expect("override expires_at should be returned");
+    let diff = (returned_expiration - future).num_seconds().abs();
+    assert!(
+        diff < 2,
+        "expiration_date는 override의 expires_at과 일치해야 한다 (diff={diff}s)"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_returns_subscribed_when_subscription_expired_but_override_active(
+    pool: PgPool,
+) {
+    let past = Utc::now() - Duration::days(10);
+    let future = Utc::now() + Duration::days(15);
+    insert_subscription_row(
+        &pool,
+        "status_expired_with_override_user",
+        "subscribed",
+        Some(past),
+    )
+    .await;
+    insert_override(
+        &pool,
+        "status_expired_with_override_user",
+        true,
+        "manual_pro_grant",
+        Some(future),
+    )
+    .await;
+
+    let status = subscription_service::get_status(&pool, "status_expired_with_override_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Subscribed,
+        "subscription이 만료여도 override가 활성이면 status=Subscribed 여야 한다"
+    );
+    let returned_expiration = status
+        .expiration_date
+        .expect("override expires_at should be returned");
+    let diff = (returned_expiration - future).num_seconds().abs();
+    assert!(
+        diff < 2,
+        "expiration_date는 override의 expires_at과 일치해야 한다 (diff={diff}s)"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_returns_expired_when_subscription_expired_and_override_inactive(
+    pool: PgPool,
+) {
+    let past = Utc::now() - Duration::days(20);
+    insert_subscription_row(
+        &pool,
+        "status_both_inactive_user",
+        "subscribed",
+        Some(past),
+    )
+    .await;
+    // override는 is_active=false
+    insert_override(
+        &pool,
+        "status_both_inactive_user",
+        false,
+        "manual_pro_grant",
+        Some(Utc::now() + Duration::days(30)),
+    )
+    .await;
+
+    let status = subscription_service::get_status(&pool, "status_both_inactive_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Expired,
+        "subscription 만료 + override 비활성이면 status=Expired 여야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_returns_subscribed_when_subscription_active_overrides_irrelevant(
+    pool: PgPool,
+) {
+    let future_sub = Utc::now() + Duration::days(45);
+    insert_subscription_row(
+        &pool,
+        "status_sub_active_user",
+        "subscribed",
+        Some(future_sub),
+    )
+    .await;
+    insert_override(
+        &pool,
+        "status_sub_active_user",
+        false,
+        "manual_pro_grant",
+        Some(Utc::now() + Duration::days(7)),
+    )
+    .await;
+
+    let status = subscription_service::get_status(&pool, "status_sub_active_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Subscribed,
+        "subscription이 활성이면 override 비활성과 무관하게 status=Subscribed 여야 한다"
+    );
+    let returned_expiration = status
+        .expiration_date
+        .expect("subscription expiration should be returned");
+    let diff = (returned_expiration - future_sub).num_seconds().abs();
+    assert!(
+        diff < 2,
+        "expiration_date는 subscription의 expiration_date와 일치해야 한다 (diff={diff}s)"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_returns_lifetime_regardless_of_override(pool: PgPool) {
+    insert_subscription_row(&pool, "status_lifetime_user", "lifetime", None).await;
+    insert_override(
+        &pool,
+        "status_lifetime_user",
+        true,
+        "manual_pro_grant",
+        Some(Utc::now() + Duration::days(7)),
+    )
+    .await;
+
+    let status = subscription_service::get_status(&pool, "status_lifetime_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Lifetime,
+        "Lifetime subscription은 override와 무관하게 Lifetime을 유지해야 한다"
+    );
+}

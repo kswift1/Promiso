@@ -27,8 +27,34 @@ pub async fn get_status(
     pool: &PgPool,
     user_id: &str,
 ) -> Result<SubscriptionStatusResponse, AppError> {
-    let record = fetch_subscription_record(pool, user_id).await?;
-    Ok(build_status_response(record.as_ref()))
+    let subscription = fetch_subscription_record(pool, user_id).await?;
+    let entitlement_override = fetch_override_record(pool, user_id).await?;
+
+    let subscription_active = subscription
+        .as_ref()
+        .map(|record| is_active_subscription_status(&record.status, record.expiration_date))
+        .unwrap_or(false);
+    let override_active = entitlement_override
+        .as_ref()
+        .map(is_override_active)
+        .unwrap_or(false);
+
+    let base_response = build_status_response(subscription.as_ref());
+
+    // subscription이 활성이거나 override도 비활성이면 subscriptions 기반 응답을 그대로 반환
+    if subscription_active || !override_active {
+        return Ok(base_response);
+    }
+
+    // subscription 비활성 + override 활성 → override 기준으로 Subscribed 응답
+    let override_expires_at = entitlement_override
+        .as_ref()
+        .and_then(|record| record.expires_at);
+    Ok(SubscriptionStatusResponse {
+        status: SubscriptionStatus::Subscribed,
+        expiration_date: override_expires_at,
+        ..base_response
+    })
 }
 
 pub async fn get_entitlement(
@@ -545,6 +571,19 @@ async fn fetch_override_record_in_tx(
     )
     .bind(user_id)
     .fetch_optional(&mut **tx)
+    .await
+    .map_err(AppError::from)
+}
+
+async fn fetch_override_record(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<Option<EntitlementOverrideRecord>, AppError> {
+    sqlx::query_as::<_, EntitlementOverrideRecord>(
+        "SELECT * FROM entitlement_overrides WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
     .await
     .map_err(AppError::from)
 }
