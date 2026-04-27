@@ -651,15 +651,24 @@ struct RootTabFeatureTests {
     #expect(snapshot?.participants.first(where: { $0.id == "test-user" })?.estimatedArrivalMinutes == 12)
   }
 
-  // MARK: - refreshSubscriptionStatus 만료 감지 + 재검증 테스트
+  // MARK: - refreshSubscriptionStatus 서버 SSOT 정책 테스트
+  //
+  // 서버가 .subscribed / .lifetime / .gracePeriod로 응답하면 클라이언트는
+  // 만료일을 재판정하지 않고 서버 응답을 그대로 신뢰한다 (서버 SSOT).
+  // fetchLocalStatus는 더 이상 호출되지 않아야 한다.
 
   @Test("정상 구독 상태 (만료일 미래) - 서버 상태 그대로 반환")
   func refreshSubscription_notExpired_returnsServerStatus() async {
     let futureDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 30) // 30일 후
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: futureDate)
+    let localStatusCounter = CallCounter()
 
     let store = makeStore(state: makeState(key: "refresh-not-expired")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
+      $0.subscriptionClient.fetchLocalStatus = {
+        await localStatusCounter.increment()
+        return .none
+      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -669,58 +678,24 @@ struct RootTabFeatureTests {
       $0.subscriptionStatus = serverStatus
       $0.settings.subscriptionStatus = serverStatus
     }
+    await store.finish()
+
+    let localCalls = await localStatusCounter.value()
+    #expect(localCalls == 0)
   }
 
-  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 확인 - 로컬 상태 우선 반영")
-  func refreshSubscription_expired_localStoreKitActive_usesLocalStatus() async {
-    let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
-    let newFutureDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 30) // 30일 후
-    let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
-    let localStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: newFutureDate)
-
-    let store = makeStore(state: makeState(key: "refresh-expired-local-active")) {
-      $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = { localStatus }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.scenePhaseChanged(.active))
-    await store.receive(\.internal.refreshSubscriptionStatus)
-    await store.receive(\.internal.subscriptionStatusChanged) {
-      $0.subscriptionStatus = localStatus
-      $0.settings.subscriptionStatus = localStatus
-    }
-  }
-
-  @Test("만료일 경과 + 로컬 StoreKit 활성 구독 없음 - expired 처리")
-  func refreshSubscription_expired_noLocalActive_setsExpired() async {
+  @Test("서버 .subscribed + 만료일 과거여도 그대로 Pro 유지 (서버 SSOT)")
+  func refreshSubscriptionStatus_serverSubscribedExpiredDate_keepsPro() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
+    let localStatusCounter = CallCounter()
 
-    let store = makeStore(state: makeState(key: "refresh-expired-no-local")) {
+    let store = makeStore(state: makeState(key: "refresh-server-ssot-past-date")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = { .none }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.scenePhaseChanged(.active))
-    await store.receive(\.internal.refreshSubscriptionStatus)
-    await store.receive(\.internal.subscriptionStatusChanged) {
-      $0.subscriptionStatus = .expired(expirationDate: pastDate)
-      $0.settings.subscriptionStatus = .expired(expirationDate: pastDate)
-    }
-  }
-
-  @Test("만료일 경과 + 로컬 조회 실패 - 서버 상태 그대로 사용")
-  func refreshSubscription_expired_localFails_fallsBackToServerStatus() async {
-    let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
-    let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
-
-    struct MockError: Error {}
-
-    let store = makeStore(state: makeState(key: "refresh-expired-local-fail")) {
-      $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = { throw MockError() }
+      $0.subscriptionClient.fetchLocalStatus = {
+        await localStatusCounter.increment()
+        return .none
+      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -730,6 +705,12 @@ struct RootTabFeatureTests {
       $0.subscriptionStatus = serverStatus
       $0.settings.subscriptionStatus = serverStatus
     }
+    await store.finish()
+
+    // 클라이언트는 만료일을 재판정하지 않으므로 fetchLocalStatus는 호출되지 않아야 함
+    let localCalls = await localStatusCounter.value()
+    #expect(localCalls == 0)
+    #expect(store.state.subscriptionStatus.isPro == true)
   }
 
   @Test("lifetime 구독 - 재검증 없이 그대로 반환")

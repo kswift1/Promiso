@@ -37,8 +37,10 @@ pub async fn get_entitlement(
 ) -> Result<EntitlementResponse, AppError> {
     let record = fetch_entitlement_record(pool, user_id).await?;
     match record {
-        Some(record) => Ok(build_entitlement_response(&record)),
-        None => reconcile_entitlement(pool, user_id).await,
+        Some(record) if !is_entitlement_record_stale(&record) => {
+            Ok(build_entitlement_response(&record))
+        }
+        _ => reconcile_entitlement(pool, user_id).await,
     }
 }
 
@@ -629,10 +631,12 @@ async fn reconcile_entitlement_in_tx(
 ) -> Result<EntitlementResponse, AppError> {
     let subscription = fetch_subscription_record_in_tx(tx, user_id).await?;
     let entitlement_override = fetch_override_record_in_tx(tx, user_id).await?;
-    let subscription_status = subscription.as_ref().map(|record| record.status.clone());
-    let subscription_active = subscription_status
+    let subscription_status = subscription
         .as_ref()
-        .map(is_active_subscription_status)
+        .map(|record| effective_status(&record.status, record.expiration_date));
+    let subscription_active = subscription
+        .as_ref()
+        .map(|record| is_active_subscription_status(&record.status, record.expiration_date))
         .unwrap_or(false);
     let override_active = entitlement_override
         .as_ref()
@@ -714,7 +718,7 @@ async fn reconcile_entitlement_in_tx(
 fn build_status_response(record: Option<&SubscriptionRecord>) -> SubscriptionStatusResponse {
     match record {
         Some(record) => SubscriptionStatusResponse {
-            status: record.status.clone(),
+            status: effective_status(&record.status, record.expiration_date),
             product_id: record.product_id.clone(),
             original_transaction_id: record.original_transaction_id.clone(),
             expiration_date: record.expiration_date,
@@ -769,13 +773,63 @@ fn is_override_active(record: &EntitlementOverrideRecord) -> bool {
     }
 }
 
-fn is_active_subscription_status(status: &SubscriptionStatus) -> bool {
-    matches!(
-        status,
-        SubscriptionStatus::Subscribed
-            | SubscriptionStatus::Lifetime
-            | SubscriptionStatus::GracePeriod
-    )
+fn is_active_subscription_status(
+    status: &SubscriptionStatus,
+    expiration_date: Option<DateTime<Utc>>,
+) -> bool {
+    match status {
+        SubscriptionStatus::Lifetime => true,
+        SubscriptionStatus::Subscribed | SubscriptionStatus::GracePeriod => match expiration_date {
+            Some(date) => date > Utc::now(),
+            None => true,
+        },
+        _ => false,
+    }
+}
+
+fn effective_status(
+    status: &SubscriptionStatus,
+    expiration_date: Option<DateTime<Utc>>,
+) -> SubscriptionStatus {
+    match status {
+        SubscriptionStatus::Subscribed | SubscriptionStatus::GracePeriod => match expiration_date {
+            Some(date) if date <= Utc::now() => SubscriptionStatus::Expired,
+            _ => status.clone(),
+        },
+        _ => status.clone(),
+    }
+}
+
+fn is_entitlement_record_stale(record: &EntitlementRecord) -> bool {
+    if !record.has_pro {
+        return false;
+    }
+    let now = Utc::now();
+    match record.source {
+        EntitlementSource::Subscription => {
+            if matches!(
+                record.subscription_status,
+                Some(SubscriptionStatus::Lifetime)
+            ) {
+                return false;
+            }
+            if let Some(date) = record.expiration_date {
+                if date <= now {
+                    return true;
+                }
+            }
+            false
+        }
+        EntitlementSource::Override => {
+            if let Some(date) = record.override_expires_at {
+                if date <= now {
+                    return true;
+                }
+            }
+            false
+        }
+        EntitlementSource::None => false,
+    }
 }
 
 fn is_no_op_notification(notification_type: &AppStoreNotificationKind) -> bool {

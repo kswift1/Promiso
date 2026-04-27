@@ -515,6 +515,51 @@ struct ProPlanFeatureTests {
     await store.finish()
   }
 
+  @Test("onAppear 시 서버 .subscribed + 만료일 과거여도 그대로 Pro 유지 (서버 SSOT)")
+  func onAppear_serverSubscribedExpiredDate_keepsPro() async {
+    let pastDate = Date().addingTimeInterval(-24 * 3600) // 1일 전
+    let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
+    actor CallCounter {
+      private var count = 0
+      func increment() { count += 1 }
+      func value() -> Int { count }
+    }
+    let localStatusCounter = CallCounter()
+
+    let store = makeStore {
+      $0.subscriptionClient.fetchStatus = { serverStatus }
+      $0.subscriptionClient.fetchLocalStatus = {
+        await localStatusCounter.increment()
+        return .none
+      }
+      $0.subscriptionClient.unifiedStatusStream = { .finished }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingProducts = true
+    }
+
+    await store.receive(\.internal.productsResponse.success) {
+      $0.isLoadingProducts = false
+      $0.products = Self.mockProducts
+      $0.selectedProductId = SubscriptionProductType.yearly.productId
+    }
+
+    // 만료일이 과거여도 서버 .subscribed 응답이 그대로 dispatch 되어야 함
+    await store.receive(\.internal.statusUpdated) {
+      $0.subscriptionStatus = serverStatus
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+    await store.finish()
+
+    // 클라이언트는 로컬 재검증을 수행하지 않아야 함
+    let localCalls = await localStatusCounter.value()
+    #expect(localCalls == 0)
+    #expect(store.state.subscriptionStatus.isPro == true)
+  }
+
   @Test("onAppear 후 unifiedStatusStream revoked 수신 시 상태 갱신")
   func onAppear_unifiedStatusStreamRevoked_updatesStatus() async {
     let store = makeStore {
