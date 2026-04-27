@@ -452,3 +452,192 @@ async fn notify_slack_builds_correct_context_from_db(pool: PgPool) {
     // )
     // .await;
 }
+
+// === Subscription expiration regression tests (Red phase) ===
+//
+// 현재 `is_active_subscription_status`는 status enum 값만 보고 만료를 판정하지 않는다.
+// 또한 `get_entitlement`는 캐시된 entitlements row가 있으면 reconcile 없이 그대로 반환한다.
+// 아래 테스트들은 만료된 구독/캐시가 stale한 상황에서 has_pro=false 가 되어야 함을 명세한다.
+
+async fn insert_subscription_row(
+    pool: &PgPool,
+    user_id: &str,
+    status_db_value: &str,
+    expiration_date: Option<chrono::DateTime<Utc>>,
+) {
+    sqlx::query(
+        "INSERT INTO subscriptions
+            (user_id, status, product_id, original_transaction_id,
+             expiration_date, purchase_date, latest_app_store_signed_date,
+             latest_transaction_id)
+         VALUES
+            ($1, $2::subscription_status, $3, $4, $5, NOW() - INTERVAL '60 days', $6, $7)",
+    )
+    .bind(user_id)
+    .bind(status_db_value)
+    .bind("com.promiso.pro.monthly")
+    .bind(format!("otx_{user_id}"))
+    .bind(expiration_date)
+    .bind(Utc::now().timestamp_millis())
+    .bind(format!("tx_{user_id}"))
+    .execute(pool)
+    .await
+    .expect("Failed to insert subscription row");
+}
+
+async fn insert_entitlement_row(
+    pool: &PgPool,
+    user_id: &str,
+    has_pro: bool,
+    subscription_status_db: Option<&str>,
+    expiration_date: Option<chrono::DateTime<Utc>>,
+    source: &str,
+    override_active: bool,
+    override_expires_at: Option<chrono::DateTime<Utc>>,
+) {
+    sqlx::query(
+        "INSERT INTO entitlements
+            (user_id, has_pro, source, subscription_status, product_id,
+             expiration_date, override_active, override_expires_at)
+         VALUES
+            ($1, $2, $3::entitlement_source,
+             $4::subscription_status, $5, $6, $7, $8)",
+    )
+    .bind(user_id)
+    .bind(has_pro)
+    .bind(source)
+    .bind(subscription_status_db)
+    .bind("com.promiso.pro.monthly")
+    .bind(expiration_date)
+    .bind(override_active)
+    .bind(override_expires_at)
+    .execute(pool)
+    .await
+    .expect("Failed to insert entitlement row");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_entitlement_returns_expired_when_subscription_expiration_in_past(pool: PgPool) {
+    let past = Utc::now() - Duration::days(120);
+    insert_subscription_row(&pool, "expired_sub_user", "subscribed", Some(past)).await;
+
+    let entitlement = subscription_service::get_entitlement(&pool, "expired_sub_user")
+        .await
+        .expect("entitlement should reconcile");
+
+    assert!(
+        !entitlement.has_pro,
+        "만료된 subscription은 has_pro=false 여야 한다"
+    );
+    assert_ne!(
+        entitlement.subscription_status,
+        Some(SubscriptionStatus::Subscribed),
+        "만료된 subscription의 effective status는 Subscribed가 아니어야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_entitlement_returns_expired_when_grace_period_expired(pool: PgPool) {
+    let past = Utc::now() - Duration::days(10);
+    insert_subscription_row(&pool, "expired_grace_user", "grace_period", Some(past)).await;
+
+    let entitlement = subscription_service::get_entitlement(&pool, "expired_grace_user")
+        .await
+        .expect("entitlement should reconcile");
+
+    assert!(
+        !entitlement.has_pro,
+        "유예기간이 지난 subscription은 has_pro=false 여야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_entitlement_recomputes_when_cached_row_is_stale(pool: PgPool) {
+    let past = Utc::now() - Duration::days(30);
+    // subscriptions: 만료된 'subscribed'
+    insert_subscription_row(&pool, "stale_cache_user", "subscribed", Some(past)).await;
+    // entitlements: stale 캐시 (has_pro=true 로 잘못 저장됨)
+    insert_entitlement_row(
+        &pool,
+        "stale_cache_user",
+        true,
+        Some("subscribed"),
+        Some(past),
+        "subscription",
+        false,
+        None,
+    )
+    .await;
+
+    let entitlement = subscription_service::get_entitlement(&pool, "stale_cache_user")
+        .await
+        .expect("entitlement should be returned");
+
+    assert!(
+        !entitlement.has_pro,
+        "캐시된 entitlements가 stale하면 reconcile해서 has_pro=false 여야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_entitlement_returns_expired_when_override_expires_at_in_past(pool: PgPool) {
+    let past = Utc::now() - Duration::days(2);
+    // 만료된 override
+    insert_override(&pool, "expired_override_user", true, "manual_pro_grant", Some(past)).await;
+    // stale 캐시: has_pro=true 인 채로 저장되어 있음
+    insert_entitlement_row(
+        &pool,
+        "expired_override_user",
+        true,
+        None,
+        None,
+        "override",
+        true,
+        Some(past),
+    )
+    .await;
+
+    let entitlement = subscription_service::get_entitlement(&pool, "expired_override_user")
+        .await
+        .expect("entitlement should be returned");
+
+    assert!(
+        !entitlement.has_pro,
+        "만료된 override는 캐시가 stale 하더라도 has_pro=false 여야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_status_endpoint_maps_expired_subscribed_to_expired(pool: PgPool) {
+    let past = Utc::now() - Duration::days(45);
+    insert_subscription_row(&pool, "status_expired_user", "subscribed", Some(past)).await;
+
+    let status = subscription_service::get_status(&pool, "status_expired_user")
+        .await
+        .expect("status should return");
+
+    assert_eq!(
+        status.status,
+        SubscriptionStatus::Expired,
+        "만료일이 과거인 subscribed 레코드는 effective status=Expired 로 응답해야 한다"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn test_lifetime_status_remains_active_regardless_of_expiration(pool: PgPool) {
+    // Lifetime: expiration_date=NULL 이어도 항상 활성 (회귀 방지)
+    insert_subscription_row(&pool, "lifetime_user", "lifetime", None).await;
+
+    let entitlement = subscription_service::get_entitlement(&pool, "lifetime_user")
+        .await
+        .expect("entitlement should reconcile");
+
+    assert!(
+        entitlement.has_pro,
+        "Lifetime은 만료 검사 대상이 아니므로 항상 has_pro=true 여야 한다"
+    );
+    assert_eq!(
+        entitlement.subscription_status,
+        Some(SubscriptionStatus::Lifetime)
+    );
+}

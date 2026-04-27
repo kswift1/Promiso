@@ -37,8 +37,10 @@ pub async fn get_entitlement(
 ) -> Result<EntitlementResponse, AppError> {
     let record = fetch_entitlement_record(pool, user_id).await?;
     match record {
-        Some(record) => Ok(build_entitlement_response(&record)),
-        None => reconcile_entitlement(pool, user_id).await,
+        Some(record) if !is_entitlement_record_stale(&record) => {
+            Ok(build_entitlement_response(&record))
+        }
+        _ => reconcile_entitlement(pool, user_id).await,
     }
 }
 
@@ -141,7 +143,7 @@ pub async fn verify_purchase(
     // 트랜잭션 커밋 후 Slack 알림 (메인 흐름 비차단)
     let before_status = current_record
         .as_ref()
-        .map(|r| r.status.as_str().to_string());
+        .map(|r| effective_status(&r.status, r.expiration_date).as_str().to_string());
     let after_status = subscription_response.status.as_str().to_string();
     let after_last_notification_type = subscription_response.last_notification_type.clone();
     let before_last_notification_type = current_record
@@ -272,7 +274,7 @@ pub async fn handle_apple_notification(
     let webhook_url = std::env::var("SLACK_WEBHOOK_URL").unwrap_or_default();
     let before_status = current_record
         .as_ref()
-        .map(|r| r.status.as_str().to_string());
+        .map(|r| effective_status(&r.status, r.expiration_date).as_str().to_string());
     let after_last_notification_type = Some(notification.notification_type.as_str().to_string());
     let before_last_notification_type = current_record
         .as_ref()
@@ -306,6 +308,10 @@ pub async fn reconcile_entitlement(
     user_id: &str,
 ) -> Result<EntitlementResponse, AppError> {
     let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
     let entitlement = reconcile_entitlement_in_tx(&mut tx, user_id).await?;
     tx.commit().await?;
     Ok(entitlement)
@@ -629,10 +635,12 @@ async fn reconcile_entitlement_in_tx(
 ) -> Result<EntitlementResponse, AppError> {
     let subscription = fetch_subscription_record_in_tx(tx, user_id).await?;
     let entitlement_override = fetch_override_record_in_tx(tx, user_id).await?;
-    let subscription_status = subscription.as_ref().map(|record| record.status.clone());
-    let subscription_active = subscription_status
+    let subscription_status = subscription
         .as_ref()
-        .map(is_active_subscription_status)
+        .map(|record| effective_status(&record.status, record.expiration_date));
+    let subscription_active = subscription
+        .as_ref()
+        .map(|record| is_active_subscription_status(&record.status, record.expiration_date))
         .unwrap_or(false);
     let override_active = entitlement_override
         .as_ref()
@@ -714,7 +722,7 @@ async fn reconcile_entitlement_in_tx(
 fn build_status_response(record: Option<&SubscriptionRecord>) -> SubscriptionStatusResponse {
     match record {
         Some(record) => SubscriptionStatusResponse {
-            status: record.status.clone(),
+            status: effective_status(&record.status, record.expiration_date),
             product_id: record.product_id.clone(),
             original_transaction_id: record.original_transaction_id.clone(),
             expiration_date: record.expiration_date,
@@ -769,13 +777,62 @@ fn is_override_active(record: &EntitlementOverrideRecord) -> bool {
     }
 }
 
-fn is_active_subscription_status(status: &SubscriptionStatus) -> bool {
-    matches!(
-        status,
-        SubscriptionStatus::Subscribed
-            | SubscriptionStatus::Lifetime
-            | SubscriptionStatus::GracePeriod
-    )
+fn is_active_subscription_status(
+    status: &SubscriptionStatus,
+    expiration_date: Option<DateTime<Utc>>,
+) -> bool {
+    match status {
+        SubscriptionStatus::Lifetime => true,
+        SubscriptionStatus::Subscribed | SubscriptionStatus::GracePeriod => match expiration_date {
+            Some(date) => date > Utc::now(),
+            None => false,
+        },
+        _ => false,
+    }
+}
+
+fn effective_status(
+    status: &SubscriptionStatus,
+    expiration_date: Option<DateTime<Utc>>,
+) -> SubscriptionStatus {
+    match status {
+        SubscriptionStatus::Subscribed | SubscriptionStatus::GracePeriod => match expiration_date {
+            Some(date) if date <= Utc::now() => SubscriptionStatus::Expired,
+            _ => status.clone(),
+        },
+        _ => status.clone(),
+    }
+}
+
+fn is_entitlement_record_stale(record: &EntitlementRecord) -> bool {
+    if !record.has_pro {
+        return false;
+    }
+    let now = Utc::now();
+    match record.source {
+        EntitlementSource::Subscription => {
+            if matches!(
+                record.subscription_status,
+                Some(SubscriptionStatus::Lifetime)
+            ) {
+                return false;
+            }
+            match record.expiration_date {
+                Some(date) if date <= now => true,
+                None => true,
+                _ => false,
+            }
+        }
+        EntitlementSource::Override => {
+            if let Some(date) = record.override_expires_at {
+                if date <= now {
+                    return true;
+                }
+            }
+            false
+        }
+        EntitlementSource::None => false,
+    }
 }
 
 fn is_no_op_notification(notification_type: &AppStoreNotificationKind) -> bool {
