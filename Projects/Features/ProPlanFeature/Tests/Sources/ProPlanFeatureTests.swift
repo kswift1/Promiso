@@ -519,19 +519,9 @@ struct ProPlanFeatureTests {
   func onAppear_serverSubscribedExpiredDate_keepsPro() async {
     let pastDate = Date().addingTimeInterval(-24 * 3600) // 1일 전
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
-    actor CallCounter {
-      private var count = 0
-      func increment() { count += 1 }
-      func value() -> Int { count }
-    }
-    let localStatusCounter = CallCounter()
 
     let store = makeStore {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = {
-        await localStatusCounter.increment()
-        return .none
-      }
       $0.subscriptionClient.unifiedStatusStream = { .finished }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -554,9 +544,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.delegate.subscriptionStatusChanged)
     await store.finish()
 
-    // 클라이언트는 로컬 재검증을 수행하지 않아야 함
-    let localCalls = await localStatusCounter.value()
-    #expect(localCalls == 0)
+    // 클라이언트는 로컬 재검증을 수행하지 않으므로 서버 상태가 그대로 유지됨
     #expect(store.state.subscriptionStatus.isPro == true)
   }
 

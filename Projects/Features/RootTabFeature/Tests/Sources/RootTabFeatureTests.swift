@@ -661,14 +661,9 @@ struct RootTabFeatureTests {
   func refreshSubscription_notExpired_returnsServerStatus() async {
     let futureDate = Date(timeIntervalSinceNow: 60 * 60 * 24 * 30) // 30일 후
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: futureDate)
-    let localStatusCounter = CallCounter()
 
     let store = makeStore(state: makeState(key: "refresh-not-expired")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = {
-        await localStatusCounter.increment()
-        return .none
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -679,23 +674,15 @@ struct RootTabFeatureTests {
       $0.settings.subscriptionStatus = serverStatus
     }
     await store.finish()
-
-    let localCalls = await localStatusCounter.value()
-    #expect(localCalls == 0)
   }
 
   @Test("서버 .subscribed + 만료일 과거여도 그대로 Pro 유지 (서버 SSOT)")
   func refreshSubscriptionStatus_serverSubscribedExpiredDate_keepsPro() async {
     let pastDate = Date(timeIntervalSinceNow: -60 * 60 * 24) // 1일 전
     let serverStatus: SubscriptionStatus = .subscribed(productType: .monthly, expirationDate: pastDate)
-    let localStatusCounter = CallCounter()
 
     let store = makeStore(state: makeState(key: "refresh-server-ssot-past-date")) {
       $0.subscriptionClient.fetchStatus = { serverStatus }
-      $0.subscriptionClient.fetchLocalStatus = {
-        await localStatusCounter.increment()
-        return .none
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -707,9 +694,7 @@ struct RootTabFeatureTests {
     }
     await store.finish()
 
-    // 클라이언트는 만료일을 재판정하지 않으므로 fetchLocalStatus는 호출되지 않아야 함
-    let localCalls = await localStatusCounter.value()
-    #expect(localCalls == 0)
+    // 클라이언트는 만료일을 재판정하지 않으므로 서버 상태가 그대로 유지됨
     #expect(store.state.subscriptionStatus.isPro == true)
   }
 

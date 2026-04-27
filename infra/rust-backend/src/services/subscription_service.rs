@@ -143,7 +143,7 @@ pub async fn verify_purchase(
     // 트랜잭션 커밋 후 Slack 알림 (메인 흐름 비차단)
     let before_status = current_record
         .as_ref()
-        .map(|r| r.status.as_str().to_string());
+        .map(|r| effective_status(&r.status, r.expiration_date).as_str().to_string());
     let after_status = subscription_response.status.as_str().to_string();
     let after_last_notification_type = subscription_response.last_notification_type.clone();
     let before_last_notification_type = current_record
@@ -274,7 +274,7 @@ pub async fn handle_apple_notification(
     let webhook_url = std::env::var("SLACK_WEBHOOK_URL").unwrap_or_default();
     let before_status = current_record
         .as_ref()
-        .map(|r| r.status.as_str().to_string());
+        .map(|r| effective_status(&r.status, r.expiration_date).as_str().to_string());
     let after_last_notification_type = Some(notification.notification_type.as_str().to_string());
     let before_last_notification_type = current_record
         .as_ref()
@@ -308,6 +308,10 @@ pub async fn reconcile_entitlement(
     user_id: &str,
 ) -> Result<EntitlementResponse, AppError> {
     let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
     let entitlement = reconcile_entitlement_in_tx(&mut tx, user_id).await?;
     tx.commit().await?;
     Ok(entitlement)
@@ -781,7 +785,7 @@ fn is_active_subscription_status(
         SubscriptionStatus::Lifetime => true,
         SubscriptionStatus::Subscribed | SubscriptionStatus::GracePeriod => match expiration_date {
             Some(date) => date > Utc::now(),
-            None => true,
+            None => false,
         },
         _ => false,
     }
@@ -813,12 +817,11 @@ fn is_entitlement_record_stale(record: &EntitlementRecord) -> bool {
             ) {
                 return false;
             }
-            if let Some(date) = record.expiration_date {
-                if date <= now {
-                    return true;
-                }
+            match record.expiration_date {
+                Some(date) if date <= now => true,
+                None => true,
+                _ => false,
             }
-            false
         }
         EntitlementSource::Override => {
             if let Some(date) = record.override_expires_at {
