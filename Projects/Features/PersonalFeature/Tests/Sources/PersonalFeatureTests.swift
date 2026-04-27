@@ -77,6 +77,44 @@ struct PersonalFeatureTests {
     await store.send(.view(.createNewEventTapped))
     #expect(store.state.createEvent != nil)
   }
+
+  @Test("eventDetail update delegate 시 활성 일정 재구독")
+  func eventDetailUpdated_resubscribesEvents() async {
+    let event = makeEvent(id: "event-1", title: "기존 일정")
+    let updated = makeEvent(id: "event-1", title: "수정된 일정")
+    @Shared(.inMemory("personal-test-event-detail-updated")) var currentUser = UserPrivateModel(
+      userId: "test-user",
+      name: "테스트",
+      nickname: "테스트유저",
+      email: "test@example.com",
+      provider: "apple",
+      metadata: .init()
+    )
+    let store = TestStore(
+      initialState: {
+        var state = PersonalMode.Feature.State(currentUser: $currentUser)
+        state.eventDetail = PersonalEventDetail.Feature.State(event: event)
+        state.eventsState = .loaded([event])
+        return state
+      }()
+    ) {
+      PersonalMode.Feature()
+    } withDependencies: {
+      $0.personalEventClient.subscribeToActiveEvents = { _ in
+        AsyncStream { _ in }
+      }
+      $0.personalEventClient.getEvent = { _ in nil }
+      $0.personalEventClient.getActiveEvents = { _ in [updated] }
+      $0.personalEventClient.getOngoingEvents = { _ in [] }
+      $0.localNotificationClient.pendingIds = { [] }
+      $0.localNotificationClient.cancelAll = { _ in }
+      $0.calendarSyncClient.syncPersonalEvents = { _ in CalendarSyncResult() }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.eventDetail(.presented(.delegate(.eventUpdated(updated)))))
+    await store.receive(\.internal.subscribeToEvents)
+  }
 }
 
 // MARK: - Helpers

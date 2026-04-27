@@ -33,7 +33,6 @@ extension AppEntry {
     @Dependency(\.crashlyticsClient) var crashlyticsClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.groupClient) var groupClient
-    @Dependency(\.whatsNewClient) var whatsNewClient
 
     public init() {}
     
@@ -69,9 +68,6 @@ extension AppEntry {
       /// 업데이트 알림 타입
       @Presents var updateAlert: UpdateAlertState?
 
-      /// What's New 팝업 (업데이트 후 신규 기능 안내)
-      @Presents var whatsNew: WhatsNew.Feature.State?
-
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
@@ -93,7 +89,6 @@ extension AppEntry {
       case destination(PresentationAction<Destination.Action>)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
       case updateAlert(UpdateAlertAction)
-      case whatsNew(PresentationAction<WhatsNew.Feature.Action>)
     }
 
     public enum UpdateAlertAction: Equatable {
@@ -122,7 +117,7 @@ extension AppEntry {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
+      case profileCheckResponse(user: AuthUserSnapshot, profile: UserPrivateModel?)
       case checkNotificationPermission(UserPrivateModel)
       case notificationPermissionChecked(isAuthorized: Bool, user: UserPrivateModel)
       case subscribeFCMToken
@@ -134,8 +129,6 @@ extension AppEntry {
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
       case fcmTokenFetched(String)
-      case checkWhatsNew
-      case whatsNewFetched(WhatsNewModel?)
     }
 
     // MARK: - Destination Reducer
@@ -310,7 +303,7 @@ extension AppEntry {
               }
 
               do {
-                try await notificationClient.saveFCMToken(token)
+                try await notificationClient.saveNotificationToken(token)
                 await send(.internal(.fcmTokenSaved))
               } catch {
                 AppLogger.notification.error("FCM 토큰 저장 실패: \(error.localizedDescription)")
@@ -318,7 +311,7 @@ extension AppEntry {
             }
 
           case .fcmTokenSaved:
-            AppLogger.notification.debug("FCM Token saved to Firestore")
+            AppLogger.notification.debug("FCM Token saved to server")
             return .none
 
           case .subscribePushNotificationTap:
@@ -401,11 +394,6 @@ extension AppEntry {
 
             var effects: [Effect<Action>] = [cacheEffect, .send(.internal(.requestFCMToken))]
 
-            // 기존 사용자 로그인 시에만 What's New 체크 (신규 가입 시에는 불필요)
-            if !isSignup {
-              effects.append(.send(.internal(.checkWhatsNew)))
-            }
-
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
               effects.append(routeDeeplink(deeplink))
@@ -426,27 +414,6 @@ extension AppEntry {
           case .fcmTokenFetched(let token):
             return .send(.internal(.fcmTokenReceived(token)))
 
-          case .checkWhatsNew:
-            let currentVersion = AppConstants.App.version
-            let lastSeenVersion = userDefaultsClient.lastSeenWhatsNewVersion
-            guard lastSeenVersion != currentVersion else { return .none }
-            return .run { [whatsNewClient] send in
-              do {
-                let model = try await whatsNewClient.fetchWhatsNew(currentVersion)
-                await send(.internal(.whatsNewFetched(model)))
-              } catch {
-                // fetch 실패 시 팝업 표시 안 함 (깜빡임 방지)
-              }
-            }
-
-          case .whatsNewFetched(let model):
-            guard let model, !model.items.isEmpty else {
-              // 데이터 없음(비활성화/빈 목록): 현재 버전 마킹
-              userDefaultsClient.markWhatsNewSeen(version: AppConstants.App.version)
-              return .none
-            }
-            state.whatsNew = WhatsNew.Feature.State(model: model)
-            return .none
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.introCompleted)))):
@@ -482,12 +449,15 @@ extension AppEntry {
         case .notificationPermission:
           return .none
 
-        case .whatsNew(.presented(.delegate(.dismissed))):
-          state.whatsNew = nil
-          return .none
-
-        case .whatsNew:
-          return .none
+        case .destination(.presented(.main(.delegate(.sessionExpired)))):
+          state.destination = .auth(Auth.Feature.State())
+          return .run { [authClient] _ in
+            await authClient.clearSession()
+            authClient.clearWidgetAuthToken()
+            LiveActivityImageStore.clearCache()
+            WidgetDataManager.clearAll()
+            WidgetDataManager.reloadWidgets()
+          }
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
@@ -514,7 +484,7 @@ extension AppEntry {
             analyticsClient.setUserProperty(nil, .calendarSyncEnabled)
 
             do {
-              try await notificationClient.deleteFCMToken()
+              try await notificationClient.deleteCurrentDeviceRegistration()
             } catch {
               AppLogger.notification.error("FCM 토큰 삭제 실패: \(error.localizedDescription)")
             }
@@ -550,9 +520,6 @@ extension AppEntry {
       .ifLet(\.$destination, action: \.destination)
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
-      }
-      .ifLet(\.$whatsNew, action: \.whatsNew) {
-        WhatsNew.Feature()
       }
     }
   }
@@ -602,14 +569,6 @@ extension AppEntry {
         )
       ) { store in
         NotificationPermission.View(store: store)
-      }
-      .fullScreenCover(
-        item: $store.scope(
-          state: \.whatsNew,
-          action: \.whatsNew
-        )
-      ) { store in
-        WhatsNew.ContentView(store: store)
       }
       .alert(
         updateAlertTitle,
@@ -720,8 +679,8 @@ extension AppEntry.Feature.State {
 // MARK: - ProfileSetup State Extension
 
 extension AppEntry.ProfileSetup.State {
-  mutating func inject(user: FirebaseUserSnapshot, providerProfileImageURL: URL? = nil) {
-    // Firebase User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
+  mutating func inject(user: AuthUserSnapshot, providerProfileImageURL: URL? = nil) {
+    // Auth User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
     if let profileImageURL = user.photoURL ?? providerProfileImageURL {
       self.profileImage = .url(profileImageURL)
     } else {

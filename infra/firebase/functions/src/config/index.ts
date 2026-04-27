@@ -32,6 +32,9 @@ export const APNS_AUTH_KEY = defineSecret("APNS_AUTH_KEY");
 // Gemini API 시크릿
 export const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
+// Rust/PostgreSQL authority 접근용 시크릿
+export const RUST_DATABASE_URL = defineSecret("RUST_DATABASE_URL");
+
 // Slack Webhook 시크릿 (가입 알림용)
 export const SLACK_WEBHOOK_URL = defineSecret("SLACK_WEBHOOK_URL");
 
@@ -106,7 +109,7 @@ export const APP_STORE_BUNDLE_ID = getAPNsBundleId();
  */
 export const APP_STORE_APPLE_ID = getCurrentEnvironment() ===
   FirestoreEnvironment.Release ?
-  1625074042 :
+  6757733720 :
   undefined;
 
 export const APNS_BUNDLE_ID = APP_STORE_BUNDLE_ID;

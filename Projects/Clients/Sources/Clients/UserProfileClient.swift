@@ -216,87 +216,67 @@ extension UserProfileClient: TestDependencyKey {
 extension UserProfileClient: DependencyKey {
   public static let liveValue: UserProfileClient = {
     @Dependency(\.authClient) var authClient
-    let dataSource = UserProfileRemoteDataSource()
+    let rustDataSource = UserRustDataSource(
+      api: RustAPIClient()
+    )
+    let rustSettingsDataSource = UserSettingsRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
-      createUserWithProfile: { name, nickname, providerType, providerUid, email, profileImageData in
-        // 1. 사용자 생성
-        let userId = try await dataSource.createUser(
+      createUserWithProfile: { name, nickname, _, _, _, profileImageData in
+        _ = try await rustDataSource.createUser(
           name: name,
-          nickname: nickname,
-          provider: ProviderInfo(
-            type: providerType,
-            uid: providerUid,
-            email: email
-          )
+          nickname: nickname
         )
 
-        // 2. 프로필 이미지 업로드 (선택적)
         if let imageData = profileImageData {
-          _ = try await dataSource.uploadProfileImage(uid: userId, imageData: imageData)
+          _ = try await rustDataSource.uploadProfileImageData(imageData)
         }
 
-        // 3. 최종 UserModel 조회 (본인 정보이므로 isPublic=false)
-        let profile = try await dataSource.getProfileModel(uid: nil, isPublic: false)
-        guard case .private(let user) = profile else {
-          throw UserProfileError.invalidData
-        }
-        return user
+        return try await rustDataSource.getMyProfile()
       },
 
       getPrivateProfile: { target in
-        let uid: String? = switch target {
-        case .me: nil
-        case .user(let userId): userId
+        switch target {
+        case .me:
+          return try await rustDataSource.getMyProfile()
+        case .user:
+          throw UserProfileError.permissionDenied
         }
-
-        let profile = try await dataSource.getProfileModel(uid: uid, isPublic: false)
-        guard case .private(let user) = profile else {
-          throw UserProfileError.invalidData
-        }
-        return user
       },
 
       getPublicProfile: { target in
-        let uid: String? = switch target {
-        case .me: nil
-        case .user(let userId): userId
+        switch target {
+        case .me:
+          let private_ = try await rustDataSource.getMyProfile()
+          return private_.toPublic()
+        case .user(let userId):
+          return try await rustDataSource.getUserPublic(userId: userId)
         }
-
-        let profile = try await dataSource.getProfileModel(uid: uid, isPublic: true)
-        guard case .public(let user) = profile else {
-          throw UserProfileError.invalidData
-        }
-        return user
       },
 
       getUsersByIds: { userIds in
-        try await dataSource.getUsersByIds(userIds: userIds)
+        return try await rustDataSource.getUsersByIds(userIds)
       },
 
       isNicknameAvailable: { nickname in
-        try await dataSource.isNicknameAvailable(nickname)
+        return try await rustDataSource.checkNicknameAvailable(nickname)
       },
 
       updateProfile: { nickname in
-        guard let currentUser = await authClient.currentUser() else {
-          throw UserProfileError.authenticationRequired
-        }
-        try await dataSource.updateProfile(uid: currentUser.uid, nickname: nickname)
+        try await rustDataSource.updateNickname(nickname)
       },
 
       updateProfileImage: { imageData in
-        guard let currentUser = await authClient.currentUser() else {
-          throw UserProfileError.authenticationRequired
-        }
-        return try await dataSource.uploadProfileImage(uid: currentUser.uid, imageData: imageData)
+        return try await rustDataSource.uploadProfileImageData(imageData)
       },
 
       getUserSettings: {
         guard let currentUser = await authClient.currentUser() else {
           throw UserProfileError.authenticationRequired
         }
-        return try await UserSettingsRemoteDataSource().fetchSettings(userId: currentUser.uid)
+        return try await rustSettingsDataSource.fetchSettings(userId: currentUser.uid)
       }
     )
   }()

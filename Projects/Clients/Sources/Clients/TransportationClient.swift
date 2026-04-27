@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseFunctions
 import Foundation
 
 // MARK: - Transportation Result
@@ -211,24 +210,39 @@ extension DependencyValues {
 
 // MARK: - Live Implementation
 
+private struct GetTransportationBody: Encodable {
+  let fromLat: Double
+  let fromLng: Double
+  let toLat: Double
+  let toLng: Double
+}
+
 extension TransportationClient: DependencyKey {
   public static let liveValue: TransportationClient = {
-    let functions = DefaultFunctionsProvider().functions
+    let rustClient = RustAPIClient()
 
     return Self(
       getTransportation: { fromLat, fromLng, toLat, toLng in
-        let result = try await functions.httpsCallable("getTransportation").call([
-          "fromLat": fromLat,
-          "fromLng": fromLng,
-          "toLat": toLat,
-          "toLng": toLng,
-        ])
-
-        guard let data = result.data as? [String: Any] else {
-          throw TransportationClientError.invalidResponse
+        do {
+          return try await rustClient.post(
+            "/api/v1/transportation",
+            body: GetTransportationBody(
+              fromLat: fromLat,
+              fromLng: fromLng,
+              toLat: toLat,
+              toLng: toLng
+            )
+          )
+        } catch let error as RustAPIError {
+          switch error {
+          case .invalidResponse, .noData:
+            throw TransportationClientError.invalidResponse
+          case .httpError(let statusCode):
+            throw TransportationClientError.httpError(statusCode: statusCode)
+          case .serverError(let code, let message):
+            throw TransportationClientError.serverError(code: code, message: message)
+          }
         }
-        let jsonData = try JSONSerialization.data(withJSONObject: data)
-        return try JSONDecoder().decode(TransportationResult.self, from: jsonData)
       }
     )
   }()
@@ -238,6 +252,8 @@ extension TransportationClient: DependencyKey {
 
 public enum TransportationClientError: Error, Sendable {
   case invalidResponse
+  case httpError(statusCode: Int)
+  case serverError(code: String, message: String)
 }
 
 // MARK: - Test / Preview

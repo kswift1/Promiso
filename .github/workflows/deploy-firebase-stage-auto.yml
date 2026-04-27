@@ -1,6 +1,6 @@
 name: Deploy Firebase Stage (Auto)
 
-# release/* 브랜치에 PR 머지 시 자동 배포
+# release/* 브랜치에 PR 머지 시 자동 stage 배포
 on:
   push:
     branches:
@@ -22,10 +22,6 @@ jobs:
       url: https://console.firebase.google.com/project/promiso-stage
 
     steps:
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 1. 체크아웃 및 환경 설정
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -35,10 +31,6 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: infra/firebase/functions/package-lock.json
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 2. Functions 테스트 및 검증
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Install Functions Dependencies
         working-directory: infra/firebase/functions
@@ -61,62 +53,35 @@ jobs:
         working-directory: infra/firebase/functions
         run: npm run build
 
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 3. Firebase 배포 (Stage)
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-      - name: Write Functions Env (Stage)
+      - name: Write Functions Env (Stage — Analytics 값)
         working-directory: infra/firebase/functions
         run: |
-          cat <<EOF > .env.stage
+          cat <<EOF > .env.promiso-stage
           GA4_PROPERTY_ID=${{ vars.GA4_PROPERTY_ID }}
           ANALYTICS_BIGQUERY_PROJECT_ID=${{ vars.ANALYTICS_BIGQUERY_PROJECT_ID }}
           ANALYTICS_BIGQUERY_DATASET_ID=${{ vars.ANALYTICS_BIGQUERY_DATASET_ID }}
           ANALYTICS_BIGQUERY_LOCATION=${{ vars.ANALYTICS_BIGQUERY_LOCATION }}
           EOF
 
-      - name: Deploy Functions to Stage
-        id: deploy_functions
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy to Stage
+        id: deploy
         working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npm install -g firebase-tools
-          firebase use stage
-          firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
+          npx --yes firebase-tools@latest use stage
+          npx --yes firebase-tools@latest deploy \
+            --only functions,firestore:rules,storage \
+            --project promiso-stage \
+            --non-interactive
 
-      - name: Deploy Firestore Rules to Stage
-        id: deploy_firestore
-        working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          firebase use stage
-          firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
-
-      - name: Deploy Storage Rules to Stage
-        id: deploy_storage
-        working-directory: infra/firebase
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          firebase use stage
-          firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 4. 배포 후 헬스체크 (선택)
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-      - name: Health Check Functions (if exists)
+      - name: Health Check Functions
         continue-on-error: true
         run: |
-          # 헬스체크 엔드포인트가 있다면 호출
-          # curl -f https://us-central1-promiso-stage.cloudfunctions.net/health || exit 0
           echo "⚠️ Health check endpoint not configured. Skipping..."
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 5. Slack 알림 (성공/실패 모두)
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Slack Notification (Success)
         if: success()
@@ -137,39 +102,19 @@ jobs:
                 {
                   "type": "section",
                   "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Environment:*\nStage`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`
-                    }
+                    {"type": "mrkdwn", "text": "*Environment:*\nStage"},
+                    {"type": "mrkdwn", "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`},
+                    {"type": "mrkdwn", "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`},
+                    {"type": "mrkdwn", "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`}
                   ]
                 },
                 {
                   "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "✅ Functions\n✅ Firestore Rules\n✅ Storage Rules"
-                  }
+                  "text": {"type": "mrkdwn", "text": "✅ Functions\n✅ Firestore Rules\n✅ Storage Rules"}
                 },
                 {
                   "type": "context",
-                  "elements": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "🎯 QA 테스트 준비 완료"
-                    }
-                  ]
+                  "elements": [{"type": "mrkdwn", "text": "🎯 QA 테스트 준비 완료"}]
                 }
               ]
             }
@@ -189,45 +134,20 @@ jobs:
               "blocks": [
                 {
                   "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ Firebase Stage 배포 실패"
-                  }
+                  "text": {"type": "plain_text", "text": "❌ Firebase Stage 배포 실패"}
                 },
                 {
                   "type": "section",
                   "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Environment:*\nStage`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`
-                    }
+                    {"type": "mrkdwn", "text": "*Environment:*\nStage"},
+                    {"type": "mrkdwn", "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`},
+                    {"type": "mrkdwn", "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`},
+                    {"type": "mrkdwn", "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`}
                   ]
                 },
                 {
                   "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "⚠️ *수동 개입 필요*\n에러 로그를 확인하고 수동으로 롤백하세요."
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*롤백 방법:*\n```\ngit checkout <previous-commit>\nfirebase deploy --only functions --project promiso-stage\n```"
-                  }
+                  "text": {"type": "mrkdwn", "text": "⚠️ *수동 개입 필요*\n에러 로그를 확인하고 수동으로 롤백하세요."}
                 }
               ]
             }

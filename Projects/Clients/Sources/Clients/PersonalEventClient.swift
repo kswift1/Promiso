@@ -151,71 +151,53 @@ extension DependencyValues {
 
 extension PersonalEventClient: DependencyKey {
   public static let liveValue: PersonalEventClient = {
-    let dataSource: PersonalEventRemoteDataSourceProtocol = PersonalEventRemoteDataSource()
+    let rustDataSource = PersonalEventRustDataSource(
+      api: RustAPIClient()
+    )
 
     return PersonalEventClient(
       createEvent: { event in
         guard !event.title.isEmpty else {
           throw PersonalEventClientError.invalidData(LocalizedStrings.Error.validationError)
         }
-
-        do {
-          return try await dataSource.createEvent(event)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.createEvent(event)
       },
       updateEvent: { event in
-        do {
-          try await dataSource.updateEvent(event)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        try await rustDataSource.updateEvent(event)
       },
       deleteEvent: { eventId in
-        do {
-          try await dataSource.deleteEvent(id: eventId)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        try await rustDataSource.deleteEvent(id: eventId)
       },
       getEvent: { eventId in
-        do {
-          return try await dataSource.getEvent(id: eventId)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getEvent(id: eventId)
       },
       getActiveEvents: { limit in
-        do {
-          return try await dataSource.getActiveEvents(limit: limit)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getActiveEvents(limit: limit)
       },
       getOngoingEvents: { limit in
-        do {
-          return try await dataSource.getOngoingEvents(limit: limit)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getOngoingEvents(limit: limit)
       },
       getPastEvents: { limit, lastStartAt in
-        do {
-          return try await dataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getPastEvents(limit: limit, lastStartAt: lastStartAt)
       },
       subscribeToActiveEvents: { limit in
-        await dataSource.subscribeToActiveEvents(limit: limit)
+        return AsyncStream { continuation in
+          let task = Task {
+            do {
+              let events = try await rustDataSource.getActiveEvents(limit: limit)
+              continuation.yield(events)
+            } catch {
+              continuation.yield([])
+            }
+            continuation.finish()
+          }
+          continuation.onTermination = { _ in
+            task.cancel()
+          }
+        }
       },
       getEventsByDateRange: { startDate, endDate in
-        do {
-          return try await dataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
-        } catch {
-          throw PersonalEventClientError(from: error)
-        }
+        return try await rustDataSource.getEventsByDateRange(startDate: startDate, endDate: endDate)
       }
     )
   }()

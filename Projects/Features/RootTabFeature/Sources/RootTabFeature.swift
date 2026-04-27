@@ -117,6 +117,7 @@ extension RootTab {
 
     private enum CancelID: Hashable {
       case subscriptionStatus
+      case sessionExpired
     }
 
     public init() {}
@@ -278,11 +279,14 @@ extension RootTab {
       case refreshSubscriptionStatus
       /// 캘린더 동기화 완료 처리
       case syncCalendarFinished(success: Bool)
+      /// 서버 세션 만료 감지 (refresh token 실패)
+      case sessionExpired
     }
 
     @CasePathable
     public enum Delegate: Equatable, Sendable {
       case logoutRequested
+      case sessionExpired
       case openJoinGroup(inviteCode: String)
     }
 
@@ -317,7 +321,13 @@ extension RootTab {
             .send(.internal(.observeActivityUpdates)),
             .send(.internal(.observeVoteActivityUpdates)),
             .send(.internal(.syncCalendar)),
-            .send(.internal(.observeSubscriptionStatus))
+            .send(.internal(.observeSubscriptionStatus)),
+            .run { send in
+              for await _ in NotificationCenter.default.notifications(named: .serverSessionExpired).map({ _ in }) {
+                await send(.internal(.sessionExpired))
+              }
+            }
+            .cancellable(id: CancelID.sessionExpired, cancelInFlight: true)
           ]
 
           effects.append(
@@ -449,6 +459,7 @@ extension RootTab {
           }
 
           let channelId = attributes.channelId
+          let scheduleId = attributes.scheduleId
           let trackingDurationMinutes = attributes.trackingDurationMinutes
           let userId = attributes.currentUserId
 
@@ -469,7 +480,12 @@ extension RootTab {
           // 서버 API 호출 → APNs Broadcast로 모든 참가자(나 포함) 업데이트
           return .run { [scheduleClient] _ in
             do {
-              try await scheduleClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
+              try await scheduleClient.updateETA(
+                scheduleId,
+                channelId,
+                updatedParticipants,
+                trackingDurationMinutes
+              )
               AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
             } catch {
               AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")
@@ -713,6 +729,9 @@ extension RootTab {
               state.hasInitialCalendarSyncBeenScheduled = true
             }
             return .none
+
+          case .sessionExpired:
+            return .send(.delegate(.sessionExpired))
 
           case .observeSubscriptionStatus:
             return .run { [subscriptionClient] send in

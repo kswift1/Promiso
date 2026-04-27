@@ -611,7 +611,7 @@ struct RootTabFeatureTests {
     let store = makeStore(state: state) {
       $0.liveActivityClient.currentAttributes = { nil }
       $0.liveActivityClient.currentState = { nil }
-      $0.scheduleClient.updateETA = { _, _, _ in
+      $0.scheduleClient.updateETA = { _, _, _, _ in
         await recorder.increment()
       }
     }
@@ -631,8 +631,13 @@ struct RootTabFeatureTests {
     let store = makeStore(state: state) {
       $0.liveActivityClient.currentAttributes = { attributes }
       $0.liveActivityClient.currentState = { contentState }
-      $0.scheduleClient.updateETA = { channelId, participants, trackingDuration in
-        await recorder.record(channelId: channelId, participants: participants, trackingDuration: trackingDuration)
+      $0.scheduleClient.updateETA = { scheduleId, channelId, participants, trackingDuration in
+        await recorder.record(
+          scheduleId: scheduleId,
+          channelId: channelId,
+          participants: participants,
+          trackingDuration: trackingDuration
+        )
       }
     }
 
@@ -640,6 +645,7 @@ struct RootTabFeatureTests {
     await store.finish()
 
     let snapshot = await recorder.value()
+    #expect(snapshot?.scheduleId == "schedule-1")
     #expect(snapshot?.channelId == "channel-1")
     #expect(snapshot?.trackingDuration == 30)
     #expect(snapshot?.participants.first(where: { $0.id == "test-user" })?.estimatedArrivalMinutes == 12)
@@ -848,6 +854,7 @@ private extension RootTabFeatureTests {
 
   actor ETAUpdateRecorder {
     struct Snapshot: Equatable {
+      var scheduleId: String
       var channelId: String
       var participants: [ParticipantState]
       var trackingDuration: Int
@@ -855,8 +862,14 @@ private extension RootTabFeatureTests {
 
     private var snapshot: Snapshot?
 
-    func record(channelId: String, participants: [ParticipantState], trackingDuration: Int) {
+    func record(
+      scheduleId: String,
+      channelId: String,
+      participants: [ParticipantState],
+      trackingDuration: Int
+    ) {
       snapshot = Snapshot(
+        scheduleId: scheduleId,
         channelId: channelId,
         participants: participants,
         trackingDuration: trackingDuration
@@ -1024,7 +1037,7 @@ private extension RootTabFeatureTests {
       }
     }
     dependencies.scheduleClient.getPastSchedules = { _, _, _ in [] }
-    dependencies.scheduleClient.updateETA = { _, _, _ in }
+    dependencies.scheduleClient.updateETA = { _, _, _, _ in }
 
     dependencies.subscriptionClient.fetchStatus = { .none }
     dependencies.subscriptionClient.unifiedStatusStream = { AsyncStream { $0.finish() } }

@@ -1,4 +1,14 @@
-# Notion FAQ 관리 가이드
+# Notion FAQ 관리 가이드 (⚠️ 구 버전, 참고용)
+
+> **현재 운영 기준**: FAQ는 `infra/rust-backend/migrations/017_faq_table.sql`로 생성된 Postgres `faqs` 테이블에서 관리됩니다.
+> Notion 기반 경로(Firebase Functions + `NOTION_FAQ_API_KEY`)는 더 이상 사용하지 않습니다.
+>
+> **시드 운영 메모**:
+> - `017_faq_table.sql`의 `INSERT` 문은 Dev/Stage/Prod 모든 환경에 동일하게 적용된다.
+> - Prod에서만 문구/순서를 바꾸려면 이 마이그레이션을 수정하지 말고, 별도 admin 도구(또는 수동 SQL)로 Prod DB에 덮어쓴다.
+> - 신규 FAQ 추가/수정은 admin 도구가 준비되기 전까지 `psql`로 직접 반영하고, 변경 이력을 PR 본문에 기록한다.
+>
+> 아래 내용은 Notion 기반 구현 당시 가이드로, Notion 워크스페이스 백업 등 히스토리 확인 목적으로만 참조한다.
 
 ## 개요
 

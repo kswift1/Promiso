@@ -16,7 +16,7 @@ public enum AppConfig {
   public static let defaultRegions = ["en", "ko"]
   
   public static let teamId = "BAC795627G"
-  public static let marketingNumber: String = "1.3.2"
+  public static let marketingNumber: String = "1.4.0"
   
   public static func buildVersion(for environment: String = "dev") -> String {
     let now = Date()
@@ -32,26 +32,40 @@ public enum AppConfig {
   
   public static func infoPlist(for environment: String = "prod") -> [String: Plist.Value] {
     // API Keys는 xcconfig 파일에서 환경별로 관리 (Config/*.xcconfig, gitignored)
-    // Deeplink는 비밀값이 아니므로 환경별 직접 설정
+    // Deeplink / Rust API URL은 비밀값이 아니므로 환경별 직접 설정
     let deeplinkScheme: String
     let deeplinkWebHost: String
     let appGroupId: String
+    let rustApiURL: String
     switch environment {
     case "dev":
       deeplinkScheme = "promiso-dev"
       deeplinkWebHost = "dev.promiso.app"
       appGroupId = "group.com.promiso.dev.shared"
+      rustApiURL = "https://promiso-api-809932911903.asia-northeast3.run.app"
     case "stage":
       deeplinkScheme = "promiso-stage"
       deeplinkWebHost = "stage.promiso.app"
       appGroupId = "group.com.promiso.stage.shared"
+      rustApiURL = "https://promiso-api-511041416523.asia-northeast3.run.app"
     default:
       deeplinkScheme = "promiso"
       deeplinkWebHost = "promiso.app"
       appGroupId = "group.com.promiso.shared"
+      rustApiURL = "https://promiso-api-367716701610.asia-northeast3.run.app"
+    }
+
+    // Dev/Stage: HTTP 허용 (Rust 로컬 서버 연결)
+    var ats: Plist.Value = .dictionary([:])
+    if environment != "prod" {
+      ats = .dictionary([
+        "NSAllowsArbitraryLoads": .boolean(true),
+        "NSAllowsLocalNetworking": .boolean(true)
+      ])
     }
 
     return [
+      "NSAppTransportSecurity": ats,
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion(for: environment)),
       "UILaunchScreen": .dictionary([
@@ -102,6 +116,8 @@ public enum AppConfig {
       "DEEPLINK_WEB_HOST": .string(deeplinkWebHost),
       // App Group
       "APP_GROUP_ID": .string(appGroupId),
+      // Rust Backend API URL
+      "RUST_API_URL": .string(rustApiURL),
       // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       // Microsoft Clarity

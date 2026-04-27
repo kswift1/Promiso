@@ -1075,12 +1075,6 @@ public enum LocalizedStrings {
     public static var updateLater: String { String(localized: "appEntry.update.later", bundle: bundle) }
   }
 
-  // MARK: - WhatsNew
-  public enum WhatsNew {
-    public static var closingTitle: String { String(localized: "whatsNew.closing.title", bundle: bundle) }
-    public static var closingBody: String { String(localized: "whatsNew.closing.body", bundle: bundle) }
-  }
-
   // MARK: - Profile
   public enum Profile {
     public static var nicknameCheckRequired: String { String(localized: "profile.error.nicknameCheckRequired", bundle: bundle) }
@@ -1901,6 +1895,8 @@ public enum LocalizedStrings {
     public static var extractionPaste: String { String(localized: "personal.extraction.paste", bundle: bundle) }
     public static var extractionExtract: String { String(localized: "personal.extraction.extract", bundle: bundle) }
     public static var extractionPlaceholder: String { String(localized: "personal.extraction.placeholder", bundle: bundle) }
+    public static var extractionStepPreparing: String { String(localized: "scheduleImport.extraction.step.preparing", bundle: bundle) }
+    public static var extractionStepAnalyzing: String { String(localized: "scheduleImport.extraction.step.analyzing", bundle: bundle) }
   }
 
   // MARK: - ProPlan

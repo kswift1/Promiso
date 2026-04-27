@@ -166,15 +166,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // WhatsNew - 서버 관리 신규 기능 안내 (Cloud Functions에서만 쓰기)
-    match /whatsNew/{version} {
-      // 인증된 사용자만 읽기 가능
-      allow read: if request.auth != null;
-
-      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
-      allow write: if false;
-    }
-
     // 그 외 모든 경로 차단
     match /{document=**} {
       allow read, write: if false;

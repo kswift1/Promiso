@@ -28,7 +28,9 @@ extension DependencyValues {
 
 extension WeatherClient: DependencyKey {
   public static let liveValue: WeatherClient = {
-    let dataSource = WeatherDataSource()
+    let dataSource = WeatherRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       getWeather: { latitude, longitude, targetDate in

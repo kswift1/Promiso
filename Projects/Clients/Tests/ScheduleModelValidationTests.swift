@@ -50,11 +50,11 @@ struct ScheduleModelValidationTests {
   }
 
   /// 테스트용 GroupModel 생성
-  private func makeGroup(memberIds: [String] = ["user1", "user2"]) -> GroupModel {
+  private func makeGroup(memberCount: Int = 2) -> GroupModel {
     GroupModel(
       id: "group-id",
       name: "테스트 그룹",
-      memberIds: memberIds,
+      memberCount: memberCount,
       maxMembers: 10,
       inviteCode: "ABC123",
       createdBy: "host-id"

@@ -265,19 +265,10 @@ public enum LiveActivityIntentKey {
   /// ETA 업데이트 저장 키
   public static let etaUpdateKey = "liveActivity.etaUpdate"
 
-  /// Firebase Project ID 저장 키
-  public static let firebaseProjectIdKey = "firebase.projectId"
-
-  /// Firebase Project ID (Widget에서 HTTP 호출용)
-  /// App Group UserDefaults에서 읽거나, 없으면 기본값 사용
-  public static var firebaseProjectId: String {
-    UserDefaults(suiteName: suiteName)?.string(forKey: firebaseProjectIdKey) ?? "promiso-20274"
-  }
-
-  /// Firebase Auth ID Token 저장 키 (Widget에서 인증용)
+  /// Access token fallback 저장 키 (Widget에서 인증용)
   public static let authTokenKey = "firebase.auth.idToken"
 
-  /// Firebase Auth Token 만료 시간 저장 키
+  /// Access token fallback 만료 시간 저장 키
   public static let authTokenExpiryKey = "firebase.auth.tokenExpiry"
 
   /// Widget 전용 Long-lived Token 저장 키 (30일 유효)
@@ -286,11 +277,34 @@ public enum LiveActivityIntentKey {
   /// Widget Token 만료 시간 저장 키
   public static let widgetTokenExpiryKey = "widget.auth.tokenExpiry"
 
+  /// Widget Token 발급에 사용한 디바이스 ID 저장 키
+  public static let widgetDeviceIdKey = "widget.auth.deviceId"
+
   /// Firebase Emulator Host 저장 키 (개발 환경용)
   public static let emulatorHostKey = "firebase.emulator.host"
 
   /// APNs 환경 저장 키 (Widget에서 백엔드 호출 시 사용)
   public static let apnsEnvironmentKey = "apns.environment"
+
+  /// Rust API Base URL 저장 키 (Widget에서 Cloud Run 호출 시 사용)
+  public static let rustApiBaseUrlKey = "rust.api.baseUrl"
+
+  /// Rust API Base URL
+  public static var rustAPIBaseURL: String {
+    if let savedURL = UserDefaults(suiteName: suiteName)?.string(forKey: rustApiBaseUrlKey),
+       !savedURL.isEmpty {
+      return savedURL
+    }
+
+    let bundleId = Bundle.main.bundleIdentifier ?? ""
+    if bundleId.contains(".dev") {
+      return AppConstants.Network.devRustAPIURLString
+    }
+    if bundleId.contains(".stage") {
+      return AppConstants.Network.stageRustAPIURLString
+    }
+    return AppConstants.Network.prodRustAPIURLString
+  }
 }
 
 /// 도착 예상 시간 업데이트 정보

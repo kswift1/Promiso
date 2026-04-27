@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -24,22 +23,6 @@ public enum FAQClientError: Error {
   case fetchFailed(statusCode: Int, message: String)
   case decodingFailed(String)
   case invalidConfiguration
-}
-
-// MARK: - Firebase Functions Response Models
-
-private struct GetFAQsResponse: Decodable {
-  let faqs: [FAQItem]
-}
-
-private struct FAQItem: Decodable {
-  let id: String
-  let question: String
-  let answer: String
-  let category: String
-  let order: Int
-  let createdAt: String
-  let updatedAt: String
 }
 
 // MARK: - Test / Preview
@@ -86,62 +69,30 @@ private actor FAQSessionCache {
 
 extension FAQClient: DependencyKey {
   public static let liveValue: FAQClient = {
-    let functions = DefaultFunctionsProvider().functions
-    let decoder = JSONDecoder()
+    let rustDataSource = FAQRustDataSource(
+      api: RustAPIClient(getAuthToken: nil)
+    )
 
     return Self(
       fetchFAQs: {
         try await FAQSessionCache.shared.getFAQs {
-          let databaseId = AppConstants.App.notionFAQDatabaseId
-
-        guard databaseId != "YOUR_DATABASE_ID_HERE" else {
-          throw FAQClientError.invalidConfiguration
-        }
-
-        // Firebase Functions 호출 (Notion API 프록시)
-        let resultData: Any
-        do {
-          let callable = functions.httpsCallable("getFAQs")
-          let result = try await callable.call(["databaseId": databaseId])
-          resultData = result.data
-        } catch {
-          let code = (error as NSError).code
-          throw FAQClientError.fetchFailed(
-            statusCode: code,
-            message: error.localizedDescription
-          )
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: resultData) else {
-          throw FAQClientError.decodingFailed("Failed to serialize response data")
-        }
-
-        let response: GetFAQsResponse
-        do {
-          response = try decoder.decode(GetFAQsResponse.self, from: data)
-        } catch {
-          throw FAQClientError.decodingFailed(error.localizedDescription)
-        }
-
-        // ISO8601 날짜 포맷터 (Notion의 created_time 형식)
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let faqs = response.faqs.map { item -> FAQModel in
-          let createdAt = dateFormatter.date(from: item.createdAt) ?? Date()
-
-          return FAQModel(
-            id: item.id,
-            question: item.question,
-            answer: item.answer,
-            category: item.category,
-            order: item.order,
-            isActive: true, // 서버에서 Active=true만 반환
-            createdAt: createdAt
-          )
-        }
-
-        return faqs
+          do {
+            return try await rustDataSource.fetchFAQs()
+          } catch let error as RustAPIError {
+            switch error {
+            case .httpError(let statusCode):
+              throw FAQClientError.fetchFailed(
+                statusCode: statusCode,
+                message: error.localizedDescription
+              )
+            case .serverError(let code, let message):
+              throw FAQClientError.fetchFailed(statusCode: 0, message: "[\(code)] \(message)")
+            default:
+              throw FAQClientError.decodingFailed(error.localizedDescription)
+            }
+          } catch {
+            throw FAQClientError.decodingFailed(error.localizedDescription)
+          }
         }
       }
     )

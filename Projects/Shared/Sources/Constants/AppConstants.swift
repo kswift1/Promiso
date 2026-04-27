@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - App Config Manager (Actor)
 
-/// Remote Config 값을 캐싱하는 Thread-safe Actor
+/// 앱 설정 값을 캐싱하는 Thread-safe Actor
 actor AppConfigManager {
   static let shared = AppConfigManager()
 
@@ -24,15 +24,14 @@ actor AppConfigManager {
 
 // MARK: - AppConfigModel (Public)
 
-/// Remote Config에서 가져오는 앱 설정 (Actor에서 사용)
-public struct AppConfigModel: Equatable, Sendable {
+/// 서버에서 내려받는 앱 설정 (Actor에서 사용)
+public struct AppConfigModel: Decodable, Equatable, Sendable {
   public let forceUpdateVersion: String
   public let recommendedVersion: String
   public let appStoreURL: String
   public let privacyPolicyURL: String
   public let termsOfServiceURL: String
   public let supportEmail: String
-  public let notionFAQDatabaseId: String
 
   public init(
     forceUpdateVersion: String,
@@ -40,8 +39,7 @@ public struct AppConfigModel: Equatable, Sendable {
     appStoreURL: String,
     privacyPolicyURL: String,
     termsOfServiceURL: String,
-    supportEmail: String,
-    notionFAQDatabaseId: String
+    supportEmail: String
   ) {
     self.forceUpdateVersion = forceUpdateVersion
     self.recommendedVersion = recommendedVersion
@@ -49,7 +47,6 @@ public struct AppConfigModel: Equatable, Sendable {
     self.privacyPolicyURL = privacyPolicyURL
     self.termsOfServiceURL = termsOfServiceURL
     self.supportEmail = supportEmail
-    self.notionFAQDatabaseId = notionFAQDatabaseId
   }
 
   public static let defaultConfig = AppConfigModel(
@@ -58,8 +55,7 @@ public struct AppConfigModel: Equatable, Sendable {
     appStoreURL: "https://apps.apple.com/kr/app/id6757733720",
     privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02",
     termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b",
-    supportEmail: "kswen0203@icloud.com",
-    notionFAQDatabaseId: "3029e4970675812ca3d6c852867858a2"
+    supportEmail: "kswen0203@icloud.com"
   )
 }
 
@@ -79,43 +75,36 @@ public enum AppConstants {
     public static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     public static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
-    // MARK: - Remote Config 캐시 업데이트
+    // MARK: - App Config 캐시 업데이트
 
-    /// Remote Config 값 업데이트 (앱 시작 시 호출)
-    public static func updateConfig(_ config: AppConfigModel) {
-      Task {
-        await AppConfigManager.shared.updateConfig(config)
-      }
+    /// 앱 설정 값 업데이트
+    public static func updateConfig(_ config: AppConfigModel) async {
+      await AppConfigManager.shared.updateConfig(config)
     }
 
-    // MARK: - Dynamic Properties (Remote Config)
+    // MARK: - Dynamic Properties (App Config)
 
-    /// 앱스토어 URL (동적 - Remote Config)
+    /// 앱스토어 URL (동적 - App Config)
     public static var appStoreURL: URL {
       let config = AppConfigManager.shared.cachedConfig
       return URL(string: config.appStoreURL) ?? URL(string: AppConfigModel.defaultConfig.appStoreURL)!
     }
 
-    /// 개인정보처리방침 URL (동적 - Remote Config)
+    /// 개인정보처리방침 URL (동적 - App Config)
     public static var privacyPolicyURL: URL {
       let config = AppConfigManager.shared.cachedConfig
       return URL(string: config.privacyPolicyURL) ?? URL(string: AppConfigModel.defaultConfig.privacyPolicyURL)!
     }
 
-    /// 이용약관 URL (동적 - Remote Config)
+    /// 이용약관 URL (동적 - App Config)
     public static var termsOfServiceURL: URL {
       let config = AppConfigManager.shared.cachedConfig
       return URL(string: config.termsOfServiceURL) ?? URL(string: AppConfigModel.defaultConfig.termsOfServiceURL)!
     }
 
-    /// 지원 이메일 (동적 - Remote Config)
+    /// 지원 이메일 (동적 - App Config)
     public static var supportEmail: String {
       AppConfigManager.shared.cachedConfig.supportEmail
-    }
-
-    /// Notion FAQ 데이터베이스 ID (동적 - Remote Config)
-    public static var notionFAQDatabaseId: String {
-      AppConfigManager.shared.cachedConfig.notionFAQDatabaseId
     }
 
     // MARK: - Testing
@@ -124,7 +113,7 @@ public enum AppConstants {
     /// 테스트용: 캐시 초기화
     public static func resetConfigForTesting() {
       Task {
-        await AppConfigManager.shared.updateConfig(.defaultConfig)
+        await updateConfig(.defaultConfig)
       }
     }
     #endif
@@ -147,6 +136,33 @@ public enum AppConstants {
     /// 딥링크 URL 생성 (예: promiso-dev://join/ABC123)
     public static func url(path: String) -> URL? {
       URL(string: "\(scheme)://\(path)")
+    }
+  }
+
+  // MARK: - Network
+
+  public enum Network {
+    public static let devRustAPIURLString = "https://promiso-api-809932911903.asia-northeast3.run.app"
+    public static let stageRustAPIURLString = "https://promiso-api-511041416523.asia-northeast3.run.app"
+    public static let prodRustAPIURLString = "https://promiso-api-367716701610.asia-northeast3.run.app"
+
+    private static let fallbackRustAPIURLString = devRustAPIURLString
+
+    public static var rustAPIURL: URL {
+      if let urlString = Bundle.main.object(forInfoDictionaryKey: "RUST_API_URL") as? String,
+         !urlString.isEmpty,
+         let url = URL(string: urlString) {
+        return url
+      }
+
+      AppLogger.general.warning("RUST_API_URL not found or invalid, using fallback")
+
+      if let fallbackURL = URL(string: fallbackRustAPIURLString) {
+        return fallbackURL
+      }
+
+      AppLogger.general.error("Invalid fallback Rust API URL: \(fallbackRustAPIURLString)")
+      return URL(fileURLWithPath: "/")
     }
   }
 
@@ -302,6 +318,8 @@ public enum AppConstants {
     public static let briefingStyle = "promisoBriefingStyle"
     /// 캘린더 기본 표시 모드 (week/month/monthExpanded)
     public static let defaultCalendarDisplayMode = "promisoDefaultCalendarDisplayMode"
+    /// 그룹 정렬 옵션 캐시 (JSON)
+    public static let cachedGroupSortOption = "promisoCachedGroupSortOption"
 
     // MARK: - App Review
 
@@ -322,8 +340,6 @@ public enum AppConstants {
     public static let hasSeenScheduleGuide = "promisoHasSeenScheduleGuide"
     /// 설정 기능 가이드 본 적 있는지
     public static let hasSeenSettingsGuide = "promisoHasSeenSettingsGuide"
-    /// 마지막으로 본 What's New 버전
-    public static let lastSeenWhatsNewVersion = "promisoLastSeenWhatsNewVersion"
   }
 
   // MARK: - Calendar Helpers

@@ -1,9 +1,7 @@
 import ComposableArchitecture
-import FirebaseAuth
-import FirebaseFunctions
-@preconcurrency import FirebaseFirestore
 import Foundation
 import StoreKit
+import UIKit
 import os.log
 import PromisoShared
 
@@ -38,8 +36,8 @@ public struct SubscriptionClient: Sendable {
   /// 무료 체험 대상 여부 확인
   public var checkIntroOfferEligibility: @Sendable () async -> Bool = { false }
 
-  /// 통합 구독 상태 스트림 (Firestore 서버 우선 + StoreKit Transaction.updates 보조)
-  /// Firestore가 SSOT — 서버가 부정 상태면 StoreKit 이벤트 무시
+  /// 통합 구독 상태 스트림 (Rust entitlement authority + StoreKit Transaction.updates 보조)
+  /// 서버가 부정 상태면 StoreKit 이벤트 무시
   public var unifiedStatusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
 
   /// 최초 구매일 조회
@@ -151,8 +149,11 @@ extension DependencyValues {
 
 extension SubscriptionClient: DependencyKey {
   public static let liveValue: SubscriptionClient = {
+    let logger = Logger(subsystem: "com.promiso", category: "SubscriptionClient")
     let dataSource = StoreKitDataSource()
-    let remoteDataSource = SubscriptionRemoteDataSource()
+    let rustDataSource = SubscriptionRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       fetchProducts: {
@@ -171,80 +172,78 @@ extension SubscriptionClient: DependencyKey {
         try await dataSource.restoreWithReceipt()
       },
       fetchStatus: {
-        try await remoteDataSource.fetchRemoteStatus()
+        return try await rustDataSource.fetchStatus()
       },
       fetchLocalStatus: {
         try await dataSource.fetchCurrentStatus()
       },
       verifyPurchase: { jwsString, productId, forceTransfer in
-        try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId, forceTransfer: forceTransfer)
+        return try await rustDataSource.verifyPurchase(
+          transactionJWS: jwsString,
+          productId: productId,
+          forceTransfer: forceTransfer
+        )
       },
       checkIntroOfferEligibility: {
         await dataSource.checkIntroOfferEligibility()
       },
       unifiedStatusStream: {
-        // Actor로 서버/StoreKit 상태 병합 시 공유 상태 보호
-        actor StatusMerger {
-          private var lastServerStatus: SubscriptionStatus?
+        actor StatusCache {
+          private var lastStatus: SubscriptionStatus?
 
-          func updateServer(_ status: SubscriptionStatus) -> SubscriptionStatus {
-            lastServerStatus = status
+          func update(_ status: SubscriptionStatus) -> SubscriptionStatus? {
+            guard lastStatus != status else { return nil }
+            lastStatus = status
             return status
-          }
-
-          func filterStoreKit(_ status: SubscriptionStatus) -> SubscriptionStatus? {
-            guard let server = lastServerStatus else {
-              return nil
-            }
-            switch server {
-            case .none, .expired, .revoked:
-              return nil
-            case .subscribed, .lifetime, .gracePeriod:
-              // 서버가 Pro인데 StoreKit이 만료/취소면 무시 (서버 SSOT)
-              guard status.isActive else {
-                return nil
-              }
-              return status
-            }
           }
         }
 
-        let merger = StatusMerger()
+        let statusCache = StatusCache()
 
         return AsyncStream { continuation in
           let task = Task {
-            await withTaskGroup(of: Void.self) { group in
-              // Firestore entitlements/{userId} listener (서버 합산 Pro 상태)
-              group.addTask {
-                for await status in remoteDataSource.subscribeToEntitlement() {
-                  let merged = await merger.updateServer(status)
-                  continuation.yield(merged)
-                }
+            do {
+              let initialStatus = try await rustDataSource.fetchEntitlementStatus()
+              if let statusToYield = await statusCache.update(initialStatus) {
+                continuation.yield(statusToYield)
               }
-              // StoreKit Transaction.updates (서버 상태 기준으로 필터링, 활성 상태면 서버 동기화)
+            } catch {
+              logger.error("Initial Rust entitlement status fetch failed: \(error.localizedDescription, privacy: .public)")
+              if let fallbackStatus = await statusCache.update(.none) {
+                continuation.yield(fallbackStatus)
+              }
+            }
+
+            await withTaskGroup(of: Void.self) { group in
+              // StoreKit 트랜잭션 변경 시 entitlement authority를 다시 조회
               group.addTask {
-                for await status in dataSource.statusStream() {
-                  if let filtered = await merger.filterStoreKit(status) {
-                    continuation.yield(filtered)
-                  } else if status.isActive {
-                    // StoreKit은 활성인데 서버 미반영 — 서버 동기화 시도
-                    do {
-                      let restoreResult = try await dataSource.restoreWithReceipt()
-                      if let jws = restoreResult.jwsString, let productId = restoreResult.productId {
-                        let verified = try await Self.verifyPurchaseOnServer(transactionJWS: jws, productId: productId)
-                        if verified.isActive {
-                          _ = await merger.updateServer(verified)
-                          continuation.yield(verified)
-                        }
-                      }
-                    } catch {
-                      AppLogger.subscription.debug("[SubscriptionClient] StoreKit sync attempt failed: \(error)")
-                    }
+                for await _ in dataSource.statusStream() {
+                  guard !Task.isCancelled else { return }
+                  if let refreshedStatus = try? await rustDataSource.fetchEntitlementStatus(),
+                     let statusToYield = await statusCache.update(refreshedStatus) {
+                    continuation.yield(statusToYield)
                   }
                 }
               }
+
+              // Webhook/백엔드 상태 반영을 위해 포그라운드에서만 5분 주기로 entitlement 상태를 폴링
+              // 포그라운드 복귀 시에는 RootTabFeature.refreshSubscriptionStatus에서 즉시 조회
+              group.addTask {
+                while !Task.isCancelled {
+                  try? await Task.sleep(for: .seconds(300))
+                  guard !Task.isCancelled else { return }
+                  let isActive = await MainActor.run { UIApplication.shared.applicationState == .active }
+                  guard isActive else { continue }
+                  if let refreshedStatus = try? await rustDataSource.fetchEntitlementStatus(),
+                     let statusToYield = await statusCache.update(refreshedStatus) {
+                    continuation.yield(statusToYield)
+                  }
+                }
+              }
+
               await group.waitForAll()
             }
+
             continuation.finish()
           }
           continuation.onTermination = { _ in
@@ -256,7 +255,7 @@ extension SubscriptionClient: DependencyKey {
         await dataSource.fetchPurchaseDate()
       },
       fetchEntitlementInfo: {
-        try await remoteDataSource.fetchEntitlementInfo()
+        return try await rustDataSource.fetchEntitlementInfo()
       },
       checkTrialStatus: {
         for await result in StoreKit.Transaction.currentEntitlements {
@@ -269,61 +268,4 @@ extension SubscriptionClient: DependencyKey {
       }
     )
   }()
-
-  private static let iso8601Formatter = ISO8601DateFormatter()
-
-  private static func verifyPurchaseOnServer(transactionJWS: String, productId: String, forceTransfer: Bool = false) async throws -> SubscriptionStatus {
-    AppLogger.subscription.debug("verifyPurchaseOnServer called: productId=\(productId), forceTransfer=\(forceTransfer)")
-    let functions = DefaultFunctionsProvider().functions
-
-    do {
-      var callData: [String: Any] = [
-        "transactionJWS": transactionJWS,
-        "productId": productId,
-      ]
-      if forceTransfer {
-        callData["forceTransfer"] = true
-      }
-      AppLogger.subscription.debug("Calling Firebase Function: verifyPurchase")
-      let result = try await functions.httpsCallable("verifyPurchase").call(callData)
-
-      guard let data = result.data as? [String: Any],
-            let statusData = data["subscriptionStatus"] as? [String: Any],
-            let statusString = statusData["status"] as? String else {
-        throw SubscriptionError.verificationFailed
-      }
-
-      let expirationDateRaw = statusData["expirationDate"] as? String
-      AppLogger.subscription.debug("Server response: status=\(statusString), expirationDate=\(expirationDateRaw ?? "nil")")
-
-      let finalStatus: SubscriptionStatus
-      switch statusString {
-      case "subscribed":
-        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) }
-        let productType = SubscriptionProductType(productId: productId)
-        finalStatus = .subscribed(productType: productType, expirationDate: expirationDate)
-      case "lifetime":
-        finalStatus = .lifetime
-      case "expired":
-        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) }
-        finalStatus = .expired(expirationDate: expirationDate ?? .distantPast)
-      case "gracePeriod":
-        let expirationDate = expirationDateRaw.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
-        finalStatus = .gracePeriod(expirationDate: expirationDate)
-      case "revoked":
-        finalStatus = .revoked
-      default:
-        finalStatus = .none
-      }
-      AppLogger.subscription.debug("Parsed SubscriptionStatus: \(String(describing: finalStatus))")
-      return finalStatus
-    } catch let error as NSError where error.domain == FunctionsErrorDomain {
-      AppLogger.subscription.error("Firebase Function error: domain=\(error.domain), code=\(error.code), message=\(error.localizedDescription)")
-      let code = FunctionsErrorCode(rawValue: error.code)
-      if code == .alreadyExists {
-        throw SubscriptionError.alreadyOwnedByOther
-      }
-      throw error
-    }
-  }
 }

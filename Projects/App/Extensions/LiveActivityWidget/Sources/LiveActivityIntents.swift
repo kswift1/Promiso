@@ -26,6 +26,13 @@ struct UpdateETAIntent: LiveActivityIntent {
   )
 
   @Parameter(title: LocalizedStringResource(
+    "liveSchedule.intent.updateEta.scheduleId",
+    defaultValue: "Schedule ID",
+    bundle: LocalizedStrings.bundle
+  ))
+  var scheduleId: String
+
+  @Parameter(title: LocalizedStringResource(
     "liveSchedule.intent.updateEta.channelId",
     defaultValue: "Channel ID",
     bundle: LocalizedStrings.bundle
@@ -61,6 +68,7 @@ struct UpdateETAIntent: LiveActivityIntent {
   var participantsJSON: String
 
   init() {
+    self.scheduleId = ""
     self.channelId = ""
     self.userId = ""
     self.estimatedMinutes = 0
@@ -69,12 +77,14 @@ struct UpdateETAIntent: LiveActivityIntent {
   }
 
   init(
+    scheduleId: String,
     channelId: String,
     userId: String,
     estimatedMinutes: Int,
     trackingDurationMinutes: Int,
     participantsJSON: String
   ) {
+    self.scheduleId = scheduleId
     self.channelId = channelId
     self.userId = userId
     self.estimatedMinutes = estimatedMinutes
@@ -83,9 +93,9 @@ struct UpdateETAIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    // 1. channelId 확인
-    guard !channelId.isEmpty else {
-      logger.error("UpdateETA: channelId empty")
+    // 1. 필수값 확인
+    guard !scheduleId.isEmpty, !channelId.isEmpty else {
+      logger.error("UpdateETA: required parameter empty")
       return .result()
     }
 
@@ -106,6 +116,7 @@ struct UpdateETAIntent: LiveActivityIntent {
 
     // 4. 서버 API 호출 → APNs Broadcast
     await callUpdateETAFunction(
+      scheduleId: scheduleId,
       channelId: channelId,
       participants: updatedParticipants,
       trackingDurationMinutes: trackingDurationMinutes,
@@ -116,24 +127,24 @@ struct UpdateETAIntent: LiveActivityIntent {
   }
 }
 
-// MARK: - Firebase Functions HTTP Client
+// MARK: - Rust API HTTP Client
 
 private func callUpdateETAFunction(
+  scheduleId: String,
   channelId: String,
   participants: [ParticipantState],
   trackingDurationMinutes: Int,
   userId: String
 ) async {
-  let region = "asia-northeast3"
-  let functionName = "widgetUpdateETA"
-  let projectId = LiveActivityIntentKey.firebaseProjectId
-  let baseURL = "https://\(region)-\(projectId).cloudfunctions.net/\(functionName)"
+  let baseURL: String
+  if let emulatorHost = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+    .string(forKey: LiveActivityIntentKey.emulatorHostKey), !emulatorHost.isEmpty {
+    baseURL = "http://\(emulatorHost):8080/api/v1/live-activity/widget/eta"
+  } else {
+    baseURL = "\(LiveActivityIntentKey.rustAPIBaseURL)/api/v1/live-activity/widget/eta"
+  }
 
   guard let url = URL(string: baseURL) else { return }
-
-  // App Group에서 인증 정보 읽기
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let authToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
 
   // participants를 서버 형식으로 변환
   let participantsData: [[String: Any]] = participants.map { p in
@@ -143,6 +154,7 @@ private func callUpdateETAFunction(
   }
 
   let requestBody: [String: Any] = [
+    "scheduleId": scheduleId,
     "channelId": channelId,
     "participants": participantsData,
     "trackingDurationMinutes": trackingDurationMinutes
@@ -150,23 +162,10 @@ private func callUpdateETAFunction(
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  var request = URLRequest(url: url)
-  request.httpMethod = "POST"
-  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
-  request.httpBody = httpBody
-
-  if let authToken = authToken {
-    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
-  }
-
-  do {
-    let (data, response) = try await URLSession.shared.data(for: request)
-    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-      let body = String(data: data, encoding: .utf8) ?? ""
-      logger.error("WidgetETA failed(\(httpResponse.statusCode)): \(body)")
-    }
-  } catch {
-    logger.error("WidgetETA error: \(error.localizedDescription)")
-  }
+  _ = await performAuthenticatedWidgetPost(
+    to: url,
+    userId: userId,
+    body: httpBody,
+    logContext: "WidgetETA"
+  )
 }

@@ -4914,19 +4914,19 @@
       }
     },
     "error.group.imageUploadFailed" : {
-      "comment" : "그룹 사진 업로드에 실패했어요",
+      "comment" : "그룹은 생성되었으나 사진 업로드 실패",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Failed to upload group photo. Please try again later."
+            "value" : "Group created, but the photo failed to upload. You can add a photo in group settings."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
+            "value" : "그룹이 생성되었지만 사진 업로드에 실패했어요. 그룹 설정에서 사진을 추가할 수 있어요."
           }
         }
       }
@@ -22200,6 +22200,42 @@
         }
       }
     },
+    "scheduleImport.extraction.step.analyzing" : {
+      "comment" : "일정 추출 단계 - AI 분석 중",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI is analyzing the schedule..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI가 일정을 분석하고 있어요..."
+          }
+        }
+      }
+    },
+    "scheduleImport.extraction.step.preparing" : {
+      "comment" : "일정 추출 단계 - 준비 중",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing data..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력 데이터를 준비하고 있어요..."
+          }
+        }
+      }
+    },
     "scheduleImport.image.changePhoto" : {
       "comment" : "다른 사진 선택 버튼",
       "extractionState" : "manual",
@@ -31095,42 +31131,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "초대 코드로 참여하기"
-          }
-        }
-      }
-    },
-    "whatsNew.closing.title" : {
-      "comment" : "WhatsNew 클로징 페이지 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thank you for using Promiso"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promiso와 함께해주셔서 감사합니다"
-          }
-        }
-      }
-    },
-    "whatsNew.closing.body" : {
-      "comment" : "WhatsNew 클로징 페이지 본문",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We're working every day to improve your experience.\nIf you have any feedback or feature requests,\nplease let us know in Settings → Support."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "더 나은 약속 경험을 위해 매일 고민하고 있습니다.\n불편한 점이나 원하는 기능이 있다면\n설정 → 지원에서 언제든 알려주세요."
           }
         }
       }

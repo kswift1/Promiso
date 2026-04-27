@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -98,7 +97,7 @@ public struct BriefingResult: Equatable, Sendable {
 /// TCA용 브리핑 생성 클라이언트
 @DependencyClient
 public struct BriefingClient: Sendable {
-  /// 오늘의 브리핑 생성 (Firebase Functions 사용)
+  /// 오늘의 브리핑 생성
   public var generate: @Sendable (_ input: BriefingInput) async throws -> BriefingResult
 }
 
@@ -133,82 +132,13 @@ extension DependencyValues {
 
 extension BriefingClient: DependencyKey {
   public static let liveValue: BriefingClient = {
-    let functions = DefaultFunctionsProvider().functions
+    let rustDataSource = BriefingRustDataSource(
+      api: RustAPIClient()
+    )
 
     return Self(
       generate: { input in
-        var data: [String: Any] = [
-          "timezone": input.timezone,
-          "language": input.language,
-          "forceRefresh": input.forceRefresh,
-        ]
-        if let style = input.style {
-          data["style"] = style.rawValue
-        }
-        if let location = input.location {
-          var locationData: [String: Any] = [
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-          ]
-          if let title = location.title {
-            locationData["title"] = title
-          }
-          data["location"] = locationData
-        }
-
-        let startTime = CFAbsoluteTimeGetCurrent()
-        AppLogger.briefing.debug("🎯 [BriefingClient] 브리핑 생성 시작 - timezone: \(input.timezone), location: \(input.location?.title ?? "없음")")
-
-        do {
-          let result = try await functions.httpsCallable("generateBriefing").call(data)
-
-          guard let responseData = result.data as? [String: Any],
-                let summary = responseData["summary"] as? String,
-                let detail = responseData["detail"] as? String
-          else {
-            AppLogger.briefing.error("❌ [BriefingClient] 응답 파싱 실패")
-            throw BriefingClientError.invalidResponse
-          }
-
-          let isUpdated = responseData["isUpdated"] as? Bool ?? false
-
-          let styleRaw = responseData["style"] as? String
-          let resultStyle = styleRaw.flatMap { BriefingStyle(rawValue: $0) }
-          let transportRaws = responseData["availableTransports"] as? [String]
-          let resultTransports: Set<AvailableTransport>? = transportRaws.map { raws in
-            Set(raws.compactMap { AvailableTransport(rawValue: $0) })
-          }
-          let resultNotificationHour = responseData["notificationHour"] as? Int
-
-          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.briefing.info("🎉 [BriefingClient] 브리핑 생성 완료 - 총 소요시간: \(String(format: "%.2f", totalTime))초")
-
-          return BriefingResult(
-            summary: summary,
-            detail: detail,
-            isUpdated: isUpdated,
-            style: resultStyle,
-            availableTransports: resultTransports,
-            notificationHour: resultNotificationHour
-          )
-        } catch let error as NSError {
-          let totalTime = CFAbsoluteTimeGetCurrent() - startTime
-          AppLogger.briefing.error("❌ [BriefingClient] Firebase Functions 에러: \(error.localizedDescription), 소요시간: \(String(format: "%.2f", totalTime))초")
-
-          if error.domain == FunctionsErrorDomain {
-            let code = FunctionsErrorCode(rawValue: error.code)
-            switch code {
-            case .unauthenticated:
-              throw BriefingClientError.notAuthenticated
-            case .invalidArgument:
-              throw BriefingClientError.invalidResponse
-            default:
-              throw BriefingClientError.serverError(error.localizedDescription)
-            }
-          }
-
-          throw BriefingClientError.networkError
-        }
+        try await rustDataSource.generate(input: input)
       }
     )
   }()

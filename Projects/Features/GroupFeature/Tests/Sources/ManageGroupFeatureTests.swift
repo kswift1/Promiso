@@ -9,12 +9,12 @@ struct ManageGroupFeatureTests {
     id: String = "group-1",
     name: String = "테스트 그룹",
     createdBy: String = "host-user",
-    memberIds: [String] = ["host-user", "member-1"]
+    memberCount: Int = 2
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
-      memberIds: memberIds,
+      memberCount: memberCount,
       maxMembers: 10,
       inviteCode: "TEST01",
       createdBy: createdBy

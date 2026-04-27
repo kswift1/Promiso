@@ -46,9 +46,10 @@ extension PersonalMode {
               ProgressView()
                 .controlSize(.large)
                 .tint(.white)
-              Text("일정을 추출하고 있어요...")
+              Text(store.deeplinkExtractionStep?.statusText ?? "")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white)
+                .animation(.easeInOut(duration: 0.2), value: store.deeplinkExtractionStep)
             }
             .padding(32)
             .background(.ultraThinMaterial)
@@ -147,6 +148,11 @@ extension PersonalMode {
       return store.eventsState.error
     }
 
+    private var hasRecurringEvents: Bool {
+      store.selectedFilter == .all
+        && (store.recurringEventsState.value?.isEmpty == false)
+    }
+
     @ViewBuilder
     private var contentView: some View {
       Group {
@@ -154,7 +160,7 @@ extension PersonalMode {
           loadingView
         } else if let error = currentError {
           errorView(error: error)
-        } else if store.filteredEvents.isEmpty {
+        } else if store.filteredEvents.isEmpty && !hasRecurringEvents {
           emptyView
         } else {
           eventListView

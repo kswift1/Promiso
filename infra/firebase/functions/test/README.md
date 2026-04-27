@@ -16,8 +16,7 @@ test/
 ├── widget.test.ts           # TODO
 ├── faq.test.ts              # TODO
 ├── promiseBadges.test.ts    # TODO
-├── groups.test.ts           # TODO (복잡도 높음 - Opus 권장)
-└── liveActivity.test.ts     # TODO (복잡도 높음 - Opus 권장)
+└── groups.test.ts           # TODO (복잡도 높음 - Opus 권장)
 ```
 
 ---
@@ -184,7 +183,6 @@ npm test -- --coverage
 | promises.ts | 🟡 중간 | 70%+ |
 | notifications.ts | 🟡 중간 | 60%+ |
 | groups.ts | 🔴 높음 | 60%+ |
-| liveActivity.ts | 🔴 높음 | 50%+ |
 
 **전체 목표**: 60% 이상
 

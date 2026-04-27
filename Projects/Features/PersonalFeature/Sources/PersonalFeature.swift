@@ -95,8 +95,11 @@ extension PersonalMode {
       @Presents var deleteAlert: AlertState<Action.Alert>?
       var eventToDelete: PersonalEventModel?
 
+      /// Share Extension 딥링크 추출 단계
+      public var deeplinkExtractionStep: ScheduleImport.ExtractionStep? = nil
+
       /// Share Extension 딥링크 추출 중 여부
-      public var isDeeplinkExtracting: Bool = false
+      public var isDeeplinkExtracting: Bool { deeplinkExtractionStep != nil }
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -265,6 +268,7 @@ extension PersonalMode {
         case deeplinkExtractionSuccess(PersonalEventModel)
         case deeplinkExtractionFailed(originalText: String)
         case deeplinkExtractionImageFailed(imageData: Data)
+        case deeplinkExtractionStepChanged(ScheduleImport.ExtractionStep)
       }
 
       @CasePathable
@@ -421,24 +425,22 @@ extension PersonalMode {
             }
             return .merge(
               .run { send in
-                var hasReceived = false
-                let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
-                for await events in activeEventsStream {
-                  hasReceived = true
+                do {
+                  AppLogger.personal.info("[PersonalEvent] getActiveEvents 호출 시작")
+                  let events = try await personalEventClient.getActiveEvents(50)
+                  AppLogger.personal.info("[PersonalEvent] getActiveEvents 결과: \(events.count)개")
                   await send(.internal(.eventsUpdated(events)))
-                }
-                // 스트림이 값 없이 종료된 경우 (Auth 미로그인, Firestore 에러 등)
-                if !hasReceived {
+                } catch {
+                  AppLogger.personal.error("[PersonalEvent] 활성 일정 조회 실패: \(error)")
                   await send(.internal(.eventsUpdated([])))
                 }
-              }
-              .cancellable(id: CancelID.eventSubscription, cancelInFlight: true),
+              },
               .run { send in
                 do {
                   let ongoing = try await personalEventClient.getOngoingEvents(20)
                   await send(.internal(.ongoingEventsLoaded(ongoing)))
                 } catch {
-                  AppLogger.personal.error("📅 [PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
+                  AppLogger.personal.error("[PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
                 }
               }
             )
@@ -499,7 +501,7 @@ extension PersonalMode {
             return .none
 
           case .eventDeleted:
-            return .none
+            return .send(.internal(.subscribeToEvents))
 
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
@@ -651,13 +653,13 @@ extension PersonalMode {
             return .none
 
           case .deeplinkExtractionSuccess(let event):
-            state.isDeeplinkExtracting = false
+            state.deeplinkExtractionStep = nil
             state.createEvent = CreatePersonalEvent.Feature.State(event: event, mode: .create)
             return .none
 
           case .deeplinkExtractionFailed(let originalText):
             // 추출 실패 시 원본 텍스트를 유지한 채 ScheduleImport 시트로 fallback
-            state.isDeeplinkExtracting = false
+            state.deeplinkExtractionStep = nil
             var importState = ScheduleImport.Feature.State()
             importState.inputText = originalText
             state.scheduleImport = importState
@@ -665,11 +667,15 @@ extension PersonalMode {
 
           case .deeplinkExtractionImageFailed(let imageData):
             // 이미지 추출 실패 시 이미지 모드 ScheduleImport 시트로 fallback
-            state.isDeeplinkExtracting = false
+            state.deeplinkExtractionStep = nil
             var importState = ScheduleImport.Feature.State()
             importState.selectedImage = imageData
             importState.inputMode = .image
             state.scheduleImport = importState
+            return .none
+
+          case .deeplinkExtractionStepChanged(let step):
+            state.deeplinkExtractionStep = step
             return .none
           }
 
@@ -692,7 +698,7 @@ extension PersonalMode {
         case .createEvent(.presented(.delegate(.eventCreated))),
              .createEvent(.presented(.delegate(.eventUpdated))):
           state.createEvent = nil
-          return .none
+          return .send(.internal(.subscribeToEvents))
 
         case .createEvent(.presented(.delegate(.dismiss))):
           state.createEvent = nil
@@ -723,10 +729,10 @@ extension PersonalMode {
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
           state.eventDetail = nil
-          return .none
+          return .send(.internal(.subscribeToEvents))
 
-        case .eventDetail(.presented(.delegate(.eventUpdated))):
-          return .none
+        case .eventDetail(.presented(.delegate(.eventUpdated(let _)))):
+          return .send(.internal(.subscribeToEvents))
 
         case .eventDetail:
           return .none
@@ -807,8 +813,10 @@ extension PersonalMode.Feature {
   func openCreateEventWithExtraction(state: inout State) -> Effect<Action> {
     if let text = AppConstants.AppGroup.consumePendingExtractionText() {
       // 텍스트 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
-      state.isDeeplinkExtracting = true
+      state.deeplinkExtractionStep = .preparing
       return .run { [scheduleExtractionClient] send in
+        try await Task.sleep(for: ScheduleImport.Feature.stepTransitionDelay)
+        await send(.internal(.deeplinkExtractionStepChanged(.analyzing)))
         do {
           let event = try await scheduleExtractionClient.extractFromText(text)
           await send(.internal(.deeplinkExtractionSuccess(event)))
@@ -819,8 +827,10 @@ extension PersonalMode.Feature {
       .cancellable(id: CancelID.deeplinkExtraction, cancelInFlight: true)
     } else if let imageData = AppConstants.AppGroup.consumePendingExtractionImage() {
       // 이미지 → 바로 추출 API 호출 → 결과로 CreatePersonalEvent 열기
-      state.isDeeplinkExtracting = true
+      state.deeplinkExtractionStep = .preparing
       return .run { [scheduleExtractionClient] send in
+        try await Task.sleep(for: ScheduleImport.Feature.stepTransitionDelay)
+        await send(.internal(.deeplinkExtractionStepChanged(.analyzing)))
         do {
           let event = try await scheduleExtractionClient.extractFromImage(imageData)
           await send(.internal(.deeplinkExtractionSuccess(event)))
