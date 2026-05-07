@@ -1,3 +1,4 @@
+use reqwest::header::AUTHORIZATION;
 use reqwest::Client;
 
 use crate::errors::AppError;
@@ -32,10 +33,10 @@ pub async fn search_places(
         .build()
         .map_err(|e| AppError::Internal(format!("Failed to build HTTP client: {e}")))?;
 
-    let authorization = kakao_authorization_header_value(api_key);
+    let authorization = kakao_authorization_header(api_key)?;
     let resp = client
         .get("https://dapi.kakao.com/v2/local/search/keyword.json")
-        .header("Authorization", authorization)
+        .header(AUTHORIZATION, authorization)
         .query(&[("query", query), ("size", &size.to_string())])
         .send()
         .await
@@ -58,6 +59,14 @@ pub async fn search_places(
 
 pub fn kakao_authorization_header_value(api_key: &str) -> String {
     format!("KakaoAK {}", api_key.trim())
+}
+
+pub fn kakao_authorization_header(api_key: &str) -> Result<reqwest::header::HeaderValue, AppError> {
+    let mut header =
+        reqwest::header::HeaderValue::from_str(&kakao_authorization_header_value(api_key))
+            .map_err(|e| AppError::Internal(format!("Invalid Kakao authorization header: {e}")))?;
+    header.set_sensitive(true);
+    Ok(header)
 }
 
 /// Kakao 키워드 검색 응답 JSON에서 장소 목록을 파싱한다.
