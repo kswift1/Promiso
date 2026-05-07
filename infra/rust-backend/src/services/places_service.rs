@@ -32,9 +32,10 @@ pub async fn search_places(
         .build()
         .map_err(|e| AppError::Internal(format!("Failed to build HTTP client: {e}")))?;
 
+    let authorization = kakao_authorization_header_value(api_key);
     let resp = client
         .get("https://dapi.kakao.com/v2/local/search/keyword.json")
-        .header("Authorization", format!("KakaoAK {api_key}"))
+        .header("Authorization", authorization)
         .query(&[("query", query), ("size", &size.to_string())])
         .send()
         .await
@@ -53,6 +54,10 @@ pub async fn search_places(
         .map_err(|e| AppError::Internal(format!("Kakao Places response parse failed: {e}")))?;
 
     Ok(parse_kakao_places_response(&json))
+}
+
+pub fn kakao_authorization_header_value(api_key: &str) -> String {
+    format!("KakaoAK {}", api_key.trim())
 }
 
 /// Kakao 키워드 검색 응답 JSON에서 장소 목록을 파싱한다.
