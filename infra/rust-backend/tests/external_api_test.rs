@@ -2,7 +2,9 @@
 //!
 //! 실제 HTTP 호출 없이 알려진 JSON 응답을 파싱하는 순수 함수를 테스트한다.
 
-use promiso_backend::services::{gemini_client, transportation_client, weather_client};
+use promiso_backend::services::{
+    gemini_client, places_service, transportation_client, weather_client,
+};
 use serde_json::json;
 
 // ============================================================
@@ -256,6 +258,17 @@ fn parse_odsay_handles_empty_result() {
 // ============================================================
 // Kakao Mobility 파싱 테스트
 // ============================================================
+
+/// Secret Manager 값에 trailing newline이 있어도 Authorization 헤더는 유효해야 한다.
+#[test]
+fn kakao_authorization_header_trims_secret_whitespace() {
+    let header = places_service::kakao_authorization_header("  rest-api-key\n").unwrap();
+    assert_eq!(header.to_str().unwrap(), "KakaoAK rest-api-key");
+    assert!(
+        header.is_sensitive(),
+        "Authorization header should be sensitive"
+    );
+}
 
 /// duration(초→분), distance(m→km), toll 추출
 #[test]
