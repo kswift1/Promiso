@@ -133,13 +133,15 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.groupSummariesResponse(.success([group])))) {
+      $0.currentUser.groups = [group]
       $0.groupMain.allGroupSummaries = [group]
     }
     #expect(store.state.currentUser.groups == [group])
 
-    await store.receive(\.home.internal.fetchSchedules)
+    await store.receive(\.home.view.groupMembershipChanged)
     await store.receive(\.calendar.view.refresh)
     await store.receive(\.internal.syncCalendarAfterCurrent)
+    await store.receive(\.home.internal.fetchSchedules)
     await store.receive(\.internal.syncCalendar) {
       $0.isCalendarSyncInFlight = true
     }
@@ -174,15 +176,17 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.groupSummariesResponse(.success([group])))) {
+      $0.currentUser.groups = [group]
       $0.groupMain.allGroupSummaries = [group]
     }
     #expect(store.state.currentUser.groups == [group])
 
-    await store.receive(\.home.internal.fetchSchedules)
+    await store.receive(\.home.view.groupMembershipChanged)
     await store.receive(\.calendar.view.refresh)
     await store.receive(\.internal.syncCalendarAfterCurrent) {
       $0.isCalendarSyncRetryPending = true
     }
+    await store.receive(\.home.internal.fetchSchedules)
     await store.receive(\.home.internal.schedulesResponse.success)
 
     await store.send(.internal(.syncCalendarFinished(success: true))) {

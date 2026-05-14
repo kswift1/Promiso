@@ -169,7 +169,7 @@ public struct UserPrivateModel: UserPrivateInfo, Identifiable, Equatable, Hashab
   public let email: String
   public let provider: String
   /// 사용자가 속한 그룹 목록
-  public let groups: [UserGroupInfo]
+  public var groups: [UserGroupInfo]
 
   public var id: String { userId }
 

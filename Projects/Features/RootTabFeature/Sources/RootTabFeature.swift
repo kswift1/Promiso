@@ -766,16 +766,7 @@ extension RootTab {
             let previousGroups = state.currentUser.groups
             let normalizedGroups = Self.normalizedGroups(groupSummaries)
             state.$currentUser.withLock { user in
-              user = UserPrivateModel(
-                userId: user.userId,
-                name: user.name,
-                nickname: user.nickname,
-                email: user.email,
-                provider: user.provider,
-                profile: user.profile,
-                metadata: user.metadata,
-                groups: normalizedGroups
-              )
+              user.groups = normalizedGroups
             }
             state.groupMain.allGroupSummaries = normalizedGroups
 
@@ -790,7 +781,7 @@ extension RootTab {
             }
 
             let effects: [Effect<Action>] = [
-              .send(.home(.internal(.fetchSchedules))),
+              .send(.home(.view(.groupMembershipChanged))),
               .send(.calendar(.view(.refresh))),
               .send(.internal(.syncCalendarAfterCurrent))
             ]
