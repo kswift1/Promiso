@@ -91,12 +91,12 @@ extension AppEntry {
       case updateAlert(UpdateAlertAction)
     }
 
-    public enum UpdateAlertAction: Equatable {
+    public enum UpdateAlertAction: Equatable, Sendable {
       case updateTapped
       case laterTapped
     }
     
-    public enum ViewAction {
+    public enum ViewAction: Sendable {
       case onAppear
       case splashAnimationCompleted
       case handleDeeplink(URL)
@@ -107,9 +107,23 @@ extension AppEntry {
       case fcmToken
       case pushNotificationTap
     }
+
+    private enum ProfileCheckFailure: LocalizedError, Sendable {
+      case missingCurrentUser
+      case profileFetchFailed(String)
+
+      var errorDescription: String? {
+        switch self {
+        case .missingCurrentUser:
+          return "Current user is missing during profile check."
+        case .profileFetchFailed(let message):
+          return message
+        }
+      }
+    }
     
     @CasePathable
-    public enum InternalAction {
+    public enum InternalAction: Sendable {
       case checkVersion
       case versionCheckCompleted(VersionCheckResult)
       case recheckVersionAfterAppStore
@@ -118,7 +132,7 @@ extension AppEntry {
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
       case profileCheckResponse(user: AuthUserSnapshot, profile: UserPrivateModel?)
-      case profileCheckFailed(Error)
+      case profileCheckFailed(any Error & Sendable)
       case checkNotificationPermission(UserPrivateModel)
       case notificationPermissionChecked(isAuthorized: Bool, user: UserPrivateModel)
       case subscribeFCMToken
@@ -244,7 +258,10 @@ extension AppEntry {
             
           case .startProfileCheck:
             return .run { send in
-              guard let user = await authClient.currentUser() else { return }
+              guard let user = await authClient.currentUser() else {
+                await send(.internal(.profileCheckFailed(ProfileCheckFailure.missingCurrentUser)))
+                return
+              }
               do {
                 let privateProfile = try await userProfileClient.getPrivateProfile(target: .me)
                 await send(.internal(.profileCheckResponse(user: user, profile: privateProfile)))
@@ -252,7 +269,9 @@ extension AppEntry {
                 if Self.isMissingProfileError(error) {
                   await send(.internal(.profileCheckResponse(user: user, profile: nil)))
                 } else {
-                  await send(.internal(.profileCheckFailed(error)))
+                  await send(.internal(
+                    .profileCheckFailed(ProfileCheckFailure.profileFetchFailed(error.localizedDescription))
+                  ))
                 }
               }
             }

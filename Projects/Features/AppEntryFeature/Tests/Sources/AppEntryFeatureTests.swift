@@ -129,10 +129,13 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.sessionCheckResponse(isAuthenticated: true)))
     await store.receive(\.internal.startProfileCheck)
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
   }
 
-  @Test("startProfileCheck currentUser=nil 이면 종료")
-  func startProfileCheck_withoutUser_doesNothing() async {
+  @Test("startProfileCheck currentUser=nil 이면 auth로 이동하고 splash 종료")
+  func startProfileCheck_withoutUser_routesToAuth() async {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
     } withDependencies: {
@@ -140,6 +143,10 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.internal(.startProfileCheck))
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
+    #expect(store.state.destinationType == .auth)
   }
 
   @Test("startProfileCheck currentUser 존재 시 profileCheckResponse 처리")
@@ -336,6 +343,9 @@ struct AppEntryFeatureTests {
       $0.providerProfileImageURL = profileImageURL
     }
     await store.receive(\.internal.startProfileCheck)
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
   }
 
   @Test("profileCheckResponse 기존 사용자 + pending 없으면 메인 전환만")
