@@ -110,6 +110,97 @@ struct RootTabFeatureTests {
     #expect(await syncCounter.value() == 2)
   }
 
+  @Test("그룹 요약 갱신 시 공유 유저 그룹을 갱신하고 홈/캘린더를 새로고침")
+  func groupSummariesResponse_updatesSharedGroupsAndRefreshesSchedules() async {
+    let group = makeGroupInfo(
+      id: "group-1",
+      name: "새 그룹",
+      notifications: GroupNotificationSettings(calendarSync: true)
+    )
+    let homeRecorder = GroupIdsArrayRecorder()
+    let syncRecorder = GroupIdsRecorder()
+
+    let store = makeStore(state: makeState(key: "group-summaries-refresh")) {
+      $0.scheduleClient.getHomeSchedules = { groupIds, _ in
+        await homeRecorder.record(groupIds)
+        return []
+      }
+      $0.calendarSyncClient.sync = { ids in
+        await syncRecorder.record(ids)
+        return CalendarSyncResult()
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.internal(.groupSummariesResponse(.success([group])))) {
+      $0.groupMain.allGroupSummaries = [group]
+    }
+    #expect(store.state.currentUser.groups == [group])
+
+    await store.receive(\.home.internal.fetchSchedules)
+    await store.receive(\.calendar.view.refresh)
+    await store.receive(\.internal.syncCalendarAfterCurrent)
+    await store.receive(\.internal.syncCalendar) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.home.internal.schedulesResponse.success)
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+      $0.hasInitialCalendarSyncBeenScheduled = true
+    }
+    await store.finish()
+
+    #expect(await homeRecorder.value() == [["group-1"]])
+    #expect(await syncRecorder.value() == Set(["group-1"]))
+  }
+
+  @Test("그룹 요약 갱신 중 캘린더 동기화가 진행 중이면 완료 후 재동기화")
+  func groupSummariesResponse_queuesCalendarSyncRetryWhenInFlight() async {
+    let group = makeGroupInfo(
+      id: "group-1",
+      name: "새 그룹",
+      notifications: GroupNotificationSettings(calendarSync: true)
+    )
+    let syncRecorder = GroupIdsRecorder()
+    var state = makeState(key: "group-summaries-sync-retry")
+    state.isCalendarSyncInFlight = true
+
+    let store = makeStore(state: state) {
+      $0.calendarSyncClient.sync = { ids in
+        await syncRecorder.record(ids)
+        return CalendarSyncResult()
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.internal(.groupSummariesResponse(.success([group])))) {
+      $0.groupMain.allGroupSummaries = [group]
+    }
+    #expect(store.state.currentUser.groups == [group])
+
+    await store.receive(\.home.internal.fetchSchedules)
+    await store.receive(\.calendar.view.refresh)
+    await store.receive(\.internal.syncCalendarAfterCurrent) {
+      $0.isCalendarSyncRetryPending = true
+    }
+    await store.receive(\.home.internal.schedulesResponse.success)
+
+    await store.send(.internal(.syncCalendarFinished(success: true))) {
+      $0.isCalendarSyncInFlight = false
+      $0.hasInitialCalendarSyncBeenScheduled = true
+      $0.isCalendarSyncRetryPending = false
+    }
+    await store.receive(\.internal.syncCalendar) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
+    await store.finish()
+
+    #expect(await syncRecorder.value() == Set(["group-1"]))
+  }
+
   // MARK: - 탭 선택 테스트
 
   @Test("group 탭 선택 시 selectedTab 업데이트")
@@ -818,6 +909,18 @@ private extension RootTabFeatureTests {
     }
   }
 
+  actor GroupIdsArrayRecorder {
+    private var groupIds: [[String]] = []
+
+    func record(_ ids: [String]) {
+      groupIds.append(ids)
+    }
+
+    func value() -> [[String]] {
+      groupIds
+    }
+  }
+
   actor ETAUpdateRecorder {
     struct Snapshot: Equatable {
       var scheduleId: String
@@ -872,6 +975,14 @@ private extension RootTabFeatureTests {
       metadata: .init(),
       groups: groups
     )
+  }
+
+  func makeGroupInfo(
+    id: String,
+    name: String = "테스트 그룹",
+    notifications: GroupNotificationSettings? = nil
+  ) -> UserGroupInfo {
+    UserGroupInfo(id: id, name: name, notifications: notifications)
   }
 
   func makeState(
@@ -987,9 +1098,12 @@ private extension RootTabFeatureTests {
     dependencies.calendarSyncClient.syncPersonalEvents = { _ in CalendarSyncResult() }
     dependencies.analyticsClient.logEvent = { _, _ in }
     dependencies.eventKitClient.authorizationStatus = { .notDetermined }
+    dependencies.locationClient.authorizationStatus = { .notDetermined }
+    dependencies.briefingClient.generate = { _ in BriefingResult(summary: "", detail: "") }
     dependencies.personalEventClient.getActiveEvents = { _ in [] }
     dependencies.personalEventClient.getEvent = { _ in nil }
     dependencies.personalEventClient.getEventsByDateRange = { _, _ in [] }
+    dependencies.recurringPersonalEventClient.getAllEvents = { [] }
 
     dependencies.groupClient.fetchGroupSummaries = { [] }
     dependencies.groupClient.fetchGroup = { _ in group }
@@ -1002,6 +1116,7 @@ private extension RootTabFeatureTests {
         continuation.finish()
       }
     }
+    dependencies.scheduleClient.getHomeSchedules = { _, _ in [] }
     dependencies.scheduleClient.getPastSchedules = { _, _, _ in [] }
     dependencies.scheduleClient.updateETA = { _, _, _, _ in }
 

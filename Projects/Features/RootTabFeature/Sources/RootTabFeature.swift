@@ -109,6 +109,7 @@ extension RootTab {
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.scheduleClient) var scheduleClient
+    @Dependency(\.groupClient) var groupClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.subscriptionClient) var subscriptionClient
@@ -135,6 +136,9 @@ extension RootTab {
 
       /// 캘린더 동기화 실행 중 상태
       var isCalendarSyncInFlight: Bool = false
+
+      /// 진행 중인 캘린더 동기화 완료 후 재동기화가 필요한지 추적
+      var isCalendarSyncRetryPending: Bool = false
 
       /// Home Main State
       var home: Home.Feature.State
@@ -271,6 +275,8 @@ extension RootTab {
       case openETASheetAfterDelay
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
+      /// 진행 중인 캘린더 동기화가 있으면 완료 후 1회 재동기화
+      case syncCalendarAfterCurrent
       /// 구독 상태 모니터링 시작 (StoreKit + Firestore 통합)
       case observeSubscriptionStatus
       /// 구독 상태 변경 수신
@@ -279,6 +285,10 @@ extension RootTab {
       case refreshSubscriptionStatus
       /// 캘린더 동기화 완료 처리
       case syncCalendarFinished(success: Bool)
+      /// 서버 기준 그룹 요약 갱신
+      case refreshGroupSummaries
+      /// 서버 기준 그룹 요약 갱신 결과
+      case groupSummariesResponse(Result<[UserGroupInfo], AppError>)
       /// 서버 세션 만료 감지 (refresh token 실패)
       case sessionExpired
     }
@@ -320,6 +330,7 @@ extension RootTab {
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
             .send(.internal(.observeVoteActivityUpdates)),
+            .send(.internal(.refreshGroupSummaries)),
             .send(.internal(.syncCalendar)),
             .send(.internal(.observeSubscriptionStatus)),
             .run { send in
@@ -723,11 +734,69 @@ extension RootTab {
               await send(.internal(.syncCalendarFinished(success: allSucceeded)))
             }
 
+          case .syncCalendarAfterCurrent:
+            guard !state.isCalendarSyncInFlight else {
+              state.isCalendarSyncRetryPending = true
+              return .none
+            }
+            return .send(.internal(.syncCalendar))
+
           case .syncCalendarFinished(let success):
             state.isCalendarSyncInFlight = false
             if success {
               state.hasInitialCalendarSyncBeenScheduled = true
             }
+            guard state.isCalendarSyncRetryPending else {
+              return .none
+            }
+            state.isCalendarSyncRetryPending = false
+            return .send(.internal(.syncCalendar))
+
+          case .refreshGroupSummaries:
+            return .run { [groupClient] send in
+              do {
+                let summaries = try await groupClient.fetchGroupSummaries()
+                await send(.internal(.groupSummariesResponse(.success(summaries))))
+              } catch {
+                await send(.internal(.groupSummariesResponse(.failure(AppError(error)))))
+              }
+            }
+
+          case .groupSummariesResponse(.success(let groupSummaries)):
+            let previousGroups = state.currentUser.groups
+            let normalizedGroups = Self.normalizedGroups(groupSummaries)
+            state.$currentUser.withLock { user in
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: normalizedGroups
+              )
+            }
+            state.groupMain.allGroupSummaries = normalizedGroups
+
+            analyticsClient.setGroupMembershipProperties(normalizedGroups)
+            analyticsClient.setCalendarSyncEnabled(
+              personalEnabled: userDefaultsClient.boolForKey(AppConstants.UserDefaults.personalCalendarSync),
+              groups: normalizedGroups
+            )
+
+            guard normalizedGroups != previousGroups else {
+              return .none
+            }
+
+            let effects: [Effect<Action>] = [
+              .send(.home(.internal(.fetchSchedules))),
+              .send(.calendar(.view(.refresh))),
+              .send(.internal(.syncCalendarAfterCurrent))
+            ]
+            return .merge(effects)
+
+          case .groupSummariesResponse(.failure):
             return .none
 
           case .sessionExpired:
@@ -784,6 +853,16 @@ extension RootTab {
       $isPro.withLock { $0 = status.isPro }
       analyticsClient.setSubscriptionTier(status)
       return .none
+    }
+
+    private static func normalizedGroups(_ groups: [UserGroupInfo]) -> [UserGroupInfo] {
+      var latestGroupsById: [String: UserGroupInfo] = [:]
+      for group in groups {
+        latestGroupsById[group.id] = group
+      }
+      return latestGroupsById.values.sorted {
+        ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast)
+      }
     }
   }
 }
