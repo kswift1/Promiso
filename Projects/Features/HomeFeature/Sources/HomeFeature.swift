@@ -246,6 +246,8 @@ extension Home {
         case onAppear
         /// Pull to refresh
         case refreshTriggered
+        /// 그룹 멤버십 갱신으로 그룹 일정만 다시 조회
+        case groupMembershipChanged
         /// 오늘 일정 일정 카드 탭
         case todayScheduleTapped(ScheduleModel)
         /// 응답 필요 일정 카드 탭 (그룹 탭으로 이동)
@@ -463,6 +465,9 @@ extension Home {
               .send(.internal(.fetchPersonalEvents)),
               .send(.internal(.fetchRecurringEvents))
             )
+
+          case .groupMembershipChanged:
+            return .send(.internal(.fetchSchedules))
 
           case .todayScheduleTapped(let schedule):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
