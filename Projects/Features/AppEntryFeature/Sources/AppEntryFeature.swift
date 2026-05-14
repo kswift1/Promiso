@@ -91,12 +91,12 @@ extension AppEntry {
       case updateAlert(UpdateAlertAction)
     }
 
-    public enum UpdateAlertAction: Equatable {
+    public enum UpdateAlertAction: Equatable, Sendable {
       case updateTapped
       case laterTapped
     }
     
-    public enum ViewAction {
+    public enum ViewAction: Sendable {
       case onAppear
       case splashAnimationCompleted
       case handleDeeplink(URL)
@@ -107,9 +107,23 @@ extension AppEntry {
       case fcmToken
       case pushNotificationTap
     }
+
+    private enum ProfileCheckFailure: LocalizedError, Sendable {
+      case missingCurrentUser
+      case profileFetchFailed(String)
+
+      var errorDescription: String? {
+        switch self {
+        case .missingCurrentUser:
+          return "Current user is missing during profile check."
+        case .profileFetchFailed(let message):
+          return message
+        }
+      }
+    }
     
     @CasePathable
-    public enum InternalAction {
+    public enum InternalAction: Sendable {
       case checkVersion
       case versionCheckCompleted(VersionCheckResult)
       case recheckVersionAfterAppStore
@@ -118,6 +132,7 @@ extension AppEntry {
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
       case profileCheckResponse(user: AuthUserSnapshot, profile: UserPrivateModel?)
+      case profileCheckFailed(any Error & Sendable)
       case checkNotificationPermission(UserPrivateModel)
       case notificationPermissionChecked(isAuthorized: Bool, user: UserPrivateModel)
       case subscribeFCMToken
@@ -227,9 +242,14 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              state.isFullOnboarding = true
-              state.destination = .onboardingIntro(OnboardingIntro.State())
-              analyticsClient.log(.onboardingStepViewed(step: "intro"))
+              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
+              if hasCompletedOnboarding {
+                state.destination = .auth(Auth.Feature.State())
+              } else {
+                state.isFullOnboarding = true
+                state.destination = .onboardingIntro(OnboardingIntro.State())
+                analyticsClient.log(.onboardingStepViewed(step: "intro"))
+              }
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -238,9 +258,22 @@ extension AppEntry {
             
           case .startProfileCheck:
             return .run { send in
-              guard let user = await authClient.currentUser() else { return }
-              let privateProfile = try? await userProfileClient.getPrivateProfile(target: .me)
-              await send(.internal(.profileCheckResponse(user: user, profile: privateProfile)))
+              guard let user = await authClient.currentUser() else {
+                await send(.internal(.profileCheckFailed(ProfileCheckFailure.missingCurrentUser)))
+                return
+              }
+              do {
+                let privateProfile = try await userProfileClient.getPrivateProfile(target: .me)
+                await send(.internal(.profileCheckResponse(user: user, profile: privateProfile)))
+              } catch {
+                if Self.isMissingProfileError(error) {
+                  await send(.internal(.profileCheckResponse(user: user, profile: nil)))
+                } else {
+                  await send(.internal(
+                    .profileCheckFailed(ProfileCheckFailure.profileFetchFailed(error.localizedDescription))
+                  ))
+                }
+              }
             }
             
           case .profileCheckResponse(let user, let profile):
@@ -261,6 +294,14 @@ extension AppEntry {
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
+            }
+            return .none
+
+          case .profileCheckFailed(let error):
+            AppLogger.auth.error("Profile check failed: \(error.localizedDescription)")
+            state.destination = .auth(Auth.Feature.State())
+            if state.splash == .visible {
+              state.splash = .animatingOut
             }
             return .none
 
@@ -521,6 +562,19 @@ extension AppEntry {
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
       }
+    }
+
+    private static func isMissingProfileError(_ error: Error) -> Bool {
+      if let userProfileError = error as? UserProfileError {
+        return userProfileError == .userNotFound
+      }
+
+      if let rustError = error as? RustAPIError,
+         case let .serverError(code, _) = rustError {
+        return code == "not-found"
+      }
+
+      return false
     }
   }
   

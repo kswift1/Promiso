@@ -129,10 +129,13 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.sessionCheckResponse(isAuthenticated: true)))
     await store.receive(\.internal.startProfileCheck)
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
   }
 
-  @Test("startProfileCheck currentUser=nil 이면 종료")
-  func startProfileCheck_withoutUser_doesNothing() async {
+  @Test("startProfileCheck currentUser=nil 이면 auth로 이동하고 splash 종료")
+  func startProfileCheck_withoutUser_routesToAuth() async {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
     } withDependencies: {
@@ -140,6 +143,10 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.internal(.startProfileCheck))
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
+    #expect(store.state.destinationType == .auth)
   }
 
   @Test("startProfileCheck currentUser 존재 시 profileCheckResponse 처리")
@@ -168,6 +175,55 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.profileCheckResponse)
     await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
+  }
+
+  @Test("startProfileCheck 프로필 not-found면 신규 사용자로 처리")
+  func startProfileCheck_profileNotFound_routesToProfileSetup() async {
+    let authUser = makeAuthUser(
+      uid: "firebase-new-from-error",
+      displayName: "신규 사용자",
+      photoURL: nil
+    )
+    let providerURL = URL(string: "https://example.com/provider-profile.png")!
+    var state = AppEntry.Feature.State()
+    state.providerProfileImageURL = providerURL
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.authClient.currentUser = { authUser }
+      $0.userProfileClient.getPrivateProfile = { _ in
+        throw RustAPIError.serverError(code: "not-found", message: "사용자를 찾을 수 없습니다")
+      }
+    }
+
+    await store.send(.internal(.startProfileCheck))
+    await store.receive(\.internal.profileCheckResponse) {
+      var expectedProfile = AppEntry.ProfileSetup.State()
+      expectedProfile.inject(user: authUser, providerProfileImageURL: providerURL)
+      $0.destination = .profile(expectedProfile)
+      $0.splash = .animatingOut
+    }
+  }
+
+  @Test("startProfileCheck 프로필 조회 실패가 not-found가 아니면 profile setup으로 보내지 않음")
+  func startProfileCheck_profileFetchFailure_doesNotRouteToProfileSetup() async {
+    enum ProfileFetchError: Error { case network }
+
+    let authUser = makeAuthUser(uid: "firebase-profile-failure")
+
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.authClient.currentUser = { authUser }
+      $0.userProfileClient.getPrivateProfile = { _ in throw ProfileFetchError.network }
+    }
+
+    await store.send(.internal(.startProfileCheck))
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
+    #expect(store.state.destinationType == .auth)
   }
 
   // MARK: - Update Alert 테스트
@@ -287,6 +343,9 @@ struct AppEntryFeatureTests {
       $0.providerProfileImageURL = profileImageURL
     }
     await store.receive(\.internal.startProfileCheck)
+    await store.receive(\.internal.profileCheckFailed) {
+      $0.splash = .animatingOut
+    }
   }
 
   @Test("profileCheckResponse 기존 사용자 + pending 없으면 메인 전환만")
@@ -526,6 +585,23 @@ struct AppEntryFeatureTests {
       $0.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
       $0.splash = .animatingOut
     }
+  }
+
+  @Test("sessionCheckResponse 비인증 + 온보딩 완료 → auth")
+  func sessionCheck_unauthenticated_onboardingCompleted_showsAuth() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.userDefaultsClient.boolForKey = { key in
+        key == AppConstants.UserDefaults.hasCompletedOnboarding
+      }
+    }
+
+    await store.send(.internal(.sessionCheckResponse(isAuthenticated: false))) {
+      $0.splash = .animatingOut
+    }
+    #expect(store.state.destinationType == .auth)
+    #expect(store.state.isFullOnboarding == false)
   }
 
   @Test("onboardingIntro.delegate.introCompleted → auth 화면으로 전환")
@@ -835,7 +911,7 @@ struct AppEntryFeatureTests {
 
 private extension AppEntryFeatureTests {
 
-  /// 비인증 상태의 continueAppFlow → sessionCheck → auth 전환 체인 수신 후 구독 정리
+  /// 비인증 + 온보딩 완료 상태의 continueAppFlow → sessionCheck → auth 유지 체인 수신 후 구독 정리
   func receiveContinueAppFlowUnauthenticated(
     _ store: TestStoreOf<AppEntry.Feature>
   ) async {
@@ -844,8 +920,6 @@ private extension AppEntryFeatureTests {
     await store.receive(\.internal.subscribeFCMToken)
     await store.receive(\.internal.subscribePushNotificationTap)
     await store.receive(\.internal.sessionCheckResponse) {
-      $0.isFullOnboarding = true
-      $0.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
       $0.splash = .animatingOut
     }
     await store.send(.internal(.cancelSubscriptions))
