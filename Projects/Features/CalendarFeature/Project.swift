@@ -56,12 +56,7 @@ let project = Project(
       dependencies: [
         .target(name: "CalendarFeature")
       ],
-      settings: .standard(
-        configurations: [
-          .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
-          .release(name: "Release", xcconfig: .relativeToRoot("Config/Dev.xcconfig"))
-        ]
-      )
+      settings: .standard()
     )
   ]
 )
