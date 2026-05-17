@@ -25,6 +25,28 @@ check_env_var() {
   return 0
 }
 
+resolve_data_go_kr_service_key() {
+  local env_suffix="$1"
+  local env_var="DATA_GO_KR_SERVICE_KEY_${env_suffix}"
+
+  if [ -n "${!env_var}" ]; then
+    printf '%s' "${!env_var}"
+    return 0
+  fi
+
+  if [ -n "${DATA_GO_KR_SERVICE_KEY}" ]; then
+    printf '%s' "$DATA_GO_KR_SERVICE_KEY"
+    return 0
+  fi
+
+  echo "❌ 환경변수 ${env_var} 또는 DATA_GO_KR_SERVICE_KEY 가 설정되지 않았습니다." >&2
+  return 1
+}
+
+xcconfig_escape_value() {
+  printf '%s' "$1" | sed 's|//|/$(EMPTY)/|g'
+}
+
 # Dev.xcconfig 생성
 generate_dev_config() {
   echo "📝 Dev.xcconfig 생성 중..."
@@ -32,20 +54,23 @@ generate_dev_config() {
   check_env_var "GOOGLE_CLIENT_ID_DEV" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_DEV" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_DEV" || return 1
-  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
+  local data_go_kr_service_key
+  data_go_kr_service_key="$(resolve_data_go_kr_service_key "DEV")" || return 1
+  data_go_kr_service_key="$(xcconfig_escape_value "$data_go_kr_service_key")"
 
   cat > "$CONFIG_DIR/Dev.xcconfig" <<EOF
 // Dev Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
 // iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
+EMPTY =
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_DEV}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_DEV}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_DEV}
 DEEPLINK_SCHEME = ${DEEPLINK_SCHEME_DEV:-promiso-dev}
 DEEPLINK_WEB_HOST = ${DEEPLINK_WEB_HOST_DEV:-dev.promiso.app}
 CLARITY_PROJECT_ID = ${CLARITY_PROJECT_ID}
-DATA_GO_KR_SERVICE_KEY = ${DATA_GO_KR_SERVICE_KEY}
+DATA_GO_KR_SERVICE_KEY = ${data_go_kr_service_key}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic
@@ -61,20 +86,23 @@ generate_stage_config() {
   check_env_var "GOOGLE_CLIENT_ID_STAGE" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_STAGE" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_STAGE" || return 1
-  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
+  local data_go_kr_service_key
+  data_go_kr_service_key="$(resolve_data_go_kr_service_key "STAGE")" || return 1
+  data_go_kr_service_key="$(xcconfig_escape_value "$data_go_kr_service_key")"
 
   cat > "$CONFIG_DIR/Stage.xcconfig" <<EOF
 // Stage Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
 // iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
+EMPTY =
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_STAGE}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_STAGE}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_STAGE}
 DEEPLINK_SCHEME = ${DEEPLINK_SCHEME_STAGE:-promiso-stage}
 DEEPLINK_WEB_HOST = ${DEEPLINK_WEB_HOST_STAGE:-stage.promiso.app}
 CLARITY_PROJECT_ID = ${CLARITY_PROJECT_ID}
-DATA_GO_KR_SERVICE_KEY = ${DATA_GO_KR_SERVICE_KEY}
+DATA_GO_KR_SERVICE_KEY = ${data_go_kr_service_key}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic
@@ -90,20 +118,23 @@ generate_prod_config() {
   check_env_var "GOOGLE_CLIENT_ID_PROD" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_PROD" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_PROD" || return 1
-  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
+  local data_go_kr_service_key
+  data_go_kr_service_key="$(resolve_data_go_kr_service_key "PROD")" || return 1
+  data_go_kr_service_key="$(xcconfig_escape_value "$data_go_kr_service_key")"
 
   cat > "$CONFIG_DIR/Prod.xcconfig" <<EOF
 // Production Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
 // iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
+EMPTY =
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_PROD}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_PROD}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_PROD}
 DEEPLINK_SCHEME = ${DEEPLINK_SCHEME_PROD:-promiso}
 DEEPLINK_WEB_HOST = ${DEEPLINK_WEB_HOST_PROD:-promiso.app}
 CLARITY_PROJECT_ID = ${CLARITY_PROJECT_ID}
-DATA_GO_KR_SERVICE_KEY = ${DATA_GO_KR_SERVICE_KEY}
+DATA_GO_KR_SERVICE_KEY = ${data_go_kr_service_key}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic

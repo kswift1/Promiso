@@ -99,6 +99,9 @@ jobs:
           GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
           KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
           CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
+          DATA_GO_KR_SERVICE_KEY_DEV: ${{ secrets.DATA_GO_KR_SERVICE_KEY_DEV }}
+          DATA_GO_KR_SERVICE_KEY_STAGE: ${{ secrets.DATA_GO_KR_SERVICE_KEY_STAGE }}
+          DATA_GO_KR_SERVICE_KEY_PROD: ${{ secrets.DATA_GO_KR_SERVICE_KEY_PROD }}
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
         run: |
           chmod +x ./scripts/generate-xcconfig.sh
