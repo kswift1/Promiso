@@ -48,14 +48,20 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).example",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .extendingDefault(with: [
-        "UILaunchStoryboardName": .string("LaunchScreen")
+        "UILaunchStoryboardName": .string("LaunchScreen"),
+        "DATA_GO_KR_SERVICE_KEY": .string("$(DATA_GO_KR_SERVICE_KEY)")
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
         .target(name: "CalendarFeature")
       ],
-      settings: .standard()
+      settings: .standard(
+        configurations: [
+          .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
+          .release(name: "Release", xcconfig: .relativeToRoot("Config/Dev.xcconfig"))
+        ]
+      )
     )
   ]
 )

@@ -32,6 +32,7 @@ generate_dev_config() {
   check_env_var "GOOGLE_CLIENT_ID_DEV" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_DEV" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_DEV" || return 1
+  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
 
   cat > "$CONFIG_DIR/Dev.xcconfig" <<EOF
 // Dev Environment Configuration
@@ -60,6 +61,7 @@ generate_stage_config() {
   check_env_var "GOOGLE_CLIENT_ID_STAGE" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_STAGE" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_STAGE" || return 1
+  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
 
   cat > "$CONFIG_DIR/Stage.xcconfig" <<EOF
 // Stage Environment Configuration
@@ -88,6 +90,7 @@ generate_prod_config() {
   check_env_var "GOOGLE_CLIENT_ID_PROD" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_PROD" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_PROD" || return 1
+  check_env_var "DATA_GO_KR_SERVICE_KEY" || return 1
 
   cat > "$CONFIG_DIR/Prod.xcconfig" <<EOF
 // Production Environment Configuration
