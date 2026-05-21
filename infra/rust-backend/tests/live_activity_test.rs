@@ -1,11 +1,15 @@
 use chrono::{DateTime, Duration, Utc};
 use http_body_util::BodyExt;
+use promiso_backend::errors::AppError;
 use promiso_backend::models::live_activity::{
     LiveActivityJob, LiveActivityJobPayload, LiveActivityJobStatus, LiveActivityJobType,
     LiveActivityParticipant, LiveActivitySender, UpdateScheduleLiveActivityRequest,
 };
 use promiso_backend::models::notification::{FcmMessage, NotificationType, PushResult, PushSender};
 use promiso_backend::models::schedule::Schedule;
+use promiso_backend::services::live_activity_service::{
+    LiveActivityJobScheduler, ScheduledLiveActivityJob,
+};
 use promiso_backend::services::{live_activity_service, vote_live_activity_service};
 use sqlx::PgPool;
 use std::sync::{Arc, Mutex};
@@ -187,6 +191,70 @@ async fn insert_job(
     .expect("Failed to insert job");
 }
 
+async fn insert_job_returning_id(
+    pool: &PgPool,
+    schedule_id: Uuid,
+    job_type: LiveActivityJobType,
+    scheduled_at: DateTime<Utc>,
+    payload: Option<LiveActivityJobPayload>,
+) -> Uuid {
+    let row: (Uuid,) = sqlx::query_as(
+        "INSERT INTO live_activity_jobs (schedule_id, job_type, scheduled_at, payload) \
+         VALUES ($1, $2, $3, $4) \
+         RETURNING id",
+    )
+    .bind(schedule_id)
+    .bind(job_type)
+    .bind(scheduled_at)
+    .bind(payload.map(|payload| serde_json::to_value(payload).expect("payload encode")))
+    .fetch_one(pool)
+    .await
+    .expect("Failed to insert job");
+
+    row.0
+}
+
+#[derive(Clone)]
+struct MockLiveActivityJobScheduler {
+    calls: Arc<Mutex<Vec<ScheduledLiveActivityJob>>>,
+    should_fail: bool,
+}
+
+impl MockLiveActivityJobScheduler {
+    fn succeed() -> Self {
+        Self {
+            calls: Arc::new(Mutex::new(Vec::new())),
+            should_fail: false,
+        }
+    }
+
+    fn fail() -> Self {
+        Self {
+            calls: Arc::new(Mutex::new(Vec::new())),
+            should_fail: true,
+        }
+    }
+
+    fn calls(&self) -> Vec<ScheduledLiveActivityJob> {
+        self.calls.lock().unwrap().clone()
+    }
+}
+
+#[async_trait::async_trait]
+impl LiveActivityJobScheduler for MockLiveActivityJobScheduler {
+    async fn enqueue_live_activity_job(
+        &self,
+        job: ScheduledLiveActivityJob,
+    ) -> Result<(), AppError> {
+        if self.should_fail {
+            return Err(AppError::Internal("cloud task enqueue failed".to_string()));
+        }
+
+        self.calls.lock().unwrap().push(job);
+        Ok(())
+    }
+}
+
 #[derive(Default)]
 struct MockLiveActivitySender {
     state: Arc<Mutex<MockLiveActivityState>>,
@@ -363,6 +431,90 @@ async fn sync_schedule_jobs_creates_pending_start_job(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn sync_schedule_jobs_enqueues_cloud_task_for_created_start_job(pool: PgPool) {
+    insert_test_user(&pool, "host_task", "호스트").await;
+    insert_test_user(&pool, "member_task", "멤버").await;
+    let group_id = create_test_group(&pool, "host_task", "태스크 그룹").await;
+    add_member_to_group(&pool, group_id, "member_task").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_task",
+        group_id,
+        "태스크 예약 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    accept_schedule(&pool, schedule_id, "host_task").await;
+    accept_schedule(&pool, schedule_id, "member_task").await;
+
+    let scheduler = MockLiveActivityJobScheduler::succeed();
+    live_activity_service::sync_schedule_jobs_with_scheduler(&pool, &scheduler, schedule_id)
+        .await
+        .expect("sync should enqueue cloud task");
+
+    let jobs = load_jobs(&pool, schedule_id).await;
+    let pending_start_jobs: Vec<_> = jobs
+        .iter()
+        .filter(|job| {
+            job.job_type == LiveActivityJobType::Start
+                && job.status == LiveActivityJobStatus::Pending
+        })
+        .collect();
+    assert_eq!(pending_start_jobs.len(), 1);
+
+    let calls = scheduler.calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].id, pending_start_jobs[0].id);
+    assert_eq!(calls[0].schedule_id, schedule_id);
+    assert_eq!(calls[0].job_type, LiveActivityJobType::Start);
+    assert_eq!(calls[0].scheduled_at, pending_start_jobs[0].scheduled_at);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sync_schedule_jobs_does_not_leave_pending_job_when_cloud_task_enqueue_fails(pool: PgPool) {
+    insert_test_user(&pool, "host_task_fail", "호스트").await;
+    insert_test_user(&pool, "member_task_fail", "멤버").await;
+    let group_id = create_test_group(&pool, "host_task_fail", "태스크 실패 그룹").await;
+    add_member_to_group(&pool, group_id, "member_task_fail").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_task_fail",
+        group_id,
+        "태스크 실패 일정",
+        Utc::now() + Duration::minutes(90),
+        Some(30),
+        2,
+    )
+    .await;
+    accept_schedule(&pool, schedule_id, "host_task_fail").await;
+    accept_schedule(&pool, schedule_id, "member_task_fail").await;
+
+    let scheduler = MockLiveActivityJobScheduler::fail();
+    let error =
+        live_activity_service::sync_schedule_jobs_with_scheduler(&pool, &scheduler, schedule_id)
+            .await
+            .expect_err("sync should fail when cloud task enqueue fails");
+    assert!(matches!(error, AppError::Internal(_)));
+
+    let pending_start_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) \
+         FROM live_activity_jobs \
+         WHERE schedule_id = $1 \
+           AND job_type = 'start'::live_activity_job_type \
+           AND status = 'pending'::live_activity_job_status",
+    )
+    .bind(schedule_id)
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to count pending start jobs");
+    assert_eq!(pending_start_count.0, 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn process_due_start_job_stores_channel_and_schedules_followups(pool: PgPool) {
     insert_test_user(&pool, "host_start", "호스트").await;
     insert_test_user(&pool, "member_start", "멤버").await;
@@ -420,6 +572,67 @@ async fn process_due_start_job_stores_channel_and_schedules_followups(pool: PgPo
     let sender_state = live_sender.state();
     assert_eq!(sender_state.created_channels, 1);
     assert_eq!(sender_state.push_to_start_calls.len(), 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn dispatch_live_activity_job_processes_only_requested_due_job(pool: PgPool) {
+    insert_test_user(&pool, "host_dispatch", "호스트").await;
+    insert_test_user(&pool, "member_dispatch", "멤버").await;
+    let group_id = create_test_group(&pool, "host_dispatch", "디스패치 그룹").await;
+    add_member_to_group(&pool, group_id, "member_dispatch").await;
+
+    let schedule_id = insert_group_schedule(
+        &pool,
+        "host_dispatch",
+        group_id,
+        "디스패치 일정",
+        Utc::now() + Duration::minutes(20),
+        Some(30),
+        2,
+    )
+    .await;
+    accept_schedule(&pool, schedule_id, "host_dispatch").await;
+    accept_schedule(&pool, schedule_id, "member_dispatch").await;
+    register_push_to_start_token(&pool, "host_dispatch", "host-dispatch-device", "token-host")
+        .await;
+    register_push_to_start_token(
+        &pool,
+        "member_dispatch",
+        "member-dispatch-device",
+        "token-member",
+    )
+    .await;
+
+    let job_id = insert_job_returning_id(
+        &pool,
+        schedule_id,
+        LiveActivityJobType::Start,
+        Utc::now() - Duration::minutes(1),
+        None,
+    )
+    .await;
+
+    let live_sender = MockLiveActivitySender::new();
+    let push_sender = MockPushSender::new();
+    let result = live_activity_service::dispatch_live_activity_job(
+        &pool,
+        &live_sender,
+        &push_sender,
+        job_id,
+    )
+    .await
+    .expect("requested job dispatch should succeed");
+
+    assert!(result.processed);
+    let schedule = load_schedule(&pool, schedule_id).await;
+    assert_eq!(
+        schedule.live_activity_channel_id.as_deref(),
+        Some("channel-test-1")
+    );
+
+    let jobs = load_jobs(&pool, schedule_id).await;
+    let dispatched_job = jobs.iter().find(|job| job.id == job_id).unwrap();
+    assert_eq!(dispatched_job.status, LiveActivityJobStatus::Succeeded);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -584,7 +797,11 @@ async fn regression_update_schedule_live_activity_reverts_end_job_when_all_arriv
             job.job_type == LiveActivityJobType::End && job.status == LiveActivityJobStatus::Pending
         })
         .collect();
-    assert_eq!(pending_end_jobs.len(), 1, "pending end job should be restored");
+    assert_eq!(
+        pending_end_jobs.len(),
+        1,
+        "pending end job should be restored"
+    );
     assert!(
         pending_end_jobs[0].scheduled_at >= start_at + Duration::minutes(30) - Duration::minutes(1),
         "all-arrived override should be reverted to the default end time"
@@ -776,7 +993,10 @@ async fn regression_start_vote_live_activity_without_targets_does_not_mutate_hos
     .fetch_one(&pool)
     .await
     .expect("Failed to count host votes");
-    assert_eq!(host_vote_count.0, 0, "host vote must not be persisted on no-target return");
+    assert_eq!(
+        host_vote_count.0, 0,
+        "host vote must not be persisted on no-target return"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -898,7 +1118,10 @@ async fn regression_start_vote_live_activity_failure_does_not_persist_host_vote(
     )
     .await
     .expect_err("vote live activity should fail when every push-to-start send fails");
-    assert!(matches!(error, promiso_backend::errors::AppError::Internal(_)));
+    assert!(matches!(
+        error,
+        promiso_backend::errors::AppError::Internal(_)
+    ));
 
     let schedule = load_schedule(&pool, schedule_id).await;
     assert_eq!(schedule.is_confirmed, Some(false));
@@ -911,8 +1134,7 @@ async fn regression_start_vote_live_activity_failure_does_not_persist_host_vote(
     .await
     .expect("Failed to count host votes");
     assert_eq!(
-        host_vote_count.0,
-        0,
+        host_vote_count.0, 0,
         "host vote must not be persisted when all push-to-start sends fail"
     );
 }

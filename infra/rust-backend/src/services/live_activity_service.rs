@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use chrono::{Duration, Utc};
+use base64::Engine;
+use chrono::{Duration, SecondsFormat, Utc};
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::config::Config;
 use crate::errors::AppError;
 use crate::models::live_activity::{
     LiveActivityJob, LiveActivityJobPayload, LiveActivityJobStatus, LiveActivityJobType,
@@ -21,6 +24,8 @@ const JOB_BATCH_SIZE: i64 = 10;
 const JOB_LOCK_SECONDS: i64 = 60;
 const JOB_MAX_ATTEMPTS: i32 = 3;
 const WORKER_POLL_INTERVAL_SECONDS: u64 = 5;
+const METADATA_TOKEN_URL: &str =
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 struct GroupSummary {
@@ -40,7 +45,214 @@ struct PushToStartTarget {
     push_to_start_token: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScheduledLiveActivityJob {
+    pub id: Uuid,
+    pub schedule_id: Uuid,
+    pub job_type: LiveActivityJobType,
+    pub scheduled_at: chrono::DateTime<Utc>,
+}
+
+#[async_trait::async_trait]
+pub trait LiveActivityJobScheduler: Send + Sync {
+    async fn enqueue_live_activity_job(
+        &self,
+        job: ScheduledLiveActivityJob,
+    ) -> Result<(), AppError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LiveActivityJobDispatchResult {
+    pub processed: bool,
+}
+
+#[derive(Clone)]
+pub struct CloudTasksLiveActivityJobScheduler {
+    client: reqwest::Client,
+    project_id: String,
+    location: String,
+    queue: String,
+    target_base_url: String,
+    scheduler_secret: String,
+}
+
+#[derive(Clone)]
+pub struct MisconfiguredLiveActivityJobScheduler {
+    reason: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MetadataTokenResponse {
+    access_token: String,
+}
+
+impl CloudTasksLiveActivityJobScheduler {
+    pub fn new(
+        project_id: String,
+        location: String,
+        queue: String,
+        target_base_url: String,
+        scheduler_secret: String,
+    ) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            project_id,
+            location,
+            queue,
+            target_base_url: target_base_url.trim_end_matches('/').to_string(),
+            scheduler_secret,
+        }
+    }
+
+    async fn access_token(&self) -> Result<String, AppError> {
+        let response = self
+            .client
+            .get(METADATA_TOKEN_URL)
+            .header("Metadata-Flavor", "Google")
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::Internal(format!("Failed to request metadata access token: {error}"))
+            })?;
+
+        if !response.status().is_success() {
+            return Err(AppError::Internal(format!(
+                "Metadata access token request failed with status {}",
+                response.status()
+            )));
+        }
+
+        response
+            .json::<MetadataTokenResponse>()
+            .await
+            .map(|token| token.access_token)
+            .map_err(|error| {
+                AppError::Internal(format!("Failed to decode metadata access token: {error}"))
+            })
+    }
+
+    fn queue_endpoint(&self) -> String {
+        format!(
+            "https://cloudtasks.googleapis.com/v2/projects/{}/locations/{}/queues/{}/tasks",
+            self.project_id, self.location, self.queue
+        )
+    }
+
+    fn target_url(&self, job_id: Uuid) -> String {
+        format!(
+            "{}/api/v1/internal/live-activity/jobs/{}/dispatch",
+            self.target_base_url, job_id
+        )
+    }
+}
+
+#[async_trait::async_trait]
+impl LiveActivityJobScheduler for CloudTasksLiveActivityJobScheduler {
+    async fn enqueue_live_activity_job(
+        &self,
+        job: ScheduledLiveActivityJob,
+    ) -> Result<(), AppError> {
+        let token = self.access_token().await?;
+        let schedule_time = job.scheduled_at.to_rfc3339_opts(SecondsFormat::Secs, true);
+        let body = json!({
+            "task": {
+                "scheduleTime": schedule_time,
+                "httpRequest": {
+                    "httpMethod": "POST",
+                    "url": self.target_url(job.id),
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "X-Scheduler-Secret": self.scheduler_secret,
+                    },
+                    "body": base64::engine::general_purpose::STANDARD.encode(
+                        format!(r#"{{"jobId":"{}"}}"#, job.id)
+                    ),
+                }
+            }
+        });
+
+        let response = self
+            .client
+            .post(self.queue_endpoint())
+            .bearer_auth(token)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::Internal(format!(
+                    "Failed to enqueue Live Activity Cloud Task: {error}"
+                ))
+            })?;
+
+        if response.status().is_success() {
+            return Ok(());
+        }
+
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        Err(AppError::Internal(format!(
+            "Live Activity Cloud Task enqueue failed with status {status}: {text}"
+        )))
+    }
+}
+
+impl MisconfiguredLiveActivityJobScheduler {
+    pub fn new(reason: impl Into<String>) -> Self {
+        Self {
+            reason: reason.into(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl LiveActivityJobScheduler for MisconfiguredLiveActivityJobScheduler {
+    async fn enqueue_live_activity_job(
+        &self,
+        _job: ScheduledLiveActivityJob,
+    ) -> Result<(), AppError> {
+        Err(AppError::Internal(self.reason.clone()))
+    }
+}
+
+pub fn build_live_activity_job_scheduler(config: &Config) -> Arc<dyn LiveActivityJobScheduler> {
+    match (
+        config.live_activity_task_target_base_url.clone(),
+        config.scheduler_secret.clone(),
+    ) {
+        (Some(target_base_url), Some(scheduler_secret))
+            if !target_base_url.trim().is_empty() && !scheduler_secret.trim().is_empty() =>
+        {
+            Arc::new(CloudTasksLiveActivityJobScheduler::new(
+                config.live_activity_task_project_id.clone(),
+                config.live_activity_task_location.clone(),
+                config.live_activity_task_queue.clone(),
+                target_base_url,
+                scheduler_secret,
+            ))
+        }
+        _ => Arc::new(MisconfiguredLiveActivityJobScheduler::new(
+            "Live Activity Cloud Tasks scheduler is not configured",
+        )),
+    }
+}
+
+pub async fn sync_schedule_jobs_with_scheduler(
+    pool: &PgPool,
+    scheduler: &dyn LiveActivityJobScheduler,
+    schedule_id: Uuid,
+) -> Result<(), AppError> {
+    sync_schedule_jobs_internal(pool, Some(scheduler), schedule_id).await
+}
+
 pub async fn sync_schedule_jobs(pool: &PgPool, schedule_id: Uuid) -> Result<(), AppError> {
+    sync_schedule_jobs_internal(pool, None, schedule_id).await
+}
+
+async fn sync_schedule_jobs_internal(
+    pool: &PgPool,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
+    schedule_id: Uuid,
+) -> Result<(), AppError> {
     let schedule = load_schedule(pool, schedule_id).await?;
 
     if schedule.schedule_type != ScheduleType::Group {
@@ -85,8 +297,9 @@ pub async fn sync_schedule_jobs(pool: &PgPool, schedule_id: Uuid) -> Result<(), 
     }
 
     let scheduled_at = schedule.start_at - Duration::minutes(tracking_minutes.unwrap() as i64);
-    replace_pending_job(
+    replace_pending_job_internal(
         pool,
+        scheduler,
         schedule_id,
         LiveActivityJobType::Start,
         scheduled_at,
@@ -121,6 +334,25 @@ pub async fn start_schedule_live_activity(
     execute_start_job(pool, sender, &schedule).await
 }
 
+pub async fn start_schedule_live_activity_with_scheduler(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    scheduler: &dyn LiveActivityJobScheduler,
+    schedule_id: Uuid,
+    user_id: &str,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    let schedule = load_schedule(pool, schedule_id).await?;
+    ensure_group_schedule(&schedule)?;
+
+    if schedule.user_id != user_id {
+        return Err(AppError::Forbidden(
+            "호스트만 Live Activity를 시작할 수 있습니다".to_string(),
+        ));
+    }
+
+    execute_start_job_internal(pool, sender, Some(scheduler), &schedule).await
+}
+
 pub async fn update_schedule_live_activity(
     pool: &PgPool,
     sender: &dyn LiveActivitySender,
@@ -128,7 +360,19 @@ pub async fn update_schedule_live_activity(
     user_id: &str,
     req: UpdateScheduleLiveActivityRequest,
 ) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
-    update_schedule_live_activity_internal(pool, sender, schedule_id, user_id, req).await
+    update_schedule_live_activity_internal(pool, sender, None, schedule_id, user_id, req).await
+}
+
+pub async fn update_schedule_live_activity_with_scheduler(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    scheduler: &dyn LiveActivityJobScheduler,
+    schedule_id: Uuid,
+    user_id: &str,
+    req: UpdateScheduleLiveActivityRequest,
+) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
+    update_schedule_live_activity_internal(pool, sender, Some(scheduler), schedule_id, user_id, req)
+        .await
 }
 
 pub async fn update_schedule_live_activity_from_widget(
@@ -138,7 +382,19 @@ pub async fn update_schedule_live_activity_from_widget(
     user_id: &str,
     req: UpdateScheduleLiveActivityRequest,
 ) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
-    update_schedule_live_activity_internal(pool, sender, schedule_id, user_id, req).await
+    update_schedule_live_activity_internal(pool, sender, None, schedule_id, user_id, req).await
+}
+
+pub async fn update_schedule_live_activity_from_widget_with_scheduler(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    scheduler: &dyn LiveActivityJobScheduler,
+    schedule_id: Uuid,
+    user_id: &str,
+    req: UpdateScheduleLiveActivityRequest,
+) -> Result<UpdateScheduleLiveActivityResponse, AppError> {
+    update_schedule_live_activity_internal(pool, sender, Some(scheduler), schedule_id, user_id, req)
+        .await
 }
 
 pub fn spawn_worker(
@@ -185,9 +441,85 @@ pub async fn process_due_jobs(
     Ok(())
 }
 
+pub async fn dispatch_live_activity_job(
+    pool: &PgPool,
+    live_activity_sender: &dyn LiveActivitySender,
+    push_sender: &dyn PushSender,
+    job_id: Uuid,
+) -> Result<LiveActivityJobDispatchResult, AppError> {
+    dispatch_live_activity_job_internal(pool, live_activity_sender, push_sender, None, job_id).await
+}
+
+pub async fn dispatch_live_activity_job_with_scheduler(
+    pool: &PgPool,
+    live_activity_sender: &dyn LiveActivitySender,
+    push_sender: &dyn PushSender,
+    scheduler: &dyn LiveActivityJobScheduler,
+    job_id: Uuid,
+) -> Result<LiveActivityJobDispatchResult, AppError> {
+    dispatch_live_activity_job_internal(
+        pool,
+        live_activity_sender,
+        push_sender,
+        Some(scheduler),
+        job_id,
+    )
+    .await
+}
+
+async fn dispatch_live_activity_job_internal(
+    pool: &PgPool,
+    live_activity_sender: &dyn LiveActivitySender,
+    push_sender: &dyn PushSender,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
+    job_id: Uuid,
+) -> Result<LiveActivityJobDispatchResult, AppError> {
+    let Some(job) = claim_job_by_id(pool, job_id).await? else {
+        return Ok(LiveActivityJobDispatchResult { processed: false });
+    };
+
+    let result = match job.job_type {
+        LiveActivityJobType::Start => {
+            let schedule = load_schedule(pool, job.schedule_id).await?;
+            ensure_group_schedule(&schedule)?;
+
+            if schedule.live_activity_started_at.is_some()
+                && schedule.live_activity_ended_at.is_none()
+            {
+                Ok(())
+            } else {
+                let response =
+                    execute_start_job_internal(pool, live_activity_sender, scheduler, &schedule)
+                        .await?;
+                if response.success_count == 0 {
+                    Err(AppError::Internal(
+                        "No successful Live Activity push-to-start delivery".to_string(),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+        LiveActivityJobType::End => process_end_job(pool, live_activity_sender, &job).await,
+        LiveActivityJobType::Nudge => process_nudge_job(pool, push_sender, &job).await,
+    };
+
+    match result {
+        Ok(()) => {
+            mark_job_succeeded(pool, job.id).await?;
+            Ok(LiveActivityJobDispatchResult { processed: true })
+        }
+        Err(error) => {
+            handle_job_failure(pool, &job, &error.to_string()).await?;
+            Err(error)
+        }
+    }
+}
+
 async fn update_schedule_live_activity_internal(
     pool: &PgPool,
     sender: &dyn LiveActivitySender,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
     schedule_id: Uuid,
     user_id: &str,
     req: UpdateScheduleLiveActivityRequest,
@@ -288,8 +620,9 @@ async fn update_schedule_live_activity_internal(
             RuntimeEnvironment::Release => 5,
         };
 
-        replace_pending_job(
+        replace_pending_job_internal(
             pool,
+            scheduler,
             schedule_id,
             LiveActivityJobType::End,
             Utc::now() + Duration::minutes(delay_minutes),
@@ -299,7 +632,14 @@ async fn update_schedule_live_activity_internal(
         )
         .await?;
     } else {
-        schedule_default_end_job(pool, schedule_id, schedule.start_at, &req.channel_id).await?;
+        schedule_default_end_job(
+            pool,
+            scheduler,
+            schedule_id,
+            schedule.start_at,
+            &req.channel_id,
+        )
+        .await?;
     }
 
     Ok(UpdateScheduleLiveActivityResponse {
@@ -428,6 +768,15 @@ async fn execute_start_job(
     sender: &dyn LiveActivitySender,
     schedule: &Schedule,
 ) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    execute_start_job_internal(pool, sender, None, schedule).await
+}
+
+async fn execute_start_job_internal(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
+    schedule: &Schedule,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
     ensure_group_schedule(schedule)?;
 
     let group_id = schedule
@@ -539,10 +888,11 @@ async fn execute_start_job(
 
     cancel_pending_jobs(pool, schedule.id, &[LiveActivityJobType::Start]).await?;
 
-    schedule_default_end_job(pool, schedule.id, schedule.start_at, &channel_id).await?;
+    schedule_default_end_job(pool, scheduler, schedule.id, schedule.start_at, &channel_id).await?;
 
-    replace_pending_job(
+    replace_pending_job_internal(
         pool,
+        scheduler,
         schedule.id,
         LiveActivityJobType::Nudge,
         Utc::now() + Duration::minutes((tracking_duration_minutes / 2) as i64),
@@ -585,14 +935,35 @@ async fn claim_due_jobs(pool: &PgPool) -> Result<Vec<LiveActivityJob>, AppError>
     .map_err(Into::into)
 }
 
+async fn claim_job_by_id(pool: &PgPool, job_id: Uuid) -> Result<Option<LiveActivityJob>, AppError> {
+    sqlx::query_as::<_, LiveActivityJob>(
+        "UPDATE live_activity_jobs \
+         SET locked_until = NOW() + ($2::TEXT || ' seconds')::INTERVAL, \
+             attempts = attempts + 1, \
+             updated_at = NOW() \
+         WHERE id = $1 \
+           AND status = 'pending'::live_activity_job_status \
+           AND scheduled_at <= NOW() \
+           AND (locked_until IS NULL OR locked_until < NOW()) \
+         RETURNING *",
+    )
+    .bind(job_id)
+    .bind(JOB_LOCK_SECONDS)
+    .fetch_optional(pool)
+    .await
+    .map_err(Into::into)
+}
+
 async fn schedule_default_end_job(
     pool: &PgPool,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
     schedule_id: Uuid,
     start_at: chrono::DateTime<Utc>,
     channel_id: &str,
 ) -> Result<(), AppError> {
-    replace_pending_job(
+    replace_pending_job_internal(
         pool,
+        scheduler,
         schedule_id,
         LiveActivityJobType::End,
         start_at + Duration::minutes(DEFAULT_END_MINUTES_AFTER_START),
@@ -640,8 +1011,9 @@ async fn handle_job_failure(
     Ok(())
 }
 
-async fn replace_pending_job(
+async fn replace_pending_job_internal(
     pool: &PgPool,
+    scheduler: Option<&dyn LiveActivityJobScheduler>,
     schedule_id: Uuid,
     job_type: LiveActivityJobType,
     scheduled_at: chrono::DateTime<Utc>,
@@ -649,9 +1021,10 @@ async fn replace_pending_job(
 ) -> Result<(), AppError> {
     cancel_pending_jobs(pool, schedule_id, std::slice::from_ref(&job_type)).await?;
 
-    sqlx::query(
+    let job = sqlx::query_as::<_, LiveActivityJob>(
         "INSERT INTO live_activity_jobs (schedule_id, job_type, scheduled_at, payload) \
-         VALUES ($1, $2, $3, $4)",
+         VALUES ($1, $2, $3, $4) \
+         RETURNING *",
     )
     .bind(schedule_id)
     .bind(job_type)
@@ -666,9 +1039,40 @@ async fn replace_pending_job(
                 ))
             })?,
     )
-    .execute(pool)
+    .fetch_one(pool)
     .await?;
 
+    if let Some(scheduler) = scheduler {
+        let scheduled_job = ScheduledLiveActivityJob {
+            id: job.id,
+            schedule_id: job.schedule_id,
+            job_type: job.job_type,
+            scheduled_at: job.scheduled_at,
+        };
+
+        if let Err(error) = scheduler.enqueue_live_activity_job(scheduled_job).await {
+            mark_job_cancelled(pool, job.id, &error.to_string()).await?;
+            return Err(error);
+        }
+    }
+
+    Ok(())
+}
+
+async fn mark_job_cancelled(pool: &PgPool, job_id: Uuid, reason: &str) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE live_activity_jobs \
+         SET status = 'cancelled'::live_activity_job_status, \
+             locked_until = NULL, \
+             last_error = $2, \
+             updated_at = NOW() \
+         WHERE id = $1 \
+           AND status = 'pending'::live_activity_job_status",
+    )
+    .bind(job_id)
+    .bind(reason)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 

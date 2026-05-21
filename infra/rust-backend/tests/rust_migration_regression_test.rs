@@ -30,6 +30,11 @@ fn test_config() -> Config {
         widget_jwt_secret: Some("test-secret".to_string()),
         odsay_api_key: None,
         kakao_rest_api_key: None,
+        scheduler_secret: None,
+        live_activity_task_project_id: "promiso-dev".to_string(),
+        live_activity_task_location: "asia-northeast3".to_string(),
+        live_activity_task_queue: "live-activity-jobs".to_string(),
+        live_activity_task_target_base_url: None,
     }
 }
 

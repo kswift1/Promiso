@@ -10,6 +10,7 @@ use crate::errors::AppError;
 use crate::models::notification::{FieldChange, PushSender, VoteInfo};
 use crate::models::schedule::*;
 use crate::services::live_activity_service;
+use crate::services::live_activity_service::LiveActivityJobScheduler;
 use crate::services::notification_service;
 
 // ============================================================
@@ -421,7 +422,7 @@ pub async fn create_schedule(
     user_id: &str,
     req: CreateScheduleRequest,
 ) -> Result<CreateScheduleResponse, AppError> {
-    create_schedule_impl(pool, None, user_id, req).await
+    create_schedule_impl(pool, None, None, user_id, req).await
 }
 
 pub async fn create_schedule_with_push_sender(
@@ -430,12 +431,30 @@ pub async fn create_schedule_with_push_sender(
     user_id: &str,
     req: CreateScheduleRequest,
 ) -> Result<CreateScheduleResponse, AppError> {
-    create_schedule_impl(pool, Some(push_sender), user_id, req).await
+    create_schedule_impl(pool, Some(push_sender), None, user_id, req).await
+}
+
+pub async fn create_schedule_with_push_sender_and_live_activity_scheduler(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    live_activity_job_scheduler: &dyn LiveActivityJobScheduler,
+    user_id: &str,
+    req: CreateScheduleRequest,
+) -> Result<CreateScheduleResponse, AppError> {
+    create_schedule_impl(
+        pool,
+        Some(push_sender),
+        Some(live_activity_job_scheduler),
+        user_id,
+        req,
+    )
+    .await
 }
 
 async fn create_schedule_impl(
     pool: &PgPool,
     push_sender: Option<&dyn PushSender>,
+    live_activity_job_scheduler: Option<&dyn LiveActivityJobScheduler>,
     user_id: &str,
     req: CreateScheduleRequest,
 ) -> Result<CreateScheduleResponse, AppError> {
@@ -573,7 +592,16 @@ async fn create_schedule_impl(
                 }
             }
 
-            if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule.id).await {
+            if let Some(scheduler) = live_activity_job_scheduler {
+                live_activity_service::sync_schedule_jobs_with_scheduler(
+                    pool,
+                    scheduler,
+                    schedule.id,
+                )
+                .await?;
+            } else if let Err(error) =
+                live_activity_service::sync_schedule_jobs(pool, schedule.id).await
+            {
                 tracing::error!(
                     "Failed to sync live activity jobs after schedule create {}: {}",
                     schedule.id,
@@ -597,9 +625,7 @@ async fn create_schedule_impl(
                 ));
             }
 
-            if req.minimum_participants.is_some()
-                || req.tracking_start_minutes_before.is_some()
-            {
+            if req.minimum_participants.is_some() || req.tracking_start_minutes_before.is_some() {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
                 ));
@@ -706,7 +732,7 @@ pub async fn update_schedule(
     schedule_id: Uuid,
     req: UpdateScheduleRequest,
 ) -> Result<(), AppError> {
-    update_schedule_impl(pool, None, user_id, schedule_id, req).await
+    update_schedule_impl(pool, None, None, user_id, schedule_id, req).await
 }
 
 pub async fn update_schedule_with_push_sender(
@@ -716,12 +742,32 @@ pub async fn update_schedule_with_push_sender(
     schedule_id: Uuid,
     req: UpdateScheduleRequest,
 ) -> Result<(), AppError> {
-    update_schedule_impl(pool, Some(push_sender), user_id, schedule_id, req).await
+    update_schedule_impl(pool, Some(push_sender), None, user_id, schedule_id, req).await
+}
+
+pub async fn update_schedule_with_push_sender_and_live_activity_scheduler(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    live_activity_job_scheduler: &dyn LiveActivityJobScheduler,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: UpdateScheduleRequest,
+) -> Result<(), AppError> {
+    update_schedule_impl(
+        pool,
+        Some(push_sender),
+        Some(live_activity_job_scheduler),
+        user_id,
+        schedule_id,
+        req,
+    )
+    .await
 }
 
 async fn update_schedule_impl(
     pool: &PgPool,
     push_sender: Option<&dyn PushSender>,
+    live_activity_job_scheduler: Option<&dyn LiveActivityJobScheduler>,
     user_id: &str,
     schedule_id: Uuid,
     req: UpdateScheduleRequest,
@@ -815,9 +861,7 @@ async fn update_schedule_impl(
             }
         }
         ScheduleType::Personal => {
-            if req.minimum_participants.is_some()
-                || req.tracking_start_minutes_before.is_some()
-            {
+            if req.minimum_participants.is_some() || req.tracking_start_minutes_before.is_some() {
                 return Err(AppError::BadRequest(
                     "개인 일정에는 그룹 일정 전용 필드를 설정할 수 없습니다".to_string(),
                 ));
@@ -1038,7 +1082,12 @@ async fn update_schedule_impl(
     }
 
     if schedule.schedule_type == ScheduleType::Group {
-        if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule_id).await {
+        if let Some(scheduler) = live_activity_job_scheduler {
+            live_activity_service::sync_schedule_jobs_with_scheduler(pool, scheduler, schedule_id)
+                .await?;
+        } else if let Err(error) =
+            live_activity_service::sync_schedule_jobs(pool, schedule_id).await
+        {
             tracing::error!(
                 "Failed to sync live activity jobs after schedule update {}: {}",
                 schedule_id,
@@ -1122,7 +1171,7 @@ pub async fn respond_schedule(
     schedule_id: Uuid,
     req: RespondScheduleRequest,
 ) -> Result<RespondScheduleResponse, AppError> {
-    respond_schedule_impl(pool, None, user_id, schedule_id, req).await
+    respond_schedule_impl(pool, None, None, user_id, schedule_id, req).await
 }
 
 pub async fn respond_schedule_with_push_sender(
@@ -1132,12 +1181,32 @@ pub async fn respond_schedule_with_push_sender(
     schedule_id: Uuid,
     req: RespondScheduleRequest,
 ) -> Result<RespondScheduleResponse, AppError> {
-    respond_schedule_impl(pool, Some(push_sender), user_id, schedule_id, req).await
+    respond_schedule_impl(pool, Some(push_sender), None, user_id, schedule_id, req).await
+}
+
+pub async fn respond_schedule_with_push_sender_and_live_activity_scheduler(
+    pool: &PgPool,
+    push_sender: &dyn PushSender,
+    live_activity_job_scheduler: &dyn LiveActivityJobScheduler,
+    user_id: &str,
+    schedule_id: Uuid,
+    req: RespondScheduleRequest,
+) -> Result<RespondScheduleResponse, AppError> {
+    respond_schedule_impl(
+        pool,
+        Some(push_sender),
+        Some(live_activity_job_scheduler),
+        user_id,
+        schedule_id,
+        req,
+    )
+    .await
 }
 
 async fn respond_schedule_impl(
     pool: &PgPool,
     push_sender: Option<&dyn PushSender>,
+    live_activity_job_scheduler: Option<&dyn LiveActivityJobScheduler>,
     user_id: &str,
     schedule_id: Uuid,
     req: RespondScheduleRequest,
@@ -1275,7 +1344,10 @@ async fn respond_schedule_impl(
         }
     }
 
-    if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule_id).await {
+    if let Some(scheduler) = live_activity_job_scheduler {
+        live_activity_service::sync_schedule_jobs_with_scheduler(pool, scheduler, schedule_id)
+            .await?;
+    } else if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule_id).await {
         tracing::error!(
             "Failed to sync live activity jobs after schedule response {}: {}",
             schedule_id,

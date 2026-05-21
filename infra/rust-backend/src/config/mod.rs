@@ -20,6 +20,11 @@ pub struct Config {
     pub widget_jwt_secret: Option<String>,
     pub odsay_api_key: Option<String>,
     pub kakao_rest_api_key: Option<String>,
+    pub scheduler_secret: Option<String>,
+    pub live_activity_task_project_id: String,
+    pub live_activity_task_location: String,
+    pub live_activity_task_queue: String,
+    pub live_activity_task_target_base_url: Option<String>,
 }
 
 impl Config {
@@ -77,6 +82,17 @@ impl Config {
             widget_jwt_secret: std::env::var("WIDGET_JWT_SECRET").ok(),
             odsay_api_key: std::env::var("ODSAY_API_KEY").ok(),
             kakao_rest_api_key: std::env::var("KAKAO_REST_API_KEY").ok(),
+            scheduler_secret: std::env::var("SCHEDULER_SECRET").ok(),
+            live_activity_task_project_id: std::env::var("LIVE_ACTIVITY_TASK_PROJECT_ID")
+                .unwrap_or_else(|_| {
+                    std::env::var("FIREBASE_PROJECT_ID").expect("FIREBASE_PROJECT_ID must be set")
+                }),
+            live_activity_task_location: std::env::var("LIVE_ACTIVITY_TASK_LOCATION")
+                .unwrap_or_else(|_| "asia-northeast3".to_string()),
+            live_activity_task_queue: std::env::var("LIVE_ACTIVITY_TASK_QUEUE")
+                .unwrap_or_else(|_| "live-activity-jobs".to_string()),
+            live_activity_task_target_base_url: std::env::var("LIVE_ACTIVITY_TASK_TARGET_BASE_URL")
+                .ok(),
         }
     }
 }

@@ -1571,4 +1571,18 @@ GET /api/v1/groups/{id}, POST /api/v1/groups/join 응답의 `data` 필드:
   - `deleted`: briefing_subscriptions row 삭제 (notification_hour NULL 또는 Pro 상실)
 - 에러: 401 (X-Scheduler-Secret 불일치)
 
-*마지막 업데이트: 2026-04-26*
+### POST /api/v1/internal/live-activity/jobs/{job_id}/dispatch
+
+- 설명: Cloud Tasks가 예약 시각에 호출하는 Live Activity job dispatch. 지정된 `job_id` 하나만 claim 후 처리
+- 인증: `X-Scheduler-Secret` 헤더 (SCHEDULER_SECRET 환경변수와 대조). 불일치 시 401
+- 요청 바디: 없음
+- 응답 200:
+  ```json
+  {
+    "processed": true
+  }
+  ```
+  - `processed`: 해당 job을 claim/처리했으면 true. 이미 처리됐거나 due가 아니면 false
+- 에러: 401 (X-Scheduler-Secret 불일치), 500 (SCHEDULER_SECRET 미설정 또는 처리 실패)
+
+*마지막 업데이트: 2026-05-21*
