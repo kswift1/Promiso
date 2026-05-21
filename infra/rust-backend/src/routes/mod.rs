@@ -28,6 +28,7 @@ use crate::middleware::auth::{require_auth, ServerAuth, WidgetAuth};
 use crate::push::{build_live_activity_sender, build_push_sender};
 use crate::routes::transportation::TransportationKeys;
 use crate::services::app_store_service::{RealAppStoreVerifier, SharedAppStoreVerifier};
+use crate::services::live_activity_service::build_live_activity_job_scheduler;
 use crate::services::provider_verifier::{RealProviderVerifier, SharedProviderVerifier};
 use crate::services::storage_service::GcsUploadSigner;
 
@@ -40,8 +41,10 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
     let widget_auth = WidgetAuth::new(config.widget_jwt_secret.clone());
     let push_sender = build_push_sender(config);
     let live_activity_sender = build_live_activity_sender(config);
+    let live_activity_job_scheduler = build_live_activity_job_scheduler(config);
     let public_push_sender = push_sender.clone();
     let public_live_activity_sender = live_activity_sender.clone();
+    let public_live_activity_job_scheduler = live_activity_job_scheduler.clone();
     let app_store_verifier: SharedAppStoreVerifier = Arc::new(RealAppStoreVerifier::new(config));
     let provider_verifier: SharedProviderVerifier = Arc::new(RealProviderVerifier::new(config));
     let gcs_upload_signer = match GcsUploadSigner::from_config(config) {
@@ -72,6 +75,7 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(emoji::router())
         .layer(axum::Extension(app_store_verifier.clone()))
         .layer(axum::Extension(live_activity_sender.clone()))
+        .layer(axum::Extension(live_activity_job_scheduler.clone()))
         .layer(axum::Extension(gcs_upload_signer.clone()))
         .layer(axum::Extension(push_sender))
         .layer(axum::Extension(transportation_keys))
@@ -82,10 +86,14 @@ pub fn create_router(pool: PgPool, config: &Config) -> Router {
         .merge(subscriptions::public_router())
         .merge(widget::widget_snapshot_router())
         .layer(axum::Extension(app_store_verifier))
-        .layer(axum::Extension(public_live_activity_sender))
+        .layer(axum::Extension(public_live_activity_sender.clone()))
+        .layer(axum::Extension(public_live_activity_job_scheduler.clone()))
         .layer(axum::Extension(public_push_sender.clone()));
 
-    let internal_routes = internal::router().layer(axum::Extension(public_push_sender));
+    let internal_routes = internal::router()
+        .layer(axum::Extension(public_push_sender))
+        .layer(axum::Extension(public_live_activity_sender))
+        .layer(axum::Extension(public_live_activity_job_scheduler));
 
     Router::new()
         .merge(health::router()) // /health — 인증 불필요

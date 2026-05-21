@@ -10,6 +10,7 @@ use crate::models::live_activity::{
 };
 use crate::models::notification::{PushSender, VoteInfo};
 use crate::models::schedule::{Schedule, ScheduleType};
+use crate::services::live_activity_service::LiveActivityJobScheduler;
 use crate::services::{live_activity_service, notification_service};
 
 const DEFAULT_VOTE_DEADLINE_MINUTES_BEFORE: i16 = 30;
@@ -43,6 +44,36 @@ pub async fn start_vote_live_activity(
     pool: &PgPool,
     sender: &dyn LiveActivitySender,
     push_sender: Option<&dyn PushSender>,
+    schedule_id: Uuid,
+    user_id: &str,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    start_vote_live_activity_internal(pool, sender, push_sender, None, schedule_id, user_id).await
+}
+
+pub async fn start_vote_live_activity_with_scheduler(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    push_sender: Option<&dyn PushSender>,
+    live_activity_job_scheduler: &dyn LiveActivityJobScheduler,
+    schedule_id: Uuid,
+    user_id: &str,
+) -> Result<StartScheduleLiveActivityResponse, AppError> {
+    start_vote_live_activity_internal(
+        pool,
+        sender,
+        push_sender,
+        Some(live_activity_job_scheduler),
+        schedule_id,
+        user_id,
+    )
+    .await
+}
+
+async fn start_vote_live_activity_internal(
+    pool: &PgPool,
+    sender: &dyn LiveActivitySender,
+    push_sender: Option<&dyn PushSender>,
+    live_activity_job_scheduler: Option<&dyn LiveActivityJobScheduler>,
     schedule_id: Uuid,
     user_id: &str,
 ) -> Result<StartScheduleLiveActivityResponse, AppError> {
@@ -167,7 +198,10 @@ pub async fn start_vote_live_activity(
         }
     }
 
-    if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule.id).await {
+    if let Some(scheduler) = live_activity_job_scheduler {
+        live_activity_service::sync_schedule_jobs_with_scheduler(pool, scheduler, schedule.id)
+            .await?;
+    } else if let Err(error) = live_activity_service::sync_schedule_jobs(pool, schedule.id).await {
         tracing::error!(
             "Failed to sync live activity jobs after vote live activity start {}: {}",
             schedule.id,
@@ -476,7 +510,8 @@ async fn load_vote_start_content_state(
         );
     }
 
-    let responded_count = content_state.accepted_members.len() + content_state.declined_members.len();
+    let responded_count =
+        content_state.accepted_members.len() + content_state.declined_members.len();
     content_state.pending_count = total_member_count.saturating_sub(responded_count) as i32;
     content_state.is_finalized = responded_count >= total_member_count;
 

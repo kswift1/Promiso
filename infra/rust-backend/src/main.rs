@@ -1,7 +1,5 @@
 use promiso_backend::config::Config;
-use promiso_backend::push::{build_live_activity_sender, build_push_sender};
 use promiso_backend::routes;
-use promiso_backend::services::live_activity_service;
 
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -30,12 +28,6 @@ async fn main() {
     let pool = sqlx::PgPool::connect(&config.database_pool_url)
         .await
         .expect("Failed to connect to database pool");
-
-    let _live_activity_worker = live_activity_service::spawn_worker(
-        pool.clone(),
-        build_live_activity_sender(&config),
-        build_push_sender(&config),
-    );
 
     let app = routes::create_router(pool, &config);
 

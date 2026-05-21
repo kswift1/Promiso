@@ -25,6 +25,7 @@ jobs:
       apns_environment: ${{ steps.env.outputs.apns_environment }}
       apns_bundle_id: ${{ steps.env.outputs.apns_bundle_id }}
       gcs_bucket: ${{ steps.env.outputs.gcs_bucket }}
+      rust_api_url: ${{ steps.env.outputs.rust_api_url }}
       env_label: ${{ steps.env.outputs.env_label }}
       emoji: ${{ steps.env.outputs.emoji }}
 
@@ -40,6 +41,7 @@ jobs:
               APNS_ENV="development"
               APNS_BUNDLE="com.promiso.dev"
               GCS_BUCKET="promiso-dev-media"
+              RUST_API_URL="https://promiso-api-7z5hrxvm5q-du.a.run.app"
               EMOJI="🟢"
               LABEL="Dev"
               ;;
@@ -48,6 +50,7 @@ jobs:
               APNS_ENV="development"
               APNS_BUNDLE="com.promiso.stage"
               GCS_BUCKET="promiso-stage-media"
+              RUST_API_URL="https://promiso-api-2re4udjdkq-du.a.run.app"
               EMOJI="🟡"
               LABEL="Stage"
               ;;
@@ -56,6 +59,7 @@ jobs:
               APNS_ENV="production"
               APNS_BUNDLE="com.promiso"
               GCS_BUCKET="promiso-prod-media"
+              RUST_API_URL="https://promiso-api-maen7botya-du.a.run.app"
               EMOJI="🚀"
               LABEL="Production"
               ;;
@@ -71,6 +75,7 @@ jobs:
             echo "apns_environment=$APNS_ENV"
             echo "apns_bundle_id=$APNS_BUNDLE"
             echo "gcs_bucket=$GCS_BUCKET"
+            echo "rust_api_url=$RUST_API_URL"
             echo "env_label=$LABEL"
             echo "emoji=$EMOJI"
           } >> "$GITHUB_OUTPUT"
@@ -184,7 +189,7 @@ jobs:
             --project ${{ needs.setup.outputs.project_id }} \
             --region asia-northeast3 \
             --allow-unauthenticated \
-            --set-env-vars "FIREBASE_PROJECT_ID=${{ needs.setup.outputs.project_id }},RUST_LOG=info,APNS_KEY_ID=4CHBHPYY75,APNS_TEAM_ID=BAC795627G,APNS_BUNDLE_ID=${{ needs.setup.outputs.apns_bundle_id }},APNS_ENVIRONMENT=${{ needs.setup.outputs.apns_environment }},GCS_UPLOAD_BUCKET=${{ needs.setup.outputs.gcs_bucket }}" \
+            --set-env-vars "FIREBASE_PROJECT_ID=${{ needs.setup.outputs.project_id }},RUST_LOG=info,APNS_KEY_ID=4CHBHPYY75,APNS_TEAM_ID=BAC795627G,APNS_BUNDLE_ID=${{ needs.setup.outputs.apns_bundle_id }},APNS_ENVIRONMENT=${{ needs.setup.outputs.apns_environment }},GCS_UPLOAD_BUCKET=${{ needs.setup.outputs.gcs_bucket }},LIVE_ACTIVITY_TASK_PROJECT_ID=${{ needs.setup.outputs.project_id }},LIVE_ACTIVITY_TASK_LOCATION=asia-northeast3,LIVE_ACTIVITY_TASK_QUEUE=live-activity-jobs,LIVE_ACTIVITY_TASK_TARGET_BASE_URL=${{ needs.setup.outputs.rust_api_url }}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,DATABASE_POOL_URL=DATABASE_POOL_URL:latest,AUTH_JWT_SECRET=AUTH_JWT_SECRET:latest,FIREBASE_SERVICE_ACCOUNT_JSON=FIREBASE_SERVICE_ACCOUNT_JSON:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,WIDGET_JWT_SECRET=WIDGET_JWT_SECRET:latest,APNS_AUTH_KEY=APNS_AUTH_KEY:latest,KAKAO_REST_API_KEY=KAKAO_REST_API_KEY:latest,ODSAY_API_KEY=ODSAY_API_KEY:latest,SCHEDULER_SECRET=SCHEDULER_SECRET:latest,KMA_API_KEY=KMA_API_KEY:latest" \
             --quiet
 
