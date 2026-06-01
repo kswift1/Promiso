@@ -39,6 +39,7 @@ public struct StepSheetContainer<
 
   @State private var isDismissPressed = false
   @State private var isKeyboardPresented = false
+  @State private var keyboardHeight: CGFloat = 0
 
   public init(
     title: String,
@@ -89,6 +90,7 @@ public struct StepSheetContainer<
       let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
       withAnimation(.easeInOut(duration: duration)) {
         isKeyboardPresented = false
+        keyboardHeight = 0
       }
     }
   }
@@ -148,7 +150,10 @@ public struct StepSheetContainer<
 
   @ViewBuilder
   private var bottomFixedArea: some View {
-    if !isKeyboardPresented {
+    if isKeyboardPresented {
+      Color.clear
+        .frame(height: keyboardHeight)
+    } else {
       VStack(spacing: 12) {
         floatingContent()
           .padding(.horizontal, 16)
@@ -180,7 +185,10 @@ public struct StepSheetContainer<
 
     guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
       if isKeyboardPresented {
-        withAnimation(.easeInOut(duration: duration)) { isKeyboardPresented = false }
+        withAnimation(.easeInOut(duration: duration)) {
+          isKeyboardPresented = false
+          keyboardHeight = 0
+        }
       }
       return
     }
@@ -189,9 +197,12 @@ public struct StepSheetContainer<
       .compactMap { $0 as? UIWindowScene }
       .first?.screen.bounds.height ?? endFrame.height
     let isVisible = endFrame.minY < screenHeight
-    if isKeyboardPresented != isVisible {
+    let newHeight = isVisible ? max(0, screenHeight - endFrame.minY) : 0
+
+    if isKeyboardPresented != isVisible || keyboardHeight != newHeight {
       withAnimation(.easeInOut(duration: duration)) {
         isKeyboardPresented = isVisible
+        keyboardHeight = newHeight
       }
     }
   }

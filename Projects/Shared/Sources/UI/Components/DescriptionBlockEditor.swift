@@ -12,7 +12,10 @@ public struct DescriptionBlockEditor: View {
     let itemIndex: Int
   }
 
-  public init(blocks: Binding<[DescriptionBlock]>, characterLimit: Int = 500) {
+  public init(
+    blocks: Binding<[DescriptionBlock]>,
+    characterLimit: Int = 500
+  ) {
     self._blocks = blocks
     self.characterLimit = characterLimit
   }
