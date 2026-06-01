@@ -11,7 +11,6 @@ extension CreatePersonalEvent {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @FocusState private var focusedField: Field?
-    @State private var descriptionFocusRequest = 0
     private let dismissButtonVisibility: DismissButtonVisibility
 
     public enum DismissButtonVisibility {
@@ -120,14 +119,6 @@ extension CreatePersonalEvent {
           guard let newValue else { return }
           withAnimation(.easeInOut(duration: 0.2)) {
             proxy.scrollTo(newValue, anchor: .center)
-          }
-        }
-        .onChange(of: descriptionFocusRequest) { _, _ in
-          Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            withAnimation(.easeInOut(duration: 0.2)) {
-              proxy.scrollTo(Field.description, anchor: .center)
-            }
           }
         }
       }
@@ -496,11 +487,7 @@ extension CreatePersonalEvent {
         blocks: Binding(
           get: { store.event.descriptionBlocks },
           set: { store.send(.view(.descriptionBlocksChanged($0))) }
-        ),
-        onFocusChanged: { isFocused in
-          guard isFocused else { return }
-          descriptionFocusRequest += 1
-        }
+        )
       )
       .padding(16)
       .adaptiveGlassCard()
