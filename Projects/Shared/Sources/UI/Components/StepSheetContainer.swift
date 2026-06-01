@@ -79,7 +79,6 @@ public struct StepSheetContainer<
       }
       .frame(height: geometry.size.height)
     }
-    .ignoresSafeArea(.keyboard, edges: .bottom)
     .keyboardDismissToolbar(iconColor: .secondary)
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
       updateKeyboardPresentation(notification)

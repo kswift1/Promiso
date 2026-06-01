@@ -5,6 +5,7 @@ import SwiftUI
 public struct DescriptionBlockEditor: View {
   @Binding public var blocks: [DescriptionBlock]
   public var characterLimit: Int
+  public var onFocusChanged: ((Bool) -> Void)?
   @FocusState private var focusedItem: ItemFocus?
 
   private struct ItemFocus: Hashable {
@@ -12,9 +13,14 @@ public struct DescriptionBlockEditor: View {
     let itemIndex: Int
   }
 
-  public init(blocks: Binding<[DescriptionBlock]>, characterLimit: Int = 500) {
+  public init(
+    blocks: Binding<[DescriptionBlock]>,
+    characterLimit: Int = 500,
+    onFocusChanged: ((Bool) -> Void)? = nil
+  ) {
     self._blocks = blocks
     self.characterLimit = characterLimit
+    self.onFocusChanged = onFocusChanged
   }
 
   // 총 글자 수 계산 (사용자 입력 텍스트만)
@@ -58,6 +64,7 @@ public struct DescriptionBlockEditor: View {
         }
       }
       .onChange(of: focusedItem) { _, newItem in
+        onFocusChanged?(newItem != nil)
         guard let newItem else { return }
         withAnimation(.easeInOut(duration: 0.2)) {
           proxy.scrollTo("block-\(newItem.blockIndex)-item-\(newItem.itemIndex)", anchor: .center)
@@ -171,6 +178,7 @@ public struct DescriptionBlockEditor: View {
     .id("block-\(index)-item-0")
     .onChange(of: textContent) { _, _ in
       guard focusedItem == ItemFocus(blockIndex: index, itemIndex: 0) else { return }
+      onFocusChanged?(true)
       Task { @MainActor in
         withAnimation(.easeInOut(duration: 0.15)) {
           proxy.scrollTo("block-\(index)-item-0", anchor: .bottom)
