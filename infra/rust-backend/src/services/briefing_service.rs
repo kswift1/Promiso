@@ -1028,8 +1028,7 @@ fn is_recurring_on_date(row: &RecurringScheduleRow, date: NaiveDate) -> bool {
         RecurrenceFrequency::Daily => true,
         RecurrenceFrequency::Weekly => {
             if let Some(ref days) = row.days_of_week {
-                // 테스트에서 num_days_from_monday() (0=Mon, 6=Sun) 기준으로 삽입
-                let weekday = date.weekday().num_days_from_monday() as i16;
+                let weekday = date.weekday().number_from_sunday() as i16;
                 days.contains(&weekday)
             } else {
                 false

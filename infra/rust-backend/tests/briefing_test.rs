@@ -515,7 +515,7 @@ async fn fetch_today_includes_recurring(pool: PgPool) {
     insert_test_user(&pool, "user_recurring", "반복유저").await;
 
     let today = chrono::Utc::now().date_naive();
-    let weekday = today.weekday().num_days_from_monday() as i16; // 0=월, 6=일
+    let weekday = today.weekday().number_from_sunday() as i16;
 
     // 매주 오늘 요일 반복 일정
     sqlx::query(
@@ -538,6 +538,40 @@ async fn fetch_today_includes_recurring(pool: PgPool) {
     assert!(
         items.iter().any(|i| i.title == "반복테스트"),
         "반복일정이 포함되지 않음"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn fetch_today_recurring_uses_sunday_based_weekday_contract(pool: PgPool) {
+    insert_test_user(&pool, "user_recurring_contract", "반복요일유저").await;
+
+    let monday = NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+
+    sqlx::query(
+        "INSERT INTO recurring_schedules \
+         (id, user_id, title, start_time_hour, start_time_minute, frequency, days_of_week, series_start_date) \
+         VALUES (gen_random_uuid(), $1, '월요일반복', 9, 0, 'weekly', $2, $3)",
+    )
+    .bind("user_recurring_contract")
+    .bind(vec![2_i16])
+    .bind(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap())
+    .execute(&pool)
+    .await
+    .expect("반복일정 삽입 실패");
+
+    let result = briefing_service::fetch_today_schedules(
+        &pool,
+        "user_recurring_contract",
+        monday,
+        "Asia/Seoul",
+    )
+    .await;
+
+    assert!(result.is_ok(), "fetch_today_schedules 실패: {:?}", result);
+    let items = result.unwrap();
+    assert!(
+        items.iter().any(|i| i.title == "월요일반복"),
+        "days_of_week=[2]인 월요일 반복일정이 포함되지 않음"
     );
 }
 
@@ -717,7 +751,7 @@ async fn fetch_today_recurring_excludes_excluded_dates(pool: PgPool) {
     insert_test_user(&pool, "user_excluded", "제외유저").await;
 
     let today = chrono::Utc::now().date_naive();
-    let weekday = today.weekday().num_days_from_monday() as i16;
+    let weekday = today.weekday().number_from_sunday() as i16;
 
     // 오늘 날짜가 excluded_dates에 포함된 반복일정
     sqlx::query(
