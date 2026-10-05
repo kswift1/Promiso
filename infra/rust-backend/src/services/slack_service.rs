@@ -237,7 +237,10 @@ pub async fn send_slack_notification(webhook_url: &str, message: &SlackMessage) 
             Err(())
         }
         Err(e) => {
-            tracing::warn!("Slack webhook failed: {}", e);
+            tracing::warn!(
+                "Slack webhook failed: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             Err(())
         }
     }

@@ -3016,7 +3016,10 @@ pub async fn extract_schedule(
         .send()
         .await
         .map_err(|e| {
-            tracing::error!("Gemini API request failed: {}", e);
+            tracing::error!(
+                "Gemini API request failed: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             AppError::Internal("일정 추출에 실패했습니다".to_string())
         })?;
 
@@ -3028,7 +3031,10 @@ pub async fn extract_schedule(
     }
 
     let gemini_response: GeminiResponse = response.json().await.map_err(|e| {
-        tracing::error!("Failed to parse Gemini response: {}", e);
+        tracing::error!(
+            "Failed to parse Gemini response: {}",
+            crate::services::safe_reqwest_error(e)
+        );
         AppError::Internal("일정 추출에 실패했습니다".to_string())
     })?;
 

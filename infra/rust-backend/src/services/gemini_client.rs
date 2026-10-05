@@ -205,7 +205,10 @@ pub async fn call_gemini(
     let body = build_request_body(prompt, max_output_tokens, disable_thinking);
 
     let client = Client::builder().build().map_err(|e| {
-        tracing::warn!("[Gemini] Failed to build HTTP client: {e}");
+        tracing::warn!(
+            "[Gemini] Failed to build HTTP client: {}",
+            crate::services::safe_reqwest_error(e)
+        );
         ()
     })?;
     let resp = client
@@ -215,7 +218,10 @@ pub async fn call_gemini(
         .send()
         .await
         .map_err(|e| {
-            tracing::warn!("[Gemini] Request error: {e}");
+            tracing::warn!(
+                "[Gemini] Request error: {}",
+                crate::services::safe_reqwest_error(e)
+            );
         })?;
 
     if !resp.status().is_success() {
@@ -224,7 +230,10 @@ pub async fn call_gemini(
     }
 
     let json: serde_json::Value = resp.json().await.map_err(|e| {
-        tracing::warn!("[Gemini] JSON parse error: {e}");
+        tracing::warn!(
+            "[Gemini] JSON parse error: {}",
+            crate::services::safe_reqwest_error(e)
+        );
     })?;
 
     let text = json

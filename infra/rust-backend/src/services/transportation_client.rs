@@ -327,7 +327,10 @@ pub async fn fetch_transit(
     {
         Ok(c) => c,
         Err(e) => {
-            tracing::warn!("[Transit] Failed to build HTTP client: {e}");
+            tracing::warn!(
+                "[Transit] Failed to build HTTP client: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             return vec![];
         }
     };
@@ -348,7 +351,10 @@ pub async fn fetch_transit(
         Ok(resp) if resp.status().is_success() => match resp.json::<serde_json::Value>().await {
             Ok(json) => parse_odsay_response(&json),
             Err(e) => {
-                tracing::warn!("[Transit] JSON parse error: {e}");
+                tracing::warn!(
+                    "[Transit] JSON parse error: {}",
+                    crate::services::safe_reqwest_error(e)
+                );
                 vec![]
             }
         },
@@ -357,7 +363,10 @@ pub async fn fetch_transit(
             vec![]
         }
         Err(e) => {
-            tracing::warn!("[Transit] fetch error: {e}");
+            tracing::warn!(
+                "[Transit] fetch error: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             vec![]
         }
     }
@@ -377,7 +386,10 @@ pub async fn fetch_driving(
     {
         Ok(c) => c,
         Err(e) => {
-            tracing::warn!("[Driving] Failed to build HTTP client: {e}");
+            tracing::warn!(
+                "[Driving] Failed to build HTTP client: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             return None;
         }
     };
@@ -396,7 +408,10 @@ pub async fn fetch_driving(
         Ok(resp) if resp.status().is_success() => match resp.json::<serde_json::Value>().await {
             Ok(json) => parse_kakao_response(&json),
             Err(e) => {
-                tracing::warn!("[Driving] JSON parse error: {e}");
+                tracing::warn!(
+                    "[Driving] JSON parse error: {}",
+                    crate::services::safe_reqwest_error(e)
+                );
                 None
             }
         },
@@ -405,7 +420,10 @@ pub async fn fetch_driving(
             None
         }
         Err(e) => {
-            tracing::warn!("[Driving] fetch error: {e}");
+            tracing::warn!(
+                "[Driving] fetch error: {}",
+                crate::services::safe_reqwest_error(e)
+            );
             None
         }
     }

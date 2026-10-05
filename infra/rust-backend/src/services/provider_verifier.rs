@@ -107,12 +107,12 @@ impl RealProviderVerifier {
             }
         }
 
-        let response = self
-            .http_client
-            .get(url)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(format!("Failed to fetch provider JWKs: {e}")))?;
+        let response = self.http_client.get(url).send().await.map_err(|e| {
+            AppError::Internal(format!(
+                "Failed to fetch provider JWKs: {}",
+                crate::services::safe_reqwest_error(e)
+            ))
+        })?;
 
         let max_age = response
             .headers()

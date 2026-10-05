@@ -8,7 +8,8 @@ use crate::errors::AppError;
 use crate::models::weather::{
     DailyForecastResponse, GetWeatherRequest, HourlyForecastResponse, WeatherResponse,
 };
-use crate::services::weather_client::convert_to_grid;
+use crate::services::safe_reqwest_error;
+use crate::services::weather_client::{build_kma_client, convert_to_grid, kma_get_json};
 
 const KST_OFFSET_SECONDS: i32 = 9 * 3600;
 const MAX_FORECAST_DAYS: i64 = 10;
@@ -184,10 +185,12 @@ pub async fn get_weather(req: GetWeatherRequest) -> Result<WeatherResponse, AppE
         });
     }
 
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|error| AppError::Internal(format!("Weather client init failed: {error}")))?;
+    let client = build_kma_client().map_err(|error| {
+        AppError::Internal(format!(
+            "Weather client init failed: {}",
+            safe_reqwest_error(error)
+        ))
+    })?;
 
     let forecasts = fetch_short_term(&client, req.latitude, req.longitude, &api_key).await?;
     let daily_forecasts = if req.target_date > now + Duration::days(SHORT_TERM_DAYS) {
@@ -211,9 +214,10 @@ async fn fetch_short_term(
     let (nx, ny) = convert_to_grid(latitude, longitude);
     let (base_date, base_time) = get_base_date_time(Utc::now());
 
-    let json = client
-        .get("https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst")
-        .query(&[
+    let json = kma_get_json(
+        client,
+        "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst",
+        &[
             ("serviceKey", api_key),
             ("numOfRows", "1000"),
             ("pageNo", "1"),
@@ -222,13 +226,10 @@ async fn fetch_short_term(
             ("base_time", &base_time),
             ("nx", &nx.to_string()),
             ("ny", &ny.to_string()),
-        ])
-        .send()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA short-term request failed: {error}")))?
-        .json::<Value>()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA short-term decode failed: {error}")))?;
+        ],
+    )
+    .await
+    .map_err(|error| AppError::Internal(format!("KMA short-term request failed: {error}")))?;
 
     let result_code = json
         .pointer("/response/header/resultCode")
@@ -384,22 +385,20 @@ async fn fetch_mid_temp(
     tm_fc: &str,
     api_key: &str,
 ) -> Result<HashMap<i64, (f64, f64)>, AppError> {
-    let json = client
-        .get("https://apis.data.go.kr/1360000/MidFcstInfoService/getMidTa")
-        .query(&[
+    let json = kma_get_json(
+        client,
+        "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidTa",
+        &[
             ("serviceKey", api_key),
             ("numOfRows", "10"),
             ("pageNo", "1"),
             ("dataType", "JSON"),
             ("regId", reg_id),
             ("tmFc", tm_fc),
-        ])
-        .send()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA mid temp request failed: {error}")))?
-        .json::<Value>()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA mid temp decode failed: {error}")))?;
+        ],
+    )
+    .await
+    .map_err(|error| AppError::Internal(format!("KMA mid temp request failed: {error}")))?;
 
     let result_code = json
         .pointer("/response/header/resultCode")
@@ -435,22 +434,20 @@ async fn fetch_mid_land(
     tm_fc: &str,
     api_key: &str,
 ) -> Result<HashMap<i64, (String, String, i32, i32)>, AppError> {
-    let json = client
-        .get("https://apis.data.go.kr/1360000/MidFcstInfoService/getMidLandFcst")
-        .query(&[
+    let json = kma_get_json(
+        client,
+        "https://apis.data.go.kr/1360000/MidFcstInfoService/getMidLandFcst",
+        &[
             ("serviceKey", api_key),
             ("numOfRows", "10"),
             ("pageNo", "1"),
             ("dataType", "JSON"),
             ("regId", reg_id),
             ("tmFc", tm_fc),
-        ])
-        .send()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA mid land request failed: {error}")))?
-        .json::<Value>()
-        .await
-        .map_err(|error| AppError::Internal(format!("KMA mid land decode failed: {error}")))?;
+        ],
+    )
+    .await
+    .map_err(|error| AppError::Internal(format!("KMA mid land request failed: {error}")))?;
 
     let result_code = json
         .pointer("/response/header/resultCode")

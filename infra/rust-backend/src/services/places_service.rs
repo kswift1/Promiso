@@ -31,7 +31,12 @@ pub async fn search_places(
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
-        .map_err(|e| AppError::Internal(format!("Failed to build HTTP client: {e}")))?;
+        .map_err(|e| {
+            AppError::Internal(format!(
+                "Failed to build HTTP client: {}",
+                crate::services::safe_reqwest_error(e)
+            ))
+        })?;
 
     let authorization = kakao_authorization_header(api_key)?;
     let resp = client
@@ -40,7 +45,12 @@ pub async fn search_places(
         .query(&[("query", query), ("size", &size.to_string())])
         .send()
         .await
-        .map_err(|e| AppError::Internal(format!("Kakao Places API request failed: {e}")))?;
+        .map_err(|e| {
+            AppError::Internal(format!(
+                "Kakao Places API request failed: {}",
+                crate::services::safe_reqwest_error(e)
+            ))
+        })?;
 
     if !resp.status().is_success() {
         return Err(AppError::Internal(format!(
@@ -49,10 +59,12 @@ pub async fn search_places(
         )));
     }
 
-    let json: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| AppError::Internal(format!("Kakao Places response parse failed: {e}")))?;
+    let json: serde_json::Value = resp.json().await.map_err(|e| {
+        AppError::Internal(format!(
+            "Kakao Places response parse failed: {}",
+            crate::services::safe_reqwest_error(e)
+        ))
+    })?;
 
     Ok(parse_kakao_places_response(&json))
 }
