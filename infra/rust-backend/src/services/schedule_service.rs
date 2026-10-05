@@ -3002,9 +3002,10 @@ pub async fn extract_schedule(
     });
 
     // 6. Gemini API 호출
+    let model = crate::services::gemini_client::schedule_extraction_model();
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
-        api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+        model, api_key
     );
 
     let client = reqwest::Client::new();

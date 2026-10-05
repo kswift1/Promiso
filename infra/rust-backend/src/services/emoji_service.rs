@@ -150,10 +150,17 @@ pub fn extract_emoji_from_response(text: &str) -> String {
     "📅".to_string()
 }
 
-/// Gemini 2.0 Flash로 이모지 생성, 실패 시 "📅" 반환
+/// Gemini(GEMINI_MODEL_EMOJI, 기본 flash-lite)로 이모지 생성, 실패 시 "📅" 반환
 pub async fn generate_emoji(title: &str, api_key: &str) -> Result<String, AppError> {
     let prompt = format!("이 제목에 어울리는 이모지 1개만 반환: {title}");
-    match gemini_client::call_gemini(&prompt, api_key).await {
+    match gemini_client::call_gemini(
+        &prompt,
+        api_key,
+        &gemini_client::emoji_model(),
+        gemini_client::EMOJI_MAX_OUTPUT_TOKENS,
+    )
+    .await
+    {
         Ok(text) => Ok(extract_emoji_from_response(&text)),
         Err(()) => Ok("📅".to_string()),
     }

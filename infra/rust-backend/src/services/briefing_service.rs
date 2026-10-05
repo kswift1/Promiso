@@ -674,23 +674,29 @@ pub async fn generate_briefing(
     );
 
     // 9. Gemini 호출 (성공 시에만 캐시 저장, 실패 시 stub은 반환만 하고 캐시 skip)
-    let (summary, detail, gemini_success) = if let Some(gemini_key) =
-        std::env::var("GEMINI_API_KEY").ok()
-    {
-        match crate::services::gemini_client::call_gemini(&prompt, &gemini_key).await {
-            Ok(text) => {
-                let (s, d) = crate::services::gemini_client::parse_gemini_response(&text);
-                (s, d, true)
+    let (summary, detail, gemini_success) =
+        if let Some(gemini_key) = std::env::var("GEMINI_API_KEY").ok() {
+            match crate::services::gemini_client::call_gemini(
+                &prompt,
+                &gemini_key,
+                &crate::services::gemini_client::briefing_model(),
+                crate::services::gemini_client::BRIEFING_MAX_OUTPUT_TOKENS,
+            )
+            .await
+            {
+                Ok(text) => {
+                    let (s, d) = crate::services::gemini_client::parse_gemini_response(&text);
+                    (s, d, true)
+                }
+                Err(()) => {
+                    let (s, d) = call_gemini_stub(&prompt);
+                    (s, d, false)
+                }
             }
-            Err(()) => {
-                let (s, d) = call_gemini_stub(&prompt);
-                (s, d, false)
-            }
-        }
-    } else {
-        let (s, d) = call_gemini_stub(&prompt);
-        (s, d, false)
-    };
+        } else {
+            let (s, d) = call_gemini_stub(&prompt);
+            (s, d, false)
+        };
 
     // 10. briefing_cache에 저장 (UPSERT) — Gemini 성공일 때만
     if gemini_success {
