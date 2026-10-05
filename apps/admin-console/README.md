@@ -7,7 +7,6 @@ Promiso 운영 콘솔용 웹 앱입니다.
 - ProPlan 운영 지원
 - 사용자 조회
 - entitlement override 관리
-- 운영 공지 푸시 발송
 - release control / audit log 확인
 
 ## 개발

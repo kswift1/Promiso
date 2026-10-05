@@ -4,7 +4,6 @@ import type {
   RemoteConfigTemplate,
 } from "firebase-admin/remote-config";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {onSchedule} from "firebase-functions/v2/scheduler";
 import {admin, REGION} from "../config";
 
 // Admin subcollection 헬퍼
@@ -19,11 +18,8 @@ import {
   AdminOverrideFilter,
   AdminEntitlementOverrideSnapshot,
   AdminDashboardSummary,
-  AdminPushJob,
-  AdminPushJobStatus,
   AdminReleaseControlField,
   AdminReleaseControls,
-  AdminPushAudience,
   AdminRole,
   AdminSubscriptionSnapshot,
   AdminSubscriptionFilter,
@@ -39,8 +35,6 @@ import {
   GetAdminAnalyticsSummaryRequest,
   GetAdminAnalyticsSummaryResponse,
   GetAdminDashboardSummaryResponse,
-  GetAdminPushJobsRequest,
-  GetAdminPushJobsResponse,
   GetAdminSessionResponse,
   GetAdminUsersResponse,
   GetAdminReleaseControlsResponse,
@@ -48,16 +42,8 @@ import {
   GetAdminUserSummaryResponse,
   GetAdminUserTimelineRequest,
   GetAdminUserTimelineResponse,
-  CancelAdminPushJobRequest,
-  CancelAdminPushJobResponse,
-  PreviewAdminPushAudienceRequest,
-  PreviewAdminPushAudienceResponse,
   RevokeEntitlementOverrideRequest,
   RevokeEntitlementOverrideResponse,
-  ScheduleAdminPushRequest,
-  ScheduleAdminPushResponse,
-  SendAdminPushRequest,
-  SendAdminPushResponse,
   UpdateAdminUserRequest,
   UpdateAdminUserResponse,
   UpdateAdminReleaseControlsRequest,
@@ -75,8 +61,6 @@ import {
 } from "../types/admin";
 import {getAdminAnalyticsSummaryData} from "../utils/adminAnalytics";
 import {isEntitlementOverrideActive} from "../utils/helpers";
-import {sendPushNotificationInternal} from "./notifications";
-import {NotificationType} from "../types/api";
 
 const RELEASE_CONTROL_KEYS = [
   "forceUpdateVersion",
@@ -88,7 +72,6 @@ const RELEASE_CONTROL_KEYS = [
   "notionFAQDatabaseId",
 ] as const;
 
-const MIN_SCHEDULE_LEAD_TIME_MS = 5 * 60 * 1000;
 const ADMIN_AUDIT_LOG_QUERY_SCAN_FACTOR = 10;
 const ADMIN_AUDIT_LOG_QUERY_MAX_SCAN = 500;
 const ADMIN_ROLE_ORDER: Record<AdminRole, number> = {
@@ -190,36 +173,6 @@ const RELEASE_CONTROL_GROUPS: Record<ReleaseControlKey, string> = {
  */
 function isAdminRole(value: unknown): value is AdminRole {
   return value === "owner" || value === "support" || value === "marketer";
-}
-
-/**
- * Returns true when the stored push audience is supported.
- * @param {unknown} value The stored audience value.
- * @return {boolean} True when the audience is supported.
- */
-function isAdminPushAudience(value: unknown): value is AdminPushAudience {
-  return (
-    value === "all" ||
-    value === "pro" ||
-    value === "free" ||
-    value === "test_user"
-  );
-}
-
-/**
- * Returns true when the stored push job status is supported.
- * @param {unknown} value The stored status value.
- * @return {boolean} True when the status is supported.
- */
-function isAdminPushJobStatus(value: unknown): value is AdminPushJobStatus {
-  return (
-    value === "scheduled" ||
-    value === "processing" ||
-    value === "completed" ||
-    value === "failed" ||
-    value === "cancelled" ||
-    value === "dry_run"
-  );
 }
 
 /**
@@ -621,13 +574,11 @@ async function buildAdminDashboardSummary(): Promise<AdminDashboardSummary> {
     usersSnapshot,
     adminUsersSnapshot,
     overridesSnapshot,
-    adminPushJobsSnapshot,
     adminAuditLogsSnapshot,
   ] = await Promise.all([
     db.collection("users").get(),
     adminCol("users").get(),
     db.collection("entitlementOverrides").get(),
-    adminCol("pushJobs").get(),
     adminCol("auditLogs").get(),
   ]);
 
@@ -646,7 +597,6 @@ async function buildAdminDashboardSummary(): Promise<AdminDashboardSummary> {
     freeUsers: usersSnapshot.docs.length - proUsers,
     activeOverrides,
     totalAdmins: adminUsersSnapshot.docs.length,
-    pushJobCount: adminPushJobsSnapshot.docs.length,
     auditLogCount: adminAuditLogsSnapshot.docs.length,
     remoteConfigVersion:
       remoteConfigTemplate.version?.versionNumber != null ?
@@ -1157,59 +1107,6 @@ function buildAdminEntitlementOverrideSnapshot(
 }
 
 /**
- * Builds a normalized admin push job payload for the console UI.
- * @param {string} id The job document id.
- * @param {Record<string, unknown>} data The stored job document.
- * @return {AdminPushJob} The normalized job payload.
- */
-function buildAdminPushJob(
-  id: string,
-  data: Record<string, unknown>
-): AdminPushJob {
-  const result = data.result && typeof data.result === "object" ?
-    data.result as Record<string, unknown> :
-    null;
-
-  return {
-    id,
-    status: isAdminPushJobStatus(data.status) ? data.status : "failed",
-    audience: isAdminPushAudience(data.audience) ? data.audience : "all",
-    title: typeof data.title === "string" ? data.title : "",
-    body: typeof data.body === "string" ? data.body : "",
-    dryRun: data.dryRun === true,
-    targetCount: typeof data.targetCount === "number" ? data.targetCount : null,
-    createdBy: typeof data.createdBy === "string" ? data.createdBy : null,
-    testUserId: typeof data.testUserId === "string" ? data.testUserId : null,
-    scheduledAt: toIsoString(data.scheduledAt),
-    createdAt: toIsoString(data.createdAt),
-    executionStartedAt: toIsoString(data.executionStartedAt),
-    completedAt: toIsoString(data.completedAt),
-    cancelledAt: toIsoString(data.cancelledAt),
-    cancelledReason:
-      typeof data.cancelledReason === "string" ? data.cancelledReason : null,
-    errorMessage:
-      typeof data.errorMessage === "string" ? data.errorMessage : null,
-    result: result ? {
-      successCount:
-        typeof result.successCount === "number" ? result.successCount : 0,
-      failureCount:
-        typeof result.failureCount === "number" ? result.failureCount : 0,
-    } : null,
-  };
-}
-
-/**
- * Normalizes a requested admin push job status filter.
- * @param {unknown} value The raw request value.
- * @return {AdminPushJobStatus | "all"} The validated status filter.
- */
-function normalizePushJobStatus(
-  value: unknown
-): AdminPushJobStatus | "all" {
-  return isAdminPushJobStatus(value) ? value : "all";
-}
-
-/**
  * Normalizes analytics window input to supported presets.
  * @param {unknown} value The requested window value.
  * @return {AdminAnalyticsWindowDays} The normalized window.
@@ -1356,146 +1253,6 @@ async function isEffectivePro(userId: string): Promise<boolean> {
   const overrideActive = isEntitlementOverrideActive(overrideSnapshot.data());
 
   return hasActiveSubscription(subscriptionStatus) || overrideActive;
-}
-
-/**
- * Resolves the concrete user ids for an admin push audience selector.
- * @param {object} params The audience selector input.
- * @return {Promise<string[]>} The resolved user ids.
- */
-async function resolvePushAudience(params: {
-  audience: AdminPushAudience;
-  testUserId: string | null;
-}): Promise<string[]> {
-  const {audience, testUserId} = params;
-  const db = admin.firestore();
-
-  if (audience === "test_user") {
-    if (!testUserId) {
-      throw new HttpsError("invalid-argument", "testUserId는 필수입니다");
-    }
-
-    const userSnapshot = await db.collection("users").doc(testUserId).get();
-    if (!userSnapshot.exists) {
-      throw new HttpsError("not-found", "테스트 대상 사용자를 찾을 수 없습니다");
-    }
-
-    return [testUserId];
-  }
-
-  const usersSnapshot = await db.collection("users").get();
-  const allUserIds = usersSnapshot.docs.map((doc) => doc.id);
-
-  if (audience === "all") {
-    return allUserIds;
-  }
-
-  const effectiveProMap = await Promise.all(
-    allUserIds.map(async (userId) => ({
-      userId,
-      isPro: await isEffectivePro(userId),
-    }))
-  );
-
-  return effectiveProMap
-    .filter((item) => (audience === "pro" ? item.isPro : !item.isPro))
-    .map((item) => item.userId);
-}
-
-/**
- * Ensures a scheduled push timestamp is valid and in the future.
- * @param {string | undefined} value The requested ISO datetime string.
- * @return {string} The normalized ISO datetime string.
- */
-function requireFutureScheduledAt(value: string | undefined): string {
-  const scheduledAt = requireString(value, "scheduledAt");
-  const parsed = new Date(scheduledAt);
-
-  if (Number.isNaN(parsed.getTime())) {
-    throw new HttpsError("invalid-argument", "scheduledAt 형식이 올바르지 않습니다");
-  }
-
-  if (parsed.getTime() - Date.now() < MIN_SCHEDULE_LEAD_TIME_MS) {
-    throw new HttpsError(
-      "invalid-argument",
-      "scheduledAt은 최소 5분 이후 시각이어야 합니다"
-    );
-  }
-
-  return parsed.toISOString();
-}
-
-/**
- * Sends an admin push after resolving the concrete audience.
- * @param {object} params The push payload.
- * @return {Promise<{targetCount: number, successCount: number,
- * failureCount: number}>} The delivery counts.
- */
-async function deliverAdminPush(params: {
-  actorId: string;
-  title: string;
-  body: string;
-  audience: AdminPushAudience;
-  testUserId: string | null;
-}): Promise<{
-  targetCount: number;
-  successCount: number;
-  failureCount: number;
-}> {
-  const {actorId, title, body, audience, testUserId} = params;
-  const userIds = await resolvePushAudience({
-    audience,
-    testUserId,
-  });
-  const result = await sendPushNotificationInternal({
-    userIds,
-    type: NotificationType.System,
-    title,
-    body,
-    promiseId: null,
-    groupId: null,
-    relatedUserId: actorId,
-    data: null,
-  });
-
-  return {
-    targetCount: userIds.length,
-    successCount: result.successCount,
-    failureCount: result.failureCount,
-  };
-}
-
-/**
- * Returns true when an equivalent scheduled push job already exists.
- * @param {object} params The scheduled push identity fields.
- * @return {Promise<boolean>} True when a duplicate scheduled job exists.
- */
-async function hasDuplicateScheduledPushJob(params: {
-  title: string;
-  body: string;
-  audience: AdminPushAudience;
-  scheduledAt: string;
-  testUserId: string | null;
-}): Promise<boolean> {
-  const {title, body, audience, scheduledAt, testUserId} = params;
-  const snapshot = await admin.firestore()
-    .collection("admin").doc("config").collection("pushJobs")
-    .get();
-
-  return snapshot.docs.some((doc) => {
-    const job = buildAdminPushJob(
-      doc.id,
-      doc.data() as Record<string, unknown>
-    );
-    return (
-      job.status === "scheduled" &&
-      job.title === title &&
-      job.body === body &&
-      job.audience === audience &&
-      job.scheduledAt === scheduledAt &&
-      job.testUserId === testUserId
-    );
-  });
 }
 
 export const getAdminUserSummary = onCall<GetAdminUserSummaryRequest>(
@@ -2001,421 +1758,6 @@ export const revokeEntitlementOverride =
       return {success: true};
     }
   );
-
-export const getAdminPushJobs = onCall<GetAdminPushJobsRequest>(
-  {region: REGION},
-  async (request): Promise<GetAdminPushJobsResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const adminUser = await getAdminUserDocument(request.auth.uid);
-    requireAdminRole(adminUser, ["owner", "marketer"]);
-
-    const requestedLimit = request.data.limit ?? 20;
-    const limit = Math.min(Math.max(requestedLimit, 1), 50);
-    const status = normalizePushJobStatus(request.data.status);
-    const snapshot = await admin.firestore()
-      .collection("admin").doc("config").collection("pushJobs")
-      .orderBy("createdAt", "desc")
-      .get();
-    const jobs = snapshot.docs
-      .map((doc) =>
-        buildAdminPushJob(doc.id, doc.data() as Record<string, unknown>)
-      )
-      .filter((job) => status === "all" || job.status === status)
-      .slice(0, limit);
-
-    return {
-      success: true,
-      jobs,
-    };
-  }
-);
-
-export const previewAdminPushAudience = onCall<PreviewAdminPushAudienceRequest>(
-  {region: REGION},
-  async (request): Promise<PreviewAdminPushAudienceResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const adminUser = await getAdminUserDocument(request.auth.uid);
-    requireAdminRole(adminUser, ["owner", "marketer"]);
-
-    const audience = request.data.audience;
-    const testUserId = request.data.testUserId?.trim() ?? null;
-
-    if (!isAdminPushAudience(audience)) {
-      throw new HttpsError("invalid-argument", "audience는 필수입니다");
-    }
-
-    const userIds = await resolvePushAudience({
-      audience,
-      testUserId,
-    });
-
-    return {
-      success: true,
-      targetCount: userIds.length,
-    };
-  }
-);
-
-export const scheduleAdminPush = onCall<ScheduleAdminPushRequest>(
-  {region: REGION},
-  async (request): Promise<ScheduleAdminPushResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const actorId = request.auth.uid;
-    const adminUser = await getAdminUserDocument(actorId);
-    requireAdminRole(adminUser, ["owner", "marketer"]);
-
-    const title = requireString(request.data.title, "title");
-    const body = requireString(request.data.body, "body");
-    const audience = request.data.audience;
-    const scheduledAt = requireFutureScheduledAt(request.data.scheduledAt);
-    const testUserId = request.data.testUserId?.trim() ?? null;
-
-    if (!isAdminPushAudience(audience)) {
-      throw new HttpsError("invalid-argument", "audience는 필수입니다");
-    }
-
-    if (audience === "test_user") {
-      await resolvePushAudience({
-        audience,
-        testUserId,
-      });
-    }
-
-    if (await hasDuplicateScheduledPushJob({
-      title,
-      body,
-      audience,
-      scheduledAt,
-      testUserId,
-    })) {
-      throw new HttpsError(
-        "already-exists",
-        "같은 내용과 대상의 예약 push job이 이미 존재합니다"
-      );
-    }
-
-    const jobRef = await adminCol("pushJobs").add({
-      status: "scheduled",
-      audience,
-      title,
-      body,
-      dryRun: false,
-      targetCount: null,
-      createdBy: actorId,
-      testUserId,
-      scheduledAt,
-      createdAt: FieldValue.serverTimestamp(),
-      executionStartedAt: null,
-      completedAt: null,
-      cancelledAt: null,
-      cancelledReason: null,
-      errorMessage: null,
-      result: null,
-    });
-
-    await writeAuditLog({
-      actorId,
-      action: "schedule_admin_push",
-      targetId: jobRef.id,
-      after: {
-        audience,
-        scheduledAt,
-        testUserId,
-      },
-    });
-
-    return {
-      success: true,
-      jobId: jobRef.id,
-      scheduledAt,
-    };
-  }
-);
-
-export const cancelAdminPushJob = onCall<CancelAdminPushJobRequest>(
-  {region: REGION},
-  async (request): Promise<CancelAdminPushJobResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const actorId = request.auth.uid;
-    const adminUser = await getAdminUserDocument(actorId);
-    requireAdminRole(adminUser, ["owner", "marketer"]);
-
-    const jobId = requireString(request.data.jobId, "jobId");
-    const reason = request.data.reason?.trim() ?? null;
-    const jobRef = adminCol("pushJobs").doc(jobId);
-    const snapshot = await jobRef.get();
-
-    if (!snapshot.exists) {
-      throw new HttpsError("not-found", "대상 push job을 찾을 수 없습니다");
-    }
-
-    const job = buildAdminPushJob(
-      jobId,
-      snapshot.data() as Record<string, unknown>
-    );
-
-    if (job.status !== "scheduled") {
-      throw new HttpsError(
-        "failed-precondition",
-        "scheduled 상태의 job만 취소할 수 있습니다"
-      );
-    }
-
-    await jobRef.set({
-      status: "cancelled",
-      cancelledAt: FieldValue.serverTimestamp(),
-      cancelledReason: reason,
-      errorMessage: null,
-    }, {merge: true});
-
-    await writeAuditLog({
-      actorId,
-      action: "cancel_scheduled_admin_push",
-      targetId: jobId,
-      before: {
-        status: job.status,
-        scheduledAt: job.scheduledAt,
-      },
-      after: {
-        status: "cancelled",
-        reason,
-      },
-    });
-
-    return {success: true};
-  }
-);
-
-export const sendAdminPush = onCall<SendAdminPushRequest>(
-  {region: REGION},
-  async (request): Promise<SendAdminPushResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const actorId = request.auth.uid;
-    const adminUser = await getAdminUserDocument(actorId);
-    requireAdminRole(adminUser, ["owner", "marketer"]);
-
-    const title = request.data.title?.trim();
-    const body = request.data.body?.trim();
-    const audience = request.data.audience;
-    const dryRun = request.data.dryRun ?? false;
-    const testUserId = request.data.testUserId?.trim() ?? null;
-
-    if (!title || !body) {
-      throw new HttpsError("invalid-argument", "title과 body는 필수입니다");
-    }
-
-    if (!audience) {
-      throw new HttpsError("invalid-argument", "audience는 필수입니다");
-    }
-
-    if (!isAdminPushAudience(audience)) {
-      throw new HttpsError("invalid-argument", "audience는 필수입니다");
-    }
-
-    const jobRef = await adminCol("pushJobs").add({
-      status: dryRun ? "dry_run" : "processing",
-      audience,
-      title,
-      body,
-      dryRun,
-      targetCount: null,
-      createdBy: actorId,
-      testUserId,
-      result: dryRun ? {
-        successCount: 0,
-        failureCount: 0,
-      } : null,
-      scheduledAt: null,
-      createdAt: FieldValue.serverTimestamp(),
-      executionStartedAt: dryRun ? null : FieldValue.serverTimestamp(),
-      completedAt: null,
-      cancelledAt: null,
-      cancelledReason: null,
-      errorMessage: null,
-    });
-
-    if (dryRun) {
-      const userIds = await resolvePushAudience({
-        audience,
-        testUserId,
-      });
-
-      await jobRef.set({
-        targetCount: userIds.length,
-      }, {merge: true});
-
-      await writeAuditLog({
-        actorId,
-        action: "dry_run_admin_push",
-        targetId: jobRef.id,
-        after: {
-          audience,
-          targetCount: userIds.length,
-        },
-      });
-
-      return {
-        success: true,
-        dryRun: true,
-        targetCount: userIds.length,
-        successCount: 0,
-        failureCount: 0,
-        jobId: jobRef.id,
-      };
-    }
-
-    const delivery = await deliverAdminPush({
-      actorId,
-      title,
-      body,
-      audience,
-      testUserId,
-    });
-
-    await jobRef.set({
-      status: "completed",
-      targetCount: delivery.targetCount,
-      result: {
-        successCount: delivery.successCount,
-        failureCount: delivery.failureCount,
-      },
-      completedAt: FieldValue.serverTimestamp(),
-      errorMessage: null,
-    }, {merge: true});
-
-    await writeAuditLog({
-      actorId,
-      action: "send_admin_push",
-      targetId: jobRef.id,
-      after: {
-        audience,
-        targetCount: delivery.targetCount,
-        successCount: delivery.successCount,
-        failureCount: delivery.failureCount,
-      },
-    });
-
-    return {
-      success: true,
-      dryRun: false,
-      targetCount: delivery.targetCount,
-      successCount: delivery.successCount,
-      failureCount: delivery.failureCount,
-      jobId: jobRef.id,
-    };
-  }
-);
-
-export const dispatchScheduledAdminPushes = onSchedule(
-  {
-    schedule: "* * * * *",
-    region: REGION,
-    timeZone: "UTC",
-  },
-  async () => {
-    const now = new Date(Date.now());
-    const snapshot = await admin.firestore()
-      .collection("admin").doc("config").collection("pushJobs")
-      .where("status", "==", "scheduled")
-      .where("scheduledAt", "<=", now.toISOString())
-      .orderBy("scheduledAt", "asc")
-      .get();
-
-    for (const doc of snapshot.docs) {
-      const data = doc.data() as Record<string, unknown>;
-      const job = buildAdminPushJob(doc.id, data);
-
-      if (!job.scheduledAt) {
-        continue;
-      }
-
-      const scheduledTime = new Date(job.scheduledAt);
-      if (Number.isNaN(scheduledTime.getTime())) {
-        continue;
-      }
-
-      await doc.ref.set({
-        status: "processing",
-        executionStartedAt: FieldValue.serverTimestamp(),
-        errorMessage: null,
-      }, {merge: true});
-
-      try {
-        if (!isAdminPushAudience(data.audience)) {
-          throw new Error("유효하지 않은 audience입니다");
-        }
-
-        const actorId = job.createdBy ?? "system";
-        const delivery = await deliverAdminPush({
-          actorId,
-          title: job.title,
-          body: job.body,
-          audience: data.audience,
-          testUserId: job.testUserId,
-        });
-
-        await doc.ref.set({
-          status: "completed",
-          targetCount: delivery.targetCount,
-          result: {
-            successCount: delivery.successCount,
-            failureCount: delivery.failureCount,
-          },
-          completedAt: FieldValue.serverTimestamp(),
-          errorMessage: null,
-        }, {merge: true});
-
-        await writeAuditLog({
-          actorId,
-          action: "send_scheduled_admin_push",
-          targetId: doc.id,
-          after: {
-            audience: data.audience,
-            scheduledAt: job.scheduledAt,
-            targetCount: delivery.targetCount,
-            successCount: delivery.successCount,
-            failureCount: delivery.failureCount,
-          },
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ?
-          error.message :
-          "예약 푸시 실행에 실패했습니다";
-
-        await doc.ref.set({
-          status: "failed",
-          errorMessage,
-          completedAt: FieldValue.serverTimestamp(),
-        }, {merge: true});
-
-        await writeAuditLog({
-          actorId: job.createdBy ?? "system",
-          action: "fail_scheduled_admin_push",
-          targetId: doc.id,
-          after: {
-            scheduledAt: job.scheduledAt,
-            errorMessage,
-          },
-        });
-      }
-    }
-  }
-);
 
 // ============================================================================
 // Coupon Functions

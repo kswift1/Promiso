@@ -1,5 +1,4 @@
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
@@ -62,12 +61,6 @@ const navItems = [
     label: "쿠폰 관리",
     path: "/coupons",
     icon: <ConfirmationNumberRoundedIcon />,
-    allowedRoles: ["owner", "marketer"] as AdminRole[],
-  },
-  {
-    label: "푸시 작업",
-    path: "/push-jobs",
-    icon: <CampaignRoundedIcon />,
     allowedRoles: ["owner", "marketer"] as AdminRole[],
   },
   {

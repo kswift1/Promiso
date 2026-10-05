@@ -11,7 +11,6 @@ import {CouponsPage} from "./pages/CouponsPage";
 import {EntitlementsPage} from "./pages/EntitlementsPage";
 import {LoginPage} from "./pages/LoginPage";
 import {ProPlanDashboardPage} from "./pages/ProPlanDashboardPage";
-import {PushJobsPage} from "./pages/PushJobsPage";
 import {ReleaseControlsPage} from "./pages/ReleaseControlsPage";
 import {UserTimelinePage} from "./pages/UserTimelinePage";
 import {UsersPage} from "./pages/UsersPage";
@@ -124,14 +123,6 @@ export function App() {
           element={
             <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
               <CouponsPage />
-            </RoleProtectedRoute>
-          }
-        />
-        <Route
-          path="/push-jobs"
-          element={
-            <RoleProtectedRoute allowedRoles={["owner", "marketer"]}>
-              <PushJobsPage />
             </RoleProtectedRoute>
           }
         />

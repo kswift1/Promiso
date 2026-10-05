@@ -1,5 +1,7 @@
 # Admin Console Plan
 
+> **제거됨**: 관리자 푸시 / 예약 발송(Push Jobs, `sendAdminPush`, `adminPushJobs` 등) 기능은 제거되었습니다. 아래 푸시 관련 기술은 과거 기획 기록입니다.
+
 ## Overview
 
 ProPlan 출시와 함께 필요한 것은 "모든 것을 편집하는 백오피스"가 아니라, 운영자가 핵심 업무를 빠르게 처리할 수 있는 작은 운영 콘솔입니다.
@@ -89,7 +91,7 @@ ProPlan 출시 직후 가장 많이 생기는 운영 이슈는 대체로 아래 
 - 보정 만료일 설정
 - 보정 사유 입력
 
-#### C. Push Jobs
+#### C. Push Jobs (제거됨)
 - 테스트 발송
 - dry-run
 - 전체 발송
@@ -289,7 +291,7 @@ apps/admin-console
 }
 ```
 
-#### `adminPushJobs/{jobId}`
+#### `adminPushJobs/{jobId}` (제거됨)
 
 예시 필드:
 ```json
@@ -389,7 +391,7 @@ effectivePro = active subscription OR active entitlement override
 - expiry 설정
 - reason 기록
 
-### D. Push Jobs
+### D. Push Jobs (제거됨)
 - message 작성
 - audience 선택
 - dry-run
@@ -425,7 +427,7 @@ effectivePro = active subscription OR active entitlement override
   - `getAdminUserSummary`
   - `grantEntitlementOverride`
   - `revokeEntitlementOverride`
-  - `sendAdminPush`
+  - `sendAdminPush` (제거됨)
   - `updateRemoteConfig`
 
 ### Phase 2. Admin UI MVP

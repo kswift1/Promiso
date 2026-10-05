@@ -135,98 +135,6 @@ export interface RevokeEntitlementOverrideResponse {
   success: true;
 }
 
-export type AdminPushAudience = "all" | "pro" | "free" | "test_user";
-export type AdminPushJobStatus =
-  "scheduled" |
-  "processing" |
-  "completed" |
-  "failed" |
-  "cancelled" |
-  "dry_run";
-
-export interface AdminPushJob {
-  id: string;
-  status: AdminPushJobStatus;
-  audience: AdminPushAudience;
-  title: string;
-  body: string;
-  dryRun: boolean;
-  targetCount: number | null;
-  createdBy: string | null;
-  testUserId: string | null;
-  scheduledAt: string | null;
-  createdAt: string | null;
-  executionStartedAt: string | null;
-  completedAt: string | null;
-  cancelledAt: string | null;
-  cancelledReason: string | null;
-  errorMessage: string | null;
-  result: {
-    successCount: number;
-    failureCount: number;
-  } | null;
-}
-
-export interface SendAdminPushRequest {
-  title: string;
-  body: string;
-  audience: AdminPushAudience;
-  dryRun?: boolean;
-  testUserId?: string | null;
-}
-
-export interface SendAdminPushResponse {
-  success: true;
-  dryRun: boolean;
-  targetCount: number;
-  successCount: number;
-  failureCount: number;
-  jobId: string;
-}
-
-export interface PreviewAdminPushAudienceRequest {
-  audience: AdminPushAudience;
-  testUserId?: string | null;
-}
-
-export interface PreviewAdminPushAudienceResponse {
-  success: true;
-  targetCount: number;
-}
-
-export interface ScheduleAdminPushRequest {
-  title: string;
-  body: string;
-  audience: AdminPushAudience;
-  scheduledAt: string;
-  testUserId?: string | null;
-}
-
-export interface ScheduleAdminPushResponse {
-  success: true;
-  jobId: string;
-  scheduledAt: string;
-}
-
-export interface GetAdminPushJobsRequest {
-  limit?: number;
-  status?: AdminPushJobStatus | "all";
-}
-
-export interface GetAdminPushJobsResponse {
-  success: true;
-  jobs: AdminPushJob[];
-}
-
-export interface CancelAdminPushJobRequest {
-  jobId: string;
-  reason?: string | null;
-}
-
-export interface CancelAdminPushJobResponse {
-  success: true;
-}
-
 export type AdminReleaseControlKey =
   "forceUpdateVersion" |
   "recommendedVersion" |
@@ -356,7 +264,6 @@ export interface AdminDashboardSummary {
   freeUsers: number;
   activeOverrides: number;
   totalAdmins: number;
-  pushJobCount: number;
   auditLogCount: number;
   remoteConfigVersion: string | null;
   remoteConfigUpdatedAt: string | null;

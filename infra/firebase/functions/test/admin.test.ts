@@ -9,13 +9,7 @@ import {
   jest,
 } from "@jest/globals";
 
-const sendPushNotificationInternalMock = jest.fn();
 const getAdminAnalyticsSummaryDataMock = jest.fn();
-
-jest.mock("../src/functions/notifications", () => ({
-  sendPushNotificationInternal: (...args: unknown[]) =>
-    sendPushNotificationInternalMock(...args),
-}));
 
 jest.mock("../src/utils/adminAnalytics", () => ({
   getAdminAnalyticsSummaryData: (...args: unknown[]) =>
@@ -39,20 +33,14 @@ describe("admin functions", () => {
   let getAdminDashboardSummary: any;
   let getAdminAnalyticsSummary: any;
   let getAdminAuditLogs: any;
-  let getAdminPushJobs: any;
   let getAdminUsers: any;
   let createAdminUser: any;
   let updateAdminUser: any;
-  let previewAdminPushAudience: any;
   let getAdminUserSummary: any;
   let getAdminUserTimeline: any;
   let getAdminReleaseControls: any;
-  let cancelAdminPushJob: any;
-  let dispatchScheduledAdminPushes: any;
   let grantEntitlementOverride: any;
   let revokeEntitlementOverride: any;
-  let scheduleAdminPush: any;
-  let sendAdminPush: any;
   let updateAdminReleaseControls: any;
 
   let adminUsersData: Map<string, Record<string, unknown>>;
@@ -66,12 +54,6 @@ describe("admin functions", () => {
     operator: string;
     value: unknown;
   }>;
-  let adminPushJobDocs: Record<string, unknown>[];
-  let adminPushJobQueryCalls: Array<{
-    field: string;
-    operator: string;
-    value: unknown;
-  }>;
   let remoteConfigTemplate: Record<string, any>;
 
   beforeEach(async () => {
@@ -79,11 +61,6 @@ describe("admin functions", () => {
     jest.spyOn(Date, "now").mockReturnValue(
       new Date("2026-03-13T00:00:00.000Z").getTime()
     );
-    sendPushNotificationInternalMock.mockResolvedValue({
-      success: true,
-      successCount: 1,
-      failureCount: 0,
-    });
     getAdminAnalyticsSummaryDataMock.mockResolvedValue({
       windowDays: 7,
       ga4: {
@@ -110,8 +87,6 @@ describe("admin functions", () => {
     overrideData = new Map();
     auditLogAdds = [];
     adminAuditLogQueryCalls = [];
-    adminPushJobDocs = [];
-    adminPushJobQueryCalls = [];
     remoteConfigTemplate = {
       parameters: {},
       parameterGroups: {
@@ -246,144 +221,6 @@ describe("admin functions", () => {
                 return createAuditLogQuery([{field, operator, value}]);
               }),
               orderBy: jest.fn(() => createAuditLogQuery()),
-            };
-          },
-          "pushJobs": () => {
-            const toComparableValue = (value: unknown) => {
-              if (
-                value &&
-                typeof value === "object" &&
-                "toDate" in value &&
-                typeof (value as {toDate?: () => Date}).toDate === "function"
-              ) {
-                return (value as {toDate: () => Date}).toDate().toISOString();
-              }
-
-              return value;
-            };
-
-            const buildAdminPushJobDocs = (
-              filters: Array<{field: string; operator: string; value: unknown}> = [],
-              orderField?: string,
-              orderDirection: "asc" | "desc" = "asc",
-            ) => {
-              let docs = adminPushJobDocs
-                .map((data, index) => ({
-                  id: `job-${index + 1}`,
-                  ref: {
-                    set: jest.fn(async (nextData: Record<string, unknown>) => {
-                      adminPushJobDocs[index] = {
-                        ...adminPushJobDocs[index],
-                        ...nextData,
-                      };
-                    }),
-                  },
-                  data: () => data,
-                }))
-                .filter((doc) =>
-                  filters.every(({field, operator, value}) => {
-                    const data = doc.data();
-                    const fieldValue = data[field];
-
-                    if (operator === "==") {
-                      return fieldValue === value;
-                    }
-
-                    if (operator === "<=") {
-                      return (
-                        typeof fieldValue === "string" &&
-                        typeof value === "string" &&
-                        fieldValue <= value
-                      );
-                    }
-
-                    return false;
-                  })
-                );
-
-              if (orderField) {
-                docs = [...docs].sort((left, right) => {
-                  const leftValue = toComparableValue(left.data()[orderField]);
-                  const rightValue = toComparableValue(right.data()[orderField]);
-
-                  if (leftValue === rightValue) {
-                    return 0;
-                  }
-
-                  if (orderDirection === "desc") {
-                    return leftValue > rightValue ? -1 : 1;
-                  }
-
-                  return leftValue < rightValue ? -1 : 1;
-                });
-              }
-
-              return docs;
-            };
-
-            const createAdminPushJobQuery = (
-              filters: Array<{field: string; operator: string; value: unknown}> = [],
-              orderField?: string,
-              orderDirection: "asc" | "desc" = "asc",
-            ) => ({
-              where: jest.fn((field: string, operator: string, value: unknown) => {
-                adminPushJobQueryCalls.push({field, operator, value});
-                return createAdminPushJobQuery(
-                  [...filters, {field, operator, value}],
-                  orderField,
-                  orderDirection
-                );
-              }),
-              orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
-                createAdminPushJobQuery(filters, field, direction)
-              ),
-              get: jest.fn().mockResolvedValue({
-                docs: buildAdminPushJobDocs(filters, orderField, orderDirection),
-              }),
-            });
-
-            return {
-              doc: jest.fn((id: string) => {
-                const index = Number(id.replace("job-", "")) - 1;
-
-                return {
-                  get: jest.fn().mockResolvedValue({
-                    id,
-                    exists: index >= 0 && Boolean(adminPushJobDocs[index]),
-                    data: () => adminPushJobDocs[index],
-                  }),
-                  set: jest.fn(async (nextData: Record<string, unknown>) => {
-                    const previous = adminPushJobDocs[index] ?? {};
-                    adminPushJobDocs[index] = {
-                      ...previous,
-                      ...nextData,
-                    };
-                  }),
-                };
-              }),
-              add: jest.fn(async (data: Record<string, unknown>) => {
-                adminPushJobDocs.push(data);
-                const jobId = `job-${adminPushJobDocs.length}`;
-                return {
-                  id: jobId,
-                  set: jest.fn(async (nextData: Record<string, unknown>) => {
-                    adminPushJobDocs[adminPushJobDocs.length - 1] = {
-                      ...adminPushJobDocs[adminPushJobDocs.length - 1],
-                      ...nextData,
-                    };
-                  }),
-                };
-              }),
-              get: jest.fn().mockResolvedValue({
-                docs: buildAdminPushJobDocs(),
-              }),
-              where: jest.fn((field: string, operator: string, value: unknown) => {
-                adminPushJobQueryCalls.push({field, operator, value});
-                return createAdminPushJobQuery([{field, operator, value}]);
-              }),
-              orderBy: jest.fn((field: string, direction: "asc" | "desc" = "asc") =>
-                createAdminPushJobQuery([], field, direction)
-              ),
             };
           },
         };
@@ -543,20 +380,14 @@ describe("admin functions", () => {
     getAdminDashboardSummary = functions.getAdminDashboardSummary;
     getAdminAnalyticsSummary = functions.getAdminAnalyticsSummary;
     getAdminAuditLogs = functions.getAdminAuditLogs;
-    getAdminPushJobs = functions.getAdminPushJobs;
     getAdminUsers = functions.getAdminUsers;
     createAdminUser = functions.createAdminUser;
     updateAdminUser = functions.updateAdminUser;
-    previewAdminPushAudience = functions.previewAdminPushAudience;
     getAdminUserSummary = functions.getAdminUserSummary;
     getAdminUserTimeline = functions.getAdminUserTimeline;
     getAdminReleaseControls = functions.getAdminReleaseControls;
-    cancelAdminPushJob = functions.cancelAdminPushJob;
-    dispatchScheduledAdminPushes = functions.dispatchScheduledAdminPushes;
     grantEntitlementOverride = functions.grantEntitlementOverride;
     revokeEntitlementOverride = functions.revokeEntitlementOverride;
-    scheduleAdminPush = functions.scheduleAdminPush;
-    sendAdminPush = functions.sendAdminPush;
     updateAdminReleaseControls = functions.updateAdminReleaseControls;
   });
 
@@ -1301,10 +1132,9 @@ describe("admin functions", () => {
     overrideData.set("user-b", {
       isActive: true,
     });
-    adminPushJobDocs.push({status: "completed"});
     auditLogAdds.push({
       actorId: "admin-user",
-      action: "send_admin_push",
+      action: "update_admin_user",
       createdAt: {
         toDate: () => new Date("2026-03-13T00:00:00.000Z"),
       },
@@ -1329,7 +1159,6 @@ describe("admin functions", () => {
         freeUsers: 0,
         activeOverrides: 1,
         totalAdmins: 2,
-        pushJobCount: 1,
         auditLogCount: 1,
         remoteConfigVersion: "12",
         remoteConfigUpdatedAt: "2026-03-13T00:00:00.000Z",
@@ -1897,425 +1726,5 @@ describe("admin functions", () => {
       action: "revoke_entitlement_override",
       targetId: "target-user",
     }));
-  });
-
-  it("예약 admin push를 생성하고 audit log를 남긴다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-
-    const handler = (scheduleAdminPush as any).run;
-    const result = await handler({
-      data: {
-        title: "예약 공지",
-        body: "내일 배포 안내",
-        audience: "all",
-        scheduledAt: "2026-03-14T00:00:00.000Z",
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      success: true,
-      jobId: "job-1",
-      scheduledAt: "2026-03-14T00:00:00.000Z",
-    });
-    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
-      status: "scheduled",
-      audience: "all",
-      title: "예약 공지",
-      body: "내일 배포 안내",
-      dryRun: false,
-      scheduledAt: "2026-03-14T00:00:00.000Z",
-    }));
-    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
-      actorId: "admin-user",
-      action: "schedule_admin_push",
-      targetId: "job-1",
-    }));
-  });
-
-  it("push audience preview는 대상 수를 반환한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "marketer",
-      enabled: true,
-    });
-    usersData.set("user-pro", {nickname: "pro"});
-    usersData.set("user-free", {nickname: "free"});
-    subscriptionData.set("user-pro", {
-      status: "subscribed",
-    });
-
-    const handler = (previewAdminPushAudience as any).run;
-    const result = await handler({
-      data: {
-        audience: "pro",
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "marketer@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      success: true,
-      targetCount: 1,
-    });
-  });
-
-  it("예약 push는 최소 5분 이후 시각만 허용한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-
-    const handler = (scheduleAdminPush as any).run;
-
-    await expect(handler({
-      data: {
-        title: "예약 공지",
-        body: "곧 발송",
-        audience: "all",
-        scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    })).rejects.toMatchObject({
-      code: "invalid-argument",
-      message: "scheduledAt은 최소 5분 이후 시각이어야 합니다",
-    });
-  });
-
-  it("같은 내용과 대상의 예약 push 중복 생성을 막는다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-    adminPushJobDocs.push({
-      status: "scheduled",
-      audience: "all",
-      title: "예약 공지",
-      body: "내일 배포 안내",
-      dryRun: false,
-      targetCount: null,
-      createdBy: "admin-user",
-      testUserId: null,
-      scheduledAt: "2026-03-14T00:00:00.000Z",
-      createdAt: {
-        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
-      },
-      result: null,
-    });
-
-    const handler = (scheduleAdminPush as any).run;
-
-    await expect(handler({
-      data: {
-        title: "예약 공지",
-        body: "내일 배포 안내",
-        audience: "all",
-        scheduledAt: "2026-03-14T00:00:00.000Z",
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    })).rejects.toMatchObject({
-      code: "already-exists",
-      message: "같은 내용과 대상의 예약 push job이 이미 존재합니다",
-    });
-    expect(adminPushJobDocs).toHaveLength(1);
-    expect(auditLogAdds).toHaveLength(0);
-  });
-
-  it("예약 push job 목록을 최신순으로 조회한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-    adminPushJobDocs.push({
-      status: "scheduled",
-      audience: "all",
-      title: "첫 번째",
-      body: "old",
-      dryRun: false,
-      targetCount: null,
-      createdBy: "admin-user",
-      testUserId: null,
-      scheduledAt: "2026-03-14T00:00:00.000Z",
-      createdAt: {
-        toDate: () => new Date("2026-03-13T00:00:00.000Z"),
-      },
-      result: null,
-    });
-    adminPushJobDocs.push({
-      status: "completed",
-      audience: "pro",
-      title: "두 번째",
-      body: "new",
-      dryRun: false,
-      targetCount: 3,
-      createdBy: "admin-user",
-      testUserId: null,
-      scheduledAt: null,
-      createdAt: {
-        toDate: () => new Date("2026-03-13T01:00:00.000Z"),
-      },
-      completedAt: {
-        toDate: () => new Date("2026-03-13T01:05:00.000Z"),
-      },
-      result: {
-        successCount: 3,
-        failureCount: 0,
-      },
-    });
-
-    const handler = (getAdminPushJobs as any).run;
-    const result = await handler({
-      data: {limit: 10},
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      success: true,
-      jobs: [
-        expect.objectContaining({
-          id: "job-2",
-          status: "completed",
-          title: "두 번째",
-        }),
-        expect.objectContaining({
-          id: "job-1",
-          status: "scheduled",
-          title: "첫 번째",
-        }),
-      ],
-    });
-  });
-
-  it("scheduled 상태의 push job을 취소한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-    adminPushJobDocs.push({
-      status: "scheduled",
-      audience: "all",
-      title: "예약 공지",
-      body: "내일 배포 안내",
-      dryRun: false,
-      targetCount: null,
-      createdBy: "admin-user",
-      testUserId: null,
-      scheduledAt: "2026-03-14T00:00:00.000Z",
-    });
-
-    const handler = (cancelAdminPushJob as any).run;
-    const result = await handler({
-      data: {
-        jobId: "job-1",
-        reason: "내용 수정",
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({success: true});
-    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
-      status: "cancelled",
-      cancelledReason: "내용 수정",
-    }));
-    expect(auditLogAdds[0]).toEqual(expect.objectContaining({
-      actorId: "admin-user",
-      action: "cancel_scheduled_admin_push",
-      targetId: "job-1",
-    }));
-  });
-
-  it("dispatcher가 due scheduled push를 발송한다", async () => {
-    usersData.set("target-user", {
-      nickname: "kswift",
-    });
-    adminPushJobDocs.push({
-      status: "scheduled",
-      audience: "test_user",
-      title: "예약 공지",
-      body: "곧 시작합니다",
-      dryRun: false,
-      targetCount: null,
-      createdBy: "admin-user",
-      testUserId: "target-user",
-      scheduledAt: "2026-03-12T23:59:00.000Z",
-      createdAt: {
-        toDate: () => new Date("2026-03-12T23:50:00.000Z"),
-      },
-      result: null,
-    });
-
-    const handler = (dispatchScheduledAdminPushes as any).run;
-    await handler({});
-
-    expect(sendPushNotificationInternalMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userIds: ["target-user"],
-        title: "예약 공지",
-        body: "곧 시작합니다",
-      })
-    );
-    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
-      status: "completed",
-      targetCount: 1,
-      result: {
-        successCount: 1,
-        failureCount: 0,
-      },
-    }));
-    expect(auditLogAdds).toContainEqual(expect.objectContaining({
-      actorId: "admin-user",
-      action: "send_scheduled_admin_push",
-      targetId: "job-1",
-    }));
-    expect(adminPushJobQueryCalls).toEqual(expect.arrayContaining([
-      {
-        field: "status",
-        operator: "==",
-        value: "scheduled",
-      },
-      {
-        field: "scheduledAt",
-        operator: "<=",
-        value: "2026-03-13T00:00:00.000Z",
-      },
-    ]));
-  });
-
-  it("dry-run admin push는 발송 없이 대상 수만 계산한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-    usersData.set("user-a", {nickname: "a"});
-    usersData.set("user-b", {nickname: "b"});
-
-    const handler = (sendAdminPush as any).run;
-    const result = await handler({
-      data: {
-        title: "공지",
-        body: "테스트",
-        audience: "all",
-        dryRun: true,
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      success: true,
-      dryRun: true,
-      targetCount: 2,
-      successCount: 0,
-      failureCount: 0,
-      jobId: "job-1",
-    });
-    expect(sendPushNotificationInternalMock).not.toHaveBeenCalled();
-    expect(adminPushJobDocs[0]).toEqual(expect.objectContaining({
-      audience: "all",
-      dryRun: true,
-      targetCount: 2,
-    }));
-  });
-
-  it("support는 admin push를 발송할 수 없다", async () => {
-    adminUsersData.set("support-user", {
-      role: "support",
-      enabled: true,
-    });
-    usersData.set("target-user", {nickname: "kswift"});
-
-    const handler = (sendAdminPush as any).run;
-
-    await expect(handler({
-      data: {
-        title: "공지",
-        body: "테스트",
-        audience: "test_user",
-        testUserId: "target-user",
-      },
-      auth: {
-        uid: "support-user",
-        token: {
-          email: "support@promiso.app",
-        },
-      },
-    })).rejects.toMatchObject({
-      code: "permission-denied",
-    });
-  });
-
-  it("test user admin push는 시스템 푸시를 발송한다", async () => {
-    adminUsersData.set("admin-user", {
-      role: "owner",
-      enabled: true,
-    });
-    usersData.set("target-user", {nickname: "kswift"});
-
-    const handler = (sendAdminPush as any).run;
-    const result = await handler({
-      data: {
-        title: "공지",
-        body: "원하는 메시지",
-        audience: "test_user",
-        testUserId: "target-user",
-      },
-      auth: {
-        uid: "admin-user",
-        token: {
-          email: "admin@promiso.app",
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      success: true,
-      dryRun: false,
-      targetCount: 1,
-      successCount: 1,
-      failureCount: 0,
-      jobId: "job-1",
-    });
-    expect(sendPushNotificationInternalMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userIds: ["target-user"],
-        title: "공지",
-        body: "원하는 메시지",
-      })
-    );
   });
 });

@@ -251,10 +251,6 @@ export function DashboardPage() {
       value: summaryQuery.data.totalAdmins,
     },
     {
-      label: "푸시 작업",
-      value: summaryQuery.data.pushJobCount,
-    },
-    {
       label: "감사 로그",
       value: summaryQuery.data.auditLogCount,
     },

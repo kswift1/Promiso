@@ -242,20 +242,6 @@
       ]
     },
     {
-      "collectionGroup": "adminPushJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "scheduledAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "subscriptions",
       "queryScope": "COLLECTION",
       "fields": [
