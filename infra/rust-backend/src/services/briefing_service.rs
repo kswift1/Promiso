@@ -681,6 +681,7 @@ pub async fn generate_briefing(
                 &gemini_key,
                 &crate::services::gemini_client::briefing_model(),
                 crate::services::gemini_client::BRIEFING_MAX_OUTPUT_TOKENS,
+                true,
             )
             .await
             {

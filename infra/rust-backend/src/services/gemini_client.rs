@@ -95,7 +95,10 @@ pub const ENV_MODEL_BRIEFING: &str = "GEMINI_MODEL_BRIEFING";
 pub const ENV_MODEL_SCHEDULE_EXTRACTION: &str = "GEMINI_MODEL_SCHEDULE_EXTRACTION";
 
 /// 이모지/브리핑 기본 모델
-pub const DEFAULT_MODEL_LITE: &str = "gemini-2.5-flash-lite";
+///
+/// `gemini-2.5-flash-lite`는 신규 프로젝트에서 404("no longer available to new users")가
+/// 발생하므로 사용하지 않는다.
+pub const DEFAULT_MODEL_LITE: &str = "gemini-2.5-flash";
 /// 일정 추출 기본 모델 (정확도 우선)
 pub const DEFAULT_MODEL_SCHEDULE_EXTRACTION: &str = "gemini-2.5-flash";
 
@@ -152,9 +155,36 @@ pub fn schedule_extraction_model() -> String {
     )
 }
 
+/// Gemini 요청 본문 생성 (네트워크 호출 없음)
+///
+/// `disable_thinking`이 true면 `generationConfig.thinkingConfig.thinkingBudget = 0`을 포함한다.
+pub fn build_request_body(
+    prompt: &str,
+    max_output_tokens: u32,
+    disable_thinking: bool,
+) -> serde_json::Value {
+    let mut generation_config = serde_json::json!({
+        "maxOutputTokens": max_output_tokens
+    });
+    if disable_thinking {
+        generation_config["thinkingConfig"] = serde_json::json!({ "thinkingBudget": 0 });
+    }
+    serde_json::json!({
+        "contents": [
+            {
+                "parts": [
+                    { "text": prompt }
+                ]
+            }
+        ],
+        "generationConfig": generation_config
+    })
+}
+
 /// Gemini API 호출
 ///
 /// `model`로 지정한 모델을 사용하며, `max_output_tokens`를 generationConfig에 설정한다.
+/// `disable_thinking`이 true면 thinkingBudget=0으로 thinking을 끈다.
 /// 모델 ID가 유효하지 않으면 URL에 넣지 않고 `Err(())`를 반환한다.
 /// 응답 텍스트만 반환하며, 에러 시 `Err(())`를 반환한다.
 pub async fn call_gemini(
@@ -162,6 +192,7 @@ pub async fn call_gemini(
     api_key: &str,
     model: &str,
     max_output_tokens: u32,
+    disable_thinking: bool,
 ) -> Result<String, ()> {
     if !is_valid_model_id(model) {
         tracing::warn!("[Gemini] Invalid model id");
@@ -171,18 +202,7 @@ pub async fn call_gemini(
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     );
 
-    let body = serde_json::json!({
-        "contents": [
-            {
-                "parts": [
-                    { "text": prompt }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "maxOutputTokens": max_output_tokens
-        }
-    });
+    let body = build_request_body(prompt, max_output_tokens, disable_thinking);
 
     let client = Client::builder().build().map_err(|e| {
         tracing::warn!("[Gemini] Failed to build HTTP client: {e}");

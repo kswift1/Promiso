@@ -1,8 +1,8 @@
 use std::sync::Mutex;
 
 use promiso_backend::services::gemini_client::{
-    briefing_model, emoji_model, resolve_model_id, schedule_extraction_model, ENV_MODEL_BRIEFING,
-    ENV_MODEL_EMOJI, ENV_MODEL_SCHEDULE_EXTRACTION,
+    briefing_model, build_request_body, emoji_model, resolve_model_id, schedule_extraction_model,
+    ENV_MODEL_BRIEFING, ENV_MODEL_EMOJI, ENV_MODEL_SCHEDULE_EXTRACTION,
 };
 
 // env 변경 테스트는 프로세스 전역 상태를 건드리므로 직렬화한다.
@@ -91,8 +91,8 @@ fn resolve_rejects_invalid_characters() {
 #[test]
 fn defaults_per_purpose() {
     with_env(&[], || {
-        assert_eq!(emoji_model(), "gemini-2.5-flash-lite");
-        assert_eq!(briefing_model(), "gemini-2.5-flash-lite");
+        assert_eq!(emoji_model(), "gemini-2.5-flash");
+        assert_eq!(briefing_model(), "gemini-2.5-flash");
         assert_eq!(schedule_extraction_model(), "gemini-2.5-flash");
     });
 }
@@ -122,9 +122,27 @@ fn env_invalid_or_empty_falls_back_to_default() {
             (ENV_MODEL_SCHEDULE_EXTRACTION, Some("a b")),
         ],
         || {
-            assert_eq!(emoji_model(), "gemini-2.5-flash-lite");
-            assert_eq!(briefing_model(), "gemini-2.5-flash-lite");
+            assert_eq!(emoji_model(), "gemini-2.5-flash");
+            assert_eq!(briefing_model(), "gemini-2.5-flash");
             assert_eq!(schedule_extraction_model(), "gemini-2.5-flash");
         },
     );
+}
+
+#[test]
+fn request_body_includes_thinking_budget_zero_when_disabled() {
+    let body = build_request_body("hello", 64, true);
+    assert_eq!(body["generationConfig"]["maxOutputTokens"], 64);
+    assert_eq!(
+        body["generationConfig"]["thinkingConfig"]["thinkingBudget"],
+        0
+    );
+    assert_eq!(body["contents"][0]["parts"][0]["text"], "hello");
+}
+
+#[test]
+fn request_body_omits_thinking_config_when_enabled() {
+    let body = build_request_body("hello", 1024, false);
+    assert_eq!(body["generationConfig"]["maxOutputTokens"], 1024);
+    assert!(body["generationConfig"].get("thinkingConfig").is_none());
 }
