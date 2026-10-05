@@ -80,7 +80,6 @@ function createMockRenewalInfoPayload(
 }
 
 describe("subscription functions", () => {
-  let verifyPurchase: any;
   let appleServerNotification: any;
 
   let verifyAppleTransactionJWSMock: MockFn;
@@ -196,7 +195,6 @@ describe("subscription functions", () => {
     };
 
     const functions = await import("../src/functions/subscription");
-    verifyPurchase = functions.verifyPurchase;
     appleServerNotification = functions.appleServerNotification;
   });
 
@@ -218,153 +216,6 @@ describe("subscription functions", () => {
       send: jest.fn(),
     };
   }
-
-  describe("verifyPurchase", () => {
-    it("새 구매면 소유권과 구독 상태를 저장한다", async () => {
-      verifyAppleTransactionJWSMock.mockResolvedValue(
-        createMockTransactionPayload(),
-      );
-
-      const handler = (verifyPurchase as any).run;
-      const result = await handler({
-        data: {
-          transactionJWS: "test.jws.token",
-          productId: "com.promiso.pro.monthly",
-        },
-        auth: {uid: "user-a"},
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.subscriptionStatus.productId).toBe("com.promiso.pro.monthly");
-      expect(result.subscriptionStatus.originalTransactionId).toBe("txn-123");
-      expect(mockTransaction.set).toHaveBeenCalledWith(
-        mockOwnerRef,
-        expect.objectContaining({
-          userId: "user-a",
-          productId: "com.promiso.pro.monthly",
-        }),
-        {merge: true},
-      );
-      expect(mockTransaction.set).toHaveBeenCalledWith(
-        mockSubscriptionRef,
-        expect.objectContaining({
-          status: "subscribed",
-          originalTransactionId: "txn-123",
-          latestAppStoreSignedDate: 1700000001000,
-          latestTransactionId: "tx-001",
-        }),
-        {merge: true},
-      );
-    });
-
-    it("같은 사용자가 재검증하면 성공한다", async () => {
-      verifyAppleTransactionJWSMock.mockResolvedValue(
-        createMockTransactionPayload(),
-      );
-      ownerDocument = createMockDocument(true, {
-        userId: "user-a",
-        productId: "com.promiso.pro.monthly",
-        createdAt: {seconds: 1699000000, nanoseconds: 0},
-      });
-
-      const handler = (verifyPurchase as any).run;
-      const result = await handler({
-        data: {
-          transactionJWS: "test.jws.token",
-          productId: "com.promiso.pro.monthly",
-        },
-        auth: {uid: "user-a"},
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.subscriptionStatus.originalTransactionId).toBe("txn-123");
-      expect(mockTransaction.set).toHaveBeenCalledWith(
-        mockOwnerRef,
-        expect.objectContaining({userId: "user-a"}),
-        {merge: true},
-      );
-    });
-
-    it("다른 사용자가 이미 소유한 트랜잭션이면 already-exists 에러를 낸다", async () => {
-      verifyAppleTransactionJWSMock.mockResolvedValue(
-        createMockTransactionPayload(),
-      );
-      ownerDocument = createMockDocument(true, {
-        userId: "user-a",
-        productId: "com.promiso.pro.monthly",
-      });
-
-      const handler = (verifyPurchase as any).run;
-
-      await expect(handler({
-        data: {
-          transactionJWS: "test.jws.token",
-          productId: "com.promiso.pro.monthly",
-        },
-        auth: {uid: "user-b"},
-      })).rejects.toMatchObject({
-        code: "already-exists",
-      });
-
-      expect(mockTransaction.set).not.toHaveBeenCalled();
-    });
-
-    it("더 오래된 signed transaction replay는 현재 상태를 덮어쓰지 않는다", async () => {
-      verifyAppleTransactionJWSMock.mockResolvedValue(
-        createMockTransactionPayload({
-          signedDate: 1700000001000,
-          transactionId: "old-tx",
-        }),
-      );
-      subscriptionDocument = createMockDocument(true, {
-          status: "revoked",
-          productId: "com.promiso.pro.monthly",
-          originalTransactionId: "txn-123",
-          expirationDate: new Date(FUTURE_EXPIRATION).toISOString(),
-          purchaseDate: new Date(1700000000000).toISOString(),
-        latestAppStoreSignedDate: 1700000005000,
-        latestTransactionId: "newer-tx",
-        lastNotificationType: "REFUND",
-      });
-
-      const handler = (verifyPurchase as any).run;
-      const result = await handler({
-        data: {
-          transactionJWS: "test.jws.token",
-          productId: "com.promiso.pro.monthly",
-        },
-        auth: {uid: "user-a"},
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.subscriptionStatus.status).toBe("revoked");
-      expect(result.subscriptionStatus.latestTransactionId).toBe("newer-tx");
-      expect(mockTransaction.set).toHaveBeenCalledTimes(1);
-      expect(mockTransaction.set).toHaveBeenCalledWith(
-        mockOwnerRef,
-        expect.objectContaining({userId: "user-a"}),
-        {merge: true},
-      );
-    });
-
-    it("JWS의 productId와 요청 productId가 다르면 에러를 낸다", async () => {
-      verifyAppleTransactionJWSMock.mockResolvedValue(
-        createMockTransactionPayload({
-          productId: "com.promiso.pro.monthly",
-        }),
-      );
-
-      const handler = (verifyPurchase as any).run;
-
-      await expect(handler({
-        data: {
-          transactionJWS: "test.jws.token",
-          productId: "com.promiso.pro.yearly",
-        },
-        auth: {uid: "user-a"},
-      })).rejects.toThrow();
-    });
-  });
 
   describe("appleServerNotification", () => {
     it("subscriptionOwners에서 owner를 찾아 갱신 웹훅 상태를 저장한다", async () => {
